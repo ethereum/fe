@@ -9,11 +9,13 @@ macro_rules! test_file {
             let path = concat!("crashes/", stringify!($name), ".fe");
             let src = test_files::fixture(path);
             let mut files = FileStore::new();
+            let deps = files.add_included_libraries();
             let id = files.add_file(path, src);
-            fe_driver::compile_module(&files, id, true, true).ok();
+            fe_driver::compile_module(&files, id, &deps, true, true).ok();
         }
     };
 }
 
 test_file! { agroce531 }
 test_file! { agroce550 }
+test_file! { revert_const }

@@ -5,10 +5,11 @@ use crate::names;
 use crate::operations::data as data_operations;
 use crate::operations::revert as revert_operations;
 use crate::types::{AbiType, AsAbiType, EvmSized};
-use fe_analyzer::context::ExpressionAttributes;
-use fe_analyzer::namespace::types::Type;
+use fe_analyzer::context::{CallType, ExpressionAttributes};
+use fe_analyzer::namespace::types::{Base, Type};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use if_chain::if_chain;
 use yultsur::*;
 
 pub fn multiple_func_stmt(
@@ -51,10 +52,10 @@ fn for_loop(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statemen
         let iterator = expressions::expr(context, iter);
         let target_var = names::var_name(&target.kind);
         let yul_body = multiple_func_stmt(context, body);
-        return if let Some(ExpressionAttributes {
+        return if let ExpressionAttributes {
             typ: Type::Array(array),
             ..
-        }) = context.expression_attributes(iter)
+        } = context.expression_attributes(iter)
         {
             let size = literal_expression! { (array.size) };
             let inner_size = literal_expression! { (array.inner.size()) };
@@ -67,7 +68,7 @@ fn for_loop(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statemen
                 })
             }
         } else {
-            panic!("missing iter expression")
+            panic!("invalid iter expression")
         };
     }
     unreachable!()
@@ -98,7 +99,19 @@ fn expr(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
         let expr = expressions::expr(context, value);
 
-        statement! { pop([expr])}
+        // Yul's evm functions that don't return a value *really* don't return a value,
+        // unlike fe functions with unit return type, which currently return 0 when
+        // compiled to yul.
+        if_chain! {
+            if let fe::Expr::Call { func, .. } = &value.kind;
+            if let CallType::Intrinsic(intrinsic) = context.call_type(func);
+            if intrinsic.return_type() == Base::Unit;
+            then {
+                yul::Statement::Expression(expr)
+            } else {
+                statement! { pop([expr])}
+            }
+        }
     } else {
         unreachable!()
     }
@@ -107,10 +120,7 @@ fn expr(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 fn revert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Revert { error } = &stmt.kind {
         if let Some(error_expr) = error {
-            let error_attributes = context
-                .expression_attributes(error_expr)
-                .expect("missing expression")
-                .clone();
+            let error_attributes = context.expression_attributes(error_expr).clone();
 
             if let Type::Struct(struct_) = &error_attributes.typ {
                 revert_operations::revert(
@@ -137,26 +147,22 @@ fn emit(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
             .map(|arg| expressions::expr(context, &arg.kind.value))
             .collect();
 
-        if let Some(event) = context.emitted_event(stmt) {
-            let event_fields: Vec<(AbiType, bool)> = event
-                .fields
-                .iter()
-                .map(|field| {
-                    (
-                        field
-                            .typ
-                            .clone()
-                            .expect("event field type error")
-                            .as_abi_type(context.adb),
-                        field.is_indexed,
-                    )
-                })
-                .collect();
-
-            return data_operations::emit_event(&event.name, &event_fields, event_values);
-        }
-
-        panic!("missing event definition");
+        let event = context.emitted_event(stmt);
+        let event_fields: Vec<(AbiType, bool)> = event
+            .fields
+            .iter()
+            .map(|field| {
+                (
+                    field
+                        .typ
+                        .clone()
+                        .expect("event field type error")
+                        .as_abi_type(context.adb),
+                    field.is_indexed,
+                )
+            })
+            .collect();
+        return data_operations::emit_event(&event.name, &event_fields, event_values);
     }
 
     unreachable!()
@@ -168,10 +174,7 @@ fn assert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
         match msg {
             Some(val) => {
                 let msg = expressions::expr(context, val);
-                let msg_attributes = context
-                    .expression_attributes(val)
-                    .expect("missing expression")
-                    .clone();
+                let msg_attributes = context.expression_attributes(val).clone();
 
                 if let Type::String(string) = msg_attributes.typ {
                     let abi_type = string.as_abi_type(context.adb);

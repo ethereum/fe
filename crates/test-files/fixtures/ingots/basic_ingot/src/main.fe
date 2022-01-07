@@ -2,7 +2,6 @@ use bar::baz::Baz
 use bing::Bing as Bong
 use bing::get_42_backend
 use ding::{dang::Dang as Dung, dong}
-
 use bing::BingContract
 
 contract Foo:
@@ -15,6 +14,9 @@ contract Foo:
     pub fn get_42() -> u256:
         return get_42_backend()
 
+    pub fn get_26() -> u256:
+        return std::bar::bar::get_26()
+
     pub fn get_my_dyng() -> dong::Dyng:
         return dong::Dyng(
             my_address=address(8),
@@ -23,5 +25,5 @@ contract Foo:
         )
 
     pub fn create_bing_contract() -> u256:
-        let bing: BingContract = BingContract.create(0)
-        return bing.add(40, 50)
+        let bing_contract: BingContract = BingContract.create(0)
+        return bing_contract.add(40, 50)

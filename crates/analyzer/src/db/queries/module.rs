@@ -1,4 +1,3 @@
-use crate::builtins;
 use crate::context::{Analysis, AnalyzerContext};
 use crate::db::AnalyzerDb;
 use crate::errors::{self, TypeError};
@@ -12,7 +11,6 @@ use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_common::Span;
 use fe_parser::ast;
-use fe_parser::node::Node;
 use indexmap::indexmap;
 use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
@@ -20,29 +18,6 @@ use std::collections::HashSet;
 use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
-use strum::IntoEnumIterator;
-
-// Placeholder; someday std::prelude will be a proper module.
-fn std_prelude_items() -> IndexMap<SmolStr, Item> {
-    let mut items = indexmap! {
-        SmolStr::new("bool") => Item::Type(TypeDef::Primitive(types::Base::Bool)),
-        SmolStr::new("address") => Item::Type(TypeDef::Primitive(types::Base::Address)),
-    };
-    items.extend(types::Integer::iter().map(|typ| {
-        (
-            typ.as_ref().into(),
-            Item::Type(TypeDef::Primitive(types::Base::Numeric(typ))),
-        )
-    }));
-    items.extend(types::GenericType::iter().map(|typ| (typ.name(), Item::GenericType(typ))));
-    items.extend(
-        builtins::GlobalFunction::iter()
-            .map(|fun| (fun.as_ref().into(), Item::BuiltinFunction(fun))),
-    );
-    items
-        .extend(builtins::GlobalObject::iter().map(|obj| (obj.as_ref().into(), Item::Object(obj))));
-    items
-}
 
 pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> {
     let ast::Module { body } = &module.data(db).ast;
@@ -84,6 +59,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
             }
             ast::ModuleStmt::Pragma(_) => None,
             ast::ModuleStmt::Use(_) => None,
+            ast::ModuleStmt::Event(_) => todo!(),
         })
         .collect();
     Rc::new(items)
@@ -93,25 +69,33 @@ pub fn module_item_map(
     db: &dyn AnalyzerDb,
     module: ModuleId,
 ) -> Analysis<Rc<IndexMap<SmolStr, Item>>> {
-    let builtin_items = std_prelude_items();
+    // we must check for conflicts with global item names
+    let global_items = module.global_items(db);
+
+    // sub modules and used items are included in this map
     let sub_modules = module
         .sub_modules(db)
         .iter()
         .map(|(name, id)| (name.clone(), Item::Module(*id)))
         .collect::<IndexMap<_, _>>();
     let used_items = db.module_used_item_map(module);
-    let mut diagnostics = (*used_items.diagnostics).clone();
 
+    let mut diagnostics = used_items.diagnostics.deref().clone();
     let mut map = IndexMap::<SmolStr, Item>::new();
 
     for item in module.all_items(db).iter() {
         let item_name = item.name(db);
-        if let Some(builtin) = builtin_items.get(&item_name) {
-            let builtin_kind = builtin.item_kind_display_name();
+        if let Some(global_item) = global_items.get(&item_name) {
+            let kind = item.item_kind_display_name();
+            let other_kind = global_item.item_kind_display_name();
             diagnostics.push(errors::error(
-                &format!("type name conflicts with built-in {}", builtin_kind),
-                item.name_span(db).expect("duplicate built-in names?"),
-                &format!("`{}` is a built-in {}", item_name, builtin_kind),
+                &format!(
+                    "{} name conflicts with the {} named \"{}\"",
+                    kind, other_kind, item_name
+                ),
+                item.name_span(db)
+                    .expect("user defined item is missing a name span"),
+                &format!("`{}` is already defined", item_name),
             ));
             continue;
         }
@@ -129,23 +113,35 @@ pub fn module_item_map(
             continue;
         }
 
-        match map.entry(item_name) {
+        match map.entry(item_name.clone()) {
             Entry::Occupied(entry) => {
-                diagnostics.push(errors::fancy_error(
-                    "duplicate type name",
-                    vec![
-                        Label::primary(
-                            entry.get().name_span(db).unwrap(),
-                            format!("`{}` first defined here", entry.key()),
+                if let Some(entry_name_span) = entry.get().name_span(db) {
+                    diagnostics.push(errors::duplicate_name_error(
+                        &format!(
+                            "a {} named \"{}\" has already been defined",
+                            entry.get().item_kind_display_name(),
+                            item_name
                         ),
-                        Label::secondary(
+                        &item_name,
+                        entry_name_span,
+                        item.name_span(db)
+                            .expect("used-defined item does not have name span"),
+                    ));
+                } else {
+                    diagnostics.push(errors::fancy_error(
+                        &format!(
+                            "a {} named \"{}\" has already been defined",
+                            entry.get().item_kind_display_name(),
+                            item_name
+                        ),
+                        vec![Label::primary(
                             item.name_span(db)
-                                .expect("built-in conflicts with user-defined name?"),
+                                .expect("used-defined item does not have name span"),
                             format!("`{}` redefined here", entry.key()),
-                        ),
-                    ],
-                    vec![],
-                ));
+                        )],
+                        vec![],
+                    ));
+                }
             }
             Entry::Vacant(entry) => {
                 entry.insert(*item);
@@ -156,7 +152,6 @@ pub fn module_item_map(
         value: Rc::new(
             map.into_iter()
                 .chain(sub_modules)
-                .chain(builtin_items)
                 .chain(
                     used_items
                         .value
@@ -187,7 +182,6 @@ pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<StructId>
         module
             .all_items(db)
             .iter()
-            // TODO: this needs dependency graph stuff
             .chain(
                 module
                     .used_items(db)
@@ -231,18 +225,17 @@ pub fn module_used_item_map(
     db: &dyn AnalyzerDb,
     module: ModuleId,
 ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
-    let mut diagnostics = vec![];
+    // we must check for conflicts with the global items map
+    let global_items = module.global_items(db);
 
+    let mut diagnostics = vec![];
     let ast::Module { body } = &module.data(db).ast;
 
     let items = body
         .iter()
         .fold(indexmap! {}, |mut accum, stmt| {
             if let ast::ModuleStmt::Use(use_stmt) = stmt {
-                let parent = module
-                    .parent_module(db)
-                    .expect("module does not have a parent");
-                let items = db.module_resolve_use_tree(parent, use_stmt.kind.tree.clone());
+                let items = module.resolve_use_tree(db, &use_stmt.kind.tree, true);
                 diagnostics.extend(items.diagnostics.deref().clone());
 
                 for (name, (name_span, item)) in items.value.iter() {
@@ -266,15 +259,16 @@ pub fn module_used_item_map(
         })
         .into_iter()
         .filter_map(|(name, (name_span, item))| {
-            let builtin_items = std_prelude_items();
-
-            if let Some(builtin) = builtin_items.get(&name) {
-                let builtin_kind = builtin.item_kind_display_name();
+            if let Some(global_item) = global_items.get(&name) {
+                let other_kind = global_item.item_kind_display_name();
 
                 diagnostics.push(errors::error(
-                    &format!("import name conflicts with built-in {}", builtin_kind),
+                    &format!(
+                        "import name conflicts with the {} named \"{}\"",
+                        other_kind, name
+                    ),
                     name_span,
-                    &format!("`{}` is a built-in {}", name, builtin_kind),
+                    &format!("`{}` is already defined", name),
                 ));
 
                 None
@@ -287,110 +281,6 @@ pub fn module_used_item_map(
     Analysis {
         value: Rc::new(items),
         diagnostics: Rc::new(diagnostics),
-    }
-}
-
-pub fn module_resolve_use_tree(
-    db: &dyn AnalyzerDb,
-    module: ModuleId,
-    tree: Node<ast::UseTree>,
-) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
-    let mut diagnostics = vec![];
-
-    match &tree.kind {
-        ast::UseTree::Glob { prefix } => {
-            let prefix_module = Item::Module(module).resolve_path(db, prefix);
-            diagnostics.extend(prefix_module.diagnostics.deref().clone());
-
-            let items = match prefix_module.value {
-                Some(Item::Module(module)) => (*module.items(db))
-                    .clone()
-                    .into_iter()
-                    .map(|(name, item)| (name, (tree.span, item)))
-                    .collect(),
-                Some(item) => {
-                    diagnostics.push(errors::error(
-                        format!("cannot glob import from {}", item.item_kind_display_name()),
-                        prefix.segments.last().expect("path is empty").span,
-                        "prefix item must be a module",
-                    ));
-                    indexmap! {}
-                }
-                None => indexmap! {},
-            };
-
-            Analysis {
-                value: Rc::new(items),
-                diagnostics: Rc::new(diagnostics),
-            }
-        }
-        ast::UseTree::Nested { prefix, children } => {
-            let prefix_module = Item::Module(module).resolve_path(db, prefix);
-            diagnostics.extend(prefix_module.diagnostics.deref().clone());
-
-            let items = match prefix_module.value {
-                Some(Item::Module(module)) => {
-                    children.iter().fold(indexmap! {}, |mut accum, node| {
-                        let child_items = db.module_resolve_use_tree(module, node.clone());
-                        diagnostics.extend(child_items.diagnostics.deref().clone());
-
-                        for (name, (name_span, item)) in child_items.value.iter() {
-                            if let Some((other_name_span, other_item)) =
-                                accum.insert(name.to_owned(), (*name_span, *item))
-                            {
-                                diagnostics.push(errors::duplicate_name_error(
-                                    &format!(
-                                        "a {} with the same name has already been imported",
-                                        other_item.item_kind_display_name()
-                                    ),
-                                    name,
-                                    other_name_span,
-                                    *name_span,
-                                ));
-                            }
-                        }
-
-                        accum
-                    })
-                }
-                Some(item) => {
-                    diagnostics.push(errors::error(
-                        format!("cannot glob import from {}", item.item_kind_display_name()),
-                        prefix.segments.last().unwrap().span,
-                        "prefix item must be a module",
-                    ));
-                    indexmap! {}
-                }
-                None => indexmap! {},
-            };
-
-            Analysis {
-                value: Rc::new(items),
-                diagnostics: Rc::new(diagnostics),
-            }
-        }
-        ast::UseTree::Simple { path, rename } => {
-            let item = Item::Module(module).resolve_path(db, path);
-
-            let items = match item.value {
-                Some(item) => {
-                    let (item_name, item_name_span) = if let Some(name) = rename {
-                        (name.kind.clone(), name.span)
-                    } else {
-                        let name_segment_node = path.segments.last().expect("path is empty");
-                        (name_segment_node.kind.clone(), name_segment_node.span)
-                    };
-
-                    indexmap! { item_name => (item_name_span, item) }
-                }
-                None => indexmap! {},
-            };
-
-            Analysis {
-                value: Rc::new(items),
-                diagnostics: item.diagnostics,
-            }
-        }
     }
 }
 
@@ -416,17 +306,6 @@ pub fn module_parent_module(db: &dyn AnalyzerDb, module: ModuleId) -> Option<Mod
     }
 }
 
-pub fn module_adjacent_modules(
-    db: &dyn AnalyzerDb,
-    module: ModuleId,
-) -> Rc<IndexMap<SmolStr, ModuleId>> {
-    if let Some(parent) = module.parent_module(db) {
-        parent.sub_modules(db)
-    } else {
-        Rc::new(indexmap! {})
-    }
-}
-
 pub fn module_sub_modules(
     db: &dyn AnalyzerDb,
     module: ModuleId,
@@ -449,8 +328,13 @@ pub fn module_sub_modules(
                         .collect::<IndexMap<_, _>>();
                     Rc::new(sub_modules)
                 }
-                // file modules do not have sub-modules (for now, at least)
-                ModuleFileContent::File { .. } => Rc::new(indexmap! {}),
+                ModuleFileContent::File { .. } => {
+                    if Some(module) == ingot.root_module(db) {
+                        ingot.root_sub_modules(db)
+                    } else {
+                        Rc::new(indexmap! {})
+                    }
+                }
             }
         }
         // if we are compiling a module in the global context, then it will not have any sub-modules

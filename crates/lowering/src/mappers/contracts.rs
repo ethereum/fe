@@ -32,12 +32,19 @@ pub fn contract_def(context: &mut ModuleContext, contract: ContractId) -> Node<a
         )));
     }
 
+    if let Some(call_fn) = contract.call_function(db) {
+        functions.push(ast::ContractStmt::Function(functions::func_def(
+            context, call_fn,
+        )));
+    }
+
     let node = &contract.data(context.db).ast;
     Node::new(
         ast::Contract {
             name: node.kind.name.clone(),
             fields,
             body: [events, functions].concat(),
+            pub_qual: None,
         },
         node.span,
     )
@@ -89,6 +96,7 @@ fn event_def(context: &mut ModuleContext, event: EventId) -> Node<ast::Event> {
         ast::Event {
             name: node.kind.name.clone(),
             fields,
+            pub_qual: None,
         },
         node.span,
     )

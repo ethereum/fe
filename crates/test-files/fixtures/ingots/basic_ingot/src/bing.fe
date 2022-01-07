@@ -1,8 +1,12 @@
+use std::foo::Foo
+use std::bar::bar::Bar
+#
+# simply defining an item causes a cycle
 struct Bing:
-    my_address: address
+    pub my_address: address
 
 fn get_42_backend() -> u256:
-    return 42
+    return std::get_42()
 
 contract BingContract:
    pub fn add(x: u256, y: u256) -> u256:

@@ -10,6 +10,8 @@ use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
 use fe_compiler_test_utils::{self as test_utils};
 
+const SOME_ADDRESS: &str = "2012301230123012301230123012301230123002";
+
 pub fn deploy_contract(
     executor: &mut Executor,
     fixture: &str,
@@ -313,6 +315,7 @@ fn test_arrays() {
     case("pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_standalone.fe", &[uint_token(5)], uint_token(210)),
+    case("dummy_std.fe", &[], uint_token(1092)),
     // unary invert
     case("return_invert_i256.fe", &[int_token(1)], int_token(-2)),
     case("return_invert_i128.fe", &[int_token(1)], int_token(-2)),
@@ -427,6 +430,7 @@ fn test_arrays() {
     case::int_literal_coercion("int_literal_coercion.fe", &[], uint_token(300)),
     case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
     case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
+    case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
@@ -1223,6 +1227,8 @@ fn structs() {
                 "46276961562062403346660092841258592376337652487249021183958956662511039738107",
             )),
         );
+
+        harness.test_function(&mut executor, "create_mixed", &[], Some(&uint_token(1)))
     });
 }
 
@@ -1728,5 +1734,57 @@ fn abi_decode_checks() {
             ];
             harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
         }
+    });
+}
+
+#[test]
+fn intrinsics() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "intrinsics.fe", "Intrinsics", &[]);
+
+        executor
+            .state_mut()
+            .deposit(harness.address, U256::from(123));
+
+        harness.test_function(
+            &mut executor,
+            "add",
+            &[uint_token(10), uint_token(100)],
+            Some(&uint_token(110)),
+        );
+        harness.test_function(&mut executor, "self_balance", &[], Some(&uint_token(123)));
+        harness.test_function(&mut executor, "calldatasize", &[], Some(&uint_token(4)));
+        harness.test_function(
+            &mut executor,
+            "calldatacopy",
+            &[uint_token(36), uint_token(32)],
+            Some(&uint_token(32)),
+        );
+        harness.test_function(&mut executor, "callvalue", &[], Some(&uint_token(0)));
+
+        // TODO: need an evm update for the basefee opcode
+        // harness.test_function(&mut executor, "basefee", &[], Some(&uint_token(0)));
+
+        harness.test_function(
+            &mut executor,
+            "caller",
+            &[],
+            Some(&ethabi::Token::Address(harness.caller)),
+        );
+    });
+}
+
+#[test]
+fn call_fn() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "call_fn.fe", "Foo", &[]);
+
+        let mut calldata = vec![0; 32];
+
+        calldata[31] = 1;
+        harness.test_call_reverts(&mut executor, calldata.clone(), &[]);
+
+        calldata[31] = 0;
+        harness.test_call_returns(&mut executor, calldata, &[])
     });
 }

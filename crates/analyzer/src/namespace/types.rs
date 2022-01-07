@@ -74,6 +74,9 @@ impl Base {
             Base::Unit => "()".into(),
         }
     }
+    pub fn u256() -> Base {
+        Base::Numeric(Integer::U256)
+    }
 }
 
 #[derive(

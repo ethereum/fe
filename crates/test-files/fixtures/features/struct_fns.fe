@@ -1,6 +1,6 @@
 struct Point:
-  x: u64
-  y: u64
+  pub x: u64
+  pub y: u64
 
   pub fn new(x: u64, y: u64) -> Point:
     return Point(x, y)

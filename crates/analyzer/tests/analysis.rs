@@ -1,5 +1,5 @@
 use fe_analyzer::namespace::items::{
-    self, Global, Ingot, Item, Module, ModuleContext, ModuleFileContent, TypeDef,
+    self, Global, IngotId, Item, Module, ModuleContext, ModuleFileContent, TypeDef,
 };
 use fe_analyzer::namespace::types::{Event, FixedSize};
 use fe_analyzer::{AnalyzerDb, TestDb};
@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -74,39 +75,20 @@ macro_rules! test_analysis_ingot {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let files = test_files::build_filestore($path);
+            let mut files = test_files::build_filestore($path);
+            let file_ids = files.all_files();
+            let deps = files.add_included_libraries();
 
             let db = TestDb::default();
 
-            let global = Global::default();
-            let global_id = db.intern_global(Rc::new(global));
+            let analysis = IngotId::try_new(&db, &files, $path, &file_ids, &deps)
+                .expect("failed to create new ingot");
 
-            let ingot = Ingot {
-                name: "test_ingot".into(),
-                global: global_id,
-                fe_files: files
-                    .files
-                    .values()
-                    .into_iter()
-                    .map(|file| {
-                        let ast = match fe_parser::parse_file(file.id, &file.content) {
-                            Ok((ast, diags)) => {
-                                if !diags.is_empty() {
-                                    print_diagnostics(&diags, &files);
-                                    panic!("non-fatal parsing error");
-                                }
-                                ast
-                            }
-                            Err(diags) => {
-                                print_diagnostics(&diags, &files);
-                                panic!("parsing failed");
-                            }
-                        };
-                        (file.id, (file.clone(), ast))
-                    })
-                    .collect(),
-            };
-            let ingot_id = db.intern_ingot(Rc::new(ingot));
+            let ingot_id = analysis.value;
+
+            if !analysis.diagnostics.deref().is_empty() {
+                panic!("failed to compile the ingot: {:?}", analysis.diagnostics)
+            }
 
             let snapshot = ingot_id
                 .all_modules(&db)
@@ -300,6 +282,7 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
             | Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
             | Item::Ingot(_)
             | Item::Module(_)
             | Item::Object(_) => vec![],

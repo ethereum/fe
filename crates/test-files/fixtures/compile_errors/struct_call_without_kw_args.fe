@@ -1,6 +1,6 @@
 struct House:
-    vacant: bool
-    price: u256
+    pub vacant: bool
+    pub price: u256
 
 contract Foo:
 

@@ -5,7 +5,8 @@ use fe_abi::utils as abi_utils;
 use smol_str::SmolStr;
 use yultsur::*;
 
-/// Builds a switch statement that dispatches calls to the contract.
+/// Builds a switch statement that dispatches calls to the contract and wraps it in
+/// a `$$__call__` function.
 pub fn dispatcher(
     functions: &[(SmolStr, SmolStr, impl AsRef<[AbiType]>, Option<AbiType>)],
 ) -> yul::Statement {
@@ -14,13 +15,21 @@ pub fn dispatcher(
         .map(|(name, qname, params, ret)| dispatch_arm(name, qname, params.as_ref(), ret))
         .collect::<Vec<_>>();
 
-    if arms.is_empty() {
+    let dispatcher = if arms.is_empty() {
         statement! { return(0, 0) }
     } else {
         switch! {
             switch (cloadn(0, 4))
             [arms...]
             (default { (return(0, 0)) })
+        }
+    };
+
+    let call_fn_ident = identifier! { ("$$__call__") };
+
+    function_definition! {
+        function [call_fn_ident]() {
+            [dispatcher]
         }
     }
 }

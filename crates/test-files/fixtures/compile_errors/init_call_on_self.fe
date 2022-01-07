@@ -2,5 +2,5 @@ contract Foo:
   pub fn __init__():
     pass
 
-  fn bar():
+  fn bar(self):
     self.__init__()

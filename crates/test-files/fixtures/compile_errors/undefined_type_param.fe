@@ -1,7 +1,7 @@
 # https://github.com/ethereum/fe/issues/530
 
 struct BadField:
-    x: MysteryType
+    pub x: MysteryType
 
 contract Foo:
     # case 1: using arg with undefined type within the fn body

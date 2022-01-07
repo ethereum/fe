@@ -1,5 +1,7 @@
 use crate::constructor;
+use crate::context::FnContext;
 use crate::db::YulgenDb;
+use crate::mappers::functions::multiple_func_stmt;
 use crate::runtime::{abi_dispatcher, functions};
 use crate::types::{AbiDecodeLocation, AsAbiType};
 use fe_analyzer::builtins::ValueMethod;
@@ -21,7 +23,31 @@ pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
             Item::Type(TypeDef::Contract(contract)),
         );
 
-        functions.extend(db.contract_abi_dispatcher(contract));
+        // This can all be replaced with a call to the contract's `__call__` function once the
+        // dispatching code has been moved into lowering.
+        //
+        // For now, we must do the following:
+        // - check if a `__call__` function has been defined in the contract and, if so, we map its
+        // body into a Yul function named `$$__call__`
+        // - if a `__call__` function is not defined in the contract, we generate a `$$__call__`
+        // function that dispatches calls using the Solidity ABI
+        // - call the `$$__call__` function
+        let call_fn_ident = identifier! { ("$$__call__") };
+        if let Some(call_fn) = contract.call_function(adb) {
+            let mut fn_context = FnContext::new(db, call_fn.body(adb));
+            let function_statements =
+                multiple_func_stmt(&mut fn_context, &call_fn.data(adb).ast.kind.body);
+            let call_fn_yul = function_definition! {
+                function [call_fn_ident.clone()]() {
+                    // the function body will contain one or more `return_val` assignments
+                    (let return_val := 0)
+                    [function_statements...]
+                }
+            };
+            functions.push(call_fn_yul);
+        } else {
+            functions.extend(db.contract_abi_dispatcher(contract));
+        }
         functions.sort();
         functions.dedup();
 
@@ -31,6 +57,7 @@ pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
                 block: yul::Block {
                     statements: statements! {
                         [functions...]
+                        ([call_fn_ident]())
                     },
                 },
             },

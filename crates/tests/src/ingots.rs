@@ -17,6 +17,19 @@ pub fn deploy_ingot(
 }
 
 #[test]
+fn test_ingot_with_visibility() {
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "pub_contract_ingot", "FooBarBing", &[]);
+    })
+}
+
+#[test]
+fn test_ingot_pub_contract() {
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "visibility_ingot", "Foo", &[]);
+    })
+}
+#[test]
 fn test_basic_ingot() {
     with_executor(&|mut executor| {
         let harness = deploy_ingot(&mut executor, "basic_ingot", "Foo", &[]);
@@ -29,6 +42,7 @@ fn test_basic_ingot() {
         );
 
         harness.test_function(&mut executor, "get_42", &[], Some(&uint_token(42)));
+        harness.test_function(&mut executor, "get_26", &[], Some(&uint_token(26)));
         harness.test_function(
             &mut executor,
             "get_my_dyng",

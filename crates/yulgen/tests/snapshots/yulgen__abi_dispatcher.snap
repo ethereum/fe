@@ -1,9 +1,9 @@
 ---
 source: crates/yulgen/tests/yulgen.rs
-expression: "abi_dispatcher::dispatcher(functions())"
+expression: "abi_dispatcher::dispatcher(&functions())"
 
 ---
-switch cloadn(0, 4)
+function $$__call__() { switch cloadn(0, 4)
 case 0x9476f922 {
     let return_val := $$somemod$hello_world()
     let encoding_start := abi_encode_string_42(return_val)
@@ -17,4 +17,4 @@ case 0x771602f7 {
     let encoding_size := add(32, 0)
     return(encoding_start, encoding_size)
 }
-default { return(0, 0) }
+default { return(0, 0) } }

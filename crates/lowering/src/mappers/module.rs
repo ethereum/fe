@@ -37,6 +37,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
                             node.kind.typ.clone(),
                             &id.typ(db).expect("type alias error"),
                         ),
+                        pub_qual: None,
                     },
                     id.span(db),
                 )))
@@ -58,7 +59,9 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
 
         Item::GenericType(_) => todo!("generic types can't be defined in fe yet"),
         Item::Event(_) => todo!("events can't be defined at the module level yet"),
-        Item::BuiltinFunction(_) | Item::Object(_) => unreachable!("special built-in stuff"),
+        Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {
+            unreachable!("special built-in stuff")
+        }
 
         // All name expressions referring to constants are handled at the time of lowering,
         // which causes the constants to no longer serve a purpose.
@@ -103,12 +106,13 @@ fn build_tuple_struct(tuple: &Tuple) -> ast::Struct {
         name: names::tuple_struct_name(tuple).into_node(),
         fields,
         functions: vec![],
+        pub_qual: None,
     }
 }
 
 fn build_struct_field(name: String, type_desc: ast::TypeDesc) -> ast::Field {
     ast::Field {
-        is_pub: false,
+        is_pub: true,
         is_const: false,
         name: SmolStr::new(name).into_node(),
         typ: type_desc.into_node(),

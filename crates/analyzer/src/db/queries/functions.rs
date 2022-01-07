@@ -110,15 +110,16 @@ pub fn function_signature(
         .return_type
         .as_ref()
         .map(|type_node| {
-            if def.name.kind == "__init__" {
-                // `__init__` must not return any type other than `()`.
+            let fn_name = &def.name.kind;
+            if fn_name == "__init__" || fn_name == "__call__" {
+                // `__init__` and `__call__` must not return any type other than `()`.
                 if type_node.kind != ast::TypeDesc::Unit {
                     scope.fancy_error(
-                        "`__init__` function has incorrect return type",
+                        &format!("`{}` function has incorrect return type", fn_name),
                         vec![Label::primary(type_node.span, "return type should be `()`")],
                         vec![
                             "Hint: Remove the return type specification.".to_string(),
-                            "Example: `pub fn __init__():`".to_string(),
+                            format!("Example: `pub fn {}():`", fn_name),
                         ],
                     );
                 }
@@ -176,7 +177,7 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
 
     let mut block_scope = BlockScope::new(
         &scope,
-        if function.unsafe_span(db).is_some() {
+        if function.is_unsafe(db) {
             BlockScopeType::Unsafe
         } else {
             BlockScopeType::Function
@@ -207,6 +208,11 @@ fn all_paths_return_or_revert(block: &[Node<ast::FuncStmt>]) -> bool {
                 let body_returns = all_paths_return_or_revert(body);
                 let or_else_returns = all_paths_return_or_revert(or_else);
                 if body_returns && or_else_returns {
+                    return true;
+                }
+            }
+            ast::FuncStmt::Unsafe(body) => {
+                if all_paths_return_or_revert(body) {
                     return true;
                 }
             }
@@ -293,7 +299,9 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                 ));
             }
             // Builtin functions aren't part of the dependency graph yet.
-            CallType::BuiltinFunction(_) | CallType::BuiltinValueMethod { .. } => {}
+            CallType::BuiltinFunction(_)
+            | CallType::Intrinsic(_)
+            | CallType::BuiltinValueMethod { .. } => {}
         }
     }
 

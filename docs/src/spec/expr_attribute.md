@@ -13,8 +13,8 @@ Examples:
 
 ```python
 struct Point:
-    x: u256
-    y: u256
+    pub x: u256
+    pub y: u256
 
 contract Foo:
     some_point: Point

@@ -22,6 +22,7 @@ pub enum ModuleStmt {
     Constant(Box<Node<ConstantDecl>>),
     Struct(Node<Struct>),
     Function(Node<Function>),
+    Event(Node<Event>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -65,6 +66,7 @@ pub struct ConstantDecl {
 pub struct TypeAlias {
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -72,6 +74,7 @@ pub struct Contract {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub body: Vec<ContractStmt>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -79,6 +82,7 @@ pub struct Struct {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -136,6 +140,7 @@ pub enum ContractStmt {
 pub struct Event {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<EventField>>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -163,6 +168,7 @@ pub struct RegularFunctionArg {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum FunctionArg {
     Regular(RegularFunctionArg),
     Zelf,
@@ -396,6 +402,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
+            ModuleStmt::Event(inner) => inner.span,
         }
     }
 }
@@ -425,6 +432,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Event(node) => write!(f, "{}", node.kind),
         }
     }
 }

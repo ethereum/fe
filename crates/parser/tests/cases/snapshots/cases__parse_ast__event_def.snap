@@ -1,68 +1,79 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(event_def), types::parse_event_def,\n           \"event Foo:\\n  x: address\\n  idx y: u8\")"
+expression: "ast_string(stringify!(event_def), module::parse_module,\n           \"event Foo:\\n  x: address\\n  idx y: u8\")"
 
 ---
 Node(
-  kind: Event(
-    name: Node(
-      kind: "Foo",
-      span: Span(
-        start: 6,
-        end: 9,
-      ),
-    ),
-    fields: [
-      Node(
-        kind: EventField(
-          is_idx: false,
+  kind: Module(
+    body: [
+      Event(Node(
+        kind: Event(
           name: Node(
-            kind: "x",
+            kind: "Foo",
             span: Span(
-              start: 13,
-              end: 14,
+              start: 6,
+              end: 9,
             ),
           ),
-          typ: Node(
-            kind: Base(
-              base: "address",
+          fields: [
+            Node(
+              kind: EventField(
+                is_idx: false,
+                name: Node(
+                  kind: "x",
+                  span: Span(
+                    start: 13,
+                    end: 14,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "address",
+                  ),
+                  span: Span(
+                    start: 16,
+                    end: 23,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 13,
+                end: 23,
+              ),
             ),
-            span: Span(
-              start: 16,
-              end: 23,
+            Node(
+              kind: EventField(
+                is_idx: true,
+                name: Node(
+                  kind: "y",
+                  span: Span(
+                    start: 30,
+                    end: 31,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 33,
+                    end: 35,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 26,
+                end: 35,
+              ),
             ),
-          ),
+          ],
+          pub_qual: None,
         ),
         span: Span(
-          start: 13,
-          end: 23,
-        ),
-      ),
-      Node(
-        kind: EventField(
-          is_idx: true,
-          name: Node(
-            kind: "y",
-            span: Span(
-              start: 30,
-              end: 31,
-            ),
-          ),
-          typ: Node(
-            kind: Base(
-              base: "u8",
-            ),
-            span: Span(
-              start: 33,
-              end: 35,
-            ),
-          ),
-        ),
-        span: Span(
-          start: 26,
+          start: 0,
           end: 35,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(

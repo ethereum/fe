@@ -7,7 +7,7 @@ use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
-use fe_common::files::{SourceFile, SourceFileId};
+use fe_common::files::{FileStore, SourceFile, SourceFileId};
 use fe_parser::ast;
 use fe_parser::ast::Expr;
 use fe_parser::node::{Node, Span};
@@ -15,7 +15,10 @@ use indexmap::indexmap;
 use indexmap::IndexMap;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
+use std::ops::Deref;
+use std::path::Path;
 use std::rc::Rc;
+use strum::IntoEnumIterator;
 
 /// A named item. This does not include things inside of
 /// a function body.
@@ -36,7 +39,7 @@ pub enum Item {
     // Needed until we can represent keccak256 as a FunctionId.
     // We can't represent keccak256's arg type yet.
     BuiltinFunction(builtins::GlobalFunction),
-
+    Intrinsic(builtins::Intrinsic),
     // This should go away soon. The globals (block, msg, etc) will be replaced
     // with a context struct that'll appear in the fn parameter list.
     Object(builtins::GlobalObject),
@@ -50,6 +53,7 @@ impl Item {
             Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
             Item::BuiltinFunction(id) => id.as_ref().into(),
+            Item::Intrinsic(id) => id.as_ref().into(),
             Item::Object(id) => id.as_ref().into(),
             Item::Constant(id) => id.name(db),
             Item::Ingot(id) => id.name(db),
@@ -64,6 +68,7 @@ impl Item {
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
             Item::BuiltinFunction(_) => None,
+            Item::Intrinsic(_) => None,
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.name_span(db)),
             Item::Ingot(_) => None,
@@ -79,11 +84,16 @@ impl Item {
             Item::Event(_) => false,
             Item::Function(_) => false,
             Item::BuiltinFunction(_) => true,
+            Item::Intrinsic(_) => true,
             Item::Object(_) => true,
             Item::Constant(_) => false,
             Item::Ingot(_) => false,
             Item::Module(_) => false,
         }
+    }
+
+    pub fn is_struct(&self, val: &StructId) -> bool {
+        matches!(self, Item::Type(TypeDef::Struct(current)) if current == val)
     }
 
     pub fn item_kind_display_name(&self) -> &'static str {
@@ -93,6 +103,7 @@ impl Item {
             Item::Event(_) => "event",
             Item::Function(_) => "function",
             Item::BuiltinFunction(_) => "function",
+            Item::Intrinsic(_) => "intrinsic function",
             Item::Object(_) => "object",
             Item::Constant(_) => "constant",
             Item::Ingot(_) => "ingot",
@@ -102,7 +113,7 @@ impl Item {
 
     pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         match self {
-            Item::Ingot(_) => todo!("cannot access items in ingots yet"),
+            Item::Ingot(ingot) => ingot.items(db),
             Item::Module(module) => module.items(db),
             Item::Type(_) => todo!("cannot access items in types yet"),
             Item::GenericType(_)
@@ -110,47 +121,23 @@ impl Item {
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
             | Item::Object(_) => Rc::new(indexmap! {}),
         }
     }
 
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
-        // Only ingots *should* be parentless, but built-in items currently don't
         match self {
             Item::Type(id) => id.parent(db),
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
             Item::BuiltinFunction(_) => None,
+            Item::Intrinsic(_) => None,
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.parent(db)),
             Item::Ingot(_) => None,
             Item::Module(id) => id.parent(db),
-        }
-    }
-
-    pub fn resolve_path(&self, db: &dyn AnalyzerDb, path: &ast::Path) -> Analysis<Option<Item>> {
-        let mut curr_item = *self;
-
-        for node in path.segments.iter() {
-            curr_item = match curr_item.items(db).get(&node.kind) {
-                Some(item) => *item,
-                None => {
-                    return Analysis {
-                        value: None,
-                        diagnostics: Rc::new(vec![errors::error(
-                            "unresolved path item",
-                            node.span,
-                            "not found",
-                        )]),
-                    }
-                }
-            }
-        }
-
-        Analysis {
-            value: Some(curr_item),
-            diagnostics: Rc::new(vec![]),
         }
     }
 
@@ -180,6 +167,35 @@ impl Item {
         }
     }
 
+    pub fn resolve_path_segments(
+        &self,
+        db: &dyn AnalyzerDb,
+        segments: &[Node<SmolStr>],
+    ) -> Analysis<Option<Item>> {
+        let mut curr_item = *self;
+
+        for node in segments {
+            curr_item = match curr_item.items(db).get(&node.kind) {
+                Some(item) => *item,
+                None => {
+                    return Analysis {
+                        value: None,
+                        diagnostics: Rc::new(vec![errors::error(
+                            "unresolved path item",
+                            node.span,
+                            "not found",
+                        )]),
+                    }
+                }
+            }
+        }
+
+        Analysis {
+            value: Some(curr_item),
+            diagnostics: Rc::new(vec![]),
+        }
+    }
+
     /// Downcast utility function
     pub fn as_contract(&self) -> Option<ContractId> {
         match self {
@@ -194,8 +210,7 @@ impl Item {
             Item::GenericType(_) => {}
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
-            Item::BuiltinFunction(_) => {}
-            Item::Object(_) => {}
+            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
             Item::Ingot(id) => id.sink_diagnostics(db, sink),
             Item::Module(id) => id.sink_diagnostics(db, sink),
@@ -203,15 +218,94 @@ impl Item {
     }
 }
 
+// Placeholder; someday std::prelude will be a proper module.
+pub fn std_prelude_items() -> IndexMap<SmolStr, Item> {
+    let mut items = indexmap! {
+        SmolStr::new("bool") => Item::Type(TypeDef::Primitive(types::Base::Bool)),
+        SmolStr::new("address") => Item::Type(TypeDef::Primitive(types::Base::Address)),
+    };
+    items.extend(types::Integer::iter().map(|typ| {
+        (
+            typ.as_ref().into(),
+            Item::Type(TypeDef::Primitive(types::Base::Numeric(typ))),
+        )
+    }));
+    items.extend(types::GenericType::iter().map(|typ| (typ.name(), Item::GenericType(typ))));
+    items.extend(
+        builtins::GlobalFunction::iter()
+            .map(|fun| (fun.as_ref().into(), Item::BuiltinFunction(fun))),
+    );
+    items
+        .extend(builtins::Intrinsic::iter().map(|fun| (fun.as_ref().into(), Item::Intrinsic(fun))));
+    items
+        .extend(builtins::GlobalObject::iter().map(|obj| (obj.as_ref().into(), Item::Object(obj))));
+    items
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Global {
-    ingots: BTreeMap<SmolStr, IngotId>,
+    pub ingots: BTreeMap<SmolStr, IngotId>,
+}
+
+impl Global {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        let mut diagnostics = vec![];
+        let mut fatal_diagnostics = vec![];
+
+        let ingots = deps
+            .into_iter()
+            .filter_map(|(name, file_ids)| {
+                // dep map is left empty for now
+                match IngotId::try_new(db, files, name, file_ids, &indexmap! {}) {
+                    Ok(analysis) => {
+                        diagnostics.extend(analysis.diagnostics.deref().clone());
+                        Some((name.to_owned(), analysis.value))
+                    }
+                    Err(diagnostics) => {
+                        fatal_diagnostics.extend(diagnostics);
+                        None
+                    }
+                }
+            })
+            .collect();
+
+        if fatal_diagnostics.is_empty() {
+            Ok(Analysis {
+                value: Global { ingots },
+                diagnostics: Rc::new(diagnostics),
+            })
+        } else {
+            Err(fatal_diagnostics)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct GlobalId(pub(crate) u32);
 impl_intern_key!(GlobalId);
-impl GlobalId {}
+impl GlobalId {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        match Global::try_new(db, files, deps) {
+            Ok(analysis) => Ok(Analysis {
+                value: db.intern_global(Rc::new(analysis.value)),
+                diagnostics: analysis.diagnostics,
+            }),
+            Err(diagnostics) => Err(diagnostics),
+        }
+    }
+
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Global> {
+        db.lookup_intern_global(*self)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Ingot {
@@ -222,10 +316,71 @@ pub struct Ingot {
     pub fe_files: BTreeMap<SourceFileId, (SourceFile, ast::Module)>,
 }
 
+impl Ingot {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        name: &str,
+        file_ids: &[SourceFileId],
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        let global_analysis = GlobalId::try_new(db, files, deps)?;
+
+        let mut diagnostics = global_analysis.diagnostics.deref().clone();
+        let mut fatal_diagnostics = vec![];
+
+        let ingot = Self {
+            name: name.into(),
+            global: global_analysis.value,
+            fe_files: file_ids
+                .iter()
+                .filter_map(|file_id| {
+                    let file = files.get_file(*file_id).expect("missing file for ID");
+                    match fe_parser::parse_file(*file_id, &file.content) {
+                        Ok((ast, parser_diagnostics)) => {
+                            diagnostics.extend(parser_diagnostics);
+                            Some((*file_id, (file.to_owned(), ast)))
+                        }
+                        Err(diagnostics) => {
+                            fatal_diagnostics.extend(diagnostics);
+                            None
+                        }
+                    }
+                })
+                .collect(),
+        };
+
+        if fatal_diagnostics.is_empty() {
+            Ok(Analysis {
+                value: ingot,
+                diagnostics: Rc::new(diagnostics),
+            })
+        } else {
+            Err(fatal_diagnostics)
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct IngotId(pub(crate) u32);
 impl_intern_key!(IngotId);
 impl IngotId {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        name: &str,
+        file_ids: &[SourceFileId],
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        match Ingot::try_new(db, files, name, file_ids, deps) {
+            Ok(analysis) => Ok(Analysis {
+                value: db.intern_ingot(Rc::new(analysis.value)),
+                diagnostics: analysis.diagnostics,
+            }),
+            Err(diagnostics) => Err(diagnostics),
+        }
+    }
+
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Ingot> {
         db.lookup_intern_ingot(*self)
     }
@@ -234,8 +389,28 @@ impl IngotId {
         self.data(db).name.clone()
     }
 
+    /// Returns the `src/main.fe` module, if it exists.
     pub fn main_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
         db.ingot_main_module(*self).value
+    }
+
+    /// Returns the `src/lib.fe` module, if it exists.
+    pub fn lib_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
+        db.ingot_lib_module(*self).value
+    }
+
+    /// Returns the `src/lib.fe` or `src/main.fe` module, whichever one exists.
+    pub fn root_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
+        db.ingot_root_module(*self)
+    }
+
+    /// Returns all of the modules inside of `src`, except for the root module.
+    pub fn root_sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
+        db.ingot_root_sub_modules(*self)
+    }
+
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
+        self.root_module(db).expect("missing root module").items(db)
     }
 
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
@@ -286,10 +461,59 @@ pub struct Module {
     pub ast: ast::Module,
 }
 
+impl Module {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        file_id: SourceFileId,
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        let global_analysis = GlobalId::try_new(db, files, deps)?;
+        let mut diagnostics = global_analysis.diagnostics.deref().clone();
+
+        let file = files.get_file(file_id).expect("missing file");
+        let name = Path::new(&file.name)
+            .file_stem()
+            .expect("missing file name")
+            .to_string_lossy()
+            .to_string();
+
+        let (ast, parser_diagnostics) = fe_parser::parse_file(file_id, &file.content)?;
+        diagnostics.extend(parser_diagnostics);
+
+        let module = Module {
+            name: name.into(),
+            context: ModuleContext::Global(global_analysis.value),
+            file_content: ModuleFileContent::File { file: file_id },
+            ast,
+        };
+
+        Ok(Analysis {
+            value: module,
+            diagnostics: Rc::new(diagnostics),
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ModuleId(pub(crate) u32);
 impl_intern_key!(ModuleId);
 impl ModuleId {
+    pub fn try_new(
+        db: &dyn AnalyzerDb,
+        files: &FileStore,
+        file_id: SourceFileId,
+        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
+    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
+        match Module::try_new(db, files, file_id, deps) {
+            Ok(analysis) => Ok(Analysis {
+                value: db.intern_module(Rc::new(analysis.value)),
+                diagnostics: analysis.diagnostics,
+            }),
+            Err(diagnostics) => Err(diagnostics),
+        }
+    }
+
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Module> {
         db.lookup_intern_module(*self)
     }
@@ -322,14 +546,14 @@ impl ModuleId {
         self.data(db).context.clone()
     }
 
-    /// Returns a map of the named items in the module
-    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
-        db.module_item_map(*self).value
-    }
-
     /// Includes duplicate names
     pub fn all_items(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Item>> {
         db.module_all_items(*self)
+    }
+
+    /// Returns a map of the named items in the module
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
+        db.module_item_map(*self).value
     }
 
     /// Returns a `name -> (name_span, external_item)` map for all `use` statements in a module.
@@ -337,25 +561,218 @@ impl ModuleId {
         db.module_used_item_map(*self).value
     }
 
-    /// Returns a `name -> (name_span, external_item)` map for a single `use` tree.
+    /// Returns all of the internal items, except for used items. This is used when resolving
+    /// use statements, as it does not create a query cycle.
+    pub fn non_used_internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
+        let global_items = self.global_items(db);
+        let sub_modules = self.sub_modules(db);
+
+        sub_modules
+            .deref()
+            .clone()
+            .into_iter()
+            .map(|(name, module)| (name, Item::Module(module)))
+            .chain(global_items)
+            .collect()
+    }
+
+    /// Returns all of the internal items. Internal items refers to the set of items visible when
+    /// inside of a module.
+    pub fn internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
+        let global_items = self.global_items(db);
+        let defined_items = self.items(db);
+        let sub_modules = self.sub_modules(db);
+
+        sub_modules
+            .deref()
+            .clone()
+            .into_iter()
+            .map(|(name, module)| (name, Item::Module(module)))
+            .chain(global_items)
+            .chain(defined_items.deref().clone())
+            .collect()
+    }
+
+    /// Resolve a path that starts with an item defined in the module.
+    pub fn resolve_path(&self, db: &dyn AnalyzerDb, path: &ast::Path) -> Analysis<Option<Item>> {
+        Item::Module(*self).resolve_path_segments(db, &path.segments)
+    }
+
+    /// Resolve a path that starts with an internal item. We omit used items to avoid a query cycle.
+    pub fn resolve_path_non_used_internal(
+        &self,
+        db: &dyn AnalyzerDb,
+        path: &ast::Path,
+    ) -> Analysis<Option<Item>> {
+        let segments = &path.segments;
+        let first_segment = &segments[0];
+
+        if let Some(curr_item) = self.non_used_internal_items(db).get(&first_segment.kind) {
+            curr_item.resolve_path_segments(db, &segments[1..])
+        } else {
+            Analysis {
+                value: None,
+                diagnostics: Rc::new(vec![errors::error(
+                    "unresolved path item",
+                    first_segment.span,
+                    "not found",
+                )]),
+            }
+        }
+    }
+
+    /// Resolve a path that starts with an internal item.
+    pub fn resolve_path_internal(
+        &self,
+        db: &dyn AnalyzerDb,
+        path: &ast::Path,
+    ) -> Analysis<Option<Item>> {
+        let segments = &path.segments;
+        let first_segment = &segments[0];
+
+        if let Some(curr_item) = self.internal_items(db).get(&first_segment.kind) {
+            curr_item.resolve_path_segments(db, &segments[1..])
+        } else {
+            Analysis {
+                value: None,
+                diagnostics: Rc::new(vec![errors::error(
+                    "unresolved path item",
+                    first_segment.span,
+                    "not found",
+                )]),
+            }
+        }
+    }
+
+    /// Resolve a use tree entirely. We set internal to true if the first path item is internal.
+    ///
+    /// e.g. `foo::bar::{baz::bing}`
+    ///       ---        ---
+    ///        ^          ^ baz is not internal
+    ///        foo is internal
     pub fn resolve_use_tree(
         &self,
         db: &dyn AnalyzerDb,
         tree: &Node<ast::UseTree>,
-    ) -> Rc<IndexMap<SmolStr, (Span, Item)>> {
-        db.module_resolve_use_tree(*self, tree.to_owned()).value
+        internal: bool,
+    ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
+        let mut diagnostics = vec![];
+
+        // Again, the path resolution method we use depends on whether or not the first item
+        // is internal.
+        let resolve_path = |module: &ModuleId, db: &dyn AnalyzerDb, path: &ast::Path| {
+            if internal {
+                module.resolve_path_non_used_internal(db, path)
+            } else {
+                module.resolve_path(db, path)
+            }
+        };
+
+        match &tree.kind {
+            ast::UseTree::Glob { prefix } => {
+                let prefix_module = resolve_path(self, db, prefix);
+                diagnostics.extend(prefix_module.diagnostics.deref().clone());
+
+                let items = match prefix_module.value {
+                    Some(Item::Module(module)) => module
+                        .items(db)
+                        .deref()
+                        .clone()
+                        .into_iter()
+                        .map(|(name, item)| (name, (tree.span, item)))
+                        .collect(),
+                    Some(item) => {
+                        diagnostics.push(errors::error(
+                            format!("cannot glob import from {}", item.item_kind_display_name()),
+                            prefix.segments.last().expect("path is empty").span,
+                            "prefix item must be a module",
+                        ));
+                        indexmap! {}
+                    }
+                    None => indexmap! {},
+                };
+
+                Analysis {
+                    value: Rc::new(items),
+                    diagnostics: Rc::new(diagnostics),
+                }
+            }
+            ast::UseTree::Nested { prefix, children } => {
+                let prefix_module = resolve_path(self, db, prefix);
+                diagnostics.extend(prefix_module.diagnostics.deref().clone());
+
+                let items = match prefix_module.value {
+                    Some(Item::Module(module)) => {
+                        children.iter().fold(indexmap! {}, |mut accum, node| {
+                            let child_items = module.resolve_use_tree(db, node, false);
+                            diagnostics.extend(child_items.diagnostics.deref().clone());
+
+                            for (name, (name_span, item)) in child_items.value.iter() {
+                                if let Some((other_name_span, other_item)) =
+                                    accum.insert(name.to_owned(), (*name_span, *item))
+                                {
+                                    diagnostics.push(errors::duplicate_name_error(
+                                        &format!(
+                                            "a {} with the same name has already been imported",
+                                            other_item.item_kind_display_name()
+                                        ),
+                                        name,
+                                        other_name_span,
+                                        *name_span,
+                                    ));
+                                }
+                            }
+
+                            accum
+                        })
+                    }
+                    Some(item) => {
+                        diagnostics.push(errors::error(
+                            format!("cannot glob import from {}", item.item_kind_display_name()),
+                            prefix.segments.last().unwrap().span,
+                            "prefix item must be a module",
+                        ));
+                        indexmap! {}
+                    }
+                    None => indexmap! {},
+                };
+
+                Analysis {
+                    value: Rc::new(items),
+                    diagnostics: Rc::new(diagnostics),
+                }
+            }
+            ast::UseTree::Simple { path, rename } => {
+                let item = resolve_path(self, db, path);
+
+                let items = match item.value {
+                    Some(item) => {
+                        let (item_name, item_name_span) = if let Some(name) = rename {
+                            (name.kind.clone(), name.span)
+                        } else {
+                            let name_segment_node = path.segments.last().expect("path is empty");
+                            (name_segment_node.kind.clone(), name_segment_node.span)
+                        };
+
+                        indexmap! { item_name => (item_name_span, item) }
+                    }
+                    None => indexmap! {},
+                };
+
+                Analysis {
+                    value: Rc::new(items),
+                    diagnostics: item.diagnostics,
+                }
+            }
+        }
     }
 
     pub fn resolve_name(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Item> {
-        self.items(db).get(name).copied()
+        self.internal_items(db).get(name).copied()
     }
 
     pub fn sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
         db.module_sub_modules(*self)
-    }
-
-    pub fn adjacent_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
-        db.module_adjacent_modules(*self)
     }
 
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
@@ -377,7 +794,34 @@ impl ModuleId {
         db.module_contracts(*self)
     }
 
-    /// All structs, including duplicates
+    /// Returns the global item for this module.
+    pub fn global(&self, db: &dyn AnalyzerDb) -> GlobalId {
+        match self.context(db) {
+            ModuleContext::Ingot(ingot) => ingot.data(db).global,
+            ModuleContext::Global(global) => global,
+        }
+    }
+
+    /// Returns the map of ingot deps, built-ins, and the ingot itself as "ingot".
+    pub fn global_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
+        let mut items = self
+            .global(db)
+            .data(db)
+            .ingots
+            .clone()
+            .into_iter()
+            .map(|(name, ingot)| (name, Item::Ingot(ingot)))
+            .chain(std_prelude_items())
+            .collect::<IndexMap<_, _>>();
+
+        if let ModuleContext::Ingot(ingot) = self.context(db) {
+            items.insert("ingot".into(), Item::Ingot(ingot));
+        }
+
+        items
+    }
+
+    /// All structs, including duplicatecrates/analyzer/src/db.rss
     pub fn all_structs(&self, db: &dyn AnalyzerDb) -> Rc<Vec<StructId>> {
         db.module_structs(*self)
     }
@@ -620,17 +1064,22 @@ impl ContractId {
         db.contract_init_function(*self).value
     }
 
-    /// User functions, public and not. Excludes `__init__`.
+    pub fn call_function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
+        db.contract_call_function(*self).value
+    }
+
+    /// User functions, public and not. Excludes `__init__` and `__call__`.
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_function_map(*self).value
     }
 
-    /// Lookup a function by name. Searches all user functions, private or not. Excludes init function.
+    /// Lookup a function by name. Searches all user functions, private or not.
+    /// Excludes `__init__` and `__call__`.
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         self.functions(db).get(name).copied()
     }
 
-    /// Excludes `__init__`.
+    /// Excludes `__init__` and `__call__`.
     pub fn public_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_public_function_map(*self)
     }
@@ -683,6 +1132,7 @@ impl ContractId {
 
         // functions
         db.contract_init_function(*self).sink_diagnostics(sink);
+        db.contract_call_function(*self).sink_diagnostics(sink);
         db.contract_function_map(*self).sink_diagnostics(sink);
         db.contract_all_functions(*self)
             .iter()
@@ -778,6 +1228,9 @@ impl FunctionId {
     pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.data(db).ast.kind.pub_
     }
+    pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
+        self.unsafe_span(db).is_some()
+    }
     pub fn unsafe_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.data(db).ast.kind.unsafe_
     }
@@ -869,6 +1322,10 @@ impl StructId {
         db.struct_type(*self)
     }
 
+    pub fn has_private_field(&self, db: &dyn AnalyzerDb) -> bool {
+        self.private_fields(db).iter().count() > 0
+    }
+
     pub fn field(&self, db: &dyn AnalyzerDb, name: &str) -> Option<StructFieldId> {
         self.fields(db).get(name).copied()
     }
@@ -894,6 +1351,20 @@ impl StructId {
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
+    }
+    pub fn private_fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
+        Rc::new(
+            self.fields(db)
+                .iter()
+                .filter_map(|(name, field)| {
+                    if field.is_public(db) {
+                        None
+                    } else {
+                        Some((name.clone(), *field))
+                    }
+                })
+                .collect(),
+        )
     }
     pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
         db.struct_dependency_graph(*self).0
@@ -923,12 +1394,19 @@ impl StructFieldId {
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.name().into()
     }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
     }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::FixedSize, TypeError> {
         db.struct_field_type(*self).value
     }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.is_pub
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.struct_field_type(*self).sink_diagnostics(sink)
     }

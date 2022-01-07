@@ -1,6 +1,6 @@
 use crate::builtins::{
     BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction, GlobalObject,
-    MsgField, TxField, ValueMethod,
+    Intrinsic, MsgField, TxField, ValueMethod,
 };
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
@@ -619,9 +619,20 @@ fn expr_attribute(
         // If the value is a struct, we return the type of the struct field. The location stays the
         // same and can be memory or storage.
         Type::Struct(struct_) => {
-            if let Some(field) = struct_.id.field(scope.db(), &field.kind) {
+            if let Some(struct_field) = struct_.id.field(scope.db(), &field.kind) {
+                if !scope.root_item().is_struct(&struct_.id) && !struct_field.is_public(scope.db())
+                {
+                    scope.fancy_error(
+                        &format!(
+                            "Can not access private field `{}` on struct `{}`",
+                            &field.kind, struct_.name
+                        ),
+                        vec![Label::primary(field.span, "private field")],
+                        vec![],
+                    );
+                }
                 Ok(ExpressionAttributes::new(
-                    field.typ(scope.db())?.into(),
+                    struct_field.typ(scope.db())?.into(),
                     attrs.location,
                 ))
             } else {
@@ -844,7 +855,7 @@ fn expr_call_name<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    check_for_call_to_init_fn(scope, name, func.span)?;
+    check_for_call_to_special_fns(scope, name, func.span)?;
 
     let named_thing = scope.resolve_name(name).ok_or_else(|| {
         // Check for call to a fn in the current class that takes self.
@@ -912,6 +923,9 @@ fn expr_call_named_thing<T: std::fmt::Display>(
     match named_thing {
         NamedThing::Item(Item::BuiltinFunction(function)) => {
             expr_call_builtin_function(scope, function, func.span, generic_args, args)
+        }
+        NamedThing::Item(Item::Intrinsic(function)) => {
+            expr_call_intrinsic(scope, function, func.span, generic_args, args)
         }
         NamedThing::Item(Item::Function(function)) => {
             expr_call_pure(scope, function, generic_args, args)
@@ -1129,6 +1143,51 @@ fn expr_call_builtin_function(
     Ok((attrs, CallType::BuiltinFunction(function)))
 }
 
+fn expr_call_intrinsic(
+    scope: &mut BlockScope,
+    function: Intrinsic,
+    name_span: Span,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    if let Some(args) = generic_args {
+        scope.error(
+            &format!(
+                "`{}` function does not expect generic arguments",
+                function.as_ref()
+            ),
+            args.span,
+            "unexpected generic argument list",
+        );
+    }
+
+    let argument_attributes = expr_call_args(scope, args)?;
+
+    validate_arg_count(
+        scope,
+        function.as_ref(),
+        name_span,
+        args,
+        function.arg_count(),
+        "arguments",
+    );
+    for (idx, arg_attr) in argument_attributes.iter().enumerate() {
+        if arg_attr.typ != Type::Base(Base::Numeric(Integer::U256)) {
+            scope.type_error(
+                "arguments to intrinsic functions must be u256",
+                args.kind[idx].kind.value.span,
+                &Integer::U256,
+                &arg_attr.typ,
+            );
+        }
+    }
+
+    Ok((
+        ExpressionAttributes::new(Type::Base(function.return_type()), Location::Value),
+        CallType::Intrinsic(function),
+    ))
+}
+
 fn expr_call_pure(
     scope: &mut BlockScope,
     function: FunctionId,
@@ -1233,6 +1292,15 @@ fn expr_call_type_constructor(
                             scope.error("Casting between numeric values can change the sign or size but not both at once", arg.span, &format!("can not cast from `{}` to `{}` in a single step", arg_exp.typ, typ));
                         }
                     }
+                    Type::Base(Base::Address) => {
+                        if *integer != Integer::U256 {
+                            scope.error(
+                                &format!("can't cast `address` to `{}`", integer),
+                                name_span,
+                                "try `u256` here",
+                            );
+                        }
+                    }
                     _ => {
                         scope.error(
                             "type mismatch",
@@ -1278,6 +1346,28 @@ fn expr_call_struct_constructor(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
     let db = scope.root.db;
+
+    if struct_.id.has_private_field(db) && !scope.root_item().is_struct(&struct_.id) {
+        scope.fancy_error(
+            &format!(
+                "Can not call private constructor of struct `{}` ",
+                struct_.name
+            ),
+            struct_
+                .id
+                .private_fields(db)
+                .iter()
+                .map(|(name, field)| {
+                    Label::primary(field.span(db), format!("Field `{}` is private", name))
+                })
+                .collect(),
+            vec![format!(
+                "Suggestion: implement a method `new(...)` on struct `{}` to call the constructor and return the struct",
+                struct_.name
+            )],
+        );
+    }
+
     let fields = struct_
         .id
         .fields(db)
@@ -1354,7 +1444,7 @@ fn expr_call_method(
     // If the target is a "class" type (contract or struct), check for a member function
     if let Some(class) = target_attributes.typ.as_class() {
         if matches!(class, Class::Contract(_)) {
-            check_for_call_to_init_fn(scope, &field.kind, field.span)?;
+            check_for_call_to_special_fns(scope, &field.kind, field.span)?;
         }
         if let Some(method) = class.function(scope.db(), &field.kind) {
             let is_self = is_self_value(target);
@@ -1759,19 +1849,23 @@ fn expect_no_label_on_arg(
     }
 }
 
-fn check_for_call_to_init_fn(
+fn check_for_call_to_special_fns(
     scope: &mut BlockScope,
     name: &str,
     span: Span,
 ) -> Result<(), FatalError> {
-    if name == "__init__" {
+    if name == "__init__" || name == "__call__" {
+        let label = if name == "__init__" {
+            "Note: `__init__` is the constructor function, and can't be called at runtime."
+        } else {
+            // TODO: add a hint label explaining how to call contracts directly
+            // with `Context` (not yet supported).
+            "Note: `__call__` is not part of the contract's interface, and can't be called."
+        };
         Err(FatalError::new(scope.fancy_error(
-            "`__init__()` is not directly callable",
+            &format!("`{}()` is not directly callable", name),
             vec![Label::primary(span, "")],
-            vec![
-                "Note: `__init__` is the constructor function, and can't be called at runtime."
-                    .into(),
-            ],
+            vec![label.into()],
         )))
     } else {
         Ok(())

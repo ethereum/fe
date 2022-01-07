@@ -29,7 +29,10 @@ SKIP_LIST = [
     'stack.md_0.fe',
     'functions.md_0.fe',
     'first_contract.md_0.fe',
-    'first_contract.md_2.fe'
+    'first_contract.md_2.fe',
+    'visibility_and_privacy.md_1.fe',
+    'visibility_and_privacy.md_2.fe',
+    'visibility_and_privacy.md_3.fe'
 ]
 
 class CodeSnippet(NamedTuple):

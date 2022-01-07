@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/associated_fns.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -50,8 +50,8 @@ note:
 note: 
   ┌─ features/associated_fns.fe:7:3
   │
-7 │   x: u256
-  │   ^^^^^^^ u256
+7 │   pub x: u256
+  │   ^^^^^^^^^^^ u256
 
 note: 
   ┌─ features/associated_fns.fe:8:3

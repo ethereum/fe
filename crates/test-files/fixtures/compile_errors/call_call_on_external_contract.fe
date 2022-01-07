@@ -1,0 +1,11 @@
+contract Foo:
+  pub fn __call__():
+    pass
+  fn f():
+    pass
+
+
+contract Bar:
+  fn b():
+    let foo: Foo = Foo(address(0))
+    foo.__call__()

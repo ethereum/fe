@@ -1,6 +1,6 @@
 [package]
 name = "fe-test-files"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,4 +8,4 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 include_dir = "0.7.2"
-fe-common = {path = "../common", version = "^0.11.0-alpha"}
+fe-common = {path = "../common", version = "^0.12.0-alpha"}

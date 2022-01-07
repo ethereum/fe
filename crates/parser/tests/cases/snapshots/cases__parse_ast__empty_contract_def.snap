@@ -1,19 +1,30 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(empty_contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n    pass\n\"#)"
+expression: "ast_string(stringify!(empty_contract_def), module::parse_module,\n           r#\"contract Foo:\n    pass\n\"#)"
 
 ---
 Node(
-  kind: Contract(
-    name: Node(
-      kind: "Foo",
-      span: Span(
-        start: 9,
-        end: 12,
-      ),
-    ),
-    fields: [],
-    body: [],
+  kind: Module(
+    body: [
+      Contract(Node(
+        kind: Contract(
+          name: Node(
+            kind: "Foo",
+            span: Span(
+              start: 9,
+              end: 12,
+            ),
+          ),
+          fields: [],
+          body: [],
+          pub_qual: None,
+        ),
+        span: Span(
+          start: 0,
+          end: 12,
+        ),
+      )),
+    ],
   ),
   span: Span(
     start: 0,

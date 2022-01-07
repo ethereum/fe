@@ -529,18 +529,19 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "clap",
  "fe-common",
  "fe-driver",
  "fe-parser",
+ "indexmap",
  "walkdir",
 ]
 
 [[package]]
 name = "fe-abi"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -551,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -578,21 +579,25 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "codespan-reporting",
  "difference",
+ "fe-library",
  "hex",
+ "include_dir 0.6.2",
+ "indexmap",
  "num-traits",
  "once_cell",
  "ron",
  "serde",
+ "smol_str",
  "tiny-keccak",
 ]
 
 [[package]]
 name = "fe-compiler-test-utils"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -605,6 +610,7 @@ dependencies = [
  "fe-yulgen",
  "getrandom 0.2.3",
  "hex",
+ "indexmap",
  "primitive-types",
  "serde_json",
  "solc",
@@ -613,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -640,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -654,8 +660,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-library"
+version = "0.12.0-alpha"
+dependencies = [
+ "include_dir 0.6.2",
+]
+
+[[package]]
 name = "fe-lowering"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -672,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -693,15 +706,15 @@ dependencies = [
 
 [[package]]
 name = "fe-test-files"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-common",
- "include_dir",
+ "include_dir 0.7.2",
 ]
 
 [[package]]
 name = "fe-yulc"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-yulgen",
  "indexmap",
@@ -711,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulgen"
-version = "0.11.0-alpha"
+version = "0.12.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -719,6 +732,7 @@ dependencies = [
  "fe-lowering",
  "fe-parser",
  "fe-test-files",
+ "if_chain",
  "indexmap",
  "insta",
  "maplit",
@@ -802,6 +816,12 @@ dependencies = [
  "wasi 0.10.2+wasi-snapshot-preview1",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "half"
@@ -900,11 +920,35 @@ dependencies = [
 
 [[package]]
 name = "include_dir"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24b56e147e6187d61e9d0f039f10e070d0c0a887e24fe0bb9ca3f29bfde62cab"
+dependencies = [
+ "glob",
+ "include_dir_impl",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "include_dir"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "482a2e29200b7eed25d7fdbd14423326760b7f6658d21a4cf12d55a50713c69f"
 dependencies = [
  "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_impl"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a0c890c85da4bab7bce4204c707396bbd3c6c8a681716a51c8814cfc2b682df"
+dependencies = [
+ "anyhow",
+ "proc-macro-hack",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1277,6 +1321,12 @@ dependencies = [
  "thiserror",
  "toml",
 ]
+
+[[package]]
+name = "proc-macro-hack"
+version = "0.5.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"

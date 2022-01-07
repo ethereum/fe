@@ -1,14 +1,13 @@
-use fe_analyzer::namespace::items::{Global, Ingot, Module, ModuleContext, ModuleFileContent};
-use fe_analyzer::AnalyzerDb;
+use fe_analyzer::context::Analysis;
+use fe_analyzer::namespace::items::{IngotId, ModuleId};
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::{FileStore, SourceFileId};
-use fe_parser::parse_file;
+use fe_parser::ast::SmolStr;
 use fe_yulgen::Db;
 use indexmap::IndexMap;
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;
-use std::path::Path;
-use std::rc::Rc;
+use std::ops::Deref;
 
 /// The artifacts of a compiled module.
 pub struct CompiledModule {
@@ -35,34 +34,19 @@ pub struct CompileError(pub Vec<Diagnostic>);
 pub fn compile_module(
     files: &FileStore,
     file_id: SourceFileId,
+    deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
     _with_bytecode: bool,
     _optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
-    let file = files.get_file(file_id).expect("missing file");
-    let src = &file.content;
-
     let mut errors = vec![];
-
-    let (ast, parser_diagnostics) = parse_file(file_id, src).map_err(CompileError)?;
-    errors.extend(parser_diagnostics.into_iter());
-    let src_ast = format!("{:#?}", &ast);
 
     let db = Db::default();
 
-    let global = Global::default();
-    let global_id = db.intern_global(Rc::new(global));
-
-    let module = Module {
-        name: Path::new(&file.name)
-            .file_stem()
-            .expect("missing file name")
-            .to_string_lossy()
-            .into(),
-        context: ModuleContext::Global(global_id),
-        file_content: ModuleFileContent::File { file: file_id },
-        ast,
-    };
-    let module_id = db.intern_module(Rc::new(module));
+    let Analysis {
+        value: module_id,
+        diagnostics: parser_diagnostics,
+    } = ModuleId::try_new(&db, files, file_id, deps).map_err(CompileError)?;
+    errors.extend(parser_diagnostics.deref().clone());
 
     match fe_analyzer::analyze_module(&db, module_id) {
         Ok(_) => {}
@@ -136,7 +120,7 @@ pub fn compile_module(
         .collect::<IndexMap<_, _>>();
 
     Ok(CompiledModule {
-        src_ast,
+        src_ast: format!("{:?}", module_id.ast(&db)),
         lowered_ast,
         contracts,
     })
@@ -150,6 +134,7 @@ pub fn compile_ingot(
     name: &str,
     files: &FileStore,
     file_ids: &[SourceFileId],
+    deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
     _with_bytecode: bool,
     _optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
@@ -157,24 +142,11 @@ pub fn compile_ingot(
 
     let db = Db::default();
 
-    let global = Global::default();
-    let global_id = db.intern_global(Rc::new(global));
-
-    let ingot = Ingot {
-        name: name.into(),
-        global: global_id,
-        fe_files: file_ids
-            .iter()
-            .map(|file_id| {
-                let file = files.get_file(*file_id).expect("missing file for ID");
-                let (ast, parser_diagnostics) =
-                    parse_file(*file_id, &file.content).map_err(CompileError)?;
-                errors.extend(parser_diagnostics.into_iter());
-                Ok((*file_id, (file.to_owned(), ast)))
-            })
-            .collect::<Result<_, _>>()?,
-    };
-    let ingot_id = db.intern_ingot(Rc::new(ingot));
+    let Analysis {
+        value: ingot_id,
+        diagnostics: parser_diagnostics,
+    } = IngotId::try_new(&db, files, name, file_ids, deps).map_err(CompileError)?;
+    errors.extend(parser_diagnostics.deref().clone());
 
     match fe_analyzer::analyze_ingot(&db, ingot_id) {
         Ok(_) => {}

@@ -12,7 +12,10 @@ use vec1::Vec1;
 /// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
+pub fn parse_struct_def(
+    par: &mut Parser,
+    struct_pub_qual: Option<Span>,
+) -> ParseResult<Node<ast::Struct>> {
     let struct_tok = par.assert(TokenKind::Struct);
     let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
@@ -52,12 +55,13 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
             }
         }
     }
-    let span = struct_tok.span + name.span + fields.last();
+    let span = struct_tok.span + struct_pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Struct {
             name: name.into(),
             fields,
             functions,
+            pub_qual: struct_pub_qual,
         },
         span,
     ))
@@ -66,7 +70,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
 /// Parse a type alias definition, e.g. `type MyMap = Map<u8, address>`.
 /// # Panics
 /// Panics if the next token isn't `type`.
-pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
+pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<TypeAlias>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", |_| {
@@ -77,11 +81,12 @@ pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
         ]
     })?;
     let typ = parse_type_desc(par)?;
-    let span = type_tok.span + typ.span;
+    let span = type_tok.span + pub_qual + typ.span;
     Ok(Node::new(
         TypeAlias {
             name: name.into(),
             typ,
+            pub_qual,
         },
         span,
     ))
@@ -90,7 +95,7 @@ pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
 /// Parse an event definition.
 /// # Panics
 /// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
+pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ast::Event>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -118,11 +123,12 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
             }
         }
     }
-    let span = event_tok.span + name.span + fields.last();
+    let span = event_tok.span + pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Event {
             name: name.into(),
             fields,
+            pub_qual,
         },
         span,
     ))

@@ -54,6 +54,7 @@ Node(
               end: 33,
             ),
           ),
+          pub_qual: None,
         ),
         span: Span(
           start: 1,
@@ -167,6 +168,7 @@ Node(
                     ),
                   ),
                 ],
+                pub_qual: None,
               ),
               span: Span(
                 start: 102,
@@ -451,6 +453,7 @@ Node(
               ),
             )),
           ],
+          pub_qual: None,
         ),
         span: Span(
           start: 35,

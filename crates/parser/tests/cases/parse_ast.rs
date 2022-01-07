@@ -1,6 +1,6 @@
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::ron::to_ron_string_pretty;
-use fe_parser::grammar::{contracts, expressions, functions, module, types};
+use fe_parser::grammar::{expressions, functions, module, types};
 use fe_parser::{ParseResult, Parser};
 use insta::assert_snapshot;
 use serde::Serialize;
@@ -117,8 +117,8 @@ test_parse! { stmt_for, functions::parse_stmt, "for a in b[0]:\n pass" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
-
-test_parse! { type_def, types::parse_type_alias, "type X = Map<address, u256>" }
+test_parse! { type_def, module::parse_module, "type X = Map<address, u256>" }
+test_parse! { pub_type_def, module::parse_module, "pub type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
 test_parse! { type_array, types::parse_type_desc, "Array<address, 25>" }
 test_parse! { type_3d, types::parse_type_desc, "Array<Array<Array<u256, 4>, 4>, 4>" }
@@ -136,9 +136,9 @@ test_parse! { fn_def, module::parse_module, "fn foo21(x: bool, y: address,) -> b
 test_parse! { fn_def_pub, module::parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_unsafe, module::parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_pub_unsafe, module::parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
-test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
-
+test_parse! { event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { empty_event_def, module::parse_module, "event Foo:\n  pass" }
+test_parse! { pub_event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
 test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
 test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }
@@ -153,7 +153,7 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
     evm as mve
 }"#
 }
-test_parse! { struct_def, types::parse_struct_def, r#"struct S:
+test_parse! { struct_def, module::parse_module, r#"struct S:
   x: address
   pub y: u8
   z: u8
@@ -164,11 +164,11 @@ test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   unsafe fn bar():
     pass
 "# }
-test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
+test_parse! { empty_struct_def, module::parse_module, r#"struct S:
   pass
 "# }
 
-test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
+test_parse! { contract_def, module::parse_module, r#"contract Foo:
   x: address
   pub y: u8
   pub const z: Map<u8, address>
@@ -178,8 +178,13 @@ test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
     idx from: address
 "# }
 
-test_parse! { empty_contract_def, contracts::parse_contract_def, r#"contract Foo:
+test_parse! { empty_contract_def, module::parse_module, r#"contract Foo:
     pass
+"# }
+
+test_parse! { pub_contract_def, module::parse_module, r#"pub contract Foo:
+    pub fn foo() -> u8:
+      return 10
 "# }
 
 test_parse! { module_stmts, module::parse_module, r#"

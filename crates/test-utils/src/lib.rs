@@ -133,6 +133,20 @@ impl ContractHarness {
         validate_revert(self.capture_call_raw_bytes(executor, input), revert_data)
     }
 
+    pub fn test_function_returns(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: &[ethabi::Token],
+        return_data: &[u8],
+    ) {
+        validate_return(self.capture_call(executor, name, input), return_data)
+    }
+
+    pub fn test_call_returns(&self, executor: &mut Executor, input: Vec<u8>, return_data: &[u8]) {
+        validate_return(self.capture_call_raw_bytes(executor, input), return_data)
+    }
+
     // Executor must be passed by value to get emitted events.
     pub fn events_emitted(&self, executor: Executor, events: &[(&str, &[ethabi::Token])]) {
         let raw_logs = executor
@@ -222,6 +236,20 @@ pub fn validate_revert(
     };
 }
 
+pub fn validate_return(
+    capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    expected_data: &[u8],
+) {
+    if let evm::Capture::Exit((evm::ExitReason::Succeed(_), output)) = capture {
+        assert_eq!(
+            format!("0x{}", hex::encode(&output)),
+            format!("0x{}", hex::encode(expected_data))
+        );
+    } else {
+        panic!("Method was expected to return but didn't")
+    };
+}
+
 pub fn encoded_panic_assert() -> Vec<u8> {
     encode_revert("Panic(uint256)", &[uint_token(0x01)])
 }
@@ -253,8 +281,9 @@ pub fn deploy_contract(
     let src = test_files::fixture(fixture);
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
+    let deps = files.add_included_libraries();
 
-    let compiled_module = match driver::compile_module(&files, id, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
@@ -283,9 +312,11 @@ pub fn deploy_contract_from_ingot(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let files = test_files::build_filestore(path);
+    let mut files = test_files::build_filestore(path);
+    let ingot_files = files.all_files();
+    let deps = files.add_included_libraries();
 
-    let compiled_module = match driver::compile_ingot(path, &files, &files.all_files(), true, true)
+    let compiled_module = match driver::compile_ingot(path, &files, &ingot_files, &deps, true, true)
     {
         Ok(module) => module,
         Err(error) => {
@@ -492,9 +523,10 @@ pub fn compile_solidity_contract(
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
     let mut files = FileStore::new();
+    let deps = files.add_included_libraries();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile_module(&files, id, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);
