@@ -2,7 +2,7 @@ pub struct Foo:
     my_address: address
 
 struct Bar:
-    my_u256: u256
+    pub my_u256: u256
 
 pub contract FooBar:
    pub fn add(x: u256, y: u256) -> u256:
