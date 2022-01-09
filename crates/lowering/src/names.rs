@@ -22,10 +22,7 @@ pub fn fixed_size_type_desc(typ: &FixedSize) -> ast::TypeDesc {
             base: SmolStr::new("Array").into_node(),
             args: vec![
                 ast::GenericArg::TypeDesc(
-                    ast::TypeDesc::Base {
-                        base: array.inner.name(),
-                    }
-                    .into_node(),
+                    fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
                 ),
                 ast::GenericArg::Int(array.size.into_node()),
             ]
