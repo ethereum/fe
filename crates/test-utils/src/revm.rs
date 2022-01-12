@@ -7,12 +7,12 @@ use fe_yulgen::runtime::functions;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use yultsur::*;
-pub use revm::{self, InMemoryDB, EVM, AccountInfo, TransactTo, TransactOut};
+pub use revm::{self, Return, InMemoryDB, EVM, AccountInfo, TransactTo, TransactOut, };
 pub use primitive_types_new::{self as primitive_types, H160, U256};
 
 
 #[allow(dead_code)]
-pub const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
+pub const DEFAULT_CALLER: &str = "0x1000000000000000000000000000000000000000";
 pub trait ToBeBytes {
     fn to_be_bytes(&self) -> [u8; 32];
 }
@@ -38,7 +38,9 @@ pub struct ContractHarness {
     pub value: U256,
 }
 
-#[allow(dead__code)]
+pub type TransactionResult = (Return, TransactOut, u64);
+
+#[allow(dead_code)]
 impl ContractHarness {
     pub fn new(contract_address: H160, abi: ethabi::Contract) -> Self {
         let caller = address(DEFAULT_CALLER);
@@ -51,14 +53,86 @@ impl ContractHarness {
     }
 
    
-    pub fn call_function(&self, vm: EVM<InMemoryDB>) {
+    pub fn build_calldata(&self, name: &str, input: &[ethabi::Token]) -> Vec<u8> {
+        let function = &self.abi.functions[name][0];
+        println!("FUNCTION ASSOCIATED WITH NAME {} IS {:?}", name, function);
+        let encoded = function
+            .encode_input(input)
+            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name));
+        println!("FUNCTION ENCODED INPUT: {:?}", encoded);
+        encoded
+    }
+
+    pub fn capture_call(
+        &self,
+        vm: &mut EVM<InMemoryDB>,
+        name: &str,
+        input: &[ethabi::Token],
+    ) -> TransactionResult {
+        let input = self.build_calldata(name, input);
+        println!("INPUT IN CAPTURE CALL BUILD CALL DATA: {:?}", input);
+        self.capture_call_raw_bytes(vm, input)
 
     }
 
+    pub fn capture_call_raw_bytes(
+        &self,
+        vm: &mut EVM<InMemoryDB>,
+        input: Vec<u8>,
+    ) -> TransactionResult {
+        vm.env.tx.data = input.into();
+        let (return_code, tx_result, gas, _) = vm.transact();
+        (return_code, tx_result, gas)
+    }
+    pub fn call_function(
+        &self, 
+        vm: &mut EVM<InMemoryDB>,
+        name: &str,
+        input: &[ethabi::Token],
+    ) -> Option<ethabi::Token> {
+        println!("INPUT TO CALL FUNC: {:?}", input);
+        let function = &self.abi.functions[name][0];
+        vm.env.tx.caller = self.caller.clone();
+        vm.env.tx.transact_to = TransactTo::Call(self.address.clone());
+        let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
+        vm.db().unwrap().insert_cache(self.caller.clone(), caller_account);
+        let (return_code, tx_result, gas) = self.capture_call(vm, name, input);
+        println!("RETURN CODE: {:?}\nTX OUT: {:?}", return_code, tx_result);
+        match return_code {
+            Return::Return | Return::Stop => {
+                if let TransactOut::Call(data) = tx_result {
+                    println!("DATA: {:?}", data);
+                     function.decode_output(&data.to_vec())
+                    .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &data))
+                    .pop()
+                } else {
+                    panic!("Unexpected result of function call!");
+                }
+            },
+            _ => panic!("Unexpected return code! {:?}", return_code)
+
+        }
+
+    }
+
+    pub fn test_function(
+        &self,
+        vm: &mut EVM<InMemoryDB>,
+        name: &str,
+        input: &[ethabi::Token],
+        output: Option<&ethabi::Token>,
+    ) {
+        let actual_output = self.call_function(vm, name, input);
+        assert_eq!(
+            output.map(|token| token.to_owned()),
+            actual_output,
+            "unexpected output from `fn {}`",
+            name
+        )
+    }
 
 
 }
-
 
 fn _deploy_contract(
     vm: &mut EVM<InMemoryDB>,
@@ -74,7 +148,7 @@ fn _deploy_contract(
         bytecode = constructor.encode_input(bytecode, init_params).unwrap()
     }
 
-    let caller = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
+    let caller = H160::from_str(DEFAULT_CALLER).unwrap();
     let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
 
   
@@ -83,7 +157,7 @@ fn _deploy_contract(
     vm.db().unwrap().insert_cache(address(DEFAULT_CALLER), caller_account);
 
     vm.env.tx.data = Bytes::from(bytecode);
-    let (_, out, _, __) = vm.transact();
+    let (_, out, _) = vm.transact_commit();
     let contract_address = match out {
         TransactOut::Create(a, Some(contract)) => contract,
         _ => panic!("Invalid create. This is a bug in the EVM"),

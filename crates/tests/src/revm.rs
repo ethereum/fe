@@ -37,7 +37,7 @@ pub fn deploy_contract(
 // }
 
 #[test]
-fn return_array() {
+fn return_array_revm() {
     // with_executor(&|mut executor| {
     //     let harness = deploy_contract(&mut executor, "return_array.fe", "Foo", &[]);
 
@@ -51,7 +51,11 @@ fn return_array() {
     let mut vm = evm::new();
     vm.database(InMemoryDB::default());
 
-    let harness = deploy_contract(&mut vm, "return_array.fe", "Foo", &[]);
-    // println!("Deployed contract address: {:?}", harness.address);
-    // assert!(false);
+    let harness = deploy_contract(&mut vm, "return_u256.fe", "Foo", &[]);
+    harness.test_function(
+        &mut vm,
+        "bar",
+        &[],
+        Some(&uint_token(42)),
+    );
 }
