@@ -18,3 +18,5 @@ mod runtime;
 mod solidity;
 #[cfg(test)]
 mod stress;
+#[cfg(test)]
+mod revm;
