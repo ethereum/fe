@@ -28,8 +28,11 @@ impl ToBeBytes for U256 {
 
 fn random_address() -> H160 {
     let mut buf = [0u8; 20];
-    getrandom(&mut buf);
-    H160::from(buf)
+    match getrandom(&mut buf) {
+        Ok(_) =>  H160::from(buf),
+        Err(e) => panic!("Unable to generate random address: {:?}",e)
+    }
+   
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
