@@ -9,6 +9,7 @@ use fe_compiler_test_utils::*;
 use fe_compiler_test_utils::{
     self as test_utils, 
     revm::{
+        Fevm,
         primitive_types::{H160, U256}, 
         revm::{self as evm, EVM, InMemoryDB},
         ContractHarness,
@@ -19,41 +20,29 @@ const SOME_ADDRESS: &str = "2012301230123012301230123012301230123002";
 
 
 pub fn deploy_contract(
-    executor: &mut EVM<InMemoryDB>,
+    executor: &mut Fevm,
     fixture: &str,
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    revm::deploy_contract(
-        executor,
+    executor.deploy_contract_from_fixture(
         &format!("features/{}", fixture),
         contract_name,
         init_params,
     )
 }
 
-// pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-//     revm::load_contract(address, &format!("features/{}", fixture), contract_name)
-// }
-
 #[test]
-fn return_array_revm() {
-    // with_executor(&|mut executor| {
-    //     let harness = deploy_contract(&mut executor, "return_array.fe", "Foo", &[]);
+fn return_uint_fevm() {
+    let mut fevm = Fevm::default();
 
-    //     harness.test_function(
-    //         &mut executor,
-    //         "bar",
-    //         &[uint_token(42)],
-    //         Some(&uint_array_token(&[0, 0, 0, 42, 0])),
-    //     )
-    // })
-    let mut vm = evm::new();
-    vm.database(InMemoryDB::default());
 
-    let harness = deploy_contract(&mut vm, "return_u256.fe", "Foo", &[]);
+    let harness = deploy_contract(&mut fevm,"return_u256.fe", "Foo", &[]);
+    let call_result = fevm.call_contract(harness.address, "bar", &[]);
+    let expected = Some(uint_token(42));
+    //assert_eq!(call_result, expected);
     harness.test_function(
-        &mut vm,
+        &mut fevm,
         "bar",
         &[],
         Some(&uint_token(42)),
