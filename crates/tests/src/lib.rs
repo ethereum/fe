@@ -20,3 +20,5 @@ mod solidity;
 mod stress;
 #[cfg(test)]
 mod revm;
+#[cfg(test)]
+mod revm_uniswap;

@@ -561,7 +561,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a01317735d563b3bad2d5f90d2e1799f414165408251abb762510f40e790e69a"
 dependencies = [
  "anyhow",
- "ethereum-types",
+ "ethereum-types 0.11.0",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha3 0.9.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "ethabi"
+version = "16.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4c98847055d934070b90e806e12d3936b787d0a115068981c1d8dfd5dfef5a5"
+dependencies = [
+ "ethereum-types 0.12.1",
  "hex",
  "serde",
  "serde_json",
@@ -589,7 +604,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567ce064a8232c16e2b2c2173a936b91fbe35c2f2c5278871f5a1a31688b42e9"
 dependencies = [
- "ethereum-types",
+ "ethereum-types 0.11.0",
  "funty",
  "hash-db",
  "hash256-std-hasher",
@@ -612,6 +627,20 @@ dependencies = [
  "impl-rlp",
  "impl-serde",
  "primitive-types 0.9.1",
+ "uint",
+]
+
+[[package]]
+name = "ethereum-types"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05136f7057fe789f06e6d41d07b34e6f70d8c86e5693b60f97aaa6553553bdaf"
+dependencies = [
+ "ethbloom",
+ "fixed-hash",
+ "impl-rlp",
+ "impl-serde",
+ "primitive-types 0.10.1",
  "uint",
 ]
 
@@ -741,7 +770,8 @@ version = "0.13.0-alpha"
 dependencies = [
  "bytes",
  "criterion",
- "ethabi",
+ "ethabi 14.1.0",
+ "ethabi 16.0.0",
  "evm",
  "evm-runtime",
  "fe-analyzer",
@@ -765,7 +795,7 @@ dependencies = [
 name = "fe-compiler-tests"
 version = "0.13.0-alpha"
 dependencies = [
- "ethabi",
+ "ethabi 14.1.0",
  "evm",
  "evm-runtime",
  "fe-analyzer",
@@ -1574,6 +1604,7 @@ dependencies = [
  "fixed-hash",
  "impl-codec",
  "impl-rlp",
+ "impl-serde",
  "uint",
 ]
 
@@ -1816,8 +1847,7 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 [[package]]
 name = "revm"
 version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2957e91861aa90ae7ba31b6b2b3387e83d308d51fb61bd5de5351cab4c52abd4"
+source = "git+https://github.com/bluealloy/revm#d7fa214af76c5105e450fc3ff6dcc2ea8bb67276"
 dependencies = [
  "arrayref",
  "auto_impl",
@@ -1834,8 +1864,7 @@ dependencies = [
 [[package]]
 name = "revm_precompiles"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "515f50973170fcc07155ac51d859de12de9f5f536bc15069f4673e4e23375553"
+source = "git+https://github.com/bluealloy/revm#d7fa214af76c5105e450fc3ff6dcc2ea8bb67276"
 dependencies = [
  "borsh",
  "bytes",
