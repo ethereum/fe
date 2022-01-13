@@ -4,14 +4,44 @@ use fe_common::files::FileStore;
 use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
 use std::{collections::BTreeMap, thread::AccessError};
 use std::str::FromStr;
 use yultsur::*;
-pub use revm::{self, Return, InMemoryDB, EVM, AccountInfo, TransactTo, TransactOut, };
+pub use revm::{self, Return, InMemoryDB, EVM, AccountInfo, TransactTo, TransactOut,SpecId, NoOpInspector};
 pub use primitive_types_new::{self as primitive_types, H160, U256};
+pub use ethabi_new as ethabi;
 use getrandom::getrandom;
+
+#[allow(dead_code)]
+pub fn uint_token(n: u64) -> ethabi::Token {
+    ethabi::Token::Uint(U256::from(n))
+}
+pub fn address_token(addr: primitive_types::H160) -> ethabi::Token {
+    ethabi::Token::Address(addr)
+}
+
+#[allow(dead_code)]
+pub fn address_token_from_str(s: &str) -> ethabi::Token {
+    // left pads to 40 characters
+    ethabi::Token::Address(address(&format!("{:0>40}", s)))
+}
+
+#[allow(dead_code)]
+pub fn string_token(s: &str) -> ethabi::Token {
+    ethabi::Token::String(s.to_string())
+}
+
+#[allow(dead_code)]
+pub fn bool_token(val: bool) -> ethabi::Token {
+    ethabi::Token::Bool(val)
+}
+
+#[allow(dead_code)]
+pub fn uint_token_from_dec_str(val: &str) -> ethabi::Token {
+    ethabi::Token::Uint(U256::from_dec_str(val).expect("Not a valid dec string"))
+}
 #[allow(dead_code)]
 pub const DEFAULT_CALLER: &str = "0x1000000000000000000000000000000000000000";
 pub trait ToBeBytes {
@@ -34,6 +64,8 @@ fn random_address() -> H160 {
     }
    
 }
+
+
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum ContractId {
@@ -73,6 +105,7 @@ pub struct Fevm {
 impl Default for Fevm {
     fn default() -> Self {
         let mut vm = revm::new();
+        //vm.env.cfg.spec_id = SpecId::from("Istanbul");
         vm.database(InMemoryDB::default());
         Self { 
             vm, 
@@ -110,19 +143,56 @@ impl Fevm {
         }
     }
 
-    pub fn create_account_with_balance(&mut self, address: &str, balance: impl Into<U256>) -> H160 {
-        let address = H160::from_str(address)
-            .expect(format!("Unable to generate H160 Address from {}", address).as_str());
+    pub fn create_account_with_balance(&mut self, balance: impl Into<U256>) -> H160 {
+        let address = random_address();
         let account = AccountInfo::from_balance(balance.into());
         self.vm.db().unwrap().insert_cache(address.clone(), account);
         address
     }
 
-    pub fn get_account_by_address(&mut self, address: &H160) -> Option<(&H160, &AccountInfo)> {
-        self.vm.db().unwrap().cache().get_key_value(address)
+    pub fn fund(&mut self, address: &H160, amt: impl Into<U256>) {
+        let mut account = self.vm.db().unwrap().cache().get(address)
+        .expect(format!("Cannot find address {:?}", address).as_str())
+        .clone();
+        account.balance += amt.into();
+        self.vm.db().unwrap().insert_cache(address.clone(), account)
     }
 
-    
+    pub fn balance_of(&self, address: &H160) -> U256 {
+       if let Some(acc) = self.vm.db.as_ref().unwrap().cache().get(address) {
+        acc.balance
+       } else {
+           U256::zero()
+       }
+           
+    }
+
+    pub fn get_account_by_address(&mut self, address: &H160) -> Option<(H160, AccountInfo)> {
+        self.vm.db().unwrap().cache().get_key_value(address).clone()
+        .map(|(addr, acc)| (addr.clone(), acc.clone()))
+    }
+
+    pub fn load_contract_from_file(&self, address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
+            let mut files = FileStore::new();
+        let deps = files.add_included_libraries();
+        let src = test_files::fixture(fixture);
+        let id = files.add_file(fixture, src);
+        let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
+            Ok(module) => module,
+            Err(err) => {
+                print_diagnostics(&err.0, &files);
+                panic!("failed to compile fixture: {}", fixture);
+            }
+        };
+        let compiled_contract = compiled_module
+            .contracts
+            .get(contract_name)
+            .expect("could not find contract in fixture");
+        let abi = ethabi::Contract::load(compiled_contract.json_abi.as_bytes())
+            .expect("unable to load the ABI");
+
+        ContractHarness::new(address, abi, H160::from_str(DEFAULT_CALLER).unwrap())
+    }
     pub fn call_contract<'a>(
         &mut self,
         contract_id: impl Into<ContractId>,
@@ -172,6 +242,7 @@ impl Fevm {
     
     }
 
+    
 
     pub fn deploy_contract(
         &mut self,
@@ -196,21 +267,21 @@ impl Fevm {
         self.vm.db().unwrap().insert_cache(caller.clone(), caller_account);
     
         self.vm.env.tx.data = Bytes::from(bytecode);
-        let (_, out, _) = self.vm.transact_commit();
+        let (_, out, _, _) = self.vm.transact_commit();
         let contract_address = match out {
             TransactOut::Create(a, Some(contract)) => contract,
             _ => panic!("Invalid create. This is a bug in the EVM"),
         };
-        self.callers.push(caller);
+        self.callers.push(caller.clone());
          
-        let harness = ContractHarness::new(contract_address.clone(), abi);
+        let harness = ContractHarness::new(contract_address.clone(), abi, caller);
         self.contracts.insert(contract_address.into(), harness.clone());
         harness
     }
 }
 
 #[allow(dead_code)]
-pub fn address(s: &str) -> H160 {
+pub fn address(s: &str) -> primitive_types::H160 {
     H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
 }
 
@@ -227,8 +298,7 @@ pub type TransactionResult = (Return, TransactOut, u64);
 
 #[allow(dead_code)]
 impl ContractHarness {
-    pub fn new(contract_address: H160, abi: ethabi::Contract) -> Self {
-        let caller = address(DEFAULT_CALLER);
+    pub fn new(contract_address: H160, abi: ethabi::Contract, caller: H160) -> Self {
         ContractHarness {
             address: contract_address,
             abi,
@@ -265,7 +335,13 @@ impl ContractHarness {
     ) -> TransactionResult {
         let vm = vm.as_mut();
         vm.env.tx.data = input.into();
-        let (return_code, tx_result, gas, _) = vm.transact();
+        let (return_code, tx_result, gas,  logs) = vm.inspect_commit(NoOpInspector{});
+        println!("LOGS in contract call {:?}", logs);
+        println!("Transaction result: {:?}", tx_result);
+        if let TransactOut::Call(data) = &tx_result {
+            let encoded = hex::encode(data);
+            println!("Transaction result: {:?}", encoded);
+        }
         (return_code, tx_result, gas)
     }
     pub fn call_function(
@@ -277,21 +353,28 @@ impl ContractHarness {
         let evm = vm.as_mut();
         let function = &self.abi.functions[name][0];
         evm.env.tx.caller = self.caller.clone();
+        println!("CALLER CALLING {} function, with args: {:?} with msg.sender == {:?}", name,input, address_token(self.caller.clone()));
         evm.env.tx.transact_to = TransactTo::Call(self.address.clone());
-        let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
-        evm.db().unwrap().insert_cache(self.caller.clone(), caller_account);
         let (return_code, tx_result, gas) = self.capture_call(vm, name, input);
         match return_code {
             Return::Return | Return::Stop => {
                 if let TransactOut::Call(data) = tx_result {
-                    println!("DATA: {:?}", data);
                      function.decode_output(&data.to_vec())
-                    .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &data))
+                    .unwrap_or_else(|e| panic!("unable to decode output of {}: {:?}\nError: {:?}", name, &data, e))
                     .pop()
                 } else {
                     panic!("Unexpected result of function call!");
                 }
             },
+            Return::Revert => {
+                if let TransactOut::Call(data) = &tx_result {
+                    function.decode_output(&data.to_vec())
+                    .unwrap_or_else(|e| panic!("Tx Revert! Unable to decode output of {}: {:?}\nError: {:?}", name, &data, e))
+                    .pop();
+                    panic!("Tx Revert! Tx Data: {:?}", tx_result)
+                }
+                panic!("Tx Revert! Tx Data: {:?}", tx_result)
+            }
             _ => panic!("Unexpected return code! {:?}", return_code)
 
         }
@@ -317,68 +400,68 @@ impl ContractHarness {
 
 }
 
-fn _deploy_contract(
-    mut vm: impl AsMut<EVM<InMemoryDB>>,
-    bytecode: &str,
-    abi: &str,
-    init_params: &[ethabi::Token],
-) -> ContractHarness {
-    let vm = vm.as_mut();
-    let abi = ethabi::Contract::load(abi.as_bytes()).expect("unable to load the ABI");
+// fn _deploy_contract(
+//     mut vm: impl AsMut<EVM<InMemoryDB>>,
+//     bytecode: &str,
+//     abi: &str,
+//     init_params: &[ethabi::Token],
+// ) -> ContractHarness {
+//     let vm = vm.as_mut();
+//     let abi = ethabi::Contract::load(abi.as_bytes()).expect("unable to load the ABI");
 
-    let mut bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
+//     let mut bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
 
-    if let Some(constructor) = &abi.constructor {
-        bytecode = constructor.encode_input(bytecode, init_params).unwrap()
-    }
+//     if let Some(constructor) = &abi.constructor {
+//         bytecode = constructor.encode_input(bytecode, init_params).unwrap()
+//     }
 
-    let caller = H160::from_str(DEFAULT_CALLER).unwrap();
-    let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
+//     let caller = H160::from_str(DEFAULT_CALLER).unwrap();
+//     let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
 
   
-    vm.env.tx.caller = caller.clone();
-    vm.env.tx.transact_to = TransactTo::create();
-    vm.db().unwrap().insert_cache(address(DEFAULT_CALLER), caller_account);
+//     vm.env.tx.caller = caller.clone();
+//     vm.env.tx.transact_to = TransactTo::create();
+//     vm.db().unwrap().insert_cache(address(DEFAULT_CALLER), caller_account);
 
-    vm.env.tx.data = Bytes::from(bytecode);
-    let (_, out, _) = vm.transact_commit();
-    let contract_address = match out {
-        TransactOut::Create(a, Some(contract)) => contract,
-        _ => panic!("Invalid create. This is a bug in the EVM"),
-    };
+//     vm.env.tx.data = Bytes::from(bytecode);
+//     let (_, out, _, _) = vm.transact_commit();
+//     let contract_address = match out {
+//         TransactOut::Create(a, Some(contract)) => contract,
+//         _ => panic!("Invalid create. This is a bug in the EVM"),
+//     };
      
-    return ContractHarness::new(contract_address, abi);
-}
+//     return ContractHarness::new(contract_address, abi);
+// }
 
-#[cfg(feature = "solc-backend")]
-pub fn deploy_contract(
-    vm: impl AsMut<EVM<InMemoryDB>>, 
-    fixture: &str, 
-    contract_name: &str, 
-    init_params: &[ethabi::Token]
-) -> ContractHarness {
-    let src = test_files::fixture(fixture);
-    let mut files = FileStore::new();
-    let id = files.add_file(fixture, src);
-    let deps = files.add_included_libraries();
+// #[cfg(feature = "solc-backend")]
+// pub fn deploy_contract(
+//     vm: impl AsMut<EVM<InMemoryDB>>, 
+//     fixture: &str, 
+//     contract_name: &str, 
+//     init_params: &[ethabi::Token]
+// ) -> ContractHarness {
+//     let src = test_files::fixture(fixture);
+//     let mut files = FileStore::new();
+//     let id = files.add_file(fixture, src);
+//     let deps = files.add_included_libraries();
 
-    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
-        Ok(module) => module,
-        Err(error) => {
-            fe_common::diagnostics::print_diagnostics(&error.0, &files);
-            panic!("failed to compile module: {}", fixture)
-        }
-    };
-    let compiled_contract = compiled_module
-        .contracts
-        .get(contract_name)
-        .expect("could not find contract in fixture");
+//     let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
+//         Ok(module) => module,
+//         Err(error) => {
+//             fe_common::diagnostics::print_diagnostics(&error.0, &files);
+//             panic!("failed to compile module: {}", fixture)
+//         }
+//     };
+//     let compiled_contract = compiled_module
+//         .contracts
+//         .get(contract_name)
+//         .expect("could not find contract in fixture");
     
-    _deploy_contract(
-        vm,
-        &compiled_contract.bytecode,
-        &compiled_contract.json_abi,
-        init_params,
-    )
+//     _deploy_contract(
+//         vm,
+//         &compiled_contract.bytecode,
+//         &compiled_contract.json_abi,
+//         init_params,
+//     )
 
-}
+//}
