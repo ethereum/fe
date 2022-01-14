@@ -207,7 +207,6 @@ impl Fevm {
         contract.call_function(self, fn_name, input)
     }
 
-
     #[cfg(feature = "solc-backend")]
     pub fn deploy_contract_from_fixture(
         &mut self,
@@ -258,13 +257,20 @@ impl Fevm {
             bytecode = constructor.encode_input(bytecode, init_params).unwrap()
         }
     
-        let caller = random_address();
-        let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
-    
-      
+       let caller = {
+        if let Some(caller) = self.callers.first() {
+            caller.clone()
+        } else {
+            let caller = random_address();
+            let caller_account = AccountInfo::from_balance(U256::from(10000000_u64));
+            self.vm.db().unwrap().insert_cache(caller.clone(), caller_account);
+            caller
+        }
+       }; 
+        
         self.vm.env.tx.caller = caller.clone();
         self.vm.env.tx.transact_to = TransactTo::create();
-        self.vm.db().unwrap().insert_cache(caller.clone(), caller_account);
+        
     
         self.vm.env.tx.data = Bytes::from(bytecode);
         let (_, out, _, _) = self.vm.transact_commit();
@@ -279,6 +285,8 @@ impl Fevm {
         harness
     }
 }
+
+
 
 #[allow(dead_code)]
 pub fn address(s: &str) -> primitive_types::H160 {

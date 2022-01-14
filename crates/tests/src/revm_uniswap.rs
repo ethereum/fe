@@ -48,6 +48,8 @@ fn uniswap_contracts_revm() {
     let token1_name = string_token("Maker");
     let token1_symbol = string_token("mkr");
 
+    
+
     let token0_harness = deploy_contract(
         &mut fevm,
         "demos/erc20_token.fe",
@@ -55,13 +57,13 @@ fn uniswap_contracts_revm() {
         &[token0_name, token0_symbol],
     );
 
-
     let mut token1_harness = deploy_contract(
         &mut fevm,
         "demos/erc20_token.fe",
         "ERC20",
         &[token1_name, token1_symbol],
     );
+
 
     token1_harness.test_function(
         &mut fevm,
@@ -73,9 +75,11 @@ fn uniswap_contracts_revm() {
         Some(&bool_token(true)),
     );
 
+
     let token0_address = address_token(token0_harness.address);
     let token1_address = address_token(token1_harness.address);
 
+    
     let factory_harness = deploy_contract(
         &mut fevm,
         "demos/uniswap.fe",
@@ -103,6 +107,31 @@ fn uniswap_contracts_revm() {
 
     // Check that the token1 address is set correctly in the pair contract
     pair_harness.test_function(&mut fevm, "token1", &[], Some(&token1_address));
+
+
+    
+    token0_harness.test_function(
+        &mut fevm,
+        "transfer",
+        &[
+            pair_address.clone(),
+            uint_token_from_dec_str("200000000000000000000"),
+        ],
+        Some(&bool_token(true)),
+    );
+
+    token1_harness.test_function(
+        &mut fevm,
+        "transfer",
+        &[
+            pair_address.clone(),
+            uint_token_from_dec_str("100000000000000000000"),
+        ],
+        Some(&bool_token(true)),
+    );
+    let alices_liquidity = pair_harness
+        .call_function(&mut fevm, "mint", &[address_token(alice.clone())])
+        .expect("no return from mint");
 
     // with_executor(&|mut executor| {
     //     /* SETUP */
