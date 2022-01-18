@@ -126,6 +126,10 @@ pub fn function_signature(
                 Ok(FixedSize::unit())
             } else {
                 match type_desc(&mut scope, type_node)?.try_into() {
+                    Ok(FixedSize::Struct(val)) if val.id.has_complex_fields(db) && function.is_public(db) => {
+                        scope.not_yet_implemented("structs with complex fields can't be returned from public functions yet", type_node.span);
+                        Ok(FixedSize::Struct(val))
+                    }
                     Ok(typ) => Ok(typ),
                     Err(_) => Err(TypeError::new(scope.error(
                         "function return type must have a fixed size",

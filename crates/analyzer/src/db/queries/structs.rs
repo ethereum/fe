@@ -96,11 +96,21 @@ pub fn struct_field_type(
         scope.not_yet_implemented("struct field initial value assignment", field_data.ast.span);
     }
     let typ = match type_desc(&mut scope, typ) {
-        Ok(types::Type::Base(base)) => Ok(types::FixedSize::Base(base)),
-        Ok(_) => Err(TypeError::new(scope.not_yet_implemented(
-            "non-primitive type struct fields",
-            field_data.ast.span,
-        ))),
+        Ok(typ) => match typ.try_into() {
+            Ok(FixedSize::Contract(contract)) => {
+                scope.not_yet_implemented(
+                    "contract types aren't yet supported as struct fields",
+                    field_data.ast.span,
+                );
+                Ok(FixedSize::Contract(contract))
+            }
+            Ok(typ) => Ok(typ),
+            Err(_) => Err(TypeError::new(scope.error(
+                "struct field type must have a fixed size",
+                field_data.ast.span,
+                "this can't be used as an struct field",
+            ))),
+        },
         Err(err) => Err(err),
     };
 

@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: feature not yet implemented: structs with complex fields can't be returned from public functions yet
+  ┌─ compile_errors/return_complex_struct.fe:5:17
+  │
+5 │   pub fn f() -> Foo:
+  │                 ^^^ not yet implemented
+
+

@@ -2,9 +2,10 @@ use crate::context::FnContext;
 use crate::mappers::expressions;
 use crate::operations::data as data_operations;
 use fe_analyzer::context::Location;
-use fe_analyzer::namespace::types::FixedSize;
+use fe_analyzer::namespace::types::{FixedSize, Type};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use yultsur::yul::FunctionCall;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
@@ -36,6 +37,15 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
                 statement! { [target] := [value] }
             }
             (Location::Memory, Location::Memory) => {
+                if let fe::Expr::Attribute { value: val, .. } = &target_node.kind {
+                    if let Type::Struct(_) = context.expression_attributes(val).typ {
+                        // This whole thing is pretty awkward. It may be better to have the getters
+                        // without auto-deref and add special deref(..) calls at the places that
+                        // need them.
+                        return statement! { mstoren([expr_to_raw_ptr_call(&target)], 32, [value]) };
+                    }
+                }
+
                 let target = expr_as_ident(target);
                 statement! { [target] := [value] }
             }
@@ -68,6 +78,21 @@ fn expr_as_ident(expr: yul::Expression) -> yul::Identifier {
     if let yul::Expression::Identifier(ident) = expr {
         ident
     } else {
-        panic!("expression is not an identifier");
+        panic!("expression is not an identifier {}", expr);
+    }
+}
+
+fn expr_to_raw_ptr_call(expr: &yul::Expression) -> yul::Expression {
+    if let yul::Expression::FunctionCall(FunctionCall {
+        identifier,
+        arguments,
+    }) = &expr
+    {
+        yul::Expression::FunctionCall(FunctionCall {
+            identifier: identifier! {(format!("{}_raw", &identifier.identifier))},
+            arguments: arguments.clone(),
+        })
+    } else {
+        panic!("expression is not a function call {}", expr);
     }
 }
