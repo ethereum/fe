@@ -927,6 +927,7 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-driver",
+ "fe-test-files",
  "fe-yulc",
  "fe-yulgen",
  "getrandom 0.2.3",

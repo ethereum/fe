@@ -1,8 +1,10 @@
 use std::{str::FromStr, path::{PathBuf, Path}};
 use bytes::Bytes;
+use fe_common::files::FileStore;
 use primitive_types::{H160, U256};
 use revm::{TransactOut, Return};
 use crate::{Fevm, Caller, CallResult, Address};
+
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum ContractId {
     Name(String),
@@ -30,11 +32,66 @@ impl From<&str> for ContractId {
         }
     }
 }
-
+#[derive(Clone)]
 pub enum ContractCode {
     Bytes(Vec<u8>),
     Deployed
 }
+
+
+#[derive(Default)]
+pub struct ContractBuilder<'a> {
+    vm: Option<&'a Fevm<'a>>,
+    abi: Option<ethabi::Contract>,
+    address: Option<Address>,
+    code: Option<ContractCode>,
+}
+
+impl<'a> ContractBuilder<'a> {
+
+    pub fn new(vm: &'a Fevm<'a>) -> Self {
+        Self {
+            vm: Some(vm),
+            ..Default::default()
+        }
+    }
+    #[cfg(feature = "solc-backend")]
+    pub fn build_from_fixture<'b>(
+        mut self, 
+        fixture: &str, 
+        contract_name: &str, 
+    ) -> Contract<'b> 
+    {
+        let src = test_files::fixture(fixture);
+        let mut files = FileStore::new();
+        let id = files.add_file(fixture, src);
+        let deps = files.add_included_libraries();
+    
+        let compiled_module = match fe_driver::compile_module(&files, id, &deps, true, true) {
+            Ok(module) => module,
+            Err(error) => {
+                fe_common::diagnostics::print_diagnostics(&error.0, &files);
+                panic!("failed to compile module: {}", fixture)
+            }
+        };
+        let compiled_contract = compiled_module
+            .contracts
+            .get(contract_name)
+            .expect("could not find contract in fixture");
+
+     
+        Contract {
+            vm: self.vm.unwrap(),
+            abi: ethabi::Contract::load(compiled_contract.json_abi.as_bytes()).expect("Unable to load contract abi from compiled module"),
+            address: None,
+            code: ContractCode::Bytes(compiled_contract.bytecode)
+        }
+
+    }
+}
+
+
+#[derive(Clone)]
 pub struct Contract<'a> {
     vm: &'a Fevm<'a>,
     pub abi: ethabi::Contract,
@@ -42,7 +99,6 @@ pub struct Contract<'a> {
     pub code: ContractCode,
     
 }
-
 
 
 
@@ -61,7 +117,7 @@ impl Contract<'_> {
         match return_code {
             Return::Return | Return::Stop => {
                 if let TransactOut::Call(data) = tx_result {
-                     function.decode_output(&data.to_vec())
+                     function.decode_output(&data)
                     .unwrap_or_else(|e| panic!("unable to decode output of {}: {:?}\nError: {:?}", name, &data, e))
                     .pop()
                 } else {
@@ -89,16 +145,11 @@ impl Contract<'_> {
         encoded
     }
 
-    pub fn deploy(&self, deployer: &Caller) -> Address {
-        self.vm.deploy(&self, deployer)
+    pub fn deploy(mut self, deployer: &Caller, init_params: &[ethabi::Token]) -> Self {
+      self.vm.deploy(&mut self, deployer, init_params);
+
+      self
     }
 }
 
 
-// Load contract fixture, compile
-impl From<PathBuf> for Contract<'_>
-{
-    fn from(other: PathBuf) -> Self {
-        todo!()
-    }
-}
