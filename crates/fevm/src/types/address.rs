@@ -8,3 +8,10 @@ fn random_address() -> Address {
 
 
 pub struct Caller(pub Address);
+
+
+impl AsRef<Address> for Caller {
+    fn as_ref(&self) -> &Address {
+        &self.0
+    }
+}

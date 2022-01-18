@@ -23,6 +23,8 @@ solc = {git = "https://github.com/g-r-a-n-t/solc-rust", rev = "da554b3", optiona
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 indexmap = "1.6.2"
 getrandom = { version = "0.2.3", features = ["js"] }
+test-files = {path = "../test-files", package = "fe-test-files" }
+
 
 #revm = {git = "https://github.com/bluealloy/revm"}
 

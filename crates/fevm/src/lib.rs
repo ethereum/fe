@@ -6,7 +6,6 @@ use bytes::Bytes;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
 use fe_common::utils::keccak;
-use fe_driver as driver;
 use fe_yulgen::runtime::functions;
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
@@ -56,8 +55,35 @@ impl Fevm<'_> {
         vm.inspect_commit(NoOpInspector{})
     }
 
-    pub fn deploy(&self, contract: &Contract, deployer: &Caller) -> Address {
-        todo!()
+    pub fn deploy(&self, contract: &mut Contract, deployer: &Caller, init_params: &[ethabi::Token]) {
+        if let ContractCode::Bytes(bin) = &contract.code {
+            let mut bytecode = hex::decode(bin)
+            .expect("Failed to decode bytecode");
+
+            if let Some(constructor) = &contract.abi.constructor {
+                bytecode = constructor.encode_input(bytecode, init_params).unwrap()
+            }
+        
+            let mut vm = self.inner.borrow_mut();
+            match vm.db().unwrap().cache().get_key_value(deployer.as_ref()) {
+                Some(_) => {
+                    vm.env.tx.caller = deployer.as_ref().clone();
+                    vm.env.tx.transact_to = TransactTo::create();
+                    vm.env.tx.data = Bytes::from(bytecode);
+                    let (_, out, _, _) = vm.transact_commit();
+                    let contract_address = match out {
+                        TransactOut::Create(_, Some(contract)) => contract,
+                        _ => panic!("Invalid create. This is a bug in the EVM"),
+                    };
+                    contract.code = ContractCode::Deployed;
+                    contract.address = Some(contract_address);
+                    
+                },
+                None => panic!("Invalid caller. Please deploy with an existing address."),
+            }
+        } else {
+            panic!("Contract does not have bytecode. If you wish to redeploy, please re-instantiate with bytecode");
+        }
     }
 
     pub fn create_account(&self, address: &Address, balance: impl Into<U256>) -> Address {
