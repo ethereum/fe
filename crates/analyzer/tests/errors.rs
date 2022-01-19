@@ -287,6 +287,7 @@ test_file! { return_call_to_fn_without_return }
 test_file! { return_from_init }
 test_file! { return_lt_mixed_types }
 test_file! { return_type_undefined }
+test_file! { return_complex_struct }
 test_file! { return_type_not_fixedsize }
 test_file! { undefined_type_param }
 

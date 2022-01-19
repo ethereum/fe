@@ -1228,7 +1228,14 @@ fn structs() {
             )),
         );
 
-        harness.test_function(&mut executor, "create_mixed", &[], Some(&uint_token(1)))
+        harness.test_function(&mut executor, "create_mixed", &[], Some(&uint_token(1)));
+
+        harness.test_function(
+            &mut executor,
+            "complex_struct_in_memory",
+            &[],
+            Some(&string_token("foo")),
+        );
     });
 }
 

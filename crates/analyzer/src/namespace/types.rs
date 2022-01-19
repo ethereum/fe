@@ -500,6 +500,10 @@ impl FixedSize {
         self == &Self::Base(Base::Unit)
     }
 
+    pub fn is_base(&self) -> bool {
+        matches!(self, FixedSize::Base(_))
+    }
+
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         FixedSize::Base(Base::Bool)

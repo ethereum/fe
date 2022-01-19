@@ -1337,6 +1337,12 @@ impl StructId {
         Some(self.field(db, name)?.typ(db))
     }
 
+    pub fn has_complex_fields(&self, db: &dyn AnalyzerDb) -> bool {
+        self.fields(db)
+            .iter()
+            .any(|(_, field)| !matches!(field.typ(db), Ok(types::FixedSize::Base(_))))
+    }
+
     pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
         db.struct_field_map(*self).value
     }
