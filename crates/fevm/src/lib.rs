@@ -40,13 +40,25 @@ impl ToBeBytes for U256 {
     }
 }
 
+
 pub struct Fevm<'a>{
     inner: RefCell<EVM<InMemoryDB>>,
     contracts: HashMap<&'a ContractId, Contract<'a>> 
 
 }
 
+
+
 impl Fevm<'_> {
+
+    pub fn new() -> Self {
+        let mut vm = revm::new();
+        vm.database(InMemoryDB::default());
+        Self {
+            inner: RefCell::new(vm),
+            contracts: HashMap::new()
+        }
+    }
     pub fn call(&self, input: Vec<u8>, addr: &Address, caller: &Caller) -> CallResult {
         let mut vm = self.inner.borrow_mut();
         vm.env.tx.caller = caller.0;
@@ -57,15 +69,14 @@ impl Fevm<'_> {
 
     pub fn deploy(&self, contract: &mut Contract, deployer: &Caller, init_params: &[ethabi::Token]) {
         if let ContractCode::Bytes(bin) = &contract.code {
-            let mut bytecode = hex::decode(bin)
-            .expect("Failed to decode bytecode");
+            let mut bytecode = bin.clone();
 
             if let Some(constructor) = &contract.abi.constructor {
                 bytecode = constructor.encode_input(bytecode, init_params).unwrap()
             }
         
             let mut vm = self.inner.borrow_mut();
-            match vm.db().unwrap().cache().get_key_value(deployer.as_ref()) {
+            match vm.db().expect("DB not found").cache().get_key_value(deployer.as_ref()) {
                 Some(_) => {
                     vm.env.tx.caller = deployer.as_ref().clone();
                     vm.env.tx.transact_to = TransactTo::create();
@@ -86,20 +97,30 @@ impl Fevm<'_> {
         }
     }
 
-    pub fn create_account(&self, address: &Address, balance: impl Into<U256>) -> Address {
-        todo!()
+    pub fn create_account(&self, address: impl AsRef<Address>, balance: impl Into<U256>) {
+        let acc = AccountInfo::from_balance(balance.into());
+        self.inner.borrow_mut().db().unwrap().insert_cache(address.as_ref().clone(), acc);
     }
 
     pub fn fund_account(&self, address: &Address, amt: impl Into<U256>) {
-
+        let mut vm = self.inner.borrow_mut();
+        
+       let mut acc =  vm.db().unwrap().cache().get(address)
+        .expect(format!("Cannot find account for address {:?}. Please create account first", address).as_str())
+        .clone(); 
+        acc.balance += amt.into();
+        vm.db().unwrap().insert_cache(address.clone(), acc);
     }
 
     pub fn balance_of(&self, address: &Address) -> U256 {
-        todo!()
+        match self.inner.borrow_mut().db().unwrap().cache().get(address) {
+            Some(acc) => acc.balance,
+            None => 0.into()
+        }
     }
 
-    pub fn get_account(&self, address: &Address) -> Option<&AccountInfo> {
-        todo!()
+    pub fn get_account(&self, address: &Address) -> Option<AccountInfo> {
+        self.inner.borrow_mut().db().unwrap().cache().get(address).cloned()
     }
 
     pub fn erase(&self, address: &Address) -> Address {

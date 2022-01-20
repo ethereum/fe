@@ -9,9 +9,21 @@ fn random_address() -> Address {
 
 pub struct Caller(pub Address);
 
+impl Caller {
+    pub fn random() -> Self {
+        Self(random_address())
+    }
+}
 
 impl AsRef<Address> for Caller {
     fn as_ref(&self) -> &Address {
         &self.0
+    }
+}
+
+
+impl From<Address> for Caller {
+    fn from(addr: Address) -> Self {
+        Self(addr)
     }
 }

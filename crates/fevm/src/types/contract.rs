@@ -56,11 +56,11 @@ impl<'a> ContractBuilder<'a> {
         }
     }
     #[cfg(feature = "solc-backend")]
-    pub fn build_from_fixture<'b>(
+    pub fn fixture(
         mut self, 
         fixture: &str, 
         contract_name: &str, 
-    ) -> Contract<'b> 
+    ) -> Contract<'a> 
     {
         let src = test_files::fixture(fixture);
         let mut files = FileStore::new();
@@ -80,11 +80,13 @@ impl<'a> ContractBuilder<'a> {
             .expect("could not find contract in fixture");
 
      
+        let mut bytecode = hex::decode(&compiled_contract.bytecode)
+        .expect("Failed to decode bytecode");
         Contract {
             vm: self.vm.unwrap(),
             abi: ethabi::Contract::load(compiled_contract.json_abi.as_bytes()).expect("Unable to load contract abi from compiled module"),
             address: None,
-            code: ContractCode::Bytes(compiled_contract.bytecode)
+            code: ContractCode::Bytes(bytecode)
         }
 
     }

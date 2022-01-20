@@ -26,8 +26,5 @@ getrandom = { version = "0.2.3", features = ["js"] }
 test-files = {path = "../test-files", package = "fe-test-files" }
 
 
-#revm = {git = "https://github.com/bluealloy/revm"}
-
-
 [features]
 solc-backend = ["fe-yulc", "solc", "fe-driver/solc-backend"]
