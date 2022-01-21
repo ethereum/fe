@@ -1,46 +1,8 @@
-use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256};
+use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*};
 use primitive_types::H160;
 use std::str::FromStr;
 
 
-#[allow(dead_code)]
-pub fn tuple_token(tokens: &[ethabi::Token]) -> ethabi::Token {
-    ethabi::Token::Tuple(tokens.to_owned())
-}
-#[allow(dead_code)]
-pub fn uint_token(n: u64) -> ethabi::Token {
-    ethabi::Token::Uint(U256::from(n))
-}
-
-pub fn address_token(addr: primitive_types::H160) -> ethabi::Token {
-    ethabi::Token::Address(addr)
-}
-
-#[allow(dead_code)]
-pub fn address_token_from_str(s: &str) -> ethabi::Token {
-    // left pads to 40 characters
-    ethabi::Token::Address(address(&format!("{:0>40}", s)))
-}
-
-#[allow(dead_code)]
-pub fn string_token(s: &str) -> ethabi::Token {
-    ethabi::Token::String(s.to_string())
-}
-
-#[allow(dead_code)]
-pub fn bool_token(val: bool) -> ethabi::Token {
-    ethabi::Token::Bool(val)
-}
-
-#[allow(dead_code)]
-pub fn uint_token_from_dec_str(val: &str) -> ethabi::Token {
-    ethabi::Token::Uint(U256::from_dec_str(val).expect("Not a valid dec string"))
-}
-
-#[allow(dead_code)]
-pub fn address(s: &str) -> primitive_types::H160 {
-    H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
-}
 #[test]
 fn test_get_u256() {
     let mut fevm = Fevm::new();
@@ -90,7 +52,7 @@ fn uniswap_fevm() {
     token0_contract.call(
         "transfer",
         &[
-            address_token(alice.0.clone()), 
+            alice.as_token(), 
             uint_token_from_dec_str("500000000000000000000000"),
         ],
         &deployer
@@ -98,21 +60,21 @@ fn uniswap_fevm() {
 
     token1_contract.call(
         "transfer",
-            &[address_token(alice.0.clone()),
+            &[alice.as_token(),
             uint_token_from_dec_str("500000000000000000000000")],
             &deployer
     );
 
     let balance_alice = token1_contract.call(
         "balanceOf",
-        &[address_token(alice.0.clone())],
+        &[alice.as_token()],
         &alice
     ).unwrap();
 
     assert_eq!(balance_alice, uint_token_from_dec_str("500000000000000000000000"));
     let balance_alice = token0_contract.call(
         "balanceOf",
-        &[address_token(alice.0.clone())],
+        &[alice.as_token()],
         &alice
     ).unwrap();
 
@@ -172,11 +134,11 @@ fn uniswap_fevm() {
     // Since we have sent 200 of token0 and 100 of token1,
     // value of token0 is 1/2 that of token1
     let alice_liquidity = pair_contract
-        .call("mint", &[address_token(alice.0.clone())], &bob)
+        .call("mint", &[alice.as_token()], &bob)
         .unwrap();
 
     let alice_lp_tkn_balance = pair_contract
-        .call("balanceOf",&[address_token(alice.0.clone())], &bob)
+        .call("balanceOf",&[alice.as_token()], &bob)
         .unwrap();
     assert_eq!(alice_liquidity, alice_lp_tkn_balance);
 
@@ -207,7 +169,7 @@ fn uniswap_fevm() {
 
     token1_contract.call(
         "transfer",
-        &[address_token(bob.0.clone()), uint_token(1000)],
+        &[bob.as_token(), uint_token(1000)],
         &deployer,
     );
 
@@ -226,14 +188,14 @@ fn uniswap_fevm() {
 
     pair_contract.call(
         "swap",
-        &[uint_token(1993), uint_token(0), address_token(bob.0.clone())],
+        &[uint_token(1993), uint_token(0), bob.as_token()],
         &bob
     );
 
     // Check that bob's token0 balance has increase to 1993 (accounting for 0.3% fee)
     let bob_bal = token0_contract.call(
         "balanceOf",
-        &[address_token(bob.0.clone())],
+        &[bob.as_token()],
         &bob
     ).unwrap();
 
@@ -266,7 +228,7 @@ fn uniswap_fevm() {
     // Alice burn liquidity she sent back
     let  burned = pair_contract.call(
         "burn",
-        &[address_token(alice.0.clone())],
+        &[alice.as_token()],
         &alice
     ).unwrap();
     assert_eq!(
@@ -284,7 +246,7 @@ fn uniswap_fevm() {
 
     let bob_tkn0 = token0_contract.call(
         "balanceOf",
-        &[address_token(bob.0.clone())],
+        &[bob.as_token()],
         &deployer
     ).unwrap();
 
@@ -292,7 +254,7 @@ fn uniswap_fevm() {
 
     let alice_tkn0 = token0_contract.call(
         "balanceOf",
-        &[address_token(alice.0.clone())],
+        &[alice.as_token()],
         &deployer
     ).unwrap();
 
@@ -319,7 +281,7 @@ fn uniswap_fevm() {
 
  let bob_tkn1 = token1_contract.call(
         "balanceOf",
-        &[address_token(bob.0.clone())],
+        &[bob.as_token()],
         &deployer
     ).unwrap();
 
@@ -327,7 +289,7 @@ fn uniswap_fevm() {
 
     let alice_tkn1 = token1_contract.call(
         "balanceOf",
-        &[address_token(alice.0.clone())],
+        &[alice.as_token()],
         &deployer
     ).unwrap();
 

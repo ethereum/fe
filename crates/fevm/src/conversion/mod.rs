@@ -1,5 +1,6 @@
-use crate::ethabi;
+
 use crate::{U256, H160};
+use std::str::FromStr;
 
 
 #[allow(dead_code)]
@@ -36,4 +37,10 @@ pub fn bool_token(val: bool) -> ethabi::Token {
 #[allow(dead_code)]
 pub fn address(s: &str) -> primitive_types::H160 {
     H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
+}
+
+
+#[allow(dead_code)]
+pub fn tuple_token(tokens: &[ethabi::Token]) -> ethabi::Token {
+    ethabi::Token::Tuple(tokens.to_owned())
 }
