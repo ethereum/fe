@@ -311,8 +311,8 @@ contract UniswapV2Factory:
     pub fn create_pair(self, token_a: address, token_b: address) -> address:
         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 
-        let token0: address = token_a if token_a < token_b else token_b
-        let token1: address = token_a if token_a > token_b else token_b
+        let token0: address = token_a 
+        let token1: address = token_b
         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
 
