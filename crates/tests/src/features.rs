@@ -288,6 +288,7 @@ fn test_arrays() {
     case("return_u256.fe", &[], uint_token(42)),
     case("return_i256.fe", &[], int_token(-3)),
     case("return_from_storage_i8.fe", &[int_token(-3)], int_token(-6)),
+    case("return_from_storage_array_i8.fe", &[int_token(-10)], int_array_token(&[-10])),
     case("return_from_memory_i8.fe", &[int_token(-3)], int_token(-6)),
     case("return_identity_u256.fe", &[uint_token(42)], uint_token(42)),
     case("return_identity_u128.fe", &[uint_token(42)], uint_token(42)),
@@ -1794,4 +1795,33 @@ fn call_fn() {
         calldata[31] = 0;
         harness.test_call_returns(&mut executor, calldata, &[])
     });
+}
+
+#[rstest(
+    method,
+    params,
+    expected,
+    case("bar", &[int_token(-10)], Some(int_array_token(&[-10]))),
+    case("bar", &[int_token(100)], Some(int_array_token(&[100]))),
+)]
+fn signext_int_array1(method: &str, params: &[ethabi::Token], expected: Option<ethabi::Token>) {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "return_from_storage_array_i8.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, method, params, expected.as_ref());
+    })
+}
+
+#[rstest(
+    method,
+    value,
+    case("i8_array", int_array_token(&[-10, 100, -128, 127])),
+    case("i32_array", int_array_token(&[-10, 100, -2147483648, 2147483647])),
+)]
+fn signext_int_array2(method: &str, value: ethabi::Token) {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "return_int_array.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, method, &[value.clone()], Some(&value));
+    })
 }

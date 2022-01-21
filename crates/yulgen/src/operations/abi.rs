@@ -112,6 +112,7 @@ pub fn unpack(
     ptr: yul::Expression,
     array_size: yul::Expression,
     inner_data_size: yul::Expression,
+    signed: yul::Expression,
 ) -> yul::Statement {
-    statement! { abi_unpack([ptr], [array_size], [inner_data_size]) }
+    statement! { abi_unpack([ptr], [array_size], [inner_data_size], [signed]) }
 }

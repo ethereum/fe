@@ -486,11 +486,14 @@ fn copy_data(
 /// Adds padding to array elements following the ABI standard.
 pub fn unpack() -> yul::Statement {
     function_definition! {
-        function abi_unpack(mptr, array_size, inner_data_size) {
+        function abi_unpack(mptr, array_size, inner_data_size, signed) {
             (for {(let i := 0)} (lt(i, array_size)) {(i := add(i, 1))}
             {
                 (let val_ptr := add(mptr, (mul(i, inner_data_size))))
                 (let val := mloadn(val_ptr, inner_data_size))
+                (if signed {
+                    (val := signextend((sub(inner_data_size, 1)), val))
+                })
                 (pop((alloc_mstoren(val, 32))))
             })
         }
@@ -594,9 +597,16 @@ fn encode_bytes_data(size: usize, ptr: yul::Expression) -> yul::Statement {
 }
 
 fn encode_static_array(val: yul::Expression, inner: &AbiType, size: usize) -> yul::Statement {
+    let signed = if matches!(inner, AbiType::Int { .. }) {
+        expression! { 1 }
+    } else {
+        expression! { 0 }
+    };
+
     abi_operations::unpack(
         val,
         literal_expression! { (size) },
         literal_expression! { (inner.packed_size()) },
+        signed,
     )
 }

@@ -68,7 +68,7 @@ impl ContractHarness {
         let function = &self.abi.functions[name][0];
         function
             .encode_input(input)
-            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name))
+            .unwrap_or_else(|reason| panic!("Unable to encode input for {}: {:?}", name, reason))
     }
 
     pub fn capture_call_raw_bytes(

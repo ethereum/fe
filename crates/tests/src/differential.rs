@@ -249,8 +249,7 @@ proptest! {
             harness.capture_call(&mut executor, "get_data", &[]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(150);
 
             harness.capture_call(&mut executor, "set_item", &[uint_token(my_num2.into()), int_token(my_num3.into())]).assert_any_success_or_revert_with_equal_return_data();
-            // Waiting on a fix for https://github.com/ethereum/fe/pull/581
-            //harness.capture_call(&mut executor, "get_items", &[]).assert_perfomed_equal();
+            harness.capture_call(&mut executor, "get_items", &[]).assert_perfomed_equal();
 
             harness.capture_call(&mut executor, "set_string", &[string_token(&my_long_string)]).assert_any_success_with_equal_return_data();
             harness.capture_call(&mut executor, "get_string", &[]).assert_perfomed_equal();
