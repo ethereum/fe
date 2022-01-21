@@ -2,6 +2,7 @@ pub mod types;
 use revm::Log;
 pub use types::*;
 
+
 use bytes::Bytes;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
@@ -25,6 +26,8 @@ pub use revm::{
 };
 pub use primitive_types::{self, H160, U256};
 use std::cell::RefCell;
+pub mod conversion;
+pub use conversion::*;
 
 pub type CallResult = (Return, TransactOut, u64, Vec<Log>);
 
