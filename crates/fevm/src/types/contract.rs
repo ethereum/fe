@@ -55,6 +55,11 @@ impl<'a> ContractBuilder<'a> {
             ..Default::default()
         }
     }
+
+    pub fn address(mut self, addr: Address) -> Self {
+        self.address = Some(addr);
+        self
+    }
     #[cfg(feature = "solc-backend")]
     pub fn fixture(
         mut self, 
@@ -85,7 +90,7 @@ impl<'a> ContractBuilder<'a> {
         Contract {
             vm: self.vm.unwrap(),
             abi: ethabi::Contract::load(compiled_contract.json_abi.as_bytes()).expect("Unable to load contract abi from compiled module"),
-            address: None,
+            address: self.address,
             code: ContractCode::Bytes(bytecode)
         }
 
@@ -151,6 +156,10 @@ impl Contract<'_> {
       self.vm.deploy(&mut self, deployer, init_params);
 
       self
+    }
+
+    pub fn address(&self) -> Address {
+        self.address.clone().unwrap()
     }
 }
 
