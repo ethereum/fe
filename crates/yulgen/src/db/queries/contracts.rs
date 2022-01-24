@@ -77,6 +77,7 @@ pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
             &db.function_yul_name(init_fn),
             &params,
             functions,
+            init_fn.signature(adb).ctx_decl.is_some(),
         );
 
         // Return constructor object
@@ -105,15 +106,22 @@ pub fn contract_abi_dispatcher(db: &dyn YulgenDb, contract: ContractId) -> Vec<y
         .map(|id| {
             let bare_name = id.name(adb);
             let qualified_name = db.function_yul_name(*id);
+            let expects_ctx = id.signature(db.upcast()).ctx_decl.is_some();
             let (param_types, return_type) = db.function_sig_abi_types(*id);
-            (bare_name, qualified_name, param_types, return_type)
+            (
+                bare_name,
+                qualified_name,
+                param_types,
+                return_type,
+                expects_ctx,
+            )
         })
         .collect::<Vec<_>>();
 
     let mut fns =
         public_functions
             .iter()
-            .fold(vec![], |mut fns, (_, _, param_types, return_type)| {
+            .fold(vec![], |mut fns, (_, _, param_types, return_type, _)| {
                 fns.extend(functions::abi::decode_functions(
                     param_types,
                     AbiDecodeLocation::Calldata,

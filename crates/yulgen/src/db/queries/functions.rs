@@ -53,8 +53,9 @@ pub fn function_sig_abi_types(
     let adb = db.upcast();
     let sig = function.signature(adb);
     let return_type = sig.return_type.clone().expect("return type error");
+    let param_types = sig.external_param_types();
     (
-        to_abi_types(adb, &sig.param_types()).into(),
+        to_abi_types(adb, &param_types).into(),
         (!return_type.is_unit()).then(|| return_type.as_abi_type(adb)),
     )
 }

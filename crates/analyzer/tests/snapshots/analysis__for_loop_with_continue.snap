@@ -13,10 +13,11 @@ note:
    · │
 14 │ │             sum = sum + i
 15 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 17979516652885443340
+   │ ╰──────────────────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

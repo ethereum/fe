@@ -1,3 +1,5 @@
+use std::context::Context
+
 struct MyStruct:
     pub my_num: u256
     pub my_num2: u8
@@ -71,8 +73,9 @@ contract Foo:
         my_struct.my_addr = address(9999)
         return my_struct
 
-    pub fn emit_my_event(self):
+    pub fn emit_my_event(self, ctx: Context):
         emit MyEvent(
+            ctx,
             my_addrs: self.my_addrs.to_mem(),
             my_u128: self.my_u128,
             my_string: self.my_string.to_mem(),

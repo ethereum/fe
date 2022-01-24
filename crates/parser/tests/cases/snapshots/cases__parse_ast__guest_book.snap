@@ -191,7 +191,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: Zelf,
+                    kind: Self_,
                     span: Span(
                       start: 163,
                       end: 167,
@@ -359,7 +359,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: Zelf,
+                    kind: Self_,
                     span: Span(
                       start: 297,
                       end: 301,

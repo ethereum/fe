@@ -2,17 +2,3 @@ pub fn get_42() -> u256:
     return 42
 
 # TODO: move these into some module of standard error codes
-const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: u256 = 0x100
-const ERROR_FAILED_SEND_VALUE: u256 = 0x101
-
-pub struct Error:
-    pub code: u256
-
-pub fn send_value(to: address, wei: u256):
-  unsafe:
-    if evm::balance() < wei:
-        revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
-
-    let success: u256 = evm::call(evm::gas(), to, wei, 0, 0, 0, 0)
-    if success == 0:
-        revert Error(code: ERROR_FAILED_SEND_VALUE)

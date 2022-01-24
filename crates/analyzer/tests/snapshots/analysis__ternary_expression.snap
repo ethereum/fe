@@ -8,10 +8,11 @@ note:
   │  
 3 │ ╭     pub fn bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 16591277757740338966
+  │ ╰────────────────────────────────────^ attributes hash: 9715528395521480793
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "input",

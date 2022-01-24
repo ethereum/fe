@@ -4,17 +4,32 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ balances.fe:4:5
+  ┌─ balances.fe:5:5
   │  
-4 │ ╭     pub fn my_balance(self) -> u256:
-5 │ │         return balance()
-  │ ╰────────────────────────^ attributes hash: 2875164910451995213
+5 │ ╭     pub fn my_balance(self, ctx: Context) -> u256:
+6 │ │         return ctx.self_balance()
+  │ ╰─────────────────────────────────^ attributes hash: 15791625094174035122
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
-        params: [],
+        ctx_decl: Some(
+            Mutable,
+        ),
+        params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
         return_type: Ok(
             Base(
                 Numeric(
@@ -25,23 +40,43 @@ note:
     }
 
 note: 
-  ┌─ balances.fe:5:16
+  ┌─ balances.fe:6:16
   │
-5 │         return balance()
-  │                ^^^^^^^^^ u256: Value
+6 │         return ctx.self_balance()
+  │                ^^^ Context: Memory
 
 note: 
-  ┌─ balances.fe:7:5
+  ┌─ balances.fe:6:16
+  │
+6 │         return ctx.self_balance()
+  │                ^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ balances.fe:8:5
   │  
-7 │ ╭     pub fn other_balance(self, someone: address) -> u256:
-8 │ │         return balance_of(someone)
-  │ ╰──────────────────────────────────^ attributes hash: 4973462877553265717
+8 │ ╭     pub fn other_balance(self, ctx: Context, someone: address) -> u256:
+9 │ │         return ctx.balance_of(someone)
+  │ ╰──────────────────────────────────────^ attributes hash: 9663953415600931481
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: Some(
+            Mutable,
+        ),
         params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
             FunctionParam {
                 name: "someone",
                 typ: Ok(
@@ -61,15 +96,17 @@ note:
     }
 
 note: 
-  ┌─ balances.fe:8:27
+  ┌─ balances.fe:9:16
   │
-8 │         return balance_of(someone)
-  │                           ^^^^^^^ address: Value
+9 │         return ctx.balance_of(someone)
+  │                ^^^            ^^^^^^^ address: Value
+  │                │               
+  │                Context: Memory
 
 note: 
-  ┌─ balances.fe:8:16
+  ┌─ balances.fe:9:16
   │
-8 │         return balance_of(someone)
-  │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+9 │         return ctx.balance_of(someone)
+  │                ^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

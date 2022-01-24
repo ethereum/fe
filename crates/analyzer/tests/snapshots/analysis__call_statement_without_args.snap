@@ -14,12 +14,13 @@ note:
   │  
 4 │ ╭     fn assign(self):
 5 │ │         self.baz[0] = 100
-  │ ╰─────────────────────────^ attributes hash: 17603814563784536273
+  │ ╰─────────────────────────^ attributes hash: 18235041182630809162
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -56,12 +57,13 @@ note:
 7 │ ╭     pub fn bar(self) -> u256:
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 2875164910451995213
+  │ ╰──────────────────────────^ attributes hash: 11773348765973600208
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(

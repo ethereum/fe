@@ -145,6 +145,8 @@ fn emit(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
         let event_values = args
             .kind
             .iter()
+            // the `ctx` parameter is not logged
+            .skip(1)
             .map(|arg| expressions::expr(context, &arg.kind.value))
             .collect();
 

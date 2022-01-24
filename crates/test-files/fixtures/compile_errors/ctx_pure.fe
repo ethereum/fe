@@ -1,0 +1,4 @@
+use std::context::Context
+
+pub fn foo(ctx: Context):
+    pass

@@ -965,7 +965,7 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
         .kind
         .args
         .iter()
-        .find(|arg| matches!(arg.kind, ast::FunctionArg::Zelf))
+        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_))
         .unwrap()
         .into()
 }
@@ -984,7 +984,7 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
                     None
                 }
             }
-            ast::FunctionArg::Zelf => None,
+            ast::FunctionArg::Self_ => None,
         })
         .unwrap()
 }

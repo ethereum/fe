@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: incorrect type for `balance_of` argument `addr`
-  ┌─ [snippet]:3:24
+  ┌─ [snippet]:4:26
   │
-3 │   std::evm::balance_of(true)
-  │                        ^^^^ this has type `bool`; expected type `address`
+4 │     std::evm::balance_of(true)
+  │                          ^^^^ this has type `bool`; expected type `address`
 
 

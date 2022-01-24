@@ -96,6 +96,27 @@ macro_rules! test_stmt {
     };
 }
 
+macro_rules! test_stmt_unsafe {
+    ($name:ident, $stmt:expr) => {
+        #[test]
+        #[wasm_bindgen_test]
+        fn $name() {
+            let src = format!(
+                "contract C:\n pub fn f(self):\n  unsafe:\n    {}",
+                $stmt.replace('\n', "\n  ")
+            );
+            if cfg!(target_arch = "wasm32") {
+                fe_common::assert_snapshot_wasm!(
+                    concat!("snapshots/errors__", stringify!($name), ".snap"),
+                    error_string("[snippet]", &src)
+                );
+            } else {
+                assert_snapshot!(error_string("[snippet]", &src));
+            }
+        }
+    };
+}
+
 test_stmt! { array_non_primitive, "let x: Array<(u8, u8), 10>" }
 test_stmt! { array_mixed_types, "let x: Array<u16, 3> = [1, address(0), \"hi\"]" }
 test_stmt! { array_size_mismatch, "let x: Array<u8, 3> = []\nlet y: Array<u8, 3> = [1, 2]" }
@@ -124,15 +145,10 @@ test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
 test_stmt! { cast_address_to_u64, "u64(address(0))" }
 
-test_stmt! { call_balance_of_without_parameter, "std::evm::balance_of()" }
-test_stmt! { call_balance_of_with_wrong_type, "std::evm::balance_of(true)" }
-test_stmt! { call_balance_of_with_2_args, "std::evm::balance_of(address(0), 2)" }
-test_stmt! { call_balance_with_arg, "std::evm::balance(address(0))" }
-test_stmt! { call_send_value_without_parameter, "std::send_value()" }
-test_stmt! { call_send_value_with_1_arg, "std::send_value(address(0))" }
-test_stmt! { call_send_value_with_3_args, "std::send_value(address(0), 0, 0)" }
-test_stmt! { call_send_value_with_wrong_type, "std::send_value(true, 0)" }
-test_stmt! { call_send_value_with_wrong_type2, "std::send_value(address(0), true)" }
+test_stmt_unsafe! { call_balance_of_without_parameter, "std::evm::balance_of()" }
+test_stmt_unsafe! { call_balance_of_with_wrong_type, "std::evm::balance_of(true)" }
+test_stmt_unsafe! { call_balance_of_with_2_args, "std::evm::balance_of(address(0), 2)" }
+test_stmt_unsafe! { call_balance_with_arg, "std::evm::balance(address(0))" }
 test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true:\n  continue" }
@@ -316,3 +332,19 @@ test_file! { unsafe_nesting }
 
 test_ingot! { bad_ingot }
 test_ingot! { mainless_ingot }
+
+test_file! { ctx_not_first }
+test_file! { ctx_not_after_self }
+test_file! { ctx_init }
+test_file! { ctx_pure }
+test_file! { ctx_undeclared }
+test_file! { ctx_missing_internal_call }
+test_file! { ctx_passed_external_call }
+test_file! { ctx_missing_create }
+test_file! { ctx_missing_load }
+test_file! { ctx_missing_event }
+test_file! { ctx_builtins_param_incorrect_type }
+test_file! { ctx_undefined_contract_init }
+test_file! { ctx_undefined_create }
+test_file! { ctx_undefined_create2 }
+test_file! { ctx_undefined_event }

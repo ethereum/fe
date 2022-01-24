@@ -8,10 +8,11 @@ note:
   │  
 2 │ ╭ fn add_bonus(x: u256) -> u256:
 3 │ │     return x + 10
-  │ ╰─────────────────^ attributes hash: 10491700091878076414
+  │ ╰─────────────────^ attributes hash: 15549141040406273197
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "x",
@@ -63,12 +64,13 @@ note:
 11 │ │             self.points[user] += add_bonus(val)
 12 │ │         else:
 13 │ │             self.points[user] += val
-   │ ╰────────────────────────────────────^ attributes hash: 17719730205805698134
+   │ ╰────────────────────────────────────^ attributes hash: 4921297709595178488
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "user",
@@ -168,12 +170,13 @@ note:
 18 │ │         self.cool_users[a] = true
 19 │ │         self.add_points(a, 100)
 20 │ │         return self.points[a]
-   │ ╰─────────────────────────────^ attributes hash: 11582699020310544004
+   │ ╰─────────────────────────────^ attributes hash: 2559326962008592778
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",

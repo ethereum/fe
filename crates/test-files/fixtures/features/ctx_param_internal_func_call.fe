@@ -1,0 +1,13 @@
+use std::context::Context
+
+contract Foo:
+    is_true: bool
+
+    pub fn bar(self, ctx: Context) -> u256:
+        # do something with self
+        self.is_true = false
+
+        return baz(ctx)
+
+    fn baz(ctx: Context) -> u256:
+        return ctx.block_number()

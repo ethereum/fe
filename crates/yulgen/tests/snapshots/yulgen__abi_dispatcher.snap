@@ -12,9 +12,9 @@ case 0x9476f922 {
 }
 case 0x771602f7 {
     let call_val_0, call_val_1 := abi_decode_data_uint256_uint256_calldata(4, calldatasize())
-    let return_val := $$somemod$add(call_val_0, call_val_1)
+    let return_val := $$somemod$add(0, call_val_0, call_val_1)
     let encoding_start := abi_encode_uint256(return_val)
     let encoding_size := add(32, 0)
     return(encoding_start, encoding_size)
 }
-default { return(0, 0) } }
+default { revert(0, 0) } }

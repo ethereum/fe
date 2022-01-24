@@ -68,7 +68,7 @@ fn contract_def(db: &dyn AnalyzerDb, contract: ContractId) -> Contract {
 fn function_def(db: &dyn AnalyzerDb, name: &str, fn_id: FunctionId, typ: FuncType) -> Function {
     let sig = fn_id.signature(db);
     let inputs = sig
-        .params
+        .external_params()
         .iter()
         .map(|param| {
             let typ = param.typ.clone().expect("function parameter type error");

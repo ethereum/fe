@@ -27,57 +27,10 @@ pub enum ContractTypeMethod {
 impl ContractTypeMethod {
     pub fn arg_count(&self) -> usize {
         match self {
-            ContractTypeMethod::Create => 1,
-            ContractTypeMethod::Create2 => 2,
+            ContractTypeMethod::Create => 2,
+            ContractTypeMethod::Create2 => 3,
         }
     }
-}
-
-#[derive(
-    Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, EnumString, EnumIter, AsRefStr,
-)]
-#[strum(serialize_all = "lowercase")]
-pub enum GlobalObject {
-    Block,
-    Chain,
-    Msg,
-    Tx,
-}
-
-#[derive(Debug, PartialEq, EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum BlockField {
-    Coinbase,
-    Difficulty,
-    Number,
-    Timestamp,
-}
-
-#[derive(Debug, PartialEq, EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum ChainField {
-    Id,
-}
-
-#[derive(Debug, PartialEq, EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum MsgField {
-    Sender,
-    Sig,
-    Value,
-}
-
-#[derive(Debug, PartialEq, EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum TxField {
-    GasPrice,
-    Origin,
-}
-
-#[derive(Debug, PartialEq, EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum ContractSelfField {
-    Address,
 }
 
 /// The evm functions exposed by yul.

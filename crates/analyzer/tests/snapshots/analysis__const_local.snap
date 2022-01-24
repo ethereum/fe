@@ -13,10 +13,11 @@ note:
    · │
 14 │ │         let _arr: Array<bool, { C10 }>
 15 │ │         return C10
-   │ ╰──────────────────^ attributes hash: 17979516652885443340
+   │ ╰──────────────────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

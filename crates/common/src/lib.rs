@@ -14,7 +14,7 @@ pub use span::{Span, Spanned};
 macro_rules! assert_snapshot_wasm {
     ($path:expr, $actual:expr) => {
         let snap = include_str!($path);
-        let (_, expected) = snap.rsplit_once("---\n").unwrap();
+        let expected = snap.splitn(3, "---\n").last().unwrap();
         pretty_assertions::assert_eq!($actual.trim(), expected.trim());
     };
 }

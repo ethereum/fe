@@ -1,0 +1,6 @@
+contract Bar:
+    pass
+
+contract Foo:
+    pub fn baz():
+        Bar.create(0)

@@ -8,10 +8,11 @@ note:
   │  
 3 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256:
 4 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 9819456037818510846
+  │ ╰─────────────────────────────^ attributes hash: 5400213147538721999
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "val",
@@ -53,10 +54,11 @@ note:
   │  
 6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256:
 7 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 1978781307898700312
+  │ ╰─────────────────────────────^ attributes hash: 15040000206014415348
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "val",
@@ -98,10 +100,11 @@ note:
    │  
  9 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 9430369799730084939
+   │ ╰─────────────────────────────^ attributes hash: 10518987052337912435
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "val",

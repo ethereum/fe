@@ -155,12 +155,18 @@ pub struct FeString {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
+    pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<FixedSize, TypeError>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum SelfDecl {
+    Mutable,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+pub enum CtxDecl {
     Mutable,
 }
 
@@ -378,6 +384,30 @@ impl FunctionSignature {
     /// Panics if the return type is an `Err`
     pub fn expect_return_type(&self) -> FixedSize {
         self.return_type.clone().expect("fn return type error")
+    }
+
+    /// Parameters without `ctx`, if it is a contract function that declares it.
+    ///
+    /// This is used when calling a contract method externally.
+    pub fn external_params(&self) -> &[FunctionParam] {
+        if self.ctx_decl.is_some() {
+            &self.params[1..]
+        } else {
+            &self.params
+        }
+    }
+
+    /// Parameter types without `ctx`, if it is a contract function that declares it.
+    ///
+    /// This is used when calling a contract method externally.
+    ///
+    /// # Panics
+    /// Panics if any param type is an `Err`
+    pub fn external_param_types(&self) -> Vec<FixedSize> {
+        self.external_params()
+            .iter()
+            .map(|param| param.typ.clone().expect("fn param type error"))
+            .collect()
     }
 }
 

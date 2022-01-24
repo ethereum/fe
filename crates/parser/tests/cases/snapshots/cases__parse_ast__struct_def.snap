@@ -174,7 +174,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: Zelf,
+                    kind: Self_,
                     span: Span(
                       start: 79,
                       end: 83,

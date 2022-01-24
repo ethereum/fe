@@ -70,7 +70,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         if matches!(
             args.first(),
             Some(Node {
-                kind: fe::FunctionArg::Zelf,
+                kind: fe::FunctionArg::Self_,
                 ..
             })
         ) {

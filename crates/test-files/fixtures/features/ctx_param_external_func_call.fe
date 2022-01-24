@@ -1,0 +1,24 @@
+use std::context::Context
+
+contract Foo:
+    my_num: u256
+
+    pub fn baz(ctx: Context) -> u256:
+        return ctx.block_number()
+
+    pub fn bing(self, new_num: u256) -> u256:
+        self.my_num = new_num
+        return self.my_num
+
+
+contract Bar:
+
+    pub fn call_baz(ctx: Context, foo_addr: address) -> u256:
+        # let foo = ctx.load<Foo>(foo_addr)
+        let foo: Foo = Foo(ctx, foo_addr)
+        return foo.baz()
+
+    pub fn call_bing(ctx: Context) -> u256:
+        # let foo = ctx.create<Foo>(0)
+        let foo: Foo = Foo.create(ctx, 0)
+        return foo.bing(42)

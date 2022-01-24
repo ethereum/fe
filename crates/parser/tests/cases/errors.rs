@@ -30,12 +30,13 @@ macro_rules! test_parse_err {
         #[wasm_bindgen_test::wasm_bindgen_test]
         fn $name() {
             let actual = err_string(stringify!($name), $parse_fn, $src);
-            let (_, expected) = include_str!(concat!(
+            let expected = include_str!(concat!(
                 "snapshots/cases__errors__",
                 stringify!($name),
                 ".snap"
             ))
-            .rsplit_once("---\n")
+            .splitn(3, "---\n")
+            .last()
             .unwrap();
             pretty_assertions::assert_eq!(actual.trim(), expected.trim());
         }

@@ -4,47 +4,103 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ revert.fe:2:5
+  ┌─ revert.fe:4:5
   │
-2 │     pub msg: u256
+4 │     pub msg: u256
   │     ^^^^^^^^^^^^^ u256
-3 │     pub val: bool
+5 │     pub val: bool
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ revert.fe:6:5
+  ┌─ revert.fe:8:5
   │
-6 │     my_other_error: OtherError
+8 │     my_other_error: OtherError
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
-  ┌─ revert.fe:8:5
-  │  
-8 │ ╭     pub fn bar() -> u256:
-9 │ │         revert
-  │ ╰──────────────^ attributes hash: 17979516652885443340
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
-
-note: 
-   ┌─ revert.fe:11:5
+   ┌─ revert.fe:10:5
    │  
-11 │ ╭     pub fn revert_custom_error():
-12 │ │         std::send_value(address(0), 100)
-   │ ╰────────────────────────────────────────^ attributes hash: 15148455653558261645
+10 │ ╭     pub fn bar() -> u256:
+11 │ │         revert
+   │ ╰──────────────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ revert.fe:13:5
+   │  
+13 │ ╭     pub fn revert_custom_error(ctx: Context):
+14 │ │         ctx.send_value(address(0), 100)
+   │ ╰───────────────────────────────────────^ attributes hash: 11452088215302469574
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ revert.fe:14:9
+   │
+14 │         ctx.send_value(address(0), 100)
+   │         ^^^                    ^ u256: Value
+   │         │                       
+   │         Context: Memory
+
+note: 
+   ┌─ revert.fe:14:24
+   │
+14 │         ctx.send_value(address(0), 100)
+   │                        ^^^^^^^^^^  ^^^ u256: Value
+   │                        │            
+   │                        address: Value
+
+note: 
+   ┌─ revert.fe:14:9
+   │
+14 │         ctx.send_value(address(0), 100)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+
+note: 
+   ┌─ revert.fe:16:5
+   │  
+16 │ ╭     pub fn revert_other_error():
+17 │ │         revert OtherError(msg: 1, val: true)
+   │ ╰────────────────────────────────────────────^ attributes hash: 8319796915330632390
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -54,68 +110,32 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:12:33
+   ┌─ revert.fe:17:32
    │
-12 │         std::send_value(address(0), 100)
-   │                                 ^ u256: Value
-
-note: 
-   ┌─ revert.fe:12:25
-   │
-12 │         std::send_value(address(0), 100)
-   │                         ^^^^^^^^^^  ^^^ u256: Value
-   │                         │            
-   │                         address: Value
-
-note: 
-   ┌─ revert.fe:12:9
-   │
-12 │         std::send_value(address(0), 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-
-note: 
-   ┌─ revert.fe:14:5
-   │  
-14 │ ╭     pub fn revert_other_error():
-15 │ │         revert OtherError(msg: 1, val: true)
-   │ ╰────────────────────────────────────────────^ attributes hash: 15148455653558261645
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
-
-note: 
-   ┌─ revert.fe:15:32
-   │
-15 │         revert OtherError(msg: 1, val: true)
+17 │         revert OtherError(msg: 1, val: true)
    │                                ^       ^^^^ bool: Value
    │                                │        
    │                                u256: Value
 
 note: 
-   ┌─ revert.fe:15:16
+   ┌─ revert.fe:17:16
    │
-15 │         revert OtherError(msg: 1, val: true)
+17 │         revert OtherError(msg: 1, val: true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 
 note: 
-   ┌─ revert.fe:17:5
+   ┌─ revert.fe:19:5
    │  
-17 │ ╭     pub fn revert_other_error_from_sto(self):
-18 │ │         self.my_other_error = OtherError(msg: 1, val: true)
-19 │ │         revert self.my_other_error.to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 17603814563784536273
+19 │ ╭     pub fn revert_other_error_from_sto(self):
+20 │ │         self.my_other_error = OtherError(msg: 1, val: true)
+21 │ │         revert self.my_other_error.to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -125,38 +145,38 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:18:9
+   ┌─ revert.fe:20:9
    │
-18 │         self.my_other_error = OtherError(msg: 1, val: true)
+20 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:18:9
+   ┌─ revert.fe:20:9
    │
-18 │         self.my_other_error = OtherError(msg: 1, val: true)
+20 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
    │         │                                     │        
    │         │                                     u256: Value
    │         OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:18:31
+   ┌─ revert.fe:20:31
    │
-18 │         self.my_other_error = OtherError(msg: 1, val: true)
+20 │         self.my_other_error = OtherError(msg: 1, val: true)
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
-19 │         revert self.my_other_error.to_mem()
+21 │         revert self.my_other_error.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:19:16
+   ┌─ revert.fe:21:16
    │
-19 │         revert self.my_other_error.to_mem()
+21 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:19:16
+   ┌─ revert.fe:21:16
    │
-19 │         revert self.my_other_error.to_mem()
+21 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
 
 

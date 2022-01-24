@@ -23,6 +23,8 @@ The `emit` statement is used to create [log entries] in the blockchain. The `emi
 Examples:
 
 ```python
+use std::context::Context
+
 contract Foo:
     event Mix:
         num1: u256
@@ -30,8 +32,8 @@ contract Foo:
         num2: u256
         my_bytes: Array<u8, 100>
 
-    pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
-        emit Mix(num1: 26, addr, num2: 42, my_bytes)
+    pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>):
+        emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
 ```
 
 [_Expression_]: ../expressions/index.md

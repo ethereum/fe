@@ -1,0 +1,28 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: `create2` expects 3 arguments, but 2 were provided
+  ┌─ compile_errors/ctx_undefined_create2.fe:6:13
+  │
+6 │         Bar.create2(0, 0)
+  │             ^^^^^^^ -  - supplied 2 arguments
+  │             │           
+  │             expects 3 arguments
+
+error: `Context` is not defined
+  ┌─ compile_errors/ctx_undefined_create2.fe:6:20
+  │
+5 │     pub fn baz():
+  │            ---
+  │            │
+  │            Note: declare `ctx` in this function signature
+  │            Example: `pub fn foo(ctx: Context, ...)`
+6 │         Bar.create2(0, 0)
+  │                    ^^^^^^ `ctx` must be defined and passed into the function
+  │
+  = Note: import context with `use std::context::Context`
+  = Example: `MyContract.create(ctx, 0)`
+
+

@@ -17,16 +17,10 @@ error: `MyEvent` is not callable
    │
    = Hint: to emit an event, use `emit MyEvent(..)`
 
-error: `block` is not callable
+error: `self` is not callable
    ┌─ compile_errors/not_callable.fe:13:5
    │
-13 │     block()
-   │     ^^^^^ `block` is a built-in object, and can't be used as a function
-
-error: `self` is not callable
-   ┌─ compile_errors/not_callable.fe:16:5
-   │
-16 │     self()
+13 │     self()
    │     ^^^^ can't be used as a function
 
 

@@ -9,8 +9,5 @@ contract Foo:
   fn call_event():
     MyEvent(x: 10)
 
-  fn call_block():
-    block()
-
   fn call_self(self):
     self()

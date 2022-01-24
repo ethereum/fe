@@ -22,7 +22,7 @@ pub fn all() -> Vec<yul::Statement> {
 }
 
 /// Returns a yul function that decodes a block of abi-encoded data into the
-/// specified [`AbiType`] componenets, eg `abi_decode_data_u256_Foo_u8_calldata`.
+/// specified [`AbiType`] components, eg `abi_decode_data_u256_Foo_u8_calldata`.
 /// The decoding of each component is handled by a separate function, eg.
 /// `abi_decode_component_uint32_mem`; these component decoding functions
 /// are also included in the returned `Vec`.

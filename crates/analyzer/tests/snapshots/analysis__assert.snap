@@ -16,10 +16,11 @@ note:
   │  
 5 │ ╭     pub fn bar(baz: u256):
 6 │ │         assert baz > 5
-  │ ╰──────────────────────^ attributes hash: 3718407254252637682
+  │ ╰──────────────────────^ attributes hash: 1354114416662435681
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "baz",
@@ -58,10 +59,11 @@ note:
   │  
 8 │ ╭     pub fn revert_with_static_string(baz: u256):
 9 │ │         assert baz > 5, "Must be greater than five"
-  │ ╰───────────────────────────────────────────────────^ attributes hash: 3718407254252637682
+  │ ╰───────────────────────────────────────────────────^ attributes hash: 1354114416662435681
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "baz",
@@ -102,10 +104,11 @@ note:
    │  
 11 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>):
 12 │ │         assert baz > 5, reason
-   │ ╰──────────────────────────────^ attributes hash: 10846245641845463539
+   │ ╰──────────────────────────────^ attributes hash: 10290486639185495177
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "baz",
@@ -157,12 +160,13 @@ note:
 14 │ ╭     pub fn assert_sto_bool(self):
 15 │ │         self.my_bool = false
 16 │ │         assert self.my_bool
-   │ ╰───────────────────────────^ attributes hash: 17603814563784536273
+   │ ╰───────────────────────────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -199,12 +203,13 @@ note:
 18 │ ╭     pub fn assert_sto_string_msg(self):
 19 │ │         self.my_string = "hello"
 20 │ │         assert false, self.my_string.to_mem()
-   │ ╰─────────────────────────────────────────────^ attributes hash: 17603814563784536273
+   │ ╰─────────────────────────────────────────────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

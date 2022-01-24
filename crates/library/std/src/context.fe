@@ -1,0 +1,68 @@
+use ingot::evm
+use ingot::error::{
+    ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE,
+    ERROR_FAILED_SEND_VALUE,
+    Error
+}
+
+pub struct Context:
+    pub fn block_coinbase(self) -> address:
+        unsafe:
+            return evm::coin_base()
+
+    pub fn block_difficulty(self) -> u256:
+        unsafe:
+            return evm::difficulty()
+
+    pub fn block_number(self) -> u256:
+        unsafe:
+            return evm::block_number()
+
+    pub fn block_timestamp(self) -> u256:
+        unsafe:
+            return evm::timestamp()
+
+    pub fn chain_id(self) -> u256:
+        unsafe:
+            return evm::chain_id()
+
+    pub fn msg_sender(self) -> address:
+        unsafe:
+            return evm::caller()
+
+    pub fn msg_value(self) -> u256:
+        unsafe:
+            return evm::call_value()
+
+    pub fn tx_gas_price(self) -> u256:
+        unsafe:
+            return evm::gas_price()
+
+    pub fn tx_origin(self) -> address:
+        unsafe:
+            return evm::origin()
+
+    pub fn msg_sig(self) -> u256:
+        unsafe:
+            return evm::shr(224, evm::call_data_load(0))
+
+    pub fn balance_of(self, account: address) -> u256:
+        unsafe:
+            return evm::balance_of(account)
+
+    pub fn self_balance(self) -> u256:
+        unsafe:
+            return evm::balance()
+
+    pub fn self_address(self) -> address:
+        unsafe:
+            return address(__address())
+
+    pub fn send_value(self, to: address, wei: u256):
+      unsafe:
+        if evm::balance() < wei:
+            revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
+
+        let success: u256 = evm::call(evm::gas(), to, wei, 0, 0, 0, 0)
+        if success == 0:
+            revert Error(code: ERROR_FAILED_SEND_VALUE)

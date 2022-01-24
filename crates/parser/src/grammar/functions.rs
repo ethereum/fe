@@ -107,7 +107,7 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                 let name = par.next()?;
 
                 if name.kind == TokenKind::SelfValue {
-                    params.push(Node::new(FunctionArg::Zelf, name.span));
+                    params.push(Node::new(FunctionArg::Self_, name.span));
                 } else {
                     par.expect_with_notes(
                         TokenKind::Colon,

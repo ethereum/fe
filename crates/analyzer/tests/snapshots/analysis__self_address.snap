@@ -4,17 +4,30 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ self_address.fe:2:5
+  ┌─ self_address.fe:4:5
   │  
-2 │ ╭     pub fn my_address(self) -> address:
-3 │ │         return self.address
-  │ ╰───────────────────────────^ attributes hash: 10447292744135180405
+4 │ ╭     pub fn my_address(ctx: Context) -> address:
+5 │ │         return ctx.self_address()
+  │ ╰─────────────────────────────────^ attributes hash: 17345910255563017853
   │  
   = FunctionSignature {
-        self_decl: Some(
+        self_decl: None,
+        ctx_decl: Some(
             Mutable,
         ),
-        params: [],
+        params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
         return_type: Ok(
             Base(
                 Address,
@@ -23,15 +36,15 @@ note:
     }
 
 note: 
-  ┌─ self_address.fe:3:16
+  ┌─ self_address.fe:5:16
   │
-3 │         return self.address
-  │                ^^^^ Foo: Value
+5 │         return ctx.self_address()
+  │                ^^^ Context: Memory
 
 note: 
-  ┌─ self_address.fe:3:16
+  ┌─ self_address.fe:5:16
   │
-3 │         return self.address
-  │                ^^^^^^^^^^^^ address: Value
+5 │         return ctx.self_address()
+  │                ^^^^^^^^^^^^^^^^^^ address: Value
 
 

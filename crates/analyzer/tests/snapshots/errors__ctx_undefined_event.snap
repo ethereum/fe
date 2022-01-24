@@ -1,0 +1,20 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: `Context` is not defined
+  ┌─ compile_errors/ctx_undefined_event.fe:6:9
+  │
+5 │     pub fn bar():
+  │            ---
+  │            │
+  │            Note: declare `ctx` in this function signature
+  │            Example: `pub fn foo(ctx: Context, ...)`
+6 │         emit YouWin(amount: 42)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^ `ctx` must be defined and passed into the event
+  │
+  = Note: import context with `use std::context::Context`
+  = Example: emit MyEvent(ctx, ...)
+
+

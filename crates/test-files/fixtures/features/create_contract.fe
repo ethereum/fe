@@ -1,8 +1,10 @@
+use std::context::Context
+
 contract Foo:
     pub fn get_my_num() -> u256:
         return 42
 
 contract FooFactory:
-    pub fn create_foo() -> address:
-        let foo: Foo = Foo.create(0)
+    pub fn create_foo(ctx: Context) -> address:
+        let foo: Foo = Foo.create(ctx, 0)
         return address(foo)

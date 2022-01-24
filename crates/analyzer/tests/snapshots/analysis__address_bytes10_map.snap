@@ -14,12 +14,13 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10>:
 5 │ │         return self.bar[key].to_mem()
-  │ ╰─────────────────────────────────────^ attributes hash: 17131555945527520636
+  │ ╰─────────────────────────────────────^ attributes hash: 10371061185540732837
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "key",
@@ -73,12 +74,13 @@ note:
   │  
 7 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 427041985524849514
+  │ ╰─────────────────────────────^ attributes hash: 5919689659161919529
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "key",

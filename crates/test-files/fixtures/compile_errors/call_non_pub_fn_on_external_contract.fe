@@ -1,3 +1,4 @@
+use std::context::Context
 
 contract Foo:
   val: u8
@@ -5,5 +6,5 @@ contract Foo:
      self.val = 100
 
 contract Bar:
-  fn test():
-    Foo(address(0)).do_private_thingz()
+  fn test(ctx: Context):
+    Foo(ctx, address(0)).do_private_thingz()

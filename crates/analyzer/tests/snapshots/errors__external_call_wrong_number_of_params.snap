@@ -4,11 +4,11 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `bar` expects 2 arguments, but 1 was provided
-  ┌─ compile_errors/external_call_wrong_number_of_params.fe:7:25
+  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:30
   │
-7 │         Foo(address(0)).bar(42)
-  │                         ^^^ -- supplied 1 argument
-  │                         │    
-  │                         expects 2 arguments
+9 │         Foo(ctx, address(0)).bar(42)
+  │                              ^^^ -- supplied 1 argument
+  │                              │    
+  │                              expects 2 arguments
 
 

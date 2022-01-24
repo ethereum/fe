@@ -8,10 +8,11 @@ note:
   │  
 2 │ ╭     pub fn bar(x: u64) -> u64:
 3 │ │         return x
-  │ ╰────────────────^ attributes hash: 6904023592385922456
+  │ ╰────────────────^ attributes hash: 9587363388275941446
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "x",

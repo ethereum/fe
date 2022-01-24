@@ -11,10 +11,11 @@ note:
 5 │ │             return 1
 6 │ │         else:
 7 │ │             return 0
-  │ ╰────────────────────^ attributes hash: 16591277757740338966
+  │ ╰────────────────────^ attributes hash: 9715528395521480793
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "input",

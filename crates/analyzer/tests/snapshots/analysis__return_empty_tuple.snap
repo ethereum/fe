@@ -8,10 +8,11 @@ note:
   │  
 3 │ ╭   pub fn explicit_return_a1():
 4 │ │     return
-  │ ╰──────────^ attributes hash: 15148455653558261645
+  │ ╰──────────^ attributes hash: 8319796915330632390
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -25,10 +26,11 @@ note:
   │  
 6 │ ╭   pub fn explicit_return_a2():
 7 │ │     return ()
-  │ ╰─────────────^ attributes hash: 15148455653558261645
+  │ ╰─────────────^ attributes hash: 8319796915330632390
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -48,10 +50,11 @@ note:
    │  
  9 │ ╭   pub fn explicit_return_b1() -> ():
 10 │ │     return
-   │ ╰──────────^ attributes hash: 15148455653558261645
+   │ ╰──────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -65,10 +68,11 @@ note:
    │  
 12 │ ╭   pub fn explicit_return_b2() -> ():
 13 │ │     return ()
-   │ ╰─────────────^ attributes hash: 15148455653558261645
+   │ ╰─────────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -88,10 +92,11 @@ note:
    │  
 15 │ ╭   pub fn implicit_a1():
 16 │ │     pass
-   │ ╰────────^ attributes hash: 15148455653558261645
+   │ ╰────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -105,10 +110,11 @@ note:
    │  
 18 │ ╭   pub fn implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 15148455653558261645
+   │ ╰────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

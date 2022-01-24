@@ -4,9 +4,9 @@ use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
 use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
-use crate::namespace::items::Item;
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
-use crate::namespace::types::FixedSize;
+use crate::namespace::items::{Item, TypeDef};
+use crate::namespace::types::{FixedSize, Struct};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -15,6 +15,7 @@ use fe_parser::{ast::Expr, node::Node};
 use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::ops::Deref;
 
 use super::types::Type;
 
@@ -123,6 +124,20 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         }
 
         item.value.map(NamedThing::Item)
+    }
+
+    /// Gets `std::context::Context` if it exists
+    fn get_context_type(&self) -> Option<Struct> {
+        if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
+            self.resolve_name("Context")
+        {
+            // we just assume that there is only one `Context` defined in `std`
+            if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
+                return Some(id.typ(self.db()).deref().clone());
+            }
+        }
+
+        None
     }
 }
 
@@ -329,6 +344,18 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
         item.value.map(NamedThing::Item)
     }
+
+    fn get_context_type(&self) -> Option<Struct> {
+        if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
+            self.resolve_name("Context")
+        {
+            if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
+                return Some(id.typ(self.db()).deref().clone());
+            }
+        }
+
+        None
+    }
 }
 
 pub struct BlockScope<'a, 'b> {
@@ -451,6 +478,18 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)
+    }
+
+    fn get_context_type(&self) -> Option<Struct> {
+        if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
+            self.resolve_name("Context")
+        {
+            if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
+                return Some(id.typ(self.db()).deref().clone());
+            }
+        }
+
+        None
     }
 }
 

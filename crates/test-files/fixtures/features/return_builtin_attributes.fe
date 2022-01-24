@@ -1,27 +1,29 @@
+use std::context::Context
+
 contract Foo:
-    pub fn coinbase() -> address:
-        return block.coinbase
+    pub fn coinbase(ctx: Context) -> address:
+        return ctx.block_coinbase()
 
-    pub fn difficulty() -> u256:
-        return block.difficulty
+    pub fn difficulty(ctx: Context) -> u256:
+        return ctx.block_difficulty()
 
-    pub fn number() -> u256:
-        return block.number
+    pub fn number(ctx: Context) -> u256:
+        return ctx.block_number()
 
-    pub fn timestamp() -> u256:
-        return block.timestamp
+    pub fn timestamp(ctx: Context) -> u256:
+        return ctx.block_timestamp()
 
-    pub fn chainid() -> u256:
-        return chain.id
+    pub fn chainid(ctx: Context) -> u256:
+        return ctx.chain_id()
 
-    pub fn sender() -> address:
-        return msg.sender
+    pub fn sender(ctx: Context) -> address:
+        return ctx.msg_sender()
 
-    pub fn value() -> u256:
-        return msg.value
+    pub fn value(ctx: Context) -> u256:
+        return ctx.msg_value()
 
-    pub fn origin() -> address:
-        return tx.origin
+    pub fn origin(ctx: Context) -> address:
+        return ctx.tx_origin()
 
-    pub fn gas_price() -> u256:
-        return tx.gas_price
+    pub fn gas_price(ctx: Context) -> u256:
+        return ctx.tx_gas_price()

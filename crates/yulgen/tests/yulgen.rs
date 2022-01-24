@@ -29,19 +29,22 @@ macro_rules! test_yulgen {
 // constructor
 test_yulgen! { constructor_no_init,  constructor::build() }
 
-fn functions() -> Vec<(SmolStr, SmolStr, Vec<AbiType>, Option<AbiType>)> {
+#[allow(clippy::type_complexity)]
+fn functions() -> Vec<(SmolStr, SmolStr, Vec<AbiType>, Option<AbiType>, bool)> {
     vec![
         (
             "hello_world".into(),
             "$$somemod$hello_world".into(),
             vec![],
             Some(AbiType::String { max_size: 42 }),
+            false,
         ),
         (
             "add".into(),
             "$$somemod$add".into(),
             vec![AbiType::Uint { size: 32 }, AbiType::Uint { size: 32 }],
             Some(AbiType::Uint { size: 32 }),
+            true,
         ),
     ]
 }

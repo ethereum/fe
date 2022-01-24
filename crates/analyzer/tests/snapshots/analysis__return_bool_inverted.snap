@@ -8,10 +8,11 @@ note:
   │  
 2 │ ╭     pub fn bar(some_condition: bool) -> bool:
 3 │ │         return not some_condition
-  │ ╰─────────────────────────────────^ attributes hash: 7363475879734480653
+  │ ╰─────────────────────────────────^ attributes hash: 5815264722058007031
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "some_condition",

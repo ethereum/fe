@@ -237,11 +237,14 @@ contract GuestBook:
 "# }
 
 test_parse! { module_level_events, try_parse_module, r#"
+use std::context::Context
+
 event Transfer:
     idx sender: address
     idx receiver: address
     value: u256
+
 contract Foo:
-    fn transfer(to : address, value : u256):
-        emit Transfer(sender: msg.sender, receiver: to, value)
+    fn transfer(ctx: Context, to: address, value: u256):
+        emit Transfer(ctx, sender: msg.sender, receiver: to, value)
 "# }

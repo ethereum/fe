@@ -4,14 +4,15 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ create_contract.fe:2:5
+  ┌─ create_contract.fe:4:5
   │  
-2 │ ╭     pub fn get_my_num() -> u256:
-3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 17979516652885443340
+4 │ ╭     pub fn get_my_num() -> u256:
+5 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 6115314201970082834
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -23,53 +24,70 @@ note:
     }
 
 note: 
-  ┌─ create_contract.fe:3:16
+  ┌─ create_contract.fe:5:16
   │
-3 │         return 42
+5 │         return 42
   │                ^^ u256: Value
 
 note: 
-  ┌─ create_contract.fe:6:5
-  │  
-6 │ ╭     pub fn create_foo() -> address:
-7 │ │         let foo: Foo = Foo.create(0)
-8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 14219262914863437447
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Address,
-            ),
-        ),
-    }
+   ┌─ create_contract.fe:8:5
+   │  
+ 8 │ ╭     pub fn create_foo(ctx: Context) -> address:
+ 9 │ │         let foo: Foo = Foo.create(ctx, 0)
+10 │ │         return address(foo)
+   │ ╰───────────────────────────^ attributes hash: 17345910255563017853
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Address,
+             ),
+         ),
+     }
 
 note: 
-  ┌─ create_contract.fe:7:18
+  ┌─ create_contract.fe:9:18
   │
-7 │         let foo: Foo = Foo.create(0)
+9 │         let foo: Foo = Foo.create(ctx, 0)
   │                  ^^^ Foo
 
 note: 
-  ┌─ create_contract.fe:7:35
+  ┌─ create_contract.fe:9:35
   │
-7 │         let foo: Foo = Foo.create(0)
-  │                                   ^ u256: Value
+9 │         let foo: Foo = Foo.create(ctx, 0)
+  │                                   ^^^  ^ u256: Value
+  │                                   │     
+  │                                   Context: Memory
 
 note: 
-  ┌─ create_contract.fe:7:24
-  │
-7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^^^^ Foo: Value
-8 │         return address(foo)
-  │                        ^^^ Foo: Value
+   ┌─ create_contract.fe:9:24
+   │
+ 9 │         let foo: Foo = Foo.create(ctx, 0)
+   │                        ^^^^^^^^^^^^^^^^^^ Foo: Value
+10 │         return address(foo)
+   │                        ^^^ Foo: Value
 
 note: 
-  ┌─ create_contract.fe:8:16
-  │
-8 │         return address(foo)
-  │                ^^^^^^^^^^^^ address: Value
+   ┌─ create_contract.fe:10:16
+   │
+10 │         return address(foo)
+   │                ^^^^^^^^^^^^ address: Value
 
 
