@@ -1,4 +1,3 @@
-pub mod revm;
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
