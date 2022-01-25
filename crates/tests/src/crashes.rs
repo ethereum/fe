@@ -18,5 +18,6 @@ macro_rules! test_file {
 
 test_file! { agroce531 }
 test_file! { agroce550 }
+test_file! { agroce551 }
 test_file! { agroce623 }
 test_file! { revert_const }
