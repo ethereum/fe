@@ -47,9 +47,9 @@ pub trait YulgenDb:
     #[salsa::invoke(queries::structs::struct_qualified_name)]
     fn struct_qualified_name(&self, id: StructId) -> SmolStr;
     #[salsa::invoke(queries::structs::struct_getter_name)]
-    fn struct_getter_name(&self, id: StructId, field: SmolStr, deref: bool) -> SmolStr;
+    fn struct_getter_name(&self, id: StructId, field: SmolStr) -> SmolStr;
     #[salsa::invoke(queries::structs::struct_getter_fn)]
-    fn struct_getter_fn(&self, id: StructId, field: SmolStr, deref: bool) -> yul::Statement;
+    fn struct_getter_fn(&self, id: StructId, field: SmolStr) -> yul::Statement;
     #[salsa::invoke(queries::structs::struct_init_name)]
     fn struct_init_name(&self, id: StructId) -> SmolStr;
     #[salsa::invoke(queries::structs::struct_init_fn)]
