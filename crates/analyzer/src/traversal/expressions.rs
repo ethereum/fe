@@ -424,7 +424,7 @@ fn is_valid_string(val: &str) -> bool {
         13u8, // Carriage return
     ];
 
-    const PRINTABLE_ASCII: RangeInclusive<u8> = 31u8..=126u8;
+    const PRINTABLE_ASCII: RangeInclusive<u8> = 32u8..=126u8;
 
     for x in val.as_bytes() {
         if ALLOWED_SPECIAL_CHARS.contains(x) || PRINTABLE_ASCII.contains(x) {
