@@ -477,7 +477,13 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
             // struct `self` is handled like any other struct value,
             // and keeps the name `self` in the generated yul.
             let target = expr(context, target);
-            struct_operations::get_attribute(context.db, struct_.id, &field.kind, target)
+            struct_operations::get_attribute(
+                context.db,
+                context.adb,
+                struct_.id,
+                &field.kind,
+                target,
+            )
         }
         _ => panic!("invalid type for field access: {:?}", &target_attrs.typ),
     }

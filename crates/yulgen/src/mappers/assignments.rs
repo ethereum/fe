@@ -39,10 +39,7 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
             (Location::Memory, Location::Memory) => {
                 if let fe::Expr::Attribute { value: val, .. } = &target_node.kind {
                     if let Type::Struct(_) = context.expression_attributes(val).typ {
-                        // This whole thing is pretty awkward. It may be better to have the getters
-                        // without auto-deref and add special deref(..) calls at the places that
-                        // need them.
-                        return statement! { mstoren([expr_to_raw_ptr_call(&target)], 32, [value]) };
+                        return statement! { mstoren([drop_deref(&target)], 32, [value]) };
                     }
                 }
 
@@ -82,16 +79,19 @@ fn expr_as_ident(expr: yul::Expression) -> yul::Identifier {
     }
 }
 
-fn expr_to_raw_ptr_call(expr: &yul::Expression) -> yul::Expression {
+fn drop_deref(expr: &yul::Expression) -> yul::Expression {
     if let yul::Expression::FunctionCall(FunctionCall {
         identifier,
         arguments,
-    }) = &expr
+    }) = expr
     {
-        yul::Expression::FunctionCall(FunctionCall {
-            identifier: identifier! {(format!("{}_raw", &identifier.identifier))},
-            arguments: arguments.clone(),
-        })
+        if identifier.identifier != "mload" {
+            panic!("Expected mload(some_fn(..)");
+        }
+        arguments
+            .first()
+            .expect("expected mload(..) to contain an argument")
+            .clone()
     } else {
         panic!("expression is not a function call {}", expr);
     }

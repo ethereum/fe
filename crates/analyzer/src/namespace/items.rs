@@ -3,6 +3,7 @@ use crate::context;
 use crate::context::Analysis;
 use crate::errors::{self, TypeError};
 use crate::impl_intern_key;
+use crate::namespace::types::FixedSize;
 use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
@@ -1335,6 +1336,10 @@ impl StructId {
         name: &str,
     ) -> Option<Result<types::FixedSize, TypeError>> {
         Some(self.field(db, name)?.typ(db))
+    }
+
+    pub fn is_base_type(&self, db: &dyn AnalyzerDb, name: &str) -> bool {
+        matches!(self.field_type(db, name), Some(Ok(FixedSize::Base(_))))
     }
 
     pub fn has_complex_fields(&self, db: &dyn AnalyzerDb) -> bool {
