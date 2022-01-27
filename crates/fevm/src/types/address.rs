@@ -1,4 +1,6 @@
 use crate::primitive_types::H160;
+use crate::AsToken;
+use crate::conversion::address_token;
 use ethabi::token::Token;
 pub type Address = H160;
 fn random_address() -> Address {
@@ -17,10 +19,6 @@ impl Caller {
     pub fn address(&self) -> Address {
         self.0
     }
-
-    pub fn as_token(&self) -> Token {
-        Token::Address(self.0)
-    }
 }
 
 impl AsRef<Address> for Caller {
@@ -38,6 +36,18 @@ impl From<Address> for Caller {
 
 impl Into<Token> for Caller {
     fn into(self) -> Token {
+        Token::Address(self.address())
+    }
+}
+
+impl AsToken for Address {
+    fn as_token(&self) -> Token {
+        address_token(self.clone())
+    }
+}
+
+impl AsToken for Caller {
+    fn as_token(&self) -> Token {
         Token::Address(self.address())
     }
 }

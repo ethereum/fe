@@ -780,6 +780,7 @@ dependencies = [
  "fe-test-files",
  "fe-yulc",
  "fe-yulgen",
+ "fevm",
  "getrandom 0.2.3",
  "hex",
  "indexmap",

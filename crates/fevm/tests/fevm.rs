@@ -1,4 +1,4 @@
-use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*};
+use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*, AsToken};
 use primitive_types::H160;
 use std::str::FromStr;
 
@@ -23,6 +23,7 @@ fn test_get_u256() {
 
 #[test]
 fn uniswap_fevm() {
+// -------------------------------ENVIRONMENT SETUP-------------------------------
     let mut fevm = Fevm::new();
 
     let alice = Caller::random();
@@ -33,6 +34,8 @@ fn uniswap_fevm() {
     fevm.create_account(&bob, 0_u64);
     fevm.create_account(&deployer, 2000_u64);
 
+
+// -------------------------------TOKEN SETUP-------------------------------
     let token0_name = string_token("Fe Coin");
     let token0_symbol = string_token("fe");
     let token1_name = string_token("Maker");
@@ -46,9 +49,8 @@ fn uniswap_fevm() {
         .fixture("demos/erc20_token.fe", "ERC20");
     let token1_contract = token1_contract.deploy(&deployer, &[token1_name, token1_symbol]);
 
-
-    let token0_address = address_token(token0_contract.address.clone().unwrap());
-    let token1_address = address_token(token1_contract.address.clone().unwrap());
+    let token0_address = token0_contract.address.clone().unwrap().as_token();
+    let token1_address = token1_contract.address.clone().unwrap().as_token();
     token0_contract.call(
         "transfer",
         &[
@@ -57,7 +59,6 @@ fn uniswap_fevm() {
         ],
         &deployer
     );
-
     token1_contract.call(
         "transfer",
             &[alice.as_token(),
@@ -72,6 +73,7 @@ fn uniswap_fevm() {
     ).unwrap();
 
     assert_eq!(balance_alice, uint_token_from_dec_str("500000000000000000000000"));
+
     let balance_alice = token0_contract.call(
         "balanceOf",
         &[alice.as_token()],
@@ -80,26 +82,27 @@ fn uniswap_fevm() {
 
     assert_eq!(balance_alice, uint_token_from_dec_str("500000000000000000000000"));
 
+// -------------------------------FACTORY SETUP-------------------------------
+
     let factory_contract = ContractBuilder::new(&fevm)
         .fixture("demos/uniswap.fe", "UniswapV2Factory");
     let factory_contract = factory_contract.deploy(&deployer, &[address_token(H160::default())]);
+    let factory_address = factory_contract.address.clone().unwrap().as_token();
 
     let pair_address = factory_contract.call(
         "create_pair", 
         &[token0_address.clone(), token1_address.clone()],
         &deployer
     ).unwrap();
-    println!("PAIR contract address: {:?}", pair_address);
-
+    let pair_address = pair_address.into_address().unwrap();
     let pair_contract = ContractBuilder::new(&fevm)
-        .address(pair_address.clone().into_address().unwrap())
+        .address(pair_address)
         .fixture( "demos/uniswap.fe", "UniswapV2Pair");
 
     
-    
     let read_factory_ret = pair_contract.call("factory", &[], &deployer).unwrap();
 
-    assert_eq!(read_factory_ret, address_token(factory_contract.address.clone().unwrap()));
+    assert_eq!(read_factory_ret, factory_address);
 
 
     let token0_pair_addr = pair_contract
@@ -113,10 +116,10 @@ fn uniswap_fevm() {
         assert!(token1_pair_addr == token1_address.clone() || token0_pair_addr == token1_address.clone());
 
 
-    // Alice adds liquidity
+// -------------------------------ALICE ADDS LIQUIDITY-------------------------------
     let ret = token0_contract
         .call("transfer", &[
-            address_token(pair_contract.address.clone().unwrap()),
+            pair_address.as_token(),
             uint_token_from_dec_str("200000000000000000000")
         ], &alice)
         .unwrap();
@@ -124,13 +127,13 @@ fn uniswap_fevm() {
 
     let ret = token1_contract
         .call("transfer", &[
-            address_token(pair_contract.address.clone().unwrap()),
+            pair_address.as_token(),
             uint_token_from_dec_str("100000000000000000000")
         ], &alice)
         .unwrap();
     assert_eq!(ret, bool_token(true));
 
-    // Mint alice liquidity tokens
+    //---------------------Mint alice liquidity tokens---------------------
     // Since we have sent 200 of token0 and 100 of token1,
     // value of token0 is 1/2 that of token1
     let alice_liquidity = pair_contract
@@ -142,7 +145,7 @@ fn uniswap_fevm() {
         .unwrap();
     assert_eq!(alice_liquidity, alice_lp_tkn_balance);
 
-    // Check minimum liquidity is locked in 0 address
+    // ---------------------Check Min Liquidity---------------------
 
     let locked_liquidity = pair_contract.call(
         "balanceOf",
@@ -151,7 +154,7 @@ fn uniswap_fevm() {
     ).unwrap();
     assert_eq!(locked_liquidity, uint_token(1000));
 
-    // Validate reserves
+    // ---------------------Validate reserves---------------------
 
     let reserves = pair_contract.call(
         "get_reserves",
@@ -165,24 +168,23 @@ fn uniswap_fevm() {
     ]));
 
 
-    // Give bob some token1 to swap with
-
+// -------------------------------BOB PERFORMS SWAP-------------------------------
+    
+    //--------------------- Give bob some token1 to swap with---------------------
     token1_contract.call(
         "transfer",
         &[bob.as_token(), uint_token(1000)],
         &deployer,
     );
 
-
-
+    // ---------------------Actual Swap---------------------
     // Bob performs a swap by depositing to 1000 smallest units of token 1 to 
     // the pair contract
     // Since token1 price = 1tk1/2tk0, we should expect to receive
     // roughly 2000 tk0
-
     token1_contract.call(
         "transfer",
-        &[pair_address.clone(), uint_token(1000)],
+        &[pair_address.as_token(), uint_token(1000)],
         &bob
     );
 
@@ -192,6 +194,7 @@ fn uniswap_fevm() {
         &bob
     );
 
+    // ---------------------Validate Swap---------------------
     // Check that bob's token0 balance has increase to 1993 (accounting for 0.3% fee)
     let bob_bal = token0_contract.call(
         "balanceOf",
@@ -202,7 +205,7 @@ fn uniswap_fevm() {
     assert_eq!(bob_bal, uint_token_from_dec_str("1993"));
 
 
-    // Validate reserves
+    // -------------------------------Validate Reserves-------------------------------
     let reserves_post_swap = pair_contract.call(
         "get_reserves",
         &[],
@@ -217,11 +220,10 @@ fn uniswap_fevm() {
         ])
     );
 
-    // Alice removes Liquidity
-
+// -------------------------------ALICE REMOVES LIQUIDITY-------------------------------
     pair_contract.call(
         "transfer",
-        &[pair_address.clone(), alice_liquidity],
+        &[pair_address.as_token(), alice_liquidity],
         &alice
     );
 
@@ -240,9 +242,9 @@ fn uniswap_fevm() {
         )
     );
 
-    // Sanity check token balances
+// -------------------------------FINAL CHECK OF TOKEN BALANCES-------------------------------
 
-    // Validate all of token0 tkns are held between pair contract & actors
+    //---------------------Validate Token 0 Balances---------------------
 
     let bob_tkn0 = token0_contract.call(
         "balanceOf",
@@ -262,7 +264,7 @@ fn uniswap_fevm() {
 
     let pair_tkn0 = token0_contract.call(
         "balanceOf",
-        &[pair_address.clone()],
+        &[pair_address.as_token()],
         &deployer
     ).unwrap();
 
@@ -277,7 +279,7 @@ fn uniswap_fevm() {
 
     
 
-    // Validate token 1 tokens held between pair contract & actors
+    //---------------------Validate Token1 Balances---------------------
 
  let bob_tkn1 = token1_contract.call(
         "balanceOf",
@@ -297,7 +299,7 @@ fn uniswap_fevm() {
 
     let pair_tkn1 = token1_contract.call(
         "balanceOf",
-        &[pair_address.clone()],
+        &[pair_address.as_token()],
         &deployer
     ).unwrap();
 
