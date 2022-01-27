@@ -1,4 +1,5 @@
 pub mod types;
+use ethabi::Token;
 use revm::Log;
 pub use types::*;
 
@@ -43,6 +44,9 @@ impl ToBeBytes for U256 {
     }
 }
 
+pub trait AsToken {
+    fn as_token(&self) -> Token;
+}
 
 pub struct Fevm<'a>{
     inner: RefCell<EVM<InMemoryDB>>,

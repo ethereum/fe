@@ -17,6 +17,7 @@ fe-yulgen = {path = "../yulgen", version = "^0.13.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.13.0-alpha", optional = true, features = ["solc-backend"]}
 fe-analyzer = {path = "../analyzer", version = "^0.13.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
+fevm = {path = "../fevm", version = "0.1.0"}
 hex = "0.4"
 primitive-types-old = {package = "primitive-types", version = "0.9", default-features = false, features = ["rlp"]}
 primitive-types-new = {package = "primitive-types", version = "0.10", default-features = false, features = ["rlp"]}
@@ -42,3 +43,6 @@ harness = false
 
 [features]
 solc-backend = ["fe-yulc", "solc", "fe-driver/solc-backend"]
+
+[profile.bench]
+debug = true

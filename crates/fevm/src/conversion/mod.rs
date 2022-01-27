@@ -15,7 +15,7 @@ pub fn uint_token_from_dec_str(val: &str) -> ethabi::Token {
 
 #[allow(dead_code)]
 pub fn address_token(addr: primitive_types::H160) -> ethabi::Token {
-    ethabi::Token::Address(addr)
+    ethabi::Token::Address(addr.clone())
 }
 
 #[allow(dead_code)]
