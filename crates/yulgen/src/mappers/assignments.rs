@@ -1,6 +1,7 @@
 use crate::context::FnContext;
 use crate::mappers::expressions;
 use crate::operations::data as data_operations;
+use crate::operations::structs as struct_operations;
 use fe_analyzer::context::Location;
 use fe_analyzer::namespace::types::{FixedSize, Type};
 use fe_parser::ast as fe;
@@ -29,6 +30,14 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
             target_attributes.final_location(),
         ) {
             (Location::Memory, Location::Storage { .. }) => {
+                if let fe::Expr::Attribute { .. } = &target_node.kind {
+                    if let Type::Struct(struct_) = &context.expression_attributes(target_node).typ {
+                        return struct_operations::copy_to_storage(
+                            context.db, struct_, target, value,
+                        );
+                    }
+                }
+
                 data_operations::mcopys(typ, target, value)
             }
             (Location::Memory, Location::Value) => {
