@@ -5,7 +5,7 @@ struct MyStruct:
     my_addr: address
     my_num3: i8
 
-contract Foo:
+contract Foostorage_and_memoryFe:
 
   data: MyStruct
   items: Array<i8,1>

@@ -1,9 +1,12 @@
-#![cfg(feature = "solc-backend")]
+use criterion::{criterion_group, criterion_main, Criterion};
+use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*, AsToken};
+use primitive_types_new::H160;
+use std::str::FromStr;
 
-use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*, AsToken, H160};
 
-#[test]
-fn uniswap_contracts() {
+
+
+fn uniswap_fevm() {
 // -------------------------------ENVIRONMENT SETUP-------------------------------
     let mut fevm = Fevm::new();
 
@@ -294,3 +297,12 @@ fn uniswap_contracts() {
     assert_eq!(deployer_tkn1, uint_token_from_dec_str("499999999999999999999000"));
 
 }
+
+pub fn criterion_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("fevm");
+    group.sample_size(10);
+    group.bench_function("uniswap_fevm", |b| b.iter(|| uniswap_fevm()));
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);

@@ -4,11 +4,11 @@ use fe_common::files::FileStore;
 use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
-use primitive_types::{H160, U256};
+pub use primitive_types_old::{self as primitive_types, H160, U256};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use yultsur::*;
-
+pub use ethabi_old as ethabi;
 pub trait ToBeBytes {
     fn to_be_bytes(&self) -> [u8; 32];
 }

@@ -20,6 +20,7 @@ fe-parser = {path = "../parser", version = "^0.12.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.12.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.12.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.12.0-alpha"}
+fevm = {path = "../fevm"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
@@ -30,7 +31,7 @@ yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 insta = "1.7.1"
 pretty_assertions = "1.0.0"
 wasm-bindgen-test = "0.3.24"
-
+once_cell = "1.9.0"
 [features]
 solc-backend = ["fe-yulc/solc-backend", "fe-compiler-test-utils/solc-backend"]
 
@@ -41,3 +42,4 @@ version = "1.0.0"
 default-features = false
 # Enable using the `std` crate.
 features = ["std"]
+

@@ -1,21 +1,32 @@
 #![cfg(feature = "solc-backend")]
 
-use fe_compiler_test_utils::*;
+
+use fevm::{Fevm, ContractBuilder, Contract, Caller, Address, U256, conversion::*, AsToken, H160};
+
 
 #[test]
 fn guest_book() {
-    with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "demos/guest_book.fe", "GuestBook", &[]);
+    let mut fevm = Fevm::new();
 
-        let sender = address_token("1234000000000000000000000000000000005678");
-        let msg = string_token("hello world");
+    let alice = Caller::random();
+    let sender = Caller::random();
+    fevm.create_account(&alice, 0_u64);
+   
+    fevm.create_account(&sender, 1000_u64);
 
-        harness.caller = sender.clone().into_address().unwrap();
+    let guestbook_contract = ContractBuilder::new(&fevm)
+    .fixture("demos/guest_book.fe", "GuestBook");
+    let guestbook_contract = guestbook_contract.deploy(&alice, &[]);
+    let msg = string_token("hello world");
 
-        harness.test_function(&mut executor, "sign", &[msg.clone()], None);
+    let sign_result = guestbook_contract.call("sign", &[msg.clone()], &sender);
+    assert_eq!(sign_result, None);
 
-        harness.test_function(&mut executor, "get_msg", &[sender], Some(&msg));
+    let get_msg_result = guestbook_contract.call("get_msg", &[sender.as_token()], &sender).unwrap();
+    assert_eq!(get_msg_result, msg);
 
-        harness.events_emitted(executor, &[("Signed", &[msg])]);
-    })
+
+    // TO DO: Grab events
+    // harness.events_emitted(executor, &[("Signed", &[msg])]);
+   
 }
