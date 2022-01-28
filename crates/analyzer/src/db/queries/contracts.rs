@@ -346,13 +346,6 @@ pub fn contract_field_type(
         scope.not_yet_implemented("contract field initial value assignment", value_node.span);
     }
 
-    if matches!(typ, Ok(Type::Struct(Struct { id, .. })) if id.has_complex_fields(db)) {
-        scope.not_yet_implemented(
-            "structs in storage aren't yet allowed to contain fields with complex types",
-            node.span,
-        );
-    }
-
     Analysis {
         value: typ,
         diagnostics: Rc::new(scope.diagnostics),

@@ -36,6 +36,55 @@ struct House:
 
 contract Foo:
     my_house: House
+    my_bar: Bar
+
+    pub fn complex_struct_in_storage(self) -> String<3>:
+        self.my_bar = Bar(
+            name="foo",
+            numbers=[1, 2],
+            point=Point(x=100, y=200),
+            something=(1, true),
+        )
+
+        # Asserting the values as they were set initially
+        assert self.my_bar.numbers[0] == 1
+        assert self.my_bar.numbers[1] == 2
+        assert self.my_bar.point.x == 100
+        assert self.my_bar.point.y == 200
+        assert self.my_bar.something.item0 == 1
+        assert self.my_bar.something.item1
+
+        # We can change the values of the array
+        self.my_bar.numbers[0] = 10
+        self.my_bar.numbers[1] = 20
+        assert self.my_bar.numbers[0] == 10
+        assert self.my_bar.numbers[1] == 20
+        # We can set the array itself
+        self.my_bar.numbers = [1, 2]
+        assert self.my_bar.numbers[0] == 1
+        assert self.my_bar.numbers[1] == 2
+
+        # We can change the values of the Point
+        self.my_bar.point.x = 1000
+        self.my_bar.point.y = 2000
+        assert self.my_bar.point.x == 1000
+        assert self.my_bar.point.y == 2000
+        # We can set the point itself
+        self.my_bar.point = Point(x=100, y=200)
+        assert self.my_bar.point.x == 100
+        assert self.my_bar.point.y == 200
+
+        # We can change the value of the tuple
+        self.my_bar.something.item0 = 10
+        self.my_bar.something.item1 = false
+        assert self.my_bar.something.item0 == 10
+        assert not self.my_bar.something.item1
+        # We can set the tuple itself
+        self.my_bar.something = (1, true)
+        assert self.my_bar.something.item0 == 1
+        assert self.my_bar.something.item1
+
+        return self.my_bar.name.to_mem()
 
     pub fn complex_struct_in_memory(self) -> String<3>:
         let val: Bar = Bar(

@@ -1342,6 +1342,10 @@ impl StructId {
         matches!(self.field_type(db, name), Some(Ok(FixedSize::Base(_))))
     }
 
+    pub fn field_index(&self, db: &dyn AnalyzerDb, name: &str) -> Option<usize> {
+        self.fields(db).get_index_of(name)
+    }
+
     pub fn has_complex_fields(&self, db: &dyn AnalyzerDb) -> bool {
         self.fields(db)
             .iter()
@@ -1413,6 +1417,9 @@ impl StructFieldId {
     }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::FixedSize, TypeError> {
         db.struct_field_type(*self).value
+    }
+    pub fn is_base_type(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Ok(FixedSize::Base(_)))
     }
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.is_pub

@@ -479,10 +479,10 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
             let target = expr(context, target);
             struct_operations::get_attribute(
                 context.db,
-                context.adb,
                 struct_.id,
                 &field.kind,
                 target,
+                target_attrs.location,
             )
         }
         _ => panic!("invalid type for field access: {:?}", &target_attrs.typ),

@@ -1237,6 +1237,13 @@ fn structs() {
             &[],
             Some(&string_token("foo")),
         );
+
+        harness.test_function(
+            &mut executor,
+            "complex_struct_in_storage",
+            &[],
+            Some(&string_token("foo")),
+        );
     });
 }
 
