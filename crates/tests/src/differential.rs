@@ -4,24 +4,72 @@ use proptest::prelude::*;
 
 use fe_compiler_test_utils::*;
 use fe_compiler_test_utils::{self as test_utils};
-
+use fevm::{Caller, Contract, CallResult, Fevm};
+use crate::DIFF_CONTRACTS;
 struct DualHarness {
     fe_harness: ContractHarness,
     solidity_harness: ContractHarness,
 }
 
+struct Harness<'a> {
+    fe: Contract<'a>,
+    sol: Contract<'a>
+}
+
+impl<'a, 'b> Harness<'a> {
+    pub fn capture_call(
+        &self,
+        name: &'a str,
+        input: &'a [ethabi::Token],
+        caller: &Caller,
+    ) -> CaptureResult<'b> {
+        let fe_result = self.fe.capture_call(name, input);
+     
+        let sol_result = self.sol.capture_call(executor, name, input);
+      
+
+        CaptureResult {
+            fe_result,
+            sol_result,
+            name,
+            input,
+        }
+    }
+}
 struct CaptureResult<'a> {
-    fe_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
-    fe_used_gas: u64,
-    solidity_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
-    solidity_used_gas: u64,
+    fe_result: CallResult,
+    sol_result: CallResult,
     name: &'a str,
     input: &'a [ethabi::Token],
 }
 
 impl<'a> CaptureResult<'a> {
+
+    pub fn fe_used_gas(&self) -> u64 {
+        self.fe_result.2
+    }
+
+    pub fn sol_used_gas(&self) -> u64 {
+        self.sol_result.2
+    }
+
+
+    pub fn ret_types_match(&self) -> bool {
+        self.fe_result.0 == self.sol_result.0
+    }
+
+    // pub fn ret_data_match(&self) -> bool {
+    //     match self.fe_result.1 {
+    //         TransactOut::None => {
+
+    //         },
+    //         TransactOut::Call(data) => {
+
+    //         },
+    //     }
+    // }
     pub fn assert_fe_max_percentage_more_gas(&self, max_percentage: i64) -> &Self {
-        let fe_percentage: i64 = (self.fe_used_gas as i64 - self.solidity_used_gas as i64) * 100
+        let fe_percentage: i64 = (self.fe_used_gas() as i64 - self.solidity_used_gas() as i64) * 100
             / self.solidity_used_gas as i64;
 
         assert!(fe_percentage <= max_percentage, "Fe used gas: {}, Solidity used gas: {}, Fe used {}% more gas. Called {} with input: {:?}", self.fe_used_gas, self.solidity_used_gas, fe_percentage, self.name, self.input);

@@ -1,4 +1,4 @@
-contract Foo {
+contract Foomath_u8Sol {
 
   function add(uint8 val1, uint8 val2) public pure returns (uint8){
     return val1 + val2;

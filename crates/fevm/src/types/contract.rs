@@ -3,7 +3,12 @@ use bytes::Bytes;
 use fe_common::files::FileStore;
 use primitive_types::{H160, U256};
 use revm::{TransactOut, Return};
+use serde_json;
 use crate::{Fevm, Caller, CallResult, Address};
+
+
+#[derive(Debug)]
+pub struct SolidityCompileError(Vec<serde_json::Value>);
 
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum ContractId {
@@ -60,6 +65,24 @@ impl<'a> ContractBuilder<'a> {
         self.address = Some(addr);
         self
     }
+
+    #[cfg(feature = "solc-backend")]
+    pub fn sol_fixture(mut self, fixture: &str, contract_name: &str) -> Contract<'a> {
+        let src = test_files::fixture(fixture)
+        .replace("\n", "")
+        .replace("\"", "\\\"");
+
+        let (bytecode, abi) = compile_solidity_contract(contract_name, &src, true)
+            .expect("Could not compile contract");
+
+            Contract {
+                vm: self.vm.unwrap(),
+                abi: ethabi::Contract::load(abi.as_bytes()).expect("Unable to generate solidity contract abi"),
+                address: self.address,
+                code: ContractCode::Bytes(hex::decode(bytecode).expect("Failed to decode Solidity bytecode"))
+            }
+    
+    }
     #[cfg(feature = "solc-backend")]
     pub fn fixture(
         mut self, 
@@ -112,6 +135,18 @@ pub struct Contract<'a> {
 
 
 impl Contract<'_> {
+
+    pub fn capture_call(&self, name: &str, input: &[ethabi::Token], caller: &Caller) -> CallResult {
+        if self.address.is_none() {
+            panic!("Please deploy contract prior to making calls!");
+        }
+        let function = &self.abi.functions[name][0];
+        let input = self.build_calldata(name, input);
+
+       
+        self.vm.call(input, self.address.as_ref().unwrap(), caller)
+       
+    }
     pub fn call(&self, name: &str, input: &[ethabi::Token], caller: &Caller) -> Option<ethabi::Token> {
         if self.address.is_none() {
             panic!("Please deploy contract prior to making calls!");
@@ -164,3 +199,81 @@ impl Contract<'_> {
 }
 
 
+#[cfg(feature = "solc-backend")]
+pub fn compile_solidity_contract(
+    name: &str,
+    solidity_src: &str,
+    optimized: bool,
+) -> Result<(String, String), SolidityCompileError> {
+    let solc_config = r#"
+    {
+        "language": "Solidity",
+        "sources": { "input.sol": { "content": "{src}" } },
+        "settings": {
+          "optimizer": { "enabled": {optimizer_enabled} },
+          "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
+        }
+      }
+    "#;
+    let solc_config = solc_config
+        .replace("{src}", solidity_src)
+        .replace("{optimizer_enabled}", &optimized.to_string());
+
+    let raw_output = solc::compile(&solc_config);
+
+    let output: serde_json::Value =
+        serde_json::from_str(&raw_output).expect("Unable to compile contract");
+
+    if output["errors"].is_array() {
+        let severity: serde_json::Value =
+            serde_json::to_value("error").expect("Unable to convert into serde value type");
+        let errors: serde_json::Value = output["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .cloned()
+            .filter_map(|err| {
+                if err["severity"] == severity {
+                    Some(err["formattedMessage"].clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let errors_list = errors
+            .as_array()
+            .unwrap_or_else(|| panic!("Unable to parse error properly"));
+        if !errors_list.is_empty() {
+            return Err(SolidityCompileError(errors_list.clone()));
+        }
+    }
+
+    let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
+        .to_string()
+        .replace("\"", "");
+
+    let abi = if let serde_json::Value::Array(data) = &output["contracts"]["input.sol"][name]["abi"]
+    {
+        data.iter()
+            .cloned()
+            .filter(|val| {
+                // ethabi doesn't yet support error types so we just filter them out for now
+                // https://github.com/rust-ethereum/ethabi/issues/225
+                val["type"] != "error"
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+
+    let abi = serde_json::Value::Array(abi).to_string();
+
+    if [&bytecode, &abi].iter().any(|val| val == &"null") {
+        return Err(SolidityCompileError(vec![serde_json::Value::String(
+            String::from("Bytecode not found"),
+        )]));
+    }
+
+    Ok((bytecode, abi))
+}

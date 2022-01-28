@@ -4159,7 +4159,7 @@ note:
 311 │ ╭     pub fn create_pair(self, token_a: address, token_b: address) -> address:
 312 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 313 │ │ 
-314 │ │         let token0: address = token_a if token_a < token_b else token_b
+314 │ │         let token0: address = token_a 
     · │
 328 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
 329 │ │         return address(pair)
@@ -4197,9 +4197,9 @@ note:
 note: 
     ┌─ demos/uniswap.fe:314:21
     │
-314 │         let token0: address = token_a if token_a < token_b else token_b
+314 │         let token0: address = token_a 
     │                     ^^^^^^^ address
-315 │         let token1: address = token_a if token_a > token_b else token_b
+315 │         let token1: address = token_b
     │                     ^^^^^^^ address
     ·
 319 │         let salt: u256 = keccak256((token0, token1).abi_encode())
@@ -4223,44 +4223,10 @@ note:
     │                │                    
     │                bool: Value
 313 │ 
-314 │         let token0: address = token_a if token_a < token_b else token_b
-    │                                          ^^^^^^^   ^^^^^^^ address: Value
-    │                                          │          
-    │                                          address: Value
-
-note: 
-    ┌─ demos/uniswap.fe:314:31
-    │
-314 │         let token0: address = token_a if token_a < token_b else token_b
-    │                               ^^^^^^^    ^^^^^^^^^^^^^^^^^      ^^^^^^^ address: Value
-    │                               │          │                       
-    │                               │          bool: Value
-    │                               address: Value
-
-note: 
-    ┌─ demos/uniswap.fe:314:31
-    │
-314 │         let token0: address = token_a if token_a < token_b else token_b
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address: Value
-315 │         let token1: address = token_a if token_a > token_b else token_b
-    │                                          ^^^^^^^   ^^^^^^^ address: Value
-    │                                          │          
-    │                                          address: Value
-
-note: 
-    ┌─ demos/uniswap.fe:315:31
-    │
-315 │         let token1: address = token_a if token_a > token_b else token_b
-    │                               ^^^^^^^    ^^^^^^^^^^^^^^^^^      ^^^^^^^ address: Value
-    │                               │          │                       
-    │                               │          bool: Value
-    │                               address: Value
-
-note: 
-    ┌─ demos/uniswap.fe:315:31
-    │
-315 │         let token1: address = token_a if token_a > token_b else token_b
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address: Value
+314 │         let token0: address = token_a 
+    │                               ^^^^^^^ address: Value
+315 │         let token1: address = token_b
+    │                               ^^^^^^^ address: Value
 316 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
     │                ^^^^^^            ^ u256: Value
     │                │                  

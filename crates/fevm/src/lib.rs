@@ -27,10 +27,46 @@ pub use revm::{
 };
 pub use primitive_types::{self, H160, U256};
 use std::cell::RefCell;
+use std::sync::Mutex;
 pub mod conversion;
 pub use conversion::*;
 
-pub type CallResult = (Return, TransactOut, u64, Vec<Log>);
+pub type GasUsed = u64;
+pub type CallResult = (Return, TransactOut, GasUsed, Vec<Log>);
+
+// Impl eq
+pub struct TransactionResult {
+    pub return_code: Return,
+    pub return_data: TransactOut,
+    pub gas_used: u64,
+    pub logs: Vec<Log>
+}
+
+impl TransactionResult {
+    pub fn ret_eq(&self, other: TransactionResult) -> bool {
+        todo!()
+    }
+
+    pub fn data_eq(&self, other: TransactionResult) -> bool {
+        todo!()
+    }
+
+    pub fn gas_lt(&self, other: TransactionResult) -> bool {
+        todo!()
+    }
+
+    pub fn gas_eq(&self, other: TransactionResult) -> bool {
+        todo!()
+    }
+
+    pub fn gas_gt(&self, other: TransactionResult) -> bool {
+        todo!()
+    }
+
+
+}
+
+
 
 pub trait ToBeBytes {
     fn to_be_bytes(&self) -> [u8; 32];
@@ -49,7 +85,7 @@ pub trait AsToken {
 }
 
 pub struct Fevm<'a>{
-    inner: RefCell<EVM<InMemoryDB>>,
+    inner: Mutex<EVM<InMemoryDB>>,
     contracts: HashMap<&'a ContractId, Contract<'a>> 
 
 }
@@ -62,12 +98,17 @@ impl Fevm<'_> {
         let mut vm = revm::new();
         vm.database(InMemoryDB::default());
         Self {
-            inner: RefCell::new(vm),
+            inner: Mutex::new(vm),
             contracts: HashMap::new()
         }
     }
+
+    pub fn reset(&mut self) {
+        self.inner = Mutex::new(revm::new());
+        self.contracts = HashMap::new();
+    }
     pub fn call(&self, input: Vec<u8>, addr: &Address, caller: &Caller) -> CallResult {
-        let mut vm = self.inner.borrow_mut();
+        let mut vm = self.inner.lock().unwrap();
         vm.env.tx.caller = caller.0;
         vm.env.tx.transact_to = TransactTo::Call(addr.clone());
         vm.env.tx.data = input.into();
@@ -82,7 +123,7 @@ impl Fevm<'_> {
                 bytecode = constructor.encode_input(bytecode, init_params).unwrap()
             }
         
-            let mut vm = self.inner.borrow_mut();
+            let mut vm = self.inner.lock().unwrap();
             match vm.db().expect("DB not found").cache().get_key_value(deployer.as_ref()) {
                 Some(_) => {
                     vm.env.tx.caller = deployer.as_ref().clone();
@@ -106,11 +147,11 @@ impl Fevm<'_> {
 
     pub fn create_account(&self, address: impl AsRef<Address>, balance: impl Into<U256>) {
         let acc = AccountInfo::from_balance(balance.into());
-        self.inner.borrow_mut().db().unwrap().insert_cache(address.as_ref().clone(), acc);
+        self.inner.lock().unwrap().db().unwrap().insert_cache(address.as_ref().clone(), acc);
     }
 
     pub fn fund_account(&self, address: &Address, amt: impl Into<U256>) {
-        let mut vm = self.inner.borrow_mut();
+        let mut vm = self.inner.lock().unwrap();
         
        let mut acc =  vm.db().unwrap().cache().get(address)
         .expect(format!("Cannot find account for address {:?}. Please create account first", address).as_str())
@@ -120,14 +161,14 @@ impl Fevm<'_> {
     }
 
     pub fn balance_of(&self, address: &Address) -> U256 {
-        match self.inner.borrow_mut().db().unwrap().cache().get(address) {
+        match self.inner.lock().unwrap().db().unwrap().cache().get(address) {
             Some(acc) => acc.balance,
             None => 0.into()
         }
     }
 
     pub fn get_account(&self, address: &Address) -> Option<AccountInfo> {
-        self.inner.borrow_mut().db().unwrap().cache().get(address).cloned()
+        self.inner.lock().unwrap().db().unwrap().cache().get(address).cloned()
     }
 
     pub fn erase(&self, address: &Address) -> Address {
