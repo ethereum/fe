@@ -6,7 +6,7 @@ struct MyStruct {
     int8 my_num3;
 }
 
-contract Foo {
+contract Foostorage_and_memorySol {
 
   MyStruct data;
   int8[1] items;

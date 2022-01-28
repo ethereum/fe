@@ -1,4 +1,4 @@
-contract Foo:
+contract Foomath_u8Fe:
 
   pub fn add(val1: u8, val2: u8) -> u8:
     return val1 + val2
