@@ -192,7 +192,7 @@ fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
         Plus | Minus | Not | Tilde => {
             let op = par.next()?;
             let operand = parse_expr_with_min_bp(par, prefix_binding_power(op.kind))?;
-            Ok(unary_op(&op, operand))
+            unary_op(par, &op, operand)
         }
         ParenOpen => parse_group_or_tuple(par),
         BracketOpen => parse_list(par),
@@ -508,7 +508,7 @@ fn bin_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
 }
 
 /// Create an `Expr::UnaryOperation` node for the given operator and operands.
-fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
+fn unary_op(par: &mut Parser, op: &Token, operand: Node<Expr>) -> ParseResult<Node<Expr>> {
     use ast::UnaryOperator;
     use TokenKind::*;
 
@@ -516,17 +516,25 @@ fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
         Tilde => UnaryOperator::Invert,
         Not => UnaryOperator::Not,
         Minus => UnaryOperator::USub,
+        Plus => {
+            par.fancy_error(
+                "unary plus not supported",
+                vec![Label::primary(op.span, "consider removing the '+'")],
+                vec![],
+            );
+            return Err(ParseFailed);
+        }
         _ => panic!(),
     };
 
     let span = op.span + operand.span;
-    Node::new(
+    Ok(Node::new(
         Expr::UnaryOperation {
             op: Node::new(astop, op.span),
             operand: Box::new(operand),
         },
         span,
-    )
+    ))
 }
 
 /// Create an `Expr::CompOperation` node for the given operator and operands.
