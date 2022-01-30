@@ -49,9 +49,8 @@ contract GuestBook:
 [IDENTIFIER]: identifiers.md
 [_Visibility_]: visibility_and_privacy.md
 [_Type_]: types.md
-[type]: types.md
 [contract type]: contract_types.md
-[_Function_]: function_item_types.md
+[_Function_]: function_types.md
 [_Struct_]: structs.md
 [_Event_]: events.md
 [_Enumeration_]: enumeration.md

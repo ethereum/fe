@@ -29,4 +29,4 @@ contract Foo:
 
 [_Expression_]: expressions.md
 [Array]: array_types.md
-[Map]: hashmap_types.md
+[Map]: hashmap_type.md

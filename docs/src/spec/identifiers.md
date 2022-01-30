@@ -2,8 +2,8 @@
 
 > **<sup>Lexer:<sup>**\
 > IDENTIFIER_OR_KEYWORD :\
-> &nbsp;&nbsp; &nbsp;&nbsp; [`a`-`z` `A`-`Z`]&nbsp;[`a`-`z` `A`-`Z` `0`-`9` `_`]<sup>\*</sup>\
-> &nbsp;&nbsp; | `_` [`a`-`z` `A`-`Z` `0`-`9` `_`]<sup>+</sup>
+> &nbsp;&nbsp; &nbsp;&nbsp; \[`a`-`z` `A`-`Z`\]&nbsp;\[`a`-`z` `A`-`Z` `0`-`9` `_`\]<sup>\*</sup>\
+> &nbsp;&nbsp; | `_` \[`a`-`z` `A`-`Z` `0`-`9` `_`\]<sup>+</sup>
 ><sub>*Except a [strict] or [reserved] keyword*</sub>
 >
 

@@ -31,6 +31,6 @@ The data layout of a `struct` is not part of its external API and may be changed
 The fields of a `struct` may be qualified by [visibility modifiers], to allow
 access to data in a struct outside a module.
 
-[struct expression]: struct-expr.md
+[struct expression]: expr_struct.md
 [visibility modifiers]: visibility_and_privacy.md
 [`struct` item]: structs.md

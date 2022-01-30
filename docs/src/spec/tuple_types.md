@@ -32,11 +32,11 @@ Some examples of tuple types:
 
 Values of this type are constructed using a [tuple expression].
 Furthermore, various expressions will produce the unit value if there is no other meaningful value for it to evaluate to.
-Tuple fields can be accessed by a [tuple index expression].
+Tuple fields can be accessed via an [attribute expression].
 
 [^1]: Structural types are always equivalent if their internal types are equivalent.
 
 
 [_Type_]: types.md
-[tuple expression]:tuple_expr.md
-[tuple index expression]: tuple_index_expr.md
+[tuple expression]:expr_tuple.md
+[attribute expression]: expr_attribute.md

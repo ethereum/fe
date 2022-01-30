@@ -4,7 +4,7 @@ The type `Map<K, V>` is used to associate key values with data.
 
 The following types can be used as key:
 
-- [Unit type]
+- [unit type]
 - [boolean type]
 - [address type]
 - [numeric types]
@@ -31,6 +31,7 @@ contract Foo:
         self.baz[a][b] = value
 ```
 
+[unit type]: unit_type.md
 [boolean type]: boolean_type.md
 [address type]: address_type.md
 [numeric types]: numeric_types.md

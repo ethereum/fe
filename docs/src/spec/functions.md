@@ -33,21 +33,21 @@
 > &nbsp;&nbsp;  `self`<sup>?</sup> | `self,`<sup>?</sup>   _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
 >
 > _FunctionParam_ :\
-> &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
+> &nbsp;&nbsp; [IDENTIFIER] `:` [_Types_]
 >
 > _FunctionReturnType_ :\
-> &nbsp;&nbsp; `->` [_Type_]
+> &nbsp;&nbsp; `->` [_Types_]
 
 
 A _function_ definition consists of name and code block along with an optional
 list of parameters and return value. Functions are declared with the
-keyword `fn`. Functions may declare a set of *input* [*variables*][variables]
-as parameters, through which the caller passes arguments into the function, and
-the *output* [*type*][type] of the value the function will return to its caller
+keyword `fn`. Functions may declare a set of *input* arguments,
+through which the caller passes arguments into the function, and
+the *output* [*type*][_Types_] of the value the function will return to its caller
 on completion.
 
 When referred to, a _function_ yields a first-class *value* of the
-corresponding zero-sized [*function item type*], which
+corresponding zero-sized [*function type*][_FunctionTypes_], which
 when called evaluates to a direct call to the function.
 
 A function header ends with a colon (`:`) after which the function body begins.
@@ -79,11 +79,9 @@ contract Foo:
 [INDENT]: tokens.md#indent
 [DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
-[_Type_]: types.md
-[type]: types.md
-[_function_]: function_item_types.md
-[*function item type*]: function_item_types.md
-[variables]: variables.md
+[_Types_]: types.md
+[_FunctionTypes_]: function_types.md
+[_Variables_]: variables.md
 
 [_ReturnStatement_]: statement_return.md
 [_VariableDeclarationStatement_]: statements.md

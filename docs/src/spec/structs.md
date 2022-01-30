@@ -11,7 +11,7 @@
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
 
 
-A _struct_ is a nominal [struct type] defined with the keyword `struct`.
+A _struct_ is a nominal [struct type][struct type] defined with the keyword `struct`.
 
 An example of a `struct` item and its use:
 
@@ -34,4 +34,5 @@ Builtin functions:
 [INDENT]: tokens.md#indent
 [DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
+[struct type]: struct_types.md
 [_Type_]: types.md

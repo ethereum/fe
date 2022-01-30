@@ -8,11 +8,7 @@ Fe divides keywords into two categories:
 ## Strict keywords
 
 These keywords can only be used in their correct contexts. They cannot
-be used as the names of:
-
-* [Items](items.md)
-* [Variables](variables.md) and function parameters
-* Fields and [variants](enumeration.md)
+be used as the [identifies](./identifiers.md).
 
 > **Lexer:**\
 > KW_AS             : `as`\

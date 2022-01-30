@@ -7,7 +7,7 @@ At this point Fe is only available for **Linux** and **MacOS**.
 
 ### Download the compiler
 
-At this point Fe is only distributed via a single executable file linked from the [home page](../../). In the future we will make sure it can be installed through popular package managers such as `apt` or `homebrew`.
+At this point Fe is only distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through popular package managers such as `apt` or `homebrew`.
 
 Depending on your operating system, the file that you download is either named `fe_amd64` or `fe_mac`.
 
