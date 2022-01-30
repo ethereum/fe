@@ -35,7 +35,7 @@ error: unexpected end of file
 
 Fe follows Pythonic block indentation rules and the compiler expects us to provide a block of indented code after `GuestBook:`.
 
-Let's expand the code by providing a [`map`](../spec/hashmap_type.md) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](../spec/string_type.md) of a maximum length of `100` written as `string100`.
+Let's expand the code by providing a [`map`](../spec/map_type.md) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](../spec/string_type.md) of a maximum length of `100` written as `string100`.
 The addresses are represented by the builtin [`address`](../spec/address_type.md) type.
 
 ```

@@ -63,7 +63,7 @@
             * [Struct Types](spec/struct_types.md)
             * [Enumerated Types](spec/enumerated_types.md)
             * [Address Type](spec/address_type.md)
-            * [HashMap Type](spec/hashmap_type.md)
+            * [Map Type](spec/map_type.md)
             * [String Type](spec/string_type.md)
             * [Unit Type](spec/unit_type.md)
             * [Event Types](spec/event_types.md)

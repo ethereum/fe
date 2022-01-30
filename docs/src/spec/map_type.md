@@ -38,4 +38,3 @@ contract Foo:
 [structs]: structs.md
 [tuples]: tuple_types.md
 [arrays]: array_types.md
-

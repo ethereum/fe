@@ -22,7 +22,7 @@ The list of types is:
             * [String]
             * [Struct]
             * [Enum]
-        * [HashMap]
+        * [Map]
 * Other types:
     * [Event]
     * [Contract]
@@ -37,7 +37,7 @@ The list of types is:
 [String]: string_type.md
 [Struct]: struct_types.md
 [Enum]: enumerated_types.md
-[HashMap]: hashmap_type.md
+[Map]: map_type.md
 [Event]: event_types.md
 [Contract]: contract_types.md
 [Function]: function_types.md
