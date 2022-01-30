@@ -395,22 +395,26 @@ fn infix_op(
 
         Dot => {
             let span = left.span + right.span;
-            if let Expr::Name(name) = right.kind {
-                Node::new(
+            match right.kind {
+                Expr::Name(name) => Node::new(
                     Expr::Attribute {
                         value: Box::new(left),
                         attr: Node::new(name, right.span),
                     },
                     span,
-                )
-            } else {
-                // TODO: check for float number and say something helpful
-                par.fancy_error(
-                    "failed to parse attribute expression",
-                    vec![Label::primary(right.span, "expected a name")],
-                    vec![],
-                );
-                return Err(ParseFailed);
+                ),
+                Expr::Num(_num) => {
+                    par.error(span, "floats not supported");
+                    return Err(ParseFailed);
+                }
+                _ => {
+                    par.fancy_error(
+                        "failed to parse attribute expression",
+                        vec![Label::primary(right.span, "expected a name")],
+                        vec![],
+                    );
+                    return Err(ParseFailed);
+                }
             }
         }
         ColonColon => {
