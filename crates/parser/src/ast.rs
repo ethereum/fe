@@ -108,6 +108,7 @@ pub enum TypeDesc {
 pub enum GenericArg {
     TypeDesc(Node<TypeDesc>),
     Int(Node<usize>),
+    ConstExpr(Node<Expr>),
 }
 
 impl Spanned for GenericArg {
@@ -115,6 +116,7 @@ impl Spanned for GenericArg {
         match self {
             GenericArg::TypeDesc(node) => node.span,
             GenericArg::Int(node) => node.span,
+            GenericArg::ConstExpr(node) => node.span,
         }
     }
 }
@@ -545,6 +547,7 @@ impl fmt::Display for GenericArg {
         match self {
             GenericArg::TypeDesc(node) => write!(f, "{}", node.kind),
             GenericArg::Int(node) => write!(f, "{}", node.kind),
+            GenericArg::ConstExpr(node) => write!(f, "{}", node.kind),
         }
     }
 }

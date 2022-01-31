@@ -31,13 +31,14 @@ pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) 
                         .into_iter()
                         .enumerate()
                         .map(|(idx, arg)| match arg {
-                            GenericArg::Int(_) => arg,
                             GenericArg::TypeDesc(node) => GenericArg::TypeDesc(type_desc(
                                 context,
                                 node,
                                 &typ.generic_arg_type(idx)
                                     .expect("expected generic type arg"),
                             )),
+                            GenericArg::Int(_) => arg,
+                            GenericArg::ConstExpr(_) => arg,
                         })
                         .collect(),
                     args.span,
