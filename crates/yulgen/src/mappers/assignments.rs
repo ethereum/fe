@@ -20,10 +20,10 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         let value = expressions::expr(context, value_node);
 
         let target_attributes = context.expression_attributes(target_node);
-        let value_attributes = context.expression_attributes(value_node);
-
         let typ =
             FixedSize::try_from(target_attributes.typ.to_owned()).expect("invalid attributes");
+
+        let value_attributes = context.expression_attributes(value_node);
 
         return match (
             value_attributes.final_location(),
@@ -31,7 +31,7 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         ) {
             (Location::Memory, Location::Storage { .. }) => {
                 if let fe::Expr::Attribute { .. } = &target_node.kind {
-                    if let Type::Struct(struct_) = &context.expression_attributes(target_node).typ {
+                    if let Type::Struct(struct_) = &target_attributes.typ {
                         return struct_operations::copy_to_storage(
                             context.db, struct_, target, value,
                         );
