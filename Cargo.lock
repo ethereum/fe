@@ -788,7 +788,7 @@ dependencies = [
  "primitive-types 0.9.1",
  "revm",
  "serde_json",
- "solc",
+ "solc 0.1.0 (git+https://github.com/g-r-a-n-t/solc-rust?rev=52d4146)",
  "yultsur",
 ]
 
@@ -896,7 +896,7 @@ dependencies = [
  "fe-yulgen",
  "indexmap",
  "serde_json",
- "solc",
+ "solc 0.1.0 (git+https://github.com/g-r-a-n-t/solc-rust?rev=52d4146)",
 ]
 
 [[package]]
@@ -939,7 +939,7 @@ dependencies = [
  "primitive-types 0.10.1",
  "revm",
  "serde_json",
- "solc",
+ "solc 0.1.0 (git+https://github.com/g-r-a-n-t/solc-rust?rev=da554b3)",
  "yultsur",
 ]
 
@@ -2215,6 +2215,15 @@ dependencies = [
 name = "solc"
 version = "0.1.0"
 source = "git+https://github.com/g-r-a-n-t/solc-rust?rev=52d4146#52d414631bc6c3f0c29749503923a8d7e48b9f4d"
+dependencies = [
+ "cmake",
+ "lazy_static",
+]
+
+[[package]]
+name = "solc"
+version = "0.1.0"
+source = "git+https://github.com/g-r-a-n-t/solc-rust?rev=da554b3#da554b3ba7cb8e63083440eecb77f637c92c40e8"
 dependencies = [
  "cmake",
  "lazy_static",
