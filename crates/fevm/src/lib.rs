@@ -30,7 +30,7 @@ use std::cell::RefCell;
 use std::sync::Mutex;
 pub mod conversion;
 pub use conversion::*;
-
+pub use ethabi;
 pub type GasUsed = u64;
 pub type CallResult = (Return, TransactOut, GasUsed, Vec<Log>);
 

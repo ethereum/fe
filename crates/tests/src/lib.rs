@@ -7,9 +7,8 @@ mod demo_erc20;
 mod demo_guestbook;
 #[cfg(test)]
 mod demo_uniswap;
-// #[cfg(test)]
-
-//mod differential;
+#[cfg(test)]
+mod differential;
 #[cfg(test)]
 mod features;
 #[cfg(test)]
@@ -23,8 +22,6 @@ mod stress;
 
 #[cfg(test)]
 pub mod test_prebuilds {
-    // Steps to port: DIFF_CONTRACTS as (Contract, Contract) tuple -> redefine deploy_solidity_contract -> 
-    // rename the contracts so they are not all Foo -> harness uses 
     use fevm::{Contract, ContractBuilder, Fevm};
     use once_cell::sync::Lazy;
     use std::sync::Arc;
