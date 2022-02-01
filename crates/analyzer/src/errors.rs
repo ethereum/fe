@@ -24,7 +24,7 @@ use std::fmt::Display;
 ///
 /// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeError(DiagnosticVoucher);
+pub struct TypeError(pub DiagnosticVoucher);
 impl TypeError {
     // `Clone` is required because these are stored in a salsa db.
     // Please don't clone these manually.
@@ -38,7 +38,7 @@ impl TypeError {
 /// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
 /// has been obtained. (See comment on [`TypeError`])
 #[derive(Debug)]
-pub struct FatalError(DiagnosticVoucher);
+pub struct FatalError(pub DiagnosticVoucher);
 
 impl FatalError {
     /// Create a `FatalError` instance, given a "voucher"

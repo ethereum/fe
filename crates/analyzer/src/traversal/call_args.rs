@@ -1,6 +1,5 @@
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{FatalError, TypeError};
-use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{EventField, FixedSize, FunctionParam};
 use crate::traversal::expressions::assignable_expr;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
@@ -51,16 +50,16 @@ impl LabeledParameter for (SmolStr, Result<FixedSize, TypeError>) {
 }
 
 pub fn validate_named_args(
-    scope: &mut BlockScope,
+    context: &mut dyn AnalyzerContext,
     name: &str,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
     label_policy: LabelPolicy,
 ) -> Result<(), FatalError> {
-    validate_arg_count(scope, name, name_span, args, params.len(), "argument");
-    validate_arg_labels(scope, args, params, label_policy);
-    validate_arg_types(scope, name, args, params)?;
+    validate_arg_count(context, name, name_span, args, params.len(), "argument");
+    validate_arg_labels(context, args, params, label_policy);
+    validate_arg_types(context, name, args, params)?;
     Ok(())
 }
 
@@ -118,7 +117,7 @@ pub enum LabelPolicy {
 }
 
 pub fn validate_arg_labels(
-    scope: &mut BlockScope,
+    context: &mut dyn AnalyzerContext,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
     label_policy: LabelPolicy,
@@ -140,7 +139,7 @@ pub fn validate_arg_labels(
                     } else {
                         vec![]
                     };
-                    scope.fancy_error(
+                    context.fancy_error(
                         "argument label mismatch",
                         vec![Label::primary(
                             actual_label.span,
@@ -154,7 +153,7 @@ pub fn validate_arg_labels(
                 fe::Expr::Name(var_name) if var_name == expected_label => {}
                 _ => {
                     if let LabelPolicy::AllowUnlabledIfNameEqual = label_policy {
-                        scope.fancy_error(
+                        context.fancy_error(
                             "missing argument label",
                             vec![Label::primary(
                                 Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
@@ -169,7 +168,7 @@ pub fn validate_arg_labels(
                 }
             },
             (None, Some(actual_label)) => {
-                scope.error(
+                context.error(
                     "argument should not be labeled",
                     actual_label.span,
                     "remove this label",
@@ -181,14 +180,15 @@ pub fn validate_arg_labels(
 }
 
 pub fn validate_arg_types(
-    scope: &mut BlockScope,
+    context: &mut dyn AnalyzerContext,
     name: &str,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
 ) -> Result<(), FatalError> {
     for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
         let param_type = param.typ()?;
-        let val_attrs = assignable_expr(scope, &arg.kind.value, Some(&param_type.clone().into()))?;
+        let val_attrs =
+            assignable_expr(context, &arg.kind.value, Some(&param_type.clone().into()))?;
         if param_type != val_attrs.typ {
             let msg = if let Some(label) = param.label() {
                 format!("incorrect type for `{}` argument `{}`", name, label)
@@ -198,7 +198,7 @@ pub fn validate_arg_types(
                     name, index
                 )
             };
-            scope.type_error(&msg, arg.kind.value.span, &param_type, &val_attrs.typ);
+            context.type_error(&msg, arg.kind.value.span, &param_type, &val_attrs.typ);
         }
     }
     Ok(())

@@ -1,13 +1,16 @@
-use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
 use crate::errors::{self, CannotMove, TypeError};
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
 use crate::namespace::types::{FixedSize, SelfDecl, Type};
 use crate::AnalyzerDb;
+use crate::{
+    builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
+    namespace::scopes::BlockScopeType,
+};
 use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
 use fe_common::Span;
 use fe_parser::ast;
-use fe_parser::node::NodeId;
+use fe_parser::node::{Node, NodeId};
 
 use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
@@ -37,6 +40,88 @@ pub trait AnalyzerContext {
     fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
         self.register_diag(errors::error(message, label_span, label))
     }
+
+    /// Attribute contextual information to an expression node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes);
+
+    /// Update the expression attributes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry does not already exist for the node id.
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes);
+
+    /// Returns a type of an expression.
+    ///
+    /// # Panics
+    ///
+    /// Panics if type analysis is not performed for an `expr`.
+    fn expr_typ(&self, expr: &Node<ast::Expr>) -> Type;
+
+    /// Returns an item enclosing current context.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// contract Foo:
+    ///     fn foo():
+    ///        if ...:
+    ///            ...
+    ///        else:
+    ///            ...
+    /// ```
+    /// If the context is in `then` block, then this function returns `Item::Function(..)`.
+    fn parent(&self) -> Item;
+
+    /// Returns a function id that encloses a context.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    fn parent_function(&self) -> FunctionId;
+
+    /// Returns a non-function item that encloses a context.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// contract Foo:
+    ///     fn foo():
+    ///        if ...:
+    ///            ...
+    ///        else:
+    ///            ...
+    /// ```
+    /// If the context is in then block, then this function returns `Item::Type(TypeDef::Contract(..))`.
+    fn root_item(&self) -> Item {
+        let mut item = self.parent();
+        while let Item::Function(func_id) = item {
+            item = func_id.parent(self.db());
+        }
+        item
+    }
+
+    /// # Panics
+    ///
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType);
+
+    /// Store string literal to the current context.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    fn add_string(&self, str_lit: SmolStr);
+
+    /// Returns `true` if the context is in function scope.
+    fn is_in_function(&self) -> bool;
+
+    /// Returns `true` if the scope or any of its parents is of the given type.
+    fn inherits_type(&self, typ: BlockScopeType) -> bool;
 
     fn type_error(
         &mut self,
@@ -157,6 +242,41 @@ impl AnalyzerContext for TempContext {
     fn resolve_name(&self, _name: &str) -> Option<NamedThing> {
         panic!("TempContext can't resolve names")
     }
+    fn add_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
+        panic!("TempContext can't store expression")
+    }
+
+    fn update_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
+        panic!("TempContext can't update expression");
+    }
+
+    fn expr_typ(&self, _expr: &Node<ast::Expr>) -> Type {
+        panic!("TempContext can't return expression type")
+    }
+
+    fn parent(&self) -> Item {
+        panic!("TempContext has no root item")
+    }
+    fn parent_function(&self) -> FunctionId {
+        panic!("TempContext has no function enclosed")
+    }
+
+    fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
+        panic!("TempContext can't add call");
+    }
+
+    fn add_string(&self, _str_lit: SmolStr) {
+        panic!("TempContext can't store string literal")
+    }
+
+    fn is_in_function(&self) -> bool {
+        false
+    }
+
+    fn inherits_type(&self, _typ: BlockScopeType) -> bool {
+        false
+    }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
     }

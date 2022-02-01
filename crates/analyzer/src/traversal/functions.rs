@@ -159,12 +159,13 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
             }
             Some(NamedThing::Item(Item::Event(event))) => {
                 scope.root.add_emit(stmt, event);
+                let params = event.typ(scope.db()).fields.clone();
                 call_args::validate_named_args(
                     scope,
                     &name.kind,
                     name.span,
                     args,
-                    &event.typ(scope.db()).fields,
+                    &params,
                     LabelPolicy::AllowUnlabledIfNameEqual,
                 )?;
             }

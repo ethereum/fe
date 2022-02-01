@@ -8,14 +8,18 @@ use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
-use fe_parser::ast;
-use fe_parser::node::Node;
+use fe_parser::{ast, node::NodeId};
+use fe_parser::{ast::Expr, node::Node};
+use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+
+use super::types::Type;
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
     module: ModuleId,
+    expressions: RefCell<IndexMap<NodeId, ExpressionAttributes>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 impl<'a> ItemScope<'a> {
@@ -23,6 +27,7 @@ impl<'a> ItemScope<'a> {
         Self {
             db,
             module,
+            expressions: RefCell::new(IndexMap::default()),
             diagnostics: vec![],
         }
     }
@@ -32,14 +37,58 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .borrow_mut()
+            .insert(node.id, attributes)
+            .expect_none("expression attributes already exist");
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .borrow_mut()
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.expressions.borrow().get(&expr.id).unwrap().typ.clone()
+    }
+
+    fn parent(&self) -> Item {
+        Item::Module(self.module)
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        panic!("TempContext has no function enclosed")
+    }
+
+    fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
+        unreachable!("Can't call function outside of function")
+    }
+
+    fn add_string(&self, _str_lit: ast::SmolStr) {
+        unreachable!("Can't store string in the item scope")
+    }
+
+    fn is_in_function(&self) -> bool {
+        false
+    }
+
+    fn inherits_type(&self, _typ: BlockScopeType) -> bool {
+        false
+    }
+
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
         self.module
             .resolve_name(self.db, name)
             .map(NamedThing::Item)
     }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
     }
+
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
         let item = self.module.resolve_path_internal(self.db(), path);
 
@@ -71,32 +120,7 @@ impl<'a> FunctionScope<'a> {
     pub fn function_return_type(&self) -> Result<FixedSize, TypeError> {
         self.function.signature(self.db).return_type.clone()
     }
-    /// Attribute contextual information to an expression node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .expressions
-            .insert(node.id, attributes)
-            .expect_none("expression attributes already exist");
-    }
 
-    /// Update the expression attributes.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry does not already exist for the node id.
-    pub fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.body
-            .borrow_mut()
-            .expressions
-            .insert(node.id, attributes)
-            .expect("expression attributes do not exist");
-    }
     /// Attribute contextual information to an emit statement node.
     ///
     /// # Panics
@@ -123,22 +147,6 @@ impl<'a> FunctionScope<'a> {
             .insert(node.id, typ)
             .expect_none("declaration attributes already exist");
     }
-    /// Attribute contextual information to a call expression node.
-    /// NOTE: `node` here is actually the `func` node of the `Expr::Call`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
-        // TODO: should probably take the Expr::Call node, rather than the function node
-
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .calls
-            .insert(node.id, call_type)
-            .expect_none("call attributes already exist");
-    }
 
     fn add_node<T>(&self, node: &Node<T>) {
         self.body.borrow_mut().spans.insert(node.id, node.span);
@@ -152,6 +160,64 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.borrow_mut().push(diag)
+    }
+
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.add_node(node);
+        self.body
+            .borrow_mut()
+            .expressions
+            .insert(node.id, attributes)
+            .expect_none("expression attributes already exist");
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.body
+            .borrow_mut()
+            .expressions
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.body
+            .borrow()
+            .expressions
+            .get(&expr.id)
+            .unwrap()
+            .typ
+            .clone()
+    }
+
+    fn parent(&self) -> Item {
+        self.function.parent(self.db())
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        self.function
+    }
+
+    fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
+        // TODO: should probably take the Expr::Call node, rather than the function node
+
+        self.add_node(node);
+        self.body
+            .borrow_mut()
+            .calls
+            .insert(node.id, call_type)
+            .expect_none("call attributes already exist");
+    }
+
+    fn add_string(&self, s: ast::SmolStr) {
+        self.body.borrow_mut().string_literals.insert(s);
+    }
+
+    fn is_in_function(&self) -> bool {
+        true
+    }
+
+    fn inherits_type(&self, _typ: BlockScopeType) -> bool {
+        false
     }
 
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
@@ -246,6 +312,43 @@ impl AnalyzerContext for BlockScope<'_, '_> {
                 }
             })
     }
+
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.root.add_expression(node, attributes)
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.root.update_expression(node, attributes)
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.root.expr_typ(expr)
+    }
+
+    fn parent(&self) -> Item {
+        Item::Function(self.root.function)
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        self.root.function
+    }
+
+    fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
+        self.root.add_call(node, call_type)
+    }
+
+    fn add_string(&self, str_lit: ast::SmolStr) {
+        self.root.add_string(str_lit)
+    }
+
+    fn is_in_function(&self) -> bool {
+        true
+    }
+
+    fn inherits_type(&self, typ: BlockScopeType) -> bool {
+        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
+    }
+
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
         let item = self
             .root
@@ -334,16 +437,6 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                 Ok(())
             }
         }
-    }
-
-    /// Return true if the scope or any of its parents is of the given type
-    pub fn inherits_type(&self, typ: BlockScopeType) -> bool {
-        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
-    }
-
-    /// Return the root item of the block scope
-    pub fn root_item(&self) -> Item {
-        self.root.function.parent(self.db())
     }
 }
 
