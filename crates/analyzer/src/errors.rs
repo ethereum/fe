@@ -24,11 +24,10 @@ use std::fmt::Display;
 ///
 /// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeError(pub DiagnosticVoucher);
+pub struct TypeError(pub(crate) DiagnosticVoucher);
 impl TypeError {
     // `Clone` is required because these are stored in a salsa db.
     // Please don't clone these manually.
-
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
     }
@@ -38,11 +37,29 @@ impl TypeError {
 /// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
 /// has been obtained. (See comment on [`TypeError`])
 #[derive(Debug)]
-pub struct FatalError(pub DiagnosticVoucher);
+pub struct FatalError(pub(crate) DiagnosticVoucher);
 
 impl FatalError {
     /// Create a `FatalError` instance, given a "voucher"
     /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
+    pub fn new(voucher: DiagnosticVoucher) -> Self {
+        Self(voucher)
+    }
+}
+
+/// Error indicating constant evaluation failed.
+///
+/// This error emitted when
+/// 1. an expression can't be evaluated in compilation time
+/// 2. arithmetic overflow occurred during evaluation
+/// 3. zero division is detected during evaluation
+///
+/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
+/// has been obtained. (See comment on [`TypeError`])
+#[derive(Debug)]
+pub struct ConstEvalError(pub(crate) DiagnosticVoucher);
+
+impl ConstEvalError {
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
     }

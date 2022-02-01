@@ -238,6 +238,7 @@ test_file! { cannot_move2 }
 test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
 test_file! { circular_type_alias }
+test_file! { const_expr }
 test_file! { duplicate_arg_in_contract_method }
 test_file! { duplicate_contract_in_module }
 test_file! { duplicate_event_in_contract }

@@ -1,0 +1,473 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&files, module_id, &db)"
+
+---
+note: 
+   ┌─ features/const_generics.fe:2:5
+   │  
+ 2 │ ╭     pub fn bar():
+ 3 │ │         # const generics with literal.
+ 4 │ │         let array_lit: Array<i32, 8>
+ 5 │ │         let array_lit2: Array<i32, { 8 }>
+   · │
+39 │ │         # const generics with unary expression.
+40 │ │         let array_not: Array<i32, { 8 if not false else 0 }>
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 15148455653558261645
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/const_generics.fe:4:24
+   │
+ 4 │         let array_lit: Array<i32, 8>
+   │                        ^^^^^^^^^^^^^ Array<i32, 8>
+ 5 │         let array_lit2: Array<i32, { 8 }>
+   │                         ^^^^^^^^^^^^^^^^^ Array<i32, 8>
+   ·
+ 8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+   ·
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+   │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+   ·
+15 │         let array_add: Array<i32, { 5 + 3 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+16 │         let array_sub: Array<i32, { 10 -  2 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+17 │         let array_mul: Array<i32, { 2 * 4 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+18 │         let array_div: Array<i32, { 16 / 2 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+19 │         let array_mod: Array<i32, { 26 % 9 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+20 │         let array_pow: Array<i32, { 2 ** 3 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+21 │         let array_shl: Array<i32, { 0b0010 << 2 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+22 │         let array_shr: Array<i32, { 0b100000 >> 2 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+23 │         let array_bitor: Array<i32, { 0b1000 |  0b0000 }>
+   │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+24 │         let array_xor: Array<i32, { 0b1111 ^ 0b0111 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+25 │         let array_bitand: Array<i32, { 0b1010 & 0b1101 }>
+   │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+   ·
+28 │         let array_eq: Array<i32, { 8 if 10 == 10 else 0 }>
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+29 │         let array_ne: Array<i32, { 8 if 10 != 0 else 0 }>
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+30 │         let array_lt1: Array<i32, { 8 if 0 < 10 else 0 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+31 │         let array_lt2: Array<i32, { 0 if 10 < 10 else 8 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+32 │         let array_lte: Array<i32, { 8 if 0 <= 10 else 0 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+33 │         let array_lte2: Array<i32, { 8 if 10 <= 10 else 0 }>
+   │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+34 │         let array_gt: Array<i32, { 8 if 10 > 0 else 0 }>
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+35 │         let array_gt2: Array<i32, { 1 if 10 > 10 else 8 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+36 │         let array_gte: Array<i32, { 1 if 0 >= 10 else 8 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+37 │         let array_gte2: Array<i32, { 8 if 10 >= 10 else 0 }>
+   │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+   ·
+40 │         let array_not: Array<i32, { 8 if not false else 0 }>
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
+
+note: 
+  ┌─ features/const_generics.fe:5:38
+  │
+5 │         let array_lit2: Array<i32, { 8 }>
+  │                                      ^ u256: Value
+  ·
+8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
+  │                                              ^^^^^ bool: Value
+
+note: 
+  ┌─ features/const_generics.fe:8:41
+  │
+8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
+  │                                         ^               ^ u256: Value
+  │                                         │                
+  │                                         u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:8:41
+   │
+ 8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
+   │                                         ^^^^^^^^^^^^^^^^^ u256: Value
+   ·
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+   │                                                  ^^^^    ^^^^^ bool: Value
+   │                                                  │        
+   │                                                  bool: Value
+
+note: 
+   ┌─ features/const_generics.fe:11:44
+   │
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+   │                                            ^    ^^^^^^^^^^^^^^^      ^ u256: Value
+   │                                            │    │                     
+   │                                            │    bool: Value
+   │                                            u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:11:44
+   │
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+   │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+   │                                                   ^^^^     ^^^^^ bool: Value
+   │                                                   │         
+   │                                                   bool: Value
+
+note: 
+   ┌─ features/const_generics.fe:12:45
+   │
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+   │                                             ^    ^^^^^^^^^^^^^^^^      ^ u256: Value
+   │                                             │    │                      
+   │                                             │    bool: Value
+   │                                             u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:12:45
+   │
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+   │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   ·
+15 │         let array_add: Array<i32, { 5 + 3 }>
+   │                                     ^   ^ u256: Value
+   │                                     │    
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:15:37
+   │
+15 │         let array_add: Array<i32, { 5 + 3 }>
+   │                                     ^^^^^ u256: Value
+16 │         let array_sub: Array<i32, { 10 -  2 }>
+   │                                     ^^    ^ u256: Value
+   │                                     │      
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:16:37
+   │
+16 │         let array_sub: Array<i32, { 10 -  2 }>
+   │                                     ^^^^^^^ u256: Value
+17 │         let array_mul: Array<i32, { 2 * 4 }>
+   │                                     ^   ^ u256: Value
+   │                                     │    
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:17:37
+   │
+17 │         let array_mul: Array<i32, { 2 * 4 }>
+   │                                     ^^^^^ u256: Value
+18 │         let array_div: Array<i32, { 16 / 2 }>
+   │                                     ^^   ^ u256: Value
+   │                                     │     
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:18:37
+   │
+18 │         let array_div: Array<i32, { 16 / 2 }>
+   │                                     ^^^^^^ u256: Value
+19 │         let array_mod: Array<i32, { 26 % 9 }>
+   │                                     ^^   ^ u256: Value
+   │                                     │     
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:19:37
+   │
+19 │         let array_mod: Array<i32, { 26 % 9 }>
+   │                                     ^^^^^^ u256: Value
+20 │         let array_pow: Array<i32, { 2 ** 3 }>
+   │                                     ^    ^ u256: Value
+   │                                     │     
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:20:37
+   │
+20 │         let array_pow: Array<i32, { 2 ** 3 }>
+   │                                     ^^^^^^ u256: Value
+21 │         let array_shl: Array<i32, { 0b0010 << 2 }>
+   │                                     ^^^^^^    ^ u256: Value
+   │                                     │          
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:21:37
+   │
+21 │         let array_shl: Array<i32, { 0b0010 << 2 }>
+   │                                     ^^^^^^^^^^^ u256: Value
+22 │         let array_shr: Array<i32, { 0b100000 >> 2 }>
+   │                                     ^^^^^^^^    ^ u256: Value
+   │                                     │            
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:22:37
+   │
+22 │         let array_shr: Array<i32, { 0b100000 >> 2 }>
+   │                                     ^^^^^^^^^^^^^ u256: Value
+23 │         let array_bitor: Array<i32, { 0b1000 |  0b0000 }>
+   │                                       ^^^^^^    ^^^^^^ u256: Value
+   │                                       │          
+   │                                       u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:23:39
+   │
+23 │         let array_bitor: Array<i32, { 0b1000 |  0b0000 }>
+   │                                       ^^^^^^^^^^^^^^^^ u256: Value
+24 │         let array_xor: Array<i32, { 0b1111 ^ 0b0111 }>
+   │                                     ^^^^^^   ^^^^^^ u256: Value
+   │                                     │         
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:24:37
+   │
+24 │         let array_xor: Array<i32, { 0b1111 ^ 0b0111 }>
+   │                                     ^^^^^^^^^^^^^^^ u256: Value
+25 │         let array_bitand: Array<i32, { 0b1010 & 0b1101 }>
+   │                                        ^^^^^^   ^^^^^^ u256: Value
+   │                                        │         
+   │                                        u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:25:40
+   │
+25 │         let array_bitand: Array<i32, { 0b1010 & 0b1101 }>
+   │                                        ^^^^^^^^^^^^^^^ u256: Value
+   ·
+28 │         let array_eq: Array<i32, { 8 if 10 == 10 else 0 }>
+   │                                         ^^    ^^ u256: Value
+   │                                         │      
+   │                                         u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:28:36
+   │
+28 │         let array_eq: Array<i32, { 8 if 10 == 10 else 0 }>
+   │                                    ^    ^^^^^^^^      ^ u256: Value
+   │                                    │    │              
+   │                                    │    bool: Value
+   │                                    u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:28:36
+   │
+28 │         let array_eq: Array<i32, { 8 if 10 == 10 else 0 }>
+   │                                    ^^^^^^^^^^^^^^^^^^^^ u256: Value
+29 │         let array_ne: Array<i32, { 8 if 10 != 0 else 0 }>
+   │                                         ^^    ^ u256: Value
+   │                                         │      
+   │                                         u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:29:36
+   │
+29 │         let array_ne: Array<i32, { 8 if 10 != 0 else 0 }>
+   │                                    ^    ^^^^^^^      ^ u256: Value
+   │                                    │    │             
+   │                                    │    bool: Value
+   │                                    u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:29:36
+   │
+29 │         let array_ne: Array<i32, { 8 if 10 != 0 else 0 }>
+   │                                    ^^^^^^^^^^^^^^^^^^^ u256: Value
+30 │         let array_lt1: Array<i32, { 8 if 0 < 10 else 0 }>
+   │                                          ^   ^^ u256: Value
+   │                                          │    
+   │                                          u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:30:37
+   │
+30 │         let array_lt1: Array<i32, { 8 if 0 < 10 else 0 }>
+   │                                     ^    ^^^^^^      ^ u256: Value
+   │                                     │    │            
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:30:37
+   │
+30 │         let array_lt1: Array<i32, { 8 if 0 < 10 else 0 }>
+   │                                     ^^^^^^^^^^^^^^^^^^ u256: Value
+31 │         let array_lt2: Array<i32, { 0 if 10 < 10 else 8 }>
+   │                                          ^^   ^^ u256: Value
+   │                                          │     
+   │                                          u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:31:37
+   │
+31 │         let array_lt2: Array<i32, { 0 if 10 < 10 else 8 }>
+   │                                     ^    ^^^^^^^      ^ u256: Value
+   │                                     │    │             
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:31:37
+   │
+31 │         let array_lt2: Array<i32, { 0 if 10 < 10 else 8 }>
+   │                                     ^^^^^^^^^^^^^^^^^^^ u256: Value
+32 │         let array_lte: Array<i32, { 8 if 0 <= 10 else 0 }>
+   │                                          ^    ^^ u256: Value
+   │                                          │     
+   │                                          u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:32:37
+   │
+32 │         let array_lte: Array<i32, { 8 if 0 <= 10 else 0 }>
+   │                                     ^    ^^^^^^^      ^ u256: Value
+   │                                     │    │             
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:32:37
+   │
+32 │         let array_lte: Array<i32, { 8 if 0 <= 10 else 0 }>
+   │                                     ^^^^^^^^^^^^^^^^^^^ u256: Value
+33 │         let array_lte2: Array<i32, { 8 if 10 <= 10 else 0 }>
+   │                                           ^^    ^^ u256: Value
+   │                                           │      
+   │                                           u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:33:38
+   │
+33 │         let array_lte2: Array<i32, { 8 if 10 <= 10 else 0 }>
+   │                                      ^    ^^^^^^^^      ^ u256: Value
+   │                                      │    │              
+   │                                      │    bool: Value
+   │                                      u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:33:38
+   │
+33 │         let array_lte2: Array<i32, { 8 if 10 <= 10 else 0 }>
+   │                                      ^^^^^^^^^^^^^^^^^^^^ u256: Value
+34 │         let array_gt: Array<i32, { 8 if 10 > 0 else 0 }>
+   │                                         ^^   ^ u256: Value
+   │                                         │     
+   │                                         u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:34:36
+   │
+34 │         let array_gt: Array<i32, { 8 if 10 > 0 else 0 }>
+   │                                    ^    ^^^^^^      ^ u256: Value
+   │                                    │    │            
+   │                                    │    bool: Value
+   │                                    u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:34:36
+   │
+34 │         let array_gt: Array<i32, { 8 if 10 > 0 else 0 }>
+   │                                    ^^^^^^^^^^^^^^^^^^ u256: Value
+35 │         let array_gt2: Array<i32, { 1 if 10 > 10 else 8 }>
+   │                                          ^^   ^^ u256: Value
+   │                                          │     
+   │                                          u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:35:37
+   │
+35 │         let array_gt2: Array<i32, { 1 if 10 > 10 else 8 }>
+   │                                     ^    ^^^^^^^      ^ u256: Value
+   │                                     │    │             
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:35:37
+   │
+35 │         let array_gt2: Array<i32, { 1 if 10 > 10 else 8 }>
+   │                                     ^^^^^^^^^^^^^^^^^^^ u256: Value
+36 │         let array_gte: Array<i32, { 1 if 0 >= 10 else 8 }>
+   │                                          ^    ^^ u256: Value
+   │                                          │     
+   │                                          u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:36:37
+   │
+36 │         let array_gte: Array<i32, { 1 if 0 >= 10 else 8 }>
+   │                                     ^    ^^^^^^^      ^ u256: Value
+   │                                     │    │             
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:36:37
+   │
+36 │         let array_gte: Array<i32, { 1 if 0 >= 10 else 8 }>
+   │                                     ^^^^^^^^^^^^^^^^^^^ u256: Value
+37 │         let array_gte2: Array<i32, { 8 if 10 >= 10 else 0 }>
+   │                                           ^^    ^^ u256: Value
+   │                                           │      
+   │                                           u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:37:38
+   │
+37 │         let array_gte2: Array<i32, { 8 if 10 >= 10 else 0 }>
+   │                                      ^    ^^^^^^^^      ^ u256: Value
+   │                                      │    │              
+   │                                      │    bool: Value
+   │                                      u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:37:38
+   │
+37 │         let array_gte2: Array<i32, { 8 if 10 >= 10 else 0 }>
+   │                                      ^^^^^^^^^^^^^^^^^^^^ u256: Value
+   ·
+40 │         let array_not: Array<i32, { 8 if not false else 0 }>
+   │                                              ^^^^^ bool: Value
+
+note: 
+   ┌─ features/const_generics.fe:40:37
+   │
+40 │         let array_not: Array<i32, { 8 if not false else 0 }>
+   │                                     ^    ^^^^^^^^^      ^ u256: Value
+   │                                     │    │               
+   │                                     │    bool: Value
+   │                                     u256: Value
+
+note: 
+   ┌─ features/const_generics.fe:40:37
+   │
+40 │         let array_not: Array<i32, { 8 if not false else 0 }>
+   │                                     ^^^^^^^^^^^^^^^^^^^^^ u256: Value
+
+

@@ -37,6 +37,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
+
     fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
         self.expressions
             .borrow_mut()
@@ -134,6 +135,7 @@ impl<'a> FunctionScope<'a> {
             .insert(node.id, event)
             .expect_none("emit statement attributes already exist");
     }
+
     /// Attribute contextual information to a declaration node.
     ///
     /// # Panics
@@ -296,6 +298,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.root.db
     }
+
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
         self.variable_defs
             .get(name)
@@ -362,6 +365,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
         item.value.map(NamedThing::Item)
     }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)
     }

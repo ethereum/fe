@@ -96,7 +96,7 @@ pub trait AnalyzerContext {
     ///        else:
     ///            ...
     /// ```
-    /// If the context is in then block, then this function returns `Item::Type(TypeDef::Contract(..))`.
+    /// If the context is in `then` block, then this function returns `Item::Type(TypeDef::Contract(..))`.
     fn root_item(&self) -> Item {
         let mut item = self.parent();
         while let Item::Function(func_id) = item {
@@ -239,9 +239,11 @@ impl AnalyzerContext for TempContext {
     fn db(&self) -> &dyn AnalyzerDb {
         panic!("TempContext has no analyzer db")
     }
+
     fn resolve_name(&self, _name: &str) -> Option<NamedThing> {
         panic!("TempContext can't resolve names")
     }
+
     fn add_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
         panic!("TempContext can't store expression")
     }
@@ -257,6 +259,7 @@ impl AnalyzerContext for TempContext {
     fn parent(&self) -> Item {
         panic!("TempContext has no root item")
     }
+
     fn parent_function(&self) -> FunctionId {
         panic!("TempContext has no function enclosed")
     }
@@ -280,6 +283,7 @@ impl AnalyzerContext for TempContext {
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
     }
+
     fn resolve_path(&mut self, _path: &ast::Path) -> Option<NamedThing> {
         panic!("TempContext can't resolve paths")
     }

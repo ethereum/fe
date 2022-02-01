@@ -1,8 +1,11 @@
-use crate::context::{AnalyzerContext, NamedThing};
 use crate::errors::TypeError;
 use crate::namespace::items::Item;
 use crate::namespace::types::{FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
+use crate::{
+    context::{AnalyzerContext, NamedThing},
+    traversal::const_expr::Constant,
+};
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
@@ -64,8 +67,22 @@ pub fn apply_generic_type_args(
                 )))
             }
 
-            (GenericParamKind::Int, ast::GenericArg::ConstExpr(_expr)) => {
-                todo!()
+            (GenericParamKind::Int, ast::GenericArg::ConstExpr(expr)) => {
+                // Performs semantic analysis on `expr`.
+                super::expressions::expr(context, expr, None)
+                    .map_err(|err| TypeError::new(err.0))?;
+
+                // Evaluates expression.
+                let const_value =
+                    super::const_expr::eval_expr(context, expr).map_err(|err| TypeError(err.0))?;
+
+                // TODO: Fix me when `GenericArg` can represent literals not only `Int`.
+                match const_value {
+                    Constant::Int(val) => Ok(GenericArg::Int(val.try_into().unwrap())),
+                    Constant::Bool(_) | Constant::Str(_) => {
+                        todo!()
+                    }
+                }
             }
 
             (GenericParamKind::PrimitiveType, ast::GenericArg::TypeDesc(type_node)) => {
