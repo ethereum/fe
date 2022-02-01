@@ -10,6 +10,86 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.13.0-alpha (2022-01-31)## 0.13.0-alpha (2022-01-31)
+
+
+### Features
+
+
+- Support private fields on structs
+
+  Public fields now need to be declared with the `pub` modifier, otherwise they default to private fields.
+  If a struct contains private fields it can not be constructed directly except from within the
+  struct itself. The recommended way is to implement a method `new(...)` as demonstrated in the
+  following example.
+
+  ```
+  struct House:
+      pub price: u256
+      pub size: u256
+      vacant: bool
+
+      pub fn new(price: u256, size: u256) -> House
+        return House(price=price, size=size, vacant=true)
+
+  contract Manager:
+
+    house: House
+
+    pub fn create_house(price: u256, size: u256):
+      self.house = House::new(price, size)
+      let can_access_price: u256 = self.house.price
+      # can not access `self.house.vacant` because the field is private
+  ``` ([#214](https://github.com/ethereum/fe/issues/214))
+- Support non-base type fields in structs
+
+  Support is currently limited in two ways:
+    - Structs with complex fields can not be returned from public functions
+    - Structs with complex fields can not be stored in storage ([#343](https://github.com/ethereum/fe/issues/343))
+- Addresses can now be explicitly cast to u256. For example:
+
+  ```
+  fn f(addr: address) -> u256:
+    return u256(addr)
+  ``` ([#621](https://github.com/ethereum/fe/issues/621))
+- A special function named `__call__` can now be defined in contracts. 
+
+  The body of this function will execute in place of the standard dispatcher when the contract is called.
+
+  example (with intrinsics):
+
+  ```
+  contract Foo:
+      pub fn __call__(self):
+          unsafe:
+              if __calldataload(0) == 1:
+                  __revert(0, 0)
+              else:
+                  __return(0, 0)
+  ``` ([#622](https://github.com/ethereum/fe/issues/622))
+
+
+### Bugfixes
+
+
+- Fixed a crash that happend when using a certain unprintable ASCII char ([#551](https://github.com/ethereum/fe/issues/551))
+- The argument to `revert` wasn't being lowered by the compiler,
+  meaning that some `revert` calls would cause a compiler panic
+  in later stages. For example:
+
+  ```
+  const BAD_MOJO: u256 = 0xdeaddead
+
+  struct Error:
+    code: u256
+
+  fn fail():
+    revert Error(code = BAD_MOJO)
+  ``` ([#619](https://github.com/ethereum/fe/issues/619))
+- Fixed a regression where an empty list expression (`[]`) would lead to a compiler crash. ([#623](https://github.com/ethereum/fe/issues/623))
+- Fixed a bug where int array elements were not sign extended in their ABI encodings. ([#633](https://github.com/ethereum/fe/issues/633))
+
+
 ## 0.12.0-alpha (2021-12-31)## 0.12.0-alpha (2021-12-31)
 
 
