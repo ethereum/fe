@@ -157,6 +157,10 @@ fn build_ingot_filestore_for_dir(path: &str) -> FileStore {
     let mut files = FileStore::new();
 
     for entry in walker {
+        if entry.is_err() {
+            eprintln!("Error: {}", entry.unwrap_err());
+            std::process::exit(1)
+        }
         let entry = entry.unwrap();
         let file_path = &entry.path().to_string_lossy().to_string();
 
