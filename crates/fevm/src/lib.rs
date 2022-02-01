@@ -34,7 +34,7 @@ pub use ethabi;
 pub type GasUsed = u64;
 pub type CallResult = (Return, TransactOut, GasUsed, Vec<Log>);
 
-// Impl eq
+
 pub struct TransactionResult {
     pub return_code: Return,
     pub return_data: TransactOut,

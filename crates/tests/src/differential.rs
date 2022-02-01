@@ -85,14 +85,13 @@ impl<'a> CaptureResult<'a> {
         assert!(fe_percentage <= max_percentage, "Fe used gas: {}, Solidity used gas: {}, Fe used {}% more gas. Called {} with input: {:?}", self.fe_used_gas(), self.solidity_used_gas(), fe_percentage, self.name, self.input);
         self
     }
+    pub fn assert_gas_equal(&self) -> &Self {
+        assert_eq!(&self.fe_result.2, &self.sol_result.2);
+        self
+    }
 
     pub fn assert_perfomed_equal(&self) -> &Self {
-        // assert_eq!(
-        //     self.fe_capture, self.solidity_capture,
-        //     "Called {} with input: {:?}",
-        //     self.name, self.input
-        // );
-        self.assert_return_data_equal()
+        self.assert_return_data_equal().assert_both_fail_or_success()
     }
 
     pub fn assert_return_data_equal(&self) -> &Self {
@@ -144,23 +143,10 @@ impl<'a> CaptureResult<'a> {
         return (!is_sol_success && !is_fe_success)
     }
 
-    // #[allow(dead_code)]
-    // pub fn assert_reverted(&self) -> &Self {
-    //     if !matches!(
-    //         (self.fe_capture.clone(), self.solidity_capture.clone()),
-    //         (
-    //             evm::Capture::Exit((evm::ExitReason::Revert(_), _)),
-    //             evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-    //         )
-    //     ) {
-    //         panic!(
-    //             "Asserted both revert but was: Fe: {:?} Solidity: {:?}",
-    //             self.fe_capture, self.solidity_capture
-    //         )
-    //     }
-    //     self
-    // }
-
+    pub fn assert_both_fail_or_success(&self) -> &Self {
+        assert!(self.both_reverted() || self.both_succeeded());
+        self
+    }
     pub fn assert_any_success_with_equal_return_data(&self) -> &Self {
         self.assert_any_success().assert_return_data_equal();
         self
@@ -186,82 +172,8 @@ impl<'a> CaptureResult<'a> {
         }
         self
     }
-
-    // pub fn both_succeeded(&self) -> bool {
-    //     matches!(
-    //         (self.fe_capture.clone(), self.solidity_capture.clone()),
-    //         (
-    //             evm::Capture::Exit((evm::ExitReason::Succeed(_), _)),
-    //             evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
-    //         )
-    //     )
-    // }
-
-    // pub fn both_reverted(&self) -> bool {
-    //     matches!(
-    //         (self.fe_capture.clone(), self.solidity_capture.clone()),
-    //         (
-    //             evm::Capture::Exit((evm::ExitReason::Revert(_), _)),
-    //             evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-    //         )
-    //     )
-    // }
-
-    // #[allow(dead_code)]
-    // pub fn performed_equal(&self) -> bool {
-    //     // self.fe_capture == self.solidity_capture
-    //     self.assert_return_data_equal()
-    // }
 }
 
-// impl<'a> DualHarness {
-//     pub fn from_fixture(
-//         executor: &mut Executor,
-//         fixture: &str,
-//         contract_name: &str,
-//         init_params: &[ethabi::Token],
-//     ) -> DualHarness {
-//         let fe_harness = test_utils::deploy_contract(
-//             executor,
-//             &format!("differential/{}.fe", fixture),
-//             contract_name,
-//             init_params,
-//         );
-//         let solidity_harness = test_utils::deploy_solidity_contract(
-//             executor,
-//             &format!("differential/{}.sol", fixture),
-//             contract_name,
-//             init_params,
-//             true,
-//         );
-//         DualHarness {
-//             fe_harness,
-//             solidity_harness,
-//         }
-//     }
-
-    // pub fn capture_call(
-    //     &self,
-    //     executor: &mut Executor,
-    //     name: &'a str,
-    //     input: &'a [ethabi::Token],
-    // ) -> CaptureResult<'a> {
-    //     let initially_used = executor.used_gas();
-    //     let fe_capture = self.fe_harness.capture_call(executor, name, input);
-    //     let fe_used_gas = executor.used_gas() - initially_used;
-    //     let solidity_capture = self.solidity_harness.capture_call(executor, name, input);
-    //     let solidity_used_gas = executor.used_gas() - fe_used_gas - initially_used;
-
-    //     CaptureResult {
-    //         fe_capture,
-    //         fe_used_gas,
-    //         solidity_capture,
-    //         solidity_used_gas,
-    //         name,
-    //         input,
-    //     }
-    // }
-//}
 
 proptest! {
 
