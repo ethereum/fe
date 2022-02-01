@@ -1,6 +1,6 @@
 [package]
 name = "fe-library"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"

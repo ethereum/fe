@@ -529,7 +529,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "clap",
  "fe-common",
@@ -541,7 +541,7 @@ dependencies = [
 
 [[package]]
 name = "fe-abi"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -552,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "codespan-reporting",
  "difference",
@@ -597,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-test-utils"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -646,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -661,14 +661,14 @@ dependencies = [
 
 [[package]]
 name = "fe-library"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "include_dir 0.6.2",
 ]
 
 [[package]]
 name = "fe-lowering"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "fe-test-files"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-common",
  "include_dir 0.7.2",
@@ -714,7 +714,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulc"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-yulgen",
  "indexmap",
@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulgen"
-version = "0.12.0-alpha"
+version = "0.13.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
