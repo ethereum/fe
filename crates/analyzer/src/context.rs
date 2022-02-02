@@ -13,6 +13,7 @@ use fe_parser::ast;
 use fe_parser::node::{Node, NodeId};
 
 use indexmap::{IndexMap, IndexSet};
+use num_bigint::BigInt;
 use smol_str::SmolStr;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
@@ -61,6 +62,12 @@ pub trait AnalyzerContext {
     ///
     /// Panics if type analysis is not performed for an `expr`.
     fn expr_typ(&self, expr: &Node<ast::Expr>) -> Type;
+
+    /// Add evaluated constant value in a constant declaration to the context.
+    fn add_constant(&self, name: &Node<ast::SmolStr>, value: Constant);
+
+    /// Returns constant value from variable name.
+    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant>;
 
     /// Returns an item enclosing current context.
     ///
@@ -254,6 +261,14 @@ impl AnalyzerContext for TempContext {
 
     fn expr_typ(&self, _expr: &Node<ast::Expr>) -> Type {
         panic!("TempContext can't return expression type")
+    }
+
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: Constant) {
+        panic!("TempContext can't store constant")
+    }
+
+    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
+        None
     }
 
     fn parent(&self) -> Item {
@@ -461,4 +476,12 @@ impl fmt::Display for CallType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{:?}", self)
     }
+}
+
+/// Represents constant value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Constant {
+    Int(BigInt),
+    Bool(bool),
+    Str(SmolStr),
 }

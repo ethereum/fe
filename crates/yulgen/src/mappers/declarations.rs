@@ -31,6 +31,19 @@ pub fn var_decl(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Stat
     unreachable!()
 }
 
+/// Builds a Yul statement from a Fe const declaration.
+/// TODO: We don't perform any optimization on constant and treat it in the same way as a local variable.
+pub fn const_decl(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+    if let fe::FuncStmt::ConstantDecl { name, value, .. } = &stmt.kind {
+        let target = names::var_name(name.kind.as_str());
+        let value = expressions::expr(context, value);
+
+        return statement! { let [target] := [value] };
+    }
+
+    unreachable!()
+}
+
 fn var_decl_name(target: &fe::VarDeclTarget) -> &str {
     if let fe::VarDeclTarget::Name(name) = target {
         name

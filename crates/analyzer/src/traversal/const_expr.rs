@@ -2,10 +2,9 @@
 
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
-use smol_str::SmolStr;
 
 use crate::{
-    context::AnalyzerContext,
+    context::{AnalyzerContext, Constant},
     errors::ConstEvalError,
     namespace::types::{self, Base, Type},
 };
@@ -39,8 +38,10 @@ pub(super) fn eval_expr(
         ast::Expr::UnaryOperation { op, operand } => eval_unary_op(context, op, operand),
         ast::Expr::CompOperation { left, op, right } => eval_comp_op(context, left, op, right),
         ast::Expr::Bool(val) => Ok(Constant::Bool(*val)),
-        ast::Expr::Name(_) => todo!(),
-        ast::Expr::Path(_) => todo!(),
+        ast::Expr::Name(name) => match context.constant_value_by_name(name) {
+            Some(const_value) => Ok(const_value),
+            _ => Err(not_const_error(context, expr.span)),
+        },
 
         ast::Expr::Num(num) => {
             // We don't validate the string representing number here,
@@ -53,6 +54,7 @@ pub(super) fn eval_expr(
 
         // TODO: Need to evaluate attribute getter, constant constructor and const fn call.
         ast::Expr::Subscript { .. }
+        | ast::Expr::Path(_)
         | ast::Expr::Attribute { .. }
         | ast::Expr::Call { .. }
         | ast::Expr::List { .. }
@@ -221,24 +223,30 @@ fn eval_comp_op(
     rhs: &Node<ast::Expr>,
 ) -> Result<Constant, ConstEvalError> {
     let (lhs, rhs) = (eval_expr(context, lhs)?, eval_expr(context, rhs)?);
-    let (lhs, rhs) = (lhs.extract_numeric(), rhs.extract_numeric());
 
-    Ok(Constant::Bool(match op.kind {
-        CompOperator::Eq => lhs == rhs,
-        CompOperator::NotEq => lhs != rhs,
-        CompOperator::Lt => lhs < rhs,
-        CompOperator::LtE => lhs <= rhs,
-        CompOperator::Gt => lhs > rhs,
-        CompOperator::GtE => lhs >= rhs,
-    }))
-}
+    let res = match (lhs, rhs) {
+        (Constant::Int(lhs), Constant::Int(rhs)) => match op.kind {
+            CompOperator::Eq => lhs == rhs,
+            CompOperator::NotEq => lhs != rhs,
+            CompOperator::Lt => lhs < rhs,
+            CompOperator::LtE => lhs <= rhs,
+            CompOperator::Gt => lhs > rhs,
+            CompOperator::GtE => lhs >= rhs,
+        },
 
-/// Represents constant value.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Constant {
-    Int(BigInt),
-    Bool(bool),
-    Str(SmolStr),
+        (Constant::Bool(lhs), Constant::Bool(rhs)) => match op.kind {
+            CompOperator::Eq => lhs == rhs,
+            CompOperator::NotEq => lhs != rhs,
+            CompOperator::Lt => !lhs & rhs,
+            CompOperator::LtE => lhs <= rhs,
+            CompOperator::Gt => lhs & !rhs,
+            CompOperator::GtE => lhs >= rhs,
+        },
+
+        _ => panic!("arguments of comp op have invalid type"),
+    };
+
+    Ok(Constant::Bool(res))
 }
 
 impl Constant {

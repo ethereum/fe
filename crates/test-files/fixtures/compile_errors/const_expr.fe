@@ -1,6 +1,0 @@
-contract Foo:
-    fn not_a_constant():
-        let array: Array<i32, { (1, 2) }>
-        
-    fn zero_division():
-        let array: Array<i32, { 1 / (3 - 3) }>

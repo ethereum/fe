@@ -221,6 +221,7 @@ test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 test_analysis! { const_generics, "features/const_generics.fe" }
+test_analysis! { const_local, "features/const_local.fe" }
 
 test_analysis_ingot! { basic_ingot, "ingots/basic_ingot"}
 

@@ -187,6 +187,11 @@ pub enum FuncStmt {
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
     },
+    ConstantDecl {
+        name: Node<SmolStr>,
+        typ: Node<TypeDesc>,
+        value: Node<Expr>,
+    },
     Assign {
         target: Node<Expr>,
         value: Node<Expr>,
@@ -650,6 +655,9 @@ impl fmt::Display for FuncStmt {
                 } else {
                     write!(f, "let {}: {}", target.kind, typ.kind)
                 }
+            }
+            FuncStmt::ConstantDecl { name, typ, value } => {
+                write!(f, "const {}: {} = {}", name.kind, typ.kind, value.kind)
             }
             FuncStmt::Assign { target, value } => write!(f, "{} = {}", target.kind, value.kind),
             FuncStmt::AugAssign { target, op, value } => {

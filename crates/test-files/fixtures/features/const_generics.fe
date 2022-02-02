@@ -38,3 +38,9 @@ contract Foo:
         
         # const generics with unary expression.
         let array_not: Array<i32, { 8 if not false else 0 }>
+        
+        # const generics with const variable.
+        const DOUBLE_ARRAY_LENGTH: u64 = 16
+        const TWO: u64 = 2
+
+        let array_with_const: Array<i32, { DOUBLE_ARRAY_LENGTH / TWO }>

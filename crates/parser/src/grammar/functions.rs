@@ -225,6 +225,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Continue | Break | Pass => parse_single_word_stmt(par),
         Emit => parse_emit_statement(par),
         Let => parse_var_decl(par),
+        Const => parse_const_decl(par),
         Unsafe => parse_unsafe_block(par),
         _ => parse_expr_stmt(par),
     }
@@ -261,6 +262,49 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         }
     };
     Ok(node)
+}
+
+fn parse_const_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let const_tok = par.assert(TokenKind::Const);
+    let name = par.expect(TokenKind::Name, "failed to parse constant declaration")?;
+    par.expect_with_notes(
+        TokenKind::Colon,
+        "failed to parse constant declaration",
+        |_| {
+            vec![
+                "Note: constant name must be followed by a colon and a type description".into(),
+                format!("Example: let `{}: u256 = 1000`", name.text),
+            ]
+        },
+    )?;
+    let typ = parse_type_desc(par)?;
+    par.expect_with_notes(
+        TokenKind::Eq,
+        "failed to parse constant declaration",
+        |_| {
+            vec![
+            "Note: the type of a constant must be followed by an equals sign and a value assignment"
+                .into(),
+                format!(
+                    "Example: let `{}: u256 = 1000`",
+                    name.text
+                ),
+        ]
+        },
+    )?;
+
+    let value = parse_expr(par)?;
+    par.expect_newline("variable declaration")?;
+
+    let span = const_tok.span + value.span;
+    Ok(Node::new(
+        FuncStmt::ConstantDecl {
+            name: name.into(),
+            typ,
+            value,
+        },
+        span,
+    ))
 }
 
 /// Parse a (function) statement that begins with an expression. This might be

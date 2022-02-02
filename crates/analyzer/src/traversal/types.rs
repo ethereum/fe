@@ -1,11 +1,8 @@
+use crate::context::{AnalyzerContext, Constant, NamedThing};
 use crate::errors::TypeError;
 use crate::namespace::items::Item;
 use crate::namespace::types::{FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
-use crate::{
-    context::{AnalyzerContext, NamedThing},
-    traversal::const_expr::Constant,
-};
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
@@ -79,9 +76,9 @@ pub fn apply_generic_type_args(
                 // TODO: Fix me when `GenericArg` can represent literals not only `Int`.
                 match const_value {
                     Constant::Int(val) => Ok(GenericArg::Int(val.try_into().unwrap())),
-                    Constant::Bool(_) | Constant::Str(_) => {
-                        todo!()
-                    }
+                    Constant::Bool(_) | Constant::Str(_) => Err(TypeError::new(
+                        context.not_yet_implemented("non numeric type const generics", expr.span),
+                    )),
                 }
             }
 

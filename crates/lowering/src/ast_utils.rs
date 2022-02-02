@@ -95,6 +95,11 @@ where
                     typ,
                     value: value.map(|val| map_ast_node(val.into(), map_fn).as_expr()),
                 },
+                FuncStmt::ConstantDecl { name, typ, value } => FuncStmt::ConstantDecl {
+                    name,
+                    typ,
+                    value: map_ast_node(value.into(), map_fn).as_expr(),
+                },
                 FuncStmt::While { test, body } => FuncStmt::While {
                     test: map_ast_node(test.into(), map_fn).as_expr(),
                     body: map_body(body, map_fn),
@@ -383,6 +388,16 @@ pub fn inject_before_expression(
                     transformed_body.push(stmt.clone())
                 }
             }
+            FuncStmt::ConstantDecl { value, .. } => {
+                inject_or_add_current(
+                    &mut transformed_body,
+                    injection_and_current_stmt,
+                    &[&value],
+                    expression,
+                    stmt,
+                );
+            }
+
             FuncStmt::Assert { test, msg } => {
                 if let Some(msg) = msg {
                     inject_or_add_current(

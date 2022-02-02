@@ -64,7 +64,12 @@ impl<'a, 'db> FnContext<'a, 'db> {
     ) -> Option<&ExpressionAttributes> {
         self.body.expressions.get(&node_id.into())
     }
+
     pub fn var_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
+        self.body.var_decl_types.get(&node_id.into())
+    }
+
+    pub fn const_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
         self.body.var_decl_types.get(&node_id.into())
     }
 }

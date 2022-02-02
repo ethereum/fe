@@ -1,6 +1,8 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
+use crate::context::{
+    AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
+};
 use crate::errors::{AlreadyDefined, TypeError};
 use crate::namespace::items::Item;
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
@@ -54,6 +56,14 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
         self.expressions.borrow().get(&expr.id).unwrap().typ.clone()
+    }
+
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: crate::context::Constant) {
+        todo!()
+    }
+
+    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
+        todo!()
     }
 
     fn parent(&self) -> Item {
@@ -191,6 +201,14 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .clone()
     }
 
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: Constant) {
+        unreachable!()
+    }
+
+    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
+        unreachable!()
+    }
+
     fn parent(&self) -> Item {
         self.function.parent(self.db())
     }
@@ -283,6 +301,7 @@ pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
     pub variable_defs: BTreeMap<String, (FixedSize, Span)>,
+    pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
 
@@ -326,6 +345,23 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
         self.root.expr_typ(expr)
+    }
+
+    fn add_constant(&self, name: &Node<ast::SmolStr>, value: Constant) {
+        self.constant_defs
+            .borrow_mut()
+            .insert(name.kind.clone().to_string(), value)
+            .expect_none("expression attributes already exist");
+    }
+
+    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
+        match self.constant_defs.borrow().get(name.as_str()) {
+            Some(constant) => Some(constant.clone()),
+            None => match self.parent {
+                Some(parent) => parent.constant_value_by_name(name),
+                None => None,
+            },
+        }
     }
 
     fn parent(&self) -> Item {
@@ -377,6 +413,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root,
             parent: None,
             variable_defs: BTreeMap::new(),
+            constant_defs: RefCell::new(BTreeMap::new()),
             typ,
         }
     }
@@ -386,6 +423,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root: self.root,
             parent: Some(self),
             variable_defs: BTreeMap::new(),
+            constant_defs: RefCell::new(BTreeMap::new()),
             typ,
         }
     }

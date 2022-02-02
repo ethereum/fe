@@ -181,6 +181,19 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
                 }
             }
         }
+        fe::FuncStmt::ConstantDecl { name, typ, value } => {
+            let var_type = context
+                .const_decl_type(typ.id)
+                .expect("missing var decl type")
+                .clone()
+                .into();
+
+            vec![fe::FuncStmt::ConstantDecl {
+                name,
+                typ: types::type_desc(context.module, typ, &var_type),
+                value: expressions::expr(context, value),
+            }]
+        }
         fe::FuncStmt::Assign { target, value } => vec![fe::FuncStmt::Assign {
             target: expressions::expr(context, target),
             value: expressions::expr(context, value),

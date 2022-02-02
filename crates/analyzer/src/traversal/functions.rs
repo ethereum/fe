@@ -23,6 +23,7 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
     match &stmt.kind {
         Return { .. } => func_return(scope, stmt),
         VarDecl { .. } => declarations::var_decl(scope, stmt),
+        ConstantDecl { .. } => declarations::const_decl(scope, stmt),
         Assign { .. } => assignments::assign(scope, stmt),
         Emit { .. } => emit(scope, stmt),
         AugAssign { .. } => assignments::aug_assign(scope, stmt),

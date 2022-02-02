@@ -2,7 +2,7 @@ use crate::context::AnalyzerContext;
 use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::FixedSize;
-use crate::traversal::{expressions, types};
+use crate::traversal::{const_expr, expressions, types};
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
@@ -39,6 +39,47 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
 
         scope.root.add_declaration(typ, declared_type.clone());
         add_var(scope, target, declared_type)?;
+        return Ok(());
+    }
+
+    unreachable!()
+}
+
+pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
+    if let fe::FuncStmt::ConstantDecl { name, typ, value } = &stmt.kind {
+        let declared_type = match FixedSize::try_from(types::type_desc(scope, typ)?) {
+            Ok(typ) => typ,
+            Err(_) => {
+                // If this conversion fails, the type must be a map (for now at least)
+                return Err(FatalError::new(scope.error(
+                    "invalid variable type",
+                    typ.span,
+                    "`Map` type can only be used as a contract field",
+                )));
+            }
+        };
+
+        // Perform semantic analysis before const evaluation.
+        let value_attributes =
+            expressions::assignable_expr(scope, value, Some(&declared_type.clone().into()))?;
+
+        if declared_type != value_attributes.typ {
+            scope.type_error(
+                "type mismatch",
+                value.span,
+                &declared_type,
+                &value_attributes.typ,
+            );
+        }
+
+        // Perform constant evaluation.
+        let const_value =
+            const_expr::eval_expr(scope, value).map_err(|err| FatalError::new(err.0))?;
+
+        scope.root.add_declaration(typ, declared_type.clone());
+        // this logs a message on err, so it's safe to ignore here.
+        let _ = scope.add_var(name.kind.as_str(), declared_type, name.span);
+        scope.add_constant(name, const_value);
         return Ok(());
     }
 
