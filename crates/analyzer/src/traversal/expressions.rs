@@ -73,6 +73,7 @@ pub fn expr_list(
             }),
             location: Location::Memory,
             move_location: None,
+            const_value: None,
         });
     }
 
@@ -138,6 +139,7 @@ pub fn expr_list(
         typ: Type::Array(array_typ),
         location: Location::Memory,
         move_location: None,
+        const_value: None,
     })
 }
 

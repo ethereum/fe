@@ -260,6 +260,7 @@ fn test_arrays() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("const_local.fe", &[], uint_token(42)),
     case("for_loop_with_static_array.fe", &[], uint_token(30)),
     case("for_loop_with_static_array_from_sto.fe", &[], uint_token(6)),
     case("for_loop_with_break.fe", &[], uint_token(15)),

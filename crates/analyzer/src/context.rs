@@ -64,7 +64,7 @@ pub trait AnalyzerContext {
     fn expr_typ(&self, expr: &Node<ast::Expr>) -> Type;
 
     /// Add evaluated constant value in a constant declaration to the context.
-    fn add_constant(&self, name: &Node<ast::SmolStr>, value: Constant);
+    fn add_constant(&self, name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant);
 
     /// Returns constant value from variable name.
     fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant>;
@@ -263,7 +263,7 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't return expression type")
     }
 
-    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: Constant) {
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, _expr: &Node<ast::Expr>, _value: Constant) {
         panic!("TempContext can't store constant")
     }
 
@@ -349,6 +349,8 @@ pub struct ExpressionAttributes {
     pub typ: Type,
     pub location: Location,
     pub move_location: Option<Location>,
+    // Evaluated constant value of const local definition.
+    pub const_value: Option<Constant>,
 }
 
 impl ExpressionAttributes {
@@ -357,6 +359,7 @@ impl ExpressionAttributes {
             typ,
             location,
             move_location: None,
+            const_value: None,
         }
     }
 

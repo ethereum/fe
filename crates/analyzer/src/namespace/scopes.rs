@@ -58,7 +58,12 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         self.expressions.borrow().get(&expr.id).unwrap().typ.clone()
     }
 
-    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: crate::context::Constant) {
+    fn add_constant(
+        &self,
+        _name: &Node<ast::SmolStr>,
+        _expr: &Node<ast::Expr>,
+        _value: crate::context::Constant,
+    ) {
         todo!()
     }
 
@@ -201,12 +206,17 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .clone()
     }
 
-    fn add_constant(&self, _name: &Node<ast::SmolStr>, _value: Constant) {
-        unreachable!()
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
+        self.body
+            .borrow_mut()
+            .expressions
+            .get_mut(&expr.id)
+            .expect("expression attributes must exist before adding constant value")
+            .const_value = Some(value);
     }
 
     fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
-        unreachable!()
+        None
     }
 
     fn parent(&self) -> Item {
@@ -347,11 +357,13 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.expr_typ(expr)
     }
 
-    fn add_constant(&self, name: &Node<ast::SmolStr>, value: Constant) {
+    fn add_constant(&self, name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
         self.constant_defs
             .borrow_mut()
-            .insert(name.kind.clone().to_string(), value)
+            .insert(name.kind.clone().to_string(), value.clone())
             .expect_none("expression attributes already exist");
+
+        self.root.add_constant(name, expr, value)
     }
 
     fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
