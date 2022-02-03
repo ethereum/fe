@@ -1,0 +1,22 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: invalid assignment target
+  ┌─ compile_errors/const_assign.fe:5:9
+  │
+5 │         MODULE = 1
+  │         ^^^^^^
+  │
+  = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
+
+error: cannot assign to constant variable
+  ┌─ compile_errors/const_assign.fe:9:9
+  │
+9 │         LOCAL = 1
+  │         ^^^^^
+  │
+  = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
+
+

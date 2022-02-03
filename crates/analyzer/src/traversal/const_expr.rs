@@ -42,7 +42,6 @@ pub(crate) fn eval_expr(
             Some(const_value) => Ok(const_value),
             _ => Err(not_const_error(context, expr.span)),
         },
-        ast::Expr::Path(_) => todo!(),
 
         ast::Expr::Num(num) => {
             // We don't validate the string representing number here,
@@ -55,6 +54,7 @@ pub(crate) fn eval_expr(
 
         // TODO: Need to evaluate attribute getter, constant constructor and const fn call.
         ast::Expr::Subscript { .. }
+        | ast::Expr::Path(_)
         | ast::Expr::Attribute { .. }
         | ast::Expr::Call { .. }
         | ast::Expr::List { .. }

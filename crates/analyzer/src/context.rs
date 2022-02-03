@@ -204,6 +204,7 @@ pub enum NamedThing {
     Variable {
         name: String,
         typ: Result<FixedSize, TypeError>,
+        is_const: bool,
         span: Span,
     },
 }

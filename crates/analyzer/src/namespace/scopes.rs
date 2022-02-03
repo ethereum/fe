@@ -288,6 +288,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                     NamedThing::Variable {
                         name: name.to_string(),
                         typ: param.typ.clone(),
+                        is_const: false,
                         span,
                     }
                 })
@@ -319,7 +320,8 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
-    pub variable_defs: BTreeMap<String, (FixedSize, Span)>,
+    /// Maps Name -> (Type, is_const, span)
+    pub variable_defs: BTreeMap<String, (FixedSize, bool, Span)>,
     pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
@@ -340,9 +342,10 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
         self.variable_defs
             .get(name)
-            .map(|(typ, span)| NamedThing::Variable {
+            .map(|(typ, is_const, span)| NamedThing::Variable {
                 name: name.to_string(),
                 typ: Ok(typ.clone()),
+                is_const: *is_const,
                 span: *span,
             })
             .or_else(|| {
@@ -459,6 +462,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         &mut self,
         name: &str,
         typ: FixedSize,
+        is_const: bool,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name) {
@@ -501,7 +505,8 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             }
 
             None => {
-                self.variable_defs.insert(name.to_string(), (typ, span));
+                self.variable_defs
+                    .insert(name.to_string(), (typ, is_const, span));
                 Ok(())
             }
         }
