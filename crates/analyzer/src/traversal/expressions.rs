@@ -1416,7 +1416,7 @@ fn expr_call_struct_constructor(
         name_span,
         args,
         &fields,
-        LabelPolicy::AllowUnlabledIfNameEqual,
+        LabelPolicy::AllowUnlabeledIfNameEqual,
     )?;
 
     Ok((

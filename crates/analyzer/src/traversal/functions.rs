@@ -167,7 +167,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                     name.span,
                     args,
                     &params,
-                    LabelPolicy::AllowUnlabledIfNameEqual,
+                    LabelPolicy::AllowUnlabeledIfNameEqual,
                 )?;
             }
             Some(named_thing) => {

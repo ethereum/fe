@@ -113,7 +113,7 @@ pub fn validate_arg_count(
 
 pub enum LabelPolicy {
     AllowAnyUnlabeled,
-    AllowUnlabledIfNameEqual,
+    AllowUnlabeledIfNameEqual,
 }
 
 pub fn validate_arg_labels(
@@ -152,7 +152,7 @@ pub fn validate_arg_labels(
             (Some(expected_label), None) => match &arg_val.kind {
                 fe::Expr::Name(var_name) if var_name == expected_label => {}
                 _ => {
-                    if let LabelPolicy::AllowUnlabledIfNameEqual = label_policy {
+                    if let LabelPolicy::AllowUnlabeledIfNameEqual = label_policy {
                         context.fancy_error(
                             "missing argument label",
                             vec![Label::primary(
