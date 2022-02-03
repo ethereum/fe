@@ -1,13 +1,13 @@
-use crate::context::{Analysis, AnalyzerContext};
+use crate::context::{Analysis, AnalyzerContext, Constant};
 use crate::db::AnalyzerDb;
-use crate::errors::{self, TypeError};
+use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
     Contract, ContractId, Function, Item, ModuleConstant, ModuleConstantId, ModuleContext,
     ModuleFileContent, ModuleId, Struct, StructId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
-use crate::traversal::types::type_desc;
+use crate::traversal::{const_expr, expressions, types::type_desc};
 use fe_common::diagnostics::Label;
 use fe_common::Span;
 use fe_parser::ast;
@@ -197,12 +197,26 @@ pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<StructId>
     )
 }
 
+pub fn module_constants(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ModuleConstantId>> {
+    Rc::new(
+        module
+            .all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                Item::Constant(id) => Some(*id),
+                _ => None,
+            })
+            .collect(),
+    )
+}
+
 pub fn module_constant_type(
     db: &dyn AnalyzerDb,
     constant: ModuleConstantId,
 ) -> Analysis<Result<types::Type, TypeError>> {
+    let constant_data = constant.data(db);
     let mut scope = ItemScope::new(db, constant.data(db).module);
-    let typ = type_desc(&mut scope, &constant.data(db).ast.kind.typ);
+    let typ = type_desc(&mut scope, &constant_data.ast.kind.typ);
 
     match &typ {
         Ok(typ) if !matches!(typ, Type::Base(_)) => {
@@ -212,12 +226,105 @@ pub fn module_constant_type(
                 &format!("this has type `{}`; expected a primitive type", typ),
             );
         }
+        Ok(typ) => {
+            if let Ok(expr_attr) =
+                expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(typ))
+            {
+                if typ != &expr_attr.typ {
+                    scope.type_error(
+                        "type mismatch",
+                        constant_data.ast.kind.value.span,
+                        &typ,
+                        &expr_attr.typ,
+                    );
+                }
+            }
+        }
         _ => {}
     }
 
     Analysis {
         value: typ,
         diagnostics: Rc::new(scope.diagnostics),
+    }
+}
+
+pub fn module_constant_type_cycle(
+    db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    constant: &ModuleConstantId,
+) -> Analysis<Result<Type, TypeError>> {
+    let mut context = ItemScope::new(db, constant.data(db).module);
+    let err = Err(TypeError::new(context.error(
+        "recursive constant value definition",
+        constant.data(db).ast.span,
+        "",
+    )));
+
+    Analysis {
+        value: err,
+        diagnostics: Rc::new(context.diagnostics),
+    }
+}
+
+pub fn module_constant_value(
+    db: &dyn AnalyzerDb,
+    constant: ModuleConstantId,
+) -> Analysis<Result<Constant, ConstEvalError>> {
+    let constant_data = constant.data(db);
+
+    // Create `ItemScope` to collect expression types for constant evaluation.
+    // TODO: Consider whether it's better to run semantic analysis twice(first analysis is already done in `module_constant_type`) or
+    // cache expression types in salsa.
+    let mut scope = ItemScope::new(db, constant.data(db).module);
+    let typ = match type_desc(&mut scope, &constant_data.ast.kind.typ) {
+        Ok(typ) => typ,
+        // No need to emit diagnostics, it's already emitted in `module_constant_type`.
+        Err(err) => {
+            return Analysis {
+                value: Err(err.into()),
+                diagnostics: Rc::new(vec![]),
+            };
+        }
+    };
+
+    if let Err(err) =
+        expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(&typ))
+    {
+        // No need to emit diagnostics, it's already emitted in `module_constant_type`.
+        return Analysis {
+            value: Err(err.into()),
+            diagnostics: Rc::new(vec![]),
+        };
+    }
+
+    // Clear diagnostics emitted from `module_constant_type`.
+    scope.diagnostics.clear();
+
+    // Perform constant evaluation.
+    let value = const_expr::eval_expr(&mut scope, &constant_data.ast.kind.value);
+
+    Analysis {
+        value,
+        diagnostics: Rc::new(scope.diagnostics),
+    }
+}
+
+pub fn module_constant_value_cycle(
+    db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    constant: &ModuleConstantId,
+) -> Analysis<Result<Constant, ConstEvalError>> {
+    let mut context = ItemScope::new(db, constant.data(db).module);
+    let err = Err(ConstEvalError::new(context.error(
+        "recursive constant value definition",
+        constant.data(db).ast.span,
+        "",
+    )));
+
+    Analysis {
+        value: err,
+        diagnostics: Rc::new(context.diagnostics),
     }
 }
 

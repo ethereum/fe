@@ -24,7 +24,7 @@ use std::fmt::Display;
 ///
 /// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeError(pub(crate) DiagnosticVoucher);
+pub struct TypeError(DiagnosticVoucher);
 impl TypeError {
     // `Clone` is required because these are stored in a salsa db.
     // Please don't clone these manually.
@@ -33,17 +33,34 @@ impl TypeError {
     }
 }
 
+impl From<FatalError> for TypeError {
+    fn from(err: FatalError) -> Self {
+        Self(err.0)
+    }
+}
+impl From<ConstEvalError> for TypeError {
+    fn from(err: ConstEvalError) -> Self {
+        Self(err.0)
+    }
+}
+
 /// Error to be returned when otherwise no meaningful information can be returned.
 /// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
 /// has been obtained. (See comment on [`TypeError`])
 #[derive(Debug)]
-pub struct FatalError(pub(crate) DiagnosticVoucher);
+pub struct FatalError(DiagnosticVoucher);
 
 impl FatalError {
     /// Create a `FatalError` instance, given a "voucher"
     /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
+    }
+}
+
+impl From<ConstEvalError> for FatalError {
+    fn from(err: ConstEvalError) -> Self {
+        Self(err.0)
     }
 }
 
@@ -56,12 +73,27 @@ impl FatalError {
 ///
 /// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
 /// has been obtained. (See comment on [`TypeError`])
-#[derive(Debug)]
-pub struct ConstEvalError(pub(crate) DiagnosticVoucher);
+///
+/// NOTE: `Clone` is required because these are stored in a salsa db.
+/// Please don't clone these manually.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstEvalError(DiagnosticVoucher);
 
 impl ConstEvalError {
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
+    }
+}
+
+impl From<TypeError> for ConstEvalError {
+    fn from(err: TypeError) -> Self {
+        Self(err.0)
+    }
+}
+
+impl From<FatalError> for ConstEvalError {
+    fn from(err: FatalError) -> Self {
+        Self(err.0)
     }
 }
 

@@ -64,11 +64,20 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         _expr: &Node<ast::Expr>,
         _value: crate::context::Constant,
     ) {
-        todo!()
+        // We use salsa query to get constant. So no need to add constant explicitly.
     }
 
-    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
-        todo!()
+    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
+        let constant = self
+            .module
+            .all_constants(self.db)
+            .iter()
+            .find(|id| &id.name(self.db) == name)
+            .copied()?;
+
+        // It's ok to ignore an error.
+        // Diagnostics are already emitted when an error occurs.
+        constant.constant_value(self.db).ok()
     }
 
     fn parent(&self) -> Item {
@@ -76,7 +85,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     fn parent_function(&self) -> FunctionId {
-        panic!("TempContext has no function enclosed")
+        panic!("ItemContext has no parent function")
     }
 
     fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
@@ -367,12 +376,17 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     }
 
     fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
-        match self.constant_defs.borrow().get(name.as_str()) {
-            Some(constant) => Some(constant.clone()),
-            None => match self.parent {
-                Some(parent) => parent.constant_value_by_name(name),
-                None => None,
-            },
+        if let Some(constant) = self.constant_defs.borrow().get(name.as_str()) {
+            Some(constant.clone())
+        } else if let Some(parent) = self.parent {
+            parent.constant_value_by_name(name)
+        } else {
+            match self.resolve_name(name)? {
+                NamedThing::Item(Item::Constant(constant)) => {
+                    constant.constant_value(self.db()).ok()
+                }
+                _ => None,
+            }
         }
     }
 

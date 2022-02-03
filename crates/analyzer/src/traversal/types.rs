@@ -66,12 +66,10 @@ pub fn apply_generic_type_args(
 
             (GenericParamKind::Int, ast::GenericArg::ConstExpr(expr)) => {
                 // Performs semantic analysis on `expr`.
-                super::expressions::expr(context, expr, None)
-                    .map_err(|err| TypeError::new(err.0))?;
+                super::expressions::expr(context, expr, None)?;
 
                 // Evaluates expression.
-                let const_value =
-                    super::const_expr::eval_expr(context, expr).map_err(|err| TypeError(err.0))?;
+                let const_value = super::const_expr::eval_expr(context, expr)?;
 
                 // TODO: Fix me when `GenericArg` can represent literals not only `Int`.
                 match const_value {

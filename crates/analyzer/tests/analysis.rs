@@ -139,6 +139,7 @@ test_analysis! { if_statement_2, "features/if_statement_2.fe"}
 test_analysis! { if_statement_with_block_declaration, "features/if_statement_with_block_declaration.fe"}
 test_analysis! { keccak, "features/keccak.fe"}
 test_analysis! { math, "features/math.fe"}
+test_analysis! { module_const, "features/module_const.fe"}
 test_analysis! { multi_param, "features/multi_param.fe"}
 test_analysis! { nested_map, "features/nested_map.fe"}
 test_analysis! { numeric_sizes, "features/numeric_sizes.fe"}

@@ -52,7 +52,7 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
             Err(_) => {
                 // If this conversion fails, the type must be a map (for now at least)
                 return Err(FatalError::new(scope.error(
-                    "invalid variable type",
+                    "invalid constant type",
                     typ.span,
                     "`Map` type can only be used as a contract field",
                 )));
@@ -73,8 +73,7 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         }
 
         // Perform constant evaluation.
-        let const_value =
-            const_expr::eval_expr(scope, value).map_err(|err| FatalError::new(err.0))?;
+        let const_value = const_expr::eval_expr(scope, value)?;
 
         scope.root.add_declaration(typ, declared_type.clone());
         // this logs a message on err, so it's safe to ignore here.

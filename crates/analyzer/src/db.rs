@@ -1,5 +1,5 @@
-use crate::context::{Analysis, FunctionBody};
-use crate::errors::TypeError;
+use crate::context::{Analysis, Constant, FunctionBody};
+use crate::errors::{ConstEvalError, TypeError};
 use crate::namespace::items::{
     self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, GlobalId, IngotId,
     Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TypeAliasId,
@@ -73,6 +73,8 @@ pub trait AnalyzerDb {
     fn module_contracts(&self, module: ModuleId) -> Rc<Vec<ContractId>>;
     #[salsa::invoke(queries::module::module_structs)]
     fn module_structs(&self, module: ModuleId) -> Rc<Vec<StructId>>;
+    #[salsa::invoke(queries::module::module_constants)]
+    fn module_constants(&self, module: ModuleId) -> Rc<Vec<ModuleConstantId>>;
     #[salsa::invoke(queries::module::module_used_item_map)]
     fn module_used_item_map(
         &self,
@@ -84,11 +86,18 @@ pub trait AnalyzerDb {
     fn module_sub_modules(&self, module: ModuleId) -> Rc<IndexMap<SmolStr, ModuleId>>;
 
     // Module Constant
+    #[salsa::cycle(queries::module::module_constant_type_cycle)]
     #[salsa::invoke(queries::module::module_constant_type)]
     fn module_constant_type(
         &self,
         id: ModuleConstantId,
     ) -> Analysis<Result<types::Type, TypeError>>;
+    #[salsa::cycle(queries::module::module_constant_value_cycle)]
+    #[salsa::invoke(queries::module::module_constant_value)]
+    fn module_constant_value(
+        &self,
+        id: ModuleConstantId,
+    ) -> Analysis<Result<Constant, ConstEvalError>>;
 
     // Contract
     #[salsa::invoke(queries::contracts::contract_all_functions)]

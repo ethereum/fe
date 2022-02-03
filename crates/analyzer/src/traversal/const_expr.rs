@@ -21,7 +21,7 @@ use fe_parser::{
 ///
 /// 1. Panics if type analysis on an `expr` is not performed beforehand.
 /// 2. Panics if an `expr` has an invalid type.
-pub(super) fn eval_expr(
+pub(crate) fn eval_expr(
     context: &mut dyn AnalyzerContext,
     expr: &Node<ast::Expr>,
 ) -> Result<Constant, ConstEvalError> {
@@ -42,6 +42,7 @@ pub(super) fn eval_expr(
             Some(const_value) => Ok(const_value),
             _ => Err(not_const_error(context, expr.span)),
         },
+        ast::Expr::Path(_) => todo!(),
 
         ast::Expr::Num(num) => {
             // We don't validate the string representing number here,
@@ -54,7 +55,6 @@ pub(super) fn eval_expr(
 
         // TODO: Need to evaluate attribute getter, constant constructor and const fn call.
         ast::Expr::Subscript { .. }
-        | ast::Expr::Path(_)
         | ast::Expr::Attribute { .. }
         | ast::Expr::Call { .. }
         | ast::Expr::List { .. }

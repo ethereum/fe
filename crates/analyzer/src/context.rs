@@ -276,7 +276,7 @@ impl AnalyzerContext for TempContext {
     }
 
     fn parent_function(&self) -> FunctionId {
-        panic!("TempContext has no function enclosed")
+        panic!("TempContext has no parent function")
     }
 
     fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
