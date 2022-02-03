@@ -1,6 +1,0 @@
----
-source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
-
----
-

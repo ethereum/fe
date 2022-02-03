@@ -1,3 +1,4 @@
+type MY_ARRAY = Array<bool, { C4 }>
 const C1: i32 = 1
 const C2: i32 = C1 * 3
 const C3: i32 = C4 + 2
@@ -8,6 +9,7 @@ contract Foo:
         const LOCAL_CONST: i32 = C3 * 2
         let _arr1: Array<i32, { C2 }>
         let _arr2: Array<i32, { LOCAL_CONST }>
+        let _my_array: MY_ARRAY
         return C4
 
 

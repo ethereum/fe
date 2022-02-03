@@ -6,35 +6,42 @@ expression: "build_snapshot(&files, module_id, &db)"
 note: 
   ┌─ features/module_const.fe:1:1
   │
-1 │ const C1: i32 = 1
-  │ ^^^^^^^^^^^^^^^^^ i32
+1 │ type MY_ARRAY = Array<bool, { C4 }>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<bool, 42>
 
 note: 
   ┌─ features/module_const.fe:2:1
   │
-2 │ const C2: i32 = C1 * 3
-  │ ^^^^^^^^^^^^^^^^^^^^^^ i32
+2 │ const C1: i32 = 1
+  │ ^^^^^^^^^^^^^^^^^ i32
 
 note: 
   ┌─ features/module_const.fe:3:1
   │
-3 │ const C3: i32 = C4 + 2
+3 │ const C2: i32 = C1 * 3
   │ ^^^^^^^^^^^^^^^^^^^^^^ i32
 
 note: 
   ┌─ features/module_const.fe:4:1
   │
-4 │ const C4: i32 = 42
+4 │ const C3: i32 = C4 + 2
+  │ ^^^^^^^^^^^^^^^^^^^^^^ i32
+
+note: 
+  ┌─ features/module_const.fe:5:1
+  │
+5 │ const C4: i32 = 42
   │ ^^^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ features/module_const.fe:7:5
+   ┌─ features/module_const.fe:8:5
    │  
- 7 │ ╭     fn bar() -> i32:
- 8 │ │         const LOCAL_CONST: i32 = C3 * 2
- 9 │ │         let _arr1: Array<i32, { C2 }>
-10 │ │         let _arr2: Array<i32, { LOCAL_CONST }>
-11 │ │         return C4
+ 8 │ ╭     fn bar() -> i32:
+ 9 │ │         const LOCAL_CONST: i32 = C3 * 2
+10 │ │         let _arr1: Array<i32, { C2 }>
+11 │ │         let _arr2: Array<i32, { LOCAL_CONST }>
+12 │ │         let _my_array: MY_ARRAY
+13 │ │         return C4
    │ ╰─────────────────^ attributes hash: 10625528290137096297
    │  
    = FunctionSignature {
@@ -50,33 +57,36 @@ note:
      }
 
 note: 
-   ┌─ features/module_const.fe:8:28
+   ┌─ features/module_const.fe:9:28
    │
- 8 │         const LOCAL_CONST: i32 = C3 * 2
+ 9 │         const LOCAL_CONST: i32 = C3 * 2
    │                            ^^^ i32
- 9 │         let _arr1: Array<i32, { C2 }>
+10 │         let _arr1: Array<i32, { C2 }>
    │                    ^^^^^^^^^^^^^^^^^^ Array<i32, 3>
-10 │         let _arr2: Array<i32, { LOCAL_CONST }>
+11 │         let _arr2: Array<i32, { LOCAL_CONST }>
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 88>
+12 │         let _my_array: MY_ARRAY
+   │                        ^^^^^^^^ Array<bool, 42>
 
 note: 
-  ┌─ features/module_const.fe:8:34
+  ┌─ features/module_const.fe:9:34
   │
-8 │         const LOCAL_CONST: i32 = C3 * 2
+9 │         const LOCAL_CONST: i32 = C3 * 2
   │                                  ^^   ^ i32: Value
   │                                  │     
   │                                  i32: Value
 
 note: 
-   ┌─ features/module_const.fe:8:34
+   ┌─ features/module_const.fe:9:34
    │
- 8 │         const LOCAL_CONST: i32 = C3 * 2
+ 9 │         const LOCAL_CONST: i32 = C3 * 2
    │                                  ^^^^^^ i32: Value
- 9 │         let _arr1: Array<i32, { C2 }>
+10 │         let _arr1: Array<i32, { C2 }>
    │                                 ^^ i32: Value
-10 │         let _arr2: Array<i32, { LOCAL_CONST }>
+11 │         let _arr2: Array<i32, { LOCAL_CONST }>
    │                                 ^^^^^^^^^^^ i32: Value
-11 │         return C4
+12 │         let _my_array: MY_ARRAY
+13 │         return C4
    │                ^^ i32: Value
 
 
