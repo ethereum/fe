@@ -1,4 +1,4 @@
-use crate::context::{AnalyzerContext, NamedThing};
+use crate::context::{AnalyzerContext, Constant, NamedThing};
 use crate::errors::TypeError;
 use crate::namespace::items::Item;
 use crate::namespace::types::{FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type};
@@ -55,6 +55,7 @@ pub fn apply_generic_type_args(
             (GenericParamKind::Int, ast::GenericArg::Int(int_node)) => {
                 Ok(GenericArg::Int(int_node.kind))
             }
+
             (GenericParamKind::Int, ast::GenericArg::TypeDesc(_)) => {
                 Err(TypeError::new(context.fancy_error(
                     &format!("`{}` {} must be an integer", generic.name(), param.name),
@@ -62,6 +63,23 @@ pub fn apply_generic_type_args(
                     vec![],
                 )))
             }
+
+            (GenericParamKind::Int, ast::GenericArg::ConstExpr(expr)) => {
+                // Performs semantic analysis on `expr`.
+                super::expressions::expr(context, expr, None)?;
+
+                // Evaluates expression.
+                let const_value = super::const_expr::eval_expr(context, expr)?;
+
+                // TODO: Fix me when `GenericArg` can represent literals not only `Int`.
+                match const_value {
+                    Constant::Int(val) => Ok(GenericArg::Int(val.try_into().unwrap())),
+                    Constant::Bool(_) | Constant::Str(_) => Err(TypeError::new(
+                        context.not_yet_implemented("non numeric type const generics", expr.span),
+                    )),
+                }
+            }
+
             (GenericParamKind::PrimitiveType, ast::GenericArg::TypeDesc(type_node)) => {
                 match type_desc(context, type_node)? {
                     Type::Base(base) => Ok(GenericArg::Type(Type::Base(base))),
@@ -76,12 +94,14 @@ pub fn apply_generic_type_args(
                     ))),
                 }
             }
+
             (GenericParamKind::AnyType, ast::GenericArg::TypeDesc(type_node)) => {
                 Ok(GenericArg::Type(type_desc(context, type_node)?))
             }
+
             (
                 GenericParamKind::PrimitiveType | GenericParamKind::AnyType,
-                ast::GenericArg::Int(_),
+                ast::GenericArg::Int(_) | ast::GenericArg::ConstExpr(_),
             ) => Err(TypeError::new(context.fancy_error(
                 &format!("`{}` {} must be a type", generic.name(), param.name),
                 vec![Label::primary(arg.span(), "expected a type name")],

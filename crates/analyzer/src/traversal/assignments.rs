@@ -1,4 +1,4 @@
-use crate::context::{AnalyzerContext, Location};
+use crate::context::{AnalyzerContext, Location, NamedThing};
 use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::operations;
@@ -62,11 +62,9 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     unreachable!()
 }
 
-pub fn check_assign_target(
-    scope: &mut BlockScope,
-    expr: &Node<fe::Expr>,
-) -> Result<(), FatalError> {
+fn check_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> Result<(), FatalError> {
     use fe::Expr::*;
+
     match &expr.kind {
         Attribute { .. } => Ok(()),
         Subscript { .. } => Ok(()),
@@ -76,13 +74,29 @@ pub fn check_assign_target(
             }
             Ok(())
         }
-        Name(_) => Ok(()),
-        _ => {
-            Err(FatalError::new(scope.fancy_error("invalid assignment target",
-                                                  vec![Label::primary(expr.span, "")],
-                                                  vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()])))
-        }
+
+        Name(name) => match scope.resolve_name(name) {
+            Some(NamedThing::SelfValue { .. }) => Ok(()),
+            Some(NamedThing::Item(_)) | None => Err(invalid_assign_target(scope, expr)),
+            Some(NamedThing::Variable { is_const, .. }) => {
+                if is_const {
+                    Err(FatalError::new(scope.fancy_error("cannot assign to constant variable",
+                                                          vec![Label::primary(expr.span, "")],
+                                                          vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()])))
+                } else {
+                    Ok(())
+                }
+            }
+        },
+
+        _ => Err(invalid_assign_target(scope, expr)),
     }
+}
+
+fn invalid_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> FatalError {
+    FatalError::new(scope.fancy_error("invalid assignment target",
+                                                  vec![Label::primary(expr.span, "")],
+                                                  vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]))
 }
 
 /// Gather context information for assignments and check for type errors.

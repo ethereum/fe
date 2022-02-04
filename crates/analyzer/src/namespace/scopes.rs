@@ -1,6 +1,8 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
+use crate::context::{
+    AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
+};
 use crate::errors::{AlreadyDefined, TypeError};
 use crate::namespace::items::Item;
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
@@ -8,14 +10,18 @@ use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
-use fe_parser::ast;
-use fe_parser::node::Node;
+use fe_parser::{ast, node::NodeId};
+use fe_parser::{ast::Expr, node::Node};
+use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+
+use super::types::Type;
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
     module: ModuleId,
+    expressions: RefCell<IndexMap<NodeId, ExpressionAttributes>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 impl<'a> ItemScope<'a> {
@@ -23,6 +29,7 @@ impl<'a> ItemScope<'a> {
         Self {
             db,
             module,
+            expressions: RefCell::new(IndexMap::default()),
             diagnostics: vec![],
         }
     }
@@ -32,14 +39,81 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
+
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .borrow_mut()
+            .insert(node.id, attributes)
+            .expect_none("expression attributes already exist");
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .borrow_mut()
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.expressions.borrow().get(&expr.id).unwrap().typ.clone()
+    }
+
+    fn add_constant(
+        &self,
+        _name: &Node<ast::SmolStr>,
+        _expr: &Node<ast::Expr>,
+        _value: crate::context::Constant,
+    ) {
+        // We use salsa query to get constant. So no need to add constant explicitly.
+    }
+
+    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
+        let constant = self
+            .module
+            .all_constants(self.db)
+            .iter()
+            .find(|id| &id.name(self.db) == name)
+            .copied()?;
+
+        // It's ok to ignore an error.
+        // Diagnostics are already emitted when an error occurs.
+        constant.constant_value(self.db).ok()
+    }
+
+    fn parent(&self) -> Item {
+        Item::Module(self.module)
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        panic!("ItemContext has no parent function")
+    }
+
+    fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
+        unreachable!("Can't call function outside of function")
+    }
+
+    fn add_string(&self, _str_lit: ast::SmolStr) {
+        unreachable!("Can't store string in the item scope")
+    }
+
+    fn is_in_function(&self) -> bool {
+        false
+    }
+
+    fn inherits_type(&self, _typ: BlockScopeType) -> bool {
+        false
+    }
+
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
         self.module
             .resolve_name(self.db, name)
             .map(NamedThing::Item)
     }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
     }
+
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
         let item = self.module.resolve_path_internal(self.db(), path);
 
@@ -71,32 +145,7 @@ impl<'a> FunctionScope<'a> {
     pub fn function_return_type(&self) -> Result<FixedSize, TypeError> {
         self.function.signature(self.db).return_type.clone()
     }
-    /// Attribute contextual information to an expression node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .expressions
-            .insert(node.id, attributes)
-            .expect_none("expression attributes already exist");
-    }
 
-    /// Update the expression attributes.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry does not already exist for the node id.
-    pub fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.body
-            .borrow_mut()
-            .expressions
-            .insert(node.id, attributes)
-            .expect("expression attributes do not exist");
-    }
     /// Attribute contextual information to an emit statement node.
     ///
     /// # Panics
@@ -110,6 +159,7 @@ impl<'a> FunctionScope<'a> {
             .insert(node.id, event)
             .expect_none("emit statement attributes already exist");
     }
+
     /// Attribute contextual information to a declaration node.
     ///
     /// # Panics
@@ -122,22 +172,6 @@ impl<'a> FunctionScope<'a> {
             .var_decl_types
             .insert(node.id, typ)
             .expect_none("declaration attributes already exist");
-    }
-    /// Attribute contextual information to a call expression node.
-    /// NOTE: `node` here is actually the `func` node of the `Expr::Call`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
-        // TODO: should probably take the Expr::Call node, rather than the function node
-
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .calls
-            .insert(node.id, call_type)
-            .expect_none("call attributes already exist");
     }
 
     fn add_node<T>(&self, node: &Node<T>) {
@@ -152,6 +186,77 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.borrow_mut().push(diag)
+    }
+
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.add_node(node);
+        self.body
+            .borrow_mut()
+            .expressions
+            .insert(node.id, attributes)
+            .expect_none("expression attributes already exist");
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.body
+            .borrow_mut()
+            .expressions
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.body
+            .borrow()
+            .expressions
+            .get(&expr.id)
+            .unwrap()
+            .typ
+            .clone()
+    }
+
+    fn add_constant(&self, _name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
+        self.body
+            .borrow_mut()
+            .expressions
+            .get_mut(&expr.id)
+            .expect("expression attributes must exist before adding constant value")
+            .const_value = Some(value);
+    }
+
+    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
+        None
+    }
+
+    fn parent(&self) -> Item {
+        self.function.parent(self.db())
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        self.function
+    }
+
+    fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
+        // TODO: should probably take the Expr::Call node, rather than the function node
+
+        self.add_node(node);
+        self.body
+            .borrow_mut()
+            .calls
+            .insert(node.id, call_type)
+            .expect_none("call attributes already exist");
+    }
+
+    fn add_string(&self, s: ast::SmolStr) {
+        self.body.borrow_mut().string_literals.insert(s);
+    }
+
+    fn is_in_function(&self) -> bool {
+        true
+    }
+
+    fn inherits_type(&self, _typ: BlockScopeType) -> bool {
+        false
     }
 
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
@@ -183,6 +288,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                     NamedThing::Variable {
                         name: name.to_string(),
                         typ: param.typ.clone(),
+                        is_const: false,
                         span,
                     }
                 })
@@ -214,7 +320,9 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
-    pub variable_defs: BTreeMap<String, (FixedSize, Span)>,
+    /// Maps Name -> (Type, is_const, span)
+    pub variable_defs: BTreeMap<String, (FixedSize, bool, Span)>,
+    pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
 
@@ -230,12 +338,14 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.root.db
     }
+
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
         self.variable_defs
             .get(name)
-            .map(|(typ, span)| NamedThing::Variable {
+            .map(|(typ, is_const, span)| NamedThing::Variable {
                 name: name.to_string(),
                 typ: Ok(typ.clone()),
+                is_const: *is_const,
                 span: *span,
             })
             .or_else(|| {
@@ -246,6 +356,67 @@ impl AnalyzerContext for BlockScope<'_, '_> {
                 }
             })
     }
+
+    fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.root.add_expression(node, attributes)
+    }
+
+    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
+        self.root.update_expression(node, attributes)
+    }
+
+    fn expr_typ(&self, expr: &Node<Expr>) -> Type {
+        self.root.expr_typ(expr)
+    }
+
+    fn add_constant(&self, name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
+        self.constant_defs
+            .borrow_mut()
+            .insert(name.kind.clone().to_string(), value.clone())
+            .expect_none("expression attributes already exist");
+
+        self.root.add_constant(name, expr, value)
+    }
+
+    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
+        if let Some(constant) = self.constant_defs.borrow().get(name.as_str()) {
+            Some(constant.clone())
+        } else if let Some(parent) = self.parent {
+            parent.constant_value_by_name(name)
+        } else {
+            match self.resolve_name(name)? {
+                NamedThing::Item(Item::Constant(constant)) => {
+                    constant.constant_value(self.db()).ok()
+                }
+                _ => None,
+            }
+        }
+    }
+
+    fn parent(&self) -> Item {
+        Item::Function(self.root.function)
+    }
+
+    fn parent_function(&self) -> FunctionId {
+        self.root.function
+    }
+
+    fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
+        self.root.add_call(node, call_type)
+    }
+
+    fn add_string(&self, str_lit: ast::SmolStr) {
+        self.root.add_string(str_lit)
+    }
+
+    fn is_in_function(&self) -> bool {
+        true
+    }
+
+    fn inherits_type(&self, typ: BlockScopeType) -> bool {
+        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
+    }
+
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
         let item = self
             .root
@@ -259,6 +430,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
         item.value.map(NamedThing::Item)
     }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)
     }
@@ -270,6 +442,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root,
             parent: None,
             variable_defs: BTreeMap::new(),
+            constant_defs: RefCell::new(BTreeMap::new()),
             typ,
         }
     }
@@ -279,6 +452,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root: self.root,
             parent: Some(self),
             variable_defs: BTreeMap::new(),
+            constant_defs: RefCell::new(BTreeMap::new()),
             typ,
         }
     }
@@ -288,6 +462,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         &mut self,
         name: &str,
         typ: FixedSize,
+        is_const: bool,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name) {
@@ -330,20 +505,11 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             }
 
             None => {
-                self.variable_defs.insert(name.to_string(), (typ, span));
+                self.variable_defs
+                    .insert(name.to_string(), (typ, is_const, span));
                 Ok(())
             }
         }
-    }
-
-    /// Return true if the scope or any of its parents is of the given type
-    pub fn inherits_type(&self, typ: BlockScopeType) -> bool {
-        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
-    }
-
-    /// Return the root item of the block scope
-    pub fn root_item(&self) -> Item {
-        self.root.function.parent(self.db())
     }
 }
 

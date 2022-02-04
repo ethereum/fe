@@ -26,6 +26,7 @@ fn func_stmt(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Stateme
     match &stmt.kind {
         fe::FuncStmt::Return { .. } => func_return(context, stmt),
         fe::FuncStmt::VarDecl { .. } => declarations::var_decl(context, stmt),
+        fe::FuncStmt::ConstantDecl { .. } => declarations::const_decl(context, stmt),
         fe::FuncStmt::Assign { .. } => assignments::assign(context, stmt),
         fe::FuncStmt::Emit { .. } => emit(context, stmt),
         fe::FuncStmt::AugAssign { .. } => panic!("AugAssign should be lowered"),

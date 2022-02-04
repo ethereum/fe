@@ -264,6 +264,18 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
                 span += par.split_next()?.span;
                 break;
             }
+            // Parse non-constant generic argument.
+            Name | ParenOpen => {
+                let typ = parse_type_desc(par)?;
+                args.push(GenericArg::TypeDesc(Node::new(typ.kind, typ.span)));
+                if par.peek() == Some(Comma) {
+                    par.next()?;
+                } else {
+                    span += expect_end(par)?;
+                    break;
+                }
+            }
+            // Parse literal-type constant generic argument.
             Int => {
                 let tok = par.next()?;
                 if let Ok(num) = tok.text.parse() {
@@ -279,9 +291,17 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
                     return Err(ParseFailed);
                 }
             }
-            Name | ParenOpen => {
-                let typ = parse_type_desc(par)?;
-                args.push(GenericArg::TypeDesc(Node::new(typ.kind, typ.span)));
+            // Parse expr-type constant generic argument.
+            BraceOpen => {
+                let brace_open = par.next()?;
+                let expr = parse_expr(par)?;
+                if !matches!(par.next()?.kind, BraceClose) {
+                    par.error(brace_open.span, "missing closing delimiter `}`");
+                    return Err(ParseFailed);
+                }
+
+                args.push(GenericArg::ConstExpr(expr));
+
                 if par.peek() == Some(Comma) {
                     par.next()?;
                 } else {
@@ -289,6 +309,8 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
                     break;
                 }
             }
+
+            // Invalid generic argument.
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(

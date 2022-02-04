@@ -23,6 +23,7 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
     match &stmt.kind {
         Return { .. } => func_return(scope, stmt),
         VarDecl { .. } => declarations::var_decl(scope, stmt),
+        ConstantDecl { .. } => declarations::const_decl(scope, stmt),
         Assign { .. } => assignments::assign(scope, stmt),
         Emit { .. } => emit(scope, stmt),
         AugAssign { .. } => assignments::aug_assign(scope, stmt),
@@ -59,7 +60,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
-            let _ = body_scope.add_var(&target.kind, target_type, target.span);
+            let _ = body_scope.add_var(&target.kind, target_type, false, target.span);
 
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)
@@ -159,13 +160,14 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
             }
             Some(NamedThing::Item(Item::Event(event))) => {
                 scope.root.add_emit(stmt, event);
+                let params = event.typ(scope.db()).fields.clone();
                 call_args::validate_named_args(
                     scope,
                     &name.kind,
                     name.span,
                     args,
-                    &event.typ(scope.db()).fields,
-                    LabelPolicy::AllowUnlabledIfNameEqual,
+                    &params,
+                    LabelPolicy::AllowUnlabeledIfNameEqual,
                 )?;
             }
             Some(named_thing) => {

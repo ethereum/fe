@@ -13,6 +13,14 @@ fn list_expr_array_u256_2(val0: u256, val1: u256) -> Array<u256, 2>:
     generated_array[1] = val1
     return generated_array
 
+const THREE: u256 = 3
+
+const TEN: u256 = 10
+
+const IS_ADMIN: bool = true
+
+const UNIT: () = ()
+
 struct Bar:
     val: u256
 

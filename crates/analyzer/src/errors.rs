@@ -28,9 +28,19 @@ pub struct TypeError(DiagnosticVoucher);
 impl TypeError {
     // `Clone` is required because these are stored in a salsa db.
     // Please don't clone these manually.
-
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
+    }
+}
+
+impl From<FatalError> for TypeError {
+    fn from(err: FatalError) -> Self {
+        Self(err.0)
+    }
+}
+impl From<ConstEvalError> for TypeError {
+    fn from(err: ConstEvalError) -> Self {
+        Self(err.0)
     }
 }
 
@@ -45,6 +55,45 @@ impl FatalError {
     /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
+    }
+}
+
+impl From<ConstEvalError> for FatalError {
+    fn from(err: ConstEvalError) -> Self {
+        Self(err.0)
+    }
+}
+
+/// Error indicating constant evaluation failed.
+///
+/// This error emitted when
+/// 1. an expression can't be evaluated in compilation time
+/// 2. arithmetic overflow occurred during evaluation
+/// 3. zero division is detected during evaluation
+///
+/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
+/// has been obtained. (See comment on [`TypeError`])
+///
+/// NOTE: `Clone` is required because these are stored in a salsa db.
+/// Please don't clone these manually.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstEvalError(DiagnosticVoucher);
+
+impl ConstEvalError {
+    pub fn new(voucher: DiagnosticVoucher) -> Self {
+        Self(voucher)
+    }
+}
+
+impl From<TypeError> for ConstEvalError {
+    fn from(err: TypeError) -> Self {
+        Self(err.0)
+    }
+}
+
+impl From<FatalError> for ConstEvalError {
+    fn from(err: FatalError) -> Self {
+        Self(err.0)
     }
 }
 

@@ -1,15 +1,34 @@
 use crate::context::FnContext;
 use crate::names::{list_expr_generator_fn_name, tuple_struct_name};
 use crate::utils::ZeroSpanNode;
+use fe_analyzer::context::Constant;
 use fe_analyzer::namespace::items::Item;
 use fe_analyzer::namespace::types::{Type, TypeDowncast};
-use fe_parser::ast as fe;
+use fe_parser::ast::{self as fe};
 use fe_parser::node::Node;
 
 /// Lowers an expression and all sub expressions.
 pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
     let original_exp = exp.clone();
     let span = exp.span;
+
+    // Fold constants if expression is const local definition.
+    //
+    // NOTE: This folding is NOT for optimization,
+    //       but to avoid introducing new variables in later ternary lowering, etc.
+    if let Some(const_value) = context
+        .expression_attributes(exp.id)
+        .map(|attr| attr.const_value.as_ref())
+        .flatten()
+    {
+        let literal = match const_value {
+            Constant::Int(val) => fe::Expr::Num(val.to_string().into()),
+            Constant::Bool(val) => fe::Expr::Bool(*val),
+            Constant::Str(val) => fe::Expr::Str(val.clone()),
+        };
+
+        return Node::new(literal, exp.span);
+    }
 
     let lowered_kind = match exp.kind {
         fe::Expr::Name(_) => expr_name(context, exp),

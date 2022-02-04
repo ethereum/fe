@@ -108,6 +108,7 @@ pub enum TypeDesc {
 pub enum GenericArg {
     TypeDesc(Node<TypeDesc>),
     Int(Node<usize>),
+    ConstExpr(Node<Expr>),
 }
 
 impl Spanned for GenericArg {
@@ -115,6 +116,7 @@ impl Spanned for GenericArg {
         match self {
             GenericArg::TypeDesc(node) => node.span,
             GenericArg::Int(node) => node.span,
+            GenericArg::ConstExpr(node) => node.span,
         }
     }
 }
@@ -184,6 +186,11 @@ pub enum FuncStmt {
         target: Node<VarDeclTarget>,
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
+    },
+    ConstantDecl {
+        name: Node<SmolStr>,
+        typ: Node<TypeDesc>,
+        value: Node<Expr>,
     },
     Assign {
         target: Node<Expr>,
@@ -293,13 +300,13 @@ pub struct CallArg {
     pub value: Node<Expr>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BoolOperator {
     And,
     Or,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BinOperator {
     Add,
     Sub,
@@ -314,14 +321,14 @@ pub enum BinOperator {
     BitAnd,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum UnaryOperator {
     Invert,
     Not,
     USub,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum CompOperator {
     Eq,
     NotEq,
@@ -545,6 +552,7 @@ impl fmt::Display for GenericArg {
         match self {
             GenericArg::TypeDesc(node) => write!(f, "{}", node.kind),
             GenericArg::Int(node) => write!(f, "{}", node.kind),
+            GenericArg::ConstExpr(node) => write!(f, "{}", node.kind),
         }
     }
 }
@@ -647,6 +655,9 @@ impl fmt::Display for FuncStmt {
                 } else {
                     write!(f, "let {}: {}", target.kind, typ.kind)
                 }
+            }
+            FuncStmt::ConstantDecl { name, typ, value } => {
+                write!(f, "const {}: {} = {}", name.kind, typ.kind, value.kind)
             }
             FuncStmt::Assign { target, value } => write!(f, "{} = {}", target.kind, value.kind),
             FuncStmt::AugAssign { target, op, value } => {

@@ -1,0 +1,165 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&files, module_id, &db)"
+
+---
+note: 
+   ┌─ features/const_local.fe:2:5
+   │  
+ 2 │ ╭     pub fn bar() -> u256:
+ 3 │ │         const C1: i64 = 1
+ 4 │ │         const C2: i64 = 2
+ 5 │ │         const C3: i64 = 10
+   · │
+14 │ │         let _arr: Array<bool, { C10 }>
+15 │ │         return C10
+   │ ╰──────────────────^ attributes hash: 17979516652885443340
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/const_local.fe:3:19
+   │
+ 3 │         const C1: i64 = 1
+   │                   ^^^ i64
+ 4 │         const C2: i64 = 2
+   │                   ^^^ i64
+ 5 │         const C3: i64 = 10
+   │                   ^^^ i64
+ 6 │         const C4: i64 = (C1 * C2) + C3 # 12
+   │                   ^^^ i64
+ 7 │         const EXP: u8 = 2
+   │                    ^^ u8
+ 8 │         const C5: i64 = (C2 ** EXP) # 4
+   │                   ^^^ i64
+ 9 │         const C6: i64 = (C5 << 1) # 8
+   │                   ^^^ i64
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+   │                   ^^^^ bool
+11 │         const C8: bool = false
+   │                   ^^^^ bool
+12 │         const C9: bool = C8 < C7 # true
+   │                   ^^^^ bool
+13 │         const C10: u256 = 42 if C9 else 0 # 42
+   │                    ^^^^ u256
+14 │         let _arr: Array<bool, { C10 }>
+   │                   ^^^^^^^^^^^^^^^^^^^^ Array<bool, 42>
+
+note: 
+  ┌─ features/const_local.fe:3:25
+  │
+3 │         const C1: i64 = 1
+  │                         ^ i64: Value
+4 │         const C2: i64 = 2
+  │                         ^ i64: Value
+5 │         const C3: i64 = 10
+  │                         ^^ i64: Value
+6 │         const C4: i64 = (C1 * C2) + C3 # 12
+  │                          ^^   ^^ i64: Value
+  │                          │     
+  │                          i64: Value
+
+note: 
+  ┌─ features/const_local.fe:6:25
+  │
+6 │         const C4: i64 = (C1 * C2) + C3 # 12
+  │                         ^^^^^^^^^   ^^ i64: Value
+  │                         │            
+  │                         i64: Value
+
+note: 
+  ┌─ features/const_local.fe:6:25
+  │
+6 │         const C4: i64 = (C1 * C2) + C3 # 12
+  │                         ^^^^^^^^^^^^^^ i64: Value
+7 │         const EXP: u8 = 2
+  │                         ^ u8: Value
+8 │         const C5: i64 = (C2 ** EXP) # 4
+  │                          ^^    ^^^ u8: Value
+  │                          │      
+  │                          i64: Value
+
+note: 
+  ┌─ features/const_local.fe:8:25
+  │
+8 │         const C5: i64 = (C2 ** EXP) # 4
+  │                         ^^^^^^^^^^^ i64: Value
+9 │         const C6: i64 = (C5 << 1) # 8
+  │                          ^^    ^ u256: Value
+  │                          │      
+  │                          i64: Value
+
+note: 
+   ┌─ features/const_local.fe:9:25
+   │
+ 9 │         const C6: i64 = (C5 << 1) # 8
+   │                         ^^^^^^^^^ i64: Value
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+   │                           ^^   ^^ i64: Value
+   │                           │     
+   │                           i64: Value
+
+note: 
+   ┌─ features/const_local.fe:10:26
+   │
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+   │                          ^^^^^^^^^      ^^   ^^ i64: Value
+   │                          │              │     
+   │                          │              i64: Value
+   │                          bool: Value
+
+note: 
+   ┌─ features/const_local.fe:10:40
+   │
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+   │                                        ^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ features/const_local.fe:10:26
+   │
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+   │                          ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+11 │         const C8: bool = false
+   │                          ^^^^^ bool: Value
+12 │         const C9: bool = C8 < C7 # true
+   │                          ^^   ^^ bool: Value
+   │                          │     
+   │                          bool: Value
+
+note: 
+   ┌─ features/const_local.fe:12:26
+   │
+12 │         const C9: bool = C8 < C7 # true
+   │                          ^^^^^^^ bool: Value
+13 │         const C10: u256 = 42 if C9 else 0 # 42
+   │                                 ^^ bool: Value
+
+note: 
+   ┌─ features/const_local.fe:13:27
+   │
+13 │         const C10: u256 = 42 if C9 else 0 # 42
+   │                           ^^            ^ u256: Value
+   │                           │              
+   │                           u256: Value
+
+note: 
+   ┌─ features/const_local.fe:13:27
+   │
+13 │         const C10: u256 = 42 if C9 else 0 # 42
+   │                           ^^^^^^^^^^^^^^^ u256: Value
+14 │         let _arr: Array<bool, { C10 }>
+   │                                 ^^^ u256: Value
+15 │         return C10
+   │                ^^^ u256: Value
+
+

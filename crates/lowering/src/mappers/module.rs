@@ -63,9 +63,10 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
             unreachable!("special built-in stuff")
         }
 
-        // All name expressions referring to constants are handled at the time of lowering,
-        // which causes the constants to no longer serve a purpose.
-        Item::Constant(_) => None,
+        Item::Constant(constant) => Some(ast::ModuleStmt::Constant(
+            constant.data(db).ast.clone().into(),
+        )),
+
         Item::Ingot(_) => unreachable!("ingots cannot be defined in a module"),
         Item::Module(_) => unreachable!("modules cannot be defined in modules (at least not yet)"),
     }));

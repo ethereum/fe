@@ -1,16 +1,15 @@
-use crate::builtins;
 use crate::context;
-use crate::context::Analysis;
+use crate::context::{Analysis, Constant};
 use crate::errors::{self, TypeError};
 use crate::impl_intern_key;
 use crate::namespace::types::FixedSize;
 use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
+use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::{FileStore, SourceFile, SourceFileId};
 use fe_parser::ast;
-use fe_parser::ast::Expr;
 use fe_parser::node::{Node, Span};
 use indexmap::indexmap;
 use indexmap::IndexMap;
@@ -827,6 +826,11 @@ impl ModuleId {
         db.module_structs(*self)
     }
 
+    /// All module constants.
+    pub fn all_constants(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleConstantId>> {
+        db.module_constants(*self)
+    }
+
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
         let mut diagnostics = vec![];
         self.sink_diagnostics(db, &mut diagnostics);
@@ -882,6 +886,10 @@ impl ModuleConstantId {
         self.data(db).ast.kind.name.kind.clone()
     }
 
+    pub fn constant_value(&self, db: &dyn AnalyzerDb) -> Result<Constant, ConstEvalError> {
+        db.module_constant_value(*self).value
+    }
+
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
@@ -899,17 +907,6 @@ impl ModuleConstantId {
             .diagnostics
             .iter()
             .for_each(|d| sink.push(d));
-
-        if !matches!(
-            self.value(db),
-            Expr::Bool(_) | Expr::Num(_) | Expr::Str(_) | Expr::Unit
-        ) {
-            sink.push(&errors::error(
-                "non-literal expressions not yet supported for constants",
-                self.data(db).ast.kind.value.span,
-                "not a literal",
-            ))
-        }
     }
 }
 

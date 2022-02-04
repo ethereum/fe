@@ -291,6 +291,11 @@ impl Integer {
         }
     }
 
+    /// Returns size of integer type in bits.
+    pub fn bits(&self) -> usize {
+        self.size() * 8
+    }
+
     /// Returns `true` if the integer is at least the same size (or larger) than
     /// `other`
     pub fn can_hold(&self, other: &Integer) -> bool {
@@ -312,6 +317,42 @@ impl Integer {
             Integer::I128 => num.to_i128().is_some(),
             Integer::U256 => num >= u256_min() && num <= u256_max(),
             Integer::I256 => num >= i256_min() && num <= i256_max(),
+        }
+    }
+
+    /// Returns max value of the integer type.
+    pub fn max_value(&self) -> BigInt {
+        match self {
+            Integer::U256 => u256_max(),
+            Integer::U128 => u128::MAX.into(),
+            Integer::U64 => u64::MAX.into(),
+            Integer::U32 => u32::MAX.into(),
+            Integer::U16 => u16::MAX.into(),
+            Integer::U8 => u8::MAX.into(),
+            Integer::I256 => i256_max(),
+            Integer::I128 => i128::MAX.into(),
+            Integer::I64 => i64::MAX.into(),
+            Integer::I32 => i32::MAX.into(),
+            Integer::I16 => i16::MAX.into(),
+            Integer::I8 => i8::MAX.into(),
+        }
+    }
+
+    /// Returns min value of the integer type.
+    pub fn min_value(&self) -> BigInt {
+        match self {
+            Integer::U256 => u256_min(),
+            Integer::U128 => u128::MIN.into(),
+            Integer::U64 => u64::MIN.into(),
+            Integer::U32 => u32::MIN.into(),
+            Integer::U16 => u16::MIN.into(),
+            Integer::U8 => u8::MIN.into(),
+            Integer::I256 => i256_min(),
+            Integer::I128 => i128::MIN.into(),
+            Integer::I64 => i64::MIN.into(),
+            Integer::I32 => i32::MIN.into(),
+            Integer::I16 => i16::MIN.into(),
+            Integer::I8 => i8::MIN.into(),
         }
     }
 }
@@ -358,6 +399,11 @@ impl Type {
             Type::SelfContract(inner) => inner.name.clone(),
             Type::Struct(inner) => inner.name.clone(),
         }
+    }
+
+    /// Returns `true` if the type is integer.
+    pub fn is_integer(&self) -> bool {
+        matches!(self, Type::Base(Base::Numeric(_)))
     }
 
     pub fn is_signed_integer(&self) -> bool {
