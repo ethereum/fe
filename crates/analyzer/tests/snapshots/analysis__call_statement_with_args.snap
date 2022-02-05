@@ -113,10 +113,4 @@ note:
 9 │         return self.baz[0]
   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
-note: 
-  ┌─ call_statement_with_args.fe:8:9
-  │
-8 │         self.assign(100)
-  │         ^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(0) }
-
 

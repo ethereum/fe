@@ -53,10 +53,4 @@ note:
 3 │         send_value(to, wei)
   │         ^^^^^^^^^^^^^^^^^^^ (): Value
 
-note: 
-  ┌─ send_value.fe:3:9
-  │
-3 │         send_value(to, wei)
-  │         ^^^^^^^^^^ BuiltinFunction(SendValue)
-
 

@@ -117,7 +117,7 @@ pub struct Tuple {
     pub items: Vec1<FixedSize>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub name: SmolStr,
     pub id: StructId,
@@ -133,7 +133,7 @@ impl Struct {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Contract {
     pub name: SmolStr,
     pub id: ContractId,
@@ -797,10 +797,25 @@ impl fmt::Display for Contract {
         write!(f, "{}", self.name)
     }
 }
+impl fmt::Debug for Contract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Contract")
+            .field("name", &self.name)
+            .finish()
+    }
+}
 
 impl fmt::Display for Struct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+impl fmt::Debug for Struct {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Struct")
+            .field("name", &self.name)
+            .field("field_count", &self.field_count)
+            .finish()
     }
 }
 

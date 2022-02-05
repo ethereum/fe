@@ -299,10 +299,4 @@ note:
 28 │         return self.posts[id].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^ String<32>: Storage { nonce: None } => Memory
 
-note: 
-   ┌─ type_aliases.fe:28:16
-   │
-28 │         return self.posts[id].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 32 }) }
-
 

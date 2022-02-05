@@ -312,14 +312,6 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ external_contract.fe:24:24
-   │
-24 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
-25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-
-note: 
    ┌─ external_contract.fe:27:5
    │  
 27 │ ╭     pub fn call_build_array(
@@ -403,13 +395,5 @@ note:
    │
 33 │         return foo.build_array(a, b)
    │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory
-
-note: 
-   ┌─ external_contract.fe:32:24
-   │
-32 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
-33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
 
 

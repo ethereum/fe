@@ -160,12 +160,6 @@ note:
    │             u256: Storage { nonce: None }
 
 note: 
-   ┌─ pure_fn_standalone.fe:11:34
-   │
-11 │             self.points[user] += add_bonus(val)
-   │                                  ^^^^^^^^^ Pure(FunctionId(0))
-
-note: 
    ┌─ pure_fn_standalone.fe:15:5
    │  
 15 │ ╭     pub fn bar(self, x: u256) -> u256:
@@ -274,16 +268,5 @@ note:
    │
 20 │         return self.points[a]
    │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
-
-note: 
-   ┌─ pure_fn_standalone.fe:16:26
-   │
-16 │         let a: address = address(x)
-   │                          ^^^^^^^ TypeConstructor(Base(Address))
-17 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(1) }
-18 │         self.cool_users[a] = true
-19 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(1) }
 
 

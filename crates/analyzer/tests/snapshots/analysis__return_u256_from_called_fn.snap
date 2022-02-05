@@ -31,12 +31,6 @@ note:
   │                ^^^^^ u256: Value
 
 note: 
-  ┌─ return_u256_from_called_fn.fe:5:16
-  │
-5 │         return foo()
-  │                ^^^ Pure(FunctionId(1))
-
-note: 
   ┌─ return_u256_from_called_fn.fe:7:5
   │  
 7 │ ╭     pub fn foo() -> u256:

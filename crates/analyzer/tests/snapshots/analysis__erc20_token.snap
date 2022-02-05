@@ -79,12 +79,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: Some(3) } => Memory
 
 note: 
-   ┌─ erc20_token.fe:26:16
-   │
-26 │         return self._name.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
-
-note: 
    ┌─ erc20_token.fe:28:5
    │  
 28 │ ╭     pub fn symbol(self) -> String<100>:
@@ -122,12 +116,6 @@ note:
    │
 29 │         return self._symbol.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: Some(4) } => Memory
-
-note: 
-   ┌─ erc20_token.fe:29:16
-   │
-29 │         return self._symbol.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
 
 note: 
    ┌─ erc20_token.fe:31:5
@@ -303,12 +291,6 @@ note:
    │                ^^^^ bool: Value
 
 note: 
-   ┌─ erc20_token.fe:41:9
-   │
-41 │         self._transfer(msg.sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(12) }
-
-note: 
    ┌─ erc20_token.fe:44:5
    │  
 44 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256:
@@ -430,12 +412,6 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 49 │         return true
    │                ^^^^ bool: Value
-
-note: 
-   ┌─ erc20_token.fe:48:9
-   │
-48 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(15) }
 
 note: 
    ┌─ erc20_token.fe:51:5
@@ -579,14 +555,6 @@ note:
    │                ^^^^ bool: Value
 
 note: 
-   ┌─ erc20_token.fe:53:9
-   │
-53 │         self._transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(12) }
-54 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │         ^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(15) }
-
-note: 
    ┌─ erc20_token.fe:57:5
    │  
 57 │ ╭     pub fn increaseAllowance(self, spender: address, addedValue: u256) -> bool:
@@ -674,12 +642,6 @@ note:
    │                ^^^^ bool: Value
 
 note: 
-   ┌─ erc20_token.fe:58:9
-   │
-58 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │         ^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(15) }
-
-note: 
    ┌─ erc20_token.fe:61:5
    │  
 61 │ ╭     pub fn decreaseAllowance(self, spender: address, subtractedValue: u256) -> bool:
@@ -765,12 +727,6 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 63 │         return true
    │                ^^^^ bool: Value
-
-note: 
-   ┌─ erc20_token.fe:62:9
-   │
-62 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(15) }
 
 note: 
    ┌─ erc20_token.fe:65:5
@@ -997,16 +953,6 @@ note:
      }
 
 note: 
-   ┌─ erc20_token.fe:66:26
-   │
-66 │         assert sender != address(0)
-   │                          ^^^^^^^ TypeConstructor(Base(Address))
-67 │         assert recipient != address(0)
-   │                             ^^^^^^^ TypeConstructor(Base(Address))
-68 │         _before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(17))
-
-note: 
    ┌─ erc20_token.fe:73:5
    │  
 73 │ ╭     fn _mint(self, account: address, value: u256):
@@ -1200,23 +1146,6 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ erc20_token.fe:74:27
-   │
-74 │         assert account != address(0)
-   │                           ^^^^^^^ TypeConstructor(Base(Address))
-75 │         _before_token_transfer(address(0), account, value)
-   │                                ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-   ┌─ erc20_token.fe:75:9
-   │
-75 │         _before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(17))
-   ·
-78 │         emit Transfer(from: address(0), to: account, value)
-   │                             ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ erc20_token.fe:80:5
@@ -1416,23 +1345,6 @@ note:
      }
 
 note: 
-   ┌─ erc20_token.fe:81:27
-   │
-81 │         assert account != address(0)
-   │                           ^^^^^^^ TypeConstructor(Base(Address))
-82 │         _before_token_transfer(account, address(0), value)
-   │                                         ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-   ┌─ erc20_token.fe:82:9
-   │
-82 │         _before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(17))
-   ·
-85 │         emit Transfer(from: account, to: address(0), value)
-   │                                          ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
    ┌─ erc20_token.fe:87:5
    │  
 87 │ ╭     fn _approve(self, owner: address, spender: address, value: u256):
@@ -1588,14 +1500,6 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ erc20_token.fe:88:25
-   │
-88 │         assert owner != address(0)
-   │                         ^^^^^^^ TypeConstructor(Base(Address))
-89 │         assert spender != address(0)
-   │                           ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ erc20_token.fe:93:5

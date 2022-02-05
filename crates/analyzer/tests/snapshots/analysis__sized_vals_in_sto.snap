@@ -190,12 +190,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
-
-note: 
    ┌─ sized_vals_in_sto.fe:23:5
    │  
 23 │ ╭     pub fn write_str(self, x: String<26>):
@@ -277,12 +271,6 @@ note:
    │
 27 │         return self.str.to_mem()
    │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
-
-note: 
-   ┌─ sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 note: 
    ┌─ sized_vals_in_sto.fe:29:5
@@ -398,13 +386,5 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ sized_vals_in_sto.fe:32:19
-   │
-32 │             nums: self.nums.to_mem(),
-   │                   ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
-33 │             str: self.str.to_mem()
-   │                  ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 

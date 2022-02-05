@@ -35,12 +35,6 @@ note:
   │                ^^^^^ u8: Value
 
 note: 
-  ┌─ numeric_sizes.fe:4:16
-  │
-4 │         return u8(0)
-  │                ^^ TypeConstructor(Base(Numeric(U8)))
-
-note: 
   ┌─ numeric_sizes.fe:6:5
   │  
 6 │ ╭     pub fn get_u16_min() -> u16:
@@ -70,12 +64,6 @@ note:
   │
 7 │         return u16(0)
   │                ^^^^^^ u16: Value
-
-note: 
-  ┌─ numeric_sizes.fe:7:16
-  │
-7 │         return u16(0)
-  │                ^^^ TypeConstructor(Base(Numeric(U16)))
 
 note: 
    ┌─ numeric_sizes.fe:9:5
@@ -109,12 +97,6 @@ note:
    │                ^^^^^^ u32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:10:16
-   │
-10 │         return u32(0)
-   │                ^^^ TypeConstructor(Base(Numeric(U32)))
-
-note: 
    ┌─ numeric_sizes.fe:12:5
    │  
 12 │ ╭     pub fn get_u64_min() -> u64:
@@ -144,12 +126,6 @@ note:
    │
 13 │         return u64(0)
    │                ^^^^^^ u64: Value
-
-note: 
-   ┌─ numeric_sizes.fe:13:16
-   │
-13 │         return u64(0)
-   │                ^^^ TypeConstructor(Base(Numeric(U64)))
 
 note: 
    ┌─ numeric_sizes.fe:15:5
@@ -183,12 +159,6 @@ note:
    │                ^^^^^^^ u128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:16:16
-   │
-16 │         return u128(0)
-   │                ^^^^ TypeConstructor(Base(Numeric(U128)))
-
-note: 
    ┌─ numeric_sizes.fe:18:5
    │  
 18 │ ╭     pub fn get_u256_min() -> u256:
@@ -218,12 +188,6 @@ note:
    │
 19 │         return u256(0)
    │                ^^^^^^^ u256: Value
-
-note: 
-   ┌─ numeric_sizes.fe:19:16
-   │
-19 │         return u256(0)
-   │                ^^^^ TypeConstructor(Base(Numeric(U256)))
 
 note: 
    ┌─ numeric_sizes.fe:21:5
@@ -263,12 +227,6 @@ note:
    │                ^^^^^^^^ i8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:22:16
-   │
-22 │         return i8(-128)
-   │                ^^ TypeConstructor(Base(Numeric(I8)))
-
-note: 
    ┌─ numeric_sizes.fe:24:5
    │  
 24 │ ╭     pub fn get_i16_min() -> i16:
@@ -304,12 +262,6 @@ note:
    │
 25 │         return i16(-32768)
    │                ^^^^^^^^^^^ i16: Value
-
-note: 
-   ┌─ numeric_sizes.fe:25:16
-   │
-25 │         return i16(-32768)
-   │                ^^^ TypeConstructor(Base(Numeric(I16)))
 
 note: 
    ┌─ numeric_sizes.fe:27:5
@@ -349,12 +301,6 @@ note:
    │                ^^^^^^^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:28:16
-   │
-28 │         return i32(-2147483648)
-   │                ^^^ TypeConstructor(Base(Numeric(I32)))
-
-note: 
    ┌─ numeric_sizes.fe:30:5
    │  
 30 │ ╭     pub fn get_i64_min() -> i64:
@@ -390,12 +336,6 @@ note:
    │
 31 │         return i64(-9223372036854775808)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
-
-note: 
-   ┌─ numeric_sizes.fe:31:16
-   │
-31 │         return i64(-9223372036854775808)
-   │                ^^^ TypeConstructor(Base(Numeric(I64)))
 
 note: 
    ┌─ numeric_sizes.fe:33:5
@@ -435,12 +375,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:34:16
-   │
-34 │         return i128(-170141183460469231731687303715884105728)
-   │                ^^^^ TypeConstructor(Base(Numeric(I128)))
-
-note: 
    ┌─ numeric_sizes.fe:36:5
    │  
 36 │ ╭     pub fn get_i256_min() -> i256:
@@ -478,12 +412,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:37:16
-   │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                ^^^^ TypeConstructor(Base(Numeric(I256)))
-
-note: 
    ┌─ numeric_sizes.fe:39:5
    │  
 39 │ ╭     pub fn get_u8_max() -> u8:
@@ -513,12 +441,6 @@ note:
    │
 40 │         return u8(255)
    │                ^^^^^^^ u8: Value
-
-note: 
-   ┌─ numeric_sizes.fe:40:16
-   │
-40 │         return u8(255)
-   │                ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
    ┌─ numeric_sizes.fe:42:5
@@ -552,12 +474,6 @@ note:
    │                ^^^^^^^^^^ u16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:43:16
-   │
-43 │         return u16(65535)
-   │                ^^^ TypeConstructor(Base(Numeric(U16)))
-
-note: 
    ┌─ numeric_sizes.fe:45:5
    │  
 45 │ ╭     pub fn get_u32_max() -> u32:
@@ -587,12 +503,6 @@ note:
    │
 46 │         return u32(4294967295)
    │                ^^^^^^^^^^^^^^^ u32: Value
-
-note: 
-   ┌─ numeric_sizes.fe:46:16
-   │
-46 │         return u32(4294967295)
-   │                ^^^ TypeConstructor(Base(Numeric(U32)))
 
 note: 
    ┌─ numeric_sizes.fe:48:5
@@ -626,12 +536,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:49:16
-   │
-49 │         return u64(18446744073709551615)
-   │                ^^^ TypeConstructor(Base(Numeric(U64)))
-
-note: 
    ┌─ numeric_sizes.fe:51:5
    │  
 51 │ ╭     pub fn get_u128_max() -> u128:
@@ -661,12 +565,6 @@ note:
    │
 52 │         return u128(340282366920938463463374607431768211455)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value
-
-note: 
-   ┌─ numeric_sizes.fe:52:16
-   │
-52 │         return u128(340282366920938463463374607431768211455)
-   │                ^^^^ TypeConstructor(Base(Numeric(U128)))
 
 note: 
    ┌─ numeric_sizes.fe:54:5
@@ -700,12 +598,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:55:16
-   │
-55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                ^^^^ TypeConstructor(Base(Numeric(U256)))
-
-note: 
    ┌─ numeric_sizes.fe:57:5
    │  
 57 │ ╭     pub fn get_i8_max() -> i8:
@@ -735,12 +627,6 @@ note:
    │
 58 │         return i8(127)
    │                ^^^^^^^ i8: Value
-
-note: 
-   ┌─ numeric_sizes.fe:58:16
-   │
-58 │         return i8(127)
-   │                ^^ TypeConstructor(Base(Numeric(I8)))
 
 note: 
    ┌─ numeric_sizes.fe:60:5
@@ -774,12 +660,6 @@ note:
    │                ^^^^^^^^^^ i16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:61:16
-   │
-61 │         return i16(32767)
-   │                ^^^ TypeConstructor(Base(Numeric(I16)))
-
-note: 
    ┌─ numeric_sizes.fe:63:5
    │  
 63 │ ╭     pub fn get_i32_max() -> i32:
@@ -809,12 +689,6 @@ note:
    │
 64 │         return i32(2147483647)
    │                ^^^^^^^^^^^^^^^ i32: Value
-
-note: 
-   ┌─ numeric_sizes.fe:64:16
-   │
-64 │         return i32(2147483647)
-   │                ^^^ TypeConstructor(Base(Numeric(I32)))
 
 note: 
    ┌─ numeric_sizes.fe:66:5
@@ -848,12 +722,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:67:16
-   │
-67 │         return i64(9223372036854775807)
-   │                ^^^ TypeConstructor(Base(Numeric(I64)))
-
-note: 
    ┌─ numeric_sizes.fe:69:5
    │  
 69 │ ╭     pub fn get_i128_max() -> i128:
@@ -885,12 +753,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:70:16
-   │
-70 │         return i128(170141183460469231731687303715884105727)
-   │                ^^^^ TypeConstructor(Base(Numeric(I128)))
-
-note: 
    ┌─ numeric_sizes.fe:72:5
    │  
 72 │ ╭     pub fn get_i256_max() -> i256:
@@ -920,11 +782,5 @@ note:
    │
 73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
-
-note: 
-   ┌─ numeric_sizes.fe:73:16
-   │
-73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                ^^^^ TypeConstructor(Base(Numeric(I256)))
 
 

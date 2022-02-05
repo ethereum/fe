@@ -146,14 +146,6 @@ note:
      }
 
 note: 
-   ┌─ ownable.fe:16:19
-   │
-16 │     self._owner = address(0)
-   │                   ^^^^^^^ TypeConstructor(Base(Address))
-17 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
-   │                                                                    ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
    ┌─ ownable.fe:19:3
    │  
 19 │ ╭   pub fn transferOwnership(self, newOwner: address):
@@ -263,11 +255,5 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ ownable.fe:21:24
-   │
-21 │     assert newOwner != address(0)
-   │                        ^^^^^^^ TypeConstructor(Base(Address))
 
 

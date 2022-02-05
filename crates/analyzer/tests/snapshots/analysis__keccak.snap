@@ -49,12 +49,6 @@ note:
   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ keccak.fe:4:16
-  │
-4 │         return keccak256(val)
-  │                ^^^^^^^^^ BuiltinFunction(Keccak256)
-
-note: 
   ┌─ keccak.fe:6:5
   │  
 6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256:
@@ -100,12 +94,6 @@ note:
   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ keccak.fe:7:16
-  │
-7 │         return keccak256(val)
-  │                ^^^^^^^^^ BuiltinFunction(Keccak256)
-
-note: 
    ┌─ keccak.fe:9:5
    │  
  9 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256:
@@ -149,11 +137,5 @@ note:
    │
 10 │         return keccak256(val)
    │                ^^^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ keccak.fe:10:16
-   │
-10 │         return keccak256(val)
-   │                ^^^^^^^^^ BuiltinFunction(Keccak256)
 
 

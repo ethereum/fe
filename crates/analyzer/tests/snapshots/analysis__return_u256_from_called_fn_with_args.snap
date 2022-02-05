@@ -221,16 +221,4 @@ note:
 11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
-note: 
-   ┌─ return_u256_from_called_fn_with_args.fe:11:26
-   │
-11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                          ^^^ Pure(FunctionId(1))
-
-note: 
-   ┌─ return_u256_from_called_fn_with_args.fe:11:16
-   │
-11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                ^^^ Pure(FunctionId(0))
-
 

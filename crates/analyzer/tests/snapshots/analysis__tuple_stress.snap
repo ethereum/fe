@@ -550,14 +550,6 @@ note:
    │                             ^^^^^^^^^^^^^^^^^ (u256, i32): Memory
 
 note: 
-   ┌─ tuple_stress.fe:30:43
-   │
-30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                           ^^^^                                   ^^^ TypeConstructor(Base(Numeric(I32)))
-   │                                           │                                       
-   │                                           TypeConstructor(Base(Numeric(U256)))
-
-note: 
    ┌─ tuple_stress.fe:33:5
    │  
 33 │ ╭     pub fn get_my_sto_tuple(self) -> (u256, i32):
@@ -606,12 +598,6 @@ note:
    │
 34 │         return self.my_sto_tuple.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => Memory
-
-note: 
-   ┌─ tuple_stress.fe:34:16
-   │
-34 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Tuple(Tuple { items: [Base(Numeric(U256)), Base(Numeric(I32))] }) }
 
 note: 
    ┌─ tuple_stress.fe:36:5
@@ -716,15 +702,6 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ tuple_stress.fe:41:13
-   │
-41 │             address(26)
-   │             ^^^^^^^ TypeConstructor(Base(Address))
-42 │         )
-43 │         emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^ Pure(FunctionId(5))
-
-note: 
    ┌─ tuple_stress.fe:45:5
    │  
 45 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96>:
@@ -780,11 +757,5 @@ note:
    │
 46 │         return my_tuple.abi_encode()
    │                ^^^^^^^^^^^^^^^^^^^^^ Array<u8, 96>: Memory
-
-note: 
-   ┌─ tuple_stress.fe:46:16
-   │
-46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: AbiEncode, typ: Tuple(Tuple { items: [Base(Numeric(U256)), Base(Bool), Base(Address)] }) }
 
 

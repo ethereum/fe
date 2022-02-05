@@ -503,12 +503,6 @@ note:
    │                ^^^^^^^^^^^^^^^^ Array<u256, 10>: Memory => Memory
 
 note: 
-   ┌─ data_copying_stress.fe:52:16
-   │
-52 │         return my_array.clone()
-   │                ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
-
-note: 
    ┌─ data_copying_stress.fe:54:5
    │  
 54 │ ╭     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
@@ -568,12 +562,6 @@ note:
    │         u256: Memory
 56 │         return my_array
    │                ^^^^^^^^ Array<u256, 10>: Memory
-
-note: 
-   ┌─ data_copying_stress.fe:55:9
-   │
-55 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
 
 note: 
    ┌─ data_copying_stress.fe:58:5
@@ -723,12 +711,6 @@ note:
    │                ^^^^^^^^^^^ Array<u256, 5>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:65:23
-   │
-65 │         my_nums_mem = self.my_nums.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Numeric(U256) }) }
-
-note: 
    ┌─ data_copying_stress.fe:68:5
    │  
 68 │ ╭     pub fn emit_my_event(self):
@@ -790,20 +772,6 @@ note:
 71 │ │             self.my_u256.to_mem()
 72 │ │         )
    │ ╰─────────^ (): Value
-
-note: 
-   ┌─ data_copying_stress.fe:70:13
-   │
-70 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 42 }) }
-71 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Base(Numeric(U256)) }
-
-note: 
-   ┌─ data_copying_stress.fe:69:9
-   │
-69 │         emit_my_event_internal(
-   │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(8))
 
 note: 
    ┌─ data_copying_stress.fe:74:5

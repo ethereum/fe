@@ -69,12 +69,6 @@ note:
   │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Memory
 
 note: 
-  ┌─ address_bytes10_map.fe:5:16
-  │
-5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 10, inner: Numeric(U8) }) }
-
-note: 
   ┌─ address_bytes10_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>):
