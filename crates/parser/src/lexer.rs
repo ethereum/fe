@@ -52,7 +52,7 @@ mod tests {
     use TokenKind::*;
 
     fn check(input: &str, expected: &[TokenKind]) {
-        let lex = Lexer::new(SourceFileId::default(), input);
+        let lex = Lexer::new(SourceFileId::dummy_file(), input);
 
         let actual = lex.map(|t| t.kind).collect::<Vec<_>>();
 
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn strings() {
         let rawstr = r#""string \t with \n escapes \" \"""#;
-        let mut lex = Lexer::new(SourceFileId::default(), rawstr);
+        let mut lex = Lexer::new(SourceFileId::dummy_file(), rawstr);
         let lexedstr = lex.next().unwrap();
         assert!(lexedstr.kind == Text);
         assert!(lexedstr.text == rawstr);

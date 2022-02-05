@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/return_array.fe:2:5
+  ┌─ return_array.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256) -> Array<u256,5>:
 3 │ │         let my_array: Array<u256,5>
@@ -39,13 +39,13 @@ note:
     }
 
 note: 
-  ┌─ features/return_array.fe:3:23
+  ┌─ return_array.fe:3:23
   │
 3 │         let my_array: Array<u256,5>
   │                       ^^^^^^^^^^^^^ Array<u256, 5>
 
 note: 
-  ┌─ features/return_array.fe:4:9
+  ┌─ return_array.fe:4:9
   │
 4 │         my_array[3] = x
   │         ^^^^^^^^ ^ u256: Value
@@ -53,7 +53,7 @@ note:
   │         Array<u256, 5>: Memory
 
 note: 
-  ┌─ features/return_array.fe:4:9
+  ┌─ return_array.fe:4:9
   │
 4 │         my_array[3] = x
   │         ^^^^^^^^^^^   ^ u256: Value

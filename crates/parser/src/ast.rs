@@ -23,6 +23,7 @@ pub enum ModuleStmt {
     Struct(Node<Struct>),
     Function(Node<Function>),
     Event(Node<Event>),
+    ParseError(Span),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -410,6 +411,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
             ModuleStmt::Event(inner) => inner.span,
+            ModuleStmt::ParseError(span) => *span,
         }
     }
 }
@@ -440,6 +442,9 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
             ModuleStmt::Event(node) => write!(f, "{}", node.kind),
+            ModuleStmt::ParseError(span) => {
+                write!(f, "# PARSE ERROR: {}..{}", span.start, span.end)
+            }
         }
     }
 }

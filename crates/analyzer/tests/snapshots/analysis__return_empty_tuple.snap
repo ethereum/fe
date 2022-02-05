@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_unit.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/return_unit.fe:3:3
+  ┌─ return_unit.fe:3:3
   │  
 3 │ ╭   pub fn explicit_return_a1():
 4 │ │     return
@@ -21,7 +21,7 @@ note:
     }
 
 note: 
-  ┌─ features/return_unit.fe:6:3
+  ┌─ return_unit.fe:6:3
   │  
 6 │ ╭   pub fn explicit_return_a2():
 7 │ │     return ()
@@ -38,13 +38,13 @@ note:
     }
 
 note: 
-  ┌─ features/return_unit.fe:7:12
+  ┌─ return_unit.fe:7:12
   │
 7 │     return ()
   │            ^^ (): Value
 
 note: 
-   ┌─ features/return_unit.fe:9:3
+   ┌─ return_unit.fe:9:3
    │  
  9 │ ╭   pub fn explicit_return_b1() -> ():
 10 │ │     return
@@ -61,7 +61,7 @@ note:
      }
 
 note: 
-   ┌─ features/return_unit.fe:12:3
+   ┌─ return_unit.fe:12:3
    │  
 12 │ ╭   pub fn explicit_return_b2() -> ():
 13 │ │     return ()
@@ -78,13 +78,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_unit.fe:13:12
+   ┌─ return_unit.fe:13:12
    │
 13 │     return ()
    │            ^^ (): Value
 
 note: 
-   ┌─ features/return_unit.fe:15:3
+   ┌─ return_unit.fe:15:3
    │  
 15 │ ╭   pub fn implicit_a1():
 16 │ │     pass
@@ -101,7 +101,7 @@ note:
      }
 
 note: 
-   ┌─ features/return_unit.fe:18:3
+   ┌─ return_unit.fe:18:3
    │  
 18 │ ╭   pub fn implicit_a2() -> ():
 19 │ │     pass

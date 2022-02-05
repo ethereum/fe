@@ -6,11 +6,11 @@ use fe_parser::node::{Node, NodeId};
 pub trait ZeroSpanNode: Sized {
     /// Wrap the value in a `Node` with a span of zero.
     fn into_node(self) -> Node<Self> {
-        Node::new(self, Span::zero(SourceFileId::default()))
+        Node::new(self, Span::zero(SourceFileId::dummy_file()))
     }
 
     fn into_traceable_node(self, original_id: NodeId) -> Node<Self> {
-        Node::with_original_id(self, Span::zero(SourceFileId::default()), original_id)
+        Node::with_original_id(self, Span::zero(SourceFileId::dummy_file()), original_id)
     }
 
     /// Wrap the value in a boxed `Node` with a span of zero

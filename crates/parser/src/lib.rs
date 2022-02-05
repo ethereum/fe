@@ -12,40 +12,19 @@ use fe_common::files::SourceFileId;
 
 /// Parse a [`Module`] from the file content string.
 ///
-/// If there was no fatal error during parsing, it returns the parsed module and
-/// a vector of [`Diagnostic`]s, which should be printed. If any of the returned
+/// Returns a `Module` (which may be incomplete), and a vec of [`Diagnostic`]s
+/// (which may be empty) to display to the user. If any of the returned
 /// diagnostics are errors, the compilation of this file should ultimately fail.
 ///
-/// If the parser does reach a fatal error, this returns the list of generated
-/// diagnostics.
+/// If a fatal parse error occurred, the last element of the `Module::body` will
+/// be a `ModuleStmt::ParseError`. The parser currently has very limited ability
+/// to recover from syntax errors; this is just a first meager attempt at returning a
+/// useful AST when there are syntax errors.
 ///
 /// A [`SourceFileId`] is required to associate any diagnostics with the
 /// underlying file.
-pub fn parse_file(
-    file_id: SourceFileId,
-    src: &str,
-) -> Result<(Module, Vec<Diagnostic>), Vec<Diagnostic>> {
+pub fn parse_file(file_id: SourceFileId, src: &str) -> (Module, Vec<Diagnostic>) {
     let mut parser = Parser::new(file_id, src);
-    match crate::grammar::module::parse_module(&mut parser) {
-        Err(_) => Err(parser.diagnostics),
-        Ok(node) => Ok((node.kind, parser.diagnostics)),
-    }
-}
-
-/// Apply the given parsing function to the code string, returning the result.
-/// If the parsing fails, the parser's diagnostics will be printed.
-/// This function is provided for easy testing of later compiler stages.
-pub fn parse_code_chunk<F, T>(mut parse_fn: F, src: &str) -> ParseResult<T>
-where
-    F: FnMut(&mut Parser) -> ParseResult<T>,
-{
-    let mut files = fe_common::files::FileStore::new();
-    let id = files.add_file("parse_code_chunk test snippet", src);
-    let mut parser = Parser::new(id, src);
-    if let Ok(node) = parse_fn(&mut parser) {
-        Ok(node)
-    } else {
-        fe_common::diagnostics::print_diagnostics(&parser.diagnostics, &files);
-        Err(ParseFailed)
-    }
+    let node = crate::grammar::module::parse_module(&mut parser);
+    (node.kind, parser.diagnostics)
 }

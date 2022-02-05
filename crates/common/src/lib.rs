@@ -1,12 +1,13 @@
+pub mod db;
 pub mod diagnostics;
 pub mod files;
 pub mod numeric;
+pub mod panic;
 mod span;
 pub mod utils;
+
+pub use files::{File, FileKind, SourceFileId};
 pub use span::{Span, Spanned};
-pub mod panic;
-mod upcast;
-pub use upcast::Upcast;
 
 #[macro_export]
 #[cfg(target_arch = "wasm32")]

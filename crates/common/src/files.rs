@@ -1,178 +1,129 @@
-use crate::utils::keccak;
-use crate::Span;
-use codespan_reporting as cs;
-use cs::files::Error as CsError;
-use include_dir::Dir;
-use indexmap::indexmap;
-use indexmap::IndexMap;
-use smol_str::SmolStr;
-use std::collections::HashMap;
+use crate::db::SourceDb;
+pub use camino::{Utf8Component, Utf8Path, Utf8PathBuf};
+pub use fe_library::include_dir;
 use std::ops::Range;
-use std::path::Path;
-use std::{fs, io};
+use std::rc::Rc;
 
-#[derive(PartialEq, Clone, Eq, Hash, Debug)]
-pub struct SourceFile {
-    pub id: SourceFileId,
-    pub name: String,
-    pub content: String,
-    line_starts: Vec<usize>,
+// NOTE: all file paths are stored as utf8 strings.
+//  Non-utf8 paths (for user code) should be reported
+//  as an error.
+//  If include_dir paths aren't utf8, we panic and fix
+//  our stdlib/test-file path names.
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct File {
+    /// Differentiates between local source files and fe std lib
+    /// files, which may have the same path (for salsa's sake).
+    pub kind: FileKind,
+
+    /// Path of the file. May include `src/` dir or longer prefix;
+    /// this prefix will be stored in the `Ingot::src_path`, and stripped
+    /// off as needed.
+    pub path: Rc<Utf8PathBuf>,
 }
 
-#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug, PartialOrd, Ord, Default)]
-pub struct SourceFileId(pub u128);
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub enum FileKind {
+    /// User file; either part of the target project or an imported ingot
+    Local,
+    /// File is part of the fe standard library
+    Std,
+}
 
-impl SourceFile {
-    pub fn new(name: &str, content: &str) -> Self {
-        let hash = keccak::full_as_bytes(content.as_bytes());
-        let line_starts = cs::files::line_starts(content).collect();
-        Self {
-            id: SourceFileId(u128::from_be_bytes(hash[..16].try_into().unwrap())),
-            name: name.to_string(),
-            content: content.to_string(),
-            line_starts,
+/// Returns the common *prefix* of two paths. If the paths are identical,
+/// returns the path parent.
+pub fn common_prefix(left: &Utf8Path, right: &Utf8Path) -> Utf8PathBuf {
+    left.components()
+        .zip(right.components())
+        .take_while(|(l, r)| l == r)
+        .map(|(l, _)| l)
+        .collect()
+}
+
+// from rust-analyzer {
+#[macro_export]
+macro_rules! impl_intern_key {
+    ($name:ident) => {
+        impl salsa::InternKey for $name {
+            fn from_intern_id(v: salsa::InternId) -> Self {
+                $name(v.as_u32())
+            }
+            fn as_intern_id(&self) -> salsa::InternId {
+                salsa::InternId::from(self.0)
+            }
         }
+    };
+}
+// } from rust-analyzer
+
+// TODO: rename to FileId
+#[derive(Debug, serde::Deserialize, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct SourceFileId(pub(crate) u32);
+impl_intern_key!(SourceFileId);
+
+impl SourceFileId {
+    pub fn new_local(db: &mut dyn SourceDb, path: &str, content: Rc<str>) -> Self {
+        Self::new(db, FileKind::Std, path, content)
     }
 
-    pub fn line_index(&self, byte_index: usize) -> usize {
-        self.line_starts
+    pub fn new_std(db: &mut dyn SourceDb, path: &str, content: Rc<str>) -> Self {
+        Self::new(db, FileKind::Std, path, content)
+    }
+
+    pub fn new(db: &mut dyn SourceDb, kind: FileKind, path: &str, content: Rc<str>) -> Self {
+        let id = db.intern_file(File {
+            kind,
+            path: Rc::new(path.into()),
+        });
+        db.set_file_content(id, content);
+        id
+    }
+
+    pub fn path(&self, db: &dyn SourceDb) -> Rc<Utf8PathBuf> {
+        db.lookup_intern_file(*self).path
+    }
+
+    pub fn content(&self, db: &dyn SourceDb) -> Rc<str> {
+        db.file_content(*self)
+    }
+
+    pub fn line_index(&self, db: &dyn SourceDb, byte_index: usize) -> usize {
+        db.file_line_starts(*self)
             .binary_search(&byte_index)
             .unwrap_or_else(|next_line| next_line - 1)
     }
 
-    pub fn line_span(&self, line_index: usize) -> Option<Span> {
-        let end = if line_index == self.line_starts.len() - 1 {
-            self.content.len()
+    pub fn line_range(&self, db: &dyn SourceDb, line_index: usize) -> Option<Range<usize>> {
+        let line_starts = db.file_line_starts(*self);
+        let end = if line_index == line_starts.len() - 1 {
+            self.content(db).len()
         } else {
-            *self.line_starts.get(line_index + 1)?
+            *line_starts.get(line_index + 1)?
         };
-        Some(Span::new(self.id, *self.line_starts.get(line_index)?, end))
+        Some(Range {
+            start: *line_starts.get(line_index)?,
+            end,
+        })
+    }
+
+    pub fn dummy_file() -> Self {
+        // Used by lowering::ZeroSpanNode, unit tests, and benchmarks
+        Self(u32::MAX)
     }
 }
 
-pub trait FileLoader {
-    fn load_file(&self, path: &Path) -> io::Result<String>;
-}
-
-pub struct OsFileLoader;
-
-impl FileLoader for OsFileLoader {
-    fn load_file(&self, path: &Path) -> io::Result<String> {
-        fs::read_to_string(path)
-    }
-}
-
-pub struct FileStore {
-    pub files: HashMap<SourceFileId, SourceFile>,
-    loader: Box<dyn FileLoader>,
-}
-
-impl FileStore {
-    pub fn new() -> Self {
-        Self {
-            files: HashMap::new(),
-            loader: Box::new(OsFileLoader),
-        }
-    }
-
-    pub fn with_loader(loader: Box<dyn FileLoader>) -> Self {
-        Self {
-            files: HashMap::new(),
-            loader,
-        }
-    }
-
-    pub fn add_file(&mut self, path: &str, content: &str) -> SourceFileId {
-        let file = SourceFile::new(path, content);
-        let id = file.id;
-        self.files.insert(id, file);
-        id
-    }
-
-    /// Adds an included dir to the file store.
-    pub fn add_included_dir(&mut self, dir: &Dir) -> Vec<SourceFileId> {
-        let mut file_ids = vec![];
-
-        for file in dir.files() {
-            file_ids.push(
-                self.add_file(
-                    file.path()
-                        .to_str()
-                        .expect("cannot convert file path to string"),
-                    file.contents_utf8()
-                        .expect("could not get utf8 encoded file content"),
-                ),
-            );
-        }
-
-        for sub_dir in dir.dirs() {
-            file_ids.extend(self.add_included_dir(sub_dir))
-        }
-
-        file_ids
-    }
-
-    /// Adds the included libraries to the file store and returns a mapping of
-    /// library names to file ids.
-    pub fn add_included_libraries(&mut self) -> IndexMap<SmolStr, Vec<SourceFileId>> {
-        indexmap! {
-            "std".into() => self.add_included_dir(&fe_library::STD)
-        }
-    }
-
-    pub fn load_file(&mut self, path: &str) -> io::Result<(String, SourceFileId)> {
-        let content = self.loader.load_file(Path::new(&path))?;
-        let id = self.add_file(path, &content);
-        Ok((content, id))
-    }
-
-    pub fn get_file(&self, id: SourceFileId) -> Option<&SourceFile> {
-        self.files.get(&id)
-    }
-
-    pub fn all_files(&self) -> Vec<SourceFileId> {
-        self.files.keys().copied().collect()
-    }
-}
-
-impl<'a> cs::files::Files<'a> for FileStore {
-    type FileId = SourceFileId;
-    type Name = &'a str;
-    type Source = &'a str;
-
-    fn name(&'a self, id: SourceFileId) -> Result<Self::Name, CsError> {
-        self.get_file(id)
-            .map(|file| file.name.as_str())
-            .ok_or(CsError::FileMissing)
-    }
-
-    fn source(&'a self, id: SourceFileId) -> Result<Self::Source, CsError> {
-        self.get_file(id)
-            .map(|file| file.content.as_str())
-            .ok_or(CsError::FileMissing)
-    }
-
-    fn line_index(&'a self, id: SourceFileId, byte_index: usize) -> Result<usize, CsError> {
-        Ok(self
-            .get_file(id)
-            .ok_or(CsError::FileMissing)?
-            .line_index(byte_index))
-    }
-
-    fn line_range(&'a self, id: SourceFileId, line_index: usize) -> Result<Range<usize>, CsError> {
-        let file = self.get_file(id).ok_or(CsError::FileMissing)?;
-        Ok(file
-            .line_span(line_index)
-            .ok_or(CsError::LineTooLarge {
-                given: line_index,
-                max: file.line_starts.len() - 1,
-            })?
-            .into())
-    }
-}
-
-impl Default for FileStore {
-    fn default() -> Self {
-        Self::new()
-    }
+#[test]
+fn test_common_prefix() {
+    assert_eq!(
+        common_prefix(Utf8Path::new("a/b/c/d/e"), Utf8Path::new("a/b/d/e")),
+        Utf8Path::new("a/b")
+    );
+    assert_eq!(
+        common_prefix(Utf8Path::new("src/foo.x"), Utf8Path::new("tests/bar.fe")),
+        Utf8Path::new("")
+    );
+    assert_eq!(
+        common_prefix(Utf8Path::new("/src/foo.x"), Utf8Path::new("src/bar.fe")),
+        Utf8Path::new("")
+    );
 }

@@ -1,4 +1,4 @@
-use crate::errors::{self, CannotMove, TypeError};
+use crate::errors::{self, CannotMove, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
 use crate::namespace::types::{FixedSize, SelfDecl, Type};
 use crate::AnalyzerDb;
@@ -24,16 +24,19 @@ use std::rc::Rc;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Analysis<T> {
     pub value: T,
-    pub diagnostics: Rc<Vec<Diagnostic>>,
+    pub diagnostics: Rc<[Diagnostic]>,
 }
 impl<T> Analysis<T> {
+    pub fn new(value: T, diagnostics: Rc<[Diagnostic]>) -> Self {
+        Self { value, diagnostics }
+    }
     pub fn sink_diagnostics(&self, sink: &mut impl DiagnosticSink) {
         self.diagnostics.iter().for_each(|diag| sink.push(diag))
     }
 }
 
 pub trait AnalyzerContext {
-    fn resolve_name(&self, name: &str) -> Option<NamedThing>;
+    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem>;
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing>;
     fn add_diagnostic(&mut self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
@@ -67,7 +70,10 @@ pub trait AnalyzerContext {
     fn add_constant(&self, name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant);
 
     /// Returns constant value from variable name.
-    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant>;
+    fn constant_value_by_name(
+        &self,
+        name: &ast::SmolStr,
+    ) -> Result<Option<Constant>, IncompleteItem>;
 
     /// Returns an item enclosing current context.
     ///
@@ -239,6 +245,12 @@ impl NamedThing {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DiagnosticVoucher(PhantomData<()>);
 
+impl DiagnosticVoucher {
+    pub fn assume_the_parser_handled_it() -> Self {
+        Self(PhantomData::default())
+    }
+}
+
 #[derive(Default)]
 pub struct TempContext {
     pub diagnostics: Vec<Diagnostic>,
@@ -248,7 +260,7 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext has no analyzer db")
     }
 
-    fn resolve_name(&self, _name: &str) -> Option<NamedThing> {
+    fn resolve_name(&self, _name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
         panic!("TempContext can't resolve names")
     }
 
@@ -268,8 +280,11 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't store constant")
     }
 
-    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
-        None
+    fn constant_value_by_name(
+        &self,
+        _name: &ast::SmolStr,
+    ) -> Result<Option<Constant>, IncompleteItem> {
+        Ok(None)
     }
 
     fn parent(&self) -> Item {

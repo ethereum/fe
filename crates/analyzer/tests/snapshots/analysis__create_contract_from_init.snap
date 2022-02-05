@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/create_contract_from_init.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/create_contract_from_init.fe:2:5
+  ┌─ create_contract_from_init.fe:2:5
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
@@ -23,19 +23,19 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract_from_init.fe:3:16
+  ┌─ create_contract_from_init.fe:3:16
   │
 3 │         return 42
   │                ^^ u256: Value
 
 note: 
-  ┌─ features/create_contract_from_init.fe:6:5
+  ┌─ create_contract_from_init.fe:6:5
   │
 6 │     foo_addr: address
   │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ features/create_contract_from_init.fe:11:5
+   ┌─ create_contract_from_init.fe:11:5
    │  
 11 │ ╭     pub fn get_foo_addr(self) -> address:
 12 │ │         return self.foo_addr
@@ -54,13 +54,13 @@ note:
      }
 
 note: 
-   ┌─ features/create_contract_from_init.fe:12:16
+   ┌─ create_contract_from_init.fe:12:16
    │
 12 │         return self.foo_addr
    │                ^^^^ FooFactory: Value
 
 note: 
-   ┌─ features/create_contract_from_init.fe:12:16
+   ┌─ create_contract_from_init.fe:12:16
    │
 12 │         return self.foo_addr
    │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value

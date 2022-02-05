@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/balances.fe:2:5
+  ┌─ balances.fe:2:5
   │  
 2 │ ╭     pub fn my_balance(self) -> u256:
 3 │ │         return balance()
@@ -25,19 +25,19 @@ note:
     }
 
 note: 
-  ┌─ features/balances.fe:3:16
+  ┌─ balances.fe:3:16
   │
 3 │         return balance()
   │                ^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ features/balances.fe:3:16
+  ┌─ balances.fe:3:16
   │
 3 │         return balance()
   │                ^^^^^^^ BuiltinFunction(Balance)
 
 note: 
-  ┌─ features/balances.fe:5:5
+  ┌─ balances.fe:5:5
   │  
 5 │ ╭     pub fn other_balance(self, someone: address) -> u256:
 6 │ │         return balance_of(someone)
@@ -67,19 +67,19 @@ note:
     }
 
 note: 
-  ┌─ features/balances.fe:6:27
+  ┌─ balances.fe:6:27
   │
 6 │         return balance_of(someone)
   │                           ^^^^^^^ address: Value
 
 note: 
-  ┌─ features/balances.fe:6:16
+  ┌─ balances.fe:6:16
   │
 6 │         return balance_of(someone)
   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ features/balances.fe:6:16
+  ┌─ balances.fe:6:16
   │
 6 │         return balance_of(someone)
   │                ^^^^^^^^^^ BuiltinFunction(BalanceOf)

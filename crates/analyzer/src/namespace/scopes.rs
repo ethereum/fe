@@ -3,7 +3,7 @@
 use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
-use crate::errors::{AlreadyDefined, TypeError};
+use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
 use crate::namespace::items::Item;
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::types::FixedSize;
@@ -67,17 +67,17 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         // We use salsa query to get constant. So no need to add constant explicitly.
     }
 
-    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
-        let constant = self
-            .module
-            .all_constants(self.db)
-            .iter()
-            .find(|id| &id.name(self.db) == name)
-            .copied()?;
-
-        // It's ok to ignore an error.
-        // Diagnostics are already emitted when an error occurs.
-        constant.constant_value(self.db).ok()
+    fn constant_value_by_name(
+        &self,
+        name: &ast::SmolStr,
+    ) -> Result<Option<Constant>, IncompleteItem> {
+        if let Some(constant) = self.module.resolve_constant(self.db, name)? {
+            // It's ok to ignore an error.
+            // Diagnostics are already emitted when an error occurs.
+            Ok(constant.constant_value(self.db).ok())
+        } else {
+            Ok(None)
+        }
     }
 
     fn parent(&self) -> Item {
@@ -104,10 +104,10 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         false
     }
 
-    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
         self.module
             .resolve_name(self.db, name)
-            .map(NamedThing::Item)
+            .map(|opt| opt.map(NamedThing::Item))
     }
 
     fn add_diagnostic(&mut self, diag: Diagnostic) {
@@ -224,8 +224,11 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .const_value = Some(value);
     }
 
-    fn constant_value_by_name(&self, _name: &ast::SmolStr) -> Option<Constant> {
-        None
+    fn constant_value_by_name(
+        &self,
+        _name: &ast::SmolStr,
+    ) -> Result<Option<Constant>, IncompleteItem> {
+        Ok(None)
     }
 
     fn parent(&self) -> Item {
@@ -259,48 +262,49 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         false
     }
 
-    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
         let sig = self.function.signature(self.db);
 
         if name == "self" {
-            return Some(NamedThing::SelfValue {
+            return Ok(Some(NamedThing::SelfValue {
                 decl: sig.self_decl,
                 class: self.function.class(self.db),
                 span: self.function.self_span(self.db),
-            });
+            }));
         }
 
         // Getting param names and spans should be simpler
-        sig.params
-            .iter()
-            .find_map(|param| {
-                (param.name == name).then(|| {
-                    let span = self
-                        .function
-                        .data(self.db)
-                        .ast
-                        .kind
-                        .args
-                        .iter()
-                        .find_map(|param| (param.name() == name).then(|| param.name_span()))
-                        .expect("found param type but not span");
+        let param = sig.params.iter().find_map(|param| {
+            (param.name == name).then(|| {
+                let span = self
+                    .function
+                    .data(self.db)
+                    .ast
+                    .kind
+                    .args
+                    .iter()
+                    .find_map(|param| (param.name() == name).then(|| param.name_span()))
+                    .expect("found param type but not span");
 
-                    NamedThing::Variable {
-                        name: name.to_string(),
-                        typ: param.typ.clone(),
-                        is_const: false,
-                        span,
-                    }
-                })
-            })
-            .or_else(|| {
-                if let Some(Class::Contract(contract)) = self.function.class(self.db) {
-                    contract.resolve_name(self.db, name)
-                } else {
-                    self.function.module(self.db).resolve_name(self.db, name)
+                NamedThing::Variable {
+                    name: name.to_string(),
+                    typ: param.typ.clone(),
+                    is_const: false,
+                    span,
                 }
-                .map(NamedThing::Item)
             })
+        });
+
+        if let Some(param) = param {
+            Ok(Some(param))
+        } else {
+            if let Some(Class::Contract(contract)) = self.function.class(self.db) {
+                contract.resolve_name(self.db, name)
+            } else {
+                self.function.module(self.db).resolve_name(self.db, name)
+            }
+            .map(|opt| opt.map(NamedThing::Item))
+        }
     }
 
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
@@ -339,22 +343,23 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.db
     }
 
-    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
-        self.variable_defs
-            .get(name)
-            .map(|(typ, is_const, span)| NamedThing::Variable {
-                name: name.to_string(),
-                typ: Ok(typ.clone()),
-                is_const: *is_const,
-                span: *span,
-            })
-            .or_else(|| {
-                if let Some(parent) = self.parent {
-                    parent.resolve_name(name)
-                } else {
-                    self.root.resolve_name(name)
-                }
-            })
+    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
+        if let Some(var) =
+            self.variable_defs
+                .get(name)
+                .map(|(typ, is_const, span)| NamedThing::Variable {
+                    name: name.to_string(),
+                    typ: Ok(typ.clone()),
+                    is_const: *is_const,
+                    span: *span,
+                })
+        {
+            Ok(Some(var))
+        } else if let Some(parent) = self.parent {
+            parent.resolve_name(name)
+        } else {
+            self.root.resolve_name(name)
+        }
     }
 
     fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
@@ -378,17 +383,20 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.add_constant(name, expr, value)
     }
 
-    fn constant_value_by_name(&self, name: &ast::SmolStr) -> Option<Constant> {
+    fn constant_value_by_name(
+        &self,
+        name: &ast::SmolStr,
+    ) -> Result<Option<Constant>, IncompleteItem> {
         if let Some(constant) = self.constant_defs.borrow().get(name.as_str()) {
-            Some(constant.clone())
+            Ok(Some(constant.clone()))
         } else if let Some(parent) = self.parent {
             parent.constant_value_by_name(name)
         } else {
             match self.resolve_name(name)? {
-                NamedThing::Item(Item::Constant(constant)) => {
-                    constant.constant_value(self.db()).ok()
+                Some(NamedThing::Item(Item::Constant(constant))) => {
+                    Ok(constant.constant_value(self.db()).ok())
                 }
-                _ => None,
+                _ => Ok(None),
             }
         }
     }
@@ -466,7 +474,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         span: Span,
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name) {
-            Some(NamedThing::SelfValue { .. }) => {
+            Ok(Some(NamedThing::SelfValue { .. })) => {
                 self.error(
                     "`self` can't be used as a variable name",
                     span,
@@ -475,7 +483,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                 Err(AlreadyDefined)
             }
 
-            Some(named_item) => {
+            Ok(Some(named_item)) => {
                 if named_item.is_builtin() {
                     self.error(
                         &format!(
@@ -503,8 +511,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                 }
                 Err(AlreadyDefined)
             }
-
-            None => {
+            _ => {
                 self.variable_defs
                     .insert(name.to_string(), (typ, is_const, span));
                 Ok(())

@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/ownable.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/ownable.fe:2:3
+  ┌─ ownable.fe:2:3
   │
 2 │   _owner: address
   │   ^^^^^^^^^^^^^^^ address
 
 note: 
-  ┌─ features/ownable.fe:5:5
+  ┌─ ownable.fe:5:5
   │
 5 │     idx previousOwner: address
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ address
@@ -18,7 +18,7 @@ note:
   │     ^^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ features/ownable.fe:11:3
+   ┌─ ownable.fe:11:3
    │  
 11 │ ╭   pub fn owner(self) -> address:
 12 │ │     return self._owner
@@ -37,19 +37,19 @@ note:
      }
 
 note: 
-   ┌─ features/ownable.fe:12:12
+   ┌─ ownable.fe:12:12
    │
 12 │     return self._owner
    │            ^^^^ Ownable: Value
 
 note: 
-   ┌─ features/ownable.fe:12:12
+   ┌─ ownable.fe:12:12
    │
 12 │     return self._owner
    │            ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/ownable.fe:14:3
+   ┌─ ownable.fe:14:3
    │  
 14 │ ╭   pub fn renounceOwnership(self):
 15 │ │     assert msg.sender == self._owner
@@ -70,7 +70,7 @@ note:
      }
 
 note: 
-   ┌─ features/ownable.fe:15:12
+   ┌─ ownable.fe:15:12
    │
 15 │     assert msg.sender == self._owner
    │            ^^^^^^^^^^    ^^^^ Ownable: Value
@@ -78,13 +78,13 @@ note:
    │            address: Value
 
 note: 
-   ┌─ features/ownable.fe:15:26
+   ┌─ ownable.fe:15:26
    │
 15 │     assert msg.sender == self._owner
    │                          ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/ownable.fe:15:12
+   ┌─ ownable.fe:15:12
    │
 15 │     assert msg.sender == self._owner
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -92,7 +92,7 @@ note:
    │     ^^^^ Ownable: Value
 
 note: 
-   ┌─ features/ownable.fe:16:5
+   ┌─ ownable.fe:16:5
    │
 16 │     self._owner = address(0)
    │     ^^^^^^^^^^^           ^ u256: Value
@@ -100,7 +100,7 @@ note:
    │     address: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ features/ownable.fe:16:19
+   ┌─ ownable.fe:16:19
    │
 16 │     self._owner = address(0)
    │                   ^^^^^^^^^^ address: Value
@@ -110,13 +110,13 @@ note:
    │                                             address: Value
 
 note: 
-   ┌─ features/ownable.fe:17:66
+   ┌─ ownable.fe:17:66
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
    │                                                                  ^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/ownable.fe:17:5
+   ┌─ ownable.fe:17:5
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
@@ -146,7 +146,7 @@ note:
      }
 
 note: 
-   ┌─ features/ownable.fe:16:19
+   ┌─ ownable.fe:16:19
    │
 16 │     self._owner = address(0)
    │                   ^^^^^^^ TypeConstructor(Base(Address))
@@ -154,7 +154,7 @@ note:
    │                                                                  ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
-   ┌─ features/ownable.fe:19:3
+   ┌─ ownable.fe:19:3
    │  
 19 │ ╭   pub fn transferOwnership(self, newOwner: address):
 20 │ │     assert msg.sender == self._owner
@@ -185,7 +185,7 @@ note:
      }
 
 note: 
-   ┌─ features/ownable.fe:20:12
+   ┌─ ownable.fe:20:12
    │
 20 │     assert msg.sender == self._owner
    │            ^^^^^^^^^^    ^^^^ Ownable: Value
@@ -193,13 +193,13 @@ note:
    │            address: Value
 
 note: 
-   ┌─ features/ownable.fe:20:26
+   ┌─ ownable.fe:20:26
    │
 20 │     assert msg.sender == self._owner
    │                          ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/ownable.fe:20:12
+   ┌─ ownable.fe:20:12
    │
 20 │     assert msg.sender == self._owner
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -209,13 +209,13 @@ note:
    │            address: Value
 
 note: 
-   ┌─ features/ownable.fe:21:24
+   ┌─ ownable.fe:21:24
    │
 21 │     assert newOwner != address(0)
    │                        ^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/ownable.fe:21:12
+   ┌─ ownable.fe:21:12
    │
 21 │     assert newOwner != address(0)
    │            ^^^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -223,7 +223,7 @@ note:
    │     ^^^^ Ownable: Value
 
 note: 
-   ┌─ features/ownable.fe:22:5
+   ┌─ ownable.fe:22:5
    │
 22 │     self._owner = newOwner
    │     ^^^^^^^^^^^   ^^^^^^^^ address: Value
@@ -235,7 +235,7 @@ note:
    │                                             address: Value
 
 note: 
-   ┌─ features/ownable.fe:23:5
+   ┌─ ownable.fe:23:5
    │
 23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
@@ -265,7 +265,7 @@ note:
      }
 
 note: 
-   ┌─ features/ownable.fe:21:24
+   ┌─ ownable.fe:21:24
    │
 21 │     assert newOwner != address(0)
    │                        ^^^^^^^ TypeConstructor(Base(Address))

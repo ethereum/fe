@@ -15,23 +15,21 @@ use smol_str::SmolStr;
 use std::rc::Rc;
 
 /// A `Vec` of every function defined in the contract, including duplicates and the init function.
-pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<FunctionId>> {
+pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[FunctionId]> {
     let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
-    Rc::new(
-        body.iter()
-            .filter_map(|stmt| match stmt {
-                ast::ContractStmt::Event(_) => None,
-                ast::ContractStmt::Function(node) => {
-                    Some(db.intern_function(Rc::new(items::Function {
-                        ast: node.clone(),
-                        module,
-                        parent: Some(items::Class::Contract(contract)),
-                    })))
-                }
-            })
-            .collect(),
-    )
+    body.iter()
+        .filter_map(|stmt| match stmt {
+            ast::ContractStmt::Event(_) => None,
+            ast::ContractStmt::Function(node) => {
+                Some(db.intern_function(Rc::new(items::Function {
+                    ast: node.clone(),
+                    module,
+                    parent: Some(items::Class::Contract(contract)),
+                })))
+            }
+        })
+        .collect()
 }
 
 pub fn contract_function_map(
@@ -59,7 +57,7 @@ pub fn contract_function_map(
             continue;
         }
 
-        if let Some(named_item) = scope.resolve_name(def_name) {
+        if let Ok(Some(named_item)) = scope.resolve_name(def_name) {
             scope.name_conflict_error(
                 "function",
                 def_name,
@@ -89,7 +87,7 @@ pub fn contract_function_map(
     }
     Analysis {
         value: Rc::new(map),
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 
@@ -154,7 +152,7 @@ pub fn contract_init_function(
 
     Analysis {
         value: first_def.map(|(id, _span)| *id),
-        diagnostics: Rc::new(diagnostics),
+        diagnostics: diagnostics.into(),
     }
 }
 
@@ -225,24 +223,22 @@ pub fn contract_call_function(
 
     Analysis {
         value: first_def.map(|(id, _span)| *id),
-        diagnostics: Rc::new(diagnostics),
+        diagnostics: diagnostics.into(),
     }
 }
 
 /// A `Vec` of all events defined within the contract, including those with duplicate names.
-pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<EventId>> {
+pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[EventId]> {
     let body = &contract.data(db).ast.kind.body;
-    Rc::new(
-        body.iter()
-            .filter_map(|stmt| match stmt {
-                ast::ContractStmt::Function(_) => None,
-                ast::ContractStmt::Event(node) => Some(db.intern_event(Rc::new(items::Event {
-                    ast: node.clone(),
-                    contract,
-                }))),
-            })
-            .collect(),
-    )
+    body.iter()
+        .filter_map(|stmt| match stmt {
+            ast::ContractStmt::Function(_) => None,
+            ast::ContractStmt::Event(node) => Some(db.intern_event(Rc::new(items::Event {
+                ast: node.clone(),
+                contract,
+            }))),
+        })
+        .collect()
 }
 
 pub fn contract_event_map(
@@ -273,13 +269,13 @@ pub fn contract_event_map(
 
     Analysis {
         value: Rc::new(map),
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 
 /// All field ids, including those with duplicate names
-pub fn contract_all_fields(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<ContractFieldId>> {
-    let fields = contract
+pub fn contract_all_fields(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[ContractFieldId]> {
+    contract
         .data(db)
         .ast
         .kind
@@ -291,8 +287,7 @@ pub fn contract_all_fields(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<
                 parent: contract,
             }))
         })
-        .collect();
-    Rc::new(fields)
+        .collect()
 }
 
 pub fn contract_field_map(
@@ -323,7 +318,7 @@ pub fn contract_field_map(
 
     Analysis {
         value: Rc::new(map),
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 
@@ -348,7 +343,7 @@ pub fn contract_field_type(
 
     Analysis {
         value: typ,
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 

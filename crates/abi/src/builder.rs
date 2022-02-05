@@ -128,11 +128,8 @@ fn components(db: &dyn AnalyzerDb, typ: &types::FixedSize) -> Vec<Component> {
 #[cfg(test)]
 mod tests {
     use crate::builder;
-    use fe_analyzer::namespace::items::{Global, Module, ModuleContext, ModuleFileContent};
-    use fe_analyzer::{AnalyzerDb, TestDb};
-    use fe_common::files::SourceFileId;
-    use fe_parser::{grammar::module::parse_module, parse_code_chunk};
-    use std::rc::Rc;
+    use fe_analyzer::namespace::items::ModuleId;
+    use fe_analyzer::TestDb;
 
     #[test]
     fn build_contract_abi() {
@@ -151,26 +148,11 @@ contract Foo:
   pub fn bar(x: u256) -> Array<u256, 10>:
     revert"#;
 
-        let ast = parse_code_chunk(parse_module, contract)
-            .expect("unable to build module AST")
-            .kind;
-        let db = TestDb::default();
+        let mut db = TestDb::default();
+        let module = ModuleId::new_standalone(&mut db, "test_module", contract);
 
-        let global = Global::default();
-        let global_id = db.intern_global(Rc::new(global));
-
-        let module = Module {
-            name: "test_module".into(),
-            context: ModuleContext::Global(global_id),
-            file_content: ModuleFileContent::File {
-                file: SourceFileId(0),
-            },
-            ast,
-        };
-        let module_id = db.intern_module(Rc::new(module));
-
-        fe_analyzer::analyze_module(&db, module_id).expect("failed to analyze source");
-        let abis = builder::module(&db, module_id).expect("unable to build ABI");
+        fe_analyzer::analyze_module(&db, module).expect("failed to analyze source");
+        let abis = builder::module(&db, module).expect("unable to build ABI");
 
         if let Some(abi) = abis.get("Foo") {
             // event

@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/sized_vals_in_sto.fe:2:5
+  ┌─ sized_vals_in_sto.fe:2:5
   │
 2 │     num: u256
   │     ^^^^^^^^^ u256
@@ -14,7 +14,7 @@ note:
   │     ^^^^^^^^^^^^^^^ String<26>
 
 note: 
-  ┌─ features/sized_vals_in_sto.fe:7:9
+  ┌─ sized_vals_in_sto.fe:7:9
   │
 7 │         num: u256
   │         ^^^^^^^^^ u256
@@ -24,7 +24,7 @@ note:
   │         ^^^^^^^^^^^^^^^ String<26>
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:11:5
+   ┌─ sized_vals_in_sto.fe:11:5
    │  
 11 │ ╭     pub fn write_num(self, x: u256):
 12 │ │         self.num = x
@@ -54,13 +54,13 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:12:9
+   ┌─ sized_vals_in_sto.fe:12:9
    │
 12 │         self.num = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:12:9
+   ┌─ sized_vals_in_sto.fe:12:9
    │
 12 │         self.num = x
    │         ^^^^^^^^   ^ u256: Value
@@ -68,7 +68,7 @@ note:
    │         u256: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:14:5
+   ┌─ sized_vals_in_sto.fe:14:5
    │  
 14 │ ╭     pub fn read_num(self) -> u256:
 15 │ │         return self.num
@@ -89,19 +89,19 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:15:16
+   ┌─ sized_vals_in_sto.fe:15:16
    │
 15 │         return self.num
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:15:16
+   ┌─ sized_vals_in_sto.fe:15:16
    │
 15 │         return self.num
    │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:17:5
+   ┌─ sized_vals_in_sto.fe:17:5
    │  
 17 │ ╭     pub fn write_nums(self, x: Array<u256, 42>):
 18 │ │         self.nums = x
@@ -134,13 +134,13 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:18:9
+   ┌─ sized_vals_in_sto.fe:18:9
    │
 18 │         self.nums = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:18:9
+   ┌─ sized_vals_in_sto.fe:18:9
    │
 18 │         self.nums = x
    │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
@@ -148,7 +148,7 @@ note:
    │         Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:20:5
+   ┌─ sized_vals_in_sto.fe:20:5
    │  
 20 │ ╭     pub fn read_nums(self) -> Array<u256, 42>:
 21 │ │         return self.nums.to_mem()
@@ -172,31 +172,31 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
+   ┌─ sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
+   ┌─ sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
    │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
+   ┌─ sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
    │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
+   ┌─ sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
    │                ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:23:5
+   ┌─ sized_vals_in_sto.fe:23:5
    │  
 23 │ ╭     pub fn write_str(self, x: String<26>):
 24 │ │         self.str = x
@@ -226,13 +226,13 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:24:9
+   ┌─ sized_vals_in_sto.fe:24:9
    │
 24 │         self.str = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:24:9
+   ┌─ sized_vals_in_sto.fe:24:9
    │
 24 │         self.str = x
    │         ^^^^^^^^   ^ String<26>: Memory
@@ -240,7 +240,7 @@ note:
    │         String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:26:5
+   ┌─ sized_vals_in_sto.fe:26:5
    │  
 26 │ ╭     pub fn read_str(self) -> String<26>:
 27 │ │         return self.str.to_mem()
@@ -261,31 +261,31 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
 27 │         return self.str.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
 27 │         return self.str.to_mem()
    │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
 27 │         return self.str.to_mem()
    │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
 27 │         return self.str.to_mem()
    │                ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:29:5
+   ┌─ sized_vals_in_sto.fe:29:5
    │  
 29 │ ╭     pub fn emit_event(self):
 30 │ │         emit MyEvent(
@@ -308,13 +308,13 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:31:17
+   ┌─ sized_vals_in_sto.fe:31:17
    │
 31 │             num=self.num,
    │                 ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:31:17
+   ┌─ sized_vals_in_sto.fe:31:17
    │
 31 │             num=self.num,
    │                 ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
@@ -322,13 +322,13 @@ note:
    │                  ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
    │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
    │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
@@ -336,19 +336,19 @@ note:
    │                 ^^^^ Foo: Value
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:33:17
+   ┌─ sized_vals_in_sto.fe:33:17
    │
 33 │             str=self.str.to_mem()
    │                 ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:33:17
+   ┌─ sized_vals_in_sto.fe:33:17
    │
 33 │             str=self.str.to_mem()
    │                 ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:30:9
+   ┌─ sized_vals_in_sto.fe:30:9
    │  
 30 │ ╭         emit MyEvent(
 31 │ │             num=self.num,
@@ -400,7 +400,7 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
    │                  ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }

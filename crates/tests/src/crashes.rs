@@ -1,4 +1,3 @@
-use fe_common::files::FileStore;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 macro_rules! test_file {
@@ -6,12 +5,10 @@ macro_rules! test_file {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
+            let mut db = fe_driver::Db::default();
             let path = concat!("crashes/", stringify!($name), ".fe");
             let src = test_files::fixture(path);
-            let mut files = FileStore::new();
-            let deps = files.add_included_libraries();
-            let id = files.add_file(path, src);
-            fe_driver::compile_module(&files, id, &deps, true, true).ok();
+            fe_driver::compile_single_file(&mut db, path, src, true, true).ok();
         }
     };
 }

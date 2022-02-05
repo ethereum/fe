@@ -7,7 +7,7 @@ use std::ops::{Add, AddAssign, Range};
 /// An exclusive span of byte offsets in a source file.
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Hash, Eq)]
 pub struct Span {
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(skip_serializing)]
     pub file_id: SourceFileId,
     /// A byte offset specifying the inclusive start of a span.
     pub start: usize,

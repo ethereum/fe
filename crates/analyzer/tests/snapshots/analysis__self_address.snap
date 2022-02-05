@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/self_address.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/self_address.fe:2:5
+  ┌─ self_address.fe:2:5
   │  
 2 │ ╭     pub fn my_address(self) -> address:
 3 │ │         return self.address
@@ -23,13 +23,13 @@ note:
     }
 
 note: 
-  ┌─ features/self_address.fe:3:16
+  ┌─ self_address.fe:3:16
   │
 3 │         return self.address
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/self_address.fe:3:16
+  ┌─ self_address.fe:3:16
   │
 3 │         return self.address
   │                ^^^^^^^^^^^^ address: Value

@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/call_statement_with_args.fe:2:5
+  ┌─ call_statement_with_args.fe:2:5
   │
 2 │     baz: Map<u256, u256>
   │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
-  ┌─ features/call_statement_with_args.fe:4:5
+  ┌─ call_statement_with_args.fe:4:5
   │  
 4 │ ╭     fn assign(self, val: u256):
 5 │ │         self.baz[0] = val
@@ -40,13 +40,13 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:5:9
+  ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/call_statement_with_args.fe:5:9
+  ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
   │         ^^^^^^^^ ^ u256: Value
@@ -54,7 +54,7 @@ note:
   │         Map<u256, u256>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:5:9
+  ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
   │         ^^^^^^^^^^^   ^^^ u256: Value
@@ -62,7 +62,7 @@ note:
   │         u256: Storage { nonce: None }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:7:5
+  ┌─ call_statement_with_args.fe:7:5
   │  
 7 │ ╭     pub fn bar(self) -> u256:
 8 │ │         self.assign(100)
@@ -84,7 +84,7 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:8:9
+  ┌─ call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
   │         ^^^^        ^^^ u256: Value
@@ -92,7 +92,7 @@ note:
   │         Foo: Value
 
 note: 
-  ┌─ features/call_statement_with_args.fe:8:9
+  ┌─ call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
   │         ^^^^^^^^^^^^^^^^ (): Value
@@ -100,7 +100,7 @@ note:
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/call_statement_with_args.fe:9:16
+  ┌─ call_statement_with_args.fe:9:16
   │
 9 │         return self.baz[0]
   │                ^^^^^^^^ ^ u256: Value
@@ -108,13 +108,13 @@ note:
   │                Map<u256, u256>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:9:16
+  ┌─ call_statement_with_args.fe:9:16
   │
 9 │         return self.baz[0]
   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
-  ┌─ features/call_statement_with_args.fe:8:9
+  ┌─ call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
   │         ^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(0) }

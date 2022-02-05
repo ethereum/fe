@@ -270,7 +270,7 @@ fn expr_name(
         _ => unreachable!(),
     };
 
-    let name_thing = context.resolve_name(name);
+    let name_thing = context.resolve_name(name)?;
     expr_named_thing(context, exp, name_thing, expected_type)
 }
 
@@ -880,7 +880,7 @@ fn expr_call_name<T: std::fmt::Display>(
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
     check_for_call_to_special_fns(context, name, func.span)?;
 
-    let named_thing = context.resolve_name(name).ok_or_else(|| {
+    let named_thing = context.resolve_name(name)?.ok_or_else(|| {
         // Check for call to a fn in the current class that takes self.
         if context.is_in_function() {
             let func_id = context.parent_function();
@@ -1438,7 +1438,7 @@ fn expr_call_method(
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
         match context.resolve_name(name) {
-            Some(NamedThing::Item(Item::Type(id))) => {
+            Ok(Some(NamedThing::Item(Item::Type(id)))) => {
                 let typ = id.typ(context.db())?;
                 return expr_call_type_attribute(
                     context,
@@ -1449,7 +1449,7 @@ fn expr_call_method(
                     args,
                 );
             }
-            Some(NamedThing::Item(Item::Object(object))) => {
+            Ok(Some(NamedThing::Item(Item::Object(object)))) => {
                 return Err(FatalError::new(context.error(
                     &format!(
                         "no function `{}` exists on `{}`",

@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/revert.fe:2:5
+  ┌─ revert.fe:2:5
   │
 2 │     pub msg: u256
   │     ^^^^^^^^^^^^^ u256
@@ -12,7 +12,7 @@ note:
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ features/revert.fe:6:5
+  ┌─ revert.fe:6:5
   │
 6 │     pub msg: u256
   │     ^^^^^^^^^^^^^ u256
@@ -20,13 +20,13 @@ note:
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-   ┌─ features/revert.fe:10:5
+   ┌─ revert.fe:10:5
    │
 10 │     my_other_error: OtherError
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
-   ┌─ features/revert.fe:12:5
+   ┌─ revert.fe:12:5
    │  
 12 │ ╭     pub fn bar() -> u256:
 13 │ │         revert
@@ -45,7 +45,7 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:15:5
+   ┌─ revert.fe:15:5
    │  
 15 │ ╭     pub fn revert_custom_error():
 16 │ │         revert Error(msg=1, val=true)
@@ -62,7 +62,7 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:16:26
+   ┌─ revert.fe:16:26
    │
 16 │         revert Error(msg=1, val=true)
    │                          ^      ^^^^ bool: Value
@@ -70,19 +70,19 @@ note:
    │                          u256: Value
 
 note: 
-   ┌─ features/revert.fe:16:16
+   ┌─ revert.fe:16:16
    │
 16 │         revert Error(msg=1, val=true)
    │                ^^^^^^^^^^^^^^^^^^^^^^ Error: Memory
 
 note: 
-   ┌─ features/revert.fe:16:16
+   ┌─ revert.fe:16:16
    │
 16 │         revert Error(msg=1, val=true)
    │                ^^^^^ TypeConstructor(Struct(Struct { name: "Error", id: StructId(0), field_count: 2 }))
 
 note: 
-   ┌─ features/revert.fe:18:5
+   ┌─ revert.fe:18:5
    │  
 18 │ ╭     pub fn revert_other_error():
 19 │ │         revert OtherError(msg=1, val=true)
@@ -99,7 +99,7 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:19:31
+   ┌─ revert.fe:19:31
    │
 19 │         revert OtherError(msg=1, val=true)
    │                               ^      ^^^^ bool: Value
@@ -107,19 +107,19 @@ note:
    │                               u256: Value
 
 note: 
-   ┌─ features/revert.fe:19:16
+   ┌─ revert.fe:19:16
    │
 19 │         revert OtherError(msg=1, val=true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 
 note: 
-   ┌─ features/revert.fe:19:16
+   ┌─ revert.fe:19:16
    │
 19 │         revert OtherError(msg=1, val=true)
    │                ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(1), field_count: 2 }))
 
 note: 
-   ┌─ features/revert.fe:21:5
+   ┌─ revert.fe:21:5
    │  
 21 │ ╭     pub fn revert_other_error_from_sto(self):
 22 │ │         self.my_other_error = OtherError(msg=1, val=true)
@@ -139,13 +139,13 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:22:9
+   ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg=1, val=true)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/revert.fe:22:9
+   ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg=1, val=true)
    │         ^^^^^^^^^^^^^^^^^^^                  ^      ^^^^ bool: Value
@@ -154,7 +154,7 @@ note:
    │         OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ features/revert.fe:22:31
+   ┌─ revert.fe:22:31
    │
 22 │         self.my_other_error = OtherError(msg=1, val=true)
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
@@ -162,19 +162,19 @@ note:
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/revert.fe:23:16
+   ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ features/revert.fe:23:16
+   ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
 
 note: 
-   ┌─ features/revert.fe:22:31
+   ┌─ revert.fe:22:31
    │
 22 │         self.my_other_error = OtherError(msg=1, val=true)
    │                               ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(1), field_count: 2 }))

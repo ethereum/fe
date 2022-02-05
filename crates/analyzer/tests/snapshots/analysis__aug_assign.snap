@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/aug_assign.fe:2:5
+  ┌─ aug_assign.fe:2:5
   │
 2 │     my_num: u256
   │     ^^^^^^^^^^^^ u256
 
 note: 
-  ┌─ features/aug_assign.fe:4:5
+  ┌─ aug_assign.fe:4:5
   │  
 4 │ ╭     pub fn add(a: u256, b: u256) -> u256:
 5 │ │         a += b
@@ -51,7 +51,7 @@ note:
     }
 
 note: 
-  ┌─ features/aug_assign.fe:5:9
+  ┌─ aug_assign.fe:5:9
   │
 5 │         a += b
   │         ^    ^ u256: Value
@@ -61,7 +61,7 @@ note:
   │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:8:5
+   ┌─ aug_assign.fe:8:5
    │  
  8 │ ╭     pub fn sub(a: u256, b: u256) -> u256:
  9 │ │         a -= b
@@ -102,7 +102,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:9:9
+   ┌─ aug_assign.fe:9:9
    │
  9 │         a -= b
    │         ^    ^ u256: Value
@@ -112,7 +112,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:12:5
+   ┌─ aug_assign.fe:12:5
    │  
 12 │ ╭     pub fn mul(a: u256, b: u256) -> u256:
 13 │ │         a *= b
@@ -153,7 +153,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:13:9
+   ┌─ aug_assign.fe:13:9
    │
 13 │         a *= b
    │         ^    ^ u256: Value
@@ -163,7 +163,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:16:5
+   ┌─ aug_assign.fe:16:5
    │  
 16 │ ╭     pub fn div(a: u256, b: u256) -> u256:
 17 │ │         a /= b
@@ -204,7 +204,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:17:9
+   ┌─ aug_assign.fe:17:9
    │
 17 │         a /= b
    │         ^    ^ u256: Value
@@ -214,7 +214,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:20:5
+   ┌─ aug_assign.fe:20:5
    │  
 20 │ ╭     pub fn mod(a: u256, b: u256) -> u256:
 21 │ │         a %= b
@@ -255,7 +255,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:21:9
+   ┌─ aug_assign.fe:21:9
    │
 21 │         a %= b
    │         ^    ^ u256: Value
@@ -265,7 +265,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:24:5
+   ┌─ aug_assign.fe:24:5
    │  
 24 │ ╭     pub fn pow(a: u256, b: u256) -> u256:
 25 │ │         a **= b
@@ -306,7 +306,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:25:9
+   ┌─ aug_assign.fe:25:9
    │
 25 │         a **= b
    │         ^     ^ u256: Value
@@ -316,7 +316,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/aug_assign.fe:28:5
+   ┌─ aug_assign.fe:28:5
    │  
 28 │ ╭     pub fn lshift(a: u8, b: u8) -> u8:
 29 │ │         a <<= b
@@ -357,7 +357,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:29:9
+   ┌─ aug_assign.fe:29:9
    │
 29 │         a <<= b
    │         ^     ^ u8: Value
@@ -367,7 +367,7 @@ note:
    │                ^ u8: Value
 
 note: 
-   ┌─ features/aug_assign.fe:32:5
+   ┌─ aug_assign.fe:32:5
    │  
 32 │ ╭     pub fn rshift(a: u8, b: u8) -> u8:
 33 │ │         a >>= b
@@ -408,7 +408,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:33:9
+   ┌─ aug_assign.fe:33:9
    │
 33 │         a >>= b
    │         ^     ^ u8: Value
@@ -418,7 +418,7 @@ note:
    │                ^ u8: Value
 
 note: 
-   ┌─ features/aug_assign.fe:36:5
+   ┌─ aug_assign.fe:36:5
    │  
 36 │ ╭     pub fn bit_or(a: u8, b: u8) -> u8:
 37 │ │         a |= b
@@ -459,7 +459,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:37:9
+   ┌─ aug_assign.fe:37:9
    │
 37 │         a |= b
    │         ^    ^ u8: Value
@@ -469,7 +469,7 @@ note:
    │                ^ u8: Value
 
 note: 
-   ┌─ features/aug_assign.fe:40:5
+   ┌─ aug_assign.fe:40:5
    │  
 40 │ ╭     pub fn bit_xor(a: u8, b: u8) -> u8:
 41 │ │         a ^= b
@@ -510,7 +510,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:41:9
+   ┌─ aug_assign.fe:41:9
    │
 41 │         a ^= b
    │         ^    ^ u8: Value
@@ -520,7 +520,7 @@ note:
    │                ^ u8: Value
 
 note: 
-   ┌─ features/aug_assign.fe:44:5
+   ┌─ aug_assign.fe:44:5
    │  
 44 │ ╭     pub fn bit_and(a: u8, b: u8) -> u8:
 45 │ │         a &= b
@@ -561,7 +561,7 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:45:9
+   ┌─ aug_assign.fe:45:9
    │
 45 │         a &= b
    │         ^    ^ u8: Value
@@ -571,7 +571,7 @@ note:
    │                ^ u8: Value
 
 note: 
-   ┌─ features/aug_assign.fe:48:5
+   ┌─ aug_assign.fe:48:5
    │  
 48 │ ╭     pub fn add_from_sto(self, a: u256, b: u256) -> u256:
 49 │ │         self.my_num = a
@@ -615,13 +615,13 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:49:9
+   ┌─ aug_assign.fe:49:9
    │
 49 │         self.my_num = a
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/aug_assign.fe:49:9
+   ┌─ aug_assign.fe:49:9
    │
 49 │         self.my_num = a
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -631,7 +631,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/aug_assign.fe:50:9
+   ┌─ aug_assign.fe:50:9
    │
 50 │         self.my_num += b
    │         ^^^^^^^^^^^    ^ u256: Value
@@ -641,13 +641,13 @@ note:
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/aug_assign.fe:51:16
+   ┌─ aug_assign.fe:51:16
    │
 51 │         return self.my_num
    │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/aug_assign.fe:53:5
+   ┌─ aug_assign.fe:53:5
    │  
 53 │ ╭     pub fn add_from_mem(a: u256, b: u256) -> u256:
 54 │ │         let my_array: Array<u256, 10>
@@ -690,13 +690,13 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:54:23
+   ┌─ aug_assign.fe:54:23
    │
 54 │         let my_array: Array<u256, 10>
    │                       ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
-   ┌─ features/aug_assign.fe:55:9
+   ┌─ aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
    │         ^^^^^^^^ ^ u256: Value
@@ -704,7 +704,7 @@ note:
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ features/aug_assign.fe:55:9
+   ┌─ aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -716,7 +716,7 @@ note:
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ features/aug_assign.fe:56:9
+   ┌─ aug_assign.fe:56:9
    │
 56 │         my_array[7] += b
    │         ^^^^^^^^^^^    ^ u256: Value
@@ -728,7 +728,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ features/aug_assign.fe:57:16
+   ┌─ aug_assign.fe:57:16
    │
 57 │         return my_array[7]
    │                ^^^^^^^^^^^ u256: Memory => Value

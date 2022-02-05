@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_pow_i256.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/return_pow_i256.fe:2:5
+  ┌─ return_pow_i256.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: i8, y: u8) -> i8:
 3 │ │         return x ** y
@@ -44,7 +44,7 @@ note:
     }
 
 note: 
-  ┌─ features/return_pow_i256.fe:3:16
+  ┌─ return_pow_i256.fe:3:16
   │
 3 │         return x ** y
   │                ^    ^ u8: Value
@@ -52,7 +52,7 @@ note:
   │                i8: Value
 
 note: 
-  ┌─ features/return_pow_i256.fe:3:16
+  ┌─ return_pow_i256.fe:3:16
   │
 3 │         return x ** y
   │                ^^^^^^ i8: Value

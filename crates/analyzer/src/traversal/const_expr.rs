@@ -38,7 +38,7 @@ pub(crate) fn eval_expr(
         ast::Expr::UnaryOperation { op, operand } => eval_unary_op(context, op, operand),
         ast::Expr::CompOperation { left, op, right } => eval_comp_op(context, left, op, right),
         ast::Expr::Bool(val) => Ok(Constant::Bool(*val)),
-        ast::Expr::Name(name) => match context.constant_value_by_name(name) {
+        ast::Expr::Name(name) => match context.constant_value_by_name(name)? {
             Some(const_value) => Ok(const_value),
             _ => Err(not_const_error(context, expr.span)),
         },

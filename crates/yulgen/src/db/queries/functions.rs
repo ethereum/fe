@@ -161,7 +161,7 @@ pub fn function_external_call_fn(db: &dyn YulgenDb, function: FunctionId) -> Vec
         })
     } else {
         // unit type; there is no return data to handle
-        // XXX return_val isn't assigned
+        // TODO: return_val isn't assigned
         fns.push(function_definition! {
             function [call_fn_name](addr, [param_idents...]) -> return_val {
                 (let instart := alloc_mstoren([selector], 4))

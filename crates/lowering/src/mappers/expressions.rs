@@ -133,7 +133,7 @@ fn expr_name(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
 
     let db = context.db();
     match context.id.module(db).resolve_name(db, name) {
-        Some(Item::Constant(val)) => {
+        Ok(Some(Item::Constant(val))) => {
             assert!(
                 val.is_base_type(db),
                 "Should have been rejected at first analyzer pass"

@@ -20,3 +20,6 @@ fe-parser = {path = "../parser", version = "^0.13.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.13.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.13.0-alpha", features = ["solc-backend"], optional = true}
 indexmap = "1.6.2"
+vfs = "0.5.1"
+smol_str = "0.1.21"
+toml = "0.5.8"

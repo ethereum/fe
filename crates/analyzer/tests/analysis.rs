@@ -1,57 +1,90 @@
-use fe_analyzer::namespace::items::{
-    self, Global, IngotId, Item, Module, ModuleContext, ModuleFileContent, TypeDef,
-};
+use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
 use fe_analyzer::namespace::types::{Event, FixedSize};
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
-use fe_common::files::FileStore;
-use fe_parser::node::NodeId;
-use fe_parser::node::Span;
-use indexmap::IndexMap;
+use fe_common::files::{FileKind, Utf8Path};
+use fe_parser::node::{NodeId, Span};
+use indexmap::{indexmap, IndexMap};
 use insta::assert_snapshot;
 use smallvec::SmallVec;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::fmt::Display;
+use std::collections::{HashMap, VecDeque};
+use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen_test::wasm_bindgen_test;
+
+#[test]
+fn analyze_std_lib() {
+    let mut db = TestDb::default();
+
+    // Should return the same id
+    let std_ingot = IngotId::std_lib(&mut db);
+    let std_ingot_2 = IngotId::std_lib(&mut db);
+    assert_eq!(std_ingot, std_ingot_2);
+
+    let diags = std_ingot.diagnostics(&db);
+    if !diags.is_empty() {
+        print_diagnostics(&db, &diags);
+        panic!("std lib analysis failed")
+    }
+}
+
+#[test]
+fn ingot_files_to_modules() {
+    let mut db = TestDb::default();
+    let ingot = IngotId::from_files(
+        &mut db,
+        "libcool",
+        IngotMode::Lib,
+        FileKind::Local,
+        &[
+            ("foo/fee.fe", ""),
+            ("lib.fe", ""),
+            ("bar/baz.fe", ""),
+            ("bar/bum.fe", ""),
+            ("x.fe", ""),
+            ("a/b/c/d.fe", ""),
+        ],
+        indexmap! {},
+    );
+
+    let submod_map = |module: ModuleId| {
+        module
+            .submodules(&db)
+            .iter()
+            .map(|m| (m.name(&db), *m))
+            .collect::<HashMap<_, _>>()
+    };
+
+    let lib = ingot.root_module(&db).unwrap();
+    let subs = submod_map(lib);
+    assert_eq!(subs.len(), 4);
+
+    let bar_subs = submod_map(subs["bar"]);
+    assert_eq!(bar_subs.len(), 2);
+    assert!(bar_subs.contains_key("bum"));
+    assert!(bar_subs.contains_key("baz"));
+
+    let d = subs["a"].submodules(&db)[0] // b
+        .submodules(&db)[0] // c
+        .submodules(&db)[0]; // d
+    assert_eq!(d.name(&db), "d");
+}
 
 macro_rules! test_analysis {
     ($name:ident, $path:expr) => {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let mut files = FileStore::new();
-            let src = test_files::fixture($path);
-            let id = files.add_file($path, src);
-            let ast = match fe_parser::parse_file(id, &src) {
-                Ok((module, _)) => module,
-                Err(diags) => {
-                    print_diagnostics(&diags, &files);
-                    panic!("parsing failed");
-                }
-            };
+            let mut db = TestDb::default();
 
-            let db = TestDb::default();
+            let file_name = Utf8Path::new($path).file_name().unwrap();
+            let module = ModuleId::new_standalone(&mut db, file_name, test_files::fixture($path));
 
-            let global = Global::default();
-            let global_id = db.intern_global(Rc::new(global));
-
-            let module = Module {
-                name: "test_module".into(),
-                context: ModuleContext::Global(global_id),
-                file_content: ModuleFileContent::File { file: id },
-                ast,
-            };
-
-            let module_id = db.intern_module(Rc::new(module));
-
-            let diagnostics = module_id.diagnostics(&db);
-            if !diagnostics.is_empty() {
-                print_diagnostics(&diagnostics, &files);
+            let diags = module.diagnostics(&db);
+            if !diags.is_empty() {
+                print_diagnostics(&db, &diags);
                 panic!("analysis failed")
             }
 
@@ -61,10 +94,10 @@ macro_rules! test_analysis {
                 //  for larger diffs. I recommend commenting out all tests but one.
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                    build_snapshot(&files, module_id, &db)
+                    build_snapshot(&db, module)
                 );
             } else {
-                assert_snapshot!(build_snapshot(&files, module_id, &db));
+                assert_snapshot!(build_snapshot(&db, module));
             }
         }
     };
@@ -75,27 +108,30 @@ macro_rules! test_analysis_ingot {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let mut files = test_files::build_filestore($path);
-            let file_ids = files.all_files();
-            let deps = files.add_included_libraries();
+            let mut db = TestDb::default();
 
-            let db = TestDb::default();
+            let std = IngotId::std_lib(&mut db);
+            let ingot = IngotId::from_files(
+                &mut db,
+                "test_ingot",
+                IngotMode::Main,
+                FileKind::Local,
+                &test_files::fixture_dir_files($path),
+                indexmap! { "std".into() => std },
+            );
 
-            let analysis = IngotId::try_new(&db, &files, $path, &file_ids, &deps)
-                .expect("failed to create new ingot");
-
-            let ingot_id = analysis.value;
-
-            if !analysis.diagnostics.deref().is_empty() {
-                panic!("failed to compile the ingot: {:?}", analysis.diagnostics)
+            let diags = ingot.diagnostics(&db);
+            if !diags.is_empty() {
+                print_diagnostics(&db, &diags);
+                panic!("analysis failed")
             }
+            diagnostics_string(&db, &diags);
 
-            let snapshot = ingot_id
-                .all_modules(&db)
-                .iter()
-                .map(|module_id| build_snapshot(&files, *module_id, &db))
-                .collect::<Vec<_>>()
-                .join("\n");
+            let snapshot =
+                ModuleIter::new(&db, ingot.root_module(&db).expect("missing root module"))
+                    .map(|module| build_snapshot(&db, module))
+                    .collect::<Vec<_>>()
+                    .join("\n");
 
             if cfg!(target_arch = "wasm32") {
                 // NOTE: If this assertion fails, the generation of the output diff
@@ -110,6 +146,41 @@ macro_rules! test_analysis_ingot {
             }
         }
     };
+}
+
+/// Breadth-first walk of a module tree
+struct ModuleIter<'a> {
+    db: &'a dyn AnalyzerDb,
+    emit: VecDeque<ModuleId>,
+    walk: VecDeque<ModuleId>,
+}
+
+impl<'a> ModuleIter<'a> {
+    pub fn new(db: &'a dyn AnalyzerDb, root: ModuleId) -> Self {
+        let mut deq = VecDeque::new();
+        deq.push_back(root);
+        Self {
+            db,
+            emit: deq.clone(),
+            walk: deq,
+        }
+    }
+}
+
+impl<'a> Iterator for ModuleIter<'a> {
+    type Item = ModuleId;
+    fn next(&mut self) -> Option<ModuleId> {
+        if let Some(modid) = self.emit.pop_front() {
+            Some(modid)
+        } else if let Some(modid) = self.walk.pop_front() {
+            let submods = modid.submodules(self.db);
+            self.walk.extend(submods.iter());
+            self.emit = VecDeque::from_iter(submods.iter().copied());
+            self.next()
+        } else {
+            None
+        }
+    }
 }
 
 test_analysis! { erc20_token, "demos/erc20_token.fe"}
@@ -224,9 +295,9 @@ test_analysis! { type_aliases, "features/type_aliases.fe"}
 test_analysis! { const_generics, "features/const_generics.fe" }
 test_analysis! { const_local, "features/const_local.fe" }
 
-test_analysis_ingot! { basic_ingot, "ingots/basic_ingot"}
+test_analysis_ingot! { basic_ingot, "ingots/basic_ingot/src"}
 
-fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
+fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
     let diagnostics = module
         .all_items(db)
         .iter()
@@ -293,7 +364,7 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
         .flatten()
         .collect::<Vec<_>>();
 
-    diagnostics_string(&diagnostics, file_store)
+    diagnostics_string(db.upcast(), &diagnostics)
 }
 
 fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {

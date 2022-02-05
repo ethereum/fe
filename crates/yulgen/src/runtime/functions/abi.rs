@@ -500,6 +500,20 @@ pub fn unpack() -> yul::Statement {
     }
 }
 
+// fn abi_unpack<T>(mptr: u256, array_size: u256) {
+//     for i in 0..array_size {
+//         let val_ptr = mptr + i * T::size_in_bytes()
+//         let val = unpack_int<T>(val_ptr)
+//         pop(alloc_mstoren(val, 32))
+//     }
+// }
+// fn unpack_int<T>(mptr: u256) -> T {
+//     let val: T = mloadn(val_ptr, T::size_in_bytes())
+//     if T::is_signed() {
+//         signextend(val, T::size_in_bytes())
+//     }
+// }
+
 /// Generates an encoding function for any set of type parameters.
 pub fn encode(types: &[AbiType]) -> yul::Statement {
     let func_name = abi_names::encode(types);

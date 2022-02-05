@@ -7,8 +7,10 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
+
 fe-common = {path = "../common", version = "^0.13.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.13.0-alpha"}
+fe-library = {path = "../library", version = "^0.13.0-alpha"}
 hex = "0.4"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
@@ -27,6 +29,7 @@ smol_str = "0.1.21"
 insta = "1.7.1"
 rstest = "0.6.4"
 test-files = {path = "../test-files", package = "fe-test-files" }
+fe-library = {path = "../library"}
 wasm-bindgen-test = "0.3"
 pretty_assertions = "1.0.0"
 criterion = "0.3.5"

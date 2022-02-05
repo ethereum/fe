@@ -7,13 +7,13 @@ pub struct YulcError(pub String);
 ///
 /// Returns a `contract_name -> hex_encoded_bytecode` map.
 pub fn compile(
-    mut contracts: IndexMap<String, String>,
+    contracts: impl Iterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
     optimize: bool,
 ) -> Result<IndexMap<String, String>, YulcError> {
     contracts
-        .drain(0..)
         .map(|(name, yul_src)| {
-            compile_single_contract(&name, yul_src, optimize).map(|bytecode| (name, bytecode))
+            compile_single_contract(name.as_ref(), yul_src.as_ref(), optimize)
+                .map(|bytecode| (name.as_ref().to_string(), bytecode))
         })
         .collect()
 }
@@ -22,13 +22,13 @@ pub fn compile(
 /// Compiles a single Yul contract to bytecode.
 pub fn compile_single_contract(
     name: &str,
-    yul_src: String,
+    yul_src: &str,
     optimize: bool,
 ) -> Result<String, YulcError> {
     let solc_temp = include_str!("solc_temp.json");
     let input = solc_temp
         .replace("{optimizer_enabled}", &optimize.to_string())
-        .replace("{src}", &yul_src);
+        .replace("{src}", yul_src);
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)
         .map_err(|_| YulcError("JSON serialization error".into()))?;
@@ -48,7 +48,7 @@ pub fn compile_single_contract(
 /// Compiles a single Yul contract to bytecode.
 pub fn compile_single_contract(
     _name: &str,
-    _yul_src: String,
+    _yul_src: &str,
     _optimize: bool,
 ) -> Result<String, YulcError> {
     // This is ugly, but required (as far as I can tell) to make

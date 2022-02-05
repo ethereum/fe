@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/two_contracts.fe:2:5
+  ┌─ two_contracts.fe:2:5
   │
 2 │     other: Bar
   │     ^^^^^^^^^^ Bar
 
 note: 
-  ┌─ features/two_contracts.fe:7:5
+  ┌─ two_contracts.fe:7:5
   │  
 7 │ ╭     pub fn foo(self) -> u256:
 8 │ │         self.other.set_foo_addr(self.address)
@@ -32,13 +32,13 @@ note:
     }
 
 note: 
-  ┌─ features/two_contracts.fe:8:9
+  ┌─ two_contracts.fe:8:9
   │
 8 │         self.other.set_foo_addr(self.address)
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/two_contracts.fe:8:9
+  ┌─ two_contracts.fe:8:9
   │
 8 │         self.other.set_foo_addr(self.address)
   │         ^^^^^^^^^^              ^^^^ Foo: Value
@@ -46,13 +46,13 @@ note:
   │         Bar: Storage { nonce: Some(0) } => Value
 
 note: 
-  ┌─ features/two_contracts.fe:8:33
+  ┌─ two_contracts.fe:8:33
   │
 8 │         self.other.set_foo_addr(self.address)
   │                                 ^^^^^^^^^^^^ address: Value
 
 note: 
-  ┌─ features/two_contracts.fe:8:9
+  ┌─ two_contracts.fe:8:9
   │
 8 │         self.other.set_foo_addr(self.address)
   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
@@ -60,19 +60,19 @@ note:
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/two_contracts.fe:9:16
+  ┌─ two_contracts.fe:9:16
   │
 9 │         return self.other.answer()
   │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
 
 note: 
-  ┌─ features/two_contracts.fe:9:16
+  ┌─ two_contracts.fe:9:16
   │
 9 │         return self.other.answer()
   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ features/two_contracts.fe:8:9
+  ┌─ two_contracts.fe:8:9
   │
 8 │         self.other.set_foo_addr(self.address)
   │         ^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(3) }
@@ -80,7 +80,7 @@ note:
   │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(4) }
 
 note: 
-   ┌─ features/two_contracts.fe:11:5
+   ┌─ two_contracts.fe:11:5
    │  
 11 │ ╭     pub fn add(x: u256, y: u256) -> u256:
 12 │ │         return x + y
@@ -120,7 +120,7 @@ note:
      }
 
 note: 
-   ┌─ features/two_contracts.fe:12:16
+   ┌─ two_contracts.fe:12:16
    │
 12 │         return x + y
    │                ^   ^ u256: Value
@@ -128,19 +128,19 @@ note:
    │                u256: Value
 
 note: 
-   ┌─ features/two_contracts.fe:12:16
+   ┌─ two_contracts.fe:12:16
    │
 12 │         return x + y
    │                ^^^^^ u256: Value
 
 note: 
-   ┌─ features/two_contracts.fe:15:5
+   ┌─ two_contracts.fe:15:5
    │
 15 │     other: Foo
    │     ^^^^^^^^^^ Foo
 
 note: 
-   ┌─ features/two_contracts.fe:17:5
+   ┌─ two_contracts.fe:17:5
    │  
 17 │ ╭     pub fn set_foo_addr(self, addr: address):
 18 │ │         self.other = Foo(addr)
@@ -168,13 +168,13 @@ note:
      }
 
 note: 
-   ┌─ features/two_contracts.fe:18:9
+   ┌─ two_contracts.fe:18:9
    │
 18 │         self.other = Foo(addr)
    │         ^^^^ Bar: Value
 
 note: 
-   ┌─ features/two_contracts.fe:18:9
+   ┌─ two_contracts.fe:18:9
    │
 18 │         self.other = Foo(addr)
    │         ^^^^^^^^^^       ^^^^ address: Value
@@ -182,19 +182,19 @@ note:
    │         Foo: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ features/two_contracts.fe:18:22
+   ┌─ two_contracts.fe:18:22
    │
 18 │         self.other = Foo(addr)
    │                      ^^^^^^^^^ Foo: Value
 
 note: 
-   ┌─ features/two_contracts.fe:18:22
+   ┌─ two_contracts.fe:18:22
    │
 18 │         self.other = Foo(addr)
    │                      ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
 
 note: 
-   ┌─ features/two_contracts.fe:20:5
+   ┌─ two_contracts.fe:20:5
    │  
 20 │ ╭     pub fn answer(self) -> u256:
 21 │ │         return self.other.add(20, 22)
@@ -215,13 +215,13 @@ note:
      }
 
 note: 
-   ┌─ features/two_contracts.fe:21:16
+   ┌─ two_contracts.fe:21:16
    │
 21 │         return self.other.add(20, 22)
    │                ^^^^ Bar: Value
 
 note: 
-   ┌─ features/two_contracts.fe:21:16
+   ┌─ two_contracts.fe:21:16
    │
 21 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^     ^^  ^^ u256: Value
@@ -230,13 +230,13 @@ note:
    │                Foo: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/two_contracts.fe:21:16
+   ┌─ two_contracts.fe:21:16
    │
 21 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/two_contracts.fe:21:16
+   ┌─ two_contracts.fe:21:16
    │
 21 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(2) }

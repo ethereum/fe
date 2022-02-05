@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_i128_cast.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/return_i128_cast.fe:2:5
+  ┌─ return_i128_cast.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> i128:
 3 │ │         return i128(-3)
@@ -23,25 +23,25 @@ note:
     }
 
 note: 
-  ┌─ features/return_i128_cast.fe:3:22
+  ┌─ return_i128_cast.fe:3:22
   │
 3 │         return i128(-3)
   │                      ^ u256: Value
 
 note: 
-  ┌─ features/return_i128_cast.fe:3:21
+  ┌─ return_i128_cast.fe:3:21
   │
 3 │         return i128(-3)
   │                     ^^ i128: Value
 
 note: 
-  ┌─ features/return_i128_cast.fe:3:16
+  ┌─ return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
   │                ^^^^^^^^ i128: Value
 
 note: 
-  ┌─ features/return_i128_cast.fe:3:16
+  ┌─ return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
   │                ^^^^ TypeConstructor(Base(Numeric(I128)))

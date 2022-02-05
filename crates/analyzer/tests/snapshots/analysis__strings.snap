@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/strings.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/strings.fe:3:9
+  ┌─ strings.fe:3:9
   │
 3 │         s2: String<26>
   │         ^^^^^^^^^^^^^^ String<26>
@@ -22,7 +22,7 @@ note:
   │         ^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ features/strings.fe:14:5
+   ┌─ strings.fe:14:5
    │  
 14 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
 15 │ │         return s2
@@ -62,13 +62,13 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:15:16
+   ┌─ strings.fe:15:16
    │
 15 │         return s2
    │                ^^ String<100>: Memory
 
 note: 
-   ┌─ features/strings.fe:17:5
+   ┌─ strings.fe:17:5
    │  
 17 │ ╭     pub fn return_static_string() -> String<43>:
 18 │ │         return "The quick brown fox jumps over the lazy dog"
@@ -87,13 +87,13 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:18:16
+   ┌─ strings.fe:18:16
    │
 18 │         return "The quick brown fox jumps over the lazy dog"
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
 
 note: 
-   ┌─ features/strings.fe:20:5
+   ┌─ strings.fe:20:5
    │  
 20 │ ╭     pub fn return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
@@ -112,25 +112,25 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:21:28
+   ┌─ strings.fe:21:28
    │
 21 │         return String<100>("foo")
    │                            ^^^^^ String<3>: Memory
 
 note: 
-   ┌─ features/strings.fe:21:16
+   ┌─ strings.fe:21:16
    │
 21 │         return String<100>("foo")
    │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ features/strings.fe:21:16
+   ┌─ strings.fe:21:16
    │
 21 │         return String<100>("foo")
    │                ^^^^^^ TypeConstructor(String(FeString { max_size: 100 }))
 
 note: 
-   ┌─ features/strings.fe:23:5
+   ┌─ strings.fe:23:5
    │  
 23 │ ╭     pub fn return_special_chars() -> String<18>:
 24 │ │         return "\n\"'\r\t
@@ -150,7 +150,7 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:24:16
+   ┌─ strings.fe:24:16
    │  
 24 │           return "\n\"'\r\t
    │ ╭────────────────^
