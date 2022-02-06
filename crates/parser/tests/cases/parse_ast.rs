@@ -235,3 +235,13 @@ contract GuestBook:
     pub fn get_msg(self, addr: address) -> BookMsg:
         return self.guest_book[addr]
 "# }
+
+test_parse! { module_level_events, try_parse_module, r#"
+event Transfer:
+    idx sender: address
+    idx receiver: address
+    value: u256
+contract Foo:
+    fn transfer(to : address, value : u256):
+        emit Transfer(sender=msg.sender, receiver=to, value)
+"# }

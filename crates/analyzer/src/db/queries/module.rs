@@ -2,8 +2,8 @@ use crate::context::{Analysis, AnalyzerContext, Constant};
 use crate::db::AnalyzerDb;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Function, Item, ModuleConstant, ModuleConstantId, ModuleId, ModuleSource,
-    Struct, StructId, TypeAlias, TypeDef,
+    Contract, ContractId, Event, Function, Item, ModuleConstant, ModuleConstantId, ModuleId,
+    ModuleSource, Struct, StructId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
@@ -98,7 +98,11 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
             }
             ast::ModuleStmt::Pragma(_) => None,
             ast::ModuleStmt::Use(_) => None,
-            ast::ModuleStmt::Event(_) => todo!(),
+            ast::ModuleStmt::Event(node) => Some(Item::Event(db.intern_event(Rc::new(Event {
+                ast: node.clone(),
+                module,
+                contract: None,
+            })))),
             ast::ModuleStmt::ParseError(_) => None,
         })
         .collect()

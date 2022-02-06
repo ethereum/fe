@@ -1,0 +1,14 @@
+---
+source: crates/lowering/tests/lowering.rs
+expression: lowered_code
+
+---
+event Transfer:
+    idx sender: address
+    idx receiver: address
+    value: u256
+
+contract Foo:
+    fn transfer(to: address, value: u256) -> ():
+        emit Transfer(sender=msg.sender, receiver=to, value)
+        return ()

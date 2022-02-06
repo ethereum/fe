@@ -201,6 +201,7 @@ test_analysis! { create_contract, "features/create_contract.fe"}
 test_analysis! { create_contract_from_init, "features/create_contract_from_init.fe"}
 test_analysis! { empty, "features/empty.fe"}
 test_analysis! { events, "features/events.fe"}
+test_analysis! { module_level_events, "features/module_level_events.fe"}
 test_analysis! { external_contract, "features/external_contract.fe"}
 test_analysis! { for_loop_with_break, "features/for_loop_with_break.fe"}
 test_analysis! { for_loop_with_continue, "features/for_loop_with_continue.fe"}
@@ -308,12 +309,11 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             )],
             Item::Type(TypeDef::Struct(struct_)) => [
                 label_in_non_overlapping_groups(
-                &struct_
-                    .fields(db)
-                    .values()
-                    .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
-                    .collect::<Vec<_>>(),
-
+                    &struct_
+                        .fields(db)
+                        .values()
+                        .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
+                        .collect::<Vec<_>>(),
                 ),
                 struct_
                     .functions(db)
@@ -348,12 +348,9 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
 
             Item::Function(id) => function_diagnostics(*id, db),
             Item::Constant(id) => vec![build_display_diagnostic(id.span(db), &id.typ(db).unwrap())],
-
-
-            // Events can't be defined at the module level yet.
-            Item::Event(_)
+            Item::Event(id) => event_diagnostics(*id, db),
             // Built-in stuff
-            | Item::Type(TypeDef::Primitive(_))
+            Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
             | Item::Intrinsic(_)
