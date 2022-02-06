@@ -112,12 +112,6 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             GlobalFunction::SendValue => {
                 expression! { send_value([yul_args[0].to_owned()], [yul_args[1].to_owned()]) }
             }
-            GlobalFunction::Balance => {
-                expression! { selfbalance() }
-            }
-            GlobalFunction::BalanceOf => {
-                expression! { balance([yul_args[0].to_owned()]) }
-            }
         },
         CallType::Intrinsic(func) => {
             let yul_name = identifier! { (func.as_ref().strip_prefix("__").unwrap()) };

@@ -4,11 +4,14 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `balance_of` expects 1 argument, but 0 were provided
-  ┌─ [snippet]:3:3
-  │
-3 │   balance_of()
-  │   ^^^^^^^^^^-- supplied 0 arguments
-  │   │          
-  │   expects 1 argument
+   ┌─ src/evm.fe:52:8
+   │
+52 │ pub fn balance_of(addr: address) -> u256:
+   │        ^^^^^^^^^^ expects 1 argument
+   │
+   ┌─ [snippet]:3:23
+   │
+ 3 │   std::evm::balance_of()
+   │                       -- supplied 0 arguments
 
 

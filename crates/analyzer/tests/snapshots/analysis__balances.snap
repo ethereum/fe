@@ -4,10 +4,10 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ balances.fe:2:5
+  ┌─ balances.fe:4:5
   │  
-2 │ ╭     pub fn my_balance(self) -> u256:
-3 │ │         return balance()
+4 │ ╭     pub fn my_balance(self) -> u256:
+5 │ │         return balance()
   │ ╰────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
@@ -25,16 +25,16 @@ note:
     }
 
 note: 
-  ┌─ balances.fe:3:16
+  ┌─ balances.fe:5:16
   │
-3 │         return balance()
+5 │         return balance()
   │                ^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ balances.fe:5:5
+  ┌─ balances.fe:7:5
   │  
-5 │ ╭     pub fn other_balance(self, someone: address) -> u256:
-6 │ │         return balance_of(someone)
+7 │ ╭     pub fn other_balance(self, someone: address) -> u256:
+8 │ │         return balance_of(someone)
   │ ╰──────────────────────────────────^ attributes hash: 4973462877553265717
   │  
   = FunctionSignature {
@@ -61,15 +61,15 @@ note:
     }
 
 note: 
-  ┌─ balances.fe:6:27
+  ┌─ balances.fe:8:27
   │
-6 │         return balance_of(someone)
+8 │         return balance_of(someone)
   │                           ^^^^^^^ address: Value
 
 note: 
-  ┌─ balances.fe:6:16
+  ┌─ balances.fe:8:16
   │
-6 │         return balance_of(someone)
+8 │         return balance_of(someone)
   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

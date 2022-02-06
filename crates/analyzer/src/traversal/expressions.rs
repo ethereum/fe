@@ -1106,32 +1106,6 @@ fn expr_call_builtin_function(
             };
             ExpressionAttributes::new(Type::Base(U256), Location::Value)
         }
-        GlobalFunction::Balance => {
-            validate_arg_count(context, function.as_ref(), name_span, args, 0, "argument");
-            ExpressionAttributes::new(Type::Base(U256), Location::Value)
-        }
-        GlobalFunction::BalanceOf => {
-            validate_arg_count(context, function.as_ref(), name_span, args, 1, "argument");
-            expect_no_label_on_arg(context, args, 0);
-
-            if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
-                if !matches!(arg_typ, Type::Base(Base::Address)) {
-                    context.fancy_error(
-                        &format!(
-                            "`{}` can not be used as an argument to `{}`",
-                            arg_typ,
-                            function.as_ref(),
-                        ),
-                        vec![Label::primary(args.span, "wrong type")],
-                        vec![format!(
-                            "Note: `{}` expects an address argument",
-                            function.as_ref()
-                        )],
-                    );
-                }
-            };
-            ExpressionAttributes::new(Type::Base(U256), Location::Value)
-        }
         GlobalFunction::SendValue => {
             validate_arg_count(context, function.as_ref(), name_span, args, 2, "argument");
             // There's no label support for builtin functions today. That problem disappears

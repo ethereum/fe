@@ -16,8 +16,6 @@ pub enum ValueMethod {
 pub enum GlobalFunction {
     Keccak256,
     SendValue,
-    Balance,
-    BalanceOf,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString, AsRefStr)]
@@ -196,9 +194,9 @@ impl Intrinsic {
     pub fn return_type(&self) -> Base {
         use Intrinsic::*;
         match self {
-            __stop | __pop | __calldatacopy | __codecopy | __extcodecopy | __returndatacopy
-            | __return | __revert | __selfdestruct | __invalid | __log0 | __log1 | __log2
-            | __log3 | __log4 => Base::Unit,
+            __stop | __pop | __mstore | __mstore8 | __sstore | __calldatacopy | __codecopy
+            | __extcodecopy | __returndatacopy | __return | __revert | __selfdestruct
+            | __invalid | __log0 | __log1 | __log2 | __log3 | __log4 => Base::Unit,
             _ => Base::u256(),
         }
     }
