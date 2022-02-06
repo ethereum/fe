@@ -15,9 +15,9 @@ The following notations are used by the *Lexer* and *Syntax* grammar snippets:
 | x<sup>+</sup>     |  _MacroMatch_<sup>+</sup>     | 1 or more of x                            |
 | x<sup>a..b</sup>  | HEX_DIGIT<sup>1..6</sup>      | a to b repetitions of x                   |
 | \|                | `u8` \| `u16`, Block \| Item  | Either one or another                     |
-| [ ]               | [`b` `B`]                     | Any of the characters listed              |
-| [ - ]             | [`a`-`z`]                     | Any of the characters in the range        |
-| ~[ ]              | ~[`b` `B`]                    | Any characters, except those listed       |
+| [ ]               | \[`b` `B`\]                     | Any of the characters listed              |
+| \[ - \]             | \[`a`-`z`\]                     | Any of the characters in the range        |
+| ~[ ]              | ~\[`b` `B`\]                    | Any characters, except those listed       |
 | ~`string`         | ~`\n`, ~`*/`                  | Any characters, except this sequence      |
 | ( )               | (`,` _Parameter_)             | Groups items                              |
 

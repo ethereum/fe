@@ -35,8 +35,8 @@ error: unexpected end of file
 
 Fe follows Pythonic block indentation rules and the compiler expects us to provide a block of indented code after `GuestBook:`.
 
-Let's expand the code by providing a [`map`](/docs/spec/index.html#51111-hashmap-types) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](/docs/spec/index.html#51113-string-types) of a maximum length of `100` written as `string100`.
-The addresses are represented by the builtin [`address`](/docs/spec/index.html#51110-address-type) type.
+Let's expand the code by providing a [`map`](../spec/type_system/types/map.md) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](../spec/type_system/types/string.md) of a maximum length of `100` written as `string100`.
+The addresses are represented by the builtin [`address`](../spec/type_system/types/address.md) type.
 
 ```
 contract GuestBook:
@@ -80,7 +80,7 @@ contract GuestBook:
       self.messages[msg.sender] = book_msg
 ```
 
-The code should look familiar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](/docs/spec/index.html#311-visibility-and-privacy) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
+The code should look familiar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](../spec/items/visibility_and_privacy.md) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
 
 Let's recompile the contract again and see what happens.
 
@@ -141,7 +141,7 @@ error: value must be copied to memory
   = Example: `self.my_array.to_mem()`
 ```
 
-When we try to return a reference type such as an array from the storage of the contract we have to explicitly copy it to memory using the [`to_mem()`](/docs/spec/index.html#623-the-to_mem-function) function.
+When we try to return a reference type such as an array from the storage of the contract we have to explicitly copy it to memory using the [`to_mem()`](../spec/data_layout/storage/to_mem_function.md) function.
 
 > Note: In the future Fe will likely introduce immutable storage pointers which might affect these semantics.
 

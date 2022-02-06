@@ -7,3 +7,8 @@ title = "The Fe Guide"
 
 [output.html]
 additional-css = ["theme/reference.css"]
+
+[output.linkcheck]
+follow-web-links = true
+warning-policy = "error"
+exclude = [ 'github\.com' ]
