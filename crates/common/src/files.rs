@@ -6,7 +6,7 @@ use include_dir::Dir;
 use indexmap::indexmap;
 use indexmap::IndexMap;
 use smol_str::SmolStr;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::Range;
 use std::path::Path;
 use std::{fs, io};
@@ -24,7 +24,10 @@ pub struct SourceFileId(pub u128);
 
 impl SourceFile {
     pub fn new(name: &str, content: &str) -> Self {
-        let hash = keccak::full_as_bytes(content.as_bytes());
+        // Canonicalize new line character for Windows.
+        let content_canonicalized = content.replace("\r\n", "\n");
+        let hash = keccak::full_as_bytes(content_canonicalized.as_bytes());
+
         let line_starts = cs::files::line_starts(content).collect();
         Self {
             id: SourceFileId(u128::from_be_bytes(hash[..16].try_into().unwrap())),
@@ -63,21 +66,21 @@ impl FileLoader for OsFileLoader {
 }
 
 pub struct FileStore {
-    pub files: HashMap<SourceFileId, SourceFile>,
+    pub files: BTreeMap<SourceFileId, SourceFile>,
     loader: Box<dyn FileLoader>,
 }
 
 impl FileStore {
     pub fn new() -> Self {
         Self {
-            files: HashMap::new(),
+            files: BTreeMap::new(),
             loader: Box::new(OsFileLoader),
         }
     }
 
     pub fn with_loader(loader: Box<dyn FileLoader>) -> Self {
         Self {
-            files: HashMap::new(),
+            files: BTreeMap::new(),
             loader,
         }
     }
