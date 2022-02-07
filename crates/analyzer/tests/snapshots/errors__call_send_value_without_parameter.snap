@@ -4,11 +4,14 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `send_value` expects 2 arguments, but 0 were provided
-  ┌─ [snippet]:3:3
-  │
-3 │   send_value()
-  │   ^^^^^^^^^^-- supplied 0 arguments
-  │   │          
-  │   expects 2 arguments
+   ┌─ src/lib.fe:11:8
+   │
+11 │ pub fn send_value(to: address, wei: u256):
+   │        ^^^^^^^^^^ expects 2 arguments
+   │
+   ┌─ [snippet]:3:18
+   │
+ 3 │   std::send_value()
+   │                  -- supplied 0 arguments
 
 

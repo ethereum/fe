@@ -9,7 +9,7 @@ contract Foo:
         revert
 
     pub fn revert_custom_error():
-        std::revert_insufficient_funds()
+        std::send_value(address(0), 100)
 
     pub fn revert_other_error():
         revert OtherError(msg: 1, val: true)

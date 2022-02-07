@@ -15,7 +15,6 @@ pub enum ValueMethod {
 #[strum(serialize_all = "snake_case")]
 pub enum GlobalFunction {
     Keccak256,
-    SendValue,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString, AsRefStr)]

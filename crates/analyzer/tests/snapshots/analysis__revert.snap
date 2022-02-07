@@ -40,7 +40,7 @@ note:
    ┌─ revert.fe:11:5
    │  
 11 │ ╭     pub fn revert_custom_error():
-12 │ │         std::revert_insufficient_funds()
+12 │ │         std::send_value(address(0), 100)
    │ ╰────────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
@@ -54,9 +54,23 @@ note:
      }
 
 note: 
+   ┌─ revert.fe:12:33
+   │
+12 │         std::send_value(address(0), 100)
+   │                                 ^ u256: Value
+
+note: 
+   ┌─ revert.fe:12:25
+   │
+12 │         std::send_value(address(0), 100)
+   │                         ^^^^^^^^^^  ^^^ u256: Value
+   │                         │            
+   │                         address: Value
+
+note: 
    ┌─ revert.fe:12:9
    │
-12 │         std::revert_insufficient_funds()
+12 │         std::send_value(address(0), 100)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 

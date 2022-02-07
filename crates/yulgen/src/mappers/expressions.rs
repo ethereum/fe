@@ -109,9 +109,6 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 let size = identifier_expression! { (size.size()) };
                 expression! { [func_name]([yul_args[0].to_owned()], [size]) }
             }
-            GlobalFunction::SendValue => {
-                expression! { send_value([yul_args[0].to_owned()], [yul_args[1].to_owned()]) }
-            }
         },
         CallType::Intrinsic(func) => {
             let yul_name = identifier! { (func.as_ref().strip_prefix("__").unwrap()) };
