@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/strings.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -132,10 +132,9 @@ note:
 note: 
    ┌─ features/strings.fe:23:5
    │  
-23 │ ╭     pub fn return_special_chars() -> String<18>:
-24 │ │         return "\n\"'\r\t
-25 │ │         foo\\"
-   │ ╰──────────────^ attributes hash: 14991635520577142188
+23 │ ╭     pub fn return_special_chars() -> String<9>:
+24 │ │         return "\n\"'\r\tfoo\\"
+   │ ╰───────────────────────────────^ attributes hash: 2714027657010055129
    │  
    = FunctionSignature {
          self_decl: None,
@@ -143,7 +142,7 @@ note:
          return_type: Ok(
              String(
                  FeString {
-                     max_size: 18,
+                     max_size: 9,
                  },
              ),
          ),
@@ -151,10 +150,8 @@ note:
 
 note: 
    ┌─ features/strings.fe:24:16
-   │  
-24 │           return "\n\"'\r\t
-   │ ╭────────────────^
-25 │ │         foo\\"
-   │ ╰──────────────^ String<18>: Memory
+   │
+24 │         return "\n\"'\r\tfoo\\"
+   │                ^^^^^^^^^^^^^^^^ String<9>: Memory
 
 

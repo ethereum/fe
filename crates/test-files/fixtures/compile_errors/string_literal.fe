@@ -1,0 +1,4 @@
+contract Foo:
+    pub fn bar():
+        let s: String<16> = "This is
+ Invalid"   

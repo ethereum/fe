@@ -20,6 +20,5 @@ contract Foo:
     pub fn return_casted_static_string() -> String<100>:
         return String<100>("foo")
 
-    pub fn return_special_chars() -> String<18>:
-        return "\n\"'\r\t
-        foo\\"
+    pub fn return_special_chars() -> String<9>:
+        return "\n\"'\r\tfoo\\"

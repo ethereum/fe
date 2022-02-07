@@ -52,8 +52,8 @@ pub enum TokenKind {
     #[regex("0[bB][0-1]+")]
     Binary,
     // Float,
-    #[regex(r#""([^"\\]|\\.)*""#)]
-    #[regex(r#"'([^'\\]|\\.)*'"#)]
+    #[regex(r#""([^"\\\n]|\\.)*""#)]
+    #[regex(r#"'([^'\\\n]|\\.)*'"#)]
     Text,
     #[token("true")]
     True,
