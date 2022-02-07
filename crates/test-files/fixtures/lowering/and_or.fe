@@ -1,6 +1,6 @@
 contract Foo:
 
-    pub fn bar():
+    pub fn bar() -> bool:
         return baz(false or true)
 
     pub fn nested():
@@ -11,7 +11,7 @@ contract Foo:
             let y: bool = false
             return double_baz(a and b, x or y)
 
-    pub fn nested_ternary():
+    pub fn nested_ternary() -> bool:
         let a: bool = true
         let b: bool = false
         let x: bool = true
@@ -47,9 +47,8 @@ contract Foo:
     pub fn short_mixed(first: bool, second: bool, third: bool, fourth: bool) -> bool:
         return (first or second) and third or fourth
 
-    pub fn baz(val: bool):
-        pass
+    pub fn baz(val: bool) -> bool:
+        return val
 
     pub fn double_baz(val: bool, val2: bool):
         pass
-

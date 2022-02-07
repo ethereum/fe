@@ -8,7 +8,7 @@ struct $tuple_bool_bool_:
     pub item1: bool
 
 contract Foo:
-    pub fn bar() -> ():
+    pub fn bar() -> bool:
         let $boolean_expr_result_0: bool = true
         if not false:
             $boolean_expr_result_0 = true
@@ -33,7 +33,7 @@ contract Foo:
 
         return ()
 
-    pub fn nested_ternary() -> ():
+    pub fn nested_ternary() -> bool:
         let a: bool = true
         let b: bool = false
         let x: bool = true
@@ -173,9 +173,8 @@ contract Foo:
 
         return $boolean_expr_result_0
 
-    pub fn baz(val: bool) -> ():
-        pass
-        return ()
+    pub fn baz(val: bool) -> bool:
+        return val
 
     pub fn double_baz(val: bool, val2: bool) -> ():
         pass

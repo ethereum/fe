@@ -4,7 +4,7 @@ expression: lowered
 
 ---
 struct Foo:
-    x: u256
+    pub x: u256
 
     pub fn set_x(self, new: u256) -> u256:
         let old: u256 = self.get_x()

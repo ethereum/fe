@@ -1,4 +1,5 @@
 use fe_analyzer::namespace::items::ModuleId;
+use fe_common::diagnostics::print_diagnostics;
 use fe_lowering::TestDb;
 use insta::assert_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -11,11 +12,20 @@ macro_rules! test_file {
             let mut db = TestDb::default();
             let module =
                 ModuleId::new_standalone(&mut db, $path.into(), test_files::fixture($path).into());
-            let lowered = format!(
-                "{}",
-                fe_lowering::lower_main_module(&mut db, module).ast(&db)
-            );
 
+            if !module.diagnostics(&db).is_empty() {
+                print_diagnostics(&db, &module.diagnostics(&db));
+                panic!("failed to analyze module")
+            }
+
+            let lowered_module = fe_lowering::lower_main_module(&mut db, module);
+
+            if !lowered_module.diagnostics(&db).is_empty() {
+                print_diagnostics(&db, &lowered_module.diagnostics(&db));
+                panic!("failed to analyze lowered module")
+            }
+
+            let lowered = format!("{}", lowered_module.ast(&db));
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/lowering__", stringify!($name), ".snap"),
