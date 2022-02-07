@@ -34,7 +34,7 @@ pub enum TokenKind {
     #[error]
     Error,
 
-    #[regex(r"\n[ \t]*")]
+    #[regex(r"[\r]?\n[ \t]*")]
     Newline,
 
     /// Virtual tokens emitted by the parser
@@ -52,8 +52,8 @@ pub enum TokenKind {
     #[regex("0[bB][0-1]+")]
     Binary,
     // Float,
-    #[regex(r#""([^"\\]|\\.)*""#)]
-    #[regex(r#"'([^'\\]|\\.)*'"#)]
+    #[regex(r#""([^"\\\n]|\\.)*""#)]
+    #[regex(r#"'([^'\\\n]|\\.)*'"#)]
     Text,
     #[token("true")]
     True,

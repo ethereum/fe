@@ -101,11 +101,11 @@ jobs:
           - os: macOS-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Mac System dependencies
+      - name: Install Boost on Mac
         if: startsWith(matrix.os,'macOS')
         run: |
           brew install boost
-      - name: Install Linux dependencies
+      - name: Install Boost on Linux
         if: startsWith(matrix.os,'ubuntu')
         run: |
           sudo apt-get install -y libboost-all-dev
@@ -121,6 +121,37 @@ jobs:
         run: cargo test --workspace --all-features --no-run --locked
       - name: Run tests
         run: cargo test --workspace --all-features --verbose
+    
+  test-windows-latest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Boost on Windows.
+        uses: MarkusJx/install-boost@v2.1.0
+        id: install-boost
+        with:
+          boost_version: 1.78.0
+          platform_version: 2019
+          toolset: msvc
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: Build
+        run: cargo test --workspace --all-features --no-run --locked
+        env:
+          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
+          Boost_NO_BOOST_CMAKE: ON
+      - name: Run tests
+        run: cargo test --workspace --all-features --verbose
+        env:
+          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
+          Boost_NO_BOOST_CMAKE: ON
+          
 
   wasm-test:
       runs-on: ubuntu-latest

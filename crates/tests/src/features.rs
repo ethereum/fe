@@ -797,10 +797,7 @@ fn strings() {
             &mut executor,
             "return_special_chars",
             &[],
-            Some(&string_token(
-                "\n\"'\r\t
-        foo\\",
-            )),
+            Some(&string_token("\n\"'\r\tfoo\\")),
         );
 
         harness.events_emitted(
@@ -1696,8 +1693,8 @@ fn abi_decode_checks() {
             // this would break the equivalence of string's `data_offset + data_size` and
             // the bytes' `data_offset`, making the encoding invalid
             tampered_data[byte_index] = 33;
-            // the string length is completely valid otherwise. 32 for example will not revert
-            // tampered_data[byte_index] = 32;
+            // the string length is completely valid otherwise. 32 for example will not
+            // revert tampered_data[byte_index] = 32;
             harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the string
