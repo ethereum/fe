@@ -66,7 +66,7 @@ macro_rules! test_file {
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/errors__", stringify!($name), ".snap"),
-                    error_string(&path)
+                    error_string(&path, test_files::fixture(path))
                 );
             } else {
                 assert_snapshot!(error_string(&path, test_files::fixture(path)));
