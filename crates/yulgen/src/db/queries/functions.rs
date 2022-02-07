@@ -193,6 +193,7 @@ where
                 for_each_stmt(body, f);
                 for_each_stmt(or_else, f);
             }
+            ast::FuncStmt::Unsafe(body) => for_each_stmt(body, f),
             _ => {}
         }
     }
