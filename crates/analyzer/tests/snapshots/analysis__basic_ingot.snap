@@ -9,7 +9,7 @@ note:
  9 │ ╭     pub fn get_my_baz() -> Baz:
 10 │ │         assert file_items_work()
 11 │ │         return Baz(my_bool=true, my_u256=26)
-   │ ╰────────────────────────────────────────────^ attributes hash: 1047619677563448596
+   │ ╰────────────────────────────────────────────^ attributes hash: 12324314335460528585
    │  
    = FunctionSignature {
          self_decl: None,
@@ -19,7 +19,7 @@ note:
                  Struct {
                      name: "Baz",
                      id: StructId(
-                         3,
+                         4,
                      ),
                      field_count: 2,
                  },
@@ -49,14 +49,14 @@ note:
 10 │         assert file_items_work()
    │                ^^^^^^^^^^^^^^^ Pure(FunctionId(0))
 11 │         return Baz(my_bool=true, my_u256=26)
-   │                ^^^ TypeConstructor(Struct(Struct { name: "Baz", id: StructId(3), field_count: 2 }))
+   │                ^^^ TypeConstructor(Struct(Struct { name: "Baz", id: StructId(4), field_count: 2 }))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:13:5
    │  
 13 │ ╭     pub fn get_my_bing() -> Bong:
 14 │ │         return Bong(my_address=address(42))
-   │ ╰───────────────────────────────────────────^ attributes hash: 9604670028259107253
+   │ ╰───────────────────────────────────────────^ attributes hash: 13981777418891958772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -66,7 +66,7 @@ note:
                  Struct {
                      name: "Bing",
                      id: StructId(
-                         2,
+                         3,
                      ),
                      field_count: 1,
                  },
@@ -102,7 +102,7 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:14:16
    │
 14 │         return Bong(my_address=address(42))
-   │                ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(2), field_count: 1 }))
+   │                ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(3), field_count: 1 }))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:16:5
@@ -133,7 +133,7 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:17:16
    │
 17 │         return get_42_backend()
-   │                ^^^^^^^^^^^^^^ Pure(FunctionId(3))
+   │                ^^^^^^^^^^^^^^ Pure(FunctionId(4))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:19:5
@@ -164,7 +164,7 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:20:16
    │
 20 │         return std::bar::bar::get_26()
-   │                ^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(2))
+   │                ^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(3))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:22:5
@@ -175,7 +175,7 @@ note:
 25 │ │             my_u256=42,
 26 │ │             my_i8=-1
 27 │ │         )
-   │ ╰─────────^ attributes hash: 14217224705820181457
+   │ ╰─────────^ attributes hash: 8107142401187261877
    │  
    = FunctionSignature {
          self_decl: None,
@@ -185,7 +185,7 @@ note:
                  Struct {
                      name: "Dyng",
                      id: StructId(
-                         4,
+                         5,
                      ),
                      field_count: 3,
                  },
@@ -236,7 +236,7 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:23:16
    │
 23 │         return dong::Dyng(
-   │                ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "Dyng", id: StructId(4), field_count: 3 }))
+   │                ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "Dyng", id: StructId(5), field_count: 3 }))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:29:5
@@ -293,7 +293,7 @@ note:
 30 │         let bing_contract: BingContract = BingContract.create(0)
    │                                           ^^^^^^^^^^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create }
 31 │         return bing_contract.add(40, 50)
-   │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(4) }
+   │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(5) }
 
 
 note: 
@@ -444,7 +444,7 @@ note:
   │  
 8 │ ╭ fn get_bing() -> Bing:
 9 │ │     return Bing(my_address=address(0))
-  │ ╰──────────────────────────────────────^ attributes hash: 9604670028259107253
+  │ ╰──────────────────────────────────────^ attributes hash: 13981777418891958772
   │  
   = FunctionSignature {
         self_decl: None,
@@ -454,7 +454,7 @@ note:
                 Struct {
                     name: "Bing",
                     id: StructId(
-                        2,
+                        3,
                     ),
                     field_count: 1,
                 },
@@ -490,6 +490,6 @@ note:
   ┌─ ingots/basic_ingot/src/ding/dong.fe:9:12
   │
 9 │     return Bing(my_address=address(0))
-  │            ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(2), field_count: 1 }))
+  │            ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(3), field_count: 1 }))
 
 

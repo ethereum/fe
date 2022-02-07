@@ -42,8 +42,14 @@ pub fn lower_ingot(db: &mut dyn LoweringDb, ingot: IngotId) -> IngotId {
         .map(|module| lower_module(db, *module, lowered_ingot))
         .collect();
 
+    let lowered_deps = ingot
+        .external_ingots(db.upcast())
+        .iter()
+        .map(|(name, ing)| (name.clone(), lower_ingot(db, *ing)))
+        .collect();
+
     db.set_ingot_modules(lowered_ingot, lowered_mods);
-    db.set_ingot_external_ingots(lowered_ingot, ingot.external_ingots(db.upcast()));
+    db.set_ingot_external_ingots(lowered_ingot, Rc::new(lowered_deps));
     lowered_ingot
 }
 
