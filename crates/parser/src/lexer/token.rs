@@ -34,7 +34,7 @@ pub enum TokenKind {
     #[error]
     Error,
 
-    #[regex(r"\n[ \t]*")]
+    #[regex(r"[\r]?\n[ \t]*")]
     Newline,
 
     /// Virtual tokens emitted by the parser
