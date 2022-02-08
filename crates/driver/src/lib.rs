@@ -14,6 +14,8 @@ use serde_json::Value;
 use std::ops::Deref;
 use std::path::Path;
 
+pub mod config;
+
 /// The artifacts of a compiled module.
 pub struct CompiledModule {
     pub src_ast: String,
