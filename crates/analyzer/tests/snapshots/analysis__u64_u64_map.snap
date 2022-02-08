@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/u64_u64_map.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/u64_u64_map.fe:2:5
+  ┌─ u64_u64_map.fe:2:5
   │
 2 │     bar: Map<u64, u64>
   │     ^^^^^^^^^^^^^^^^^^ Map<u64, u64>
 
 note: 
-  ┌─ features/u64_u64_map.fe:4:5
+  ┌─ u64_u64_map.fe:4:5
   │  
 4 │ ╭     pub fn read_bar(self, key: u64) -> u64:
 5 │ │         return self.bar[key]
@@ -42,13 +42,13 @@ note:
     }
 
 note: 
-  ┌─ features/u64_u64_map.fe:5:16
+  ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/u64_u64_map.fe:5:16
+  ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
   │                ^^^^^^^^ ^^^ u64: Value
@@ -56,13 +56,13 @@ note:
   │                Map<u64, u64>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/u64_u64_map.fe:5:16
+  ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
   │                ^^^^^^^^^^^^^ u64: Storage { nonce: None } => Value
 
 note: 
-  ┌─ features/u64_u64_map.fe:7:5
+  ┌─ u64_u64_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: u64, value: u64):
 8 │ │         self.bar[key] = value
@@ -102,13 +102,13 @@ note:
     }
 
 note: 
-  ┌─ features/u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^^^^^ ^^^ u64: Value
@@ -116,7 +116,7 @@ note:
   │         Map<u64, u64>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^^^^^^^^^^   ^^^^^ u64: Value

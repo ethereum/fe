@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: unsafe function `mod_priv` can only be called in an unsafe function or block

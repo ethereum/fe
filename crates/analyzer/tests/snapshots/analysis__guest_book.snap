@@ -1,22 +1,22 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ demos/guest_book.fe:5:5
+  ┌─ guest_book.fe:5:5
   │
 5 │     messages: Map<address, String<100>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
-  ┌─ demos/guest_book.fe:9:9
+  ┌─ guest_book.fe:9:9
   │
 9 │         book_msg: String<100>
   │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ demos/guest_book.fe:11:5
+   ┌─ guest_book.fe:11:5
    │  
 11 │ ╭     pub fn sign(self, book_msg: String<100>):
 12 │ │         # All storage access is explicit using `self.<some-key>`
@@ -50,13 +50,13 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:13:9
+   ┌─ guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
    │         ^^^^ GuestBook: Value
 
 note: 
-   ┌─ demos/guest_book.fe:13:9
+   ┌─ guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
    │         ^^^^^^^^^^^^^ ^^^^^^^^^^ address: Value
@@ -64,7 +64,7 @@ note:
    │         Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ demos/guest_book.fe:13:9
+   ┌─ guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
@@ -75,7 +75,7 @@ note:
    │                              ^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ demos/guest_book.fe:16:9
+   ┌─ guest_book.fe:16:9
    │
 16 │         emit Signed(book_msg=book_msg)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
@@ -98,7 +98,7 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:18:5
+   ┌─ guest_book.fe:18:5
    │  
 18 │ ╭     pub fn get_msg(self, addr: address) -> String<100>:
 19 │ │         # Copying data from storage to memory
@@ -130,13 +130,13 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:21:16
+   ┌─ guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^ GuestBook: Value
 
 note: 
-   ┌─ demos/guest_book.fe:21:16
+   ┌─ guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^ ^^^^ address: Value
@@ -144,19 +144,19 @@ note:
    │                Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ demos/guest_book.fe:21:16
+   ┌─ guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
 
 note: 
-   ┌─ demos/guest_book.fe:21:16
+   ┌─ guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
 note: 
-   ┌─ demos/guest_book.fe:21:16
+   ┌─ guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }

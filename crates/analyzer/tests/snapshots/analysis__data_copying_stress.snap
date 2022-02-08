@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ stress/data_copying_stress.fe:2:5
+   ┌─ data_copying_stress.fe:2:5
    │
  2 │     my_string: String<42>
    │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
@@ -23,7 +23,7 @@ note:
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
 
 note: 
-   ┌─ stress/data_copying_stress.fe:13:9
+   ┌─ data_copying_stress.fe:13:9
    │
 13 │         my_string: String<42>
    │         ^^^^^^^^^^^^^^^^^^^^^ String<42>
@@ -31,7 +31,7 @@ note:
    │         ^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ stress/data_copying_stress.fe:16:5
+   ┌─ data_copying_stress.fe:16:5
    │  
 16 │ ╭     pub fn set_my_vals(
 17 │ │         self,
@@ -96,13 +96,13 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:23:9
+   ┌─ data_copying_stress.fe:23:9
    │
 23 │         self.my_string = my_string
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:23:9
+   ┌─ data_copying_stress.fe:23:9
    │
 23 │         self.my_string = my_string
    │         ^^^^^^^^^^^^^^   ^^^^^^^^^ String<42>: Memory
@@ -112,7 +112,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:24:9
+   ┌─ data_copying_stress.fe:24:9
    │
 24 │         self.my_other_string = my_other_string
    │         ^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ String<42>: Memory
@@ -122,7 +122,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:25:9
+   ┌─ data_copying_stress.fe:25:9
    │
 25 │         self.my_u256 = my_u256
    │         ^^^^^^^^^^^^   ^^^^^^^ u256: Value
@@ -132,7 +132,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:26:9
+   ┌─ data_copying_stress.fe:26:9
    │
 26 │         self.my_other_u256 = my_other_u256
    │         ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^ u256: Value
@@ -140,7 +140,7 @@ note:
    │         u256: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:28:5
+   ┌─ data_copying_stress.fe:28:5
    │  
 28 │ ╭     pub fn set_to_my_other_vals(self):
 29 │ │         self.my_string = self.my_other_string
@@ -160,13 +160,13 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:29:9
+   ┌─ data_copying_stress.fe:29:9
    │
 29 │         self.my_string = self.my_other_string
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:29:9
+   ┌─ data_copying_stress.fe:29:9
    │
 29 │         self.my_string = self.my_other_string
    │         ^^^^^^^^^^^^^^   ^^^^ Foo: Value
@@ -174,7 +174,7 @@ note:
    │         String<42>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:29:26
+   ┌─ data_copying_stress.fe:29:26
    │
 29 │         self.my_string = self.my_other_string
    │                          ^^^^^^^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(1) }
@@ -182,7 +182,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:30:9
+   ┌─ data_copying_stress.fe:30:9
    │
 30 │         self.my_u256 = self.my_other_u256
    │         ^^^^^^^^^^^^   ^^^^ Foo: Value
@@ -190,13 +190,13 @@ note:
    │         u256: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:30:24
+   ┌─ data_copying_stress.fe:30:24
    │
 30 │         self.my_u256 = self.my_other_u256
    │                        ^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:32:5
+   ┌─ data_copying_stress.fe:32:5
    │  
 32 │ ╭     pub fn multiple_references_shared_memory(my_array: Array<u256, 10>):
 33 │ │         let my_2nd_array: Array<u256, 10> = my_array
@@ -232,7 +232,7 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:33:27
+   ┌─ data_copying_stress.fe:33:27
    │
 33 │         let my_2nd_array: Array<u256, 10> = my_array
    │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
@@ -240,7 +240,7 @@ note:
    │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
-   ┌─ stress/data_copying_stress.fe:33:45
+   ┌─ data_copying_stress.fe:33:45
    │
 33 │         let my_2nd_array: Array<u256, 10> = my_array
    │                                             ^^^^^^^^ Array<u256, 10>: Memory
@@ -253,7 +253,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:36:16
+   ┌─ data_copying_stress.fe:36:16
    │
 36 │         assert my_array[3] != 5
    │                ^^^^^^^^^^^    ^ u256: Value
@@ -261,7 +261,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:36:16
+   ┌─ data_copying_stress.fe:36:16
    │
 36 │         assert my_array[3] != 5
    │                ^^^^^^^^^^^^^^^^ bool: Value
@@ -271,7 +271,7 @@ note:
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:37:9
+   ┌─ data_copying_stress.fe:37:9
    │
 37 │         my_array[3] = 5
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -283,7 +283,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:38:16
+   ┌─ data_copying_stress.fe:38:16
    │
 38 │         assert my_array[3] == 5
    │                ^^^^^^^^^^^    ^ u256: Value
@@ -291,7 +291,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:38:16
+   ┌─ data_copying_stress.fe:38:16
    │
 38 │         assert my_array[3] == 5
    │                ^^^^^^^^^^^^^^^^ bool: Value
@@ -301,7 +301,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:39:16
+   ┌─ data_copying_stress.fe:39:16
    │
 39 │         assert my_2nd_array[3] == 5
    │                ^^^^^^^^^^^^^^^    ^ u256: Value
@@ -309,7 +309,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:39:16
+   ┌─ data_copying_stress.fe:39:16
    │
 39 │         assert my_2nd_array[3] == 5
    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -319,7 +319,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:40:16
+   ┌─ data_copying_stress.fe:40:16
    │
 40 │         assert my_3rd_array[3] == 5
    │                ^^^^^^^^^^^^^^^    ^ u256: Value
@@ -327,7 +327,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:40:16
+   ┌─ data_copying_stress.fe:40:16
    │
 40 │         assert my_3rd_array[3] == 5
    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -338,7 +338,7 @@ note:
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:42:9
+   ┌─ data_copying_stress.fe:42:9
    │
 42 │         my_3rd_array[3] = 50
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
@@ -350,7 +350,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:43:16
+   ┌─ data_copying_stress.fe:43:16
    │
 43 │         assert my_array[3] == 50
    │                ^^^^^^^^^^^    ^^ u256: Value
@@ -358,7 +358,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:43:16
+   ┌─ data_copying_stress.fe:43:16
    │
 43 │         assert my_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^ bool: Value
@@ -368,7 +368,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:44:16
+   ┌─ data_copying_stress.fe:44:16
    │
 44 │         assert my_2nd_array[3] == 50
    │                ^^^^^^^^^^^^^^^    ^^ u256: Value
@@ -376,7 +376,7 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:44:16
+   ┌─ data_copying_stress.fe:44:16
    │
 44 │         assert my_2nd_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
@@ -386,7 +386,7 @@ note:
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:45:16
+   ┌─ data_copying_stress.fe:45:16
    │
 45 │         assert my_3rd_array[3] == 50
    │                ^^^^^^^^^^^^^^^    ^^ u256: Value
@@ -394,13 +394,13 @@ note:
    │                u256: Memory => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:45:16
+   ┌─ data_copying_stress.fe:45:16
    │
 45 │         assert my_3rd_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:47:5
+   ┌─ data_copying_stress.fe:47:5
    │  
 47 │ ╭     pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 48 │ │         my_array[3] = 5
@@ -437,7 +437,7 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:48:9
+   ┌─ data_copying_stress.fe:48:9
    │
 48 │         my_array[3] = 5
    │         ^^^^^^^^ ^ u256: Value
@@ -445,7 +445,7 @@ note:
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:48:9
+   ┌─ data_copying_stress.fe:48:9
    │
 48 │         my_array[3] = 5
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -455,7 +455,7 @@ note:
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:51:5
+   ┌─ data_copying_stress.fe:51:5
    │  
 51 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 52 │ │         return my_array.clone()
@@ -491,25 +491,25 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:52:16
+   ┌─ data_copying_stress.fe:52:16
    │
 52 │         return my_array.clone()
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:52:16
+   ┌─ data_copying_stress.fe:52:16
    │
 52 │         return my_array.clone()
    │                ^^^^^^^^^^^^^^^^ Array<u256, 10>: Memory => Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:52:16
+   ┌─ data_copying_stress.fe:52:16
    │
 52 │         return my_array.clone()
    │                ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:54:5
+   ┌─ data_copying_stress.fe:54:5
    │  
 54 │ ╭     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 55 │ │         my_array.clone()[3] = 5
@@ -546,13 +546,13 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:55:9
+   ┌─ data_copying_stress.fe:55:9
    │
 55 │         my_array.clone()[3] = 5
    │         ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:55:9
+   ┌─ data_copying_stress.fe:55:9
    │
 55 │         my_array.clone()[3] = 5
    │         ^^^^^^^^^^^^^^^^ ^ u256: Value
@@ -560,7 +560,7 @@ note:
    │         Array<u256, 10>: Memory => Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:55:9
+   ┌─ data_copying_stress.fe:55:9
    │
 55 │         my_array.clone()[3] = 5
    │         ^^^^^^^^^^^^^^^^^^^   ^ u256: Value
@@ -570,13 +570,13 @@ note:
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:55:9
+   ┌─ data_copying_stress.fe:55:9
    │
 55 │         my_array.clone()[3] = 5
    │         ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:58:5
+   ┌─ data_copying_stress.fe:58:5
    │  
 58 │ ╭     pub fn assign_my_nums_and_return(self) -> Array<u256, 5>:
 59 │ │         let my_nums_mem: Array<u256, 5>
@@ -605,19 +605,19 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:59:26
+   ┌─ data_copying_stress.fe:59:26
    │
 59 │         let my_nums_mem: Array<u256, 5>
    │                          ^^^^^^^^^^^^^^ Array<u256, 5>
 
 note: 
-   ┌─ stress/data_copying_stress.fe:60:9
+   ┌─ data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[0] = 42
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:60:9
+   ┌─ data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[0] = 42
    │         ^^^^^^^^^^^^ ^ u256: Value
@@ -625,7 +625,7 @@ note:
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:60:9
+   ┌─ data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[0] = 42
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
@@ -635,7 +635,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:61:9
+   ┌─ data_copying_stress.fe:61:9
    │
 61 │         self.my_nums[1] = 26
    │         ^^^^^^^^^^^^ ^ u256: Value
@@ -643,7 +643,7 @@ note:
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:61:9
+   ┌─ data_copying_stress.fe:61:9
    │
 61 │         self.my_nums[1] = 26
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
@@ -653,7 +653,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:62:9
+   ┌─ data_copying_stress.fe:62:9
    │
 62 │         self.my_nums[2] = 0
    │         ^^^^^^^^^^^^ ^ u256: Value
@@ -661,7 +661,7 @@ note:
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:62:9
+   ┌─ data_copying_stress.fe:62:9
    │
 62 │         self.my_nums[2] = 0
    │         ^^^^^^^^^^^^^^^   ^ u256: Value
@@ -671,7 +671,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:63:9
+   ┌─ data_copying_stress.fe:63:9
    │
 63 │         self.my_nums[3] = 1
    │         ^^^^^^^^^^^^ ^ u256: Value
@@ -679,7 +679,7 @@ note:
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:63:9
+   ┌─ data_copying_stress.fe:63:9
    │
 63 │         self.my_nums[3] = 1
    │         ^^^^^^^^^^^^^^^   ^ u256: Value
@@ -689,7 +689,7 @@ note:
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:64:9
+   ┌─ data_copying_stress.fe:64:9
    │
 64 │         self.my_nums[4] = 255
    │         ^^^^^^^^^^^^ ^ u256: Value
@@ -697,7 +697,7 @@ note:
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:64:9
+   ┌─ data_copying_stress.fe:64:9
    │
 64 │         self.my_nums[4] = 255
    │         ^^^^^^^^^^^^^^^   ^^^ u256: Value
@@ -709,13 +709,13 @@ note:
    │         Array<u256, 5>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:65:23
+   ┌─ data_copying_stress.fe:65:23
    │
 65 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^ Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:65:23
+   ┌─ data_copying_stress.fe:65:23
    │
 65 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>: Storage { nonce: Some(4) } => Memory
@@ -723,13 +723,13 @@ note:
    │                ^^^^^^^^^^^ Array<u256, 5>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:65:23
+   ┌─ data_copying_stress.fe:65:23
    │
 65 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Numeric(U256) }) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:68:5
+   ┌─ data_copying_stress.fe:68:5
    │  
 68 │ ╭     pub fn emit_my_event(self):
 69 │ │         emit_my_event_internal(
@@ -751,19 +751,19 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:70:13
+   ┌─ data_copying_stress.fe:70:13
    │
 70 │             self.my_string.to_mem(),
    │             ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:70:13
+   ┌─ data_copying_stress.fe:70:13
    │
 70 │             self.my_string.to_mem(),
    │             ^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:70:13
+   ┌─ data_copying_stress.fe:70:13
    │
 70 │             self.my_string.to_mem(),
    │             ^^^^^^^^^^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) } => Memory
@@ -771,19 +771,19 @@ note:
    │             ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:71:13
+   ┌─ data_copying_stress.fe:71:13
    │
 71 │             self.my_u256.to_mem()
    │             ^^^^^^^^^^^^ u256: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:71:13
+   ┌─ data_copying_stress.fe:71:13
    │
 71 │             self.my_u256.to_mem()
    │             ^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:69:9
+   ┌─ data_copying_stress.fe:69:9
    │  
 69 │ ╭         emit_my_event_internal(
 70 │ │             self.my_string.to_mem(),
@@ -792,7 +792,7 @@ note:
    │ ╰─────────^ (): Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:70:13
+   ┌─ data_copying_stress.fe:70:13
    │
 70 │             self.my_string.to_mem(),
    │             ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 42 }) }
@@ -800,13 +800,13 @@ note:
    │             ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Base(Numeric(U256)) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:69:9
+   ┌─ data_copying_stress.fe:69:9
    │
 69 │         emit_my_event_internal(
    │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(8))
 
 note: 
-   ┌─ stress/data_copying_stress.fe:74:5
+   ┌─ data_copying_stress.fe:74:5
    │  
 74 │ ╭     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
 75 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
@@ -844,7 +844,7 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:75:32
+   ┌─ data_copying_stress.fe:75:32
    │
 75 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
    │                                ^^^^^^^^^^^          ^^^^^^^^^ u256: Value
@@ -852,7 +852,7 @@ note:
    │                                String<42>: Memory
 
 note: 
-   ┌─ stress/data_copying_stress.fe:75:9
+   ┌─ data_copying_stress.fe:75:9
    │
 75 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
@@ -886,7 +886,7 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:77:5
+   ┌─ data_copying_stress.fe:77:5
    │  
 77 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>):
 78 │ │         self.my_addrs = my_addrs
@@ -917,13 +917,13 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:78:9
+   ┌─ data_copying_stress.fe:78:9
    │
 78 │         self.my_addrs = my_addrs
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:78:9
+   ┌─ data_copying_stress.fe:78:9
    │
 78 │         self.my_addrs = my_addrs
    │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<address, 3>: Memory
@@ -931,7 +931,7 @@ note:
    │         Array<address, 3>: Storage { nonce: Some(5) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:80:5
+   ┌─ data_copying_stress.fe:80:5
    │  
 80 │ ╭     pub fn get_my_second_addr(self) -> address:
 81 │ │         return self.my_addrs[1]
@@ -950,13 +950,13 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:81:16
+   ┌─ data_copying_stress.fe:81:16
    │
 81 │         return self.my_addrs[1]
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ stress/data_copying_stress.fe:81:16
+   ┌─ data_copying_stress.fe:81:16
    │
 81 │         return self.my_addrs[1]
    │                ^^^^^^^^^^^^^ ^ u256: Value
@@ -964,7 +964,7 @@ note:
    │                Array<address, 3>: Storage { nonce: Some(5) }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:81:16
+   ┌─ data_copying_stress.fe:81:16
    │
 81 │         return self.my_addrs[1]
    │                ^^^^^^^^^^^^^^^^ address: Storage { nonce: None } => Value

@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/math.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ features/math.fe:4:5
+   ┌─ math.fe:4:5
    │  
  4 │ ╭     pub fn sqrt(val: u256) -> u256:
  5 │ │         let z: u256
@@ -39,7 +39,7 @@ note:
      }
 
 note: 
-  ┌─ features/math.fe:5:16
+  ┌─ math.fe:5:16
   │
 5 │         let z: u256
   │                ^^^^ u256
@@ -48,7 +48,7 @@ note:
   │                    ^^^^ u256
 
 note: 
-  ┌─ features/math.fe:6:13
+  ┌─ math.fe:6:13
   │
 6 │         if (val > 3):
   │             ^^^   ^ u256: Value
@@ -56,7 +56,7 @@ note:
   │             u256: Value
 
 note: 
-  ┌─ features/math.fe:6:12
+  ┌─ math.fe:6:12
   │
 6 │         if (val > 3):
   │            ^^^^^^^^^ bool: Value
@@ -70,7 +70,7 @@ note:
   │                           u256: Value
 
 note: 
-  ┌─ features/math.fe:8:27
+  ┌─ math.fe:8:27
   │
 8 │             let x: u256 = val / 2 + 1
   │                           ^^^^^^^   ^ u256: Value
@@ -78,7 +78,7 @@ note:
   │                           u256: Value
 
 note: 
-  ┌─ features/math.fe:8:27
+  ┌─ math.fe:8:27
   │
 8 │             let x: u256 = val / 2 + 1
   │                           ^^^^^^^^^^^ u256: Value
@@ -88,7 +88,7 @@ note:
   │                    u256: Value
 
 note: 
-   ┌─ features/math.fe:9:19
+   ┌─ math.fe:9:19
    │
  9 │             while (x < z):
    │                   ^^^^^^^ bool: Value
@@ -103,7 +103,7 @@ note:
    │                 u256: Value
 
 note: 
-   ┌─ features/math.fe:11:22
+   ┌─ math.fe:11:22
    │
 11 │                 x = (val / x + x) / 2
    │                      ^^^^^^^   ^ u256: Value
@@ -111,7 +111,7 @@ note:
    │                      u256: Value
 
 note: 
-   ┌─ features/math.fe:11:21
+   ┌─ math.fe:11:21
    │
 11 │                 x = (val / x + x) / 2
    │                     ^^^^^^^^^^^^^   ^ u256: Value
@@ -119,7 +119,7 @@ note:
    │                     u256: Value
 
 note: 
-   ┌─ features/math.fe:11:21
+   ┌─ math.fe:11:21
    │
 11 │                 x = (val / x + x) / 2
    │                     ^^^^^^^^^^^^^^^^^ u256: Value
@@ -129,7 +129,7 @@ note:
    │               u256: Value
 
 note: 
-   ┌─ features/math.fe:12:14
+   ┌─ math.fe:12:14
    │
 12 │         elif (val != 0):
    │              ^^^^^^^^^^ bool: Value
@@ -141,7 +141,7 @@ note:
    │                ^ u256: Value
 
 note: 
-   ┌─ features/math.fe:16:5
+   ┌─ math.fe:16:5
    │  
 16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
@@ -181,7 +181,7 @@ note:
      }
 
 note: 
-   ┌─ features/math.fe:17:21
+   ┌─ math.fe:17:21
    │
 17 │         return x if x < y else y
    │                     ^   ^ u256: Value
@@ -189,7 +189,7 @@ note:
    │                     u256: Value
 
 note: 
-   ┌─ features/math.fe:17:16
+   ┌─ math.fe:17:16
    │
 17 │         return x if x < y else y
    │                ^    ^^^^^      ^ u256: Value
@@ -198,7 +198,7 @@ note:
    │                u256: Value
 
 note: 
-   ┌─ features/math.fe:17:16
+   ┌─ math.fe:17:16
    │
 17 │         return x if x < y else y
    │                ^^^^^^^^^^^^^^^^^ u256: Value

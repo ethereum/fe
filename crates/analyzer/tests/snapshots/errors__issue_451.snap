@@ -1,15 +1,15 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: duplicate function names in `contract o`
   ┌─ compile_errors/issue_451.fe:2:5
   │    
-2 │ ╭       pub fn bar(x:u256,y:u256)->bool
+2 │ ╭       pub fn bar(x:u256,y:u256)->bool:
 3 │ │        return
   │ ╰─────────────^ `bar` first defined here
-4 │   ╭     pub fn bar:
+4 │   ╭     pub fn bar():
 5 │   │      s
   │   ╰──────' `bar` redefined here
 

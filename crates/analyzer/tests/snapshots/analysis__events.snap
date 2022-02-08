@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/events.fe:3:9
+  ┌─ events.fe:3:9
   │
 3 │         idx num1: u256
   │         ^^^^^^^^^^^^^^ u256
@@ -12,7 +12,7 @@ note:
   │         ^^^^^^^^^^ u256
 
 note: 
-  ┌─ features/events.fe:7:9
+  ┌─ events.fe:7:9
   │
 7 │         num: u256
   │         ^^^^^^^^^ u256
@@ -20,7 +20,7 @@ note:
   │         ^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ features/events.fe:11:9
+   ┌─ events.fe:11:9
    │
 11 │         num1: u256
    │         ^^^^^^^^^^ u256
@@ -32,13 +32,13 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
-   ┌─ features/events.fe:17:9
+   ┌─ events.fe:17:9
    │
 17 │         addrs: Array<address, 2>
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 note: 
-   ┌─ features/events.fe:19:5
+   ┌─ events.fe:19:5
    │  
 19 │ ╭     pub fn emit_nums():
 20 │ │         emit Nums(num1=26, num2=42)
@@ -55,7 +55,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:20:24
+   ┌─ events.fe:20:24
    │
 20 │         emit Nums(num1=26, num2=42)
    │                        ^^       ^^ u256: Value
@@ -63,7 +63,7 @@ note:
    │                        u256: Value
 
 note: 
-   ┌─ features/events.fe:20:9
+   ┌─ events.fe:20:9
    │
 20 │         emit Nums(num1=26, num2=42)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
@@ -97,7 +97,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:22:5
+   ┌─ events.fe:22:5
    │  
 22 │ ╭     pub fn emit_bases(addr: address):
 23 │ │         emit Bases(num=26, addr)
@@ -123,7 +123,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:23:24
+   ┌─ events.fe:23:24
    │
 23 │         emit Bases(num=26, addr)
    │                        ^^  ^^^^ address: Value
@@ -131,7 +131,7 @@ note:
    │                        u256: Value
 
 note: 
-   ┌─ features/events.fe:23:9
+   ┌─ events.fe:23:9
    │
 23 │         emit Bases(num=26, addr)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
@@ -163,7 +163,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:25:5
+   ┌─ events.fe:25:5
    │  
 25 │ ╭     pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
 26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
@@ -202,7 +202,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:26:23
+   ┌─ events.fe:26:23
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
    │                       ^^  ^^^^       ^^  ^^^^^^^^ Array<u8, 100>: Memory
@@ -212,7 +212,7 @@ note:
    │                       u256: Value
 
 note: 
-   ┌─ features/events.fe:26:9
+   ┌─ events.fe:26:9
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
@@ -269,7 +269,7 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:28:5
+   ┌─ events.fe:28:5
    │  
 28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
 29 │ │         let addrs: Array<address, 2>
@@ -306,13 +306,13 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:29:20
+   ┌─ events.fe:29:20
    │
 29 │         let addrs: Array<address, 2>
    │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 note: 
-   ┌─ features/events.fe:30:9
+   ┌─ events.fe:30:9
    │
 30 │         addrs[0] = addr1
    │         ^^^^^ ^ u256: Value
@@ -320,7 +320,7 @@ note:
    │         Array<address, 2>: Memory
 
 note: 
-   ┌─ features/events.fe:30:9
+   ┌─ events.fe:30:9
    │
 30 │         addrs[0] = addr1
    │         ^^^^^^^^   ^^^^^ address: Value
@@ -332,7 +332,7 @@ note:
    │         Array<address, 2>: Memory
 
 note: 
-   ┌─ features/events.fe:31:9
+   ┌─ events.fe:31:9
    │
 31 │         addrs[1] = addr2
    │         ^^^^^^^^   ^^^^^ address: Value
@@ -342,7 +342,7 @@ note:
    │                        ^^^^^ Array<address, 2>: Memory
 
 note: 
-   ┌─ features/events.fe:32:9
+   ┌─ events.fe:32:9
    │
 32 │         emit Addresses(addrs)
    │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17766225573703958283

@@ -24,9 +24,9 @@ pub fn struct_type(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<types::Struct> 
     })
 }
 
-pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<StructFieldId>> {
-    let struct_data = struct_.data(db);
-    let fields = struct_data
+pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[StructFieldId]> {
+    struct_
+        .data(db)
         .ast
         .kind
         .fields
@@ -37,8 +37,7 @@ pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<Struc
                 parent: struct_,
             }))
         })
-        .collect();
-    Rc::new(fields)
+        .collect()
 }
 
 pub fn struct_field_map(
@@ -67,10 +66,7 @@ pub fn struct_field_map(
         }
     }
 
-    Analysis {
-        value: Rc::new(fields),
-        diagnostics: Rc::new(scope.diagnostics),
-    }
+    Analysis::new(Rc::new(fields), scope.diagnostics.into())
 }
 
 pub fn struct_field_type(
@@ -114,15 +110,12 @@ pub fn struct_field_type(
         Err(err) => Err(err),
     };
 
-    Analysis {
-        value: typ,
-        diagnostics: Rc::new(scope.diagnostics),
-    }
+    Analysis::new(typ, scope.diagnostics.into())
 }
 
-pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<FunctionId>> {
+pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[FunctionId]> {
     let struct_data = struct_.data(db);
-    let fields = struct_data
+    struct_data
         .ast
         .kind
         .functions
@@ -134,8 +127,7 @@ pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<Fu
                 parent: Some(items::Class::Struct(struct_)),
             }))
         })
-        .collect();
-    Rc::new(fields)
+        .collect()
 }
 
 pub fn struct_function_map(
@@ -152,7 +144,7 @@ pub fn struct_function_map(
             continue;
         }
 
-        if let Some(named_item) = scope.resolve_name(def_name) {
+        if let Ok(Some(named_item)) = scope.resolve_name(def_name) {
             scope.name_conflict_error(
                 "function",
                 def_name,
@@ -189,10 +181,7 @@ pub fn struct_function_map(
             }
         }
     }
-    Analysis {
-        value: Rc::new(map),
-        diagnostics: Rc::new(scope.diagnostics),
-    }
+    Analysis::new(Rc::new(map), scope.diagnostics.into())
 }
 
 pub fn struct_dependency_graph(db: &dyn AnalyzerDb, struct_: StructId) -> DepGraphWrapper {

@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/if_statement_2.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/if_statement_2.fe:3:5
+  ┌─ if_statement_2.fe:3:5
   │  
 3 │ ╭     pub fn bar(val: u256) -> u256:
 4 │ │         if val > 5:
@@ -39,7 +39,7 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement_2.fe:4:12
+  ┌─ if_statement_2.fe:4:12
   │
 4 │         if val > 5:
   │            ^^^   ^ u256: Value
@@ -47,7 +47,7 @@ note:
   │            u256: Value
 
 note: 
-  ┌─ features/if_statement_2.fe:4:12
+  ┌─ if_statement_2.fe:4:12
   │
 4 │         if val > 5:
   │            ^^^^^^^ bool: Value

@@ -77,7 +77,7 @@ pub fn function_signature(
                     ))),
                 });
 
-                if let Some(named_item) = scope.resolve_name(&name.kind) {
+                if let Ok(Some(named_item)) = scope.resolve_name(&name.kind) {
                     scope.name_conflict_error(
                         "function parameter",
                         &name.kind,
@@ -147,7 +147,7 @@ pub fn function_signature(
             params,
             return_type,
         }),
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 
@@ -195,7 +195,7 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
     let _ = traverse_statements(&mut block_scope, &def.body);
     Analysis {
         value: Rc::new(scope.body.into_inner()),
-        diagnostics: Rc::new(scope.diagnostics.into_inner()),
+        diagnostics: scope.diagnostics.into_inner().into(),
     }
 }
 

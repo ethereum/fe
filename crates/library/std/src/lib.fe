@@ -1,2 +1,10 @@
-fn get_42() -> u256:
+const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: u256 = 0x100
+
+pub struct Error:
+  pub code: u256
+
+pub fn get_42() -> u256:
     return 42
+
+pub fn revert_insufficient_funds():
+    revert Error(code=ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)

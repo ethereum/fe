@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: recursive type definition

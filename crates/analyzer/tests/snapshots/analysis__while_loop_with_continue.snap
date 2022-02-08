@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/while_loop_with_continue.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ features/while_loop_with_continue.fe:2:5
+   ┌─ while_loop_with_continue.fe:2:5
    │  
  2 │ ╭     pub fn bar() -> u256:
  3 │ │         let i: u256 = 0
@@ -28,7 +28,7 @@ note:
      }
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:3:16
+  ┌─ while_loop_with_continue.fe:3:16
   │
 3 │         let i: u256 = 0
   │                ^^^^ u256
@@ -36,7 +36,7 @@ note:
   │                      ^^^^ u256
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:3:23
+  ┌─ while_loop_with_continue.fe:3:23
   │
 3 │         let i: u256 = 0
   │                       ^ u256: Value
@@ -49,7 +49,7 @@ note:
   │               u256: Value
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:6:15
+  ┌─ while_loop_with_continue.fe:6:15
   │
 6 │         while i < 2:
   │               ^^^^^ bool: Value
@@ -60,7 +60,7 @@ note:
   │             u256: Value
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:7:17
+  ┌─ while_loop_with_continue.fe:7:17
   │
 7 │             i = i + 1
   │                 ^^^^^ u256: Value
@@ -70,7 +70,7 @@ note:
   │                u256: Value
 
 note: 
-   ┌─ features/while_loop_with_continue.fe:8:16
+   ┌─ while_loop_with_continue.fe:8:16
    │
  8 │             if i == 1:
    │                ^^^^^^ bool: Value
@@ -82,7 +82,7 @@ note:
    │             u256: Value
 
 note: 
-   ┌─ features/while_loop_with_continue.fe:10:23
+   ┌─ while_loop_with_continue.fe:10:23
    │
 10 │             counter = counter + 1
    │                       ^^^^^^^^^^^ u256: Value

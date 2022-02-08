@@ -9,7 +9,7 @@ use crate::lexer::{Lexer, Token, TokenKind};
 use crate::node::Span;
 use std::{error, fmt};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub struct ParseFailed;
 impl fmt::Display for ParseFailed {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {

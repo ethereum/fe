@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/create2_contract.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/create2_contract.fe:2:5
+  ┌─ create2_contract.fe:2:5
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
@@ -23,13 +23,13 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:3:16
+  ┌─ create2_contract.fe:3:16
   │
 3 │         return 42
   │                ^^ u256: Value
 
 note: 
-  ┌─ features/create2_contract.fe:6:5
+  ┌─ create2_contract.fe:6:5
   │  
 6 │ ╭     pub fn create2_foo() -> address:
 7 │ │         # value and salt
@@ -48,13 +48,13 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:8:18
+  ┌─ create2_contract.fe:8:18
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
   │                  ^^^ Foo
 
 note: 
-  ┌─ features/create2_contract.fe:8:36
+  ┌─ create2_contract.fe:8:36
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
   │                                    ^  ^^ u256: Value
@@ -62,7 +62,7 @@ note:
   │                                    u256: Value
 
 note: 
-  ┌─ features/create2_contract.fe:8:24
+  ┌─ create2_contract.fe:8:24
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
   │                        ^^^^^^^^^^^^^^^^^^ Foo: Value
@@ -70,13 +70,13 @@ note:
   │                        ^^^ Foo: Value
 
 note: 
-  ┌─ features/create2_contract.fe:9:16
+  ┌─ create2_contract.fe:9:16
   │
 9 │         return address(foo)
   │                ^^^^^^^^^^^^ address: Value
 
 note: 
-  ┌─ features/create2_contract.fe:8:24
+  ┌─ create2_contract.fe:8:24
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
   │                        ^^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create2 }

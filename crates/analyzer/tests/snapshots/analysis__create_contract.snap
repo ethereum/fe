@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/create_contract.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/create_contract.fe:2:5
+  ┌─ create_contract.fe:2:5
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
@@ -23,13 +23,13 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:3:16
+  ┌─ create_contract.fe:3:16
   │
 3 │         return 42
   │                ^^ u256: Value
 
 note: 
-  ┌─ features/create_contract.fe:6:5
+  ┌─ create_contract.fe:6:5
   │  
 6 │ ╭     pub fn create_foo() -> address:
 7 │ │         let foo: Foo = Foo.create(0)
@@ -47,19 +47,19 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:7:18
+  ┌─ create_contract.fe:7:18
   │
 7 │         let foo: Foo = Foo.create(0)
   │                  ^^^ Foo
 
 note: 
-  ┌─ features/create_contract.fe:7:35
+  ┌─ create_contract.fe:7:35
   │
 7 │         let foo: Foo = Foo.create(0)
   │                                   ^ u256: Value
 
 note: 
-  ┌─ features/create_contract.fe:7:24
+  ┌─ create_contract.fe:7:24
   │
 7 │         let foo: Foo = Foo.create(0)
   │                        ^^^^^^^^^^^^^ Foo: Value
@@ -67,13 +67,13 @@ note:
   │                        ^^^ Foo: Value
 
 note: 
-  ┌─ features/create_contract.fe:8:16
+  ┌─ create_contract.fe:8:16
   │
 8 │         return address(foo)
   │                ^^^^^^^^^^^^ address: Value
 
 note: 
-  ┌─ features/create_contract.fe:7:24
+  ┌─ create_contract.fe:7:24
   │
 7 │         let foo: Foo = Foo.create(0)
   │                        ^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create }

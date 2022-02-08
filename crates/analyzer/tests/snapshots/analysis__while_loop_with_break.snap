@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/while_loop_with_break.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/while_loop_with_break.fe:2:5
+  ┌─ while_loop_with_break.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> u256:
 3 │ │         let val: u256 = 0
@@ -27,13 +27,13 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop_with_break.fe:3:18
+  ┌─ while_loop_with_break.fe:3:18
   │
 3 │         let val: u256 = 0
   │                  ^^^^ u256
 
 note: 
-  ┌─ features/while_loop_with_break.fe:3:25
+  ┌─ while_loop_with_break.fe:3:25
   │
 3 │         let val: u256 = 0
   │                         ^ u256: Value
@@ -43,7 +43,7 @@ note:
   │               u256: Value
 
 note: 
-  ┌─ features/while_loop_with_break.fe:4:15
+  ┌─ while_loop_with_break.fe:4:15
   │
 4 │         while val < 2:
   │               ^^^^^^^ bool: Value
@@ -54,7 +54,7 @@ note:
   │             u256: Value
 
 note: 
-  ┌─ features/while_loop_with_break.fe:5:19
+  ┌─ while_loop_with_break.fe:5:19
   │
 5 │             val = val + 1
   │                   ^^^^^^^ u256: Value

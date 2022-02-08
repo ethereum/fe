@@ -1,6 +1,5 @@
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::files::FileStore;
 use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
@@ -278,15 +277,17 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = test_files::fixture(fixture);
-    let mut files = FileStore::new();
-    let id = files.add_file(fixture, src);
-    let deps = files.add_included_libraries();
-
-    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
+    let mut db = driver::Db::default();
+    let compiled_module = match driver::compile_single_file(
+        &mut db,
+        fixture,
+        test_files::fixture(fixture),
+        true,
+        true,
+    ) {
         Ok(module) => module,
         Err(error) => {
-            fe_common::diagnostics::print_diagnostics(&error.0, &files);
+            fe_common::diagnostics::print_diagnostics(&db, &error.0);
             panic!("failed to compile module: {}", fixture)
         }
     };
@@ -312,15 +313,12 @@ pub fn deploy_contract_from_ingot(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let mut files = test_files::build_filestore(path);
-    let ingot_files = files.all_files();
-    let deps = files.add_included_libraries();
-
-    let compiled_module = match driver::compile_ingot(path, &files, &ingot_files, &deps, true, true)
-    {
+    let files = test_files::fixture_dir_files(path);
+    let mut db = driver::Db::default();
+    let compiled_module = match driver::compile_ingot(&mut db, "test", &files, true, true) {
         Ok(module) => module,
         Err(error) => {
-            fe_common::diagnostics::print_diagnostics(&error.0, &files);
+            fe_common::diagnostics::print_diagnostics(&db, &error.0);
             panic!("failed to compile ingot: {}", path)
         }
     };
@@ -522,17 +520,13 @@ pub fn compile_solidity_contract(
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let mut files = FileStore::new();
-    let deps = files.add_included_libraries();
-    let src = test_files::fixture(fixture);
-    let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
-        Ok(module) => module,
-        Err(err) => {
-            print_diagnostics(&err.0, &files);
-            panic!("failed to compile fixture: {}", fixture);
-        }
-    };
+    let mut db = driver::Db::default();
+    let compiled_module =
+        driver::compile_single_file(&mut db, fixture, test_files::fixture(fixture), true, true)
+            .unwrap_or_else(|err| {
+                print_diagnostics(&db, &err.0);
+                panic!("failed to compile fixture: {}", fixture);
+            });
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
@@ -652,7 +646,7 @@ impl ExecutionOutput {
 #[cfg(feature = "solc-backend")]
 fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
     let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
-    let bytecode = fe_yulc::compile_single_contract("Contract", yul_code, false)
+    let bytecode = fe_yulc::compile_single_contract("Contract", &yul_code, false)
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
 

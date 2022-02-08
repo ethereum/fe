@@ -7,10 +7,9 @@ use std::path::Path;
 use clap::{arg_enum, values_t, App, Arg};
 
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::files::{FileStore, SourceFileId};
+use fe_common::files::SourceFileId;
 use fe_common::panic::install_panic_hook;
-use fe_driver::CompiledModule;
-use std::ffi::OsStr;
+use fe_driver::{CompiledModule, Db};
 use walkdir::WalkDir;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -86,51 +85,57 @@ pub fn main() {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
-    let (content, compiled_module) = if Path::new(input_path).is_file() {
-        let mut files = FileStore::new();
-        let deps = files.add_included_libraries();
-        let file = files.load_file(input_path).map_err(ioerr_to_string);
+    let mut db = Db::default();
 
-        let (content, id) = match file {
+    let (content, compiled_module) = if Path::new(input_path).is_file() {
+        let content = match std::fs::read_to_string(input_path) {
             Err(err) => {
                 eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
                 std::process::exit(1)
             }
-            Ok(file) => file,
+            Ok(content) => content,
         };
 
-        let compiled_module =
-            match fe_driver::compile_module(&files, id, &deps, with_bytecode, optimize) {
-                Ok(module) => module,
-                Err(error) => {
-                    eprintln!("Unable to compile {}.", input_path);
-                    print_diagnostics(&error.0, &files);
-                    std::process::exit(1)
-                }
-            };
-        (content, compiled_module)
-    } else {
-        let mut files = build_ingot_filestore_for_dir(input_path);
-        let ingot_files = files.all_files();
-        let deps = files.add_included_libraries();
-
-        if !Path::new(input_path).exists() {
-            eprintln!("Input directory does not exist: `{}`.", input_path);
-            std::process::exit(1)
-        }
-
-        let compiled_module = match fe_driver::compile_ingot(
+        let compiled_module = match fe_driver::compile_single_file(
+            &mut db,
             input_path,
-            &files,
-            &ingot_files,
-            &deps,
+            &content,
             with_bytecode,
             optimize,
         ) {
             Ok(module) => module,
             Err(error) => {
                 eprintln!("Unable to compile {}.", input_path);
-                print_diagnostics(&error.0, &files);
+                print_diagnostics(&db, &error.0);
+                std::process::exit(1)
+            }
+        };
+        (content, compiled_module)
+    } else {
+        if !Path::new(input_path).exists() {
+            eprintln!("Input directory does not exist: `{}`.", input_path);
+            std::process::exit(1)
+        }
+
+        let files = match load_files_from_dir(input_path) {
+            Ok(files) => files,
+            Err(err) => {
+                eprintln!("Failed to load project files. Error: {}", err);
+                std::process::exit(1)
+            }
+        };
+
+        let compiled_module = match fe_driver::compile_ingot(
+            &mut db,
+            "main", // TODO: real ingot name
+            &files,
+            with_bytecode,
+            optimize,
+        ) {
+            Ok(module) => module,
+            Err(error) => {
+                eprintln!("Unable to compile {}.", input_path);
+                print_diagnostics(&db, &error.0);
                 std::process::exit(1)
             }
         };
@@ -151,29 +156,16 @@ pub fn main() {
     }
 }
 
-fn build_ingot_filestore_for_dir(path: &str) -> FileStore {
-    let path = Path::new(path);
-    let walker = WalkDir::new(path);
-    let mut files = FileStore::new();
-
-    for entry in walker {
-        if entry.is_err() {
-            eprintln!("Error: {}", entry.unwrap_err());
-            std::process::exit(1)
-        }
-        let entry = entry.unwrap();
-        let file_path = &entry.path().to_string_lossy().to_string();
-
-        if entry.path().extension() == Some(OsStr::new("fe")) {
-            let file = files.load_file(file_path);
-            if let Err(err) = file {
-                eprintln!("Failed to load file: `{}`. Error: {}", &file_path, err);
-                std::process::exit(1)
-            }
-        }
-    }
-
-    files
+fn load_files_from_dir(dir_path: &str) -> Result<Vec<(String, String)>, std::io::Error> {
+    WalkDir::new(dir_path)
+        .into_iter()
+        .map(|entry| {
+            let entry = entry?;
+            let path = entry.path();
+            let content = std::fs::read_to_string(path)?;
+            Ok((path.to_string_lossy().to_string(), content))
+        })
+        .collect::<Result<Vec<_>, std::io::Error>>()
 }
 
 fn write_compiled_module(
@@ -207,7 +199,7 @@ fn write_compiled_module(
 
     if targets.contains(&CompilationTarget::Tokens) {
         let tokens = {
-            let lexer = fe_parser::lexer::Lexer::new(SourceFileId::default(), file_content);
+            let lexer = fe_parser::lexer::Lexer::new(SourceFileId::dummy_file(), file_content);
             lexer.collect::<Vec<_>>()
         };
         write_output(&output_dir.join("module.tokens"), &format!("{:#?}", tokens))?;

@@ -1,7 +1,7 @@
 use crate::types::AbiType;
 use fe_analyzer::namespace::items::{ContractId, EventId, FunctionId, ModuleId, StructId};
 use fe_analyzer::AnalyzerDb;
-use fe_common::Upcast;
+use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_lowering::LoweringDb;
 use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
@@ -12,7 +12,14 @@ mod queries;
 
 #[salsa::query_group(YulgenDbStorage)]
 pub trait YulgenDb:
-    AnalyzerDb + LoweringDb + Upcast<dyn AnalyzerDb> + Upcast<dyn LoweringDb>
+    SourceDb
+    + AnalyzerDb
+    + LoweringDb
+    + Upcast<dyn SourceDb>
+    + Upcast<dyn AnalyzerDb>
+    + Upcast<dyn LoweringDb>
+    + UpcastMut<dyn SourceDb>
+    + UpcastMut<dyn AnalyzerDb>
 {
     #[salsa::invoke(queries::compile_module)]
     fn compile_module(&self, module_id: ModuleId) -> IndexMap<String, String>;
@@ -59,6 +66,7 @@ pub trait YulgenDb:
 }
 
 #[salsa::database(
+    SourceDbStorage,
     fe_analyzer::db::AnalyzerDbStorage,
     fe_lowering::db::LoweringDbStorage,
     YulgenDbStorage
@@ -69,6 +77,18 @@ pub struct Db {
 }
 impl salsa::Database for Db {}
 
+impl Upcast<dyn SourceDb> for Db {
+    fn upcast(&self) -> &(dyn SourceDb + 'static) {
+        &*self
+    }
+}
+
+impl UpcastMut<dyn SourceDb> for Db {
+    fn upcast_mut(&mut self) -> &mut (dyn SourceDb + 'static) {
+        &mut *self
+    }
+}
+
 impl Upcast<dyn LoweringDb> for Db {
     fn upcast(&self) -> &(dyn LoweringDb + 'static) {
         &*self
@@ -78,6 +98,12 @@ impl Upcast<dyn LoweringDb> for Db {
 impl Upcast<dyn AnalyzerDb> for Db {
     fn upcast(&self) -> &(dyn AnalyzerDb + 'static) {
         &*self
+    }
+}
+
+impl UpcastMut<dyn AnalyzerDb> for Db {
+    fn upcast_mut(&mut self) -> &mut (dyn AnalyzerDb + 'static) {
+        &mut *self
     }
 }
 

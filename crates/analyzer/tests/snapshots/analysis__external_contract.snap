@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/external_contract.fe:3:9
+  ┌─ external_contract.fe:3:9
   │
 3 │         my_num: u256
   │         ^^^^^^^^^^^^ u256
@@ -14,7 +14,7 @@ note:
   │         ^^^^^^^^^^^^^^^^^^^^^ String<11>
 
 note: 
-  ┌─ features/external_contract.fe:7:5
+  ┌─ external_contract.fe:7:5
   │  
 7 │ ╭     pub fn emit_event(my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
 8 │ │         emit MyEvent(my_num, my_addrs, my_string)
@@ -63,7 +63,7 @@ note:
     }
 
 note: 
-  ┌─ features/external_contract.fe:8:22
+  ┌─ external_contract.fe:8:22
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
   │                      ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
@@ -72,7 +72,7 @@ note:
   │                      u256: Value
 
 note: 
-  ┌─ features/external_contract.fe:8:9
+  ┌─ external_contract.fe:8:9
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3872046667435269452
@@ -118,7 +118,7 @@ note:
     }
 
 note: 
-   ┌─ features/external_contract.fe:10:5
+   ┌─ external_contract.fe:10:5
    │  
 10 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3>:
 11 │ │         let my_array: Array<u256, 3>
@@ -165,13 +165,13 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:11:23
+   ┌─ external_contract.fe:11:23
    │
 11 │         let my_array: Array<u256, 3>
    │                       ^^^^^^^^^^^^^^ Array<u256, 3>
 
 note: 
-   ┌─ features/external_contract.fe:12:9
+   ┌─ external_contract.fe:12:9
    │
 12 │         my_array[0] = a
    │         ^^^^^^^^ ^ u256: Value
@@ -179,7 +179,7 @@ note:
    │         Array<u256, 3>: Memory
 
 note: 
-   ┌─ features/external_contract.fe:12:9
+   ┌─ external_contract.fe:12:9
    │
 12 │         my_array[0] = a
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -191,7 +191,7 @@ note:
    │         Array<u256, 3>: Memory
 
 note: 
-   ┌─ features/external_contract.fe:13:9
+   ┌─ external_contract.fe:13:9
    │
 13 │         my_array[1] = a * b
    │         ^^^^^^^^^^^   ^   ^ u256: Value
@@ -200,7 +200,7 @@ note:
    │         u256: Memory
 
 note: 
-   ┌─ features/external_contract.fe:13:23
+   ┌─ external_contract.fe:13:23
    │
 13 │         my_array[1] = a * b
    │                       ^^^^^ u256: Value
@@ -210,7 +210,7 @@ note:
    │         Array<u256, 3>: Memory
 
 note: 
-   ┌─ features/external_contract.fe:14:9
+   ┌─ external_contract.fe:14:9
    │
 14 │         my_array[2] = b
    │         ^^^^^^^^^^^   ^ u256: Value
@@ -220,7 +220,7 @@ note:
    │                ^^^^^^^^ Array<u256, 3>: Memory
 
 note: 
-   ┌─ features/external_contract.fe:18:5
+   ┌─ external_contract.fe:18:5
    │  
 18 │ ╭     pub fn call_emit_event(
 19 │ │         foo_address: address,
@@ -282,19 +282,19 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:24:18
+   ┌─ external_contract.fe:24:18
    │
 24 │         let foo: Foo = Foo(foo_address)
    │                  ^^^ Foo
 
 note: 
-   ┌─ features/external_contract.fe:24:28
+   ┌─ external_contract.fe:24:28
    │
 24 │         let foo: Foo = Foo(foo_address)
    │                            ^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/external_contract.fe:24:24
+   ┌─ external_contract.fe:24:24
    │
 24 │         let foo: Foo = Foo(foo_address)
    │                        ^^^^^^^^^^^^^^^^ Foo: Value
@@ -306,13 +306,13 @@ note:
    │         Foo: Value
 
 note: 
-   ┌─ features/external_contract.fe:25:9
+   ┌─ external_contract.fe:25:9
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ features/external_contract.fe:24:24
+   ┌─ external_contract.fe:24:24
    │
 24 │         let foo: Foo = Foo(foo_address)
    │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
@@ -320,7 +320,7 @@ note:
    │         ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
 
 note: 
-   ┌─ features/external_contract.fe:27:5
+   ┌─ external_contract.fe:27:5
    │  
 27 │ ╭     pub fn call_build_array(
 28 │ │          foo_address: address,
@@ -376,19 +376,19 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:32:18
+   ┌─ external_contract.fe:32:18
    │
 32 │         let foo: Foo = Foo(foo_address)
    │                  ^^^ Foo
 
 note: 
-   ┌─ features/external_contract.fe:32:28
+   ┌─ external_contract.fe:32:28
    │
 32 │         let foo: Foo = Foo(foo_address)
    │                            ^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/external_contract.fe:32:24
+   ┌─ external_contract.fe:32:24
    │
 32 │         let foo: Foo = Foo(foo_address)
    │                        ^^^^^^^^^^^^^^^^ Foo: Value
@@ -399,13 +399,13 @@ note:
    │                Foo: Value
 
 note: 
-   ┌─ features/external_contract.fe:33:16
+   ┌─ external_contract.fe:33:16
    │
 33 │         return foo.build_array(a, b)
    │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory
 
 note: 
-   ┌─ features/external_contract.fe:32:24
+   ┌─ external_contract.fe:32:24
    │
 32 │         let foo: Foo = Foo(foo_address)
    │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))

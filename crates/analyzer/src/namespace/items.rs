@@ -1,22 +1,20 @@
 use crate::context;
+
 use crate::context::{Analysis, Constant};
-use crate::errors::{self, TypeError};
-use crate::impl_intern_key;
+use crate::errors::{self, IncompleteItem, TypeError};
 use crate::namespace::types::FixedSize;
 use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
-use fe_common::files::{FileStore, SourceFile, SourceFileId};
+use fe_common::files::{common_prefix, Utf8Path};
+use fe_common::{impl_intern_key, FileKind, SourceFileId};
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
-use indexmap::indexmap;
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap, IndexSet};
 use smol_str::SmolStr;
-use std::collections::BTreeMap;
 use std::ops::Deref;
-use std::path::Path;
 use std::rc::Rc;
 use strum::IntoEnumIterator;
 
@@ -137,11 +135,11 @@ impl Item {
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.parent(db)),
             Item::Ingot(_) => None,
-            Item::Module(id) => id.parent(db),
+            Item::Module(id) => Some(id.parent(db)),
         }
     }
 
-    pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<Vec<SmolStr>> {
+    pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<[SmolStr]> {
         // The path is used to generate a yul identifier,
         // eg `foo::Bar::new` becomes `$$foo$Bar$new`.
         // Right now, the ingot name is the os path, so it could
@@ -149,11 +147,11 @@ impl Item {
         // For now, we'll just leave the ingot out of the path,
         // because we can only compile a single ingot anyway.
         match self.parent(db) {
-            Some(Item::Ingot(_)) | None => Rc::new(vec![self.name(db)]),
+            Some(Item::Ingot(_)) | None => [self.name(db)][..].into(),
             Some(parent) => {
-                let mut path = parent.path(db).as_ref().clone();
+                let mut path = parent.path(db).to_vec();
                 path.push(self.name(db));
-                Rc::new(path)
+                path.into()
             }
         }
     }
@@ -180,7 +178,7 @@ impl Item {
                 None => {
                     return Analysis {
                         value: None,
-                        diagnostics: Rc::new(vec![errors::error(
+                        diagnostics: Rc::new([errors::error(
                             "unresolved path item",
                             node.span,
                             "not found",
@@ -192,7 +190,7 @@ impl Item {
 
         Analysis {
             value: Some(curr_item),
-            diagnostics: Rc::new(vec![]),
+            diagnostics: Rc::new([]),
         }
     }
 
@@ -242,143 +240,149 @@ pub fn std_prelude_items() -> IndexMap<SmolStr, Item> {
     items
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
-pub struct Global {
-    pub ingots: BTreeMap<SmolStr, IngotId>,
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum IngotMode {
+    /// The target of compilation. Expected to have a main.fe file.
+    Main,
+    /// A library; expected to have a lib.fe file.
+    Lib,
+    /// A fake ingot, created to hold a single module with any filename.
+    StandaloneModule,
 }
 
-impl Global {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        let mut diagnostics = vec![];
-        let mut fatal_diagnostics = vec![];
-
-        let ingots = deps
-            .into_iter()
-            .filter_map(|(name, file_ids)| {
-                // dep map is left empty for now
-                match IngotId::try_new(db, files, name, file_ids, &indexmap! {}) {
-                    Ok(analysis) => {
-                        diagnostics.extend(analysis.diagnostics.deref().clone());
-                        Some((name.to_owned(), analysis.value))
-                    }
-                    Err(diagnostics) => {
-                        fatal_diagnostics.extend(diagnostics);
-                        None
-                    }
-                }
-            })
-            .collect();
-
-        if fatal_diagnostics.is_empty() {
-            Ok(Analysis {
-                value: Global { ingots },
-                diagnostics: Rc::new(diagnostics),
-            })
-        } else {
-            Err(fatal_diagnostics)
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-pub struct GlobalId(pub(crate) u32);
-impl_intern_key!(GlobalId);
-impl GlobalId {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        match Global::try_new(db, files, deps) {
-            Ok(analysis) => Ok(Analysis {
-                value: db.intern_global(Rc::new(analysis.value)),
-                diagnostics: analysis.diagnostics,
-            }),
-            Err(diagnostics) => Err(diagnostics),
-        }
-    }
-
-    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Global> {
-        db.lookup_intern_global(*self)
-    }
-}
-
+/// An `Ingot` is composed of a tree of `Module`s (set via [`AnalyzerDb::set_ingot_module_tree`]),
+/// and doesn't have direct knowledge of files.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Ingot {
     pub name: SmolStr,
-    // pub version: String,
-    pub global: GlobalId,
-    // `BTreeMap` implements `Hash`, which is required for an ID.
-    pub fe_files: BTreeMap<SourceFileId, (SourceFile, ast::Module)>,
-}
+    // pub version: SmolStr,
+    pub mode: IngotMode,
+    pub original: Option<IngotId>,
 
-impl Ingot {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
-        name: &str,
-        file_ids: &[SourceFileId],
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        let global_analysis = GlobalId::try_new(db, files, deps)?;
-
-        let mut diagnostics = global_analysis.diagnostics.deref().clone();
-        let mut fatal_diagnostics = vec![];
-
-        let ingot = Self {
-            name: name.into(),
-            global: global_analysis.value,
-            fe_files: file_ids
-                .iter()
-                .filter_map(|file_id| {
-                    let file = files.get_file(*file_id).expect("missing file for ID");
-                    match fe_parser::parse_file(*file_id, &file.content) {
-                        Ok((ast, parser_diagnostics)) => {
-                            diagnostics.extend(parser_diagnostics);
-                            Some((*file_id, (file.to_owned(), ast)))
-                        }
-                        Err(diagnostics) => {
-                            fatal_diagnostics.extend(diagnostics);
-                            None
-                        }
-                    }
-                })
-                .collect(),
-        };
-
-        if fatal_diagnostics.is_empty() {
-            Ok(Analysis {
-                value: ingot,
-                diagnostics: Rc::new(diagnostics),
-            })
-        } else {
-            Err(fatal_diagnostics)
-        }
-    }
+    pub src_dir: SmolStr,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct IngotId(pub(crate) u32);
 impl_intern_key!(IngotId);
 impl IngotId {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
+    pub fn std_lib(db: &mut dyn AnalyzerDb) -> Self {
+        IngotId::from_files(
+            db,
+            "std",
+            IngotMode::Lib,
+            FileKind::Std,
+            &fe_library::std_src_files(),
+            indexmap!(),
+        )
+    }
+
+    pub fn from_files(
+        db: &mut dyn AnalyzerDb,
         name: &str,
-        file_ids: &[SourceFileId],
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        match Ingot::try_new(db, files, name, file_ids, deps) {
-            Ok(analysis) => Ok(Analysis {
-                value: db.intern_ingot(Rc::new(analysis.value)),
-                diagnostics: analysis.diagnostics,
-            }),
-            Err(diagnostics) => Err(diagnostics),
-        }
+        mode: IngotMode,
+        file_kind: FileKind,
+        files: &[(impl AsRef<str>, impl AsRef<str>)],
+        deps: IndexMap<SmolStr, IngotId>,
+    ) -> Self {
+        // The common prefix of all file paths will be stored as the ingot
+        // src dir path, and all module file paths will be considered to be
+        // relative to this prefix.
+        let file_path_prefix = if files.len() == 1 {
+            // If there's only one source file, the "common prefix" is everything
+            // before the file name.
+            Utf8Path::new(files[0].0.as_ref())
+                .parent()
+                .unwrap_or_else(|| "".into())
+                .to_path_buf()
+        } else {
+            files
+                .iter()
+                .map(|(path, _)| Utf8Path::new(path).to_path_buf())
+                .reduce(|pref, path| common_prefix(&pref, &path))
+                .expect("`IngotId::from_files`: empty file list")
+        };
+
+        let ingot = db.intern_ingot(Rc::new(Ingot {
+            name: name.into(),
+            mode,
+            original: None,
+            src_dir: file_path_prefix.as_str().into(),
+        }));
+
+        // Create a module for every .fe source file.
+        let file_mods = files
+            .iter()
+            .map(|(path, content)| {
+                let file = SourceFileId::new(
+                    db.upcast_mut(),
+                    file_kind,
+                    path.as_ref(),
+                    content.as_ref().into(),
+                );
+                ModuleId::new(
+                    db,
+                    Utf8Path::new(path).file_stem().unwrap(),
+                    ModuleSource::File(file),
+                    ingot,
+                )
+            })
+            .collect();
+
+        // We automatically build a module hierarchy that matches the directory structure.
+        // We don't (yet?) require a .fe file for each directory like rust does.
+        // (eg `a/b.fe` alongside `a/b/`), but we do allow it (the module's items
+        // will be everything inside the .fe file, and the submodules inside the dir.
+        //
+        // Collect the set of all directories in the file hierarchy
+        // (after stripping the common prefix from all paths).
+        // eg given ["src/lib.fe", "src/a/b/x.fe", "src/a/c/d/y.fe"],
+        // the dir set is {"a", "a/b", "a/c", "a/c/d"}.
+        let dirs = files
+            .iter()
+            .map(|(path, _)| {
+                Utf8Path::new(path)
+                    .strip_prefix(&file_path_prefix)
+                    .unwrap_or_else(|_| Utf8Path::new(path))
+                    .ancestors()
+                    .skip(1) // first elem of .ancestors() is the path itself
+            })
+            .flatten()
+            .collect::<IndexSet<&Utf8Path>>();
+
+        let dir_mods = dirs
+            // Skip the dirs that have an associated fe file; eg skip "a/b" if "a/b.fe" exists.
+            .difference(
+                &files
+                    .iter()
+                    .map(|(path, _)| {
+                        Utf8Path::new(path)
+                            .strip_prefix(&file_path_prefix)
+                            .unwrap_or_else(|_| Utf8Path::new(path))
+                            .as_str()
+                            .trim_end_matches(".fe")
+                            .into()
+                    })
+                    .collect::<IndexSet<&Utf8Path>>(),
+            )
+            .filter_map(|dir| {
+                dir.file_name().map(|name| {
+                    ModuleId::new(db, name, ModuleSource::Dir(dir.as_str().into()), ingot)
+                })
+            })
+            .collect::<Vec<_>>();
+
+        db.set_ingot_modules(ingot, [file_mods, dir_mods].concat().into());
+        db.set_ingot_external_ingots(ingot, Rc::new(deps));
+        ingot
+    }
+
+    pub fn external_ingots(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, IngotId>> {
+        db.ingot_external_ingots(*self)
+    }
+
+    pub fn all_modules(&self, db: &dyn AnalyzerDb) -> Rc<[ModuleId]> {
+        db.ingot_modules(*self)
     }
 
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Ingot> {
@@ -389,24 +393,9 @@ impl IngotId {
         self.data(db).name.clone()
     }
 
-    /// Returns the `src/main.fe` module, if it exists.
-    pub fn main_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
-        db.ingot_main_module(*self).value
-    }
-
-    /// Returns the `src/lib.fe` module, if it exists.
-    pub fn lib_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
-        db.ingot_lib_module(*self).value
-    }
-
-    /// Returns the `src/lib.fe` or `src/main.fe` module, whichever one exists.
+    /// Returns the `main.fe`, or `lib.fe` module, depending on the ingot "mode" (IngotMode).
     pub fn root_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
         db.ingot_root_module(*self)
-    }
-
-    /// Returns all of the modules inside of `src`, except for the root module.
-    pub fn root_sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
-        db.ingot_root_sub_modules(*self)
     }
 
     pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
@@ -419,99 +408,98 @@ impl IngotId {
         diagnostics
     }
 
-    pub fn all_modules(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleId>> {
-        db.ingot_all_modules(*self)
-    }
-
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        let modules = self.all_modules(db);
-
-        for module in modules.iter() {
+        if self.root_module(db).is_none() {
+            let file_name = match self.data(db).mode {
+                IngotMode::Lib => "lib",
+                IngotMode::Main => "main",
+                IngotMode::StandaloneModule => unreachable!(), // always has a root module
+            };
+            sink.push(&Diagnostic::error(format!(
+                "The ingot named \"{}\" is missing a `{}` module. \
+                 \nPlease add a `src/{}.fe` file to the base directory.",
+                self.name(db),
+                file_name,
+                file_name,
+            )));
+        }
+        for module in self.all_modules(db).iter() {
             module.sink_diagnostics(db, sink)
         }
+    }
 
-        sink.push_all(db.ingot_main_module(*self).diagnostics.iter());
+    pub fn sink_external_ingot_diagnostics(
+        &self,
+        db: &dyn AnalyzerDb,
+        sink: &mut impl DiagnosticSink,
+    ) {
+        for ingot in self.external_ingots(db).values() {
+            ingot.sink_diagnostics(db, sink)
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum ModuleFileContent {
-    Dir {
-        // directories will have a corresponding source file. we can remove
-        // the `dir_path` attribute when this is added.
-        // file: SourceFileId,
-        dir_path: SmolStr,
+pub enum ModuleSource {
+    File(SourceFileId),
+    /// For directory modules without a corresponding source file
+    /// (which will soon not be allowed, and this variant can go away).
+    Dir(SmolStr),
+    Lowered {
+        original: ModuleId,
+        ast: Rc<ast::Module>,
     },
-    File {
-        file: SourceFileId,
-    },
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum ModuleContext {
-    Ingot(IngotId),
-    Global(GlobalId),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Module {
     pub name: SmolStr,
-    pub context: ModuleContext,
-    pub file_content: ModuleFileContent,
-    pub ast: ast::Module,
+    pub ingot: IngotId,
+
+    /// This differentiates between the original `Module` for a Fe source
+    /// file (which is parsed in the [`AnalyzerDb::module_parse`] query),
+    /// and the lowered `Module`, the ast of which is built in the lowering
+    /// phase, and is stored in the `ModulePhase::Lowered` variant.
+    // This leaks some knowledge about the existence of the lowering phase
+    // into the analyzer, but it seems to be the least bad way to move
+    // parsing into a db query instead of needing to parse at Module intern time.
+    // Someday we'll likely lower into some new IR, in which case we won't need
+    // to allow for lowered versions of `ModuleId`s.
+    pub source: ModuleSource,
 }
 
-impl Module {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
-        file_id: SourceFileId,
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        let global_analysis = GlobalId::try_new(db, files, deps)?;
-        let mut diagnostics = global_analysis.diagnostics.deref().clone();
-
-        let file = files.get_file(file_id).expect("missing file");
-        let name = Path::new(&file.name)
-            .file_stem()
-            .expect("missing file name")
-            .to_string_lossy()
-            .to_string();
-
-        let (ast, parser_diagnostics) = fe_parser::parse_file(file_id, &file.content)?;
-        diagnostics.extend(parser_diagnostics);
-
-        let module = Module {
-            name: name.into(),
-            context: ModuleContext::Global(global_analysis.value),
-            file_content: ModuleFileContent::File { file: file_id },
-            ast,
-        };
-
-        Ok(Analysis {
-            value: module,
-            diagnostics: Rc::new(diagnostics),
-        })
-    }
-}
-
+/// Id of a [`Module`], which corresponds to a single Fe source file.
+/// The lowering phase will create a separate `Module` & `ModuleId`
+/// for the lowered version of the Fe source code.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ModuleId(pub(crate) u32);
 impl_intern_key!(ModuleId);
 impl ModuleId {
-    pub fn try_new(
-        db: &dyn AnalyzerDb,
-        files: &FileStore,
-        file_id: SourceFileId,
-        deps: &IndexMap<SmolStr, Vec<SourceFileId>>,
-    ) -> Result<Analysis<Self>, Vec<Diagnostic>> {
-        match Module::try_new(db, files, file_id, deps) {
-            Ok(analysis) => Ok(Analysis {
-                value: db.intern_module(Rc::new(analysis.value)),
-                diagnostics: analysis.diagnostics,
-            }),
-            Err(diagnostics) => Err(diagnostics),
-        }
+    pub fn new_standalone(db: &mut dyn AnalyzerDb, path: &str, content: &str) -> Self {
+        let std = IngotId::std_lib(db);
+        let ingot = IngotId::from_files(
+            db,
+            "",
+            IngotMode::StandaloneModule,
+            FileKind::Local,
+            &[(path, content)],
+            indexmap! { "std".into() => std },
+        );
+
+        ingot
+            .root_module(db)
+            .expect("ModuleId::new_standalone ingot has no root module")
+    }
+
+    pub fn new(db: &dyn AnalyzerDb, name: &str, source: ModuleSource, ingot: IngotId) -> Self {
+        db.intern_module(
+            Module {
+                name: name.into(),
+                ingot,
+                source,
+            }
+            .into(),
+        )
     }
 
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Module> {
@@ -522,32 +510,27 @@ impl ModuleId {
         self.data(db).name.clone()
     }
 
-    pub fn file_content(&self, db: &dyn AnalyzerDb) -> ModuleFileContent {
-        self.data(db).file_content.clone()
+    pub fn file_path_relative_to_src_dir(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        db.module_file_path(*self)
     }
 
-    pub fn ingot_path(&self, db: &dyn AnalyzerDb) -> SmolStr {
-        match self.context(db) {
-            ModuleContext::Ingot(ingot) => match self.file_content(db) {
-                ModuleFileContent::Dir { dir_path } => dir_path,
-                ModuleFileContent::File { file } => {
-                    ingot.data(db).fe_files[&file].0.name.as_str().into()
-                }
-            },
-            ModuleContext::Global(_) => panic!("cannot get path"),
+    pub fn ast(&self, db: &dyn AnalyzerDb) -> Rc<ast::Module> {
+        match &self.data(db).source {
+            ModuleSource::File(_) | ModuleSource::Dir(_) => db.module_parse(*self).value,
+            ModuleSource::Lowered { ast, .. } => Rc::clone(ast),
         }
     }
 
-    pub fn ast(&self, db: &dyn AnalyzerDb) -> ast::Module {
-        self.data(db).ast.clone()
+    pub fn ingot(&self, db: &dyn AnalyzerDb) -> IngotId {
+        self.data(db).ingot
     }
 
-    pub fn context(&self, db: &dyn AnalyzerDb) -> ModuleContext {
-        self.data(db).context.clone()
+    pub fn is_incomplete(&self, db: &dyn AnalyzerDb) -> bool {
+        db.module_is_incomplete(*self)
     }
 
     /// Includes duplicate names
-    pub fn all_items(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Item>> {
+    pub fn all_items(&self, db: &dyn AnalyzerDb) -> Rc<[Item]> {
         db.module_all_items(*self)
     }
 
@@ -561,17 +544,14 @@ impl ModuleId {
         db.module_used_item_map(*self).value
     }
 
-    /// Returns all of the internal items, except for used items. This is used when resolving
-    /// use statements, as it does not create a query cycle.
+    /// Returns all of the internal items, except for `use`d items. This is used when resolving
+    /// `use` statements, as it does not create a query cycle.
     pub fn non_used_internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
         let global_items = self.global_items(db);
-        let sub_modules = self.sub_modules(db);
 
-        sub_modules
-            .deref()
-            .clone()
-            .into_iter()
-            .map(|(name, module)| (name, Item::Module(module)))
+        self.submodules(db)
+            .iter()
+            .map(|module| (module.name(db), Item::Module(*module)))
             .chain(global_items)
             .collect()
     }
@@ -581,13 +561,9 @@ impl ModuleId {
     pub fn internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
         let global_items = self.global_items(db);
         let defined_items = self.items(db);
-        let sub_modules = self.sub_modules(db);
-
-        sub_modules
-            .deref()
-            .clone()
-            .into_iter()
-            .map(|(name, module)| (name, Item::Module(module)))
+        self.submodules(db)
+            .iter()
+            .map(|module| (module.name(db), Item::Module(*module)))
             .chain(global_items)
             .chain(defined_items.deref().clone())
             .collect()
@@ -612,7 +588,7 @@ impl ModuleId {
         } else {
             Analysis {
                 value: None,
-                diagnostics: Rc::new(vec![errors::error(
+                diagnostics: Rc::new([errors::error(
                     "unresolved path item",
                     first_segment.span,
                     "not found",
@@ -635,7 +611,7 @@ impl ModuleId {
         } else {
             Analysis {
                 value: None,
-                diagnostics: Rc::new(vec![errors::error(
+                diagnostics: Rc::new([errors::error(
                     "unresolved path item",
                     first_segment.span,
                     "not found",
@@ -644,145 +620,48 @@ impl ModuleId {
         }
     }
 
-    /// Resolve a use tree entirely. We set internal to true if the first path item is internal.
-    ///
-    /// e.g. `foo::bar::{baz::bing}`
-    ///       ---        ---
-    ///        ^          ^ baz is not internal
-    ///        foo is internal
-    pub fn resolve_use_tree(
+    /// Returns `Err(IncompleteItem)` if the name could not be resolved, and the module was
+    /// not completely parsed (due to a syntax error).
+    pub fn resolve_name(
         &self,
         db: &dyn AnalyzerDb,
-        tree: &Node<ast::UseTree>,
-        internal: bool,
-    ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
-        let mut diagnostics = vec![];
-
-        // Again, the path resolution method we use depends on whether or not the first item
-        // is internal.
-        let resolve_path = |module: &ModuleId, db: &dyn AnalyzerDb, path: &ast::Path| {
-            if internal {
-                module.resolve_path_non_used_internal(db, path)
-            } else {
-                module.resolve_path(db, path)
-            }
-        };
-
-        match &tree.kind {
-            ast::UseTree::Glob { prefix } => {
-                let prefix_module = resolve_path(self, db, prefix);
-                diagnostics.extend(prefix_module.diagnostics.deref().clone());
-
-                let items = match prefix_module.value {
-                    Some(Item::Module(module)) => module
-                        .items(db)
-                        .deref()
-                        .clone()
-                        .into_iter()
-                        .map(|(name, item)| (name, (tree.span, item)))
-                        .collect(),
-                    Some(item) => {
-                        diagnostics.push(errors::error(
-                            format!("cannot glob import from {}", item.item_kind_display_name()),
-                            prefix.segments.last().expect("path is empty").span,
-                            "prefix item must be a module",
-                        ));
-                        indexmap! {}
-                    }
-                    None => indexmap! {},
-                };
-
-                Analysis {
-                    value: Rc::new(items),
-                    diagnostics: Rc::new(diagnostics),
-                }
-            }
-            ast::UseTree::Nested { prefix, children } => {
-                let prefix_module = resolve_path(self, db, prefix);
-                diagnostics.extend(prefix_module.diagnostics.deref().clone());
-
-                let items = match prefix_module.value {
-                    Some(Item::Module(module)) => {
-                        children.iter().fold(indexmap! {}, |mut accum, node| {
-                            let child_items = module.resolve_use_tree(db, node, false);
-                            diagnostics.extend(child_items.diagnostics.deref().clone());
-
-                            for (name, (name_span, item)) in child_items.value.iter() {
-                                if let Some((other_name_span, other_item)) =
-                                    accum.insert(name.to_owned(), (*name_span, *item))
-                                {
-                                    diagnostics.push(errors::duplicate_name_error(
-                                        &format!(
-                                            "a {} with the same name has already been imported",
-                                            other_item.item_kind_display_name()
-                                        ),
-                                        name,
-                                        other_name_span,
-                                        *name_span,
-                                    ));
-                                }
-                            }
-
-                            accum
-                        })
-                    }
-                    Some(item) => {
-                        diagnostics.push(errors::error(
-                            format!("cannot glob import from {}", item.item_kind_display_name()),
-                            prefix.segments.last().unwrap().span,
-                            "prefix item must be a module",
-                        ));
-                        indexmap! {}
-                    }
-                    None => indexmap! {},
-                };
-
-                Analysis {
-                    value: Rc::new(items),
-                    diagnostics: Rc::new(diagnostics),
-                }
-            }
-            ast::UseTree::Simple { path, rename } => {
-                let item = resolve_path(self, db, path);
-
-                let items = match item.value {
-                    Some(item) => {
-                        let (item_name, item_name_span) = if let Some(name) = rename {
-                            (name.kind.clone(), name.span)
-                        } else {
-                            let name_segment_node = path.segments.last().expect("path is empty");
-                            (name_segment_node.kind.clone(), name_segment_node.span)
-                        };
-
-                        indexmap! { item_name => (item_name_span, item) }
-                    }
-                    None => indexmap! {},
-                };
-
-                Analysis {
-                    value: Rc::new(items),
-                    diagnostics: item.diagnostics,
-                }
-            }
+        name: &str,
+    ) -> Result<Option<Item>, IncompleteItem> {
+        if let Some(thing) = self.internal_items(db).get(name) {
+            Ok(Some(*thing))
+        } else if self.is_incomplete(db) {
+            Err(IncompleteItem::new())
+        } else {
+            Ok(None)
         }
     }
 
-    pub fn resolve_name(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Item> {
-        self.internal_items(db).get(name).copied()
+    pub fn resolve_constant(
+        &self,
+        db: &dyn AnalyzerDb,
+        name: &str,
+    ) -> Result<Option<ModuleConstantId>, IncompleteItem> {
+        if let Some(constant) = self
+            .all_constants(db)
+            .iter()
+            .find(|id| id.name(db) == name)
+            .copied()
+        {
+            Ok(Some(constant))
+        } else if self.is_incomplete(db) {
+            Err(IncompleteItem::new())
+        } else {
+            Ok(None)
+        }
+    }
+    pub fn submodules(&self, db: &dyn AnalyzerDb) -> Rc<[ModuleId]> {
+        db.module_submodules(*self)
     }
 
-    pub fn sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
-        db.module_sub_modules(*self)
-    }
-
-    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
-        self.parent_module(db).map(Item::Module).or_else(|| {
-            if let ModuleContext::Ingot(ingot) = self.data(db).context {
-                Some(Item::Ingot(ingot))
-            } else {
-                None
-            }
-        })
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        self.parent_module(db)
+            .map(Item::Module)
+            .unwrap_or_else(|| Item::Ingot(self.ingot(db)))
     }
 
     pub fn parent_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
@@ -790,39 +669,28 @@ impl ModuleId {
     }
 
     /// All contracts, including duplicates
-    pub fn all_contracts(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ContractId>> {
+    pub fn all_contracts(&self, db: &dyn AnalyzerDb) -> Rc<[ContractId]> {
         db.module_contracts(*self)
-    }
-
-    /// Returns the global item for this module.
-    pub fn global(&self, db: &dyn AnalyzerDb) -> GlobalId {
-        match self.context(db) {
-            ModuleContext::Ingot(ingot) => ingot.data(db).global,
-            ModuleContext::Global(global) => global,
-        }
     }
 
     /// Returns the map of ingot deps, built-ins, and the ingot itself as "ingot".
     pub fn global_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
-        let mut items = self
-            .global(db)
-            .data(db)
-            .ingots
-            .clone()
-            .into_iter()
-            .map(|(name, ingot)| (name, Item::Ingot(ingot)))
+        let ingot = self.ingot(db);
+        let mut items = ingot
+            .external_ingots(db)
+            .iter()
+            .map(|(name, ingot)| (name.clone(), Item::Ingot(*ingot)))
             .chain(std_prelude_items())
             .collect::<IndexMap<_, _>>();
 
-        if let ModuleContext::Ingot(ingot) = self.context(db) {
+        if ingot.data(db).mode != IngotMode::StandaloneModule {
             items.insert("ingot".into(), Item::Ingot(ingot));
         }
-
         items
     }
 
     /// All structs, including duplicatecrates/analyzer/src/db.rss
-    pub fn all_structs(&self, db: &dyn AnalyzerDb) -> Rc<Vec<StructId>> {
+    pub fn all_structs(&self, db: &dyn AnalyzerDb) -> Rc<[StructId]> {
         db.module_structs(*self)
     }
 
@@ -838,8 +706,12 @@ impl ModuleId {
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        let ast::Module { body } = &self.data(db).ast;
-        for stmt in body {
+        let data = self.data(db);
+        if let ModuleSource::File(_) = data.source {
+            sink.push_all(db.module_parse(*self).diagnostics.iter())
+        }
+        let ast = self.ast(db);
+        for stmt in &ast.body {
             if let ast::ModuleStmt::Pragma(inner) = stmt {
                 if let Some(diag) = check_pragma_version(inner) {
                     sink.push(&diag)
@@ -1050,12 +922,21 @@ impl ContractId {
         Some((field.typ(db), index))
     }
 
-    pub fn resolve_name(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Item> {
-        self.function(db, name)
+    pub fn resolve_name(
+        &self,
+        db: &dyn AnalyzerDb,
+        name: &str,
+    ) -> Result<Option<Item>, IncompleteItem> {
+        if let Some(item) = self
+            .function(db, name)
             .filter(|f| !f.takes_self(db))
             .map(Item::Function)
             .or_else(|| self.event(db, name).map(Item::Event))
-            .or_else(|| self.module(db).resolve_name(db, name))
+        {
+            Ok(Some(item))
+        } else {
+            self.module(db).resolve_name(db, name)
+        }
     }
 
     pub fn init_function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {

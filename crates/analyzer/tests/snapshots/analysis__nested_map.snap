@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/nested_map.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/nested_map.fe:2:5
+  ┌─ nested_map.fe:2:5
   │
 2 │     bar: Map<address, Map<address, u256>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
@@ -12,7 +12,7 @@ note:
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<u256, bool>>
 
 note: 
-  ┌─ features/nested_map.fe:5:5
+  ┌─ nested_map.fe:5:5
   │  
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
@@ -50,13 +50,13 @@ note:
     }
 
 note: 
-  ┌─ features/nested_map.fe:6:16
+  ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/nested_map.fe:6:16
+  ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
   │                ^^^^^^^^ ^ address: Value
@@ -64,7 +64,7 @@ note:
   │                Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/nested_map.fe:6:16
+  ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
   │                ^^^^^^^^^^^ ^ address: Value
@@ -72,13 +72,13 @@ note:
   │                Map<address, u256>: Storage { nonce: None }
 
 note: 
-  ┌─ features/nested_map.fe:6:16
+  ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
   │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
-  ┌─ features/nested_map.fe:8:5
+  ┌─ nested_map.fe:8:5
   │  
 8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
@@ -124,13 +124,13 @@ note:
     }
 
 note: 
-  ┌─ features/nested_map.fe:9:9
+  ┌─ nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/nested_map.fe:9:9
+  ┌─ nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
   │         ^^^^^^^^ ^ address: Value
@@ -138,7 +138,7 @@ note:
   │         Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/nested_map.fe:9:9
+  ┌─ nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
   │         ^^^^^^^^^^^ ^ address: Value
@@ -146,7 +146,7 @@ note:
   │         Map<address, u256>: Storage { nonce: None }
 
 note: 
-  ┌─ features/nested_map.fe:9:9
+  ┌─ nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
   │         ^^^^^^^^^^^^^^   ^^^^^ u256: Value
@@ -154,7 +154,7 @@ note:
   │         u256: Storage { nonce: None }
 
 note: 
-   ┌─ features/nested_map.fe:11:5
+   ┌─ nested_map.fe:11:5
    │  
 11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
@@ -192,13 +192,13 @@ note:
      }
 
 note: 
-   ┌─ features/nested_map.fe:12:16
+   ┌─ nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ features/nested_map.fe:12:16
+   ┌─ nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
    │                ^^^^^^^^ ^ address: Value
@@ -206,7 +206,7 @@ note:
    │                Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ features/nested_map.fe:12:16
+   ┌─ nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
    │                ^^^^^^^^^^^ ^ u256: Value
@@ -214,13 +214,13 @@ note:
    │                Map<u256, bool>: Storage { nonce: None }
 
 note: 
-   ┌─ features/nested_map.fe:12:16
+   ┌─ nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
    │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Value
 
 note: 
-   ┌─ features/nested_map.fe:14:5
+   ┌─ nested_map.fe:14:5
    │  
 14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
@@ -266,13 +266,13 @@ note:
      }
 
 note: 
-   ┌─ features/nested_map.fe:15:9
+   ┌─ nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ features/nested_map.fe:15:9
+   ┌─ nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
    │         ^^^^^^^^ ^ address: Value
@@ -280,7 +280,7 @@ note:
    │         Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ features/nested_map.fe:15:9
+   ┌─ nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^ ^ u256: Value
@@ -288,7 +288,7 @@ note:
    │         Map<u256, bool>: Storage { nonce: None }
 
 note: 
-   ┌─ features/nested_map.fe:15:9
+   ┌─ nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^^^^   ^^^^^ bool: Value

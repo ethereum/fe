@@ -1,45 +1,41 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::namespace::items::{IngotId, ModuleId};
+use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
 use fe_analyzer::TestDb;
 use fe_common::diagnostics::diagnostics_string;
-use fe_common::files::FileStore;
+use fe_common::files::FileKind;
+use indexmap::indexmap;
 use insta::assert_snapshot;
-use test_files::build_filestore;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 fn error_string(path: &str, src: &str) -> String {
-    let mut files = FileStore::new();
-    let id = files.add_file(path, src);
-    let deps = files.add_included_libraries();
+    let mut db = TestDb::default();
+    let module = ModuleId::new_standalone(&mut db, path, src);
 
-    let db = TestDb::default();
-
-    let module_id = ModuleId::try_new(&db, &files, id, &deps)
-        .expect("failed to create new module")
-        .value;
-
-    match fe_analyzer::analyze_module(&db, module_id) {
-        Ok(_) => panic!("expected analysis to fail with an error"),
-        Err(diags) => diagnostics_string(&diags, &files),
+    let diags = module.diagnostics(&db);
+    if diags.is_empty() {
+        panic!("expected analysis to fail with an error")
     }
+    diagnostics_string(&db, &diags)
 }
 
 fn error_string_ingot(path: &str) -> String {
-    let mut files = build_filestore(path);
-    let file_ids = files.all_files();
-    let deps = files.add_included_libraries();
+    let mut db = TestDb::default();
+    let std = IngotId::std_lib(&mut db);
+    let ingot = IngotId::from_files(
+        &mut db,
+        "test_ingot",
+        IngotMode::Main,
+        FileKind::Local,
+        &test_files::fixture_dir_files(path),
+        indexmap! { "std".into() => std },
+    );
 
-    let db = TestDb::default();
-
-    let ingot_id = IngotId::try_new(&db, &files, path, &file_ids, &deps)
-        .expect("failed to create new ingot")
-        .value;
-
-    match fe_analyzer::analyze_ingot(&db, ingot_id) {
-        Ok(_) => panic!("expected analysis to fail with an error"),
-        Err(diags) => diagnostics_string(&diags, &files),
+    let diags = ingot.diagnostics(&db);
+    if diags.is_empty() {
+        panic!("expected analysis to fail with an error");
     }
+    diagnostics_string(&db, &diags)
 }
 
 macro_rules! test_ingot {
@@ -47,7 +43,7 @@ macro_rules! test_ingot {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let path = concat!("compile_errors/", stringify!($name));
+            let path = concat!("compile_errors/", stringify!($name), "/src");
 
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
@@ -67,14 +63,13 @@ macro_rules! test_file {
         #[wasm_bindgen_test]
         fn $name() {
             let path = concat!("compile_errors/", stringify!($name), ".fe");
-            let src = test_files::fixture(path);
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/errors__", stringify!($name), ".snap"),
-                    error_string(&path, &src)
+                    error_string(&path, test_files::fixture(path))
                 );
             } else {
-                assert_snapshot!(error_string(&path, &src));
+                assert_snapshot!(error_string(&path, test_files::fixture(path)));
             }
         }
     };

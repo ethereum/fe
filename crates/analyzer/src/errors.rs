@@ -97,6 +97,25 @@ impl From<FatalError> for ConstEvalError {
     }
 }
 
+impl From<IncompleteItem> for ConstEvalError {
+    fn from(err: IncompleteItem) -> Self {
+        Self(err.0)
+    }
+}
+
+/// Error returned by `ModuleId::resolve_name` if the name is not found, and parsing of the module
+/// failed. In this case, emitting an error message about failure to resolve the name might be misleading,
+/// because the file may in fact contain an item with the given name, somewhere after the syntax error that caused
+/// parsing to fail.
+#[derive(Debug)]
+pub struct IncompleteItem(DiagnosticVoucher);
+impl IncompleteItem {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self(DiagnosticVoucher::assume_the_parser_handled_it())
+    }
+}
+
 /// Error to be returned from APIs that should reject duplicate definitions
 #[derive(Debug)]
 pub struct AlreadyDefined;
@@ -131,6 +150,18 @@ pub struct AnalyzerError(pub Vec<Diagnostic>);
 
 impl From<TypeError> for FatalError {
     fn from(err: TypeError) -> Self {
+        Self::new(err.0)
+    }
+}
+
+impl From<IncompleteItem> for FatalError {
+    fn from(err: IncompleteItem) -> Self {
+        Self::new(err.0)
+    }
+}
+
+impl From<IncompleteItem> for TypeError {
+    fn from(err: IncompleteItem) -> Self {
         Self::new(err.0)
     }
 }

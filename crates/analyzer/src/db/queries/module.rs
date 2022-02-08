@@ -2,28 +2,67 @@ use crate::context::{Analysis, AnalyzerContext, Constant};
 use crate::db::AnalyzerDb;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Function, Item, ModuleConstant, ModuleConstantId, ModuleContext,
-    ModuleFileContent, ModuleId, Struct, StructId, TypeAlias, TypeDef,
+    Contract, ContractId, Function, Item, ModuleConstant, ModuleConstantId, ModuleId, ModuleSource,
+    Struct, StructId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
 use crate::traversal::{const_expr, expressions, types::type_desc};
 use fe_common::diagnostics::Label;
+use fe_common::files::Utf8Path;
 use fe_common::Span;
-use fe_parser::ast;
+use fe_parser::{ast, node::Node};
 use indexmap::indexmap;
 use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
-use std::collections::HashSet;
-use std::ops::Deref;
-use std::path::Path;
 use std::rc::Rc;
 
-pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> {
-    let ast::Module { body } = &module.data(db).ast;
+pub fn module_file_path(db: &dyn AnalyzerDb, module: ModuleId) -> SmolStr {
+    let full_path = match &module.data(db).source {
+        ModuleSource::File(file) => file.path(db.upcast()).as_str().into(),
+        ModuleSource::Dir(path) => path.clone(),
+        ModuleSource::Lowered { original, .. } => return db.module_file_path(*original),
+    };
 
-    let items = body
-        .iter()
+    let src_prefix = &module.ingot(db).data(db).src_dir;
+
+    Utf8Path::new(full_path.as_str())
+        .strip_prefix(src_prefix.as_str())
+        .map(|path| path.as_str().into())
+        .unwrap_or(full_path)
+}
+
+pub fn module_parse(db: &dyn AnalyzerDb, module: ModuleId) -> Analysis<Rc<ast::Module>> {
+    let data = module.data(db);
+    match data.source {
+        ModuleSource::File(file) => {
+            let (ast, diags) = fe_parser::parse_file(file, &file.content(db.upcast()));
+            Analysis::new(ast.into(), diags.into())
+        }
+        ModuleSource::Dir(_) => {
+            // Directory with no corresponding source file. Return empty ast.
+            Analysis::new(ast::Module { body: vec![] }.into(), vec![].into())
+        }
+        ModuleSource::Lowered { .. } => panic!("module_parse called on lowered module"),
+    }
+}
+
+pub fn module_is_incomplete(db: &dyn AnalyzerDb, module: ModuleId) -> bool {
+    if matches!(module.data(db).source, ModuleSource::File(_)) {
+        let ast = module.ast(db);
+        ast.body
+            .last()
+            .map(|stmt| matches!(stmt, ast::ModuleStmt::ParseError(_)))
+            .unwrap_or(false)
+    } else {
+        false
+    }
+}
+
+pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
+    let body = &module.ast(db).body;
+
+    body.iter()
         .filter_map(|stmt| match stmt {
             ast::ModuleStmt::TypeAlias(node) => Some(Item::Type(TypeDef::Alias(
                 db.intern_type_alias(Rc::new(TypeAlias {
@@ -60,9 +99,9 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
             ast::ModuleStmt::Pragma(_) => None,
             ast::ModuleStmt::Use(_) => None,
             ast::ModuleStmt::Event(_) => todo!(),
+            ast::ModuleStmt::ParseError(_) => None,
         })
-        .collect();
-    Rc::new(items)
+        .collect()
 }
 
 pub fn module_item_map(
@@ -73,14 +112,14 @@ pub fn module_item_map(
     let global_items = module.global_items(db);
 
     // sub modules and used items are included in this map
-    let sub_modules = module
-        .sub_modules(db)
+    let submodules = module
+        .submodules(db)
         .iter()
-        .map(|(name, id)| (name.clone(), Item::Module(*id)))
+        .map(|id| (id.name(db), Item::Module(*id)))
         .collect::<IndexMap<_, _>>();
     let used_items = db.module_used_item_map(module);
 
-    let mut diagnostics = used_items.diagnostics.deref().clone();
+    let mut diagnostics = used_items.diagnostics.to_vec();
     let mut map = IndexMap::<SmolStr, Item>::new();
 
     for item in module.all_items(db).iter() {
@@ -148,53 +187,48 @@ pub fn module_item_map(
             }
         }
     }
-    Analysis {
-        value: Rc::new(
-            map.into_iter()
-                .chain(sub_modules)
-                .chain(
-                    used_items
-                        .value
-                        .iter()
-                        .map(|(name, (_, item))| (name.to_owned(), *item)),
-                )
-                .collect::<IndexMap<_, _>>(),
-        ),
-        diagnostics: Rc::new(diagnostics),
-    }
-}
-
-pub fn module_contracts(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ContractId>> {
-    Rc::new(
-        module
-            .all_items(db)
-            .iter()
-            .filter_map(|item| match item {
-                Item::Type(TypeDef::Contract(id)) => Some(*id),
-                _ => None,
-            })
-            .collect(),
-    )
-}
-
-pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<StructId>> {
-    Rc::new(
-        module
-            .all_items(db)
-            .iter()
+    Analysis::new(
+        map.into_iter()
+            .chain(submodules)
             .chain(
-                module
-                    .used_items(db)
-                    .values()
-                    .into_iter()
-                    .map(|(_, item)| item),
+                used_items
+                    .value
+                    .iter()
+                    .map(|(name, (_, item))| (name.to_owned(), *item)),
             )
-            .filter_map(|item| match item {
-                Item::Type(TypeDef::Struct(id)) => Some(*id),
-                _ => None,
-            })
-            .collect(),
+            .collect::<IndexMap<_, _>>()
+            .into(),
+        diagnostics.into(),
     )
+}
+
+pub fn module_contracts(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ContractId]> {
+    module
+        .all_items(db)
+        .iter()
+        .filter_map(|item| match item {
+            Item::Type(TypeDef::Contract(id)) => Some(*id),
+            _ => None,
+        })
+        .collect()
+}
+
+pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[StructId]> {
+    module
+        .all_items(db)
+        .iter()
+        .chain(
+            module
+                .used_items(db)
+                .values()
+                .into_iter()
+                .map(|(_, item)| item),
+        )
+        .filter_map(|item| match item {
+            Item::Type(TypeDef::Struct(id)) => Some(*id),
+            _ => None,
+        })
+        .collect()
 }
 
 pub fn module_constants(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ModuleConstantId>> {
@@ -243,10 +277,7 @@ pub fn module_constant_type(
         _ => {}
     }
 
-    Analysis {
-        value: typ,
-        diagnostics: Rc::new(scope.diagnostics),
-    }
+    Analysis::new(typ, scope.diagnostics.into())
 }
 
 pub fn module_constant_type_cycle(
@@ -263,7 +294,7 @@ pub fn module_constant_type_cycle(
 
     Analysis {
         value: err,
-        diagnostics: Rc::new(context.diagnostics),
+        diagnostics: context.diagnostics.into(),
     }
 }
 
@@ -283,7 +314,7 @@ pub fn module_constant_value(
         Err(err) => {
             return Analysis {
                 value: Err(err.into()),
-                diagnostics: Rc::new(vec![]),
+                diagnostics: vec![].into(),
             };
         }
     };
@@ -294,7 +325,7 @@ pub fn module_constant_value(
         // No need to emit diagnostics, it's already emitted in `module_constant_type`.
         return Analysis {
             value: Err(err.into()),
-            diagnostics: Rc::new(vec![]),
+            diagnostics: vec![].into(),
         };
     }
 
@@ -306,7 +337,7 @@ pub fn module_constant_value(
 
     Analysis {
         value,
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }
 
@@ -324,7 +355,7 @@ pub fn module_constant_value_cycle(
 
     Analysis {
         value: err,
-        diagnostics: Rc::new(context.diagnostics),
+        diagnostics: context.diagnostics.into(),
     }
 }
 
@@ -336,14 +367,14 @@ pub fn module_used_item_map(
     let global_items = module.global_items(db);
 
     let mut diagnostics = vec![];
-    let ast::Module { body } = &module.data(db).ast;
+    let body = &module.ast(db).body;
 
     let items = body
         .iter()
         .fold(indexmap! {}, |mut accum, stmt| {
             if let ast::ModuleStmt::Use(use_stmt) = stmt {
-                let items = module.resolve_use_tree(db, &use_stmt.kind.tree, true);
-                diagnostics.extend(items.diagnostics.deref().clone());
+                let items = resolve_use_tree(db, module, &use_stmt.kind.tree, true);
+                diagnostics.extend(items.diagnostics.iter().cloned());
 
                 for (name, (name_span, item)) in items.value.iter() {
                     if let Some((other_name_span, other_item)) =
@@ -385,66 +416,176 @@ pub fn module_used_item_map(
         })
         .collect::<IndexMap<_, _>>();
 
-    Analysis {
-        value: Rc::new(items),
-        diagnostics: Rc::new(diagnostics),
-    }
+    Analysis::new(Rc::new(items), diagnostics.into())
 }
 
 pub fn module_parent_module(db: &dyn AnalyzerDb, module: ModuleId) -> Option<ModuleId> {
-    match module.context(db) {
-        ModuleContext::Ingot(ingot) => {
-            let all_modules = ingot.all_modules(db);
+    module
+        .ingot(db)
+        .all_modules(db)
+        .iter()
+        .find(|&&id| id != module && id.submodules(db).iter().any(|&sub| sub == module))
+        .copied()
+}
 
-            for curr_module in all_modules.iter() {
-                if curr_module
-                    .sub_modules(db)
-                    .values()
-                    .collect::<HashSet<_>>()
-                    .contains(&module)
-                {
-                    return Some(*curr_module);
-                }
+pub fn module_submodules(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ModuleId]> {
+    // The module tree is entirely based on the file hierarchy for now.
+
+    let ingot = module.ingot(db);
+    if Some(module) == ingot.root_module(db) {
+        ingot
+            .all_modules(db)
+            .iter()
+            .copied()
+            .filter(|&module_id| {
+                module_id != module
+                    && Utf8Path::new(module_id.file_path_relative_to_src_dir(db).as_str())
+                        .components()
+                        .take(2)
+                        .count()
+                        == 1
+            })
+            .collect()
+    } else {
+        let dir_path = match &module.data(db).source {
+            ModuleSource::Dir(path) => path.as_str().into(),
+            _ => {
+                let file_path = module.file_path_relative_to_src_dir(db);
+                let path = Utf8Path::new(file_path.as_str());
+                path.parent()
+                    .unwrap_or_else(|| Utf8Path::new(""))
+                    .join(path.file_stem().expect("source file name with no stem"))
             }
+        };
 
-            None
-        }
-        ModuleContext::Global(_) => None,
+        ingot
+            .all_modules(db)
+            .iter()
+            .copied()
+            .filter(|&module_id| {
+                module_id != module
+                    && Utf8Path::new(module_id.file_path_relative_to_src_dir(db).as_str())
+                        .parent()
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "module file in ingot does not have parent path: `{}`",
+                                module_id.file_path_relative_to_src_dir(db)
+                            )
+                        })
+                        == dir_path
+            })
+            .collect()
     }
 }
 
-pub fn module_sub_modules(
+/// Resolve a use tree entirely. We set internal to true if the first path item is internal.
+///
+/// e.g. `foo::bar::{baz::bing}`
+///       ---        ---
+///        ^          ^ baz is not internal
+///        foo is internal
+fn resolve_use_tree(
     db: &dyn AnalyzerDb,
     module: ModuleId,
-) -> Rc<IndexMap<SmolStr, ModuleId>> {
-    match module.context(db) {
-        ModuleContext::Ingot(ingot) => {
-            let all_modules = ingot.all_modules(db);
+    tree: &Node<ast::UseTree>,
+    internal: bool,
+) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
+    let mut diagnostics = vec![];
 
-            match module.file_content(db) {
-                ModuleFileContent::Dir { dir_path } => {
-                    let sub_modules = all_modules
-                        .iter()
-                        .filter(|module_id| {
-                            Path::new(module_id.ingot_path(db).as_str())
-                                .parent()
-                                .expect("module file in ingot does not have parent path")
-                                == Path::new(dir_path.as_str())
-                        })
-                        .map(|module_id| (module_id.name(db), *module_id))
-                        .collect::<IndexMap<_, _>>();
-                    Rc::new(sub_modules)
-                }
-                ModuleFileContent::File { .. } => {
-                    if Some(module) == ingot.root_module(db) {
-                        ingot.root_sub_modules(db)
-                    } else {
-                        Rc::new(indexmap! {})
-                    }
-                }
-            }
+    // Again, the path resolution method we use depends on whether or not the first item
+    // is internal.
+    let resolve_path = |module: ModuleId, db: &dyn AnalyzerDb, path: &ast::Path| {
+        if internal {
+            module.resolve_path_non_used_internal(db, path)
+        } else {
+            module.resolve_path(db, path)
         }
-        // if we are compiling a module in the global context, then it will not have any sub-modules
-        ModuleContext::Global(_) => Rc::new(indexmap! {}),
+    };
+
+    match &tree.kind {
+        ast::UseTree::Glob { prefix } => {
+            let prefix_module = resolve_path(module, db, prefix);
+            diagnostics.extend(prefix_module.diagnostics.iter().cloned());
+
+            let items = match prefix_module.value {
+                Some(Item::Module(module)) => module
+                    .items(db)
+                    .iter()
+                    .map(|(name, item)| (name.clone(), (tree.span, *item)))
+                    .collect(),
+                Some(item) => {
+                    diagnostics.push(errors::error(
+                        format!("cannot glob import from {}", item.item_kind_display_name()),
+                        prefix.segments.last().expect("path is empty").span,
+                        "prefix item must be a module",
+                    ));
+                    indexmap! {}
+                }
+                None => indexmap! {},
+            };
+
+            Analysis::new(items.into(), diagnostics.into())
+        }
+        ast::UseTree::Nested { prefix, children } => {
+            let prefix_module = resolve_path(module, db, prefix);
+            diagnostics.extend(prefix_module.diagnostics.iter().cloned());
+
+            let items = match prefix_module.value {
+                Some(Item::Module(module)) => {
+                    children.iter().fold(indexmap! {}, |mut accum, node| {
+                        let child_items = resolve_use_tree(db, module, node, false);
+                        diagnostics.extend(child_items.diagnostics.iter().cloned());
+
+                        for (name, (name_span, item)) in child_items.value.iter() {
+                            if let Some((other_name_span, other_item)) =
+                                accum.insert(name.to_owned(), (*name_span, *item))
+                            {
+                                diagnostics.push(errors::duplicate_name_error(
+                                    &format!(
+                                        "a {} with the same name has already been imported",
+                                        other_item.item_kind_display_name()
+                                    ),
+                                    name,
+                                    other_name_span,
+                                    *name_span,
+                                ));
+                            }
+                        }
+
+                        accum
+                    })
+                }
+                Some(item) => {
+                    diagnostics.push(errors::error(
+                        format!("cannot glob import from {}", item.item_kind_display_name()),
+                        prefix.segments.last().unwrap().span,
+                        "prefix item must be a module",
+                    ));
+                    indexmap! {}
+                }
+                None => indexmap! {},
+            };
+
+            Analysis::new(items.into(), diagnostics.into())
+        }
+        ast::UseTree::Simple { path, rename } => {
+            let item = resolve_path(module, db, path);
+
+            let items = match item.value {
+                Some(item) => {
+                    let (item_name, item_name_span) = if let Some(name) = rename {
+                        (name.kind.clone(), name.span)
+                    } else {
+                        let name_segment_node = path.segments.last().expect("path is empty");
+                        (name_segment_node.kind.clone(), name_segment_node.span)
+                    };
+
+                    indexmap! { item_name => (item_name_span, item) }
+                }
+                None => indexmap! {},
+            };
+
+            Analysis::new(items.into(), item.diagnostics)
+        }
     }
 }

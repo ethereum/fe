@@ -11,24 +11,30 @@ use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 use semver::VersionReq;
 
 /// Parse a [`Module`].
-pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
+pub fn parse_module(par: &mut Parser) -> Node<Module> {
     let mut body = vec![];
     loop {
         match par.peek() {
-            Some(TokenKind::Newline) => par.expect_newline("module")?,
+            Some(TokenKind::Newline) => par.expect_newline("module").unwrap(),
             Some(TokenKind::Dedent) => {
-                par.next()?;
+                par.next().unwrap();
                 break;
             }
             None => break,
             Some(_) => {
-                let stmt = parse_module_stmt(par)?;
-                body.push(stmt);
+                match parse_module_stmt(par) {
+                    Ok(stmt) => body.push(stmt),
+                    Err(_) => {
+                        // TODO: capture a real span here
+                        body.push(ModuleStmt::ParseError(Span::zero(par.file_id)));
+                        break;
+                    }
+                };
             }
         }
     }
     let span = Span::zero(par.file_id) + body.first() + body.last();
-    Ok(Node::new(Module { body }, span))
+    Node::new(Module { body }, span)
 }
 
 /// Parse a [`ModuleStmt`].

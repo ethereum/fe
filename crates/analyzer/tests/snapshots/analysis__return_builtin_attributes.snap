@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_builtin_attributes.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/return_builtin_attributes.fe:2:5
+  ┌─ return_builtin_attributes.fe:2:5
   │  
 2 │ ╭     pub fn coinbase() -> address:
 3 │ │         return block.coinbase
@@ -21,13 +21,13 @@ note:
     }
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:3:16
+  ┌─ return_builtin_attributes.fe:3:16
   │
 3 │         return block.coinbase
   │                ^^^^^^^^^^^^^^ address: Value
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:5:5
+  ┌─ return_builtin_attributes.fe:5:5
   │  
 5 │ ╭     pub fn difficulty() -> u256:
 6 │ │         return block.difficulty
@@ -46,13 +46,13 @@ note:
     }
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:6:16
+  ┌─ return_builtin_attributes.fe:6:16
   │
 6 │         return block.difficulty
   │                ^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:8:5
+  ┌─ return_builtin_attributes.fe:8:5
   │  
 8 │ ╭     pub fn number() -> u256:
 9 │ │         return block.number
@@ -71,13 +71,13 @@ note:
     }
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:9:16
+  ┌─ return_builtin_attributes.fe:9:16
   │
 9 │         return block.number
   │                ^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:11:5
+   ┌─ return_builtin_attributes.fe:11:5
    │  
 11 │ ╭     pub fn timestamp() -> u256:
 12 │ │         return block.timestamp
@@ -96,13 +96,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:12:16
+   ┌─ return_builtin_attributes.fe:12:16
    │
 12 │         return block.timestamp
    │                ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:14:5
+   ┌─ return_builtin_attributes.fe:14:5
    │  
 14 │ ╭     pub fn chainid() -> u256:
 15 │ │         return chain.id
@@ -121,13 +121,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:15:16
+   ┌─ return_builtin_attributes.fe:15:16
    │
 15 │         return chain.id
    │                ^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:17:5
+   ┌─ return_builtin_attributes.fe:17:5
    │  
 17 │ ╭     pub fn sender() -> address:
 18 │ │         return msg.sender
@@ -144,13 +144,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:18:16
+   ┌─ return_builtin_attributes.fe:18:16
    │
 18 │         return msg.sender
    │                ^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:20:5
+   ┌─ return_builtin_attributes.fe:20:5
    │  
 20 │ ╭     pub fn value() -> u256:
 21 │ │         return msg.value
@@ -169,13 +169,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:21:16
+   ┌─ return_builtin_attributes.fe:21:16
    │
 21 │         return msg.value
    │                ^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:23:5
+   ┌─ return_builtin_attributes.fe:23:5
    │  
 23 │ ╭     pub fn origin() -> address:
 24 │ │         return tx.origin
@@ -192,13 +192,13 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:24:16
+   ┌─ return_builtin_attributes.fe:24:16
    │
 24 │         return tx.origin
    │                ^^^^^^^^^ address: Value
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:26:5
+   ┌─ return_builtin_attributes.fe:26:5
    │  
 26 │ ╭     pub fn gas_price() -> u256:
 27 │ │         return tx.gas_price
@@ -217,7 +217,7 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:27:16
+   ┌─ return_builtin_attributes.fe:27:16
    │
 27 │         return tx.gas_price
    │                ^^^^^^^^^^^^ u256: Value

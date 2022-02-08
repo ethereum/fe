@@ -150,7 +150,7 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
 
 fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        match scope.resolve_name(&name.kind) {
+        match scope.resolve_name(&name.kind)? {
             None => {
                 scope.error(
                     &format!("undefined event: `{}`", name.kind),

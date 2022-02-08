@@ -117,7 +117,7 @@ fn test_revert() {
 
         validate_revert(
             harness.capture_call(&mut executor, "revert_custom_error", &[]),
-            &encode_revert("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
+            &encode_revert("Error(uint256)", &[uint_token(0x100)]),
         );
 
         validate_revert(

@@ -110,6 +110,6 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
             name: event_name.kind.clone(),
             fields,
         }),
-        diagnostics: Rc::new(scope.diagnostics),
+        diagnostics: scope.diagnostics.into(),
     }
 }

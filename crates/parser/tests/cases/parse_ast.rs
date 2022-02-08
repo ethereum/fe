@@ -1,7 +1,10 @@
+use fe_common::db::TestDb;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::ron::to_ron_string_pretty;
+use fe_common::SourceFileId;
 use fe_parser::grammar::{expressions, functions, module, types};
-use fe_parser::{ParseResult, Parser};
+use fe_parser::node::Node;
+use fe_parser::{ast, ParseResult, Parser};
 use insta::assert_snapshot;
 use serde::Serialize;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -11,13 +14,13 @@ where
     F: FnMut(&mut Parser) -> ParseResult<T>,
     T: Serialize,
 {
-    let mut files = fe_common::files::FileStore::new();
-    let id = files.add_file(test_name, src);
+    let mut db = TestDb::default();
+    let id = SourceFileId::new_local(&mut db, test_name, src.into());
     let mut parser = Parser::new(id, src);
 
     if let Ok(ast) = parse_fn(&mut parser) {
         if !parser.diagnostics.is_empty() {
-            print_diagnostics(&parser.diagnostics, &files);
+            print_diagnostics(&db, &parser.diagnostics);
             panic!("parse error");
         }
         to_ron_string_pretty(&ast).unwrap()
@@ -30,15 +33,20 @@ where
                     tok.span,
                     "this is the next token at time of parsing failure",
                 );
-                print_diagnostics(&parser.diagnostics, &files);
+                print_diagnostics(&db, &parser.diagnostics);
             } else {
                 eprintln!("parser is at end of file");
             }
         } else {
-            print_diagnostics(&parser.diagnostics, &files);
+            print_diagnostics(&db, &parser.diagnostics);
         }
         panic!("parse failed");
     }
+}
+
+fn try_parse_module(par: &mut Parser) -> ParseResult<Node<ast::Module>> {
+    // This is just to make `ast_string` above work; it's fine.
+    Ok(module::parse_module(par))
 }
 
 macro_rules! test_parse {
@@ -117,8 +125,8 @@ test_parse! { stmt_for, functions::parse_stmt, "for a in b[0]:\n pass" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
-test_parse! { type_def, module::parse_module, "type X = Map<address, u256>" }
-test_parse! { pub_type_def, module::parse_module, "pub type X = Map<address, u256>" }
+test_parse! { type_def, try_parse_module, "type X = Map<address, u256>" }
+test_parse! { pub_type_def, try_parse_module, "pub type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
 test_parse! { type_array, types::parse_type_desc, "Array<address, 25>" }
 test_parse! { type_3d, types::parse_type_desc, "Array<Array<Array<u256, 4>, 4>, 4>" }
@@ -132,13 +140,13 @@ test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256
 test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8>)" }
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
-test_parse! { fn_def, module::parse_module, "fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { fn_def_pub, module::parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { fn_def_unsafe, module::parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { fn_def_pub_unsafe, module::parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
-test_parse! { empty_event_def, module::parse_module, "event Foo:\n  pass" }
-test_parse! { pub_event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { fn_def, try_parse_module, "fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { empty_event_def, try_parse_module, "event Foo:\n  pass" }
+test_parse! { pub_event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
 test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
 test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }
@@ -153,7 +161,7 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
     evm as mve
 }"#
 }
-test_parse! { struct_def, module::parse_module, r#"struct S:
+test_parse! { struct_def, try_parse_module, r#"struct S:
   x: address
   pub y: u8
   z: u8
@@ -164,11 +172,11 @@ test_parse! { struct_def, module::parse_module, r#"struct S:
   unsafe fn bar():
     pass
 "# }
-test_parse! { empty_struct_def, module::parse_module, r#"struct S:
+test_parse! { empty_struct_def, try_parse_module, r#"struct S:
   pass
 "# }
 
-test_parse! { contract_def, module::parse_module, r#"contract Foo:
+test_parse! { contract_def, try_parse_module, r#"contract Foo:
   x: address
   pub y: u8
   pub const z: Map<u8, address>
@@ -178,16 +186,16 @@ test_parse! { contract_def, module::parse_module, r#"contract Foo:
     idx from: address
 "# }
 
-test_parse! { empty_contract_def, module::parse_module, r#"contract Foo:
+test_parse! { empty_contract_def, try_parse_module, r#"contract Foo:
     pass
 "# }
 
-test_parse! { pub_contract_def, module::parse_module, r#"pub contract Foo:
+test_parse! { pub_contract_def, try_parse_module, r#"pub contract Foo:
     pub fn foo() -> u8:
       return 10
 "# }
 
-test_parse! { module_stmts, module::parse_module, r#"
+test_parse! { module_stmts, try_parse_module, r#"
 pragma 0.5.0
 
 use foo::bar::{
@@ -210,7 +218,7 @@ contract B:
     pub x: X
 "# }
 
-test_parse! { guest_book, module::parse_module, r#"
+test_parse! { guest_book, try_parse_module, r#"
 type BookMsg = Array<bytes, 100>
 
 contract GuestBook:

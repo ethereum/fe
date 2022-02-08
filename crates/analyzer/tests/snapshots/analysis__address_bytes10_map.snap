@@ -1,16 +1,16 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module_id, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/address_bytes10_map.fe:2:5
+  ┌─ address_bytes10_map.fe:2:5
   │
 2 │     bar: Map<address, Array<u8, 10>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Array<u8, 10>>
 
 note: 
-  ┌─ features/address_bytes10_map.fe:4:5
+  ┌─ address_bytes10_map.fe:4:5
   │  
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10>:
 5 │ │         return self.bar[key].to_mem()
@@ -43,13 +43,13 @@ note:
     }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:16
+  ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:16
+  ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
   │                ^^^^^^^^ ^^^ address: Value
@@ -57,25 +57,25 @@ note:
   │                Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:16
+  ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
   │                ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:16
+  ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
   │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Memory
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:16
+  ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 10, inner: Numeric(U8) }) }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:7:5
+  ┌─ address_bytes10_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>):
 8 │ │         self.bar[key] = value
@@ -116,13 +116,13 @@ note:
     }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:8:9
+  ┌─ address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/address_bytes10_map.fe:8:9
+  ┌─ address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^^^^^ ^^^ address: Value
@@ -130,7 +130,7 @@ note:
   │         Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:8:9
+  ┌─ address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
   │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>: Memory

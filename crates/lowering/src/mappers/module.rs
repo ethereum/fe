@@ -13,8 +13,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
     let mut context = ModuleContext::new(db, module);
 
     let mut lowered_body = module
-        .data(db)
-        .ast
+        .ast(db)
         .body
         .iter()
         .filter_map(|stmt| match stmt {

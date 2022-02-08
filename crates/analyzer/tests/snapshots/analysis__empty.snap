@@ -1,10 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/empty.fe\", &src, module, &db)"
+expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ features/empty.fe:2:3
+  ┌─ empty.fe:2:3
   │
 2 │   lonely: u256
   │   ^^^^^^^^^^^^ u256

@@ -6,7 +6,6 @@ use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
-use std::rc::Rc;
 
 pub fn type_alias_type(
     db: &dyn AnalyzerDb,
@@ -15,10 +14,7 @@ pub fn type_alias_type(
     let mut scope = ItemScope::new(db, alias.data(db).module);
     let typ = type_desc(&mut scope, &alias.data(db).ast.kind.typ);
 
-    Analysis {
-        value: typ,
-        diagnostics: Rc::new(scope.diagnostics),
-    }
+    Analysis::new(typ, scope.diagnostics.into())
 }
 
 pub fn type_alias_type_cycle(
@@ -33,8 +29,5 @@ pub fn type_alias_type_cycle(
         "",
     )));
 
-    Analysis {
-        value: err,
-        diagnostics: Rc::new(context.diagnostics),
-    }
+    Analysis::new(err, context.diagnostics.into())
 }
