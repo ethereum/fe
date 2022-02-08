@@ -79,7 +79,7 @@ pub trait AnalyzerContext {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```fe
     /// contract Foo:
     ///     fn foo():
     ///        if ...:
@@ -87,21 +87,23 @@ pub trait AnalyzerContext {
     ///        else:
     ///            ...
     /// ```
-    /// If the context is in `then` block, then this function returns `Item::Function(..)`.
+    /// If the context is in `then` block, then this function returns
+    /// `Item::Function(..)`.
     fn parent(&self) -> Item;
 
     /// Returns a function id that encloses a context.
     ///
     /// # Panics
     ///
-    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`]
+    /// to determine whether a context is in a function.
     fn parent_function(&self) -> FunctionId;
 
     /// Returns a non-function item that encloses a context.
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```fe
     /// contract Foo:
     ///     fn foo():
     ///        if ...:
@@ -109,7 +111,8 @@ pub trait AnalyzerContext {
     ///        else:
     ///            ...
     /// ```
-    /// If the context is in `then` block, then this function returns `Item::Type(TypeDef::Contract(..))`.
+    /// If the context is in `then` block, then this function returns
+    /// `Item::Type(TypeDef::Contract(..))`.
     fn root_item(&self) -> Item {
         let mut item = self.parent();
         while let Item::Function(func_id) = item {
@@ -120,14 +123,16 @@ pub trait AnalyzerContext {
 
     /// # Panics
     ///
-    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`]
+    /// to determine whether a context is in a function.
     fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType);
 
     /// Store string literal to the current context.
     ///
     /// # Panics
     ///
-    /// Panics if a context is not in a function. Use [`Self::is_in_function`] to determine whether a context is in a function.
+    /// Panics if a context is not in a function. Use [`Self::is_in_function`]
+    /// to determine whether a context is in a function.
     fn add_string(&self, str_lit: SmolStr);
 
     /// Returns `true` if the context is in function scope.
