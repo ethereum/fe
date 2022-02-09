@@ -695,6 +695,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-mir"
+version = "0.13.0-alpha"
+dependencies = [
+ "fe-common",
+ "fe-parser",
+ "fxhash",
+ "id-arena",
+ "num-bigint",
+ "salsa",
+ "smol_str",
+]
+
+[[package]]
 name = "fe-parser"
 version = "0.13.0-alpha"
 dependencies = [
@@ -784,6 +797,15 @@ name = "funty"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
+
+[[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
 
 [[package]]
 name = "generic-array"
@@ -878,6 +900,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "id-arena"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
 
 [[package]]
 name = "if_chain"
