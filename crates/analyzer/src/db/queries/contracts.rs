@@ -235,7 +235,8 @@ pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[Eve
             ast::ContractStmt::Function(_) => None,
             ast::ContractStmt::Event(node) => Some(db.intern_event(Rc::new(items::Event {
                 ast: node.clone(),
-                contract,
+                module: contract.module(db),
+                contract: Some(contract),
             }))),
         })
         .collect()

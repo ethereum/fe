@@ -1,0 +1,102 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&db, module)"
+
+---
+note: 
+  ┌─ module_level_events.fe:2:5
+  │
+2 │     idx sender: address
+  │     ^^^^^^^^^^^^^^^^^^^ address
+3 │     idx receiver: address
+  │     ^^^^^^^^^^^^^^^^^^^^^ address
+4 │     value: u256
+  │     ^^^^^^^^^^^ u256
+
+note: 
+  ┌─ module_level_events.fe:6:5
+  │  
+6 │ ╭     fn transfer(to : address, value : u256):
+7 │ │         emit Transfer(sender=msg.sender, receiver=to, value)
+  │ ╰────────────────────────────────────────────────────────────^ attributes hash: 5430479256040439660
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [
+            FunctionParam {
+                name: "to",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+            },
+            FunctionParam {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ module_level_events.fe:7:30
+  │
+7 │         emit Transfer(sender=msg.sender, receiver=to, value)
+  │                              ^^^^^^^^^^           ^^  ^^^^^ u256: Value
+  │                              │                    │    
+  │                              │                    address: Value
+  │                              address: Value
+
+note: 
+  ┌─ module_level_events.fe:7:9
+  │
+7 │         emit Transfer(sender=msg.sender, receiver=to, value)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
+  │
+  = Event {
+        name: "Transfer",
+        fields: [
+            EventField {
+                name: "sender",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+                is_indexed: true,
+            },
+            EventField {
+                name: "receiver",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+                is_indexed: true,
+            },
+            EventField {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+                is_indexed: false,
+            },
+        ],
+    }
+
+

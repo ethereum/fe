@@ -1,0 +1,295 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(module_level_events), module::parse_module,\n           r#\"\nevent Transfer:\n    idx sender: address\n    idx receiver: address\n    value: u256\ncontract Foo:\n    fn transfer(to : address, value : u256):\n        emit Transfer(sender=msg.sender, receiver=to, value)\n\"#)"
+
+---
+Node(
+  kind: Module(
+    body: [
+      Event(Node(
+        kind: Event(
+          name: Node(
+            kind: "Transfer",
+            span: Span(
+              start: 7,
+              end: 15,
+            ),
+          ),
+          fields: [
+            Node(
+              kind: EventField(
+                is_idx: true,
+                name: Node(
+                  kind: "sender",
+                  span: Span(
+                    start: 25,
+                    end: 31,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "address",
+                  ),
+                  span: Span(
+                    start: 33,
+                    end: 40,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 21,
+                end: 40,
+              ),
+            ),
+            Node(
+              kind: EventField(
+                is_idx: true,
+                name: Node(
+                  kind: "receiver",
+                  span: Span(
+                    start: 49,
+                    end: 57,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "address",
+                  ),
+                  span: Span(
+                    start: 59,
+                    end: 66,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 45,
+                end: 66,
+              ),
+            ),
+            Node(
+              kind: EventField(
+                is_idx: false,
+                name: Node(
+                  kind: "value",
+                  span: Span(
+                    start: 71,
+                    end: 76,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "u256",
+                  ),
+                  span: Span(
+                    start: 78,
+                    end: 82,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 71,
+                end: 82,
+              ),
+            ),
+          ],
+          pub_qual: None,
+        ),
+        span: Span(
+          start: 1,
+          end: 82,
+        ),
+      )),
+      Contract(Node(
+        kind: Contract(
+          name: Node(
+            kind: "Foo",
+            span: Span(
+              start: 92,
+              end: 95,
+            ),
+          ),
+          fields: [],
+          body: [
+            Function(Node(
+              kind: Function(
+                pub_: None,
+                unsafe_: None,
+                name: Node(
+                  kind: "transfer",
+                  span: Span(
+                    start: 104,
+                    end: 112,
+                  ),
+                ),
+                args: [
+                  Node(
+                    kind: Regular(RegularFunctionArg(
+                      name: Node(
+                        kind: "to",
+                        span: Span(
+                          start: 113,
+                          end: 115,
+                        ),
+                      ),
+                      typ: Node(
+                        kind: Base(
+                          base: "address",
+                        ),
+                        span: Span(
+                          start: 118,
+                          end: 125,
+                        ),
+                      ),
+                    )),
+                    span: Span(
+                      start: 113,
+                      end: 125,
+                    ),
+                  ),
+                  Node(
+                    kind: Regular(RegularFunctionArg(
+                      name: Node(
+                        kind: "value",
+                        span: Span(
+                          start: 127,
+                          end: 132,
+                        ),
+                      ),
+                      typ: Node(
+                        kind: Base(
+                          base: "u256",
+                        ),
+                        span: Span(
+                          start: 135,
+                          end: 139,
+                        ),
+                      ),
+                    )),
+                    span: Span(
+                      start: 127,
+                      end: 139,
+                    ),
+                  ),
+                ],
+                return_type: None,
+                body: [
+                  Node(
+                    kind: Emit(
+                      name: Node(
+                        kind: "Transfer",
+                        span: Span(
+                          start: 155,
+                          end: 163,
+                        ),
+                      ),
+                      args: Node(
+                        kind: [
+                          Node(
+                            kind: CallArg(
+                              label: Some(Node(
+                                kind: "sender",
+                                span: Span(
+                                  start: 164,
+                                  end: 170,
+                                ),
+                              )),
+                              value: Node(
+                                kind: Attribute(
+                                  value: Node(
+                                    kind: Name("msg"),
+                                    span: Span(
+                                      start: 171,
+                                      end: 174,
+                                    ),
+                                  ),
+                                  attr: Node(
+                                    kind: "sender",
+                                    span: Span(
+                                      start: 175,
+                                      end: 181,
+                                    ),
+                                  ),
+                                ),
+                                span: Span(
+                                  start: 171,
+                                  end: 181,
+                                ),
+                              ),
+                            ),
+                            span: Span(
+                              start: 164,
+                              end: 181,
+                            ),
+                          ),
+                          Node(
+                            kind: CallArg(
+                              label: Some(Node(
+                                kind: "receiver",
+                                span: Span(
+                                  start: 183,
+                                  end: 191,
+                                ),
+                              )),
+                              value: Node(
+                                kind: Name("to"),
+                                span: Span(
+                                  start: 192,
+                                  end: 194,
+                                ),
+                              ),
+                            ),
+                            span: Span(
+                              start: 183,
+                              end: 194,
+                            ),
+                          ),
+                          Node(
+                            kind: CallArg(
+                              label: None,
+                              value: Node(
+                                kind: Name("value"),
+                                span: Span(
+                                  start: 196,
+                                  end: 201,
+                                ),
+                              ),
+                            ),
+                            span: Span(
+                              start: 196,
+                              end: 201,
+                            ),
+                          ),
+                        ],
+                        span: Span(
+                          start: 163,
+                          end: 202,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 150,
+                      end: 202,
+                    ),
+                  ),
+                ],
+              ),
+              span: Span(
+                start: 101,
+                end: 202,
+              ),
+            )),
+          ],
+          pub_qual: None,
+        ),
+        span: Span(
+          start: 83,
+          end: 202,
+        ),
+      )),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 202,
+  ),
+)

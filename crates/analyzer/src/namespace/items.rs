@@ -1311,7 +1311,8 @@ impl StructFieldId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Event {
     pub ast: Node<ast::Event>,
-    pub contract: ContractId,
+    pub module: ModuleId,
+    pub contract: Option<ContractId>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
@@ -1332,10 +1333,14 @@ impl EventId {
         db.event_type(*self).value
     }
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
-        self.data(db).contract.module(db)
+        self.data(db).module
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
-        Item::Type(TypeDef::Contract(self.data(db).contract))
+        if let Some(contract_id) = self.data(db).contract {
+            Item::Type(TypeDef::Contract(contract_id))
+        } else {
+            Item::Module(self.module(db))
+        }
     }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.event_type(*self).diagnostics.iter());
