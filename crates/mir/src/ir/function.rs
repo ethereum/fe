@@ -66,7 +66,6 @@ pub struct FunctionBody {
 }
 
 /// A collection of instructions and values appear in a function body.
-/// This struct also tracks data flow
 pub struct BodyDataStore {
     /// Instructions appear in a function body.
     insts: Arena<Inst>,

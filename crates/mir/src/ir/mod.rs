@@ -10,6 +10,14 @@ pub mod module;
 pub mod types;
 pub mod value;
 
+pub use basic_block::{BasicBlock, BasicBlockId};
+pub use constant::{Constant, ConstantId};
+pub use function::{FunctionBody, FunctionId, FunctionParam, FunctionSignature};
+pub use module::{Module, ModuleId};
+pub use inst::{Inst, InstId};
+pub use types::{Type, TypeId};
+pub use value::{Value, ValueId};
+
 /// An original source information that indicates where `mir` entities derive
 /// from. `SourceInfo` is mainly used for diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
