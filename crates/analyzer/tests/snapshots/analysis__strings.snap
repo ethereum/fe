@@ -16,8 +16,8 @@ note:
   │         ^^^^^^^^^^^^^^^ String<100>
 7 │         a: address
   │         ^^^^^^^^^^ address
-8 │         s4: String<13>
-  │         ^^^^^^^^^^^^^^ String<13>
+8 │         s4: String<18>
+  │         ^^^^^^^^^^^^^^ String<18>
 9 │         s5: String<100>
   │         ^^^^^^^^^^^^^^^ String<100>
 
@@ -132,9 +132,38 @@ note:
 note: 
    ┌─ strings.fe:23:5
    │  
-23 │ ╭     pub fn return_special_chars() -> String<18>:
-24 │ │         return "\n\"'\r\t
-25 │ │         foo\\"
+23 │ ╭     pub fn shorter_string_assign():
+24 │ │         let s: String<18> = "fe"
+   │ ╰────────────────────────────────^ attributes hash: 15148455653558261645
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ strings.fe:24:16
+   │
+24 │         let s: String<18> = "fe"
+   │                ^^^^^^^^^^ String<18>
+
+note: 
+   ┌─ strings.fe:24:29
+   │
+24 │         let s: String<18> = "fe"
+   │                             ^^^^ String<18>: Memory
+
+note: 
+   ┌─ strings.fe:26:5
+   │  
+26 │ ╭     pub fn return_special_chars() -> String<18>:
+27 │ │         return "\n\"'\r\t
+28 │ │         foo\\"
    │ ╰──────────────^ attributes hash: 14991635520577142188
    │  
    = FunctionSignature {
@@ -150,11 +179,11 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:24:16
+   ┌─ strings.fe:27:16
    │  
-24 │           return "\n\"'\r\t
+27 │           return "\n\"'\r\t
    │ ╭────────────────^
-25 │ │         foo\\"
+28 │ │         foo\\"
    │ ╰──────────────^ String<18>: Memory
 
 
