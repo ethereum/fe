@@ -10,7 +10,7 @@ use super::{
     module::ModuleId,
     types::{Type, TypeId},
     value::{Immediate, Value, ValueId},
-    SourceInfo,
+    BasicBlockId, SourceInfo,
 };
 
 /// Represents function signature.
@@ -52,9 +52,7 @@ pub enum Linkage {
 pub struct FunctionBody {
     pub function: FunctionId,
 
-    pub basic_blocks: Arena<BasicBlock>,
-
-    pub body_data: BodyDataStore,
+    pub store: BodyDataStore,
 
     /// All declared local variables in a function.
     pub locals: Vec<ValueId>,
@@ -65,13 +63,16 @@ pub struct FunctionBody {
     pub source: SourceInfo,
 }
 
-/// A collection of instructions and values appear in a function body.
+/// A collection of basic block, instructions and values appear in a function
+/// body.
 pub struct BodyDataStore {
     /// Instructions appear in a function body.
     insts: Arena<Inst>,
 
     /// All values in a function.
     values: Arena<Value>,
+
+    blocks: Arena<BasicBlock>,
 
     /// Map an immediate to a value to ensure the same immediate results in the
     /// same value.
@@ -85,7 +86,6 @@ impl BodyDataStore {
         self.insts.alloc(inst)
     }
 
-    /// Store `Value` and returns its identifier.
     pub fn store_value(&mut self, value: Value) -> ValueId {
         match value {
             Value::Immediate(imm) => self.store_immediate(imm),
@@ -104,6 +104,10 @@ impl BodyDataStore {
         }
     }
 
+    pub fn store_block(&mut self, block: BasicBlock) -> BasicBlockId {
+        self.blocks.alloc(block)
+    }
+
     /// Returns an instruction result. A returned value is guaranteed to be a
     /// temporary value.
     pub fn inst_result(&mut self, inst: InstId) -> Option<ValueId> {
@@ -112,6 +116,10 @@ impl BodyDataStore {
 
     pub fn value_ty(&self, vid: ValueId) -> TypeId {
         self.values[vid].ty()
+    }
+
+    pub fn replace_inst(&mut self, inst: InstId, new: Inst) {
+        self.insts[inst] = new;
     }
 
     fn store_immediate(&mut self, imm: Immediate) -> ValueId {
