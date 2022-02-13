@@ -50,7 +50,7 @@ pub enum Linkage {
 /// A function body, which is not stored in salsa db to enable in-place
 /// transformation.
 pub struct FunctionBody {
-    pub function: FunctionId,
+    pub fid: FunctionId,
 
     pub store: BodyDataStore,
 
@@ -63,8 +63,23 @@ pub struct FunctionBody {
     pub source: SourceInfo,
 }
 
+impl FunctionBody {
+    pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
+        let mut store = BodyDataStore::default();
+        let entry_bb = store.store_block(BasicBlock {});
+        Self {
+            fid,
+            store,
+            locals: Vec::new(),
+            order: BodyOrder::new(entry_bb),
+            source,
+        }
+    }
+}
+
 /// A collection of basic block, instructions and values appear in a function
 /// body.
+#[derive(Default)]
 pub struct BodyDataStore {
     /// Instructions appear in a function body.
     insts: Arena<Inst>,
@@ -79,6 +94,9 @@ pub struct BodyDataStore {
     immediates: FxHashMap<Immediate, ValueId>,
 
     unit_value: Option<ValueId>,
+
+    /// Maps an instruction to a value.
+    inst_results: FxHashMap<InstId, ValueId>,
 }
 
 impl BodyDataStore {
@@ -110,8 +128,8 @@ impl BodyDataStore {
 
     /// Returns an instruction result. A returned value is guaranteed to be a
     /// temporary value.
-    pub fn inst_result(&mut self, inst: InstId) -> Option<ValueId> {
-        self.insts[inst].kind.inst_result()
+    pub fn inst_result(&self, inst: InstId) -> Option<ValueId> {
+        self.inst_results.get(&inst).copied()
     }
 
     pub fn value_ty(&self, vid: ValueId) -> TypeId {
@@ -120,6 +138,10 @@ impl BodyDataStore {
 
     pub fn replace_inst(&mut self, inst: InstId, new: Inst) {
         self.insts[inst] = new;
+    }
+
+    pub fn map_result(&mut self, inst: InstId, result: ValueId) {
+        self.inst_results.insert(inst, result);
     }
 
     fn store_immediate(&mut self, imm: Immediate) -> ValueId {

@@ -40,6 +40,26 @@ impl Value {
     }
 }
 
+macro_rules! embed {
+    ($(($variant: expr, $ty: ty)),*) => {
+        $(
+        impl From<$ty> for Value {
+            fn from(val: $ty) -> Self {
+                $variant(val)
+            }
+        })*
+    };
+}
+
+embed! {
+    (Value::Temporary, Temporary),
+    (Value::Local, Local),
+    (Value::AssignableValue, AssignableValue),
+    (Value::Immediate, Immediate),
+    (Value::Constant, Constant),
+    (Value::Unit, Unit)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Temporary {
     pub inst: InstId,
