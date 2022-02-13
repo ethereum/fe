@@ -1,37 +1,20 @@
-use std::any::TypeId;
-
 use id_arena::Id;
 
-use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo};
+use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};
 
 pub type InstId = Id<Inst>;
 
 pub struct Inst {
-    pub source: SourceInfo,
     pub kind: InstKind,
+    pub source: SourceInfo,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InstKind {
-    /// Unary instruction.
-    Unary {
-        op: UnOp,
-        value: ValueId,
-        result: ValueId,
-    },
-
-    /// Binary instruction.
-    Binary {
-        op: BinOp,
-        lhs: ValueId,
-        rhs: ValueId,
-        result: ValueId,
-    },
-
     /// This is not a real instruction, just used to tag a position where a
     /// local is declared.
     Declare {
-        value: ValueId,
+        local: ValueId,
     },
 
     Assign {
@@ -39,17 +22,28 @@ pub enum InstKind {
         rhs: ValueId,
     },
 
+    /// Unary instruction.
+    Unary {
+        op: UnOp,
+        value: ValueId,
+    },
+
+    /// Binary instruction.
+    Binary {
+        op: BinOp,
+        lhs: ValueId,
+        rhs: ValueId,
+    },
+
     Cast {
-        arg: ValueId,
+        value: ValueId,
         to: TypeId,
-        result: ValueId,
     },
 
     /// Constructs aggregate value, i.e. struct, tuple and array.
     AggregateConstruct {
         ty: TypeId,
         args: Vec<ValueId>,
-        result: ValueId,
     },
 
     /// Access to aggregate fields or elements.
@@ -64,13 +58,11 @@ pub enum InstKind {
     AggregateAccess {
         value: ValueId,
         indices: Vec<usize>,
-        result: ValueId,
     },
 
     Call {
         func: FunctionId,
         args: Vec<ValueId>,
-        result: ValueId,
     },
 
     /// Unconditional jump instruction.
@@ -85,8 +77,6 @@ pub enum InstKind {
         else_: BasicBlockId,
     },
 
-    /// Conditional jump instruction.
-    //Branch { args: [Value; 1], dests: [Block; 2] },
     Revert {
         arg: ValueId,
     },
@@ -100,23 +90,19 @@ pub enum InstKind {
     },
 }
 
-impl InstKind {
-    pub fn inst_result(&self) -> Option<ValueId> {
-        match self {
-            Self::Unary { result, .. }
-            | Self::Binary { result, .. }
-            | Self::Cast { result, .. }
-            | Self::AggregateConstruct { result, .. }
-            | Self::AggregateAccess { result, .. }
-            | Self::Call { result, .. } => Some(*result),
-            Self::Declare { .. }
-            | Self::Assign { .. }
-            | Self::Jump { .. }
-            | Self::Branch { .. }
-            | Self::Revert { .. }
-            | Self::Emit { .. }
-            | Self::Return { .. } => None,
-        }
+impl Inst {
+    pub fn new(kind: InstKind, source: SourceInfo) -> Self {
+        Self { kind, source }
+    }
+
+    pub fn unary(op: UnOp, value: ValueId, source: SourceInfo) -> Self {
+        let kind = InstKind::Unary { op, value };
+        Self::new(kind, source)
+    }
+
+    pub fn binary(op: BinOp, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> Self {
+        let kind = InstKind::Binary { op, lhs, rhs };
+        Self::new(kind, source)
     }
 }
 
