@@ -781,8 +781,8 @@ note:
 68 │ │         _before_token_transfer(sender, recipient, value)
 69 │ │         self._balances[sender] = self._balances[sender] - value
 70 │ │         self._balances[recipient] = self._balances[recipient] + value
-71 │ │         emit Transfer(from=sender, to=recipient, value=value)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 7042698306793056303
+71 │ │         emit Transfer(from: sender, to: recipient, value)
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 7042698306793056303
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -949,17 +949,17 @@ note:
    │
 70 │         self._balances[recipient] = self._balances[recipient] + value
    │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-71 │         emit Transfer(from=sender, to=recipient, value=value)
-   │                            ^^^^^^     ^^^^^^^^^        ^^^^^ u256: Value
-   │                            │          │                 
-   │                            │          address: Value
-   │                            address: Value
+71 │         emit Transfer(from: sender, to: recipient, value)
+   │                             ^^^^^^      ^^^^^^^^^  ^^^^^ u256: Value
+   │                             │           │           
+   │                             │           address: Value
+   │                             address: Value
 
 note: 
    ┌─ erc20_token.fe:71:9
    │
-71 │         emit Transfer(from=sender, to=recipient, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
+71 │         emit Transfer(from: sender, to: recipient, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
    │
    = Event {
          name: "Transfer",
@@ -1014,8 +1014,8 @@ note:
 75 │ │         _before_token_transfer(address(0), account, value)
 76 │ │         self._total_supply = self._total_supply + value
 77 │ │         self._balances[account] = self._balances[account] + value
-78 │ │         emit Transfer(from=address(0), to=account, value=value)
-   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 2595623246297064609
+78 │ │         emit Transfer(from: address(0), to: account, value)
+   │ ╰───────────────────────────────────────────────────────────^ attributes hash: 2595623246297064609
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1148,23 +1148,23 @@ note:
    │
 77 │         self._balances[account] = self._balances[account] + value
    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-78 │         emit Transfer(from=address(0), to=account, value=value)
-   │                                    ^ u256: Value
+78 │         emit Transfer(from: address(0), to: account, value)
+   │                                     ^ u256: Value
 
 note: 
-   ┌─ erc20_token.fe:78:28
+   ┌─ erc20_token.fe:78:29
    │
-78 │         emit Transfer(from=address(0), to=account, value=value)
-   │                            ^^^^^^^^^^     ^^^^^^^        ^^^^^ u256: Value
-   │                            │              │               
-   │                            │              address: Value
-   │                            address: Value
+78 │         emit Transfer(from: address(0), to: account, value)
+   │                             ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256: Value
+   │                             │               │         
+   │                             │               address: Value
+   │                             address: Value
 
 note: 
    ┌─ erc20_token.fe:78:9
    │
-78 │         emit Transfer(from=address(0), to=account, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
+78 │         emit Transfer(from: address(0), to: account, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
    │
    = Event {
          name: "Transfer",
@@ -1215,8 +1215,8 @@ note:
 75 │         _before_token_transfer(address(0), account, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(17))
    ·
-78 │         emit Transfer(from=address(0), to=account, value=value)
-   │                            ^^^^^^^ TypeConstructor(Base(Address))
+78 │         emit Transfer(from: address(0), to: account, value)
+   │                             ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ erc20_token.fe:80:5
@@ -1226,8 +1226,8 @@ note:
 82 │ │         _before_token_transfer(account, address(0), value)
 83 │ │         self._balances[account] = self._balances[account] - value
 84 │ │         self._total_supply = self._total_supply - value
-85 │ │         emit Transfer(from=account, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 2595623246297064609
+85 │ │         emit Transfer(from: account, to: address(0), value)
+   │ ╰───────────────────────────────────────────────────────────^ attributes hash: 2595623246297064609
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1361,24 +1361,24 @@ note:
    │
 84 │         self._total_supply = self._total_supply - value
    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-85 │         emit Transfer(from=account, to=address(0), value)
-   │                            ^^^^^^^             ^ u256: Value
-   │                            │                    
-   │                            address: Value
+85 │         emit Transfer(from: account, to: address(0), value)
+   │                             ^^^^^^^              ^ u256: Value
+   │                             │                     
+   │                             address: Value
 
 note: 
-   ┌─ erc20_token.fe:85:40
+   ┌─ erc20_token.fe:85:42
    │
-85 │         emit Transfer(from=account, to=address(0), value)
-   │                                        ^^^^^^^^^^  ^^^^^ u256: Value
-   │                                        │            
-   │                                        address: Value
+85 │         emit Transfer(from: account, to: address(0), value)
+   │                                          ^^^^^^^^^^  ^^^^^ u256: Value
+   │                                          │            
+   │                                          address: Value
 
 note: 
    ┌─ erc20_token.fe:85:9
    │
-85 │         emit Transfer(from=account, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
+85 │         emit Transfer(from: account, to: address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
    │
    = Event {
          name: "Transfer",
@@ -1429,8 +1429,8 @@ note:
 82 │         _before_token_transfer(account, address(0), value)
    │         ^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(17))
    ·
-85 │         emit Transfer(from=account, to=address(0), value)
-   │                                        ^^^^^^^ TypeConstructor(Base(Address))
+85 │         emit Transfer(from: account, to: address(0), value)
+   │                                          ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ erc20_token.fe:87:5

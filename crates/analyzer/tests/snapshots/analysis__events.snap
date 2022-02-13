@@ -41,8 +41,8 @@ note:
    ┌─ events.fe:19:5
    │  
 19 │ ╭     pub fn emit_nums():
-20 │ │         emit Nums(num1=26, num2=42)
-   │ ╰───────────────────────────────────^ attributes hash: 15148455653558261645
+20 │ │         emit Nums(num1: 26, num2: 42)
+   │ ╰─────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
          self_decl: None,
@@ -55,18 +55,18 @@ note:
      }
 
 note: 
-   ┌─ events.fe:20:24
+   ┌─ events.fe:20:25
    │
-20 │         emit Nums(num1=26, num2=42)
-   │                        ^^       ^^ u256: Value
-   │                        │         
-   │                        u256: Value
+20 │         emit Nums(num1: 26, num2: 42)
+   │                         ^^        ^^ u256: Value
+   │                         │          
+   │                         u256: Value
 
 note: 
    ┌─ events.fe:20:9
    │
-20 │         emit Nums(num1=26, num2=42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
+20 │         emit Nums(num1: 26, num2: 42)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
    │
    = Event {
          name: "Nums",
@@ -100,8 +100,8 @@ note:
    ┌─ events.fe:22:5
    │  
 22 │ ╭     pub fn emit_bases(addr: address):
-23 │ │         emit Bases(num=26, addr)
-   │ ╰────────────────────────────────^ attributes hash: 14507092098124791222
+23 │ │         emit Bases(num: 26, addr)
+   │ ╰─────────────────────────────────^ attributes hash: 14507092098124791222
    │  
    = FunctionSignature {
          self_decl: None,
@@ -123,18 +123,18 @@ note:
      }
 
 note: 
-   ┌─ events.fe:23:24
+   ┌─ events.fe:23:25
    │
-23 │         emit Bases(num=26, addr)
-   │                        ^^  ^^^^ address: Value
-   │                        │    
-   │                        u256: Value
+23 │         emit Bases(num: 26, addr)
+   │                         ^^  ^^^^ address: Value
+   │                         │    
+   │                         u256: Value
 
 note: 
    ┌─ events.fe:23:9
    │
-23 │         emit Bases(num=26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
+23 │         emit Bases(num: 26, addr)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
    │
    = Event {
          name: "Bases",
@@ -166,8 +166,8 @@ note:
    ┌─ events.fe:25:5
    │  
 25 │ ╭     pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
-26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 11181555056051097974
+26 │ │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
+   │ ╰────────────────────────────────────────────────────^ attributes hash: 11181555056051097974
    │  
    = FunctionSignature {
          self_decl: None,
@@ -202,20 +202,20 @@ note:
      }
 
 note: 
-   ┌─ events.fe:26:23
+   ┌─ events.fe:26:24
    │
-26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                       ^^  ^^^^       ^^  ^^^^^^^^ Array<u8, 100>: Memory
-   │                       │   │          │    
-   │                       │   │          u256: Value
-   │                       │   address: Value
-   │                       u256: Value
+26 │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
+   │                        ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>: Memory
+   │                        │   │           │    
+   │                        │   │           u256: Value
+   │                        │   address: Value
+   │                        u256: Value
 
 note: 
    ┌─ events.fe:26:9
    │
-26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
+26 │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
    │
    = Event {
          name: "Mix",

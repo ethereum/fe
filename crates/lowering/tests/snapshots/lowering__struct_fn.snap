@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 struct Foo:
@@ -15,7 +15,7 @@ struct Foo:
         return self.x
 
 fn main() -> ():
-    let foo: Foo = Foo(x=10)
+    let foo: Foo = Foo(x: 10)
     foo.set_x(100)
     assert foo.get_x() == 100
     return ()

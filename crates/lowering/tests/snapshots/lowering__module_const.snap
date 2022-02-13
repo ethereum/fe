@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 struct $tuple_u256_u256_:
@@ -34,8 +34,8 @@ contract Foo:
         let my_calc: u256 = 3 * 10
         let my_other_calc: u256 = 3 * 3
         let my_array: Array<u256, 2> = list_expr_array_u256_2(3, 10)
-        let my_tuple: $tuple_u256_u256_ = $tuple_u256_u256_(item0=3, item1=10)
-        let my_bar: Bar = Bar(val=3)
+        let my_tuple: $tuple_u256_u256_ = $tuple_u256_u256_(item0: 3, item1: 10)
+        let my_bar: Bar = Bar(val: 3)
         while 3 > 4:
             pass
 
@@ -50,7 +50,7 @@ contract Foo:
                 return 3 * 10
             else:
                 if true:
-                    revert Bar(val=3)
+                    revert Bar(val: 3)
 
 
 

@@ -289,9 +289,9 @@ note:
    │  
 29 │ ╭     pub fn emit_event(self):
 30 │ │         emit MyEvent(
-31 │ │             num=self.num,
-32 │ │             nums=self.nums.to_mem(),
-33 │ │             str=self.str.to_mem()
+31 │ │             num: self.num,
+32 │ │             nums: self.nums.to_mem(),
+33 │ │             str: self.str.to_mem()
 34 │ │         )
    │ ╰─────────^ attributes hash: 17603814563784536273
    │  
@@ -308,52 +308,52 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:31:17
+   ┌─ sized_vals_in_sto.fe:31:18
    │
-31 │             num=self.num,
-   │                 ^^^^ Foo: Value
-
-note: 
-   ┌─ sized_vals_in_sto.fe:31:17
-   │
-31 │             num=self.num,
-   │                 ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
-32 │             nums=self.nums.to_mem(),
+31 │             num: self.num,
    │                  ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:31:18
    │
-32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+31 │             num: self.num,
+   │                  ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+32 │             nums: self.nums.to_mem(),
+   │                   ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:32:19
    │
-32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
-33 │             str=self.str.to_mem()
-   │                 ^^^^ Foo: Value
+32 │             nums: self.nums.to_mem(),
+   │                   ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:33:17
+   ┌─ sized_vals_in_sto.fe:32:19
    │
-33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+32 │             nums: self.nums.to_mem(),
+   │                   ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+33 │             str: self.str.to_mem()
+   │                  ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:33:17
+   ┌─ sized_vals_in_sto.fe:33:18
    │
-33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+33 │             str: self.str.to_mem()
+   │                  ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+
+note: 
+   ┌─ sized_vals_in_sto.fe:33:18
+   │
+33 │             str: self.str.to_mem()
+   │                  ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
    ┌─ sized_vals_in_sto.fe:30:9
    │  
 30 │ ╭         emit MyEvent(
-31 │ │             num=self.num,
-32 │ │             nums=self.nums.to_mem(),
-33 │ │             str=self.str.to_mem()
+31 │ │             num: self.num,
+32 │ │             nums: self.nums.to_mem(),
+33 │ │             str: self.str.to_mem()
 34 │ │         )
    │ ╰─────────^ attributes hash: 9998967556022527347
    │  
@@ -400,11 +400,11 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:32:18
+   ┌─ sized_vals_in_sto.fe:32:19
    │
-32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
-33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
+32 │             nums: self.nums.to_mem(),
+   │                   ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
+33 │             str: self.str.to_mem()
+   │                  ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 

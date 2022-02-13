@@ -6,13 +6,13 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: argument label mismatch
    ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:10:25
    │
-10 │     Foo(address(0)).baz(doesnt_exist=1, me_neither=4)
+10 │     Foo(address(0)).baz(doesnt_exist: 1, me_neither: 4)
    │                         ^^^^^^^^^^^^ expected `val1`
 
 error: argument label mismatch
-   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:10:41
+   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:10:42
    │
-10 │     Foo(address(0)).baz(doesnt_exist=1, me_neither=4)
-   │                                         ^^^^^^^^^^ expected `val2`
+10 │     Foo(address(0)).baz(doesnt_exist: 1, me_neither: 4)
+   │                                          ^^^^^^^^^^ expected `val2`
 
 

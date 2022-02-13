@@ -12,7 +12,7 @@ error: `u256` type is not callable
 error: `MyEvent` is not callable
    ┌─ compile_errors/not_callable.fe:10:5
    │
-10 │     MyEvent(x=10)
+10 │     MyEvent(x: 10)
    │     ^^^^^^^ `MyEvent` is an event, and can't be constructed in this context
    │
    = Hint: to emit an event, use `emit MyEvent(..)`

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_emit2), functions::parse_stmt,\n           \"emit Foo(1, 2, x=y)\")"
+expression: "ast_string(stringify!(stmt_emit2), functions::parse_stmt,\n           \"emit Foo(1, 2, x: y)\")"
 
 ---
 Node(
@@ -58,25 +58,25 @@ Node(
             value: Node(
               kind: Name("y"),
               span: Span(
-                start: 17,
-                end: 18,
+                start: 18,
+                end: 19,
               ),
             ),
           ),
           span: Span(
             start: 15,
-            end: 18,
+            end: 19,
           ),
         ),
       ],
       span: Span(
         start: 8,
-        end: 19,
+        end: 20,
       ),
     ),
   ),
   span: Span(
     start: 0,
-    end: 19,
+    end: 20,
   ),
 )

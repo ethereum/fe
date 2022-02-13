@@ -27,7 +27,7 @@ contract Foo:
     fn transfer(to : address, value : u256):
         # Heavy logic here
         # All done, log the event for listeners
-        emit Transfer(sender=msg.sender, receiver=to, value)
+        emit Transfer(sender: msg.sender, receiver: to, value)
 ```
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline

@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 struct $tuple_bool_bool_:
@@ -65,7 +65,7 @@ contract Foo:
         if a:
             $boolean_expr_result_1 = b
 
-        let z: $tuple_bool_bool_ = $tuple_bool_bool_(item0=$boolean_expr_result_1, item1=$boolean_expr_result_0)
+        let z: $tuple_bool_bool_ = $tuple_bool_bool_(item0: $boolean_expr_result_1, item1: $boolean_expr_result_0)
         return ()
 
     pub fn short_or(first: bool, second: bool, third: bool, fourth: bool) -> bool:

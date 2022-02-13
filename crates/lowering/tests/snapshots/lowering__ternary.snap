@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 struct $tuple_u256_u256_:
@@ -75,7 +75,7 @@ contract Foo:
         else:
             $ternary_result_1 = b
 
-        let z: $tuple_u256_u256_ = $tuple_u256_u256_(item0=$ternary_result_1, item1=$ternary_result_0)
+        let z: $tuple_u256_u256_ = $tuple_u256_u256_(item0: $ternary_result_1, item1: $ternary_result_0)
         return ()
 
     pub fn baz(val: u256) -> ():

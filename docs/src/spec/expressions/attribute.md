@@ -21,7 +21,7 @@ contract Foo:
     some_tuple: (bool, u256)
 
     fn get_point() -> Point:
-        return Point(x=100, y=500)
+        return Point(x: 100, y: 500)
 
     pub fn baz(some_point: Point, some_tuple: (bool, u256)):
         # Different examples of attribute expressions

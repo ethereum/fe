@@ -14,10 +14,10 @@ contract Ownable:
   pub fn renounceOwnership(self):
     assert msg.sender == self._owner
     self._owner = address(0)
-    emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
+    emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
 
   pub fn transferOwnership(self, newOwner: address):
     assert msg.sender == self._owner
     assert newOwner != address(0)
     self._owner = newOwner
-    emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
+    emit OwnershipTransferred(previousOwner: msg.sender, newOwner)

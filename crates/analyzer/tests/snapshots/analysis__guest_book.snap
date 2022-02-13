@@ -23,8 +23,8 @@ note:
 13 │ │         self.messages[msg.sender] = book_msg
 14 │ │ 
 15 │ │         # Emit the `Signed` event
-16 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 13094560277149760495
+16 │ │         emit Signed(book_msg)
+   │ ╰─────────────────────────────^ attributes hash: 13094560277149760495
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -71,14 +71,14 @@ note:
    │         │                            
    │         String<100>: Storage { nonce: None }
    ·
-16 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ String<100>: Memory
+16 │         emit Signed(book_msg)
+   │                     ^^^^^^^^ String<100>: Memory
 
 note: 
    ┌─ guest_book.fe:16:9
    │
-16 │         emit Signed(book_msg=book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
+16 │         emit Signed(book_msg)
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
    │
    = Event {
          name: "Signed",

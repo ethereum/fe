@@ -15,7 +15,7 @@ struct S:
     self()
 
   fn g(self):
-    self = S(x = 10)
+    self = S(x: 10)
 
   fn h(self):
     change_x(self) # allowed

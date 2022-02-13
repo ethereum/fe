@@ -79,8 +79,8 @@ note:
   ┌─ struct_fns.fe:8:3
   │  
 8 │ ╭   pub fn origin() -> Point:
-9 │ │     return Point(x=0, y=0)
-  │ ╰──────────────────────────^ attributes hash: 1766050550231886475
+9 │ │     return Point(x: 0, y: 0)
+  │ ╰────────────────────────────^ attributes hash: 1766050550231886475
   │  
   = FunctionSignature {
         self_decl: None,
@@ -99,23 +99,23 @@ note:
     }
 
 note: 
-  ┌─ struct_fns.fe:9:20
+  ┌─ struct_fns.fe:9:21
   │
-9 │     return Point(x=0, y=0)
-  │                    ^    ^ u64: Value
-  │                    │     
-  │                    u64: Value
+9 │     return Point(x: 0, y: 0)
+  │                     ^     ^ u64: Value
+  │                     │      
+  │                     u64: Value
 
 note: 
   ┌─ struct_fns.fe:9:12
   │
-9 │     return Point(x=0, y=0)
-  │            ^^^^^^^^^^^^^^^ Point: Memory
+9 │     return Point(x: 0, y: 0)
+  │            ^^^^^^^^^^^^^^^^^ Point: Memory
 
 note: 
   ┌─ struct_fns.fe:9:12
   │
-9 │     return Point(x=0, y=0)
+9 │     return Point(x: 0, y: 0)
   │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
@@ -494,7 +494,7 @@ note:
 37 │   let p1: Point = Point.origin()
    │           ^^^^^ Point
    ·
-40 │   let p2: Point = Point(x=1, y=2)
+40 │   let p2: Point = Point(x: 1, y: 2)
    │           ^^^^^ Point
 41 │   let p3: Point = p1.add(p2)
    │           ^^^^^ Point
@@ -516,16 +516,16 @@ note:
 38 │   p1.translate(5, 10)
    │   ^^^^^^^^^^^^^^^^^^^ (): Value
 39 │ 
-40 │   let p2: Point = Point(x=1, y=2)
-   │                           ^    ^ u64: Value
-   │                           │     
-   │                           u64: Value
+40 │   let p2: Point = Point(x: 1, y: 2)
+   │                            ^     ^ u64: Value
+   │                            │      
+   │                            u64: Value
 
 note: 
    ┌─ struct_fns.fe:40:19
    │
-40 │   let p2: Point = Point(x=1, y=2)
-   │                   ^^^^^^^^^^^^^^^ Point: Memory
+40 │   let p2: Point = Point(x: 1, y: 2)
+   │                   ^^^^^^^^^^^^^^^^^ Point: Memory
 41 │   let p3: Point = p1.add(p2)
    │                   ^^     ^^ Point: Memory
    │                   │       
@@ -584,7 +584,7 @@ note:
 38 │   p1.translate(5, 10)
    │   ^^^^^^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(6) }
 39 │ 
-40 │   let p2: Point = Point(x=1, y=2)
+40 │   let p2: Point = Point(x: 1, y: 2)
    │                   ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 41 │   let p3: Point = p1.add(p2)
    │                   ^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(7) }

@@ -7,7 +7,7 @@ contract Foo:
     5()
 
   fn call_event():
-    MyEvent(x=10)
+    MyEvent(x: 10)
 
   fn call_block():
     block()

@@ -17,8 +17,8 @@ note:
   ┌─ module_level_events.fe:6:5
   │  
 6 │ ╭     fn transfer(to : address, value : u256):
-7 │ │         emit Transfer(sender=msg.sender, receiver=to, value)
-  │ ╰────────────────────────────────────────────────────────────^ attributes hash: 5430479256040439660
+7 │ │         emit Transfer(sender: msg.sender, receiver: to, value)
+  │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 5430479256040439660
   │  
   = FunctionSignature {
         self_decl: None,
@@ -50,19 +50,19 @@ note:
     }
 
 note: 
-  ┌─ module_level_events.fe:7:30
+  ┌─ module_level_events.fe:7:31
   │
-7 │         emit Transfer(sender=msg.sender, receiver=to, value)
-  │                              ^^^^^^^^^^           ^^  ^^^^^ u256: Value
-  │                              │                    │    
-  │                              │                    address: Value
-  │                              address: Value
+7 │         emit Transfer(sender: msg.sender, receiver: to, value)
+  │                               ^^^^^^^^^^            ^^  ^^^^^ u256: Value
+  │                               │                     │    
+  │                               │                     address: Value
+  │                               address: Value
 
 note: 
   ┌─ module_level_events.fe:7:9
   │
-7 │         emit Transfer(sender=msg.sender, receiver=to, value)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
+7 │         emit Transfer(sender: msg.sender, receiver: to, value)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
   │
   = Event {
         name: "Transfer",

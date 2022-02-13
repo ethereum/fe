@@ -67,9 +67,9 @@ error: function name conflicts with the ingot named "std"
    │    ^^^ `std` is already defined
 
 error: incorrect type for `Foo` argument `my_num`
-  ┌─ compile_errors/bad_ingot/src/main.fe:9:32
+  ┌─ compile_errors/bad_ingot/src/main.fe:9:33
   │
-9 │         return foo::Foo(my_num=true)
-  │                                ^^^^ this has type `bool`; expected type `u256`
+9 │         return foo::Foo(my_num: true)
+  │                                 ^^^^ this has type `bool`; expected type `u256`
 
 

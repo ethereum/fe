@@ -12,8 +12,8 @@ contract Foo:
         std::revert_insufficient_funds()
 
     pub fn revert_other_error():
-        revert OtherError(msg=1, val=true)
+        revert OtherError(msg: 1, val: true)
 
     pub fn revert_other_error_from_sto(self):
-        self.my_other_error = OtherError(msg=1, val=true)
+        self.my_other_error = OtherError(msg: 1, val: true)
         revert self.my_other_error.to_mem()

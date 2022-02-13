@@ -58,10 +58,10 @@ contract Foo:
 
     pub fn get_my_struct() -> MyStruct:
         return MyStruct(
-            my_num=42,
-            my_num2=u8(26),
-            my_bool=true,
-            my_addr=address(123456)
+            my_num: 42,
+            my_num2: u8(26),
+            my_bool: true,
+            my_addr: address(123456)
         )
 
     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
@@ -73,10 +73,10 @@ contract Foo:
 
     pub fn emit_my_event(self):
         emit MyEvent(
-            my_addrs=self.my_addrs.to_mem(),
-            my_u128=self.my_u128,
-            my_string=self.my_string.to_mem(),
-            my_u16s=self.my_u16s.to_mem(),
-            my_bool=self.my_bool,
-            my_bytes=self.my_bytes.to_mem()
+            my_addrs: self.my_addrs.to_mem(),
+            my_u128: self.my_u128,
+            my_string: self.my_string.to_mem(),
+            my_u16s: self.my_u16s.to_mem(),
+            my_bool: self.my_bool,
+            my_bytes: self.my_bytes.to_mem()
         )

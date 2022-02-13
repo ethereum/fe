@@ -157,7 +157,7 @@ pub fn validate_arg_labels(
                             "missing argument label",
                             vec![Label::primary(
                                 Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
-                                format!("add `{}=` here", expected_label),
+                                format!("add `{}:` here", expected_label),
                             )],
                             vec![format!(
                                 "Note: this label is optional if the argument is a variable named `{}`.",

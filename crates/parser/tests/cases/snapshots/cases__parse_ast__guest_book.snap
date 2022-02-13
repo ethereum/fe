@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(guest_book), module::parse_module,\n           r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub fn sign(self, book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg=book_msg)\n\n    pub fn get_msg(self, addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
+expression: "ast_string(stringify!(guest_book), try_parse_module,\n           r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub fn sign(self, book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n\n    pub fn get_msg(self, addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
 
 ---
 Node(
@@ -314,55 +314,55 @@ Node(
                               value: Node(
                                 kind: Name("book_msg"),
                                 span: Span(
-                                  start: 266,
-                                  end: 274,
+                                  start: 267,
+                                  end: 275,
                                 ),
                               ),
                             ),
                             span: Span(
                               start: 257,
-                              end: 274,
+                              end: 275,
                             ),
                           ),
                         ],
                         span: Span(
                           start: 256,
-                          end: 275,
+                          end: 276,
                         ),
                       ),
                     ),
                     span: Span(
                       start: 245,
-                      end: 275,
+                      end: 276,
                     ),
                   ),
                 ],
               ),
               span: Span(
                 start: 151,
-                end: 275,
+                end: 276,
               ),
             )),
             Function(Node(
               kind: Function(
                 pub_: Some(Span(
-                  start: 281,
-                  end: 284,
+                  start: 282,
+                  end: 285,
                 )),
                 unsafe_: None,
                 name: Node(
                   kind: "get_msg",
                   span: Span(
-                    start: 288,
-                    end: 295,
+                    start: 289,
+                    end: 296,
                   ),
                 ),
                 args: [
                   Node(
                     kind: Zelf,
                     span: Span(
-                      start: 296,
-                      end: 300,
+                      start: 297,
+                      end: 301,
                     ),
                   ),
                   Node(
@@ -370,8 +370,8 @@ Node(
                       name: Node(
                         kind: "addr",
                         span: Span(
-                          start: 302,
-                          end: 306,
+                          start: 303,
+                          end: 307,
                         ),
                       ),
                       typ: Node(
@@ -379,14 +379,14 @@ Node(
                           base: "address",
                         ),
                         span: Span(
-                          start: 308,
-                          end: 315,
+                          start: 309,
+                          end: 316,
                         ),
                       ),
                     )),
                     span: Span(
-                      start: 302,
-                      end: 315,
+                      start: 303,
+                      end: 316,
                     ),
                   ),
                 ],
@@ -395,8 +395,8 @@ Node(
                     base: "BookMsg",
                   ),
                   span: Span(
-                    start: 320,
-                    end: 327,
+                    start: 321,
+                    end: 328,
                   ),
                 )),
                 body: [
@@ -409,47 +409,47 @@ Node(
                               value: Node(
                                 kind: Name("self"),
                                 span: Span(
-                                  start: 344,
-                                  end: 348,
+                                  start: 345,
+                                  end: 349,
                                 ),
                               ),
                               attr: Node(
                                 kind: "guest_book",
                                 span: Span(
-                                  start: 349,
-                                  end: 359,
+                                  start: 350,
+                                  end: 360,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 344,
-                              end: 359,
+                              start: 345,
+                              end: 360,
                             ),
                           ),
                           index: Node(
                             kind: Name("addr"),
                             span: Span(
-                              start: 360,
-                              end: 364,
+                              start: 361,
+                              end: 365,
                             ),
                           ),
                         ),
                         span: Span(
-                          start: 344,
-                          end: 365,
+                          start: 345,
+                          end: 366,
                         ),
                       )),
                     ),
                     span: Span(
-                      start: 337,
-                      end: 365,
+                      start: 338,
+                      end: 366,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 281,
-                end: 365,
+                start: 282,
+                end: 366,
               ),
             )),
           ],
@@ -457,13 +457,13 @@ Node(
         ),
         span: Span(
           start: 35,
-          end: 365,
+          end: 366,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 365,
+    end: 366,
   ),
 )

@@ -12,7 +12,7 @@
 > &nbsp;&nbsp; _CallArg_&nbsp;( `,` _CallArg_ )<sup>\*</sup> `,`<sup>?</sup>
 >
 > _CallArg_ :\
-> &nbsp;&nbsp; (_CallArgLabel_ `=`)<sup>?</sup> [_Expression_]
+> &nbsp;&nbsp; (_CallArgLabel_ `:`)<sup>?</sup> [_Expression_]
 >
 > _CallArgLabel_ :\
 > &nbsp;&nbsp; [IDENTIFIER]<sup>Label must correspond to the name of the event property at the given position. It can be omitted if parameter name and event property name are equal.</sup>
@@ -31,7 +31,7 @@ contract Foo:
         my_bytes: Array<u8, 100>
 
     pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
-        emit Mix(num1=26, addr, num2=42, my_bytes)
+        emit Mix(num1: 26, addr, num2: 42, my_bytes)
 ```
 
 [_Expression_]: ../expressions/index.md

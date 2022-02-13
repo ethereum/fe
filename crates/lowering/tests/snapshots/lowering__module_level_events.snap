@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 event Transfer:
@@ -10,5 +10,5 @@ event Transfer:
 
 contract Foo:
     fn transfer(to: address, value: u256) -> ():
-        emit Transfer(sender=msg.sender, receiver=to, value)
+        emit Transfer(sender: msg.sender, receiver: to, value)
         return ()

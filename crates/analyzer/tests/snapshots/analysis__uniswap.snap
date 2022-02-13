@@ -278,8 +278,8 @@ note:
 75 │ ╭     fn _mint(self, to: address, value: u256):
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
-78 │ │         emit Transfer(from=address(0), to, value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 12612842918375381504
+78 │ │         emit Transfer(from: address(0), to, value)
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 12612842918375381504
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -379,23 +379,23 @@ note:
    │
 77 │         self.balances[to] = self.balances[to] + value
    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-78 │         emit Transfer(from=address(0), to, value)
-   │                                    ^ u256: Value
+78 │         emit Transfer(from: address(0), to, value)
+   │                                     ^ u256: Value
 
 note: 
-   ┌─ uniswap.fe:78:28
+   ┌─ uniswap.fe:78:29
    │
-78 │         emit Transfer(from=address(0), to, value)
-   │                            ^^^^^^^^^^  ^^  ^^^^^ u256: Value
-   │                            │           │    
-   │                            │           address: Value
-   │                            address: Value
+78 │         emit Transfer(from: address(0), to, value)
+   │                             ^^^^^^^^^^  ^^  ^^^^^ u256: Value
+   │                             │           │    
+   │                             │           address: Value
+   │                             address: Value
 
 note: 
    ┌─ uniswap.fe:78:9
    │
-78 │         emit Transfer(from=address(0), to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
+78 │         emit Transfer(from: address(0), to, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
    │
    = Event {
          name: "Transfer",
@@ -433,10 +433,10 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:78:28
+   ┌─ uniswap.fe:78:29
    │
-78 │         emit Transfer(from=address(0), to, value)
-   │                            ^^^^^^^ TypeConstructor(Base(Address))
+78 │         emit Transfer(from: address(0), to, value)
+   │                             ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ uniswap.fe:80:5
@@ -444,8 +444,8 @@ note:
 80 │ ╭     fn _burn(self, from: address, value: u256):
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
-83 │ │         emit Transfer(from, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 1338340295882506748
+83 │ │         emit Transfer(from, to: address(0), value)
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 1338340295882506748
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -545,24 +545,24 @@ note:
    │
 82 │         self.total_supply = self.total_supply - value
    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-83 │         emit Transfer(from, to=address(0), value)
-   │                       ^^^^             ^ u256: Value
-   │                       │                 
+83 │         emit Transfer(from, to: address(0), value)
+   │                       ^^^^              ^ u256: Value
+   │                       │                  
    │                       address: Value
 
 note: 
-   ┌─ uniswap.fe:83:32
+   ┌─ uniswap.fe:83:33
    │
-83 │         emit Transfer(from, to=address(0), value)
-   │                                ^^^^^^^^^^  ^^^^^ u256: Value
-   │                                │            
-   │                                address: Value
+83 │         emit Transfer(from, to: address(0), value)
+   │                                 ^^^^^^^^^^  ^^^^^ u256: Value
+   │                                 │            
+   │                                 address: Value
 
 note: 
    ┌─ uniswap.fe:83:9
    │
-83 │         emit Transfer(from, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
+83 │         emit Transfer(from, to: address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
    │
    = Event {
          name: "Transfer",
@@ -600,10 +600,10 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:83:32
+   ┌─ uniswap.fe:83:33
    │
-83 │         emit Transfer(from, to=address(0), value)
-   │                                ^^^^^^^ TypeConstructor(Base(Address))
+83 │         emit Transfer(from, to: address(0), value)
+   │                                 ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ uniswap.fe:85:5
@@ -1405,8 +1405,8 @@ note:
 125 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
     · │
 134 │ │         self.block_timestamp_last = block_timestamp
-135 │ │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 15880403329314631128
+135 │ │         emit Sync(reserve0: self.reserve0, reserve1: self.reserve1)
+    │ ╰───────────────────────────────────────────────────────────────────^ attributes hash: 15880403329314631128
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1657,28 +1657,28 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256: Value
     │         │                            
     │         u256: Storage { nonce: Some(9) }
-135 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │                            ^^^^ UniswapV2Pair: Value
+135 │         emit Sync(reserve0: self.reserve0, reserve1: self.reserve1)
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
-    ┌─ uniswap.fe:135:28
+    ┌─ uniswap.fe:135:29
     │
-135 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │                            ^^^^^^^^^^^^^           ^^^^ UniswapV2Pair: Value
-    │                            │                        
-    │                            u256: Storage { nonce: Some(7) } => Value
+135 │         emit Sync(reserve0: self.reserve0, reserve1: self.reserve1)
+    │                             ^^^^^^^^^^^^^            ^^^^ UniswapV2Pair: Value
+    │                             │                         
+    │                             u256: Storage { nonce: Some(7) } => Value
 
 note: 
-    ┌─ uniswap.fe:135:52
+    ┌─ uniswap.fe:135:54
     │
-135 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │                                                    ^^^^^^^^^^^^^ u256: Storage { nonce: Some(8) } => Value
+135 │         emit Sync(reserve0: self.reserve0, reserve1: self.reserve1)
+    │                                                      ^^^^^^^^^^^^^ u256: Storage { nonce: Some(8) } => Value
 
 note: 
     ┌─ uniswap.fe:135:9
     │
-135 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11491202868117077488
+135 │         emit Sync(reserve0: self.reserve0, reserve1: self.reserve1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11491202868117077488
     │
     = Event {
           name: "Sync",
@@ -1995,7 +1995,7 @@ note:
 160 │ │         let reserve0: u256 = self.reserve0
 161 │ │         let reserve1: u256 = self.reserve1
     · │
-184 │ │         emit Mint(sender=msg.sender, amount0, amount1)
+184 │ │         emit Mint(sender: msg.sender, amount0, amount1)
 185 │ │         return liquidity
     │ ╰────────────────────────^ attributes hash: 11001367211577482977
     │  
@@ -2333,19 +2333,19 @@ note:
 182 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
     │                           ^^^^^^^^^^^^^^^^^^^ u256: Value
 183 │ 
-184 │         emit Mint(sender=msg.sender, amount0, amount1)
-    │                          ^^^^^^^^^^  ^^^^^^^  ^^^^^^^ u256: Value
-    │                          │           │         
-    │                          │           u256: Value
-    │                          address: Value
+184 │         emit Mint(sender: msg.sender, amount0, amount1)
+    │                           ^^^^^^^^^^  ^^^^^^^  ^^^^^^^ u256: Value
+    │                           │           │         
+    │                           │           u256: Value
+    │                           address: Value
 185 │         return liquidity
     │                ^^^^^^^^^ u256: Value
 
 note: 
     ┌─ uniswap.fe:184:9
     │
-184 │         emit Mint(sender=msg.sender, amount0, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4243961805717991435
+184 │         emit Mint(sender: msg.sender, amount0, amount1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4243961805717991435
     │
     = Event {
           name: "Mint",
@@ -2434,7 +2434,7 @@ note:
 190 │ │         let reserve1: u256 = self.reserve1
 191 │ │         let token0: ERC20 = ERC20(self.token0)
     · │
-213 │ │         emit Burn(sender=msg.sender, amount0, amount1, to)
+213 │ │         emit Burn(sender: msg.sender, amount0, amount1, to)
 214 │ │         return (amount0, amount1)
     │ ╰─────────────────────────────────^ attributes hash: 2815259610692259424
     │  
@@ -2792,12 +2792,12 @@ note:
 211 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
     │                           ^^^^^^^^^^^^^^^^^^^ u256: Value
 212 │ 
-213 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │                          ^^^^^^^^^^  ^^^^^^^  ^^^^^^^  ^^ address: Value
-    │                          │           │        │         
-    │                          │           │        u256: Value
-    │                          │           u256: Value
-    │                          address: Value
+213 │         emit Burn(sender: msg.sender, amount0, amount1, to)
+    │                           ^^^^^^^^^^  ^^^^^^^  ^^^^^^^  ^^ address: Value
+    │                           │           │        │         
+    │                           │           │        u256: Value
+    │                           │           u256: Value
+    │                           address: Value
 214 │         return (amount0, amount1)
     │                 ^^^^^^^  ^^^^^^^ u256: Value
     │                 │         
@@ -2812,8 +2812,8 @@ note:
 note: 
     ┌─ uniswap.fe:213:9
     │
-213 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10738919684795162003
+213 │         emit Burn(sender: msg.sender, amount0, amount1, to)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10738919684795162003
     │
     = Event {
           name: "Burn",
@@ -2899,8 +2899,8 @@ note:
 222 │ │         let reserve1: u256 = self.reserve1
     · │
 252 │ │         self._update(balance0, balance1, reserve0, reserve1)
-253 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 5877065548740974671
+253 │ │         emit Swap(sender: msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │ ╰───────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 5877065548740974671
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -3413,20 +3413,20 @@ note:
     │
 252 │         self._update(balance0, balance1, reserve0, reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-253 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                          ^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^  ^^ address: Value
-    │                          │           │           │           │            │             
-    │                          │           │           │           │            u256: Value
-    │                          │           │           │           u256: Value
-    │                          │           │           u256: Value
-    │                          │           u256: Value
-    │                          address: Value
+253 │         emit Swap(sender: msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                           ^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^  ^^ address: Value
+    │                           │           │           │           │            │             
+    │                           │           │           │           │            u256: Value
+    │                           │           │           │           u256: Value
+    │                           │           │           u256: Value
+    │                           │           u256: Value
+    │                           address: Value
 
 note: 
     ┌─ uniswap.fe:253:9
     │
-253 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16055667627771619025
+253 │         emit Swap(sender: msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16055667627771619025
     │
     = Event {
           name: "Swap",
@@ -4161,7 +4161,7 @@ note:
 313 │ │ 
 314 │ │         let token0: address = token_a if token_a < token_b else token_b
     · │
-328 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+328 │ │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
 329 │ │         return address(pair)
     │ ╰────────────────────────────^ attributes hash: 1028840135620418462
     │  
@@ -4483,25 +4483,25 @@ note:
 326 │         self.pair_counter = self.pair_counter + 1
     │                             ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 327 │ 
-328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                          ^^^^^^  ^^^^^^               ^^^^ UniswapV2Pair: Value
-    │                          │       │                     
+328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
+    │                          ^^^^^^  ^^^^^^                ^^^^ UniswapV2Pair: Value
+    │                          │       │                      
     │                          │       address: Value
     │                          address: Value
 
 note: 
-    ┌─ uniswap.fe:328:47
+    ┌─ uniswap.fe:328:48
     │
-328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                               ^^^^^^^^^^^^^        ^^^^ UniswapV2Factory: Value
-    │                                               │                     
-    │                                               address: Value
+328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
+    │                                                ^^^^^^^^^^^^^         ^^^^ UniswapV2Factory: Value
+    │                                                │                      
+    │                                                address: Value
 
 note: 
-    ┌─ uniswap.fe:328:68
+    ┌─ uniswap.fe:328:70
     │
-328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                                                    ^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(4) } => Value
+328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
+    │                                                                      ^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(4) } => Value
 329 │         return address(pair)
     │                        ^^^^ UniswapV2Pair: Value
 
@@ -4514,8 +4514,8 @@ note:
 note: 
     ┌─ uniswap.fe:328:9
     │
-328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13094055123344570742
+328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13094055123344570742
     │
     = Event {
           name: "PairCreated",
@@ -4589,8 +4589,8 @@ note:
 325 │         self.all_pairs[self.pair_counter] = address(pair)
     │                                             ^^^^^^^ TypeConstructor(Base(Address))
     ·
-328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                               ^^^^^^^ TypeConstructor(Base(Address))
+328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
+    │                                                ^^^^^^^ TypeConstructor(Base(Address))
 329 │         return address(pair)
     │                ^^^^^^^ TypeConstructor(Base(Address))
 

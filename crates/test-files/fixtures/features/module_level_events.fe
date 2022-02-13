@@ -4,4 +4,4 @@ event Transfer:
     value: u256
 contract Foo:
     fn transfer(to : address, value : u256):
-        emit Transfer(sender=msg.sender, receiver=to, value)
+        emit Transfer(sender: msg.sender, receiver: to, value)

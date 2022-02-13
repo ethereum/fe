@@ -7,4 +7,4 @@ contract Foo:
 
 contract Bar:
   pub fn test():
-    Foo(address(0)).baz(doesnt_exist=1, me_neither=4)
+    Foo(address(0)).baz(doesnt_exist: 1, me_neither: 4)

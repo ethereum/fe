@@ -6,7 +6,7 @@ use none::*
 contract Bar:
 
     pub fn a() -> foo::Foo:
-        return foo::Foo(my_num=true)
+        return foo::Foo(my_num: true)
 
 fn std():
     pass
