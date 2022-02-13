@@ -9,6 +9,7 @@ repository = "https://github.com/ethereum/fe"
 [dependencies]
 fe-common = { path = "../common", version = "^0.13.0-alpha" }
 fe-parser = { path = "../parser", version = "^0.13.0-alpha" }
+fe-analyzer = { path = "../analyzer", version = "^0.13.0-alpha" }
 salsa = "0.16.1"
 smol_str = "0.1.21"
 num-bigint = "0.4.3"

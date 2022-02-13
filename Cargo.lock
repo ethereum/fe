@@ -698,6 +698,7 @@ dependencies = [
 name = "fe-mir"
 version = "0.13.0-alpha"
 dependencies = [
+ "fe-analyzer",
  "fe-common",
  "fe-parser",
  "fxhash",
