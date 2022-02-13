@@ -6,12 +6,12 @@ use std::rc::Rc;
 use crate::{
     db::MirDb,
     ir::{
-        types::{ArrayDef, MapDef, StructDef, TupleDef},
+        types::{ArrayDef, EventDef, MapDef, StructDef, TupleDef},
         Type, TypeId,
     },
 };
 
-use fe_analyzer::namespace::types as analyzer_types;
+use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
 pub fn lower_type(db: &dyn MirDb, ty: &analyzer_types::Type) -> TypeId {
     match ty {
@@ -24,6 +24,36 @@ pub fn lower_type(db: &dyn MirDb, ty: &analyzer_types::Type) -> TypeId {
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
     }
+}
+
+pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
+    let name = event.name(db.upcast());
+
+    let analyzer_ty = event.typ(db.upcast());
+    // Lower event fields.
+    let fields = analyzer_ty
+        .fields
+        .iter()
+        .map(|(field)| {
+            let name = field.name.clone();
+            let ty = lower_fixed_size(db, field.typ.as_ref().unwrap());
+            (field.name.clone(), ty, field.is_indexed)
+        })
+        .collect();
+
+    // Obtain span.
+    let span = event.span(db.upcast());
+
+    let module_id = event.module(db.upcast());
+
+    let def = EventDef {
+        name,
+        fields,
+        span,
+        module_id,
+    };
+    let ty = Type::Event(def);
+    intern_type(db, ty)
 }
 
 fn lower_base(db: &dyn MirDb, base: &analyzer_types::Base) -> TypeId {
@@ -113,9 +143,7 @@ fn lower_contract(db: &dyn MirDb, contract: &analyzer_types::Contract) -> TypeId
     // Obtain span.
     let span = id.span(db.upcast());
 
-    // Lower module.
-    let analyzer_module_id = id.module(db.upcast());
-    let module_id = db.lowered_module(analyzer_module_id);
+    let module_id = id.module(db.upcast());
 
     let def = StructDef {
         name,
@@ -146,9 +174,7 @@ fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
     // obtain span.
     let span = id.span(db.upcast());
 
-    // Lower module.
-    let analyzer_module_id = id.module(db.upcast());
-    let module_id = db.lowered_module(analyzer_module_id);
+    let module_id = id.module(db.upcast());
 
     let def = StructDef {
         name,
