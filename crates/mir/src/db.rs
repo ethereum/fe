@@ -6,14 +6,12 @@ use fe_analyzer::{
 };
 use fe_common::db::Upcast;
 
-use crate::ir::{self, ModuleId, TypeId};
+use crate::ir::{self, TypeId};
 
 mod queries;
 
 #[salsa::query_group(MirDbStorage)]
 pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> {
-    #[salsa::interned]
-    fn intern_module(&self, data: Rc<ir::Module>) -> ir::ModuleId;
     #[salsa::interned]
     fn intern_const(&self, data: Rc<ir::Constant>) -> ir::ConstantId;
     #[salsa::interned]
@@ -21,9 +19,8 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> {
     #[salsa::interned]
     fn intern_function(&self, data: Rc<ir::FunctionSignature>) -> ir::FunctionId;
 
-    #[salsa::invoke(queries::module::lowered_module)]
-    fn lowered_module(&self, analyzer_module: analyzer_items::ModuleId) -> ModuleId;
-
     #[salsa::invoke(queries::types::lowered_type)]
     fn lowered_type(&self, analyzer_type: analyzer_types::Type) -> TypeId;
+    #[salsa::invoke(queries::types::lowered_event_type)]
+    fn lowered_event_type(&self, analyzer_type: analyzer_items::EventId) -> TypeId;
 }

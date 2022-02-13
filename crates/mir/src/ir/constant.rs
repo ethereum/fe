@@ -4,7 +4,9 @@ use fe_common::impl_intern_key;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use super::{module::ModuleId, SourceInfo};
+use fe_analyzer::namespace::items as analyzer_items;
+
+use super::SourceInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Constant {
@@ -21,7 +23,7 @@ pub struct Constant {
     ty: TypeId,
 
     /// A module where a constant is declared.
-    module_id: ModuleId,
+    module_id: analyzer_items::ModuleId,
 }
 
 /// An interned Id for [`Constant`].

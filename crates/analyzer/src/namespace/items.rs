@@ -249,8 +249,9 @@ pub enum IngotMode {
     StandaloneModule,
 }
 
-/// An `Ingot` is composed of a tree of `Module`s (set via [`AnalyzerDb::set_ingot_module_tree`]),
-/// and doesn't have direct knowledge of files.
+/// An `Ingot` is composed of a tree of `Module`s (set via
+/// [`AnalyzerDb::set_ingot_module_tree`]), and doesn't have direct knowledge of
+/// files.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Ingot {
     pub name: SmolStr,
@@ -328,10 +329,11 @@ impl IngotId {
             })
             .collect();
 
-        // We automatically build a module hierarchy that matches the directory structure.
-        // We don't (yet?) require a .fe file for each directory like rust does.
-        // (eg `a/b.fe` alongside `a/b/`), but we do allow it (the module's items
-        // will be everything inside the .fe file, and the submodules inside the dir.
+        // We automatically build a module hierarchy that matches the directory
+        // structure. We don't (yet?) require a .fe file for each directory like
+        // rust does. (eg `a/b.fe` alongside `a/b/`), but we do allow it (the
+        // module's items will be everything inside the .fe file, and the
+        // submodules inside the dir.
         //
         // Collect the set of all directories in the file hierarchy
         // (after stripping the common prefix from all paths).
@@ -391,7 +393,8 @@ impl IngotId {
         self.data(db).name.clone()
     }
 
-    /// Returns the `main.fe`, or `lib.fe` module, depending on the ingot "mode" (IngotMode).
+    /// Returns the `main.fe`, or `lib.fe` module, depending on the ingot "mode"
+    /// (IngotMode).
     pub fn root_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
         db.ingot_root_module(*self)
     }
@@ -537,13 +540,15 @@ impl ModuleId {
         db.module_item_map(*self).value
     }
 
-    /// Returns a `name -> (name_span, external_item)` map for all `use` statements in a module.
+    /// Returns a `name -> (name_span, external_item)` map for all `use`
+    /// statements in a module.
     pub fn used_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, (Span, Item)>> {
         db.module_used_item_map(*self).value
     }
 
-    /// Returns all of the internal items, except for `use`d items. This is used when resolving
-    /// `use` statements, as it does not create a query cycle.
+    /// Returns all of the internal items, except for `use`d items. This is used
+    /// when resolving `use` statements, as it does not create a query
+    /// cycle.
     pub fn non_used_internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
         let global_items = self.global_items(db);
 
@@ -554,8 +559,8 @@ impl ModuleId {
             .collect()
     }
 
-    /// Returns all of the internal items. Internal items refers to the set of items visible when
-    /// inside of a module.
+    /// Returns all of the internal items. Internal items refers to the set of
+    /// items visible when inside of a module.
     pub fn internal_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
         let global_items = self.global_items(db);
         let defined_items = self.items(db);
@@ -572,7 +577,8 @@ impl ModuleId {
         Item::Module(*self).resolve_path_segments(db, &path.segments)
     }
 
-    /// Resolve a path that starts with an internal item. We omit used items to avoid a query cycle.
+    /// Resolve a path that starts with an internal item. We omit used items to
+    /// avoid a query cycle.
     pub fn resolve_path_non_used_internal(
         &self,
         db: &dyn AnalyzerDb,
@@ -618,8 +624,8 @@ impl ModuleId {
         }
     }
 
-    /// Returns `Err(IncompleteItem)` if the name could not be resolved, and the module was
-    /// not completely parsed (due to a syntax error).
+    /// Returns `Err(IncompleteItem)` if the name could not be resolved, and the
+    /// module was not completely parsed (due to a syntax error).
     pub fn resolve_name(
         &self,
         db: &dyn AnalyzerDb,
@@ -671,7 +677,8 @@ impl ModuleId {
         db.module_contracts(*self)
     }
 
-    /// Returns the map of ingot deps, built-ins, and the ingot itself as "ingot".
+    /// Returns the map of ingot deps, built-ins, and the ingot itself as
+    /// "ingot".
     pub fn global_items(&self, db: &dyn AnalyzerDb) -> IndexMap<SmolStr, Item> {
         let ingot = self.ingot(db);
         let mut items = ingot
@@ -1320,6 +1327,9 @@ impl_intern_key!(EventId);
 impl EventId {
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.name().into()
+    }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span

@@ -1,7 +1,6 @@
+use fe_analyzer::namespace::items as analyzer_items;
 use fe_common::{impl_intern_key, Span};
 use smol_str::SmolStr;
-
-use super::module::ModuleId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
@@ -23,7 +22,7 @@ pub enum Type {
     Array(ArrayDef),
     Tuple(TupleDef),
     Struct(StructDef),
-    Event(StructDef),
+    Event(EventDef),
     Contract(StructDef),
     Map(MapDef),
 }
@@ -52,7 +51,16 @@ pub struct StructDef {
     pub name: SmolStr,
     pub fields: Vec<(SmolStr, TypeId)>,
     pub span: Span,
-    pub module_id: ModuleId,
+    pub module_id: analyzer_items::ModuleId,
+}
+
+/// A user defined struct type definition.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EventDef {
+    pub name: SmolStr,
+    pub fields: Vec<(SmolStr, TypeId, bool)>,
+    pub span: Span,
+    pub module_id: analyzer_items::ModuleId,
 }
 
 /// A map type definition.

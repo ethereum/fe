@@ -1,3 +1,4 @@
+use fe_analyzer::namespace::items as analyzer_items;
 use fe_common::impl_intern_key;
 use fxhash::FxHashMap;
 use id_arena::Arena;
@@ -7,7 +8,6 @@ use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
     inst::{Inst, InstId},
-    module::ModuleId,
     types::{Type, TypeId},
     value::{Immediate, Value, ValueId},
     BasicBlockId, SourceInfo,
@@ -18,7 +18,7 @@ use super::{
 pub struct FunctionSignature {
     params: Vec<FunctionParam>,
     return_type: Type,
-    module_id: ModuleId,
+    module_id: analyzer_items::ModuleId,
     linkage: Linkage,
     source: SourceInfo,
 }
