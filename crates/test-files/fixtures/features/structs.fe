@@ -13,7 +13,7 @@ struct Mixed:
     bar: bool
 
     pub fn new(val: u256) -> Mixed:
-        return Mixed(foo=val, bar=false)
+        return Mixed(foo: val, bar: false)
 
 struct House:
     pub price: u256
@@ -40,10 +40,10 @@ contract Foo:
 
     pub fn complex_struct_in_storage(self) -> String<3>:
         self.my_bar = Bar(
-            name="foo",
-            numbers=[1, 2],
-            point=Point(x=100, y=200),
-            something=(1, true),
+            name: "foo",
+            numbers: [1, 2],
+            point: Point(x: 100, y: 200),
+            something: (1, true),
         )
 
         # Asserting the values as they were set initially
@@ -70,7 +70,7 @@ contract Foo:
         assert self.my_bar.point.x == 1000
         assert self.my_bar.point.y == 2000
         # We can set the point itself
-        self.my_bar.point = Point(x=100, y=200)
+        self.my_bar.point = Point(x: 100, y: 200)
         assert self.my_bar.point.x == 100
         assert self.my_bar.point.y == 200
 
@@ -88,10 +88,10 @@ contract Foo:
 
     pub fn complex_struct_in_memory(self) -> String<3>:
         let val: Bar = Bar(
-            name="foo",
-            numbers=[1, 2],
-            point=Point(x=100, y=200),
-            something=(1, true),
+            name: "foo",
+            numbers: [1, 2],
+            point: Point(x: 100, y: 200),
+            something: (1, true),
         )
 
         # Asserting the values as they were set initially
@@ -118,7 +118,7 @@ contract Foo:
         assert val.point.x == 1000
         assert val.point.y == 2000
         # We can set the point itself
-        val.point = Point(x=100, y=200)
+        val.point = Point(x: 100, y: 200)
         assert val.point.x == 100
         assert val.point.y == 200
 
@@ -146,10 +146,10 @@ contract Foo:
 
     pub fn create_house(self):
         self.my_house = House(
-            price=1,
-            size=2,
-            rooms=u8(5),
-            vacant=false,
+            price: 1,
+            size: 2,
+            rooms: u8(5),
+            vacant: false,
         )
         assert self.my_house.price == 1
         assert self.my_house.size == 2
@@ -180,10 +180,10 @@ contract Foo:
 
     pub fn bar() -> u256:
         let building: House = House(
-            price=300,
-            size=500,
-            rooms=u8(20),
-            vacant=true,
+            price: 300,
+            size: 500,
+            rooms: u8(20),
+            vacant: true,
         )
         assert building.size == 500
         assert building.price == 300
@@ -208,18 +208,18 @@ contract Foo:
 
     pub fn encode_house() -> Array<u8, 128>:
         let house: House = House(
-            price=300,
-            size=500,
-            rooms=u8(20),
-            vacant=true,
+            price: 300,
+            size: 500,
+            rooms: u8(20),
+            vacant: true,
         )
         return house.encode()
 
     pub fn hashed_house() -> u256:
         let house: House = House(
-            price=300,
-            size=500,
-            rooms=u8(20),
-            vacant=true,
+            price: 300,
+            size: 500,
+            rooms: u8(20),
+            vacant: true,
         )
         return house.hash()

@@ -38,11 +38,11 @@ contract Foo:
         revert
 
     pub fn do_revert_with_data():
-        revert SomeError(code=4711)
+        revert SomeError(code: 4711)
 
     # Having the return type exercises a different path in the compiler
     pub fn do_revert_with_data2() -> bool:
-        revert SomeError(code=4711)
+        revert SomeError(code: 4711)
 
 contract FooProxy:
     foo: Foo

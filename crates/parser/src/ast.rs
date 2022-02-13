@@ -790,8 +790,13 @@ impl fmt::Display for Expr {
 
 impl fmt::Display for CallArg {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(label) = self.label.as_ref() {
-            write!(f, "{}={}", label.kind, self.value.kind)
+        if let Some(label) = &self.label {
+            if let Expr::Name(var_name) = &self.value.kind {
+                if var_name == &label.kind {
+                    return write!(f, "{}", var_name);
+                }
+            }
+            write!(f, "{}: {}", label.kind, self.value.kind)
         } else {
             write!(f, "{}", self.value.kind)
         }

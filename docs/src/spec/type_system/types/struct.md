@@ -20,8 +20,9 @@ contract Example:
   area: Rectangle
 
   fn do_something():
+    let length: u256 = 20
     # A rectangle in memory
-    square: Rectangle = Rectangle(width=10, length=10)
+    let square: Rectangle = Rectangle(width: 10, length)
 ```
 
 All fields of struct types are always initialized.

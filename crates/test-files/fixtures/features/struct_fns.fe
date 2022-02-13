@@ -6,7 +6,7 @@ struct Point:
     return Point(x, y)
 
   pub fn origin() -> Point:
-    return Point(x=0, y=0)
+    return Point(x: 0, y: 0)
 
   # function name can match field name
   pub fn x(self) -> u64:
@@ -37,7 +37,7 @@ pub fn do_pointy_things():
   let p1: Point = Point.origin()
   p1.translate(5, 10)
 
-  let p2: Point = Point(x=1, y=2)
+  let p2: Point = Point(x: 1, y: 2)
   let p3: Point = p1.add(p2)
 
   assert p3.x == 6 and p3.y == 12

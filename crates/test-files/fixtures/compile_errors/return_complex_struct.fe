@@ -3,4 +3,4 @@ struct Foo:
 
 contract C:
   pub fn f() -> Foo:
-    return Foo(bar=[1, 2])
+    return Foo(bar: [1, 2])

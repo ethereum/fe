@@ -23,6 +23,6 @@ contract Foo:
 
     pub fn food():
         emit MyEvent(
-            my_tuple=(false, true),
-            my_other_tuple=(address(0), address(1))
+            my_tuple: (false, true),
+            my_other_tuple: (address(0), address(1))
         )

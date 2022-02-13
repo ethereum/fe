@@ -3,7 +3,7 @@ use foo::{Foo, Bar, FooBar}
 contract FooBarBing:
     pub fn get_bar() -> Bar:
         return Bar(
-            my_u256=24
+            my_u256: 24
         )
 
     pub fn create_foobar_contract() -> u256:

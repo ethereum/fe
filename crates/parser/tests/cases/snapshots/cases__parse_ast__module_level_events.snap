@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_level_events), module::parse_module,\n           r#\"\nevent Transfer:\n    idx sender: address\n    idx receiver: address\n    value: u256\ncontract Foo:\n    fn transfer(to : address, value : u256):\n        emit Transfer(sender=msg.sender, receiver=to, value)\n\"#)"
+expression: "ast_string(stringify!(module_level_events), try_parse_module,\n           r#\"\nevent Transfer:\n    idx sender: address\n    idx receiver: address\n    value: u256\ncontract Foo:\n    fn transfer(to : address, value : u256):\n        emit Transfer(sender: msg.sender, receiver: to, value)\n\"#)"
 
 ---
 Node(
@@ -198,27 +198,27 @@ Node(
                                   value: Node(
                                     kind: Name("msg"),
                                     span: Span(
-                                      start: 171,
-                                      end: 174,
+                                      start: 172,
+                                      end: 175,
                                     ),
                                   ),
                                   attr: Node(
                                     kind: "sender",
                                     span: Span(
-                                      start: 175,
-                                      end: 181,
+                                      start: 176,
+                                      end: 182,
                                     ),
                                   ),
                                 ),
                                 span: Span(
-                                  start: 171,
-                                  end: 181,
+                                  start: 172,
+                                  end: 182,
                                 ),
                               ),
                             ),
                             span: Span(
                               start: 164,
-                              end: 181,
+                              end: 182,
                             ),
                           ),
                           Node(
@@ -226,21 +226,21 @@ Node(
                               label: Some(Node(
                                 kind: "receiver",
                                 span: Span(
-                                  start: 183,
-                                  end: 191,
+                                  start: 184,
+                                  end: 192,
                                 ),
                               )),
                               value: Node(
                                 kind: Name("to"),
                                 span: Span(
-                                  start: 192,
-                                  end: 194,
+                                  start: 194,
+                                  end: 196,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 183,
-                              end: 194,
+                              start: 184,
+                              end: 196,
                             ),
                           ),
                           Node(
@@ -249,33 +249,33 @@ Node(
                               value: Node(
                                 kind: Name("value"),
                                 span: Span(
-                                  start: 196,
-                                  end: 201,
+                                  start: 198,
+                                  end: 203,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 196,
-                              end: 201,
+                              start: 198,
+                              end: 203,
                             ),
                           ),
                         ],
                         span: Span(
                           start: 163,
-                          end: 202,
+                          end: 204,
                         ),
                       ),
                     ),
                     span: Span(
                       start: 150,
-                      end: 202,
+                      end: 204,
                     ),
                   ),
                 ],
               ),
               span: Span(
                 start: 101,
-                end: 202,
+                end: 204,
               ),
             )),
           ],
@@ -283,13 +283,13 @@ Node(
         ),
         span: Span(
           start: 83,
-          end: 202,
+          end: 204,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 202,
+    end: 204,
   ),
 )

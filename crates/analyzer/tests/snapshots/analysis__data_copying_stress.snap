@@ -809,8 +809,8 @@ note:
    ┌─ data_copying_stress.fe:74:5
    │  
 74 │ ╭     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
-75 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 18022359820804226717
+75 │ │         emit MyEvent(my_string: some_string, my_u256: some_u256)
+   │ ╰────────────────────────────────────────────────────────────────^ attributes hash: 18022359820804226717
    │  
    = FunctionSignature {
          self_decl: None,
@@ -844,18 +844,18 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:75:32
+   ┌─ data_copying_stress.fe:75:33
    │
-75 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │                                ^^^^^^^^^^^          ^^^^^^^^^ u256: Value
-   │                                │                     
-   │                                String<42>: Memory
+75 │         emit MyEvent(my_string: some_string, my_u256: some_u256)
+   │                                 ^^^^^^^^^^^           ^^^^^^^^^ u256: Value
+   │                                 │                      
+   │                                 String<42>: Memory
 
 note: 
    ┌─ data_copying_stress.fe:75:9
    │
-75 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
+75 │         emit MyEvent(my_string: some_string, my_u256: some_u256)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
    │
    = Event {
          name: "MyEvent",

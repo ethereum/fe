@@ -7,4 +7,4 @@ pub fn get_42() -> u256:
     return 42
 
 pub fn revert_insufficient_funds():
-    revert Error(code=ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
+    revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)

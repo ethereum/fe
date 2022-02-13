@@ -69,8 +69,8 @@ note:
    ┌─ revert.fe:14:5
    │  
 14 │ ╭     pub fn revert_other_error():
-15 │ │         revert OtherError(msg=1, val=true)
-   │ ╰──────────────────────────────────────────^ attributes hash: 15148455653558261645
+15 │ │         revert OtherError(msg: 1, val: true)
+   │ ╰────────────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
          self_decl: None,
@@ -83,30 +83,30 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:15:31
+   ┌─ revert.fe:15:32
    │
-15 │         revert OtherError(msg=1, val=true)
-   │                               ^      ^^^^ bool: Value
-   │                               │       
-   │                               u256: Value
+15 │         revert OtherError(msg: 1, val: true)
+   │                                ^       ^^^^ bool: Value
+   │                                │        
+   │                                u256: Value
 
 note: 
    ┌─ revert.fe:15:16
    │
-15 │         revert OtherError(msg=1, val=true)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+15 │         revert OtherError(msg: 1, val: true)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 
 note: 
    ┌─ revert.fe:15:16
    │
-15 │         revert OtherError(msg=1, val=true)
+15 │         revert OtherError(msg: 1, val: true)
    │                ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }))
 
 note: 
    ┌─ revert.fe:17:5
    │  
 17 │ ╭     pub fn revert_other_error_from_sto(self):
-18 │ │         self.my_other_error = OtherError(msg=1, val=true)
+18 │ │         self.my_other_error = OtherError(msg: 1, val: true)
 19 │ │         revert self.my_other_error.to_mem()
    │ ╰───────────────────────────────────────────^ attributes hash: 17603814563784536273
    │  
@@ -125,23 +125,23 @@ note:
 note: 
    ┌─ revert.fe:18:9
    │
-18 │         self.my_other_error = OtherError(msg=1, val=true)
+18 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^ Foo: Value
 
 note: 
    ┌─ revert.fe:18:9
    │
-18 │         self.my_other_error = OtherError(msg=1, val=true)
-   │         ^^^^^^^^^^^^^^^^^^^                  ^      ^^^^ bool: Value
-   │         │                                    │       
-   │         │                                    u256: Value
+18 │         self.my_other_error = OtherError(msg: 1, val: true)
+   │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
+   │         │                                     │        
+   │         │                                     u256: Value
    │         OtherError: Storage { nonce: Some(0) }
 
 note: 
    ┌─ revert.fe:18:31
    │
-18 │         self.my_other_error = OtherError(msg=1, val=true)
-   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+18 │         self.my_other_error = OtherError(msg: 1, val: true)
+   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 19 │         revert self.my_other_error.to_mem()
    │                ^^^^ Foo: Value
 
@@ -160,7 +160,7 @@ note:
 note: 
    ┌─ revert.fe:18:31
    │
-18 │         self.my_other_error = OtherError(msg=1, val=true)
+18 │         self.my_other_error = OtherError(msg: 1, val: true)
    │                               ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }))
 19 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }) }

@@ -35,8 +35,8 @@ note:
    ┌─ structs.fe:15:5
    │  
 15 │ ╭     pub fn new(val: u256) -> Mixed:
-16 │ │         return Mixed(foo=val, bar=false)
-   │ ╰────────────────────────────────────────^ attributes hash: 14840391711119122636
+16 │ │         return Mixed(foo: val, bar: false)
+   │ ╰──────────────────────────────────────────^ attributes hash: 14840391711119122636
    │  
    = FunctionSignature {
          self_decl: None,
@@ -66,23 +66,23 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:16:26
+   ┌─ structs.fe:16:27
    │
-16 │         return Mixed(foo=val, bar=false)
-   │                          ^^^      ^^^^^ bool: Value
-   │                          │         
-   │                          u256: Value
+16 │         return Mixed(foo: val, bar: false)
+   │                           ^^^       ^^^^^ bool: Value
+   │                           │          
+   │                           u256: Value
 
 note: 
    ┌─ structs.fe:16:16
    │
-16 │         return Mixed(foo=val, bar=false)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ Mixed: Memory
+16 │         return Mixed(foo: val, bar: false)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mixed: Memory
 
 note: 
    ┌─ structs.fe:16:16
    │
-16 │         return Mixed(foo=val, bar=false)
+16 │         return Mixed(foo: val, bar: false)
    │                ^^^^^ TypeConstructor(Struct(Struct { name: "Mixed", id: StructId(2), field_count: 2 }))
 
 note: 
@@ -294,8 +294,8 @@ note:
    │  
 41 │ ╭     pub fn complex_struct_in_storage(self) -> String<3>:
 42 │ │         self.my_bar = Bar(
-43 │ │             name="foo",
-44 │ │             numbers=[1, 2],
+43 │ │             name: "foo",
+44 │ │             numbers: [1, 2],
    · │
 86 │ │ 
 87 │ │         return self.my_bar.name.to_mem()
@@ -326,48 +326,48 @@ note:
    │
 42 │         self.my_bar = Bar(
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
-43 │             name="foo",
-   │                  ^^^^^ String<3>: Memory
-44 │             numbers=[1, 2],
-   │                      ^  ^ u256: Value
-   │                      │   
-   │                      u256: Value
+43 │             name: "foo",
+   │                   ^^^^^ String<3>: Memory
+44 │             numbers: [1, 2],
+   │                       ^  ^ u256: Value
+   │                       │   
+   │                       u256: Value
 
 note: 
-   ┌─ structs.fe:44:21
+   ┌─ structs.fe:44:22
    │
-44 │             numbers=[1, 2],
-   │                     ^^^^^^ Array<u256, 2>: Memory
-45 │             point=Point(x=100, y=200),
-   │                           ^^^    ^^^ u256: Value
-   │                           │       
-   │                           u256: Value
+44 │             numbers: [1, 2],
+   │                      ^^^^^^ Array<u256, 2>: Memory
+45 │             point: Point(x: 100, y: 200),
+   │                             ^^^     ^^^ u256: Value
+   │                             │        
+   │                             u256: Value
 
 note: 
-   ┌─ structs.fe:45:19
+   ┌─ structs.fe:45:20
    │
-45 │             point=Point(x=100, y=200),
-   │                   ^^^^^^^^^^^^^^^^^^^ Point: Memory
-46 │             something=(1, true),
-   │                        ^  ^^^^ bool: Value
-   │                        │   
-   │                        u256: Value
+45 │             point: Point(x: 100, y: 200),
+   │                    ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
+46 │             something: (1, true),
+   │                         ^  ^^^^ bool: Value
+   │                         │   
+   │                         u256: Value
 
 note: 
-   ┌─ structs.fe:46:23
+   ┌─ structs.fe:46:24
    │
-46 │             something=(1, true),
-   │                       ^^^^^^^^^ (u256, bool): Memory
+46 │             something: (1, true),
+   │                        ^^^^^^^^^ (u256, bool): Memory
 
 note: 
    ┌─ structs.fe:42:23
    │  
 42 │           self.my_bar = Bar(
    │ ╭───────────────────────^
-43 │ │             name="foo",
-44 │ │             numbers=[1, 2],
-45 │ │             point=Point(x=100, y=200),
-46 │ │             something=(1, true),
+43 │ │             name: "foo",
+44 │ │             numbers: [1, 2],
+45 │ │             point: Point(x: 100, y: 200),
+46 │ │             something: (1, true),
 47 │ │         )
    │ ╰─────────^ Bar: Memory
    · │
@@ -830,29 +830,29 @@ note:
 71 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 72 │         # We can set the point itself
-73 │         self.my_bar.point = Point(x=100, y=200)
+73 │         self.my_bar.point = Point(x: 100, y: 200)
    │         ^^^^ Foo: Value
 
 note: 
    ┌─ structs.fe:73:9
    │
-73 │         self.my_bar.point = Point(x=100, y=200)
+73 │         self.my_bar.point = Point(x: 100, y: 200)
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
    ┌─ structs.fe:73:9
    │
-73 │         self.my_bar.point = Point(x=100, y=200)
-   │         ^^^^^^^^^^^^^^^^^           ^^^    ^^^ u256: Value
-   │         │                           │       
-   │         │                           u256: Value
+73 │         self.my_bar.point = Point(x: 100, y: 200)
+   │         ^^^^^^^^^^^^^^^^^            ^^^     ^^^ u256: Value
+   │         │                            │        
+   │         │                            u256: Value
    │         Point: Storage { nonce: Some(1) }
 
 note: 
    ┌─ structs.fe:73:29
    │
-73 │         self.my_bar.point = Point(x=100, y=200)
-   │                             ^^^^^^^^^^^^^^^^^^^ Point: Memory
+73 │         self.my_bar.point = Point(x: 100, y: 200)
+   │                             ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
 74 │         assert self.my_bar.point.x == 100
    │                ^^^^ Foo: Value
 
@@ -1103,10 +1103,10 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ String<3>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ structs.fe:45:19
+   ┌─ structs.fe:45:20
    │
-45 │             point=Point(x=100, y=200),
-   │                   ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+45 │             point: Point(x: 100, y: 200),
+   │                    ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
    ┌─ structs.fe:42:23
@@ -1114,7 +1114,7 @@ note:
 42 │         self.my_bar = Bar(
    │                       ^^^ TypeConstructor(Struct(Struct { name: "Bar", id: StructId(1), field_count: 4 }))
    ·
-73 │         self.my_bar.point = Point(x=100, y=200)
+73 │         self.my_bar.point = Point(x: 100, y: 200)
    │                             ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
    ·
 87 │         return self.my_bar.name.to_mem()
@@ -1125,8 +1125,8 @@ note:
     │  
  89 │ ╭     pub fn complex_struct_in_memory(self) -> String<3>:
  90 │ │         let val: Bar = Bar(
- 91 │ │             name="foo",
- 92 │ │             numbers=[1, 2],
+ 91 │ │             name: "foo",
+ 92 │ │             numbers: [1, 2],
     · │
 134 │ │ 
 135 │ │         return val.name
@@ -1153,50 +1153,50 @@ note:
    │                  ^^^ Bar
 
 note: 
-   ┌─ structs.fe:91:18
+   ┌─ structs.fe:91:19
    │
-91 │             name="foo",
-   │                  ^^^^^ String<3>: Memory
-92 │             numbers=[1, 2],
-   │                      ^  ^ u256: Value
-   │                      │   
-   │                      u256: Value
+91 │             name: "foo",
+   │                   ^^^^^ String<3>: Memory
+92 │             numbers: [1, 2],
+   │                       ^  ^ u256: Value
+   │                       │   
+   │                       u256: Value
 
 note: 
-   ┌─ structs.fe:92:21
+   ┌─ structs.fe:92:22
    │
-92 │             numbers=[1, 2],
-   │                     ^^^^^^ Array<u256, 2>: Memory
-93 │             point=Point(x=100, y=200),
-   │                           ^^^    ^^^ u256: Value
-   │                           │       
-   │                           u256: Value
+92 │             numbers: [1, 2],
+   │                      ^^^^^^ Array<u256, 2>: Memory
+93 │             point: Point(x: 100, y: 200),
+   │                             ^^^     ^^^ u256: Value
+   │                             │        
+   │                             u256: Value
 
 note: 
-   ┌─ structs.fe:93:19
+   ┌─ structs.fe:93:20
    │
-93 │             point=Point(x=100, y=200),
-   │                   ^^^^^^^^^^^^^^^^^^^ Point: Memory
-94 │             something=(1, true),
-   │                        ^  ^^^^ bool: Value
-   │                        │   
-   │                        u256: Value
+93 │             point: Point(x: 100, y: 200),
+   │                    ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
+94 │             something: (1, true),
+   │                         ^  ^^^^ bool: Value
+   │                         │   
+   │                         u256: Value
 
 note: 
-   ┌─ structs.fe:94:23
+   ┌─ structs.fe:94:24
    │
-94 │             something=(1, true),
-   │                       ^^^^^^^^^ (u256, bool): Memory
+94 │             something: (1, true),
+   │                        ^^^^^^^^^ (u256, bool): Memory
 
 note: 
    ┌─ structs.fe:90:24
    │  
 90 │           let val: Bar = Bar(
    │ ╭────────────────────────^
-91 │ │             name="foo",
-92 │ │             numbers=[1, 2],
-93 │ │             point=Point(x=100, y=200),
-94 │ │             something=(1, true),
+91 │ │             name: "foo",
+92 │ │             numbers: [1, 2],
+93 │ │             point: Point(x: 100, y: 200),
+94 │ │             something: (1, true),
 95 │ │         )
    │ ╰─────────^ Bar: Memory
    · │
@@ -1557,23 +1557,23 @@ note:
 119 │         assert val.point.y == 2000
     │                ^^^^^^^^^^^^^^^^^^^ bool: Value
 120 │         # We can set the point itself
-121 │         val.point = Point(x=100, y=200)
+121 │         val.point = Point(x: 100, y: 200)
     │         ^^^ Bar: Memory
 
 note: 
     ┌─ structs.fe:121:9
     │
-121 │         val.point = Point(x=100, y=200)
-    │         ^^^^^^^^^           ^^^    ^^^ u256: Value
-    │         │                   │       
-    │         │                   u256: Value
+121 │         val.point = Point(x: 100, y: 200)
+    │         ^^^^^^^^^            ^^^     ^^^ u256: Value
+    │         │                    │        
+    │         │                    u256: Value
     │         Point: Memory
 
 note: 
     ┌─ structs.fe:121:21
     │
-121 │         val.point = Point(x=100, y=200)
-    │                     ^^^^^^^^^^^^^^^^^^^ Point: Memory
+121 │         val.point = Point(x: 100, y: 200)
+    │                     ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
 122 │         assert val.point.x == 100
     │                ^^^ Bar: Memory
 
@@ -1758,10 +1758,10 @@ note:
     │                ^^^^^^^^ String<3>: Memory
 
 note: 
-   ┌─ structs.fe:93:19
+   ┌─ structs.fe:93:20
    │
-93 │             point=Point(x=100, y=200),
-   │                   ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+93 │             point: Point(x: 100, y: 200),
+   │                    ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
     ┌─ structs.fe:90:24
@@ -1769,7 +1769,7 @@ note:
  90 │         let val: Bar = Bar(
     │                        ^^^ TypeConstructor(Struct(Struct { name: "Bar", id: StructId(1), field_count: 4 }))
     ·
-121 │         val.point = Point(x=100, y=200)
+121 │         val.point = Point(x: 100, y: 200)
     │                     ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
@@ -1928,8 +1928,8 @@ note:
     │  
 147 │ ╭     pub fn create_house(self):
 148 │ │         self.my_house = House(
-149 │ │             price=1,
-150 │ │             size=2,
+149 │ │             price: 1,
+150 │ │             size: 2,
     · │
 178 │ │         assert self.my_house.rooms == u8(100)
 179 │ │         assert self.my_house.vacant
@@ -1958,30 +1958,30 @@ note:
     │
 148 │         self.my_house = House(
     │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
-149 │             price=1,
+149 │             price: 1,
+    │                    ^ u256: Value
+150 │             size: 2,
     │                   ^ u256: Value
-150 │             size=2,
-    │                  ^ u256: Value
-151 │             rooms=u8(5),
-    │                      ^ u8: Value
+151 │             rooms: u8(5),
+    │                       ^ u8: Value
 
 note: 
-    ┌─ structs.fe:151:19
+    ┌─ structs.fe:151:20
     │
-151 │             rooms=u8(5),
-    │                   ^^^^^ u8: Value
-152 │             vacant=false,
-    │                    ^^^^^ bool: Value
+151 │             rooms: u8(5),
+    │                    ^^^^^ u8: Value
+152 │             vacant: false,
+    │                     ^^^^^ bool: Value
 
 note: 
     ┌─ structs.fe:148:25
     │  
 148 │           self.my_house = House(
     │ ╭─────────────────────────^
-149 │ │             price=1,
-150 │ │             size=2,
-151 │ │             rooms=u8(5),
-152 │ │             vacant=false,
+149 │ │             price: 1,
+150 │ │             size: 2,
+151 │ │             rooms: u8(5),
+152 │ │             vacant: false,
 153 │ │         )
     │ ╰─────────^ House: Memory
 154 │           assert self.my_house.price == 1
@@ -2512,10 +2512,10 @@ note:
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:151:19
+    ┌─ structs.fe:151:20
     │
-151 │             rooms=u8(5),
-    │                   ^^ TypeConstructor(Base(Numeric(U8)))
+151 │             rooms: u8(5),
+    │                    ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
     ┌─ structs.fe:148:25
@@ -2546,8 +2546,8 @@ note:
     │  
 181 │ ╭     pub fn bar() -> u256:
 182 │ │         let building: House = House(
-183 │ │             price=300,
-184 │ │             size=500,
+183 │ │             price: 300,
+184 │ │             size: 500,
     · │
 206 │ │ 
 207 │ │         return building.size
@@ -2572,32 +2572,32 @@ note:
     │                       ^^^^^ House
 
 note: 
-    ┌─ structs.fe:183:19
+    ┌─ structs.fe:183:20
     │
-183 │             price=300,
+183 │             price: 300,
+    │                    ^^^ u256: Value
+184 │             size: 500,
     │                   ^^^ u256: Value
-184 │             size=500,
-    │                  ^^^ u256: Value
-185 │             rooms=u8(20),
-    │                      ^^ u8: Value
+185 │             rooms: u8(20),
+    │                       ^^ u8: Value
 
 note: 
-    ┌─ structs.fe:185:19
+    ┌─ structs.fe:185:20
     │
-185 │             rooms=u8(20),
-    │                   ^^^^^^ u8: Value
-186 │             vacant=true,
-    │                    ^^^^ bool: Value
+185 │             rooms: u8(20),
+    │                    ^^^^^^ u8: Value
+186 │             vacant: true,
+    │                     ^^^^ bool: Value
 
 note: 
     ┌─ structs.fe:182:31
     │  
 182 │           let building: House = House(
     │ ╭───────────────────────────────^
-183 │ │             price=300,
-184 │ │             size=500,
-185 │ │             rooms=u8(20),
-186 │ │             vacant=true,
+183 │ │             price: 300,
+184 │ │             size: 500,
+185 │ │             rooms: u8(20),
+186 │ │             vacant: true,
 187 │ │         )
     │ ╰─────────^ House: Memory
 188 │           assert building.size == 500
@@ -2832,10 +2832,10 @@ note:
     │                ^^^^^^^^^^^^^ u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:185:19
+    ┌─ structs.fe:185:20
     │
-185 │             rooms=u8(20),
-    │                   ^^ TypeConstructor(Base(Numeric(U8)))
+185 │             rooms: u8(20),
+    │                    ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
     ┌─ structs.fe:182:31
@@ -2860,8 +2860,8 @@ note:
     │  
 209 │ ╭     pub fn encode_house() -> Array<u8, 128>:
 210 │ │         let house: House = House(
-211 │ │             price=300,
-212 │ │             size=500,
+211 │ │             price: 300,
+212 │ │             size: 500,
     · │
 215 │ │         )
 216 │ │         return house.encode()
@@ -2889,32 +2889,32 @@ note:
     │                    ^^^^^ House
 
 note: 
-    ┌─ structs.fe:211:19
+    ┌─ structs.fe:211:20
     │
-211 │             price=300,
+211 │             price: 300,
+    │                    ^^^ u256: Value
+212 │             size: 500,
     │                   ^^^ u256: Value
-212 │             size=500,
-    │                  ^^^ u256: Value
-213 │             rooms=u8(20),
-    │                      ^^ u8: Value
+213 │             rooms: u8(20),
+    │                       ^^ u8: Value
 
 note: 
-    ┌─ structs.fe:213:19
+    ┌─ structs.fe:213:20
     │
-213 │             rooms=u8(20),
-    │                   ^^^^^^ u8: Value
-214 │             vacant=true,
-    │                    ^^^^ bool: Value
+213 │             rooms: u8(20),
+    │                    ^^^^^^ u8: Value
+214 │             vacant: true,
+    │                     ^^^^ bool: Value
 
 note: 
     ┌─ structs.fe:210:28
     │  
 210 │           let house: House = House(
     │ ╭────────────────────────────^
-211 │ │             price=300,
-212 │ │             size=500,
-213 │ │             rooms=u8(20),
-214 │ │             vacant=true,
+211 │ │             price: 300,
+212 │ │             size: 500,
+213 │ │             rooms: u8(20),
+214 │ │             vacant: true,
 215 │ │         )
     │ ╰─────────^ House: Memory
 216 │           return house.encode()
@@ -2927,10 +2927,10 @@ note:
     │                ^^^^^^^^^^^^^^ Array<u8, 128>: Memory
 
 note: 
-    ┌─ structs.fe:213:19
+    ┌─ structs.fe:213:20
     │
-213 │             rooms=u8(20),
-    │                   ^^ TypeConstructor(Base(Numeric(U8)))
+213 │             rooms: u8(20),
+    │                    ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
     ┌─ structs.fe:210:28
@@ -2946,8 +2946,8 @@ note:
     │  
 218 │ ╭     pub fn hashed_house() -> u256:
 219 │ │         let house: House = House(
-220 │ │             price=300,
-221 │ │             size=500,
+220 │ │             price: 300,
+221 │ │             size: 500,
     · │
 224 │ │         )
 225 │ │         return house.hash()
@@ -2972,32 +2972,32 @@ note:
     │                    ^^^^^ House
 
 note: 
-    ┌─ structs.fe:220:19
+    ┌─ structs.fe:220:20
     │
-220 │             price=300,
+220 │             price: 300,
+    │                    ^^^ u256: Value
+221 │             size: 500,
     │                   ^^^ u256: Value
-221 │             size=500,
-    │                  ^^^ u256: Value
-222 │             rooms=u8(20),
-    │                      ^^ u8: Value
+222 │             rooms: u8(20),
+    │                       ^^ u8: Value
 
 note: 
-    ┌─ structs.fe:222:19
+    ┌─ structs.fe:222:20
     │
-222 │             rooms=u8(20),
-    │                   ^^^^^^ u8: Value
-223 │             vacant=true,
-    │                    ^^^^ bool: Value
+222 │             rooms: u8(20),
+    │                    ^^^^^^ u8: Value
+223 │             vacant: true,
+    │                     ^^^^ bool: Value
 
 note: 
     ┌─ structs.fe:219:28
     │  
 219 │           let house: House = House(
     │ ╭────────────────────────────^
-220 │ │             price=300,
-221 │ │             size=500,
-222 │ │             rooms=u8(20),
-223 │ │             vacant=true,
+220 │ │             price: 300,
+221 │ │             size: 500,
+222 │ │             rooms: u8(20),
+223 │ │             vacant: true,
 224 │ │         )
     │ ╰─────────^ House: Memory
 225 │           return house.hash()
@@ -3010,10 +3010,10 @@ note:
     │                ^^^^^^^^^^^^ u256: Value
 
 note: 
-    ┌─ structs.fe:222:19
+    ┌─ structs.fe:222:20
     │
-222 │             rooms=u8(20),
-    │                   ^^ TypeConstructor(Base(Numeric(U8)))
+222 │             rooms: u8(20),
+    │                    ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
     ┌─ structs.fe:219:28

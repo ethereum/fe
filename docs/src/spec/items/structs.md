@@ -20,7 +20,7 @@ struct Point:
     x: u256
     y: u256
 
-p = Point {x: 10, y: 11}
+p = Point(x: 10, y: 11)
 px: u256 = p.x;
 ```
 

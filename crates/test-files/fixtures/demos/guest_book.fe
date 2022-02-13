@@ -13,7 +13,7 @@ contract GuestBook:
         self.messages[msg.sender] = book_msg
 
         # Emit the `Signed` event
-        emit Signed(book_msg=book_msg)
+        emit Signed(book_msg)
 
     pub fn get_msg(self, addr: address) -> String<100>:
         # Copying data from storage to memory

@@ -20,7 +20,7 @@ contract Foo:
 
     let my_array: Array<u256, 2> = [THREE, TEN]
     let my_tuple: (u256, u256) = (THREE, TEN)
-    let my_bar: Bar = Bar(val=THREE)
+    let my_bar: Bar = Bar(val: THREE)
 
     while THREE > 4:
         pass
@@ -35,6 +35,6 @@ contract Foo:
     elif TEN == 10:
         return THREE * TEN
     elif IS_ADMIN:
-        revert Bar(val=THREE)
+        revert Bar(val: THREE)
 
     return self.table[THREE]

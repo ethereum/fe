@@ -127,45 +127,80 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
             span += par.next()?.span;
             break;
         }
+
         let arg = parse_expr(par)?;
-        if par.peek_or_err()? == Eq {
-            let eq_tok = par.next()?;
-            let value = parse_expr(par)?;
-            if let Expr::Name(name) = arg.kind {
-                let span = arg.span + value.span;
+        match par.peek_or_err()? {
+            TokenKind::Eq => {
+                let eq = par.next()?;
+                if let Expr::Name(name) = arg.kind {
+                    par.fancy_error(
+                        "Syntax error in argument list",
+                        vec![Label::primary(eq.span, "unexpected `=`".to_string())],
+                        vec![
+                            "Argument labels should be followed by `:`.".to_string(),
+                            format!("Hint: try `{}:`", name),
+                            "If this is a variable assignment, it must be a standalone statement."
+                                .to_string(),
+                        ],
+                    );
+                    let value = parse_expr(par)?;
+                    let span = arg.span + value.span;
+                    args.push(Node::new(
+                        CallArg {
+                            label: Some(Node::new(name, arg.span)),
+                            value,
+                        },
+                        span,
+                    ));
+                } else {
+                    par.fancy_error(
+                        "Syntax error in argument list",
+                        vec![Label::primary(eq.span, "unexpected `=`".to_string())],
+                        vec![],
+                    );
+                }
+            }
+
+            TokenKind::Colon => {
+                let sep_tok = par.next()?;
+                let value = parse_expr(par)?;
+                if let Expr::Name(name) = arg.kind {
+                    let span = arg.span + value.span;
+                    args.push(Node::new(
+                        CallArg {
+                            label: Some(Node::new(name, arg.span)),
+                            value,
+                        },
+                        span,
+                    ));
+                } else {
+                    par.fancy_error(
+                        "Syntax error in function call argument list",
+                        vec![
+                            Label::primary(
+                                sep_tok.span,
+                                "In a function call, `:` is used for named arguments".to_string(),
+                            ),
+                            Label::secondary(
+                                arg.span,
+                                "this should be a function parameter name".to_string(),
+                            ),
+                        ],
+                        vec![],
+                    );
+                    return Err(ParseFailed);
+                }
+            }
+            _ => {
+                let span = arg.span;
                 args.push(Node::new(
                     CallArg {
-                        label: Some(Node::new(name, arg.span)),
-                        value,
+                        label: None,
+                        value: arg,
                     },
                     span,
                 ));
-            } else {
-                par.fancy_error(
-                    "Syntax error in function call argument list",
-                    vec![
-                        Label::primary(
-                            eq_tok.span,
-                            "In a function call, `=` is used for named arguments".to_string(),
-                        ),
-                        Label::secondary(
-                            arg.span,
-                            "this should be a function parameter name".to_string(),
-                        ),
-                    ],
-                    vec![],
-                );
-                return Err(ParseFailed);
             }
-        } else {
-            let span = arg.span;
-            args.push(Node::new(
-                CallArg {
-                    label: None,
-                    value: arg,
-                },
-                span,
-            ));
         }
         if par.peek_or_err()? == Comma {
             par.next()?;

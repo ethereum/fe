@@ -5,4 +5,4 @@ contract Bar:
     z: bool
 
   pub fn test():
-    emit Foo((1, 2), z=10, y=true, x=5)
+    emit Foo((1, 2), z: 10, y: true, x: 5)

@@ -54,8 +54,8 @@ note:
 14 │ ╭   pub fn renounceOwnership(self):
 15 │ │     assert msg.sender == self._owner
 16 │ │     self._owner = address(0)
-17 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │ ╰────────────────────────────────────────────────────────────────────────────^ attributes hash: 17603814563784536273
+17 │ │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
+   │ ╰──────────────────────────────────────────────────────────────────────────────^ attributes hash: 17603814563784536273
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -104,22 +104,22 @@ note:
    │
 16 │     self._owner = address(0)
    │                   ^^^^^^^^^^ address: Value
-17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                             ^^^^^^^^^^                   ^ u256: Value
-   │                                             │                             
-   │                                             address: Value
+17 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
+   │                                              ^^^^^^^^^^                    ^ u256: Value
+   │                                              │                              
+   │                                              address: Value
 
 note: 
-   ┌─ ownable.fe:17:66
+   ┌─ ownable.fe:17:68
    │
-17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                                                  ^^^^^^^^^^ address: Value
+17 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
+   │                                                                    ^^^^^^^^^^ address: Value
 
 note: 
    ┌─ ownable.fe:17:5
    │
-17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
+17 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
    │
    = Event {
          name: "OwnershipTransferred",
@@ -150,8 +150,8 @@ note:
    │
 16 │     self._owner = address(0)
    │                   ^^^^^^^ TypeConstructor(Base(Address))
-17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                                                  ^^^^^^^ TypeConstructor(Base(Address))
+17 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner: address(0))
+   │                                                                    ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ ownable.fe:19:3
@@ -160,8 +160,8 @@ note:
 20 │ │     assert msg.sender == self._owner
 21 │ │     assert newOwner != address(0)
 22 │ │     self._owner = newOwner
-23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 6773896465733249515
+23 │ │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner)
+   │ ╰──────────────────────────────────────────────────────────────────^ attributes hash: 6773896465733249515
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -229,16 +229,16 @@ note:
    │     ^^^^^^^^^^^   ^^^^^^^^ address: Value
    │     │              
    │     address: Storage { nonce: Some(0) }
-23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │                                             ^^^^^^^^^^  ^^^^^^^^ address: Value
-   │                                             │            
-   │                                             address: Value
+23 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner)
+   │                                              ^^^^^^^^^^  ^^^^^^^^ address: Value
+   │                                              │            
+   │                                              address: Value
 
 note: 
    ┌─ ownable.fe:23:5
    │
-23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
+23 │     emit OwnershipTransferred(previousOwner: msg.sender, newOwner)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12166912587337306484
    │
    = Event {
          name: "OwnershipTransferred",

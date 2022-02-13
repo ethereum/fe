@@ -67,7 +67,7 @@ macro_rules! test_parse {
 }
 
 test_parse! { expr_call1, expressions::parse_expr, "foo()" }
-test_parse! { expr_call2, expressions::parse_expr, "foo(1,2,x=3)" }
+test_parse! { expr_call2, expressions::parse_expr, "foo(1,2,x:3)" }
 test_parse! { expr_attr1, expressions::parse_expr, "foo.bar[0][y]" }
 test_parse! { expr_attr2, expressions::parse_expr, "a[x].b[y](1)" }
 test_parse! { expr_num1, expressions::parse_expr, "12345" }
@@ -110,7 +110,7 @@ test_parse! { stmt_aug_lsh, functions::parse_stmt, "x <<= y" }
 test_parse! { stmt_aug_rsh, functions::parse_stmt, "x >>= y" }
 test_parse! { stmt_aug_exp, functions::parse_stmt, "x **= y" }
 test_parse! { stmt_emit1, functions::parse_stmt, "emit Foo()" }
-test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x=y)" }
+test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x: y)" }
 test_parse! { stmt_path_type, functions::parse_stmt, "let x: foo::Bar = foo::Bar(1, 2)" }
 test_parse! { stmt_return1, functions::parse_stmt, "return" }
 test_parse! { stmt_return2, functions::parse_stmt, "return x" }
@@ -230,7 +230,7 @@ contract GuestBook:
     pub fn sign(self, book_msg: BookMsg):
         self.guest_book[msg.sender] = book_msg
 
-        emit Signed(book_msg=book_msg)
+        emit Signed(book_msg: book_msg)
 
     pub fn get_msg(self, addr: address) -> BookMsg:
         return self.guest_book[addr]
@@ -243,5 +243,5 @@ event Transfer:
     value: u256
 contract Foo:
     fn transfer(to : address, value : u256):
-        emit Transfer(sender=msg.sender, receiver=to, value)
+        emit Transfer(sender: msg.sender, receiver: to, value)
 "# }

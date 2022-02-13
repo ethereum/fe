@@ -1,6 +1,6 @@
 ---
 source: crates/lowering/tests/lowering.rs
-expression: lowered_code
+expression: lowered
 
 ---
 struct $tuple_u256_u8_:
@@ -19,7 +19,7 @@ fn list_expr_array_u8_3(val0: u8, val1: u8, val2: u8) -> Array<u8, 3>:
     return generated_array
 
 fn return_tuple() -> $tuple_address_tuple_u256_u8__:
-    return $tuple_address_tuple_u256_u8__(item0=address(0), item1=$tuple_u256_u8_(item0=10, item1=20))
+    return $tuple_address_tuple_u256_u8__(item0: address(0), item1: $tuple_u256_u8_(item0: 10, item1: 20))
 
 fn return_array() -> Array<u8, 3>:
     return list_expr_array_u8_3(1, 2, 3)

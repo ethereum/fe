@@ -8,8 +8,8 @@ note:
    │  
  9 │ ╭     pub fn get_my_baz() -> Baz:
 10 │ │         assert file_items_work()
-11 │ │         return Baz(my_bool=true, my_u256=26)
-   │ ╰────────────────────────────────────────────^ attributes hash: 12324314335460528585
+11 │ │         return Baz(my_bool: true, my_u256: 26)
+   │ ╰──────────────────────────────────────────────^ attributes hash: 12324314335460528585
    │  
    = FunctionSignature {
          self_decl: None,
@@ -32,31 +32,31 @@ note:
    │
 10 │         assert file_items_work()
    │                ^^^^^^^^^^^^^^^^^ bool: Value
-11 │         return Baz(my_bool=true, my_u256=26)
-   │                            ^^^^          ^^ u256: Value
-   │                            │              
-   │                            bool: Value
+11 │         return Baz(my_bool: true, my_u256: 26)
+   │                             ^^^^           ^^ u256: Value
+   │                             │               
+   │                             bool: Value
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:11:16
    │
-11 │         return Baz(my_bool=true, my_u256=26)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Baz: Memory
+11 │         return Baz(my_bool: true, my_u256: 26)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Baz: Memory
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:10:16
    │
 10 │         assert file_items_work()
    │                ^^^^^^^^^^^^^^^ Pure(FunctionId(0))
-11 │         return Baz(my_bool=true, my_u256=26)
+11 │         return Baz(my_bool: true, my_u256: 26)
    │                ^^^ TypeConstructor(Struct(Struct { name: "Baz", id: StructId(4), field_count: 2 }))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:13:5
    │  
 13 │ ╭     pub fn get_my_bing() -> Bong:
-14 │ │         return Bong(my_address=address(42))
-   │ ╰───────────────────────────────────────────^ attributes hash: 13981777418891958772
+14 │ │         return Bong(my_address: address(42))
+   │ ╰────────────────────────────────────────────^ attributes hash: 13981777418891958772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -75,33 +75,33 @@ note:
      }
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:14:40
+   ┌─ ingots/basic_ingot/src/main.fe:14:41
    │
-14 │         return Bong(my_address=address(42))
-   │                                        ^^ u256: Value
+14 │         return Bong(my_address: address(42))
+   │                                         ^^ u256: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:14:32
+   ┌─ ingots/basic_ingot/src/main.fe:14:33
    │
-14 │         return Bong(my_address=address(42))
-   │                                ^^^^^^^^^^^ address: Value
-
-note: 
-   ┌─ ingots/basic_ingot/src/main.fe:14:16
-   │
-14 │         return Bong(my_address=address(42))
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
-
-note: 
-   ┌─ ingots/basic_ingot/src/main.fe:14:32
-   │
-14 │         return Bong(my_address=address(42))
-   │                                ^^^^^^^ TypeConstructor(Base(Address))
+14 │         return Bong(my_address: address(42))
+   │                                 ^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:14:16
    │
-14 │         return Bong(my_address=address(42))
+14 │         return Bong(my_address: address(42))
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:14:33
+   │
+14 │         return Bong(my_address: address(42))
+   │                                 ^^^^^^^ TypeConstructor(Base(Address))
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:14:16
+   │
+14 │         return Bong(my_address: address(42))
    │                ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(3), field_count: 1 }))
 
 note: 
@@ -171,9 +171,9 @@ note:
    │  
 22 │ ╭     pub fn get_my_dyng() -> dong::Dyng:
 23 │ │         return dong::Dyng(
-24 │ │             my_address=address(8),
-25 │ │             my_u256=42,
-26 │ │             my_i8=-1
+24 │ │             my_address: address(8),
+25 │ │             my_u256: 42,
+26 │ │             my_i8: -1
 27 │ │         )
    │ ╰─────────^ attributes hash: 8107142401187261877
    │  
@@ -194,43 +194,43 @@ note:
      }
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:24:32
+   ┌─ ingots/basic_ingot/src/main.fe:24:33
    │
-24 │             my_address=address(8),
-   │                                ^ u256: Value
+24 │             my_address: address(8),
+   │                                 ^ u256: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:24:24
+   ┌─ ingots/basic_ingot/src/main.fe:24:25
    │
-24 │             my_address=address(8),
-   │                        ^^^^^^^^^^ address: Value
-25 │             my_u256=42,
-   │                     ^^ u256: Value
-26 │             my_i8=-1
-   │                    ^ u256: Value
+24 │             my_address: address(8),
+   │                         ^^^^^^^^^^ address: Value
+25 │             my_u256: 42,
+   │                      ^^ u256: Value
+26 │             my_i8: -1
+   │                     ^ u256: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:26:19
+   ┌─ ingots/basic_ingot/src/main.fe:26:20
    │
-26 │             my_i8=-1
-   │                   ^^ i8: Value
+26 │             my_i8: -1
+   │                    ^^ i8: Value
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:16
    │  
 23 │           return dong::Dyng(
    │ ╭────────────────^
-24 │ │             my_address=address(8),
-25 │ │             my_u256=42,
-26 │ │             my_i8=-1
+24 │ │             my_address: address(8),
+25 │ │             my_u256: 42,
+26 │ │             my_i8: -1
 27 │ │         )
    │ ╰─────────^ Dyng: Memory
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:24:24
+   ┌─ ingots/basic_ingot/src/main.fe:24:25
    │
-24 │             my_address=address(8),
-   │                        ^^^^^^^ TypeConstructor(Base(Address))
+24 │             my_address: address(8),
+   │                         ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:16
@@ -443,8 +443,8 @@ note:
   ┌─ ingots/basic_ingot/src/ding/dong.fe:8:1
   │  
 8 │ ╭ fn get_bing() -> Bing:
-9 │ │     return Bing(my_address=address(0))
-  │ ╰──────────────────────────────────────^ attributes hash: 13981777418891958772
+9 │ │     return Bing(my_address: address(0))
+  │ ╰───────────────────────────────────────^ attributes hash: 13981777418891958772
   │  
   = FunctionSignature {
         self_decl: None,
@@ -463,33 +463,33 @@ note:
     }
 
 note: 
-  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:36
+  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:37
   │
-9 │     return Bing(my_address=address(0))
-  │                                    ^ u256: Value
+9 │     return Bing(my_address: address(0))
+  │                                     ^ u256: Value
 
 note: 
-  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:28
+  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:29
   │
-9 │     return Bing(my_address=address(0))
-  │                            ^^^^^^^^^^ address: Value
-
-note: 
-  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:12
-  │
-9 │     return Bing(my_address=address(0))
-  │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
-
-note: 
-  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:28
-  │
-9 │     return Bing(my_address=address(0))
-  │                            ^^^^^^^ TypeConstructor(Base(Address))
+9 │     return Bing(my_address: address(0))
+  │                             ^^^^^^^^^^ address: Value
 
 note: 
   ┌─ ingots/basic_ingot/src/ding/dong.fe:9:12
   │
-9 │     return Bing(my_address=address(0))
+9 │     return Bing(my_address: address(0))
+  │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
+
+note: 
+  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:29
+  │
+9 │     return Bing(my_address: address(0))
+  │                             ^^^^^^^ TypeConstructor(Base(Address))
+
+note: 
+  ┌─ ingots/basic_ingot/src/ding/dong.fe:9:12
+  │
+9 │     return Bing(my_address: address(0))
   │            ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(3), field_count: 1 }))
 
 
