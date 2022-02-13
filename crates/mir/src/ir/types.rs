@@ -17,11 +17,14 @@ pub enum Type {
     U64,
     U128,
     U256,
+    Bool,
+    Address,
     Unit,
     Array(ArrayDef),
     Tuple(TupleDef),
     Struct(StructDef),
-    Contract(ContractDef),
+    Event(StructDef),
+    Contract(StructDef),
     Map(MapDef),
 }
 
@@ -33,39 +36,29 @@ impl_intern_key!(TypeId);
 /// A static array type definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayDef {
-    ty: TypeId,
-    len: usize,
+    pub elem_ty: TypeId,
+    pub len: usize,
 }
 
 /// A tuple type definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleDef {
-    items: Vec<Type>,
+    pub items: Vec<TypeId>,
 }
 
 /// A user defined struct type definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructDef {
-    name: SmolStr,
-    fields: Vec<(SmolStr, TypeId)>,
+    pub name: SmolStr,
+    pub fields_ty: Vec<(SmolStr, TypeId)>,
     /// A span where a struct is defined.
-    span: Span,
-    module_id: ModuleId,
-}
-
-/// A user defined contract type definition.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ContractDef {
-    name: SmolStr,
-    fields: Vec<(SmolStr, TypeId)>,
-    /// A span where a struct is defined.
-    span: Span,
-    module_id: ModuleId,
+    pub span: Span,
+    pub module_id: ModuleId,
 }
 
 /// A map type definition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MapDef {
-    key: TypeId,
-    value: TypeId,
+    pub key_ty: TypeId,
+    pub value_ty: TypeId,
 }
