@@ -22,10 +22,14 @@ const IS_ADMIN: bool = true
 const UNIT: () = ()
 
 struct Bar:
-    val: u256
+    pub val: u256
 
 contract Foo:
     table: Map<u256, u256>
+
+    pub fn revert_with_bar() -> ():
+        revert Bar(val: 10)
+        return ()
 
     pub fn return_unit() -> ():
         return ()

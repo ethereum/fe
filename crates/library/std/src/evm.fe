@@ -1,0 +1,293 @@
+# Basic context accessor functions.
+# These should be unsafe when the Context object is introduced.
+
+pub fn chain_id() -> u256:
+  unsafe:
+    return __chainid()
+
+pub fn base_fee() -> u256:
+  unsafe:
+    return __basefee()
+
+pub fn origin() -> address:
+  unsafe:
+    return address(__origin())
+
+pub fn gas_price() -> u256:
+  unsafe:
+    return __gasprice()
+
+pub fn block_hash(b: u256) -> u256:
+  unsafe:
+    return __blockhash(b)
+
+pub fn coin_base() -> address:
+  unsafe:
+    return address(__coinbase())
+
+pub fn timestamp() -> u256:
+  unsafe:
+    return __timestamp()
+
+pub fn block_number() -> u256:
+  unsafe:
+    return __number()
+
+pub fn difficulty() -> u256:
+  unsafe:
+    return __difficulty()
+
+pub fn gas_limit() -> u256:
+  unsafe:
+    return __gaslimit()
+
+pub fn gas() -> u256:
+  unsafe:
+    return __gas()
+
+pub fn self_address() -> address:
+  unsafe:
+    return address(__address())
+
+pub fn balance_of(addr: address) -> u256:
+  unsafe:
+    return __balance(u256(addr))
+
+pub fn balance() -> u256:
+  unsafe:
+    return __selfbalance()
+
+pub fn caller() -> address:
+  unsafe:
+    return address(__caller())
+
+pub fn call_value() -> u256:
+  unsafe:
+    return __callvalue()
+
+
+# Overflowing math ops. Should these be unsafe or named
+# `overflowing_add`, etc?
+pub fn add(x: u256, y: u256) -> u256:
+  unsafe:
+    return __add(x, y)
+
+pub fn sub(x: u256, y: u256) -> u256:
+  unsafe:
+    return __sub(x, y)
+
+pub fn mul(x: u256, y: u256) -> u256:
+  unsafe:
+    return __mul(x, y)
+
+pub fn div(x: u256, y: u256) -> u256:
+  unsafe:
+    return __div(x, y)
+
+pub fn sdiv(x: u256, y: u256) -> u256:
+  unsafe:
+    return __sdiv(x, y)
+
+pub fn mod(x: u256, y: u256) -> u256:
+  unsafe:
+    return __mod(x, y)
+
+pub fn smod(x: u256, y: u256) -> u256:
+  unsafe:
+    return __smod(x, y)
+
+pub fn exp(x: u256, y: u256) -> u256:
+  unsafe:
+    return __exp(x, y)
+
+pub fn addmod(x: u256, y: u256, m: u256) -> u256:
+  unsafe:
+    return __addmod(x, y, m)
+
+pub fn mulmod(x: u256, y: u256, m: u256) -> u256:
+  unsafe:
+    return __mulmod(x, y, m)
+
+pub fn sign_extend(i: u256, x: u256) -> u256:
+  unsafe:
+    return __signextend(i, x)
+
+
+
+# Comparison ops
+# TODO: return bool (see issue #653)
+pub fn lt(x: u256, y: u256) -> u256:
+  unsafe:
+    return __lt(x, y)
+
+pub fn gt(x: u256, y: u256) -> u256:
+  unsafe:
+    return __gt(x, y)
+
+pub fn slt(x: u256, y: u256) -> u256:
+  unsafe:
+    return __slt(x, y)
+
+pub fn sgt(x: u256, y: u256) -> u256:
+  unsafe:
+    return __sgt(x, y)
+
+pub fn eq(x: u256, y: u256) -> u256:
+  unsafe:
+    return __eq(x, y)
+
+pub fn is_zero(x: u256) -> u256:
+  unsafe:
+    return __iszero(x)
+
+
+# Bitwise ops
+pub fn bitwise_and(x: u256, y: u256) -> u256:
+  unsafe:
+    return __and(x, y)
+
+pub fn bitwise_or(x: u256, y: u256) -> u256:
+  unsafe:
+    return __or(x, y)
+
+pub fn bitwise_not(x: u256) -> u256:
+  unsafe:
+    return __not(x)
+
+pub fn xor(x: u256, y: u256) -> u256:
+  unsafe:
+    return __xor(x, y)
+
+pub fn byte(offset: u256, x: u256) -> u256:
+  unsafe:
+    return __byte(offset, x)
+
+pub fn shl(x: u256, y: u256) -> u256:
+  unsafe:
+    return __shl(x, y)
+
+pub fn shr(x: u256, y: u256) -> u256:
+  unsafe:
+    return __shr(x, y)
+
+pub fn sar(x: u256, y: u256) -> u256:
+  unsafe:
+    return __sar(x, y)
+
+
+# Evm state access and control
+pub unsafe fn return_mem(location: u256, len: u256):
+    return __return(location, len)
+
+pub unsafe fn revert_mem(location: u256, len: u256):
+    return __revert(location, len)
+
+pub unsafe fn selfdestruct(addr: address):
+    return __selfdestruct(u256(addr))
+
+# Invalid opcode. Equivalent to revert(0, 0),
+# except that all remaining gas in the current context
+# is consumed.
+pub unsafe fn invalid():
+    return __invalid()
+
+pub unsafe fn stop():
+    return __stop()
+
+pub unsafe fn pc() -> u256:
+    return __pc()
+
+# TODO: dunno if we should enable this
+# pub unsafe fn pop(x: u256):
+#     return __pop(x)
+
+pub unsafe fn mload(p: u256) -> u256:
+    return __mload(p)
+
+pub unsafe fn mstore(p: u256, v: u256):
+    return __mstore(p, v)
+
+pub unsafe fn mstore8(p: u256, v: u256):
+    return __mstore8(p, v)
+
+pub unsafe fn sload(p: u256) -> u256:
+    return __sload(p)
+
+pub unsafe fn sstore(p: u256, v: u256):
+    return __sstore(p, v)
+
+pub unsafe fn msize() -> u256:
+    return __msize()
+
+pub unsafe fn call_data_load(p: u256) -> u256:
+    return __calldataload(p)
+
+pub unsafe fn call_data_size() -> u256:
+    return __calldatasize()
+
+pub unsafe fn call_data_copy(t: u256, f: u256, s: u256):
+    return __calldatacopy(t, f, s)
+
+pub unsafe fn code_size() -> u256:
+    return __codesize()
+
+pub unsafe fn code_copy(t: u256, f: u256, s: u256):
+    return __codecopy(t, f, s)
+
+pub unsafe fn return_data_size() -> u256:
+    return __returndatasize()
+
+pub unsafe fn return_data_copy(t: u256, f: u256, s: u256):
+    return __returndatacopy(t, f, s)
+
+pub unsafe fn extcodesize(addr: address) -> u256:
+    return __extcodesize(u256(addr))
+
+pub unsafe fn ext_code_copy(addr: address, t: u256, f: u256, s: u256):
+    return __extcodecopy(u256(addr), t, f, s)
+
+pub unsafe fn ext_code_hash(addr: address) -> u256:
+    return __extcodehash(u256(addr))
+
+pub unsafe fn keccak256_mem(location: u256, len: u256) -> u256:
+    return __keccak256(location, len)
+
+
+# Contract creation and calling
+
+pub unsafe fn create(v: u256, p: u256, n: u256) -> address:
+    return address(__create(v, p, n))
+
+pub unsafe fn create2(v: u256, p: u256, n: u256, s: u256) -> address:
+    return address(__create2(v, p, n, s))
+
+# TODO: return bool (success)
+pub unsafe fn call(g: u256, addr: address, value: u256, in_: u256, insize: u256, out: u256, outsize: u256) -> u256:
+    return __call(g, u256(addr), value, in_, insize, out, outsize)
+
+pub unsafe fn call_code(g: u256, addr: address, value: u256, in_: u256, insize: u256, out: u256, outsize: u256) -> u256:
+    return __callcode(g, u256(addr), value, in_, insize, out, outsize)
+
+pub unsafe fn delegate_call(g: u256, addr: address, in_: u256, insize: u256, out: u256, outsize: u256) -> u256:
+    return __delegatecall(g, u256(addr), in_, insize, out, outsize)
+
+pub unsafe fn static_call(g: u256, addr: address, in_: u256, insize: u256, out: u256, outsize: u256) -> u256:
+    return __staticcall(g, u256(addr), in_, insize, out, outsize)
+
+
+# Logging functions
+
+pub unsafe fn log0(p: u256, s: u256):
+    return __log0(p, s)
+
+pub unsafe fn log1(p: u256, s: u256, t1: u256):
+    return __log1(p, s, t1)
+
+pub unsafe fn log2(p: u256, s: u256, t1: u256, t2: u256):
+    return __log2(p, s, t1, t2)
+
+pub unsafe fn log3(p: u256, s: u256, t1: u256, t2: u256, t3: u256):
+    return __log3(p, s, t1, t2, t3)
+
+pub unsafe fn log4(p: u256, s: u256, t1: u256, t2: u256, t3: u256, t4: u256):
+    return __log4(p, s, t1, t2, t3, t4)

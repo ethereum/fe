@@ -124,12 +124,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:21:16
-   │
-21 │         return String<100>("foo")
-   │                ^^^^^^ TypeConstructor(String(FeString { max_size: 100 }))
-
-note: 
    ┌─ strings.fe:23:5
    │  
 23 │ ╭     pub fn shorter_string_assign():

@@ -133,12 +133,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:27:16
-   │
-27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Address }) }
-
-note: 
    ┌─ abi_encoding_stress.fe:29:5
    │  
 29 │ ╭     pub fn set_my_u128(self, my_u128: u128):
@@ -299,12 +293,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:39:16
-   │
-39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 10 }) }
-
-note: 
    ┌─ abi_encoding_stress.fe:41:5
    │  
 41 │ ╭     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>):
@@ -392,12 +380,6 @@ note:
    │
 45 │         return self.my_u16s.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) } => Memory
-
-note: 
-   ┌─ abi_encoding_stress.fe:45:16
-   │
-45 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 255, inner: Numeric(U16) }) }
 
 note: 
    ┌─ abi_encoding_stress.fe:47:5
@@ -562,12 +544,6 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:57:16
-   │
-57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 100, inner: Numeric(U8) }) }
-
-note: 
    ┌─ abi_encoding_stress.fe:59:5
    │  
 59 │ ╭     pub fn get_my_struct() -> MyStruct:
@@ -577,7 +553,7 @@ note:
 63 │ │             my_bool: true,
 64 │ │             my_addr: address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 12792745713144811261
+   │ ╰─────────^ attributes hash: 7607838094635872645
    │  
    = FunctionSignature {
          self_decl: None,
@@ -586,9 +562,6 @@ note:
              Struct(
                  Struct {
                      name: "MyStruct",
-                     id: StructId(
-                         0,
-                     ),
                      field_count: 4,
                  },
              ),
@@ -632,21 +605,6 @@ note:
    │ ╰─────────^ MyStruct: Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:62:22
-   │
-62 │             my_num2: u8(26),
-   │                      ^^ TypeConstructor(Base(Numeric(U8)))
-63 │             my_bool: true,
-64 │             my_addr: address(123456)
-   │                      ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-   ┌─ abi_encoding_stress.fe:60:16
-   │
-60 │         return MyStruct(
-   │                ^^^^^^^^ TypeConstructor(Struct(Struct { name: "MyStruct", id: StructId(0), field_count: 4 }))
-
-note: 
    ┌─ abi_encoding_stress.fe:67:5
    │  
 67 │ ╭     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
@@ -655,7 +613,7 @@ note:
 70 │ │         my_struct.my_bool = false
 71 │ │         my_struct.my_addr = address(9999)
 72 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 6786804746141497115
+   │ ╰────────────────────────^ attributes hash: 1170189699425425788
    │  
    = FunctionSignature {
          self_decl: None,
@@ -666,9 +624,6 @@ note:
                      Struct(
                          Struct {
                              name: "MyStruct",
-                             id: StructId(
-                                 0,
-                             ),
                              field_count: 4,
                          },
                      ),
@@ -679,9 +634,6 @@ note:
              Struct(
                  Struct {
                      name: "MyStruct",
-                     id: StructId(
-                         0,
-                     ),
                      field_count: 4,
                  },
              ),
@@ -745,15 +697,6 @@ note:
    │                             ^^^^^^^^^^^^^ address: Value
 72 │         return my_struct
    │                ^^^^^^^^^ MyStruct: Memory
-
-note: 
-   ┌─ abi_encoding_stress.fe:69:29
-   │
-69 │         my_struct.my_num2 = u8(42)
-   │                             ^^ TypeConstructor(Base(Numeric(U8)))
-70 │         my_struct.my_bool = false
-71 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ abi_encoding_stress.fe:74:5
@@ -943,19 +886,5 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ abi_encoding_stress.fe:76:23
-   │
-76 │             my_addrs: self.my_addrs.to_mem(),
-   │                       ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Address }) }
-77 │             my_u128: self.my_u128,
-78 │             my_string: self.my_string.to_mem(),
-   │                        ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 10 }) }
-79 │             my_u16s: self.my_u16s.to_mem(),
-   │                      ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 255, inner: Numeric(U16) }) }
-80 │             my_bool: self.my_bool,
-81 │             my_bytes: self.my_bytes.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 100, inner: Numeric(U8) }) }
 
 

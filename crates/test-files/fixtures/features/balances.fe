@@ -1,3 +1,5 @@
+use std::evm::{balance, balance_of}
+
 contract Foo:
     pub fn my_balance(self) -> u256:
         return balance()

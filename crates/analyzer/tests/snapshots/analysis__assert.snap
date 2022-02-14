@@ -243,10 +243,4 @@ note:
 20 │         assert false, self.my_string.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => Memory
 
-note: 
-   ┌─ assert.fe:20:23
-   │
-20 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 5 }) }
-
 

@@ -16,7 +16,7 @@ note:
   │  
 5 │ ╭   pub fn new(x: u64, y: u64) -> Point:
 6 │ │     return Point(x, y)
-  │ ╰──────────────────────^ attributes hash: 15239695565073513268
+  │ ╰──────────────────────^ attributes hash: 18058161240499911688
   │  
   = FunctionSignature {
         self_decl: None,
@@ -46,9 +46,6 @@ note:
             Struct(
                 Struct {
                     name: "Point",
-                    id: StructId(
-                        0,
-                    ),
                     field_count: 2,
                 },
             ),
@@ -70,17 +67,11 @@ note:
   │            ^^^^^^^^^^^ Point: Memory
 
 note: 
-  ┌─ struct_fns.fe:6:12
-  │
-6 │     return Point(x, y)
-  │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
-
-note: 
   ┌─ struct_fns.fe:8:3
   │  
 8 │ ╭   pub fn origin() -> Point:
 9 │ │     return Point(x: 0, y: 0)
-  │ ╰────────────────────────────^ attributes hash: 1766050550231886475
+  │ ╰────────────────────────────^ attributes hash: 3063535909107835097
   │  
   = FunctionSignature {
         self_decl: None,
@@ -89,9 +80,6 @@ note:
             Struct(
                 Struct {
                     name: "Point",
-                    id: StructId(
-                        0,
-                    ),
                     field_count: 2,
                 },
             ),
@@ -111,12 +99,6 @@ note:
   │
 9 │     return Point(x: 0, y: 0)
   │            ^^^^^^^^^^^^^^^^^ Point: Memory
-
-note: 
-  ┌─ struct_fns.fe:9:12
-  │
-9 │     return Point(x: 0, y: 0)
-  │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
    ┌─ struct_fns.fe:12:3
@@ -359,7 +341,7 @@ note:
 32 │ │     let x: u64 = self.x + other.x
 33 │ │     let y: u64 = self.y + other.y
 34 │ │     return Point(x, y)
-   │ ╰──────────────────────^ attributes hash: 15351893842694786918
+   │ ╰──────────────────────^ attributes hash: 2850570852780374671
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -372,9 +354,6 @@ note:
                      Struct(
                          Struct {
                              name: "Point",
-                             id: StructId(
-                                 0,
-                             ),
                              field_count: 2,
                          },
                      ),
@@ -385,9 +364,6 @@ note:
              Struct(
                  Struct {
                      name: "Point",
-                     id: StructId(
-                         0,
-                     ),
                      field_count: 2,
                  },
              ),
@@ -459,12 +435,6 @@ note:
    │
 34 │     return Point(x, y)
    │            ^^^^^^^^^^^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:34:12
-   │
-34 │     return Point(x, y)
-   │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
 
 note: 
    ┌─ struct_fns.fe:36:1
@@ -575,19 +545,6 @@ note:
    │
 43 │   assert p3.x == 6 and p3.y == 12
    │          ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-
-note: 
-   ┌─ struct_fns.fe:37:19
-   │
-37 │   let p1: Point = Point.origin()
-   │                   ^^^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(2) }
-38 │   p1.translate(5, 10)
-   │   ^^^^^^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(6) }
-39 │ 
-40 │   let p2: Point = Point(x: 1, y: 2)
-   │                   ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
-41 │   let p3: Point = p1.add(p2)
-   │                   ^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(7) }
 
 note: 
    ┌─ struct_fns.fe:48:3
@@ -758,21 +715,5 @@ note:
    │
 56 │     return p.y
    │            ^^^ u64: Memory => Value
-
-note: 
-   ┌─ struct_fns.fe:49:5
-   │
-49 │     do_pointy_things()
-   │     ^^^^^^^^^^^^^^^^ Pure(FunctionId(0))
-50 │ 
-51 │     let p: Point = Point.new(x, y)
-   │                    ^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(1) }
-52 │     assert p.x == x and p.y == y
-53 │     p.set_x(100)
-   │     ^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(4) }
-54 │     p.reflect()
-   │     ^^^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(5) }
-55 │     assert p.x() == y and p.y == 100
-   │            ^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(3) }
 
 

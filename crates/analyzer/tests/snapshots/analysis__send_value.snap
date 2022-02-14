@@ -7,8 +7,8 @@ note:
   ┌─ send_value.fe:2:5
   │  
 2 │ ╭     pub fn send_them_wei(to: address, wei: u256):
-3 │ │         send_value(to, wei)
-  │ ╰───────────────────────────^ attributes hash: 1344491078926082800
+3 │ │         std::send_value(to, wei)
+  │ ╰────────────────────────────────^ attributes hash: 1344491078926082800
   │  
   = FunctionSignature {
         self_decl: None,
@@ -40,23 +40,17 @@ note:
     }
 
 note: 
-  ┌─ send_value.fe:3:20
+  ┌─ send_value.fe:3:25
   │
-3 │         send_value(to, wei)
-  │                    ^^  ^^^ u256: Value
-  │                    │    
-  │                    address: Value
+3 │         std::send_value(to, wei)
+  │                         ^^  ^^^ u256: Value
+  │                         │    
+  │                         address: Value
 
 note: 
   ┌─ send_value.fe:3:9
   │
-3 │         send_value(to, wei)
-  │         ^^^^^^^^^^^^^^^^^^^ (): Value
-
-note: 
-  ┌─ send_value.fe:3:9
-  │
-3 │         send_value(to, wei)
-  │         ^^^^^^^^^^ BuiltinFunction(SendValue)
+3 │         std::send_value(to, wei)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 

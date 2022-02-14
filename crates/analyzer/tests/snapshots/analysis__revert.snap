@@ -40,7 +40,7 @@ note:
    ┌─ revert.fe:11:5
    │  
 11 │ ╭     pub fn revert_custom_error():
-12 │ │         std::revert_insufficient_funds()
+12 │ │         std::send_value(address(0), 100)
    │ ╰────────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
@@ -54,16 +54,24 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:12:9
+   ┌─ revert.fe:12:33
    │
-12 │         std::revert_insufficient_funds()
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+12 │         std::send_value(address(0), 100)
+   │                                 ^ u256: Value
+
+note: 
+   ┌─ revert.fe:12:25
+   │
+12 │         std::send_value(address(0), 100)
+   │                         ^^^^^^^^^^  ^^^ u256: Value
+   │                         │            
+   │                         address: Value
 
 note: 
    ┌─ revert.fe:12:9
    │
-12 │         std::revert_insufficient_funds()
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Pure(FunctionId(5))
+12 │         std::send_value(address(0), 100)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ revert.fe:14:5
@@ -95,12 +103,6 @@ note:
    │
 15 │         revert OtherError(msg: 1, val: true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
-
-note: 
-   ┌─ revert.fe:15:16
-   │
-15 │         revert OtherError(msg: 1, val: true)
-   │                ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }))
 
 note: 
    ┌─ revert.fe:17:5
@@ -156,13 +158,5 @@ note:
    │
 19 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
-
-note: 
-   ┌─ revert.fe:18:31
-   │
-18 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │                               ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }))
-19 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Struct(Struct { name: "OtherError", id: StructId(0), field_count: 2 }) }
 
 

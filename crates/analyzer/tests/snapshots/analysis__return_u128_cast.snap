@@ -34,10 +34,4 @@ note:
 3 │         return u128(42)
   │                ^^^^^^^^ u128: Value
 
-note: 
-  ┌─ return_u128_cast.fe:3:16
-  │
-3 │         return u128(42)
-  │                ^^^^ TypeConstructor(Base(Numeric(U128)))
-
 

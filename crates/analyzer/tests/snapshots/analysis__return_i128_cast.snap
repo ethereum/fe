@@ -40,10 +40,4 @@ note:
 3 │         return i128(-3)
   │                ^^^^^^^^ i128: Value
 
-note: 
-  ┌─ return_i128_cast.fe:3:16
-  │
-3 │         return i128(-3)
-  │                ^^^^ TypeConstructor(Base(Numeric(I128)))
-
 

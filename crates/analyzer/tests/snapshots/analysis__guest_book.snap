@@ -155,10 +155,4 @@ note:
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
-note: 
-   ┌─ guest_book.fe:21:16
-   │
-21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
-
 

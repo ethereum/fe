@@ -72,12 +72,4 @@ note:
 8 │         return address(foo)
   │                ^^^^^^^^^^^^ address: Value
 
-note: 
-  ┌─ create_contract.fe:7:24
-  │
-7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create }
-8 │         return address(foo)
-  │                ^^^^^^^ TypeConstructor(Base(Address))
-
 

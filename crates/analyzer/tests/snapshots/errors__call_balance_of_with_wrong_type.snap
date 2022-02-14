@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `bool` can not be used as an argument to `balance_of`
-  ┌─ [snippet]:3:13
+error: incorrect type for `balance_of` argument `addr`
+  ┌─ [snippet]:3:24
   │
-3 │   balance_of(true)
-  │             ^^^^^^ wrong type
-  │
-  = Note: `balance_of` expects an address argument
+3 │   std::evm::balance_of(true)
+  │                        ^^^^ this has type `bool`; expected type `address`
 
 

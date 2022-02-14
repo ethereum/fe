@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `bool` can not be used as an argument to `send_value`
-  ┌─ [snippet]:3:14
+error: incorrect type for `send_value` argument `to`
+  ┌─ [snippet]:3:19
   │
-3 │   send_value(true, 0)
-  │              ^^^^ wrong type
-  │
-  = Note: `send_value` expects an `address` as first argument
+3 │   std::send_value(true, 0)
+  │                   ^^^^ this has type `bool`; expected type `address`
 
 

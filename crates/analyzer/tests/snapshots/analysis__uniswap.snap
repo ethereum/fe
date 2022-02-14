@@ -433,12 +433,6 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:78:29
-   │
-78 │         emit Transfer(from: address(0), to, value)
-   │                             ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
    ┌─ uniswap.fe:80:5
    │  
 80 │ ╭     fn _burn(self, from: address, value: u256):
@@ -598,12 +592,6 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ uniswap.fe:83:33
-   │
-83 │         emit Transfer(from, to: address(0), value)
-   │                                 ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
    ┌─ uniswap.fe:85:5
@@ -964,12 +952,6 @@ note:
    │                ^^^^ bool: Value
 
 note: 
-   ┌─ uniswap.fe:95:9
-   │
-95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(8) }
-
-note: 
     ┌─ uniswap.fe:98:5
     │  
  98 │ ╭     pub fn transfer(self, to: address, value: u256) -> bool:
@@ -1025,12 +1007,6 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 100 │         return true
     │                ^^^^ bool: Value
-
-note: 
-   ┌─ uniswap.fe:99:9
-   │
-99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(9) }
 
 note: 
     ┌─ uniswap.fe:102:5
@@ -1188,12 +1164,6 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 107 │         return true
     │                ^^^^ bool: Value
-
-note: 
-    ┌─ uniswap.fe:106:9
-    │
-106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(9) }
 
 note: 
     ┌─ uniswap.fe:109:5
@@ -1966,28 +1936,6 @@ note:
     │                ^^^^^^ bool: Value
 
 note: 
-    ┌─ uniswap.fe:139:31
-    │
-139 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^ TypeConstructor(Contract(Contract { name: "UniswapV2Factory", id: ContractId(2) }))
-
-note: 
-    ┌─ uniswap.fe:139:31
-    │
-139 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(2), function: FunctionId(26) }
-140 │         let fee_on: bool = fee_to != address(0)
-    │                                      ^^^^^^^ TypeConstructor(Base(Address))
-    ·
-144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
-    │                                    ^^^^ Pure(FunctionId(23))
-145 │                 let root_k_last: u256 = sqrt(k_last)
-    │                                         ^^^^ Pure(FunctionId(23))
-    ·
-151 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(6) }
-
-note: 
     ┌─ uniswap.fe:158:5
     │  
 158 │ ╭     pub fn mint(self, to: address) -> u256:
@@ -2383,48 +2331,6 @@ note:
               },
           ],
       }
-
-note: 
-    ┌─ uniswap.fe:162:30
-    │
-162 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                              ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-
-note: 
-    ┌─ uniswap.fe:162:30
-    │
-162 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-163 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                              ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-
-note: 
-    ┌─ uniswap.fe:163:30
-    │
-163 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-    ·
-167 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(17) }
-    ·
-171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                         ^^^^ Pure(FunctionId(23))
-172 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │                        ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-    ┌─ uniswap.fe:172:13
-    │
-172 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(6) }
-173 │         else:
-174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                         ^^^ Pure(FunctionId(24))
-    ·
-178 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(6) }
-179 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(16) }
 
 note: 
     ┌─ uniswap.fe:188:5
@@ -2860,35 +2766,6 @@ note:
               },
           ],
       }
-
-note: 
-    ┌─ uniswap.fe:191:29
-    │
-191 │         let token0: ERC20 = ERC20(self.token0)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-192 │         let token1: ERC20 = ERC20(self.token1)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-193 │         let balance0: u256 = token0.balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-194 │         let balance1: u256 = token1.balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-    ·
-197 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(17) }
-    ·
-202 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(7) }
-203 │         token0.transfer(to, amount0)
-    │         ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-204 │         token1.transfer(to, amount1)
-    │         ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-205 │         balance0 = token0.balanceOf(self.address)
-    │                    ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-206 │         balance1 = token1.balanceOf(self.address)
-    │                    ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-207 │ 
-208 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(16) }
 
 note: 
     ┌─ uniswap.fe:219:5
@@ -3497,33 +3374,6 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:225:29
-    │
-225 │         let token0: ERC20 = ERC20(self.token0)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-226 │         let token1: ERC20 = ERC20(self.token1)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-    ·
-229 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                      ^^^^^^^                   ^^^^^^^ TypeConstructor(Base(Address))
-    │                      │                          
-    │                      TypeConstructor(Base(Address))
-    ·
-232 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
-    │             ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-233 │         if amount1_out > 0:
-234 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
-    │             ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-    ·
-239 │         let balance0: u256 = token0.balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-240 │         let balance1: u256 = token1.balanceOf(self.address)
-    │                              ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-    ·
-252 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(16) }
-
-note: 
     ┌─ uniswap.fe:256:5
     │  
 256 │ ╭     pub fn skim(self, to: address):
@@ -3673,31 +3523,6 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
-    ┌─ uniswap.fe:257:29
-    │
-257 │         let token0: ERC20 = ERC20(self.token0) # gas savings
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-258 │         let token1: ERC20 = ERC20(self.token1) # gas savings
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-259 │ 
-260 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │                             ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-
-note: 
-    ┌─ uniswap.fe:260:9
-    │
-260 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │         ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-261 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │                             ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-
-note: 
-    ┌─ uniswap.fe:261:9
-    │
-261 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │         ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
-
-note: 
     ┌─ uniswap.fe:264:5
     │  
 264 │ ╭     pub fn sync(self):
@@ -3811,24 +3636,6 @@ note:
     │
 267 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-
-note: 
-    ┌─ uniswap.fe:265:29
-    │
-265 │         let token0: ERC20 = ERC20(self.token0)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-266 │         let token1: ERC20 = ERC20(self.token1)
-    │                             ^^^^^ TypeConstructor(Contract(Contract { name: "ERC20", id: ContractId(0) }))
-267 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │                      ^^^^^^^^^^^^^^^^                ^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
-    │                      │                                
-    │                      External { contract: ContractId(0), function: FunctionId(0) }
-
-note: 
-    ┌─ uniswap.fe:267:9
-    │
-267 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(1)), method: FunctionId(16) }
 
 note: 
     ┌─ uniswap.fe:269:5
@@ -4560,39 +4367,6 @@ note:
               },
           ],
       }
-
-note: 
-    ┌─ uniswap.fe:316:26
-    │
-316 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
-    │                          ^^^^^^^ TypeConstructor(Base(Address))
-317 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                                              ^^^^^^^ TypeConstructor(Base(Address))
-318 │ 
-319 │         let salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: AbiEncode, typ: Tuple(Tuple { items: [Base(Address), Base(Address)] }) }
-
-note: 
-    ┌─ uniswap.fe:319:26
-    │
-319 │         let salt: u256 = keccak256((token0, token1).abi_encode())
-    │                          ^^^^^^^^^ BuiltinFunction(Keccak256)
-320 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                                   ^^^^^^^^^^^^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(1), function: Create2 }
-321 │         pair.initialize(token0, token1)
-    │         ^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(15) }
-322 │ 
-323 │         self.pairs[token0][token1] = address(pair)
-    │                                      ^^^^^^^ TypeConstructor(Base(Address))
-324 │         self.pairs[token1][token0] = address(pair)
-    │                                      ^^^^^^^ TypeConstructor(Base(Address))
-325 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                             ^^^^^^^ TypeConstructor(Base(Address))
-    ·
-328 │         emit PairCreated(token0, token1, pair: address(pair), index: self.pair_counter)
-    │                                                ^^^^^^^ TypeConstructor(Base(Address))
-329 │         return address(pair)
-    │                ^^^^^^^ TypeConstructor(Base(Address))
 
 note: 
     ┌─ uniswap.fe:331:5

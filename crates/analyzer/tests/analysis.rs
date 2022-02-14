@@ -430,8 +430,10 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
                 .map(|(span, eventid)| (span, eventid.typ(db)))
                 .collect::<Vec<(Span, Rc<Event>)>>(),
         ),
-        // calls
-        label_in_non_overlapping_groups(&lookup_spans(&body.calls, &body.spans)),
+        // CallType includes FunctionId,ContractId,StructId, so the debug output
+        // may change when we add something to the std lib.
+        // Disabling until we come up with a better label to use here.
+        // label_in_non_overlapping_groups(&lookup_spans(&body.calls, &body.spans)),
     ]
     .concat()
 }

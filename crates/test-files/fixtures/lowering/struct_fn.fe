@@ -1,5 +1,5 @@
 struct Foo:
-  x: u256
+  pub x: u256
 
   pub fn set_x(self, new: u256) -> u256:
     let old: u256 = self.get_x()
@@ -10,6 +10,6 @@ struct Foo:
     return self.x
 
 fn main():
-  let foo: Foo = Foo(x = 10)
+  let foo: Foo = Foo(x: 10)
   foo.set_x(100)
   assert foo.get_x() == 100

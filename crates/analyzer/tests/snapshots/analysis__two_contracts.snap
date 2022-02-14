@@ -72,14 +72,6 @@ note:
   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-  ┌─ two_contracts.fe:8:9
-  │
-8 │         self.other.set_foo_addr(self.address)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(3) }
-9 │         return self.other.answer()
-  │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(4) }
-
-note: 
    ┌─ two_contracts.fe:11:5
    │  
 11 │ ╭     pub fn add(x: u256, y: u256) -> u256:
@@ -188,12 +180,6 @@ note:
    │                      ^^^^^^^^^ Foo: Value
 
 note: 
-   ┌─ two_contracts.fe:18:22
-   │
-18 │         self.other = Foo(addr)
-   │                      ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
-
-note: 
    ┌─ two_contracts.fe:20:5
    │  
 20 │ ╭     pub fn answer(self) -> u256:
@@ -234,11 +220,5 @@ note:
    │
 21 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ two_contracts.fe:21:16
-   │
-21 │         return self.other.add(20, 22)
-   │                ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(2) }
 
 

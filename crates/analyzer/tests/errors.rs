@@ -124,18 +124,15 @@ test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
 test_stmt! { cast_address_to_u64, "u64(address(0))" }
 
-test_stmt! { call_balance_of_without_parameter, "balance_of()" }
-test_stmt! { call_balance_of_with_wrong_type, "balance_of(true)" }
-test_stmt! { call_balance_of_with_2_args, "balance_of(address(0), 2)" }
-test_stmt! { call_balance_of_with_generic_args, "balance_of<10>(address(0))" }
-test_stmt! { call_balance_with_arg, "balance(address(0))" }
-test_stmt! { call_balance_with_generic_args, "balance<10>()" }
-test_stmt! { call_send_value_without_parameter, "send_value()" }
-test_stmt! { call_send_value_with_1_arg, "send_value(address(0))" }
-test_stmt! { call_send_value_with_3_args, "send_value(address(0), 0, 0)" }
-test_stmt! { call_send_value_with_wrong_type, "send_value(true, 0)" }
-test_stmt! { call_send_value_with_wrong_type2, "send_value(address(0), true)" }
-test_stmt! { call_send_value_with_generic_args, "send_value<10>(address(0), 1)" }
+test_stmt! { call_balance_of_without_parameter, "std::evm::balance_of()" }
+test_stmt! { call_balance_of_with_wrong_type, "std::evm::balance_of(true)" }
+test_stmt! { call_balance_of_with_2_args, "std::evm::balance_of(address(0), 2)" }
+test_stmt! { call_balance_with_arg, "std::evm::balance(address(0))" }
+test_stmt! { call_send_value_without_parameter, "std::send_value()" }
+test_stmt! { call_send_value_with_1_arg, "std::send_value(address(0))" }
+test_stmt! { call_send_value_with_3_args, "std::send_value(address(0), 0, 0)" }
+test_stmt! { call_send_value_with_wrong_type, "std::send_value(true, 0)" }
+test_stmt! { call_send_value_with_wrong_type2, "std::send_value(address(0), true)" }
 test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true:\n  continue" }

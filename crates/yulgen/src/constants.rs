@@ -66,6 +66,4 @@ pub const PANIC_OVER_OR_UNDERFLOW: usize = 0x11;
 pub const PANIC_DIV_OR_MOD_BY_ZERO: usize = 0x12;
 pub const PANIC_OUT_OF_BOUNDS: usize = 0x32;
 
-pub const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: usize = 0x100;
-pub const ERROR_FAILED_SEND_VALUE: usize = 0x101;
 pub const ERROR_INVALID_ABI_DATA: usize = 0x103;

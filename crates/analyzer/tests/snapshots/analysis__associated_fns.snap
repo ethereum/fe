@@ -58,7 +58,7 @@ note:
   │  
 8 │ ╭   pub fn new(x: u256) -> MyStruct:
 9 │ │     return MyStruct(x)
-  │ ╰──────────────────────^ attributes hash: 12320534675640633934
+  │ ╰──────────────────────^ attributes hash: 13527498813317104922
   │  
   = FunctionSignature {
         self_decl: None,
@@ -78,9 +78,6 @@ note:
             Struct(
                 Struct {
                     name: "MyStruct",
-                    id: StructId(
-                        1,
-                    ),
                     field_count: 1,
                 },
             ),
@@ -98,12 +95,6 @@ note:
   │
 9 │     return MyStruct(x)
   │            ^^^^^^^^^^^ MyStruct: Memory
-
-note: 
-  ┌─ associated_fns.fe:9:12
-  │
-9 │     return MyStruct(x)
-  │            ^^^^^^^^ TypeConstructor(Struct(Struct { name: "MyStruct", id: StructId(1), field_count: 1 }))
 
 note: 
    ┌─ associated_fns.fe:12:3
@@ -183,13 +174,5 @@ note:
    │
 16 │     return Lib.square(self.my_struct.x)
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ associated_fns.fe:15:22
-   │
-15 │     self.my_struct = MyStruct.new(val)
-   │                      ^^^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(1)), function: FunctionId(1) }
-16 │     return Lib.square(self.my_struct.x)
-   │            ^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(0) }
 
 
