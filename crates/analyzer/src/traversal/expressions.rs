@@ -52,7 +52,7 @@ pub fn expr(
         } => expr_call(context, func, generic_args, args),
         fe::Expr::List { elts } => expr_list(context, elts, expected_type.as_array()),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp, expected_type.as_tuple()),
-        fe::Expr::Str(_) => expr_str(context, exp),
+        fe::Expr::Str(_) => expr_str(context, exp, expected_type.as_string()),
         fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
     }?;
 
@@ -403,6 +403,7 @@ fn expr_named_thing(
 fn expr_str(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
+    expected_type: Option<&FeString>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Str(string) = &exp.kind {
         if !is_valid_string(string) {
@@ -419,10 +420,18 @@ fn expr_str(
             );
         }
 
+        let str_len = string.len();
+        let expected_str_len = expected_type.map(|typ| typ.max_size).unwrap_or(str_len);
+        // Use an expected string length if an expected length is larger than an actual
+        // length.
+        let max_size = if expected_str_len > str_len {
+            expected_str_len
+        } else {
+            str_len
+        };
+
         return Ok(ExpressionAttributes::new(
-            Type::String(FeString {
-                max_size: string.len(),
-            }),
+            Type::String(FeString { max_size }),
             Location::Memory,
         ));
     }
@@ -530,8 +539,8 @@ fn expr_attribute(
     let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
 
     // We have to check if its a global object first, because the global
-    // objects are magical type-less things that don't work with normal expr checking.
-    // This will all go away when the `Context` struct is ready.
+    // objects are magical type-less things that don't work with normal expr
+    // checking. This will all go away when the `Context` struct is ready.
 
     if let fe::Expr::Name(name) = &target.kind {
         match GlobalObject::from_str(name) {
@@ -717,9 +726,10 @@ fn expr_bin_operation(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
         let (left_expected, right_expected) = match &op.kind {
-            // In shift operations, the right hand side may have a different type than the left hand side
-            // because the right hand side needs to be unsigned. The type of the entire expression is
-            // determined by the left hand side anyway so we don't try to coerce the right hand side in this case.
+            // In shift operations, the right hand side may have a different type than the left hand
+            // side because the right hand side needs to be unsigned. The type of the
+            // entire expression is determined by the left hand side anyway so we don't
+            // try to coerce the right hand side in this case.
             fe::BinOperator::LShift | fe::BinOperator::RShift => {
                 (expected_type.map(Type::int), None)
             }
@@ -1124,7 +1134,8 @@ fn expr_call_builtin_function(
         }
         GlobalFunction::SendValue => {
             validate_arg_count(context, function.as_ref(), name_span, args, 2, "argument");
-            // There's no label support for builtin functions today. That problem disappears as soon as they are written in Fe
+            // There's no label support for builtin functions today. That problem disappears
+            // as soon as they are written in Fe
             expect_no_label_on_arg(context, args, 0);
             expect_no_label_on_arg(context, args, 1);
 
@@ -1366,7 +1377,8 @@ fn expr_call_type_constructor(
         Type::Struct(_) => unreachable!(),        // handled above
         Type::Map(_) => unreachable!(),           // handled above
         Type::Array(_) => unreachable!(),         // handled above
-        Type::SelfContract(_) => unreachable!(), // unnameable; contract names all become Type::Contract
+        Type::SelfContract(_) => unreachable!(),  /* unnameable; contract names all become
+                                                    * Type::Contract */
     };
     Ok((expr_attrs, CallType::TypeConstructor(typ)))
 }
@@ -1432,9 +1444,9 @@ fn expr_call_method(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    // We need to check if the target is a type or a global object before calling `expr()`.
-    // When the type method call syntax is changed to `MyType::foo()` and the global objects
-    // are replaced by `Context`, we can remove this.
+    // We need to check if the target is a type or a global object before calling
+    // `expr()`. When the type method call syntax is changed to `MyType::foo()`
+    // and the global objects are replaced by `Context`, we can remove this.
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
         match context.resolve_name(name) {
@@ -1478,7 +1490,8 @@ fn expr_call_method(
         );
     }
 
-    // If the target is a "class" type (contract or struct), check for a member function
+    // If the target is a "class" type (contract or struct), check for a member
+    // function
     if let Some(class) = target_attributes.typ.as_class() {
         if matches!(class, Class::Contract(_)) {
             check_for_call_to_special_fns(context, &field.kind, field.span)?;
@@ -1753,7 +1766,8 @@ fn expr_call_type_attribute(
         let class_name = class.name(context.db());
 
         if let Class::Contract(contract) = class {
-            // Check for Foo.create/create2 (this will go away when the context object is ready)
+            // Check for Foo.create/create2 (this will go away when the context object is
+            // ready)
             if let Ok(function) = ContractTypeMethod::from_str(&field.kind) {
                 if context.root_item() == Item::Type(TypeDef::Contract(contract)) {
                     context.fancy_error(
@@ -1814,7 +1828,8 @@ fn expr_call_type_attribute(
                 )));
             }
 
-            // Returns `true` if the current contract belongs to the same class as an input `callee_class`.
+            // Returns `true` if the current contract belongs to the same class as an input
+            // `callee_class`.
             let is_same_class = |callee_class| match (context.root_item(), callee_class) {
                 (Item::Type(TypeDef::Contract(caller)), Class::Contract(callee)) => {
                     caller == callee
@@ -1824,7 +1839,8 @@ fn expr_call_type_attribute(
             };
 
             // Check for visibility of callee.
-            // Emits an error if callee is not public and caller doesn't belong to the same class as callee.
+            // Emits an error if callee is not public and caller doesn't belong to the same
+            // class as callee.
             if !function.is_public(context.db()) && is_same_class(class) {
                 context.fancy_error(
                     &format!(
@@ -1847,10 +1863,11 @@ fn expr_call_type_attribute(
             }
 
             if matches!(class, Class::Contract(_)) {
-                // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen doesn't compile-in
-                // pure functions defined on external contracts.
-                // We should also discuss how/if this will work when the external contract is deployed
-                // and called via STATICCALL or whatever.
+                // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen
+                // doesn't compile-in pure functions defined on external
+                // contracts. We should also discuss how/if this will work when
+                // the external contract is deployed and called via STATICCALL
+                // or whatever.
                 context.not_yet_implemented(
                     &format!("calling contract-associated pure functions. Consider moving `{}` outside of `{}`",
                              &field.kind, class_name),
