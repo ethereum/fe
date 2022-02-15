@@ -36,7 +36,7 @@ pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeI
         .iter()
         .map(|(field)| {
             let name = field.name.clone();
-            let ty = lower_fixed_size(db, field.typ.as_ref().unwrap());
+            let ty = db.mir_lowered_type(field.typ.clone().unwrap().into());
             (field.name.clone(), ty, field.is_indexed)
         })
         .collect();
@@ -94,7 +94,7 @@ fn lower_array(db: &dyn MirDb, arr: &analyzer_types::Array) -> TypeId {
 
 fn lower_map(db: &dyn MirDb, map: &analyzer_types::Map) -> TypeId {
     let key_ty = lower_base(db, &map.key);
-    let value_ty = db.lowered_type(*map.value.clone());
+    let value_ty = db.mir_lowered_type(*map.value.clone());
 
     let def = MapDef { key_ty, value_ty };
     let ty = Type::Map(def);
@@ -105,7 +105,7 @@ fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeId {
     let items = tup
         .items
         .iter()
-        .map(|item| lower_fixed_size(db, item))
+        .map(|item| db.mir_lowered_type(item.clone().into()))
         .collect();
 
     let def = TupleDef { items };
@@ -135,7 +135,7 @@ fn lower_contract(db: &dyn MirDb, contract: &analyzer_types::Contract) -> TypeId
         .iter()
         .map(|(fname, fid)| {
             let analyzer_types = fid.typ(db.upcast()).unwrap();
-            let ty = db.lowered_type(analyzer_types);
+            let ty = db.mir_lowered_type(analyzer_types);
             (fname.clone(), ty)
         })
         .collect();
@@ -166,7 +166,7 @@ fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
         .iter()
         .map(|(fname, fid)| {
             let analyzer_types = fid.typ(db.upcast()).unwrap();
-            let ty = lower_fixed_size(db, &analyzer_types);
+            let ty = db.mir_lowered_type(analyzer_types.into());
             (fname.clone(), ty)
         })
         .collect();
@@ -187,18 +187,5 @@ fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
 }
 
 fn intern_type(db: &dyn MirDb, ty: Type) -> TypeId {
-    db.intern_type(Rc::new(ty))
-}
-
-fn lower_fixed_size(db: &dyn MirDb, fixed_size: &analyzer_types::FixedSize) -> TypeId {
-    use analyzer_types::FixedSize;
-
-    match fixed_size {
-        FixedSize::Base(base) => lower_base(db, base),
-        FixedSize::Array(arr) => lower_array(db, arr),
-        FixedSize::Tuple(tup) => lower_tuple(db, tup),
-        FixedSize::String(string) => lower_string(db, string),
-        FixedSize::Contract(contract) => lower_contract(db, contract),
-        FixedSize::Struct(struct_) => lower_struct(db, struct_),
-    }
+    db.mir_intern_type(Rc::new(ty))
 }

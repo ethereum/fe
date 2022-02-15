@@ -8,7 +8,7 @@ use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
     inst::{Inst, InstId},
-    types::{Type, TypeId},
+    types::TypeId,
     value::{Immediate, Value, ValueId},
     BasicBlockId, SourceInfo,
 };
@@ -16,17 +16,18 @@ use super::{
 /// Represents function signature.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
-    params: Vec<FunctionParam>,
-    return_type: Type,
-    module_id: analyzer_items::ModuleId,
-    linkage: Linkage,
-    source: SourceInfo,
+    pub params: Vec<FunctionParam>,
+    pub return_type: TypeId,
+    pub module_id: analyzer_items::ModuleId,
+    pub analyzer_func_id: analyzer_items::FunctionId,
+    pub linkage: Linkage,
+    pub has_self: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionParam {
-    name: SmolStr,
-    ty: Type,
+    pub name: SmolStr,
+    pub ty: TypeId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

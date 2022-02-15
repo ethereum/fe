@@ -905,6 +905,9 @@ impl ContractId {
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.name().into()
     }
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> types::Type {
+        types::Type::Contract(types::Contract::from_id(*self, db))
+    }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
@@ -1075,6 +1078,17 @@ impl FunctionId {
     // This should probably be scrapped in favor of `parent()`
     pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.data(db).parent
+    }
+    pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
+        match self.parent(db) {
+            Item::Type(TypeDef::Contract(cid)) => {
+                Some(types::Type::Contract(types::Contract::from_id(cid, db)))
+            }
+            Item::Type(TypeDef::Struct(sid)) => {
+                Some(types::Type::Struct(types::Struct::from_id(sid, db)))
+            }
+            _ => None,
+        }
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         let data = self.data(db);
