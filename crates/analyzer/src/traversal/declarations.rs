@@ -76,6 +76,9 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         let const_value = const_expr::eval_expr(scope, value)?;
 
         scope.root.add_declaration(typ, declared_type.clone());
+        scope
+            .root
+            .map_variable_type(name, declared_type.clone().into());
         // this logs a message on err, so it's safe to ignore here.
         let _ = scope.add_var(name.kind.as_str(), declared_type, true, name.span);
         scope.add_constant(name, value, const_value);
@@ -94,6 +97,7 @@ fn add_var(
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
             // this logs a message on err, so it's safe to ignore here.
+            scope.root.map_variable_type(target, typ.clone().into());
             let _ = scope.add_var(name, typ, false, target.span);
             Ok(())
         }

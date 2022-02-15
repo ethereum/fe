@@ -10,8 +10,8 @@ use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::{common_prefix, Utf8Path};
 use fe_common::{impl_intern_key, FileKind, SourceFileId};
-use fe_parser::ast;
 use fe_parser::node::{Node, Span};
+use fe_parser::{ast, node::NodeId};
 use indexmap::{indexmap, IndexMap, IndexSet};
 use smol_str::SmolStr;
 use std::ops::Deref;
@@ -777,6 +777,14 @@ impl ModuleConstantId {
 
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
+    }
+
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn node_id(&self, db: &dyn AnalyzerDb) -> NodeId {
+        self.data(db).ast.id
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {

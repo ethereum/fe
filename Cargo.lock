@@ -704,6 +704,7 @@ dependencies = [
  "fxhash",
  "id-arena",
  "num-bigint",
+ "num-traits",
  "salsa",
  "smol_str",
 ]

@@ -1,29 +1,27 @@
-use std::any::TypeId;
-
 use fe_common::impl_intern_key;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use fe_analyzer::namespace::items as analyzer_items;
+use fe_analyzer::{context, namespace::items as analyzer_items};
 
-use super::SourceInfo;
+use super::{SourceInfo, TypeId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Constant {
     /// A name of a constant.
-    name: SmolStr,
-
-    /// A span where a constant is declared.
-    span: SourceInfo,
+    pub name: SmolStr,
 
     /// A value of a constant.
-    value: ConstantValue,
+    pub value: ConstantValue,
 
     /// A type of a constant.
-    ty: TypeId,
+    pub ty: TypeId,
 
     /// A module where a constant is declared.
-    module_id: analyzer_items::ModuleId,
+    pub module_id: analyzer_items::ModuleId,
+
+    /// A span where a constant is declared.
+    pub source: SourceInfo,
 }
 
 /// An interned Id for [`Constant`].
@@ -33,6 +31,17 @@ impl_intern_key!(ConstantId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConstantValue {
-    String(SmolStr),
     Immediate(BigInt),
+    Str(SmolStr),
+    Bool(bool),
+}
+
+impl From<context::Constant> for ConstantValue {
+    fn from(value: context::Constant) -> Self {
+        match value {
+            context::Constant::Int(num) => Self::Immediate(num),
+            context::Constant::Str(s) => Self::Str(s),
+            context::Constant::Bool(b) => Self::Bool(b),
+        }
+    }
 }
