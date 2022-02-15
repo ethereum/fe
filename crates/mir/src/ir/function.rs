@@ -28,6 +28,7 @@ pub struct FunctionSignature {
 pub struct FunctionParam {
     pub name: SmolStr,
     pub ty: TypeId,
+    pub source: SourceInfo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -50,6 +51,7 @@ pub enum Linkage {
 
 /// A function body, which is not stored in salsa db to enable in-place
 /// transformation.
+#[derive(Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub fid: FunctionId,
 
@@ -80,7 +82,7 @@ impl FunctionBody {
 
 /// A collection of basic block, instructions and values appear in a function
 /// body.
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct BodyDataStore {
     /// Instructions appear in a function body.
     insts: Arena<Inst>,
@@ -90,7 +92,7 @@ pub struct BodyDataStore {
 
     blocks: Arena<BasicBlock>,
 
-    /// Map an immediate to a value to ensure the same immediate results in the
+    /// Maps an immediate to a value to ensure the same immediate results in the
     /// same value.
     immediates: FxHashMap<Immediate, ValueId>,
 
@@ -103,6 +105,10 @@ pub struct BodyDataStore {
 impl BodyDataStore {
     pub fn store_inst(&mut self, inst: Inst) -> InstId {
         self.insts.alloc(inst)
+    }
+
+    pub fn inst_data(&self, inst: InstId) -> &Inst {
+        &self.insts[inst]
     }
 
     pub fn store_value(&mut self, value: Value) -> ValueId {
@@ -121,6 +127,10 @@ impl BodyDataStore {
 
             _ => self.values.alloc(value),
         }
+    }
+
+    pub fn value_data(&self, value: ValueId) -> &Value {
+        &self.values[value]
     }
 
     pub fn store_block(&mut self, block: BasicBlock) -> BasicBlockId {

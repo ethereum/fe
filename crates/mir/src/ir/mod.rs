@@ -1,5 +1,5 @@
 use fe_common::Span;
-use fe_parser::node::NodeId;
+use fe_parser::node::{Node, NodeId};
 
 pub mod basic_block;
 pub mod body_builder;
@@ -24,4 +24,26 @@ pub use value::{Value, ValueId};
 pub struct SourceInfo {
     pub span: Span,
     pub id: NodeId,
+}
+
+impl SourceInfo {
+    pub fn dummy() -> Self {
+        Self {
+            span: Span::dummy(),
+            id: NodeId::dummy(),
+        }
+    }
+
+    pub fn is_dummy(&self) -> bool {
+        self == &Self::dummy()
+    }
+}
+
+impl<T> From<&Node<T>> for SourceInfo {
+    fn from(node: &Node<T>) -> Self {
+        Self {
+            span: node.span,
+            id: node.id,
+        }
+    }
 }

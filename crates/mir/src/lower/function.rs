@@ -1,33 +1,46 @@
-use std::rc::Rc;
+use std::{rc::Rc, str::FromStr};
 
-use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
+use fe_analyzer::{
+    builtins::GlobalFunction,
+    context::CallType as AnalyzerCallType,
+    namespace::{items as analyzer_items, types as analyzer_types},
+};
+use fe_parser::{ast, node::Node};
+use fxhash::FxHashMap;
+use id_arena::{Arena, Id};
+use num_bigint::BigInt;
 use smol_str::SmolStr;
 
 use crate::{
     db::MirDb,
-    ir::{function::Linkage, FunctionId, FunctionParam, FunctionSignature},
+    ir::{
+        self, body_builder::BodyBuilder, constant::ConstantValue, function::Linkage,
+        inst::CallType, value::Local, BasicBlockId, Constant, FunctionBody, FunctionId,
+        FunctionParam, FunctionSignature, SourceInfo, TypeId, ValueId,
+    },
 };
 
-pub fn lower_func_signature(db: &dyn MirDb, func_id: analyzer_items::FunctionId) -> FunctionId {
+type ScopeId = Id<Scope>;
+
+pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
-    let has_self = if let Some(self_ty) = func_id.self_typ(db.upcast()) {
-        params.push(make_param(db, "self", self_ty));
+    let has_self = if let Some(self_ty) = func.self_typ(db.upcast()) {
+        let source = self_arg_source(db, func);
+        params.push(make_param(db, "self", self_ty, source));
         true
     } else {
         false
     };
 
-    let analyzer_signature = func_id.signature(db.upcast());
-    params.extend(
-        analyzer_signature
-            .params
-            .iter()
-            .map(|param| make_param(db, param.name.clone(), param.typ.clone().unwrap())),
-    );
+    let analyzer_signature = func.signature(db.upcast());
+    params.extend(analyzer_signature.params.iter().map(|param| {
+        let source = arg_source(db, func, &param.name);
+        make_param(db, param.name.clone(), param.typ.clone().unwrap(), source)
+    }));
     let return_type = db.mir_lowered_type(analyzer_signature.return_type.clone().unwrap().into());
 
-    let linkage = if func_id.is_public(db.upcast()) {
+    let linkage = if func.is_public(db.upcast()) {
         if has_self {
             Linkage::Export
         } else {
@@ -40,22 +53,867 @@ pub fn lower_func_signature(db: &dyn MirDb, func_id: analyzer_items::FunctionId)
     let sig = FunctionSignature {
         params,
         return_type,
-        module_id: func_id.module(db.upcast()),
-        analyzer_func_id: func_id,
+        module_id: func.module(db.upcast()),
+        analyzer_func_id: func,
         linkage,
         has_self,
     };
 
-    db.mir_intern_function(Rc::new(sig))
+    db.mir_intern_function(sig.into())
+}
+
+pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
+    let analyzer_func = func.analyzer_func(db);
+    let ast = &analyzer_func.data(db.upcast()).ast;
+    let analyzer_body = analyzer_func.body(db.upcast());
+
+    let body = BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref()).lower();
+    body.into()
+}
+
+struct BodyLowerHelper<'db, 'a> {
+    db: &'db dyn MirDb,
+    builder: BodyBuilder,
+    ast: &'a Node<ast::Function>,
+    analyzer_body: &'a fe_analyzer::context::FunctionBody,
+    scopes: Arena<Scope>,
+    current_scope: ScopeId,
+}
+
+impl<'db, 'a> BodyLowerHelper<'db, 'a> {
+    fn new(
+        db: &'db dyn MirDb,
+        func: FunctionId,
+        ast: &'a Node<ast::Function>,
+        analyzer_body: &'a fe_analyzer::context::FunctionBody,
+    ) -> Self {
+        let mut builder = BodyBuilder::new(func, ast.into());
+        let mut scopes = Arena::new();
+
+        // Make a root scope. A root scope collects function parameters and module
+        // constants.
+        let root = Scope::root(db, func, &mut builder);
+        let current_scope = scopes.alloc(root);
+
+        Self {
+            db,
+            builder,
+            ast,
+            analyzer_body,
+            scopes,
+            current_scope,
+        }
+    }
+
+    fn lower(mut self) -> FunctionBody {
+        for stmt in &self.ast.kind.body {
+            self.lower_stmt(stmt)
+        }
+
+        self.builder.build()
+    }
+
+    fn lower_stmt(&mut self, stmt: &Node<ast::FuncStmt>) {
+        match &stmt.kind {
+            ast::FuncStmt::Return { value } => {
+                let value = if let Some(expr) = value {
+                    self.lower_expr(expr)
+                } else {
+                    self.make_unit()
+                };
+                self.builder.ret(value, stmt.into())
+            }
+
+            ast::FuncStmt::VarDecl { target, value, .. } => {
+                // Declare variables.
+                let locals = self.lower_var_decl(target);
+
+                // Lower an assignment statement in variable declaration.
+                if let Some(expr) = value {
+                    let mut rhs = self.lower_expr(expr);
+                    let ty = self.builder.value_ty(rhs);
+                    for (local, indices) in locals {
+                        for index in indices {
+                            let ty = ty.projection_ty(self.db, self.builder.value_data(rhs));
+                            rhs = self.builder.aggregate_access(rhs, index, ty, expr.into());
+                        }
+                        self.builder.assign(local, rhs, stmt.into());
+                    }
+                }
+            }
+
+            ast::FuncStmt::ConstantDecl { name, value, .. } => {
+                let ty = self
+                    .db
+                    .mir_lowered_type(self.analyzer_body.var_types.get(&name.id).unwrap().clone());
+
+                let value = self
+                    .analyzer_body
+                    .expressions
+                    .get(&value.id)
+                    .unwrap()
+                    .const_value
+                    .clone()
+                    .unwrap();
+
+                let constant =
+                    self.make_local_constant(name.kind.clone(), ty, value.into(), stmt.into());
+                self.scope_mut().declare_var(&name.kind, constant);
+            }
+
+            ast::FuncStmt::Assign { target, value } => {
+                let lhs = self.lower_expr(target);
+                let rhs = self.lower_expr(value);
+                self.builder.assign(lhs, rhs, stmt.into());
+            }
+
+            ast::FuncStmt::AugAssign { target, op, value } => {
+                let lhs = self.lower_expr(target);
+                let rhs = self.lower_expr(value);
+                let ty = self.expr_ty(target);
+
+                let tmp = self.lower_binop(op.kind, lhs, rhs, ty, stmt.into());
+                self.builder.assign(lhs, tmp, stmt.into());
+            }
+
+            ast::FuncStmt::For { target, iter, body } => self.lower_for_loop(target, iter, body),
+
+            ast::FuncStmt::While { test, body } => {
+                let entry_bb = self.builder.make_block();
+                let body_bb = self.builder.make_block();
+                let exit_bb = self.builder.make_block();
+
+                // Lower while entry.
+                self.builder.move_to_block(entry_bb);
+                let cond = self.lower_expr(test);
+                self.builder
+                    .branch(cond, body_bb, exit_bb, SourceInfo::dummy());
+
+                // Lower while body.
+                self.builder.move_to_block(body_bb);
+                self.enter_loop_scope(entry_bb, exit_bb);
+                for stmt in body {
+                    self.lower_stmt(stmt);
+                }
+                self.builder.jump(entry_bb, SourceInfo::dummy());
+                self.exit_scope();
+
+                // Move to while exit bb.
+                self.builder.move_to_block(exit_bb);
+            }
+
+            ast::FuncStmt::If {
+                test,
+                body,
+                or_else,
+            } => {
+                let then_bb = self.builder.make_block();
+                let else_bb = self.builder.make_block();
+                let merge_bb = self.builder.make_block();
+
+                // Lower if entry.
+                let cond = self.lower_expr(test);
+                self.builder
+                    .branch(cond, then_bb, else_bb, SourceInfo::dummy());
+
+                // Lower then block.
+                self.builder.move_to_block(then_bb);
+                self.enter_scope();
+                for stmt in body {
+                    self.lower_stmt(stmt);
+                }
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+                self.exit_scope();
+
+                // Lower else_block.
+                self.builder.move_to_block(else_bb);
+                self.enter_scope();
+                for stmt in or_else {
+                    self.lower_stmt(stmt);
+                }
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+                self.exit_scope();
+
+                // Move to merge bb.
+                self.builder.move_to_block(merge_bb);
+            }
+
+            ast::FuncStmt::Assert { test, msg } => {
+                let then_bb = self.builder.make_block();
+                let false_bb = self.builder.make_block();
+
+                let cond = self.lower_expr(test);
+                self.builder
+                    .branch(cond, then_bb, false_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(false_bb);
+                let msg = if let Some(msg) = msg {
+                    self.lower_expr(msg)
+                } else {
+                    self.make_unit()
+                };
+                self.builder.revert(msg, stmt.into());
+
+                self.builder.move_to_block(then_bb);
+            }
+
+            ast::FuncStmt::Emit { args, .. } => {
+                let event_id = *self.analyzer_body.emits.get(&stmt.id).unwrap();
+                let event_type = self.db.mir_lowered_event_type(event_id);
+                // NOTE: Event arguments are guaranteed to be in the same order with
+                // the definition.
+                let lowered_args = args
+                    .kind
+                    .iter()
+                    .map(|arg| self.lower_expr(&arg.kind.value))
+                    .collect();
+
+                let emit_arg =
+                    self.builder
+                        .aggregate_construct(event_type, lowered_args, args.into());
+                self.builder.emit(emit_arg, stmt.into());
+            }
+
+            ast::FuncStmt::Expr { value } => {
+                self.lower_expr(value);
+            }
+
+            ast::FuncStmt::Pass => {
+                // TODO: Generate appropriate error message.
+                let arg = self.make_unit();
+                self.builder.revert(arg, stmt.into());
+            }
+
+            ast::FuncStmt::Break => {
+                let exit = self.scope().loop_exit();
+                self.builder.jump(exit, stmt.into())
+            }
+
+            ast::FuncStmt::Continue => {
+                let entry = self.scope().loop_entry();
+                self.builder.jump(entry, stmt.into())
+            }
+
+            ast::FuncStmt::Revert { error } => {
+                let error = if let Some(error) = error {
+                    self.lower_expr(error)
+                } else {
+                    self.make_unit()
+                };
+
+                self.builder.revert(error, stmt.into());
+            }
+
+            ast::FuncStmt::Unsafe(stmts) => {
+                self.enter_scope();
+                for stmt in stmts {
+                    self.lower_stmt(stmt)
+                }
+                self.exit_scope()
+            }
+        }
+    }
+
+    fn lower_var_decl(&mut self, var: &Node<ast::VarDeclTarget>) -> Vec<(ValueId, Vec<ValueId>)> {
+        match &var.kind {
+            ast::VarDeclTarget::Name(name) => {
+                let ty = self
+                    .db
+                    .mir_lowered_type(self.analyzer_body.var_types[&var.id].clone());
+                let local = Local::user_local(name.clone(), ty, var.into());
+
+                let value = self.builder.declare(local);
+                self.scope_mut().declare_var(name, value);
+
+                vec![(value, vec![])]
+            }
+
+            ast::VarDeclTarget::Tuple(decls) => {
+                let mut result = vec![];
+                for (i, var) in decls.iter().enumerate() {
+                    let u256_ty = self.u256_ty();
+                    let index = self.builder.make_imm(i.into(), u256_ty);
+                    self.lower_var_decl(var)
+                        .into_iter()
+                        .for_each(|(local, mut local_indices)| {
+                            let mut indices = vec![index];
+                            indices.append(&mut local_indices);
+                            result.push((local, indices))
+                        })
+                }
+                result
+            }
+        }
+    }
+
+    // NOTE: we assume a type of `iter` is array.
+    // TODO: Desugar to `loop` + `match` like rustc.
+    fn lower_for_loop(
+        &mut self,
+        loop_variable: &Node<SmolStr>,
+        iter: &Node<ast::Expr>,
+        body: &[Node<ast::FuncStmt>],
+    ) {
+        let preheader_bb = self.builder.make_block();
+        let entry_bb = self.builder.make_block();
+        let body_bb = self.builder.make_block();
+        let exit_bb = self.builder.make_block();
+        let iter_elem_ty = self
+            .analyzer_body
+            .var_decl_types
+            .get(&loop_variable.id)
+            .unwrap();
+        let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty.clone().into());
+
+        // `For` has its scope from preheader block.
+        self.enter_loop_scope(entry_bb, exit_bb);
+
+        /* Lower preheader. */
+        self.builder.move_to_block(preheader_bb);
+
+        // Declare loop_variable.
+        let loop_value = self.builder.declare(Local::user_local(
+            loop_variable.kind.clone(),
+            iter_elem_ty,
+            loop_variable.into(),
+        ));
+        self.scope_mut()
+            .declare_var(&loop_variable.kind, loop_value);
+
+        // Creates index that stores loop iteration count.
+        let u256_ty = self.u256_ty();
+        let loop_idx = Local::tmp_local("$loop_idx_tmp".into(), u256_ty);
+
+        // Declare and initialize `loop_idx` to 0.
+        let loop_idx = self.builder.declare(loop_idx);
+        let imm_zero = self.builder.make_imm(0u32.into(), u256_ty);
+        self.builder.assign(loop_idx, imm_zero, SourceInfo::dummy());
+
+        // Evaluates loop variable.
+        let iter = self.lower_expr(iter);
+        self.builder.jump(entry_bb, SourceInfo::dummy());
+
+        /* Lower entry. */
+        self.builder.move_to_block(entry_bb);
+
+        // Update `loop_value` in each iteration.
+        let iter_elem =
+            self.builder
+                .aggregate_access(iter, loop_idx, iter_elem_ty, SourceInfo::dummy());
+        self.builder
+            .assign(loop_value, iter_elem, SourceInfo::dummy());
+
+        // Increment `loop_idx`.
+        let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
+        let inc = self
+            .builder
+            .add(loop_idx, imm_one, u256_ty, SourceInfo::dummy());
+        self.builder.assign(loop_idx, inc, SourceInfo::dummy());
+        self.builder.jump(body_bb, SourceInfo::dummy());
+
+        /* Lower body. */
+        self.builder.move_to_block(body_bb);
+        for stmt in body {
+            self.lower_stmt(stmt);
+        }
+        let iter_ty = self.builder.value_ty(iter);
+        let maximum_iter_count = match iter_ty.data(self.db).as_ref() {
+            ir::Type::Array(ir::types::ArrayDef { len, .. }) => *len,
+            _ => unreachable!(),
+        };
+        let maximum_iter_count = self.builder.make_imm(maximum_iter_count.into(), u256_ty);
+        let cond = self
+            .builder
+            .lt(loop_idx, maximum_iter_count, u256_ty, SourceInfo::dummy());
+        self.builder
+            .branch(cond, entry_bb, exit_bb, SourceInfo::dummy());
+
+        /* Move to exit bb */
+        self.exit_scope();
+        self.builder.move_to_block(exit_bb);
+    }
+
+    fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> ValueId {
+        let ty = self.expr_ty(expr);
+        match &expr.kind {
+            ast::Expr::Ternary {
+                if_expr,
+                test,
+                else_expr,
+            } => {
+                let true_bb = self.builder.make_block();
+                let false_bb = self.builder.make_block();
+                let merge_bb = self.builder.make_block();
+
+                let tmp = self
+                    .builder
+                    .declare(Local::tmp_local("$ternary_tmp".into(), ty));
+
+                let cond = self.lower_expr(test);
+                self.builder
+                    .branch(cond, true_bb, false_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(true_bb);
+                let value = self.lower_expr(if_expr);
+                self.builder.assign(tmp, value, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(false_bb);
+                let value = self.lower_expr(else_expr);
+                self.builder.assign(tmp, value, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(merge_bb);
+                tmp
+            }
+
+            ast::Expr::BoolOperation { left, op, right } => {
+                self.lower_bool_op(op.kind, left, right, ty)
+            }
+
+            ast::Expr::BinOperation { left, op, right } => {
+                let lhs = self.lower_expr(left);
+                let rhs = self.lower_expr(right);
+                self.lower_binop(op.kind, lhs, rhs, ty, expr.into())
+            }
+
+            ast::Expr::UnaryOperation { op, operand } => {
+                let value = self.lower_expr(operand);
+                match op.kind {
+                    ast::UnaryOperator::Invert => self.builder.inv(value, ty, expr.into()),
+                    ast::UnaryOperator::Not => self.builder.not(value, ty, expr.into()),
+                    ast::UnaryOperator::USub => self.builder.neg(value, ty, expr.into()),
+                }
+            }
+
+            ast::Expr::CompOperation { left, op, right } => {
+                let lhs = self.lower_expr(left);
+                let rhs = self.lower_expr(right);
+                self.lower_comp_op(op.kind, lhs, rhs, ty, expr.into())
+            }
+
+            ast::Expr::Attribute { value, attr } => {
+                let value = self.lower_expr(value);
+                let value_ty = self.builder.value_ty(value);
+                let index = value_ty.index_from_fname(self.db, &attr.kind, self.u256_ty());
+                let index = self.builder.make_value(index);
+                let ty = self.expr_ty(expr);
+                self.builder.aggregate_access(value, index, ty, expr.into())
+            }
+
+            ast::Expr::Subscript { value, index } => {
+                let value = self.lower_expr(value);
+                let index = self.lower_expr(index);
+                let value_ty = self.builder.value_ty(value);
+                if value_ty.is_aggregate(self.db) {
+                    self.builder
+                        .aggregate_access(value, index, self.expr_ty(expr), expr.into())
+                } else {
+                    self.builder
+                        .map_access(value, index, self.expr_ty(expr), expr.into())
+                }
+            }
+
+            ast::Expr::Call {
+                func,
+                generic_args,
+                args,
+            } => {
+                let ty = self.expr_ty(expr);
+                self.lower_call(func, generic_args, &args.kind, ty, expr.into())
+            }
+
+            ast::Expr::List { elts } | ast::Expr::Tuple { elts } => {
+                let args = elts.iter().map(|elem| self.lower_expr(elem)).collect();
+                self.builder.aggregate_construct(ty, args, expr.into())
+            }
+
+            ast::Expr::Bool(b) => self.builder.make_imm_from_bool(*b, ty),
+
+            ast::Expr::Name(name) => self.resolve_name(name),
+
+            ast::Expr::Path(path) => self.resolve_path(path),
+
+            ast::Expr::Num(num) => {
+                let imm = BigInt::from_str(num).unwrap();
+                self.builder.make_imm(imm, ty)
+            }
+
+            ast::Expr::Str(s) => {
+                let ty = self.expr_ty(expr);
+                self.make_local_constant(
+                    "str_in_func".into(),
+                    ty,
+                    ConstantValue::Str(s.clone()),
+                    expr.into(),
+                )
+            }
+
+            ast::Expr::Unit => self.make_unit(),
+        }
+    }
+
+    fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
+        let analyzer_ty = self
+            .analyzer_body
+            .expressions
+            .get(&expr.id)
+            .unwrap()
+            .typ
+            .clone();
+        self.db.mir_lowered_type(analyzer_ty)
+    }
+
+    fn lower_bool_op(
+        &mut self,
+        op: ast::BoolOperator,
+        lhs: &Node<ast::Expr>,
+        rhs: &Node<ast::Expr>,
+        ty: TypeId,
+    ) -> ValueId {
+        let true_bb = self.builder.make_block();
+        let false_bb = self.builder.make_block();
+        let merge_bb = self.builder.make_block();
+
+        let lhs = self.lower_expr(lhs);
+        let tmp = self
+            .builder
+            .declare(Local::tmp_local(format!("${}_tmp", op).into(), ty));
+
+        match op {
+            ast::BoolOperator::And => {
+                self.builder
+                    .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(true_bb);
+                let rhs = self.lower_expr(rhs);
+                self.builder.assign(tmp, rhs, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(false_bb);
+                let false_imm = self.builder.make_imm_from_bool(false, ty);
+                self.builder.assign(tmp, false_imm, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+            }
+
+            ast::BoolOperator::Or => {
+                self.builder
+                    .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(true_bb);
+                let true_imm = self.builder.make_imm_from_bool(true, ty);
+                self.builder.assign(tmp, true_imm, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(false_bb);
+                let rhs = self.lower_expr(rhs);
+                self.builder.assign(tmp, rhs, SourceInfo::dummy());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+            }
+        }
+
+        self.builder.move_to_block(merge_bb);
+        tmp
+    }
+
+    fn lower_binop(
+        &mut self,
+        op: ast::BinOperator,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        match op {
+            ast::BinOperator::Add => self.builder.add(lhs, rhs, ty, source),
+            ast::BinOperator::Sub => self.builder.sub(lhs, rhs, ty, source),
+            ast::BinOperator::Mult => self.builder.mul(lhs, rhs, ty, source),
+            ast::BinOperator::Div => self.builder.div(lhs, rhs, ty, source),
+            ast::BinOperator::Mod => self.builder.modulo(lhs, rhs, ty, source),
+            ast::BinOperator::Pow => self.builder.pow(lhs, rhs, ty, source),
+            ast::BinOperator::LShift => self.builder.shl(lhs, rhs, ty, source),
+            ast::BinOperator::RShift => self.builder.shr(lhs, rhs, ty, source),
+            ast::BinOperator::BitOr => self.builder.bit_or(lhs, rhs, ty, source),
+            ast::BinOperator::BitXor => self.builder.bit_xor(lhs, rhs, ty, source),
+            ast::BinOperator::BitAnd => self.builder.bit_and(lhs, rhs, ty, source),
+        }
+    }
+
+    fn lower_comp_op(
+        &mut self,
+        op: ast::CompOperator,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        match op {
+            ast::CompOperator::Eq => self.builder.eq(lhs, rhs, ty, source),
+            ast::CompOperator::NotEq => self.builder.ne(lhs, rhs, ty, source),
+            ast::CompOperator::Lt => self.builder.lt(lhs, rhs, ty, source),
+            ast::CompOperator::LtE => self.builder.le(lhs, rhs, ty, source),
+            ast::CompOperator::Gt => self.builder.gt(lhs, rhs, ty, source),
+            ast::CompOperator::GtE => self.builder.ge(lhs, rhs, ty, source),
+        }
+    }
+
+    fn lower_call(
+        &mut self,
+        func: &Node<ast::Expr>,
+        _generic_args: &Option<Node<Vec<ast::GenericArg>>>,
+        args: &[Node<ast::CallArg>],
+        ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        let call_type = self.analyzer_body.calls.get(&source.id).unwrap();
+
+        let mut args: Vec<_> = args
+            .iter()
+            .map(|arg| self.lower_expr(&arg.kind.value))
+            .collect();
+
+        match call_type {
+            AnalyzerCallType::BuiltinFunction(GlobalFunction::Keccak256) => {
+                self.builder.keccak256(args, ty, source)
+            }
+            AnalyzerCallType::Intrinsic(_) => todo!("we need to reconsider intrinsic"),
+            AnalyzerCallType::BuiltinValueMethod { .. } => {
+                todo!("we need to reconsider builtin value method")
+            }
+            AnalyzerCallType::BuiltinAssociatedFunction { .. } => {
+                todo!("we need to reconsider builtin associated function")
+            }
+
+            AnalyzerCallType::AssociatedFunction { function, .. }
+            | AnalyzerCallType::Pure(function) => {
+                let func_id = self.db.mir_lowered_func_signature(*function);
+                self.builder
+                    .call(func_id, args, CallType::Internal, ty, source)
+            }
+
+            AnalyzerCallType::ValueMethod { method, .. } => {
+                let mut method_args = vec![self.lower_expr(func)];
+                method_args.append(&mut args);
+
+                let func_id = self.db.mir_lowered_func_signature(*method);
+                self.builder
+                    .call(func_id, method_args, CallType::Internal, ty, source)
+            }
+
+            AnalyzerCallType::External { function, .. } => {
+                let mut method_args = vec![self.lower_expr(func)];
+                method_args.append(&mut args);
+                let func_id = self.db.mir_lowered_func_signature(*function);
+                self.builder
+                    .call(func_id, method_args, CallType::External, ty, source)
+            }
+
+            AnalyzerCallType::TypeConstructor(analyzer_ty) => {
+                let ty = self.db.mir_lowered_type(analyzer_ty.clone());
+                if ty.is_aggregate(self.db) {
+                    self.builder.aggregate_construct(ty, args, source)
+                } else {
+                    todo!("we implement cast expression for primitive types")
+                }
+            }
+        }
+    }
+
+    fn make_unit(&mut self) -> ValueId {
+        let unit_ty = analyzer_types::Type::Base(analyzer_types::Base::Unit);
+        let unit_ty = self.db.mir_lowered_type(unit_ty);
+        self.builder.make_unit(unit_ty)
+    }
+
+    fn make_local_constant(
+        &mut self,
+        name: SmolStr,
+        ty: TypeId,
+        value: ConstantValue,
+        source: SourceInfo,
+    ) -> ValueId {
+        let function_id = self.builder.func_id();
+        let constant = Constant {
+            name,
+            value,
+            ty,
+            module_id: function_id.module(self.db),
+            source,
+        };
+
+        let constant_id = self.db.mir_intern_const(constant.into());
+        self.builder.make_constant(constant_id, ty)
+    }
+
+    fn u256_ty(&mut self) -> TypeId {
+        self.db.mir_intern_type(ir::Type::U256.into())
+    }
+
+    fn enter_scope(&mut self) {
+        let new_scope = Scope::with_parent(self.current_scope);
+        self.current_scope = self.scopes.alloc(new_scope);
+    }
+
+    fn enter_loop_scope(&mut self, entry: BasicBlockId, exit: BasicBlockId) {
+        let new_scope = Scope::loop_scope(self.current_scope, entry, exit);
+        self.current_scope = self.scopes.alloc(new_scope);
+    }
+
+    fn exit_scope(&mut self) {
+        self.current_scope = self.scopes[self.current_scope].parent.unwrap();
+    }
+
+    /// Resolve a name appeared in an expression.
+    /// NOTE: Don't call this to resolve method receiver.
+    fn resolve_name(&mut self, name: &str) -> ValueId {
+        if let Some(value) = self.scopes[self.current_scope].resolve_name(&self.scopes, name) {
+            // Name is defined in local.
+            value
+        } else {
+            // Name is defined in global.
+            let func_id = self.builder.func_id();
+            let module = func_id.module(self.db);
+            let constant = match module
+                .resolve_name(self.db.upcast(), name)
+                .unwrap()
+                .unwrap()
+            {
+                analyzer_items::Item::Constant(id) => self.db.mir_lowered_constant(id),
+                _ => panic!("name defined in global must be constant"),
+            };
+            let ty = constant.ty(self.db);
+            self.builder.make_constant(constant, ty)
+        }
+    }
+
+    /// Resolve a path appeared in an expression.
+    /// NOTE: Don't call this to resolve method receiver.
+    fn resolve_path(&mut self, path: &ast::Path) -> ValueId {
+        let func_id = self.builder.func_id();
+        let module = func_id.module(self.db);
+        let constant = match module.resolve_path(self.db.upcast(), path).value.unwrap() {
+            analyzer_items::Item::Constant(id) => self.db.mir_lowered_constant(id),
+            _ => panic!("path defined in global must be constant"),
+        };
+        let ty = constant.ty(self.db);
+        self.builder.make_constant(constant, ty)
+    }
+
+    fn scope(&self) -> &Scope {
+        &self.scopes[self.current_scope]
+    }
+
+    fn scope_mut(&mut self) -> &mut Scope {
+        &mut self.scopes[self.current_scope]
+    }
+}
+
+#[derive(Debug)]
+struct Scope {
+    parent: Option<ScopeId>,
+    loop_entry: Option<BasicBlockId>,
+    loop_exit: Option<BasicBlockId>,
+    variables: FxHashMap<SmolStr, ValueId>,
+}
+
+impl Scope {
+    fn root(db: &dyn MirDb, func: FunctionId, builder: &mut BodyBuilder) -> Self {
+        let mut root = Self {
+            parent: None,
+            loop_entry: None,
+            loop_exit: None,
+            variables: FxHashMap::default(),
+        };
+
+        // Declare function parameters.
+        for param in &func.data(db).params {
+            let local = Local::arg_local(param.name.clone(), param.ty, param.source.clone());
+            let value_id = builder.declare(local);
+            root.declare_var(&param.name, value_id)
+        }
+
+        root
+    }
+
+    fn with_parent(parent: ScopeId) -> Self {
+        Self {
+            parent: parent.into(),
+            loop_entry: None,
+            loop_exit: None,
+            variables: FxHashMap::default(),
+        }
+    }
+
+    fn loop_scope(parent: ScopeId, loop_entry: BasicBlockId, loop_exit: BasicBlockId) -> Self {
+        Self {
+            parent: parent.into(),
+            loop_entry: loop_entry.into(),
+            loop_exit: loop_exit.into(),
+            variables: FxHashMap::default(),
+        }
+    }
+
+    fn loop_entry(&self) -> BasicBlockId {
+        self.loop_entry.unwrap()
+    }
+
+    fn loop_exit(&self) -> BasicBlockId {
+        self.loop_exit.unwrap()
+    }
+
+    fn declare_var(&mut self, name: &SmolStr, value: ValueId) {
+        debug_assert!(!self.variables.contains_key(name));
+
+        self.variables.insert(name.clone(), value);
+    }
+
+    fn resolve_name(&self, scopes: &Arena<Scope>, name: &str) -> Option<ValueId> {
+        match self.variables.get(name) {
+            Some(id) => Some(*id),
+            None => scopes[self.parent?].resolve_name(scopes, name),
+        }
+    }
+}
+
+fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceInfo {
+    func.data(db.upcast())
+        .ast
+        .kind
+        .args
+        .iter()
+        .find(|arg| matches!(arg.kind, ast::FunctionArg::Zelf))
+        .unwrap()
+        .into()
+}
+
+fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) -> SourceInfo {
+    func.data(db.upcast())
+        .ast
+        .kind
+        .args
+        .iter()
+        .find_map(|arg| match &arg.kind {
+            ast::FunctionArg::Regular(ast::RegularFunctionArg { name, .. }) => {
+                if name.kind == arg_name {
+                    Some(name.into())
+                } else {
+                    None
+                }
+            }
+            _ => unreachable!(),
+        })
+        .unwrap()
 }
 
 fn make_param(
     db: &dyn MirDb,
     name: impl Into<SmolStr>,
     ty: impl Into<analyzer_types::Type>,
+    source: SourceInfo,
 ) -> FunctionParam {
     FunctionParam {
         name: name.into(),
         ty: db.mir_lowered_type(ty.into()),
+        source,
     }
 }

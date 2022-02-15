@@ -32,6 +32,18 @@ impl Span {
         }
     }
 
+    pub fn dummy() -> Self {
+        Self {
+            file_id: SourceFileId::dummy_file(),
+            start: usize::MAX,
+            end: usize::MAX,
+        }
+    }
+
+    pub fn is_dummy(&self) -> bool {
+        self == &Self::dummy()
+    }
+
     pub fn from_pair<S, E>(start_elem: S, end_elem: E) -> Self
     where
         S: Into<Span>,

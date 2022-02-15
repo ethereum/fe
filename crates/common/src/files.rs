@@ -110,6 +110,9 @@ impl SourceFileId {
         // Used by lowering::ZeroSpanNode, unit tests, and benchmarks
         Self(u32::MAX)
     }
+    pub fn is_dummy(self) -> bool {
+        self == Self::dummy_file()
+    }
 }
 
 #[test]

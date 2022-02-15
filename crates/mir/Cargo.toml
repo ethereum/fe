@@ -13,5 +13,6 @@ fe-analyzer = { path = "../analyzer", version = "^0.13.0-alpha" }
 salsa = "0.16.1"
 smol_str = "0.1.21"
 num-bigint = "0.4.3"
+num-traits = "0.2.14"
 id-arena = "2.2.1"
 fxhash = "0.2.1"

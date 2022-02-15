@@ -64,7 +64,8 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         _expr: &Node<ast::Expr>,
         _value: crate::context::Constant,
     ) {
-        // We use salsa query to get constant. So no need to add constant explicitly.
+        // We use salsa query to get constant. So no need to add constant
+        // explicitly.
     }
 
     fn constant_value_by_name(
@@ -172,6 +173,15 @@ impl<'a> FunctionScope<'a> {
             .var_decl_types
             .insert(node.id, typ)
             .expect_none("declaration attributes already exist");
+    }
+
+    pub fn map_variable_type<T>(&self, node: &Node<T>, typ: Type) {
+        self.add_node(node);
+        self.body
+            .borrow_mut()
+            .var_types
+            .insert(node.id, typ)
+            .expect_none("variable has already registered")
     }
 
     fn add_node<T>(&self, node: &Node<T>) {

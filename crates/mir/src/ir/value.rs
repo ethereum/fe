@@ -2,7 +2,7 @@ use id_arena::Id;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use super::{constant::ConstantId, function::FunctionId, inst::InstId, types::TypeId, SourceInfo};
+use super::{constant::ConstantId, inst::InstId, types::TypeId, SourceInfo};
 
 pub type ValueId = Id<Value>;
 
@@ -13,9 +13,6 @@ pub enum Value {
 
     /// A local variable declared in a function body.
     Local(Local),
-
-    /// An assignable variable
-    AssignableValue(AssignableValue),
 
     /// An immediate value.
     Immediate(Immediate),
@@ -32,7 +29,6 @@ impl Value {
         match self {
             Self::Temporary(val) => val.ty,
             Self::Local(val) => val.ty,
-            Self::AssignableValue(val) => val.ty,
             Self::Immediate(val) => val.ty,
             Self::Constant(val) => val.ty,
             Self::Unit(val) => val.ty,
@@ -54,7 +50,6 @@ macro_rules! embed {
 embed! {
     (Value::Temporary, Temporary),
     (Value::Local, Local),
-    (Value::AssignableValue, AssignableValue),
     (Value::Immediate, Immediate),
     (Value::Constant, Constant),
     (Value::Unit, Unit)
@@ -73,31 +68,51 @@ pub struct Immediate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FuncArg {
-    pub func: FunctionId,
-    pub idx: usize,
-    pub ty: TypeId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Local {
     /// An original name of a local variable.
     pub name: SmolStr,
-
-    pub source: SourceInfo,
 
     pub ty: TypeId,
 
     /// `true` if a local is a function argument.
     pub is_arg: bool,
+
+    /// `true` if a local is introduced in MIR.
+    pub is_tmp: bool,
+
+    pub source: SourceInfo,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AssignableValue {
-    pub local: ValueId,
-    pub indices: Vec<usize>,
-    pub source: SourceInfo,
-    pub ty: TypeId,
+impl Local {
+    pub fn user_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+        Self {
+            name,
+            ty,
+            is_arg: false,
+            is_tmp: false,
+            source,
+        }
+    }
+
+    pub fn arg_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+        Self {
+            name,
+            ty,
+            is_arg: true,
+            is_tmp: false,
+            source,
+        }
+    }
+
+    pub fn tmp_local(name: SmolStr, ty: TypeId) -> Local {
+        Self {
+            name,
+            ty,
+            is_arg: false,
+            is_tmp: true,
+            source: SourceInfo::dummy(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

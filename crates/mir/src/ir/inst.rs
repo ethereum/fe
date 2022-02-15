@@ -4,6 +4,7 @@ use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, Sou
 
 pub type InstId = Id<Inst>;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Inst {
     pub kind: InstKind,
     pub source: SourceInfo,
@@ -54,15 +55,21 @@ pub enum InstKind {
     ///     x: i32
     ///     y: Array<i32, 8>
     /// ```
-    /// `foo.y[2]` is lowered into `AggregateAccess(foo, [1, 2])' for example.
+    /// `foo.y` is lowered into `AggregateAccess(foo, [1])' for example.
     AggregateAccess {
         value: ValueId,
-        indices: Vec<usize>,
+        index: ValueId,
+    },
+
+    MapAccess {
+        value: ValueId,
+        key: ValueId,
     },
 
     Call {
         func: FunctionId,
         args: Vec<ValueId>,
+        call_type: CallType,
     },
 
     /// Unconditional jump instruction.
@@ -88,6 +95,11 @@ pub enum InstKind {
     Return {
         arg: ValueId,
     },
+
+    Intrinsic {
+        op: IntrinsicOp,
+        args: Vec<ValueId>,
+    },
 }
 
 impl Inst {
@@ -102,6 +114,11 @@ impl Inst {
 
     pub fn binary(op: BinOp, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> Self {
         let kind = InstKind::Binary { op, lhs, rhs };
+        Self::new(kind, source)
+    }
+
+    pub fn intrinsic(op: IntrinsicOp, args: Vec<ValueId>, source: SourceInfo) -> Self {
+        let kind = InstKind::Intrinsic { op, args };
         Self::new(kind, source)
     }
 }
@@ -137,4 +154,15 @@ pub enum BinOp {
     Gt,
     Le,
     Lt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CallType {
+    Internal,
+    External,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IntrinsicOp {
+    Keccak256,
 }

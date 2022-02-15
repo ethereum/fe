@@ -355,8 +355,11 @@ pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
     pub emits: IndexMap<NodeId, EventId>,
     pub string_literals: IndexSet<SmolStr>, // for yulgen
+    // Map lhs of variable declaration to type.
+    pub var_types: IndexMap<NodeId, Type>,
 
     // This is the id of the VarDecl TypeDesc node
+    // TODO: Do we really need this?
     pub var_decl_types: IndexMap<NodeId, FixedSize>,
     pub calls: IndexMap<NodeId, CallType>,
     pub spans: HashMap<NodeId, Span>,

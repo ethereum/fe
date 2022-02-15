@@ -1,6 +1,3 @@
-// TODO: remove this.
-#![allow(unused)]
-
 use std::rc::Rc;
 
 use crate::{
@@ -34,8 +31,7 @@ pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeI
     let fields = analyzer_ty
         .fields
         .iter()
-        .map(|(field)| {
-            let name = field.name.clone();
+        .map(|field| {
             let ty = db.mir_lowered_type(field.typ.clone().unwrap().into());
             (field.name.clone(), ty, field.is_indexed)
         })

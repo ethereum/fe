@@ -10,6 +10,14 @@ impl NodeId {
         static NEXT_ID: AtomicU32 = AtomicU32::new(0);
         Self(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
+
+    pub fn dummy() -> Self {
+        Self(u32::MAX)
+    }
+
+    pub fn is_dummy(self) -> bool {
+        self == Self::dummy()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
