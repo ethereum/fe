@@ -18,7 +18,9 @@ build-website:
 	mv target/doc target/website/compiler-docs
 
 	# Generate the Fe guide into the docs subdirectory within the website
-	cd docs; mdbook build -d ../target/website/docs
+	mdbook build docs/
+	mkdir target/website/docs
+	mv docs/book/html/* target/website/docs
 
 .PHONY: serve-website
 serve-website: build-website
