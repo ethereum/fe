@@ -1,6 +1,6 @@
 use fxhash::FxHashMap;
 
-use super::{basic_block::BasicBlockId, inst::InstId};
+use super::{basic_block::BasicBlockId, function::BodyDataStore, inst::InstId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Represents basic block order and instruction order.
@@ -81,9 +81,16 @@ impl BodyOrder {
     /// Returns a terminator instruction of a block.
     ///
     /// # Panics
-    /// Panics if `block` is not inserted yet.
-    pub fn terminator(&self, block: BasicBlockId) -> Option<InstId> {
-        self.blocks[&block].terminator
+    /// Panics if
+    /// 1. `block` is not inserted yet.
+    /// 2. No terminator found in a block.
+    pub fn terminator(&self, store: &BodyDataStore, block: BasicBlockId) -> InstId {
+        for inst in self.iter_inst(block) {
+            if store.is_terminator(inst) {
+                return inst;
+            }
+        }
+        panic!("block must have terminator")
     }
 
     /// Returns a last instruction of a block.
@@ -436,9 +443,6 @@ struct BlockNode {
 
     /// A last instruction of a block.
     last_inst: Option<InstId>,
-
-    /// A terminator instruction of a block.
-    terminator: Option<InstId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

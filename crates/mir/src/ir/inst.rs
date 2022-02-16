@@ -121,6 +121,24 @@ impl Inst {
         let kind = InstKind::Intrinsic { op, args };
         Self::new(kind, source)
     }
+
+    pub fn is_terminator(&self) -> bool {
+        matches!(
+            self.kind,
+            InstKind::Jump { .. }
+                | InstKind::Branch { .. }
+                | InstKind::Revert { .. }
+                | InstKind::Return { .. }
+        )
+    }
+
+    pub fn branch_info(&self) -> BranchInfo {
+        match self.kind {
+            InstKind::Jump { dest } => BranchInfo::Jump(dest),
+            InstKind::Branch { then, else_, .. } => BranchInfo::Branch((then, else_)),
+            _ => BranchInfo::NotBranch,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -165,4 +183,10 @@ pub enum CallType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntrinsicOp {
     Keccak256,
+}
+
+pub enum BranchInfo {
+    NotBranch,
+    Jump(BasicBlockId),
+    Branch((BasicBlockId, BasicBlockId)),
 }
