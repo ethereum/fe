@@ -529,10 +529,9 @@ pub fn encode(types: &[AbiType]) -> yul::Statement {
         .map(|(typ, param)| match typ {
             AbiType::StaticArray { inner, size } => encode_static_array(param, inner, *size),
             AbiType::Tuple { components } => encode_tuple(param, components),
-            AbiType::Uint { .. } => encode_uint(param),
-            AbiType::Int { .. } => encode_uint(param),
-            AbiType::Bool => encode_uint(param),
-            AbiType::Address => encode_uint(param),
+            AbiType::Uint { .. } | AbiType::Int { .. } | AbiType::Bool | AbiType::Address => {
+                encode_uint(param)
+            }
             AbiType::String { .. } => encode_string_head(param),
             AbiType::Bytes { size } => encode_bytes_head(*size),
         })

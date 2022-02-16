@@ -276,18 +276,12 @@ impl Integer {
 
     pub fn size(&self) -> usize {
         match self {
-            Integer::U256 => 32,
-            Integer::U128 => 16,
-            Integer::U64 => 8,
-            Integer::U32 => 4,
-            Integer::U16 => 2,
-            Integer::U8 => 1,
-            Integer::I256 => 32,
-            Integer::I128 => 16,
-            Integer::I64 => 8,
-            Integer::I32 => 4,
-            Integer::I16 => 2,
-            Integer::I8 => 1,
+            Integer::U256 | Integer::I256 => 32,
+            Integer::U128 | Integer::I128 => 16,
+            Integer::U64 | Integer::I64 => 8,
+            Integer::U32 | Integer::I32 => 4,
+            Integer::U16 | Integer::I16 => 2,
+            Integer::U8 | Integer::I8 => 1,
         }
     }
 
@@ -395,9 +389,8 @@ impl Type {
             Type::Map(inner) => inner.to_string().into(),
             Type::Tuple(inner) => inner.to_string().into(),
             Type::String(inner) => inner.to_string().into(),
-            Type::Contract(inner) => inner.name.clone(),
-            Type::SelfContract(inner) => inner.name.clone(),
             Type::Struct(inner) => inner.name.clone(),
+            Type::Contract(inner) | Type::SelfContract(inner) => inner.name.clone(),
         }
     }
 
@@ -490,8 +483,7 @@ impl TypeDowncast for Type {
     fn as_class(&self) -> Option<Class> {
         match self {
             Type::Struct(inner) => Some(Class::Struct(inner.id)),
-            Type::Contract(inner) => Some(Class::Contract(inner.id)),
-            Type::SelfContract(inner) => Some(Class::Contract(inner.id)),
+            Type::Contract(inner) | Type::SelfContract(inner) => Some(Class::Contract(inner.id)),
             _ => None,
         }
     }
@@ -612,9 +604,8 @@ impl TryFrom<Type> for FixedSize {
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
-            Type::Map(_) => Err(NotFixedSize),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
-            Type::SelfContract(_) => Err(NotFixedSize),
+            Type::Map(_) | Type::SelfContract(_) => Err(NotFixedSize),
         }
     }
 }

@@ -32,9 +32,11 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
 
     let lowered_kind = match exp.kind {
         fe::Expr::Name(_) => expr_name(context, exp),
-        fe::Expr::Path(_) => exp.kind,
-        fe::Expr::Num(_) => exp.kind,
-        fe::Expr::Bool(_) => exp.kind,
+        fe::Expr::Path(_)
+        | fe::Expr::Num(_)
+        | fe::Expr::Bool(_)
+        | fe::Expr::Str(_)
+        | fe::Expr::Unit => exp.kind,
         fe::Expr::Subscript { value, index } => fe::Expr::Subscript {
             value: boxed_expr(context, value),
             index: boxed_expr(context, index),
@@ -82,8 +84,6 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         },
         fe::Expr::List { .. } => expr_list(context, exp),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
-        fe::Expr::Str(_) => exp.kind,
-        fe::Expr::Unit => exp.kind,
     };
 
     Node::with_original_id(lowered_kind, span, original_exp.original_id)

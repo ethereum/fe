@@ -17,8 +17,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
         .body
         .iter()
         .filter_map(|stmt| match stmt {
-            ast::ModuleStmt::Pragma(_) => Some(stmt.clone()),
-            ast::ModuleStmt::Use(_) => Some(stmt.clone()),
+            ast::ModuleStmt::Pragma(_) | ast::ModuleStmt::Use(_) => Some(stmt.clone()),
             _ => None,
         })
         .collect::<Vec<_>>();

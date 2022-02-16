@@ -365,8 +365,9 @@ pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     let mut data = String::new();
     for param in input {
         let encoded = match param {
-            ethabi::Token::Uint(val) => format!("{:0>64}", format!("{:x}", val)),
-            ethabi::Token::Int(val) => format!("{:0>64}", format!("{:x}", val)),
+            ethabi::Token::Uint(val) | ethabi::Token::Int(val) => {
+                format!("{:0>64}", format!("{:x}", val))
+            }
             ethabi::Token::Bool(val) => format!("{:0>64x}", *val as i32),
             ethabi::Token::String(val) => {
                 const DATA_OFFSET: &str =

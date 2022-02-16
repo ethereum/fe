@@ -123,8 +123,9 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 // Copying is done in `expr(..)` based on the move location set
                 // in the expression's attributes, so we just map the value for
                 // `to_mem` and `clone`.
-                builtins::ValueMethod::ToMem => expr(context, target),
-                builtins::ValueMethod::Clone => expr(context, target),
+                builtins::ValueMethod::ToMem | builtins::ValueMethod::Clone => {
+                    expr(context, target)
+                }
                 builtins::ValueMethod::AbiEncode => match typ {
                     Type::Struct(struct_) => abi_operations::encode(
                         &[struct_.as_abi_type(context.adb)],

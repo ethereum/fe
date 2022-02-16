@@ -37,8 +37,7 @@ pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) 
                                 &typ.generic_arg_type(idx)
                                     .expect("expected generic type arg"),
                             )),
-                            GenericArg::Int(_) => arg,
-                            GenericArg::ConstExpr(_) => arg,
+                            GenericArg::Int(_) | GenericArg::ConstExpr(_) => arg,
                         })
                         .collect(),
                     args.span,

@@ -10,12 +10,12 @@ pub fn index(value: Type, index: Type) -> Result<Type, IndexingError> {
     match value {
         Type::Array(array) => index_array(array, index),
         Type::Map(map) => index_map(map, index),
-        Type::Base(_) => Err(IndexingError::NotSubscriptable),
-        Type::Tuple(_) => Err(IndexingError::NotSubscriptable),
-        Type::String(_) => Err(IndexingError::NotSubscriptable),
-        Type::Contract(_) => Err(IndexingError::NotSubscriptable),
-        Type::SelfContract(_) => Err(IndexingError::NotSubscriptable),
-        Type::Struct(_) => Err(IndexingError::NotSubscriptable),
+        Type::Base(_)
+        | Type::Tuple(_)
+        | Type::String(_)
+        | Type::Contract(_)
+        | Type::SelfContract(_)
+        | Type::Struct(_) => Err(IndexingError::NotSubscriptable),
     }
 }
 

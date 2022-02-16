@@ -547,9 +547,7 @@ fn expr_attribute(
             Ok(GlobalObject::Block) => {
                 return match BlockField::from_str(&field.kind) {
                     Ok(BlockField::Coinbase) => base_type(Base::Address),
-                    Ok(BlockField::Difficulty) => base_type(U256),
-                    Ok(BlockField::Number) => base_type(U256),
-                    Ok(BlockField::Timestamp) => base_type(U256),
+                    Ok(BlockField::Difficulty) | Ok(BlockField::Number) | Ok(BlockField::Timestamp) => base_type(U256),
                     Err(_) => {
                         Err(FatalError::new(context.fancy_error(
                             "Not a block field",
@@ -579,8 +577,7 @@ fn expr_attribute(
             Ok(GlobalObject::Msg) => {
                 return match MsgField::from_str(&field.kind) {
                     Ok(MsgField::Sender) => base_type(Base::Address),
-                    Ok(MsgField::Sig) => base_type(U256),
-                    Ok(MsgField::Value) => base_type(U256),
+                    Ok(MsgField::Sig) | Ok(MsgField::Value) => base_type(U256),
                     Err(_) => {
                         Err(FatalError::new(context.fancy_error(
                             "Not a `msg` field",

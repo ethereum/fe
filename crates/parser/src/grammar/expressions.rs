@@ -292,8 +292,7 @@ fn postfix_binding_power(op: TokenKind) -> Option<u8> {
     use TokenKind::*;
     match op {
         If => Some(35), // ternary
-        BracketOpen => Some(150),
-        ParenOpen => Some(150),
+        BracketOpen | ParenOpen => Some(150),
         _ => None,
     }
 }
