@@ -441,12 +441,12 @@ fn expr_str(
 
 fn is_valid_string(val: &str) -> bool {
     const ALLOWED_SPECIAL_CHARS: [u8; 3] = [
-        9u8,  // Tab
-        10u8, // Newline
-        13u8, // Carriage return
+        9_u8,  // Tab
+        10_u8, // Newline
+        13_u8, // Carriage return
     ];
 
-    const PRINTABLE_ASCII: RangeInclusive<u8> = 32u8..=126u8;
+    const PRINTABLE_ASCII: RangeInclusive<u8> = 32_u8..=126_u8;
 
     for x in val.as_bytes() {
         if ALLOWED_SPECIAL_CHARS.contains(x) || PRINTABLE_ASCII.contains(x) {

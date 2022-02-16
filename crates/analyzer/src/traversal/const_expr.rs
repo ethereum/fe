@@ -169,7 +169,7 @@ fn eval_bin_op(
                     return Err(overflow_error(context, span));
                 } else {
                     let mask = make_mask(typ);
-                    (lhs * BigInt::from(2u8).pow(exponent as u32)) & mask
+                    (lhs * BigInt::from(2_u8).pow(exponent as u32)) & mask
                 }
             } else {
                 // If exponent is larger than usize::MAX, it causes trivially overflow.
@@ -185,7 +185,7 @@ fn eval_bin_op(
                     return Err(overflow_error(context, span));
                 } else {
                     let mask = make_mask(typ);
-                    (lhs / BigInt::from(2u8).pow(exponent as u32)) & mask
+                    (lhs / BigInt::from(2_u8).pow(exponent as u32)) & mask
                 }
             } else {
                 // If exponent is larger than usize::MAX, it causes trivially overflow.

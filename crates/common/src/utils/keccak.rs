@@ -27,7 +27,7 @@ pub fn partial(content: &[u8], size: usize) -> String {
 /// Get the full 32 byte hash of the content as a byte array.
 pub fn full_as_bytes(content: &[u8]) -> [u8; 32] {
     let mut keccak = Keccak::v256();
-    let mut selector = [0u8; 32];
+    let mut selector = [0_u8; 32];
 
     keccak.update(content);
     keccak.finalize(&mut selector);
