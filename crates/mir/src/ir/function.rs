@@ -7,7 +7,7 @@ use smol_str::SmolStr;
 use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
-    inst::{Inst, InstId},
+    inst::{BranchInfo, Inst, InstId},
     types::TypeId,
     value::{Immediate, Value, ValueId},
     BasicBlockId, SourceInfo,
@@ -127,6 +127,14 @@ impl BodyDataStore {
 
             _ => self.values.alloc(value),
         }
+    }
+
+    pub fn is_terminator(&self, inst: InstId) -> bool {
+        self.inst_data(inst).is_terminator()
+    }
+
+    pub fn branch_info(&self, inst: InstId) -> BranchInfo {
+        self.inst_data(inst).branch_info()
     }
 
     pub fn value_data(&self, value: ValueId) -> &Value {
