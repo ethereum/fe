@@ -25,13 +25,12 @@ type ScopeId = Id<Scope>;
 pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
-    let has_self = if let Some(self_ty) = func.self_typ(db.upcast()) {
+    let has_self = func.takes_self(db.upcast());
+    if has_self {
+        let self_ty = func.self_typ(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
         params.push(make_param(db, "self", self_ty, source));
-        true
-    } else {
-        false
-    };
+    }
 
     let analyzer_signature = func.signature(db.upcast());
     params.extend(analyzer_signature.params.iter().map(|param| {
@@ -145,13 +144,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::FuncStmt::ConstantDecl { name, value, .. } => {
                 let ty = self
                     .db
-                    .mir_lowered_type(self.analyzer_body.var_types.get(&name.id).unwrap().clone());
+                    .mir_lowered_type(self.analyzer_body.var_types[&name.id].clone());
 
-                let value = self
-                    .analyzer_body
-                    .expressions
-                    .get(&value.id)
-                    .unwrap()
+                let value = self.analyzer_body.expressions[&value.id]
                     .const_value
                     .clone()
                     .unwrap();
@@ -258,7 +253,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::FuncStmt::Emit { args, .. } => {
-                let event_id = *self.analyzer_body.emits.get(&stmt.id).unwrap();
+                let event_id = self.analyzer_body.emits[&stmt.id];
                 let event_type = self.db.mir_lowered_event_type(event_id);
                 // NOTE: Event arguments are guaranteed to be in the same order with
                 // the definition.
@@ -358,11 +353,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let entry_bb = self.builder.make_block();
         let body_bb = self.builder.make_block();
         let exit_bb = self.builder.make_block();
-        let iter_elem_ty = self
-            .analyzer_body
-            .var_decl_types
-            .get(&loop_variable.id)
-            .unwrap();
+        let iter_elem_ty = &self.analyzer_body.var_decl_types[&loop_variable.id];
         let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty.clone().into());
 
         // `For` has its scope from preheader block.
@@ -554,13 +545,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
-        let analyzer_ty = self
-            .analyzer_body
-            .expressions
-            .get(&expr.id)
-            .unwrap()
-            .typ
-            .clone();
+        let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ.clone();
         self.db.mir_lowered_type(analyzer_ty)
     }
 
@@ -665,7 +650,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         ty: TypeId,
         source: SourceInfo,
     ) -> ValueId {
-        let call_type = self.analyzer_body.calls.get(&source.id).unwrap();
+        let call_type = &self.analyzer_body.calls[&func.id];
 
         let mut args: Vec<_> = args
             .iter()
@@ -692,7 +677,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             AnalyzerCallType::ValueMethod { method, .. } => {
-                let mut method_args = vec![self.lower_expr(func)];
+                let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
 
                 let func_id = self.db.mir_lowered_func_signature(*method);
@@ -701,7 +686,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             AnalyzerCallType::External { function, .. } => {
-                let mut method_args = vec![self.lower_expr(func)];
+                let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*function);
                 self.builder
@@ -716,6 +701,14 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     todo!("we implement cast expression for primitive types")
                 }
             }
+        }
+    }
+
+    // FIXME: This is ugly hack to properly analyze method call. Remove this when  https://github.com/ethereum/fe/issues/670 is resolved.
+    fn lower_method_receiver(&mut self, receiver: &Node<ast::Expr>) -> ValueId {
+        match &receiver.kind {
+            ast::Expr::Attribute { value, .. } => self.lower_expr(value),
+            _ => unreachable!(),
         }
     }
 

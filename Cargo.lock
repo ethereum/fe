@@ -660,6 +660,7 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-lowering",
+ "fe-mir",
  "fe-parser",
  "fe-yulc",
  "fe-yulgen",

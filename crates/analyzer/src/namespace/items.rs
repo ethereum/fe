@@ -963,6 +963,10 @@ impl ContractId {
         db.contract_call_function(*self).value
     }
 
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.contract_all_functions(*self)
+    }
+
     /// User functions, public and not. Excludes `__init__` and `__call__`.
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_function_map(*self).value
@@ -1260,6 +1264,11 @@ impl StructId {
     pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
         db.struct_field_map(*self).value
     }
+
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.struct_all_functions(*self)
+    }
+
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.struct_function_map(*self).value
     }
