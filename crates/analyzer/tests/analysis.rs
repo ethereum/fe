@@ -364,7 +364,7 @@ fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
     Diagnostic {
         severity: Severity::Note,
         message: String::new(),
-        labels: labels.clone(),
+        labels,
         notes: vec![],
     }
 }
