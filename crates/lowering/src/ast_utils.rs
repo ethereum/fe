@@ -28,14 +28,14 @@ impl StmtOrExpr {
     pub fn as_stmt(&self) -> Node<FuncStmt> {
         match self {
             StmtOrExpr::Stmt(stmt) => stmt.deref().clone(),
-            _ => panic!("not a statement"),
+            StmtOrExpr::Expr(_) => panic!("not a statement"),
         }
     }
 
     pub fn as_expr(&self) -> Node<Expr> {
         match self {
             StmtOrExpr::Expr(expr) => expr.clone(),
-            _ => panic!("not an expression"),
+            StmtOrExpr::Stmt(_) => panic!("not an expression"),
         }
     }
 }

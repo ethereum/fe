@@ -114,7 +114,7 @@ impl ContractHarness {
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
                 .pop(),
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
-            _ => panic!("trap"),
+            evm::Capture::Trap(_) => panic!("trap"),
         }
     }
 
