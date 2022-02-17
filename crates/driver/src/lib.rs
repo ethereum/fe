@@ -84,18 +84,20 @@ pub fn compile_ingot(
     compile_module_id(db, main_module, with_bytecode, optimize)
 }
 
-pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<(), CompileError> {
+/// Returns path to `dot` file.
+// TODO: This is temporary function for debugging.
+pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<String, CompileError> {
     let module = ModuleId::new_standalone(db, path, src);
 
     let diags = module.diagnostics(db);
     if !diags.is_empty() {
         return Err(CompileError(diags));
     }
-    let funcs = db.mir_lower_module_all_functions(module);
-    for func in funcs.iter() {
-        let _ = func.body(db);
-    }
-    Ok(())
+
+    let dot_file_path = path.replace(".fe", ".dot");
+    let mut dot_file = std::io::BufWriter::new(std::fs::File::create(&dot_file_path).unwrap());
+    fe_mir::graphviz::write_mir_graphs(db, module, &mut dot_file).unwrap();
+    Ok(dot_file_path)
 }
 
 fn compile_module_id(

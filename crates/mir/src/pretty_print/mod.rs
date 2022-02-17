@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::fmt;
 
 use crate::{db::MirDb, ir::function::BodyDataStore};
 
@@ -7,10 +7,10 @@ mod types;
 mod value;
 
 pub trait PrettyPrint {
-    fn pretty_print<W: Write>(
+    fn pretty_print<W: fmt::Write>(
         &self,
         db: &dyn MirDb,
         store: &BodyDataStore,
         w: &mut W,
-    ) -> io::Result<()>;
+    ) -> fmt::Result;
 }

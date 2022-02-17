@@ -277,10 +277,13 @@ fn mir_dump(input_path: &str) {
             Ok(content) => content,
         };
 
-        if let Err(err) = fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
-            eprintln!("Unable to dump mir {}", input_path);
-            print_diagnostics(&db, &err.0);
-            std::process::exit(1)
+        match fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
+            Ok(path) => println!("mir is dumped to `{}`", path),
+            Err(err) => {
+                eprintln!("Unable to dump mir `{}", input_path);
+                print_diagnostics(&db, &err.0);
+                std::process::exit(1)
+            }
         }
     } else {
         eprintln!("mir doesn't support ingot yet");

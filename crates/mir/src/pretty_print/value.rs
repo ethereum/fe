@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::fmt::{self, Write};
 
 use crate::{
     db::MirDb,
@@ -13,9 +13,9 @@ impl PrettyPrint for ValueId {
         db: &dyn MirDb,
         store: &BodyDataStore,
         w: &mut W,
-    ) -> io::Result<()> {
+    ) -> fmt::Result {
         match store.value_data(*self) {
-            Value::Temporary(_) | Value::Local(_) => write!(w, "{}", self.index()),
+            Value::Temporary(_) | Value::Local(_) => write!(w, "_{}", self.index()),
             Value::Immediate(imm) => write!(w, "{}", imm.value),
             Value::Constant(constant) => {
                 let const_value = constant.constant.data(db);
@@ -37,7 +37,7 @@ impl PrettyPrint for &[ValueId] {
         db: &dyn MirDb,
         store: &BodyDataStore,
         w: &mut W,
-    ) -> io::Result<()> {
+    ) -> fmt::Result {
         if self.is_empty() {
             return Ok(());
         }

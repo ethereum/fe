@@ -9,7 +9,7 @@ use super::{
     body_order::BodyOrder,
     inst::{BranchInfo, Inst, InstId},
     types::TypeId,
-    value::{Immediate, Value, ValueId},
+    value::{Immediate, Local, Value, ValueId},
     BasicBlockId, SourceInfo,
 };
 
@@ -32,7 +32,7 @@ pub struct FunctionParam {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(u32);
+pub struct FunctionId(pub(crate) u32);
 impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -171,8 +171,16 @@ impl BodyDataStore {
         self.inst_results.insert(inst, result);
     }
 
-    pub fn local(&self) -> &[ValueId] {
+    pub fn locals(&self) -> &[ValueId] {
         &self.locals
+    }
+
+    /// Returns Some(`local_name`) if value is `Value::Local`.
+    pub fn local_name(&self, value: ValueId) -> Option<&str> {
+        match self.value_data(value) {
+            Value::Local(Local { name, .. }) => Some(name),
+            _ => None,
+        }
     }
 
     fn store_immediate(&mut self, imm: Immediate) -> ValueId {

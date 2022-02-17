@@ -35,7 +35,9 @@ impl ControlFlowGraph {
     fn analyze_terminator(&mut self, func: &FunctionBody, terminator: InstId) {
         let block = func.order.inst_block(terminator);
         match func.store.branch_info(terminator) {
-            BranchInfo::NotBranch => {}
+            BranchInfo::NotBranch => {
+                self.node_mut(block);
+            }
             BranchInfo::Jump(dest) => self.add_edge(block, dest),
             BranchInfo::Branch((then, else_)) => {
                 self.add_edge(block, then);

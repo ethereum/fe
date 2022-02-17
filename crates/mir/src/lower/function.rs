@@ -821,7 +821,7 @@ impl Scope {
         // Declare function parameters.
         for param in &func.data(db).params {
             let local = Local::arg_local(param.name.clone(), param.ty, param.source.clone());
-            let value_id = builder.declare(local);
+            let value_id = builder.store_func_arg(local);
             root.declare_var(&param.name, value_id)
         }
 
