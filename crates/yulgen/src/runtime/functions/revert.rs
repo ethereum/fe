@@ -43,8 +43,8 @@ pub fn revert(name: &str, typ: &AbiType) -> yul::Statement {
         literal_expression! { (selector) }
     };
     let val_expr = vec![expression! { val }];
-    let encoding_size = abi_operations::encoding_size(&[typ.to_owned()], &val_expr);
-    let encode_val = abi_operations::encode(&[typ.to_owned()], val_expr);
+    let encoding_size = abi_operations::encoding_size(&[typ.clone()], &val_expr);
+    let encode_val = abi_operations::encode(&[typ.clone()], val_expr);
 
     function_definition! {
         function [func_name](val) {

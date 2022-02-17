@@ -96,7 +96,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
                 .into_node()
             } else {
                 // the self arg remains the same
-                pnode.to_owned()
+                pnode.clone()
             }
         })
         .collect();

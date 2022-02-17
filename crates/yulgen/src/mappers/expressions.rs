@@ -43,11 +43,8 @@ pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     };
 
     let attributes = context.expression_attributes(exp);
-    match (
-        attributes.location.to_owned(),
-        attributes.move_location.to_owned(),
-    ) {
-        (from, Some(to)) => move_expression(expression, attributes.typ.to_owned(), from, to),
+    match (attributes.location, attributes.move_location) {
+        (from, Some(to)) => move_expression(expression, attributes.typ.clone(), from, to),
         (_, None) => expression,
     }
 }
@@ -107,7 +104,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 let size = FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
                 let func_name = identifier! { (func.as_ref()) };
                 let size = identifier_expression! { (size.size()) };
-                expression! { [func_name]([yul_args[0].to_owned()], [size]) }
+                expression! { [func_name]([yul_args[0].clone()], [size]) }
             }
         },
         CallType::Intrinsic(func) => {
@@ -139,9 +136,9 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             struct_operations::init(context.db, val.id, yul_args)
         }
         CallType::TypeConstructor(Type::Base(Base::Numeric(integer))) => {
-            math_operations::adjust_numeric_size(&integer, yul_args[0].to_owned())
+            math_operations::adjust_numeric_size(&integer, yul_args[0].clone())
         }
-        CallType::TypeConstructor(_) => yul_args[0].to_owned(),
+        CallType::TypeConstructor(_) => yul_args[0].clone(),
         CallType::Pure(func) => {
             let func_name = identifier! { (context.db.function_yul_name(func)) };
             expression! { [func_name]([yul_args...]) }
@@ -151,11 +148,11 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             match function {
                 ContractTypeMethod::Create2 => contract_operations::create2(
                     &contract_name,
-                    yul_args[0].to_owned(),
-                    yul_args[1].to_owned(),
+                    yul_args[0].clone(),
+                    yul_args[1].clone(),
                 ),
                 ContractTypeMethod::Create => {
-                    contract_operations::create(&contract_name, yul_args[0].to_owned())
+                    contract_operations::create(&contract_name, yul_args[0].clone())
                 }
             }
         }
@@ -339,7 +336,7 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
 /// Retrieves the String value of a name expression.
 pub fn expr_name_string(exp: &Node<fe::Expr>) -> SmolStr {
     if let fe::Expr::Name(name) = &exp.kind {
-        return name.to_owned();
+        return name.clone();
     }
 
     unreachable!()

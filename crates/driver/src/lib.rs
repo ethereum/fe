@@ -115,10 +115,10 @@ fn compile_module_id(
         .keys()
         .map(|name| {
             (
-                name.to_owned(),
+                name.clone(),
                 CompiledContract {
-                    json_abi: json_abis[name].to_owned(),
-                    yul: yul_contracts[name].to_owned(),
+                    json_abi: json_abis[name].clone(),
+                    yul: yul_contracts[name].clone(),
                     #[cfg(feature = "solc-backend")]
                     bytecode: if _with_bytecode {
                         _bytecode_contracts[name].to_owned()

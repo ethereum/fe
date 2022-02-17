@@ -364,7 +364,7 @@ fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
     Diagnostic {
         severity: Severity::Note,
         message: String::new(),
-        labels: labels.to_vec(),
+        labels: labels.clone(),
         notes: vec![],
     }
 }
@@ -392,7 +392,7 @@ fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagno
                 // If the current span overlaps with the union of the current set of labels,
                 // emit a diagnostic, and clear the set of labels.
                 if overlaps {
-                    diags.push(new_diagnostic(labels.to_vec()));
+                    diags.push(new_diagnostic(labels.clone()));
                     labels.clear();
                     *labeled = *span;
                 }
@@ -401,7 +401,7 @@ fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagno
 
                 // If this is the last thing to label, emit a diagnostic.
                 if idx == spans.len() - 1 {
-                    diags.push(new_diagnostic(labels.to_vec()));
+                    diags.push(new_diagnostic(labels.clone()));
                 }
                 Some(diags)
             },

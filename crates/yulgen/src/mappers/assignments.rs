@@ -20,8 +20,7 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         let value = expressions::expr(context, value_node);
 
         let target_attributes = context.expression_attributes(target_node);
-        let typ =
-            FixedSize::try_from(target_attributes.typ.to_owned()).expect("invalid attributes");
+        let typ = FixedSize::try_from(target_attributes.typ.clone()).expect("invalid attributes");
 
         let value_attributes = context.expression_attributes(value_node);
 

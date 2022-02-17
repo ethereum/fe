@@ -165,7 +165,7 @@ impl ContractHarness {
 
             let outputs_for_event = raw_logs
                 .iter()
-                .filter_map(|raw_log| event.parse_log(raw_log.to_owned()).ok())
+                .filter_map(|raw_log| event.parse_log(raw_log.clone()).ok())
                 .map(|event_log| {
                     event_log
                         .params

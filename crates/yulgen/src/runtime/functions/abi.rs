@@ -95,7 +95,7 @@ fn decode_data(types: &[AbiType], location: AbiDecodeLocation) -> yul::Statement
             };
 
             DecodeVal {
-                typ: typ.to_owned(),
+                typ: typ.clone(),
                 return_val: format!("return_val_{}", i).into(),
                 decoded_val: format!("decoded_val_{}", i).into(),
                 head_offset: format!("head_offset_{}", i).into(),

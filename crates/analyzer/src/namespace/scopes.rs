@@ -118,7 +118,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         let item = self.module.resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.to_owned())
+            self.add_diagnostic(diagnostic.clone())
         }
 
         item.value.map(NamedThing::Item)
@@ -314,7 +314,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.to_owned())
+            self.add_diagnostic(diagnostic.clone())
         }
 
         item.value.map(NamedThing::Item)
@@ -433,7 +433,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
             .resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.to_owned())
+            self.add_diagnostic(diagnostic.clone())
         }
 
         item.value.map(NamedThing::Item)

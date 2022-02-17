@@ -685,7 +685,7 @@ fn expr_attribute(
 
             if let Some(typ) = tuple.items.get(item_index) {
                 Ok(ExpressionAttributes::new(
-                    typ.to_owned().into(),
+                    typ.clone().into(),
                     attrs.location,
                 ))
             } else {
