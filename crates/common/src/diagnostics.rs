@@ -22,11 +22,7 @@ impl Diagnostic {
             severity: self.severity,
             code: None,
             message: self.message,
-            labels: self
-                .labels
-                .into_iter()
-                .map(|label| label.into_cs_label())
-                .collect(),
+            labels: self.labels.into_iter().map(Label::into_cs_label).collect(),
             notes: self.notes,
         }
     }

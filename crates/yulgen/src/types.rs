@@ -53,7 +53,7 @@ impl EvmSized for Array {
 
 impl EvmSized for Tuple {
     fn size(&self) -> usize {
-        self.items.iter().map(|typ| typ.size()).sum()
+        self.items.iter().map(EvmSized::size).sum()
     }
 }
 
@@ -99,7 +99,7 @@ pub fn to_abi_types(db: &dyn AnalyzerDb, types: &[impl AsAbiType]) -> Vec<AbiTyp
 }
 
 pub fn to_abi_selector_names(types: &[AbiType]) -> Vec<String> {
-    types.iter().map(|typ| typ.selector_name()).collect()
+    types.iter().map(AbiType::selector_name).collect()
 }
 
 impl AbiType {
@@ -148,7 +148,7 @@ impl AbiType {
                 "({})",
                 components
                     .iter()
-                    .map(|component| component.selector_name())
+                    .map(AbiType::selector_name)
                     .collect::<Vec<_>>()
                     .join(",")
             ),

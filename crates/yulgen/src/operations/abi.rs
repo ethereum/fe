@@ -50,7 +50,7 @@ pub fn encoding_size(types: &[AbiType], vals: &[yul::Expression]) -> yul::Expres
 
 /// Returns an expression that gives the size of the encoding's head.
 pub fn encoding_head_size(types: &[AbiType]) -> yul::Expression {
-    literal_expression! { (types.iter().map(|typ| typ.head_size()).sum::<usize>()) }
+    literal_expression! { (types.iter().map(AbiType::head_size).sum::<usize>()) }
 }
 
 /// Returns the known-at-compile-time encoding size.

@@ -491,25 +491,25 @@ impl TypeDowncast for Type {
 
 impl TypeDowncast for Option<&Type> {
     fn as_array(&self) -> Option<&Array> {
-        self.and_then(|t| t.as_array())
+        self.and_then(TypeDowncast::as_array)
     }
     fn as_tuple(&self) -> Option<&Tuple> {
-        self.and_then(|t| t.as_tuple())
+        self.and_then(TypeDowncast::as_tuple)
     }
     fn as_string(&self) -> Option<&FeString> {
-        self.and_then(|t| t.as_string())
+        self.and_then(TypeDowncast::as_string)
     }
     fn as_map(&self) -> Option<&Map> {
-        self.and_then(|t| t.as_map())
+        self.and_then(TypeDowncast::as_map)
     }
     fn as_int(&self) -> Option<Integer> {
-        self.and_then(|t| t.as_int())
+        self.and_then(TypeDowncast::as_int)
     }
     fn as_primitive(&self) -> Option<Base> {
-        self.and_then(|t| t.as_primitive())
+        self.and_then(TypeDowncast::as_primitive)
     }
     fn as_class(&self) -> Option<Class> {
-        self.and_then(|t| t.as_class())
+        self.and_then(TypeDowncast::as_class)
     }
 }
 
@@ -668,7 +668,7 @@ impl SafeNames for Tuple {
         let field_names = self
             .items
             .iter()
-            .map(|typ| typ.lower_snake())
+            .map(SafeNames::lower_snake)
             .collect::<Vec<String>>();
         let joined_names = field_names.join("_");
 

@@ -37,7 +37,7 @@ pub fn revert(name: &str, typ: &AbiType) -> yul::Statement {
             name,
             &selector_params
                 .iter()
-                .map(|abi_type| abi_type.selector_name())
+                .map(AbiType::selector_name)
                 .collect::<Vec<_>>(),
         );
         literal_expression! { (selector) }

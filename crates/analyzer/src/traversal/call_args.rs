@@ -124,7 +124,7 @@ pub fn validate_arg_labels(
 ) {
     for (expected_label, arg) in params
         .iter()
-        .map(|param| param.label())
+        .map(LabeledParameter::label)
         .zip(args.kind.iter())
     {
         let arg_val = &arg.kind.value;

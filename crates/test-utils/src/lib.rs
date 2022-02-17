@@ -93,7 +93,7 @@ impl ContractHarness {
     ) {
         let actual_output = self.call_function(executor, name, input);
         assert_eq!(
-            output.map(|token| token.to_owned()),
+            output.map(ToOwned::to_owned),
             actual_output,
             "unexpected output from `fn {}`",
             name
