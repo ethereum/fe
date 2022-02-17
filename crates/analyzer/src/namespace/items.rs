@@ -339,14 +339,13 @@ impl IngotId {
         // the dir set is {"a", "a/b", "a/c", "a/c/d"}.
         let dirs = files
             .iter()
-            .map(|(path, _)| {
+            .flat_map(|(path, _)| {
                 Utf8Path::new(path)
                     .strip_prefix(&file_path_prefix)
                     .unwrap_or_else(|_| Utf8Path::new(path))
                     .ancestors()
                     .skip(1) // first elem of .ancestors() is the path itself
             })
-            .flatten()
             .collect::<IndexSet<&Utf8Path>>();
 
         let dir_mods = dirs

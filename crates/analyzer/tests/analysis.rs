@@ -302,7 +302,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
     let diagnostics = module
         .all_items(db)
         .iter()
-        .map(|item| match item {
+        .flat_map(|item| match item {
             Item::Type(TypeDef::Alias(alias)) => vec![build_display_diagnostic(
                 alias.data(db).ast.span,
                 &alias.typ(db).unwrap(),
@@ -318,8 +318,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 struct_
                     .functions(db)
                     .values()
-                    .map(|id| function_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| function_diagnostics(*id, db))
                     .collect(),
             ]
             .concat(),
@@ -334,14 +333,12 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 contract
                     .events(db)
                     .values()
-                    .map(|id| event_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| event_diagnostics(*id, db))
                     .collect(),
                 contract
                     .functions(db)
                     .values()
-                    .map(|id| function_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| function_diagnostics(*id, db))
                     .collect(),
             ]
             .concat(),
@@ -358,7 +355,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             | Item::Module(_)
             | Item::Object(_) => vec![],
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     diagnostics_string(db.upcast(), &diagnostics)

@@ -102,7 +102,7 @@ pub fn struct_init_fn(db: &dyn YulgenDb, struct_: StructId) -> yul::Statement {
     let body = fields
         .iter()
         .enumerate()
-        .map(|(index, (name, _))| {
+        .flat_map(|(index, (name, _))| {
             if index == 0 {
                 let param_identifier_exp = identifier_expression! {(name)};
                 statements! {
@@ -120,7 +120,6 @@ pub fn struct_init_fn(db: &dyn YulgenDb, struct_: StructId) -> yul::Statement {
                 }
             }
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     function_definition! {

@@ -18,8 +18,7 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
     //       but to avoid introducing new variables in later ternary lowering, etc.
     if let Some(const_value) = context
         .expression_attributes(exp.id)
-        .map(|attr| attr.const_value.as_ref())
-        .flatten()
+        .and_then(|attr| attr.const_value.as_ref())
     {
         let literal = match const_value {
             Constant::Int(val) => fe::Expr::Num(val.to_string().into()),
