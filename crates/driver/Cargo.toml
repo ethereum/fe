@@ -16,6 +16,7 @@ fe-abi = {path = "../abi", version = "^0.13.0-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.13.0-alpha"}
 fe-common = {path = "../common", version = "^0.13.0-alpha"}
 fe-lowering = {path = "../lowering", version = "^0.13.0-alpha"}
+fe-mir = {path = "../mir", version = "^0.13.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.13.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.13.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.13.0-alpha", features = ["solc-backend"], optional = true}

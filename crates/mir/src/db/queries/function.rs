@@ -29,6 +29,10 @@ impl ir::FunctionId {
         self.data(db).analyzer_func_id
     }
 
+    pub fn body(self, db: &dyn MirDb) -> Rc<ir::FunctionBody> {
+        db.mir_lowered_func_body(self)
+    }
+
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {
         let analyzer_func = self.analyzer_func(db);
         analyzer_func.module(db.upcast())

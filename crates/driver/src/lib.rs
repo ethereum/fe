@@ -1,12 +1,15 @@
 #![allow(unused_imports, dead_code)]
 
+pub use fe_mir::db::NewDb;
+pub use fe_yulgen::Db;
+
 use fe_analyzer::context::Analysis;
 use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
 use fe_analyzer::AnalyzerDb;
 use fe_common::diagnostics::{print_diagnostics, Diagnostic};
 use fe_common::files::{FileKind, SourceFileId};
+use fe_mir::db::MirDb;
 use fe_parser::ast::SmolStr;
-pub use fe_yulgen::Db;
 use fe_yulgen::YulgenDb;
 use indexmap::{indexmap, IndexMap};
 #[cfg(feature = "solc-backend")]
@@ -79,6 +82,20 @@ pub fn compile_ingot(
         .root_module(db)
         .expect("missing root module, with no diagnostic");
     compile_module_id(db, main_module, with_bytecode, optimize)
+}
+
+pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<(), CompileError> {
+    let module = ModuleId::new_standalone(db, path, src);
+
+    let diags = module.diagnostics(db);
+    if !diags.is_empty() {
+        return Err(CompileError(diags));
+    }
+    let funcs = db.mir_lower_module_all_functions(module);
+    for func in funcs.iter() {
+        let _ = func.body(db);
+    }
+    Ok(())
 }
 
 fn compile_module_id(
