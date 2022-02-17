@@ -95,10 +95,10 @@ fn bin_pow(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
 fn bin_bit_shift(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // The right side must be unsigned.
-        if !right.is_signed() {
-            Ok(Type::Base(Base::Numeric(*left)))
-        } else {
+        if right.is_signed() {
             Err(BinaryOperationError::RightIsSigned)
+        } else {
+            Ok(Type::Base(Base::Numeric(*left)))
         }
     } else {
         Err(BinaryOperationError::TypesNotNumeric)

@@ -42,10 +42,10 @@ pub fn compile_single_file(
     let module = ModuleId::new_standalone(db, path, src);
 
     let diags = module.diagnostics(db);
-    if !diags.is_empty() {
-        Err(CompileError(diags))
-    } else {
+    if diags.is_empty() {
         compile_module_id(db, module, with_bytecode, optimize)
+    } else {
+        Err(CompileError(diags))
     }
 }
 

@@ -683,11 +683,11 @@ impl fmt::Display for FuncStmt {
             } => {
                 writeln!(f, "if {}:", test.kind)?;
                 writeln!(indented(f), "{}", node_line_joined(body))?;
-                if !or_else.is_empty() {
+                if or_else.is_empty() {
+                    Ok(())
+                } else {
                     writeln!(f, "else:")?;
                     writeln!(indented(f), "{}", node_line_joined(or_else))
-                } else {
-                    Ok(())
                 }
             }
             FuncStmt::Assert { test, msg } => {
