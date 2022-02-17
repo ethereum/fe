@@ -103,8 +103,6 @@ impl BodyBuilder {
         let source = local.source.clone();
         let local_id = self.body.store.store_value(local.into());
 
-        self.body.locals.push(local_id);
-
         let kind = InstKind::Declare { local: local_id };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, None);
