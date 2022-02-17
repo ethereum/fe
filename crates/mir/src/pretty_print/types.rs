@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::fmt::{self, Write};
 
 use crate::{
     db::MirDb,
@@ -17,7 +17,7 @@ impl PrettyPrint for TypeId {
         db: &dyn MirDb,
         store: &BodyDataStore,
         w: &mut W,
-    ) -> io::Result<()> {
+    ) -> fmt::Result {
         match self.data(db).as_ref() {
             Type::I8 => write!(w, "i8"),
             Type::I16 => write!(w, "i16"),
@@ -50,7 +50,8 @@ impl PrettyPrint for TypeId {
                     item.pretty_print(db, store, w)?;
                     write!(w, ", ")?;
                 }
-                items.last().unwrap().pretty_print(db, store, w)
+                items.last().unwrap().pretty_print(db, store, w)?;
+                write!(w, ")")
             }
             Type::Struct(def) => {
                 write!(w, "{}", def.name)

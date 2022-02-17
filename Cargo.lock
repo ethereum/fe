@@ -409,6 +409,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dot2"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f046ad836ddb46a42ae6219f11208b61ef9f1b96f105a88da4ae0dd5f1b89e6"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -699,6 +705,7 @@ dependencies = [
 name = "fe-mir"
 version = "0.13.0-alpha"
 dependencies = [
+ "dot2",
  "fe-analyzer",
  "fe-common",
  "fe-parser",

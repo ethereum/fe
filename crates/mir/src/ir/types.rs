@@ -29,7 +29,7 @@ pub enum Type {
 
 /// An interned Id for [`ArrayDef`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeId(u32);
+pub struct TypeId(pub(crate) u32);
 impl_intern_key!(TypeId);
 
 /// A static array type definition.

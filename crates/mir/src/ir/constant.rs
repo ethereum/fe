@@ -26,7 +26,7 @@ pub struct Constant {
 
 /// An interned Id for [`Constant`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConstantId(u32);
+pub struct ConstantId(pub(crate) u32);
 impl_intern_key!(ConstantId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

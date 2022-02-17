@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::fmt::{self, Write};
 
 use crate::{
     db::MirDb,
@@ -13,7 +13,7 @@ impl PrettyPrint for InstId {
         db: &dyn MirDb,
         store: &BodyDataStore,
         w: &mut W,
-    ) -> io::Result<()> {
+    ) -> fmt::Result {
         if let Some(result) = store.inst_result(*self) {
             result.pretty_print(db, store, w)?;
             write!(w, ": ")?;
@@ -24,7 +24,9 @@ impl PrettyPrint for InstId {
         match &store.inst_data(*self).kind {
             InstKind::Declare { local } => {
                 write!(w, "let ")?;
-                local.pretty_print(db, store, w)
+                local.pretty_print(db, store, w)?;
+                write!(w, ": ")?;
+                store.value_ty(*local).pretty_print(db, store, w)
             }
 
             InstKind::Assign { lhs, rhs } => {
@@ -96,13 +98,13 @@ impl PrettyPrint for InstId {
             }
 
             InstKind::Jump { dest } => {
-                write!(w, "jump bb{}", dest.index())
+                write!(w, "jump BB{}", dest.index())
             }
 
             InstKind::Branch { cond, then, else_ } => {
                 write!(w, "branch ")?;
                 cond.pretty_print(db, store, w)?;
-                write!(w, " then: bb{} else: bb{}", then.index(), else_.index())
+                write!(w, " then: BB{} else: BB{}", then.index(), else_.index())
             }
 
             InstKind::Revert { arg } => {

@@ -62,7 +62,9 @@ impl BodyBuilder {
 
     pub fn make_block(&mut self) -> BasicBlockId {
         let block = BasicBlock {};
-        self.body.store.store_block(block)
+        let block_id = self.body.store.store_block(block);
+        self.body.order.append_block(block_id);
+        block_id
     }
 
     pub fn make_value(&mut self, value: impl Into<Value>) -> ValueId {
@@ -107,6 +109,10 @@ impl BodyBuilder {
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, None);
         local_id
+    }
+
+    pub fn store_func_arg(&mut self, local: Local) -> ValueId {
+        self.body.store.store_value(local.into())
     }
 
     pub fn assign(&mut self, lhs: ValueId, rhs: ValueId, source: SourceInfo) {
