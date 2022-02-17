@@ -1,3 +1,5 @@
+use std::fmt;
+
 use id_arena::Id;
 
 use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};
@@ -151,6 +153,16 @@ pub enum UnOp {
     Inv,
 }
 
+impl fmt::Display for UnOp {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Not => write!(w, "not"),
+            Self::Neg => write!(w, "-"),
+            Self::Inv => write!(w, "~"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinOp {
     Add,
@@ -174,15 +186,58 @@ pub enum BinOp {
     Lt,
 }
 
+impl fmt::Display for BinOp {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Add => write!(w, "+"),
+            Self::Sub => write!(w, "-"),
+            Self::Mul => write!(w, "*"),
+            Self::Div => write!(w, "/"),
+            Self::Mod => write!(w, "%"),
+            Self::Pow => write!(w, "**"),
+            Self::Shl => write!(w, "<<"),
+            Self::Shr => write!(w, ">>"),
+            Self::BitOr => write!(w, "|"),
+            Self::BitXor => write!(w, "^"),
+            Self::BitAnd => write!(w, "&"),
+            Self::LogicalAnd => write!(w, "and"),
+            Self::LogicalOr => write!(w, "or"),
+            Self::Eq => write!(w, "=="),
+            Self::Ne => write!(w, "!="),
+            Self::Ge => write!(w, ">="),
+            Self::Gt => write!(w, ">"),
+            Self::Le => write!(w, "<="),
+            Self::Lt => write!(w, "<"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CallType {
     Internal,
     External,
 }
 
+impl fmt::Display for CallType {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Internal => write!(w, "internal"),
+            Self::External => write!(w, "external"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntrinsicOp {
     Keccak256,
+}
+
+impl fmt::Display for IntrinsicOp {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Keccak256 => write!(w, "keccak256"),
+        }
+    }
 }
 
 pub enum BranchInfo {

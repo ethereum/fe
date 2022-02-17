@@ -57,9 +57,6 @@ pub struct FunctionBody {
 
     pub store: BodyDataStore,
 
-    /// All declared local variables in a function.
-    pub locals: Vec<ValueId>,
-
     /// Tracks order of basic blocks and instructions in a function body.
     pub order: BodyOrder,
 
@@ -73,7 +70,6 @@ impl FunctionBody {
         Self {
             fid,
             store,
-            locals: Vec::new(),
             order: BodyOrder::new(entry_bb),
             source,
         }
@@ -100,6 +96,9 @@ pub struct BodyDataStore {
 
     /// Maps an instruction to a value.
     inst_results: FxHashMap<InstId, ValueId>,
+
+    /// All declared local variables in a function.
+    locals: Vec<ValueId>,
 }
 
 impl BodyDataStore {
@@ -123,6 +122,15 @@ impl BodyDataStore {
                     self.unit_value = Some(unit_value);
                     unit_value
                 }
+            }
+
+            Value::Local(ref local) => {
+                let is_user_defined = !local.is_tmp;
+                let value_id = self.values.alloc(value);
+                if is_user_defined {
+                    self.locals.push(value_id);
+                }
+                value_id
             }
 
             _ => self.values.alloc(value),
@@ -161,6 +169,10 @@ impl BodyDataStore {
 
     pub fn map_result(&mut self, inst: InstId, result: ValueId) {
         self.inst_results.insert(inst, result);
+    }
+
+    pub fn local(&self) -> &[ValueId] {
+        &self.locals
     }
 
     fn store_immediate(&mut self, imm: Immediate) -> ValueId {

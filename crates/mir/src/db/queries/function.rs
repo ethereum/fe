@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use fe_analyzer::namespace::items as analyzer_items;
+use smol_str::SmolStr;
 
 use crate::{
     db::MirDb,
@@ -31,5 +32,18 @@ impl ir::FunctionId {
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {
         let analyzer_func = self.analyzer_func(db);
         analyzer_func.module(db.upcast())
+    }
+
+    /// Returns `class_name::fn_name` if a function is a method else `fn_name`.
+    pub fn name_with_class(self, db: &dyn MirDb) -> SmolStr {
+        let analyzer_func = self.analyzer_func(db);
+        let func_name = analyzer_func.name(db.upcast());
+
+        if let Some(class) = analyzer_func.class(db.upcast()) {
+            let class_name = class.name(db.upcast());
+            format!("{}::{}", class_name, func_name).into()
+        } else {
+            func_name
+        }
     }
 }
