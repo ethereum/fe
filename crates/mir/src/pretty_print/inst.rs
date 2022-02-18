@@ -122,7 +122,12 @@ impl PrettyPrint for InstId {
                 arg.pretty_print(db, store, w)
             }
 
-            InstKind::Intrinsic { op, args } => {
+            InstKind::Keccak256 { arg } => {
+                write!(w, "keccak256 ")?;
+                arg.pretty_print(db, store, w)
+            }
+
+            InstKind::YulIntrinsic { op, args } => {
                 write!(w, "{}(", op)?;
                 args.as_slice().pretty_print(db, store, w)?;
                 write!(w, "{})", op)

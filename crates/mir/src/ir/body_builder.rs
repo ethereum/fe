@@ -8,7 +8,7 @@ use crate::ir::{
 };
 
 use super::{
-    inst::{CallType, IntrinsicOp},
+    inst::{CallType, YulIntrinsicOp},
     value::{self, Constant, Immediate},
     ConstantId, Value,
 };
@@ -206,13 +206,20 @@ impl BodyBuilder {
         self.insert_inst(inst, Some(result_ty)).unwrap()
     }
 
-    pub fn keccak256(
+    pub fn keccak256(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
+        let kind = InstKind::Keccak256 { arg };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn yul_intrinsic(
         &mut self,
+        op: YulIntrinsicOp,
         args: Vec<ValueId>,
         result_ty: TypeId,
         source: SourceInfo,
     ) -> ValueId {
-        let inst = Inst::intrinsic(IntrinsicOp::Keccak256, args, source);
+        let inst = Inst::intrinsic(op, args, source);
         self.insert_inst(inst, Some(result_ty)).unwrap()
     }
 
