@@ -1,5 +1,6 @@
 use std::fmt;
 
+use fe_analyzer::namespace::items::ContractId;
 use id_arena::Id;
 
 use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};
@@ -112,6 +113,17 @@ pub enum InstKind {
 
     AbiEncode {
         arg: ValueId,
+    },
+
+    Create {
+        value: ValueId,
+        contract: ContractId,
+    },
+
+    Create2 {
+        value: ValueId,
+        salt: ValueId,
+        contract: ContractId,
     },
 
     YulIntrinsic {

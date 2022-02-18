@@ -142,6 +142,26 @@ impl PrettyPrint for InstId {
                 arg.pretty_print(db, store, w)
             }
 
+            InstKind::Create { value, contract } => {
+                write!(w, "create ")?;
+                let contract_name = contract.name(db.upcast());
+                write!(w, "{} ", contract_name)?;
+                value.pretty_print(db, store, w)
+            }
+
+            InstKind::Create2 {
+                value,
+                salt,
+                contract,
+            } => {
+                write!(w, "create2 ")?;
+                let contract_name = contract.name(db.upcast());
+                write!(w, "{} ", contract_name)?;
+                value.pretty_print(db, store, w)?;
+                write!(w, " ")?;
+                salt.pretty_print(db, store, w)
+            }
+
             InstKind::YulIntrinsic { op, args } => {
                 write!(w, "{}(", op)?;
                 args.as_slice().pretty_print(db, store, w)?;

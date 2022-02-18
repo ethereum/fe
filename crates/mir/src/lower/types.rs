@@ -17,7 +17,7 @@ pub fn lower_type(db: &dyn MirDb, ty: &analyzer_types::Type) -> TypeId {
         analyzer_types::Type::Map(map) => lower_map(db, map),
         analyzer_types::Type::Tuple(tup) => lower_tuple(db, tup),
         analyzer_types::Type::String(string) => lower_string(db, string),
-        analyzer_types::Type::Contract(contract) => lower_contract(db, contract),
+        analyzer_types::Type::Contract(_) => db.mir_intern_type(Type::Address.into()),
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
     }

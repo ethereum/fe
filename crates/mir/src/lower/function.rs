@@ -1,7 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use fe_analyzer::{
-    builtins::{GlobalFunction, ValueMethod},
+    builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
     context::CallType as AnalyzerCallType,
     namespace::{items as analyzer_items, types as analyzer_types},
 };
@@ -676,9 +676,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
 
-            AnalyzerCallType::BuiltinAssociatedFunction { .. } => {
-                todo!("we need to reconsider builtin associated function")
-            }
+            AnalyzerCallType::BuiltinAssociatedFunction { contract, function } => match function {
+                ContractTypeMethod::Create => self.builder.create(args[0], *contract, ty, source),
+                ContractTypeMethod::Create2 => self
+                    .builder
+                    .create2(args[0], args[1], *contract, ty, source),
+            },
 
             AnalyzerCallType::AssociatedFunction { function, .. }
             | AnalyzerCallType::Pure(function) => {
@@ -704,10 +707,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .call(func_id, method_args, CallType::External, ty, source)
             }
 
-            AnalyzerCallType::TypeConstructor(analyzer_ty) => {
-                let ty = self.db.mir_lowered_type(analyzer_ty.clone());
+            AnalyzerCallType::TypeConstructor(_) => {
                 if ty.is_primitive(self.db) {
-                    debug_assert_eq!(args.len(), 1);
                     let arg = args[0];
                     let arg_ty = self.builder.value_ty(arg);
                     if arg_ty == ty {
