@@ -17,3 +17,7 @@ num-traits = "0.2.14"
 id-arena = "2.2.1"
 fxhash = "0.2.1"
 dot2 = "0.1.0"
+
+[dev-dependencies]
+test-files = { path = "../test-files", package = "fe-test-files" }
+fe-library = { path = "../library" }
