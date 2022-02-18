@@ -63,20 +63,21 @@ impl PrettyPrint for InstId {
 
                 let arg_len = args.len();
                 for (arg_idx, arg) in args.iter().enumerate().take(arg_len - 1) {
-                    write!(w, "{}: ", arg_idx)?;
+                    write!(w, "<{}>: ", arg_idx)?;
                     arg.pretty_print(db, store, w)?;
                     write!(w, ", ")?;
                 }
                 let arg = args[arg_len - 1];
-                write!(w, "{}: ", arg_len - 1)?;
+                write!(w, "<{}>: ", arg_len - 1)?;
                 arg.pretty_print(db, store, w)?;
                 write!(w, "}}")
             }
 
             InstKind::AggregateAccess { value, index } => {
                 value.pretty_print(db, store, w)?;
-                write!(w, ".")?;
-                index.pretty_print(db, store, w)
+                write!(w, ".<")?;
+                index.pretty_print(db, store, w)?;
+                write!(w, ">")
             }
 
             InstKind::MapAccess { value, key } => {

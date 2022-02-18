@@ -22,7 +22,7 @@ impl PrettyPrint for ValueId {
                 write!(w, "const ")?;
                 match &const_value.value {
                     ConstantValue::Immediate(num) => write!(w, "{}", num),
-                    ConstantValue::Str(s) => write!(w, "{}", s),
+                    ConstantValue::Str(s) => write!(w, r#""{}""#, s),
                     ConstantValue::Bool(b) => write!(w, "{}", b),
                 }
             }
