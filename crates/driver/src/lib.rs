@@ -84,7 +84,7 @@ pub fn compile_ingot(
     compile_module_id(db, main_module, with_bytecode, optimize)
 }
 
-/// Returns path to `dot` file.
+/// Returns graphviz string.
 // TODO: This is temporary function for debugging.
 pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<String, CompileError> {
     let module = ModuleId::new_standalone(db, path, src);
@@ -94,10 +94,9 @@ pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<Str
         return Err(CompileError(diags));
     }
 
-    let dot_file_path = path.replace(".fe", ".dot");
-    let mut dot_file = std::io::BufWriter::new(std::fs::File::create(&dot_file_path).unwrap());
-    fe_mir::graphviz::write_mir_graphs(db, module, &mut dot_file).unwrap();
-    Ok(dot_file_path)
+    let mut text = vec![];
+    fe_mir::graphviz::write_mir_graphs(db, module, &mut text).unwrap();
+    Ok(String::from_utf8(text).unwrap())
 }
 
 fn compile_module_id(

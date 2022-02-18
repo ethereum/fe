@@ -153,13 +153,14 @@ impl Inst {
     }
 
     pub fn is_terminator(&self) -> bool {
-        matches!(
-            self.kind,
+        match self.kind {
             InstKind::Jump { .. }
-                | InstKind::Branch { .. }
-                | InstKind::Revert { .. }
-                | InstKind::Return { .. }
-        )
+            | InstKind::Branch { .. }
+            | InstKind::Revert { .. }
+            | InstKind::Return { .. } => true,
+            InstKind::YulIntrinsic { op, .. } => op.is_terminator(),
+            _ => false,
+        }
     }
 
     pub fn branch_info(&self) -> BranchInfo {
@@ -334,6 +335,14 @@ pub enum YulIntrinsicOp {
     Number,
     Difficulty,
     Gaslimit,
+}
+impl YulIntrinsicOp {
+    pub fn is_terminator(self) -> bool {
+        matches!(
+            self,
+            Self::Return | Self::Revert | Self::Selfdestruct | Self::Invalid
+        )
+    }
 }
 
 impl fmt::Display for YulIntrinsicOp {
