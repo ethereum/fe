@@ -1,3 +1,4 @@
+use fe_analyzer::namespace::items::ContractId;
 use num_bigint::BigInt;
 
 use crate::ir::{
@@ -227,6 +228,35 @@ impl BodyBuilder {
 
     pub fn abi_encode(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
         let kind = InstKind::AbiEncode { arg };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn create(
+        &mut self,
+        value: ValueId,
+        contract: ContractId,
+        result_ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        let kind = InstKind::Create { value, contract };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn create2(
+        &mut self,
+        value: ValueId,
+        salt: ValueId,
+        contract: ContractId,
+        result_ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        let kind = InstKind::Create2 {
+            value,
+            salt,
+            contract,
+        };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, Some(result_ty)).unwrap()
     }

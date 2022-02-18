@@ -111,6 +111,10 @@ impl TypeId {
             Type::Array(_) | Type::Tuple(_) | Type::Struct(_) | Type::Contract(_) | Type::Event(_)
         )
     }
+
+    pub fn is_contract(self, db: &dyn MirDb) -> bool {
+        matches!(self.data(db).as_ref(), Type::Contract(_))
+    }
 }
 
 fn expect_projection_index(value: &Value) -> usize {
