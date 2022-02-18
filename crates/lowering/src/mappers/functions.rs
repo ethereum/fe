@@ -96,7 +96,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
                 .into_node()
             } else {
                 // the self arg remains the same
-                pnode.to_owned()
+                pnode.clone()
             }
         })
         .collect();
@@ -231,9 +231,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
         fe::FuncStmt::Expr { value } => vec![fe::FuncStmt::Expr {
             value: expressions::expr(context, value),
         }],
-        fe::FuncStmt::Pass => vec![stmt.kind],
-        fe::FuncStmt::Break => vec![stmt.kind],
-        fe::FuncStmt::Continue => vec![stmt.kind],
+        fe::FuncStmt::Pass | fe::FuncStmt::Break | fe::FuncStmt::Continue => vec![stmt.kind],
         fe::FuncStmt::Revert { error } => vec![fe::FuncStmt::Revert {
             error: error.map(|expr| expressions::expr(context, expr)),
         }],

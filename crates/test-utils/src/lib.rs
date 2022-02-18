@@ -93,7 +93,7 @@ impl ContractHarness {
     ) {
         let actual_output = self.call_function(executor, name, input);
         assert_eq!(
-            output.map(|token| token.to_owned()),
+            output.map(ToOwned::to_owned),
             actual_output,
             "unexpected output from `fn {}`",
             name
@@ -114,7 +114,7 @@ impl ContractHarness {
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
                 .pop(),
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
-            _ => panic!("trap"),
+            evm::Capture::Trap(_) => panic!("trap"),
         }
     }
 
@@ -165,7 +165,7 @@ impl ContractHarness {
 
             let outputs_for_event = raw_logs
                 .iter()
-                .filter_map(|raw_log| event.parse_log(raw_log.to_owned()).ok())
+                .filter_map(|raw_log| event.parse_log(raw_log.clone()).ok())
                 .map(|event_log| {
                     event_log
                         .params
@@ -365,8 +365,9 @@ pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     let mut data = String::new();
     for param in input {
         let encoded = match param {
-            ethabi::Token::Uint(val) => format!("{:0>64}", format!("{:x}", val)),
-            ethabi::Token::Int(val) => format!("{:0>64}", format!("{:x}", val)),
+            ethabi::Token::Uint(val) | ethabi::Token::Int(val) => {
+                format!("{:0>64}", format!("{:x}", val))
+            }
             ethabi::Token::Bool(val) => format!("{:0>64x}", *val as i32),
             ethabi::Token::String(val) => {
                 const DATA_OFFSET: &str =

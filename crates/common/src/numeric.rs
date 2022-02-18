@@ -44,7 +44,7 @@ impl<'a> Literal<'a> {
         };
 
         Self {
-            num: &src[prefix.map_or(0, |pref| pref.len())..],
+            num: &src[prefix.map_or(0, str::len)..],
             radix,
         }
     }

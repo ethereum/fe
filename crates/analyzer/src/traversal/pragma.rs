@@ -12,7 +12,9 @@ pub fn check_pragma_version(stmt: &Node<ast::Pragma>) -> Option<Diagnostic> {
     let actual_version =
         Version::parse(env!("CARGO_PKG_VERSION")).expect("Missing package version");
 
-    if !requirement.matches(&actual_version) {
+    if requirement.matches(&actual_version) {
+        None
+    } else {
         Some(errors::fancy_error(
             format!(
                 "The current compiler version {} doesn't match the specified requirement",
@@ -27,7 +29,5 @@ pub fn check_pragma_version(stmt: &Node<ast::Pragma>) -> Option<Diagnostic> {
                 actual_version
             )],
         ))
-    } else {
-        None
     }
 }

@@ -95,7 +95,7 @@ fn decode_data(types: &[AbiType], location: AbiDecodeLocation) -> yul::Statement
             };
 
             DecodeVal {
-                typ: typ.to_owned(),
+                typ: typ.clone(),
                 return_val: format!("return_val_{}", i).into(),
                 decoded_val: format!("decoded_val_{}", i).into(),
                 head_offset: format!("head_offset_{}", i).into(),
@@ -529,10 +529,9 @@ pub fn encode(types: &[AbiType]) -> yul::Statement {
         .map(|(typ, param)| match typ {
             AbiType::StaticArray { inner, size } => encode_static_array(param, inner, *size),
             AbiType::Tuple { components } => encode_tuple(param, components),
-            AbiType::Uint { .. } => encode_uint(param),
-            AbiType::Int { .. } => encode_uint(param),
-            AbiType::Bool => encode_uint(param),
-            AbiType::Address => encode_uint(param),
+            AbiType::Uint { .. } | AbiType::Int { .. } | AbiType::Bool | AbiType::Address => {
+                encode_uint(param)
+            }
             AbiType::String { .. } => encode_string_head(param),
             AbiType::Bytes { size } => encode_bytes_head(*size),
         })

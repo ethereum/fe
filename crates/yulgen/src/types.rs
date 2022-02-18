@@ -24,18 +24,12 @@ impl EvmSized for FixedSize {
 impl EvmSized for Integer {
     fn size(&self) -> usize {
         match self {
-            Integer::U8 => 1,
-            Integer::U16 => 2,
-            Integer::U32 => 4,
-            Integer::U64 => 8,
-            Integer::U128 => 16,
-            Integer::U256 => 32,
-            Integer::I8 => 1,
-            Integer::I16 => 2,
-            Integer::I32 => 4,
-            Integer::I64 => 8,
-            Integer::I128 => 16,
-            Integer::I256 => 32,
+            Integer::U8 | Integer::I8 => 1,
+            Integer::U16 | Integer::I16 => 2,
+            Integer::U32 | Integer::I32 => 4,
+            Integer::U64 | Integer::I64 => 8,
+            Integer::U128 | Integer::I128 => 16,
+            Integer::U256 | Integer::I256 => 32,
         }
     }
 }
@@ -59,7 +53,7 @@ impl EvmSized for Array {
 
 impl EvmSized for Tuple {
     fn size(&self) -> usize {
-        self.items.iter().map(|typ| typ.size()).sum()
+        self.items.iter().map(EvmSized::size).sum()
     }
 }
 
@@ -105,7 +99,7 @@ pub fn to_abi_types(db: &dyn AnalyzerDb, types: &[impl AsAbiType]) -> Vec<AbiTyp
 }
 
 pub fn to_abi_selector_names(types: &[AbiType]) -> Vec<String> {
-    types.iter().map(|typ| typ.selector_name()).collect()
+    types.iter().map(AbiType::selector_name).collect()
 }
 
 impl AbiType {
@@ -114,12 +108,12 @@ impl AbiType {
         match self {
             AbiType::StaticArray { size, .. } => 32 * size,
             AbiType::Tuple { components } => 32 * components.len(),
-            AbiType::Uint { .. } => 32,
-            AbiType::Int { .. } => 32,
-            AbiType::Bool => 32,
-            AbiType::Address => 32,
-            AbiType::String { .. } => 32,
-            AbiType::Bytes { .. } => 32,
+            AbiType::Uint { .. }
+            | AbiType::Int { .. }
+            | AbiType::Bool
+            | AbiType::Address
+            | AbiType::String { .. }
+            | AbiType::Bytes { .. } => 32,
         }
     }
 
@@ -127,8 +121,7 @@ impl AbiType {
     /// arrays.
     pub fn packed_size(&self) -> usize {
         match *self {
-            AbiType::Uint { size } => size,
-            AbiType::Int { size } => size,
+            AbiType::Uint { size } | AbiType::Int { size } => size,
             AbiType::Bool => 1,
             AbiType::Address => 32,
             _ => todo!("recursive encoding"),
@@ -138,14 +131,13 @@ impl AbiType {
     /// `true` if the encoded value is stored in the data section, `false` if it is not.
     pub fn has_data(&self) -> bool {
         match self {
-            AbiType::Uint { .. } => false,
-            AbiType::StaticArray { .. } => false,
-            AbiType::Tuple { .. } => false,
-            AbiType::Int { .. } => false,
-            AbiType::Bool => false,
-            AbiType::Address => false,
-            AbiType::String { .. } => true,
-            AbiType::Bytes { .. } => true,
+            AbiType::Uint { .. }
+            | AbiType::StaticArray { .. }
+            | AbiType::Tuple { .. }
+            | AbiType::Int { .. }
+            | AbiType::Bool
+            | AbiType::Address => false,
+            AbiType::String { .. } | AbiType::Bytes { .. } => true,
         }
     }
 
@@ -156,7 +148,7 @@ impl AbiType {
                 "({})",
                 components
                     .iter()
-                    .map(|component| component.selector_name())
+                    .map(AbiType::selector_name)
                     .collect::<Vec<_>>()
                     .join(",")
             ),

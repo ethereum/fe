@@ -465,7 +465,9 @@ impl<'a> Parser<'a> {
         } else if self.indent_style.is_none() {
             self.indent_style = Some(indent.chars().next().unwrap());
             Ok(())
-        } else if indent.chars().next() != self.indent_style {
+        } else if indent.chars().next() == self.indent_style {
+            Ok(())
+        } else {
             self.indentation_error(
                 span,
                 format!(
@@ -475,8 +477,6 @@ impl<'a> Parser<'a> {
                 ),
             );
             Err(ParseFailed)
-        } else {
-            Ok(())
         }
     }
 }

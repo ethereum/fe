@@ -198,7 +198,7 @@ pub fn module_item_map(
                 used_items
                     .value
                     .iter()
-                    .map(|(name, (_, item))| (name.to_owned(), *item)),
+                    .map(|(name, (_, item))| (name.clone(), *item)),
             )
             .collect::<IndexMap<_, _>>()
             .into(),
@@ -382,7 +382,7 @@ pub fn module_used_item_map(
 
                 for (name, (name_span, item)) in items.value.iter() {
                     if let Some((other_name_span, other_item)) =
-                        accum.insert(name.to_owned(), (*name_span, *item))
+                        accum.insert(name.clone(), (*name_span, *item))
                     {
                         diagnostics.push(errors::duplicate_name_error(
                             &format!(
@@ -542,7 +542,7 @@ fn resolve_use_tree(
 
                         for (name, (name_span, item)) in child_items.value.iter() {
                             if let Some((other_name_span, other_item)) =
-                                accum.insert(name.to_owned(), (*name_span, *item))
+                                accum.insert(name.clone(), (*name_span, *item))
                             {
                                 diagnostics.push(errors::duplicate_name_error(
                                     &format!(

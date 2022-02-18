@@ -66,8 +66,7 @@ fn check_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> Result<
     use fe::Expr::*;
 
     match &expr.kind {
-        Attribute { .. } => Ok(()),
-        Subscript { .. } => Ok(()),
+        Attribute { .. } | Subscript { .. } => Ok(()),
         Tuple { elts } => {
             for elt in elts {
                 check_assign_target(scope, elt)?;

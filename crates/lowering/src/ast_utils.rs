@@ -28,14 +28,14 @@ impl StmtOrExpr {
     pub fn as_stmt(&self) -> Node<FuncStmt> {
         match self {
             StmtOrExpr::Stmt(stmt) => stmt.deref().clone(),
-            _ => panic!("not a statement"),
+            StmtOrExpr::Expr(_) => panic!("not a statement"),
         }
     }
 
     pub fn as_expr(&self) -> Node<Expr> {
         match self {
             StmtOrExpr::Expr(expr) => expr.clone(),
-            _ => panic!("not an expression"),
+            StmtOrExpr::Stmt(_) => panic!("not an expression"),
         }
     }
 }
@@ -344,7 +344,7 @@ pub fn inject_before_expression(
             // At this point it doesn't matter how deeply nested our expression is found because
             // expressions can not contain statements.
             // If we find it somewhere in the expression tree, we will inject the code right before it.
-            FuncStmt::Expr { value } => {
+            FuncStmt::Expr { value } | FuncStmt::ConstantDecl { value, .. } => {
                 inject_or_add_current(
                     &mut transformed_body,
                     injection_and_current_stmt,
@@ -362,7 +362,7 @@ pub fn inject_before_expression(
                     stmt,
                 );
             }
-            FuncStmt::Return { value } => {
+            FuncStmt::VarDecl { value, .. } | FuncStmt::Return { value } => {
                 if let Some(val) = value {
                     inject_or_add_current(
                         &mut transformed_body,
@@ -375,29 +375,6 @@ pub fn inject_before_expression(
                     transformed_body.push(stmt.clone())
                 }
             }
-            FuncStmt::VarDecl { value, .. } => {
-                if let Some(val) = value {
-                    inject_or_add_current(
-                        &mut transformed_body,
-                        injection_and_current_stmt,
-                        &[&val],
-                        expression,
-                        stmt,
-                    );
-                } else {
-                    transformed_body.push(stmt.clone())
-                }
-            }
-            FuncStmt::ConstantDecl { value, .. } => {
-                inject_or_add_current(
-                    &mut transformed_body,
-                    injection_and_current_stmt,
-                    &[&value],
-                    expression,
-                    stmt,
-                );
-            }
-
             FuncStmt::Assert { test, msg } => {
                 if let Some(msg) = msg {
                     inject_or_add_current(

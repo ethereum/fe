@@ -10,12 +10,12 @@ pub fn index(value: Type, index: Type) -> Result<Type, IndexingError> {
     match value {
         Type::Array(array) => index_array(array, index),
         Type::Map(map) => index_map(map, index),
-        Type::Base(_) => Err(IndexingError::NotSubscriptable),
-        Type::Tuple(_) => Err(IndexingError::NotSubscriptable),
-        Type::String(_) => Err(IndexingError::NotSubscriptable),
-        Type::Contract(_) => Err(IndexingError::NotSubscriptable),
-        Type::SelfContract(_) => Err(IndexingError::NotSubscriptable),
-        Type::Struct(_) => Err(IndexingError::NotSubscriptable),
+        Type::Base(_)
+        | Type::Tuple(_)
+        | Type::String(_)
+        | Type::Contract(_)
+        | Type::SelfContract(_)
+        | Type::Struct(_) => Err(IndexingError::NotSubscriptable),
     }
 }
 
@@ -62,7 +62,7 @@ fn bin_arithmetic(left: &Type, right: &Type) -> Result<Type, BinaryOperationErro
             // - Any combination of numeric types can be operated on.
             // - If either number is signed, we return a signed type.
             // - The larger type is returned.
-            Ok(Type::Base(Base::Numeric(left.to_owned())))
+            Ok(Type::Base(Base::Numeric(*left)))
         } else {
             // The types are not equal. Again, there is no need to be this strict.
             Err(BinaryOperationError::TypesNotEqual)
@@ -83,7 +83,7 @@ fn bin_pow(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
         if right.is_signed() {
             Err(BinaryOperationError::RightIsSigned)
         } else if left.can_hold(right) {
-            Ok(Type::Base(Base::Numeric(left.to_owned())))
+            Ok(Type::Base(Base::Numeric(*left)))
         } else {
             Err(BinaryOperationError::RightTooLarge)
         }
@@ -95,10 +95,10 @@ fn bin_pow(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
 fn bin_bit_shift(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // The right side must be unsigned.
-        if !right.is_signed() {
-            Ok(Type::Base(Base::Numeric(left.to_owned())))
-        } else {
+        if right.is_signed() {
             Err(BinaryOperationError::RightIsSigned)
+        } else {
+            Ok(Type::Base(Base::Numeric(*left)))
         }
     } else {
         Err(BinaryOperationError::TypesNotNumeric)
@@ -109,7 +109,7 @@ fn bin_bit(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // We require that both numbers be unsigned and equal in size.
         if !left.is_signed() && left == right {
-            Ok(Type::Base(Base::Numeric(left.to_owned())))
+            Ok(Type::Base(Base::Numeric(*left)))
         } else {
             Err(BinaryOperationError::NotEqualAndUnsigned)
         }

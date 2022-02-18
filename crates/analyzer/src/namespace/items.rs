@@ -65,28 +65,28 @@ impl Item {
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
-            Item::BuiltinFunction(_) => None,
-            Item::Intrinsic(_) => None,
-            Item::Object(_) => None,
             Item::Constant(id) => Some(id.name_span(db)),
-            Item::Ingot(_) => None,
-            Item::Module(_) => None,
+            Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
+            | Item::Object(_)
+            | Item::Ingot(_)
+            | Item::Module(_) => None,
         }
     }
 
     pub fn is_builtin(&self) -> bool {
         match self {
-            Item::Type(TypeDef::Primitive(_)) => true,
-            Item::Type(_) => false,
-            Item::GenericType(_) => true,
-            Item::Event(_) => false,
-            Item::Function(_) => false,
-            Item::BuiltinFunction(_) => true,
-            Item::Intrinsic(_) => true,
-            Item::Object(_) => true,
-            Item::Constant(_) => false,
-            Item::Ingot(_) => false,
-            Item::Module(_) => false,
+            Item::Type(TypeDef::Primitive(_))
+            | Item::GenericType(_)
+            | Item::BuiltinFunction(_)
+            | Item::Object(_)
+            | Item::Intrinsic(_) => true,
+            Item::Type(_)
+            | Item::Event(_)
+            | Item::Function(_)
+            | Item::Constant(_)
+            | Item::Ingot(_)
+            | Item::Module(_) => false,
         }
     }
 
@@ -96,11 +96,9 @@ impl Item {
 
     pub fn item_kind_display_name(&self) -> &'static str {
         match self {
-            Item::Type(_) => "type",
-            Item::GenericType(_) => "type",
+            Item::Type(_) | Item::GenericType(_) => "type",
             Item::Event(_) => "event",
-            Item::Function(_) => "function",
-            Item::BuiltinFunction(_) => "function",
+            Item::Function(_) | Item::BuiltinFunction(_) => "function",
             Item::Intrinsic(_) => "intrinsic function",
             Item::Object(_) => "object",
             Item::Constant(_) => "constant",
@@ -130,12 +128,11 @@ impl Item {
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
-            Item::BuiltinFunction(_) => None,
-            Item::Intrinsic(_) => None,
-            Item::Object(_) => None,
             Item::Constant(id) => Some(id.parent(db)),
-            Item::Ingot(_) => None,
             Item::Module(id) => Some(id.parent(db)),
+            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) | Item::Ingot(_) => {
+                None
+            }
         }
     }
 
@@ -205,10 +202,12 @@ impl Item {
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match self {
             Item::Type(id) => id.sink_diagnostics(db, sink),
-            Item::GenericType(_) => {}
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
-            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {}
+            Item::GenericType(_)
+            | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
+            | Item::Object(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
             Item::Ingot(id) => id.sink_diagnostics(db, sink),
             Item::Module(id) => id.sink_diagnostics(db, sink),
@@ -340,14 +339,13 @@ impl IngotId {
         // the dir set is {"a", "a/b", "a/c", "a/c/d"}.
         let dirs = files
             .iter()
-            .map(|(path, _)| {
+            .flat_map(|(path, _)| {
                 Utf8Path::new(path)
                     .strip_prefix(&file_path_prefix)
                     .unwrap_or_else(|_| Utf8Path::new(path))
                     .ancestors()
                     .skip(1) // first elem of .ancestors() is the path itself
             })
-            .flatten()
             .collect::<IndexSet<&Utf8Path>>();
 
         let dir_mods = dirs

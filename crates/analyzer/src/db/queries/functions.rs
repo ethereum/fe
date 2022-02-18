@@ -202,8 +202,7 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
 fn all_paths_return_or_revert(block: &[Node<ast::FuncStmt>]) -> bool {
     for statement in block.iter().rev() {
         match &statement.kind {
-            ast::FuncStmt::Return { .. } => return true,
-            ast::FuncStmt::Revert { .. } => return true,
+            ast::FuncStmt::Return { .. } | ast::FuncStmt::Revert { .. } => return true,
             ast::FuncStmt::If {
                 test: _,
                 body,

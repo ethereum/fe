@@ -302,7 +302,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
     let diagnostics = module
         .all_items(db)
         .iter()
-        .map(|item| match item {
+        .flat_map(|item| match item {
             Item::Type(TypeDef::Alias(alias)) => vec![build_display_diagnostic(
                 alias.data(db).ast.span,
                 &alias.typ(db).unwrap(),
@@ -318,8 +318,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 struct_
                     .functions(db)
                     .values()
-                    .map(|id| function_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| function_diagnostics(*id, db))
                     .collect(),
             ]
             .concat(),
@@ -334,14 +333,12 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 contract
                     .events(db)
                     .values()
-                    .map(|id| event_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| event_diagnostics(*id, db))
                     .collect(),
                 contract
                     .functions(db)
                     .values()
-                    .map(|id| function_diagnostics(*id, db))
-                    .flatten()
+                    .flat_map(|id| function_diagnostics(*id, db))
                     .collect(),
             ]
             .concat(),
@@ -358,7 +355,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             | Item::Module(_)
             | Item::Object(_) => vec![],
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     diagnostics_string(db.upcast(), &diagnostics)
@@ -368,7 +364,7 @@ fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
     Diagnostic {
         severity: Severity::Note,
         message: String::new(),
-        labels: labels.to_vec(),
+        labels,
         notes: vec![],
     }
 }
@@ -396,7 +392,7 @@ fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagno
                 // If the current span overlaps with the union of the current set of labels,
                 // emit a diagnostic, and clear the set of labels.
                 if overlaps {
-                    diags.push(new_diagnostic(labels.to_vec()));
+                    diags.push(new_diagnostic(labels.clone()));
                     labels.clear();
                     *labeled = *span;
                 }
@@ -405,7 +401,7 @@ fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagno
 
                 // If this is the last thing to label, emit a diagnostic.
                 if idx == spans.len() - 1 {
-                    diags.push(new_diagnostic(labels.to_vec()));
+                    diags.push(new_diagnostic(labels.clone()));
                 }
                 Some(diags)
             },

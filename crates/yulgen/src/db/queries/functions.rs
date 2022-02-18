@@ -187,8 +187,9 @@ where
     for node in stmts {
         f(&node.kind);
         match &node.kind {
-            ast::FuncStmt::For { body, .. } => for_each_stmt(body, f),
-            ast::FuncStmt::While { body, .. } => for_each_stmt(body, f),
+            ast::FuncStmt::For { body, .. } | ast::FuncStmt::While { body, .. } => {
+                for_each_stmt(body, f)
+            }
             ast::FuncStmt::If { body, or_else, .. } => {
                 for_each_stmt(body, f);
                 for_each_stmt(or_else, f);

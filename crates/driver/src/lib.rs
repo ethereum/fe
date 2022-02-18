@@ -42,10 +42,10 @@ pub fn compile_single_file(
     let module = ModuleId::new_standalone(db, path, src);
 
     let diags = module.diagnostics(db);
-    if !diags.is_empty() {
-        Err(CompileError(diags))
-    } else {
+    if diags.is_empty() {
         compile_module_id(db, module, with_bytecode, optimize)
+    } else {
+        Err(CompileError(diags))
     }
 }
 
@@ -115,10 +115,10 @@ fn compile_module_id(
         .keys()
         .map(|name| {
             (
-                name.to_owned(),
+                name.clone(),
                 CompiledContract {
-                    json_abi: json_abis[name].to_owned(),
-                    yul: yul_contracts[name].to_owned(),
+                    json_abi: json_abis[name].clone(),
+                    yul: yul_contracts[name].clone(),
                     #[cfg(feature = "solc-backend")]
                     bytecode: if _with_bytecode {
                         _bytecode_contracts[name].to_owned()

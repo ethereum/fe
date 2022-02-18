@@ -232,8 +232,7 @@ impl NamedThing {
     pub fn is_builtin(&self) -> bool {
         match self {
             NamedThing::Item(item) => item.is_builtin(),
-            NamedThing::Variable { .. } => false,
-            NamedThing::SelfValue { .. } => false,
+            NamedThing::Variable { .. } | NamedThing::SelfValue { .. } => false,
         }
     }
 
@@ -342,12 +341,11 @@ impl Location {
     /// assigned, returned, or passed.
     pub fn assign_location(typ: &FixedSize) -> Self {
         match typ {
-            FixedSize::Base(_) => Location::Value,
-            FixedSize::Contract(_) => Location::Value,
-            FixedSize::Array(_) => Location::Memory,
-            FixedSize::Tuple(_) => Location::Memory,
-            FixedSize::String(_) => Location::Memory,
-            FixedSize::Struct(_) => Location::Memory,
+            FixedSize::Base(_) | FixedSize::Contract(_) => Location::Value,
+            FixedSize::Array(_)
+            | FixedSize::Tuple(_)
+            | FixedSize::String(_)
+            | FixedSize::Struct(_) => Location::Memory,
         }
     }
 }

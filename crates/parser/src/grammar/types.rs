@@ -105,7 +105,7 @@ pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
     par.enter_block(event_tok.span + name.span, "event definition")?;
     loop {
         match par.peek() {
-            Some(Name) | Some(Idx) => {
+            Some(Name | Idx) => {
                 fields.push(parse_event_field(par)?);
             }
             Some(Pass) => {

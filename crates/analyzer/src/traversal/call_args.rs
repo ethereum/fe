@@ -71,7 +71,9 @@ pub fn validate_arg_count(
     param_count: usize,
     argument_word: &str,
 ) -> Option<DiagnosticVoucher> {
-    if args.kind.len() != param_count {
+    if args.kind.len() == param_count {
+        None
+    } else {
         let mut labels = vec![Label::primary(
             name_span,
             format!(
@@ -106,8 +108,6 @@ pub fn validate_arg_count(
             vec![],
         ))
         // TODO: add `defined here` label (need span for definition)
-    } else {
-        None
     }
 }
 
@@ -124,7 +124,7 @@ pub fn validate_arg_labels(
 ) {
     for (expected_label, arg) in params
         .iter()
-        .map(|param| param.label())
+        .map(LabeledParameter::label)
         .zip(args.kind.iter())
     {
         let arg_val = &arg.kind.value;
