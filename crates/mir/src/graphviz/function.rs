@@ -67,7 +67,7 @@ impl FunctionNode {
         write!(sig, ")").unwrap();
 
         let ret_ty = self.func.return_type(db);
-        write!(sig, "-> ").unwrap();
+        write!(sig, " -> ").unwrap();
         ret_ty.pretty_print(db, &body.store, &mut sig).unwrap();
 
         dot2::escape_html(&sig)
