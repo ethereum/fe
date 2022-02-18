@@ -68,7 +68,7 @@ impl PrettyPrint for InstId {
                     write!(w, ", ")?;
                 }
                 let arg = args[arg_len - 1];
-                write!(w, "{}: ", arg_len)?;
+                write!(w, "{}: ", arg_len - 1)?;
                 arg.pretty_print(db, store, w)?;
                 write!(w, "}}")
             }
