@@ -209,7 +209,7 @@ impl<'a> BodyCursor<'a> {
     ///
     /// # Panics
     /// Panics if a cursor doesn't point [`CursorLocation::Inst`].
-    fn expect_inst(&self) -> InstId {
+    pub fn expect_inst(&self) -> InstId {
         match self.loc {
             CursorLocation::Inst(inst) => inst,
             _ => panic!("Cursor doesn't point any inst."),
@@ -220,7 +220,7 @@ impl<'a> BodyCursor<'a> {
     ///
     /// # Panics
     /// Panics if a cursor points [`CursorLocation::NoWhere`].
-    fn expect_block(&self) -> BasicBlockId {
+    pub fn expect_block(&self) -> BasicBlockId {
         match self.loc {
             CursorLocation::Inst(inst) => self.body.order.inst_block(inst),
             CursorLocation::BlockTop(block) | CursorLocation::BlockBottom(block) => block,

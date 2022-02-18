@@ -84,13 +84,18 @@ impl BodyOrder {
     /// Panics if
     /// 1. `block` is not inserted yet.
     /// 2. No terminator found in a block.
-    pub fn terminator(&self, store: &BodyDataStore, block: BasicBlockId) -> InstId {
-        for inst in self.iter_inst(block) {
-            if store.is_terminator(inst) {
-                return inst;
-            }
+    pub fn terminator(&self, store: &BodyDataStore, block: BasicBlockId) -> Option<InstId> {
+        let last_inst = self.last_inst(block)?;
+        if store.is_terminator(last_inst) {
+            Some(last_inst)
+        } else {
+            None
         }
-        panic!("block must have terminator")
+    }
+
+    /// Returns `true` if a `block` is terminated.
+    pub fn is_terminated(&self, store: &BodyDataStore, block: BasicBlockId) -> bool {
+        self.terminator(store, block).is_some()
     }
 
     /// Returns a last instruction of a block.
