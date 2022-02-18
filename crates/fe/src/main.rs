@@ -278,7 +278,7 @@ fn mir_dump(input_path: &str) {
         };
 
         match fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
-            Ok(path) => println!("mir is dumped to `{}`", path),
+            Ok(text) => println!("{}", text),
             Err(err) => {
                 eprintln!("Unable to dump mir `{}", input_path);
                 print_diagnostics(&db, &err.0);
