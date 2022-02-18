@@ -96,8 +96,8 @@ fn add_var(
 ) -> Result<(), FatalError> {
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
-            // this logs a message on err, so it's safe to ignore here.
             scope.root.map_variable_type(target, typ.clone().into());
+            // this logs a message on err, so it's safe to ignore here.
             let _ = scope.add_var(name, typ, false, target.span);
             Ok(())
         }
