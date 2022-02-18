@@ -698,10 +698,19 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             AnalyzerCallType::TypeConstructor(analyzer_ty) => {
                 let ty = self.db.mir_lowered_type(analyzer_ty.clone());
-                if ty.is_aggregate(self.db) {
+                if ty.is_primitive(self.db) {
+                    debug_assert_eq!(args.len(), 1);
+                    let arg = args[0];
+                    let arg_ty = self.builder.value_ty(arg);
+                    if arg_ty == ty {
+                        arg
+                    } else {
+                        self.builder.cast(arg, ty, source)
+                    }
+                } else if ty.is_aggregate(self.db) {
                     self.builder.aggregate_construct(ty, args, source)
                 } else {
-                    todo!("we implement cast expression for primitive types")
+                    unreachable!()
                 }
             }
         }
