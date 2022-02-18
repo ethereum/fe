@@ -58,6 +58,10 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                 )));
             };
 
+            scope
+                .root
+                .map_variable_type(target, target_type.clone().into());
+
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
             let _ = body_scope.add_var(&target.kind, target_type, false, target.span);

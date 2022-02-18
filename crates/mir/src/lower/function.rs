@@ -202,35 +202,56 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 body,
                 or_else,
             } => {
-                let then_bb = self.builder.make_block();
-                let else_bb = self.builder.make_block();
-                let merge_bb = self.builder.make_block();
+                if or_else.is_empty() {
+                    let then_bb = self.builder.make_block();
+                    let merge_bb = self.builder.make_block();
 
-                // Lower if entry.
-                let cond = self.lower_expr(test);
-                self.builder
-                    .branch(cond, then_bb, else_bb, SourceInfo::dummy());
+                    // Lower if entry.
+                    let cond = self.lower_expr(test);
+                    self.builder
+                        .branch(cond, then_bb, merge_bb, SourceInfo::dummy());
 
-                // Lower then block.
-                self.builder.move_to_block(then_bb);
-                self.enter_scope();
-                for stmt in body {
-                    self.lower_stmt(stmt);
+                    // Lower then block.
+                    self.builder.move_to_block(then_bb);
+                    self.enter_scope();
+                    for stmt in body {
+                        self.lower_stmt(stmt);
+                    }
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.exit_scope();
+
+                    self.builder.move_to_block(merge_bb);
+                } else {
+                    let then_bb = self.builder.make_block();
+                    let else_bb = self.builder.make_block();
+                    let merge_bb = self.builder.make_block();
+
+                    // Lower if entry.
+                    let cond = self.lower_expr(test);
+                    self.builder
+                        .branch(cond, then_bb, else_bb, SourceInfo::dummy());
+
+                    // Lower then block.
+                    self.builder.move_to_block(then_bb);
+                    self.enter_scope();
+                    for stmt in body {
+                        self.lower_stmt(stmt);
+                    }
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.exit_scope();
+
+                    // Lower else_block.
+                    self.builder.move_to_block(else_bb);
+                    self.enter_scope();
+                    for stmt in or_else {
+                        self.lower_stmt(stmt);
+                    }
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.exit_scope();
+
+                    // Move to merge bb.
+                    self.builder.move_to_block(merge_bb);
                 }
-                self.builder.jump(merge_bb, SourceInfo::dummy());
-                self.exit_scope();
-
-                // Lower else_block.
-                self.builder.move_to_block(else_bb);
-                self.enter_scope();
-                for stmt in or_else {
-                    self.lower_stmt(stmt);
-                }
-                self.builder.jump(merge_bb, SourceInfo::dummy());
-                self.exit_scope();
-
-                // Move to merge bb.
-                self.builder.move_to_block(merge_bb);
             }
 
             ast::FuncStmt::Assert { test, msg } => {
@@ -280,12 +301,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::FuncStmt::Break => {
-                let exit = self.scope().loop_exit();
+                let exit = self.scope().loop_exit(&self.scopes);
                 self.builder.jump(exit, stmt.into())
             }
 
             ast::FuncStmt::Continue => {
-                let entry = self.scope().loop_entry();
+                let entry = self.scope().loop_entry(&self.scopes);
                 self.builder.jump(entry, stmt.into())
             }
 
@@ -353,8 +374,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let entry_bb = self.builder.make_block();
         let body_bb = self.builder.make_block();
         let exit_bb = self.builder.make_block();
-        let iter_elem_ty = &self.analyzer_body.var_decl_types[&loop_variable.id];
-        let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty.clone().into());
+        let iter_elem_ty = self.analyzer_body.var_types[&loop_variable.id].clone();
+        let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty);
+
+        self.builder.jump(preheader_bb, SourceInfo::dummy());
 
         // `For` has its scope from preheader block.
         self.enter_loop_scope(entry_bb, exit_bb);
@@ -867,12 +890,18 @@ impl Scope {
         }
     }
 
-    fn loop_entry(&self) -> BasicBlockId {
-        self.loop_entry.unwrap()
+    fn loop_entry(&self, scopes: &Arena<Scope>) -> BasicBlockId {
+        match self.loop_entry {
+            Some(entry) => entry,
+            None => scopes[self.parent.unwrap()].loop_entry(scopes),
+        }
     }
 
-    fn loop_exit(&self) -> BasicBlockId {
-        self.loop_exit.unwrap()
+    fn loop_exit(&self, scopes: &Arena<Scope>) -> BasicBlockId {
+        match self.loop_exit {
+            Some(exit) => exit,
+            None => scopes[self.parent.unwrap()].loop_exit(scopes),
+        }
     }
 
     fn declare_var(&mut self, name: &SmolStr, value: ValueId) {
