@@ -659,9 +659,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
         match call_type {
             AnalyzerCallType::BuiltinFunction(GlobalFunction::Keccak256) => {
-                self.builder.keccak256(args, ty, source)
+                self.builder.keccak256(args[0], ty, source)
             }
-            AnalyzerCallType::Intrinsic(_) => todo!("we need to reconsider intrinsic"),
+            AnalyzerCallType::Intrinsic(intrinsic) => {
+                self.builder
+                    .yul_intrinsic((*intrinsic).into(), args, ty, source)
+            }
             AnalyzerCallType::BuiltinValueMethod { .. } => {
                 todo!("we need to reconsider builtin value method")
             }
