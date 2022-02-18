@@ -102,6 +102,18 @@ pub enum InstKind {
         arg: ValueId,
     },
 
+    Clone {
+        arg: ValueId,
+    },
+
+    ToMem {
+        arg: ValueId,
+    },
+
+    AbiEncode {
+        arg: ValueId,
+    },
+
     YulIntrinsic {
         op: YulIntrinsicOp,
         args: Vec<ValueId>,

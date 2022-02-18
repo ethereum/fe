@@ -1,7 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use fe_analyzer::{
-    builtins::GlobalFunction,
+    builtins::{GlobalFunction, ValueMethod},
     context::CallType as AnalyzerCallType,
     namespace::{items as analyzer_items, types as analyzer_types},
 };
@@ -661,13 +661,21 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             AnalyzerCallType::BuiltinFunction(GlobalFunction::Keccak256) => {
                 self.builder.keccak256(args[0], ty, source)
             }
+
             AnalyzerCallType::Intrinsic(intrinsic) => {
                 self.builder
                     .yul_intrinsic((*intrinsic).into(), args, ty, source)
             }
-            AnalyzerCallType::BuiltinValueMethod { .. } => {
-                todo!("we need to reconsider builtin value method")
+
+            AnalyzerCallType::BuiltinValueMethod { method, .. } => {
+                let arg = self.lower_method_receiver(func);
+                match method {
+                    ValueMethod::ToMem => self.builder.to_mem(arg, ty, source),
+                    ValueMethod::Clone => self.builder.clone(arg, ty, source),
+                    ValueMethod::AbiEncode => self.builder.abi_encode(arg, ty, source),
+                }
             }
+
             AnalyzerCallType::BuiltinAssociatedFunction { .. } => {
                 todo!("we need to reconsider builtin associated function")
             }

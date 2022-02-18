@@ -13,6 +13,7 @@ use super::{
     ConstantId, Value,
 };
 
+#[derive(Debug)]
 pub struct BodyBuilder {
     body: FunctionBody,
     loc: CursorLocation,
@@ -208,6 +209,24 @@ impl BodyBuilder {
 
     pub fn keccak256(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
         let kind = InstKind::Keccak256 { arg };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn clone(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
+        let kind = InstKind::Clone { arg };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn to_mem(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
+        let kind = InstKind::ToMem { arg };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst, Some(result_ty)).unwrap()
+    }
+
+    pub fn abi_encode(&mut self, arg: ValueId, result_ty: TypeId, source: SourceInfo) -> ValueId {
+        let kind = InstKind::AbiEncode { arg };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, Some(result_ty)).unwrap()
     }

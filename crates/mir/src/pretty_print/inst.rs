@@ -127,6 +127,21 @@ impl PrettyPrint for InstId {
                 arg.pretty_print(db, store, w)
             }
 
+            InstKind::Clone { arg } => {
+                write!(w, "clone ")?;
+                arg.pretty_print(db, store, w)
+            }
+
+            InstKind::ToMem { arg } => {
+                write!(w, "to_mem ")?;
+                arg.pretty_print(db, store, w)
+            }
+
+            InstKind::AbiEncode { arg } => {
+                write!(w, "abi_encode ")?;
+                arg.pretty_print(db, store, w)
+            }
+
             InstKind::YulIntrinsic { op, args } => {
                 write!(w, "{}(", op)?;
                 args.as_slice().pretty_print(db, store, w)?;
