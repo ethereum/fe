@@ -1094,7 +1094,7 @@ impl FunctionId {
     pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
         match self.parent(db) {
             Item::Type(TypeDef::Contract(cid)) => {
-                Some(types::Type::Contract(types::Contract::from_id(cid, db)))
+                Some(types::Type::SelfContract(types::Contract::from_id(cid, db)))
             }
             Item::Type(TypeDef::Struct(sid)) => {
                 Some(types::Type::Struct(types::Struct::from_id(sid, db)))
