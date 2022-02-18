@@ -84,6 +84,27 @@ impl TypeId {
         }
     }
 
+    pub fn is_primitive(self, db: &dyn MirDb) -> bool {
+        matches!(
+            self.data(db).as_ref(),
+            Type::I8
+                | Type::I16
+                | Type::I32
+                | Type::I64
+                | Type::I128
+                | Type::I256
+                | Type::U8
+                | Type::U16
+                | Type::U32
+                | Type::U64
+                | Type::U128
+                | Type::U256
+                | Type::Bool
+                | Type::Address
+                | Type::Unit
+        )
+    }
+
     pub fn is_aggregate(self, db: &dyn MirDb) -> bool {
         matches!(
             self.data(db).as_ref(),
