@@ -109,6 +109,11 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             self.lower_stmt(stmt)
         }
 
+        if !self.builder.is_block_terminated() {
+            let unit = self.make_unit();
+            self.builder.ret(unit, SourceInfo::dummy());
+        }
+
         self.builder.build()
     }
 
@@ -943,7 +948,7 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
                     None
                 }
             }
-            _ => unreachable!(),
+            ast::FunctionArg::Zelf => None,
         })
         .unwrap()
 }
