@@ -171,11 +171,11 @@ impl AbiType {
 }
 
 pub trait AsAbiType {
-    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType;
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> Option<AbiType>;
 }
 
 impl AsAbiType for FixedSize {
-    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> Option<AbiType> {
         match self {
             FixedSize::Base(base) => base.as_abi_type(db),
             FixedSize::Array(array) => array.as_abi_type(db),
@@ -188,38 +188,38 @@ impl AsAbiType for FixedSize {
 }
 
 impl AsAbiType for Base {
-    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> AbiType {
+    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> Option<AbiType> {
         match self {
             Base::Numeric(integer) => {
                 let size = integer.size();
                 if integer.is_signed() {
-                    AbiType::Int { size }
+                    Some(AbiType::Int { size })
                 } else {
-                    AbiType::Uint { size }
+                    Some(AbiType::Uint { size })
                 }
             }
-            Base::Address => AbiType::Address,
-            Base::Bool => AbiType::Bool,
-            Base::Unit => panic!("unit type is not abi encodable"),
+            Base::Address => Some(AbiType::Address),
+            Base::Bool => Some(AbiType::Bool),
+            Base::Unit => None,
         }
     }
 }
 
 impl AsAbiType for Array {
-    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> Option<AbiType> {
         if matches!(self.inner, Base::Numeric(Integer::U8)) {
-            AbiType::Bytes { size: self.size }
+            Some(AbiType::Bytes { size: self.size })
         } else {
-            AbiType::StaticArray {
-                inner: Box::new(self.inner.as_abi_type(db)),
+            Some(AbiType::StaticArray {
+                inner: Box::new(self.inner.as_abi_type(db).unwrap()),
                 size: self.size,
-            }
+            })
         }
     }
 }
 
 impl AsAbiType for Struct {
-    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> Option<AbiType> {
         let components = self
             .id
             .fields(db)
@@ -231,22 +231,22 @@ impl AsAbiType for Struct {
                     .as_abi_type(db)
             })
             .collect();
-        AbiType::Tuple { components }
+        Some(AbiType::Tuple { components })
     }
 }
 
 impl AsAbiType for Tuple {
-    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
-        AbiType::Tuple {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> Option<AbiType> {
+        Some(AbiType::Tuple {
             components: self.items.iter().map(|typ| typ.as_abi_type(db)).collect(),
-        }
+        })
     }
 }
 
 impl AsAbiType for FeString {
-    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> AbiType {
-        AbiType::String {
+    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> Option<AbiType> {
+        Some(AbiType::String {
             max_size: self.max_size,
-        }
+        })
     }
 }

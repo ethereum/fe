@@ -224,9 +224,16 @@ fn func_return(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::State
             .expect("valueless return made it to Yul codegen");
         let value = expressions::expr(context, value);
 
-        block_statement! {
-            (return_val := [value])
-            (leave)
+        if let yul::Expression::Literal(yultype) = value {
+            block_statement! {
+                (leave)
+            }
+        }
+        else {
+            block_statement! {
+                (return_val := [value])
+                (leave)
+            }
         }
     } else {
         unreachable!()

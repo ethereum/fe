@@ -39,6 +39,13 @@ pub fn function_def(db: &dyn YulgenDb, function: FunctionId) -> yul::Statement {
 
     let function_name = identifier! { (db.function_yul_name(function)) };
     // all user-defined functions are given a return value during lowering
+
+    // ^ this is no longer true. functions that return the unit type do not
+    // get a return statement. Need a way to identify what functions don't have a
+    // return statement from here, so we can remove the '-> return_val' in those cases.
+
+    // let has_return_value = function_statements.iter().any(|x| x);
+
     function_definition! {
         function [function_name]([param_names...]) -> return_val {
             [function_statements...]

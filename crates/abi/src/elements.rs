@@ -106,7 +106,7 @@ impl JsonAbi for Base {
             Base::Numeric(Integer::I8) => "int8".to_string(),
             Base::Address => "address".to_string(),
             Base::Bool => "bool".to_string(),
-            Base::Unit => panic!("unit type is not abi encodable"),
+            Base::Unit => "".to_string(),
         }
     }
 }

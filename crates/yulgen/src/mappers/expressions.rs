@@ -39,7 +39,13 @@ pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::List { .. } => panic!("list expressions should be lowered"),
         fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
         fe::Expr::Str(_) => expr_str(exp),
-        fe::Expr::Unit => expression! { 0x0 },
+        // fe::Expr::Unit => expression! { 0x0 },
+        fe::Expr::Unit => yultsur::yul::Expression::Literal({
+            yul::Literal {
+                literal: "".to_string(),
+                yultype: None
+            }
+        })
     };
 
     let attributes = context.expression_attributes(exp);
