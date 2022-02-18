@@ -316,7 +316,18 @@ impl BodyBuilder {
         self.body.store.value_data(value)
     }
 
+    /// Returns `true` if current block is terminated.
+    pub fn is_block_terminated(&mut self) -> bool {
+        let block = self.cursor().expect_block();
+
+        self.body.order.is_terminated(&self.body.store, block)
+    }
+
     fn insert_inst(&mut self, inst: Inst, result_ty: Option<TypeId>) -> Option<ValueId> {
+        if self.is_block_terminated() {
+            return None;
+        }
+
         let mut cursor = self.cursor();
         let inst_id = cursor.store_and_insert_inst(inst);
 

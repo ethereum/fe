@@ -17,7 +17,10 @@ impl ControlFlowGraph {
         };
 
         for block in func.order.iter_block() {
-            let terminator = func.order.terminator(&func.store, block);
+            let terminator = func
+                .order
+                .terminator(&func.store, block)
+                .expect("a block must have terminator");
             cfg.analyze_terminator(func, terminator);
         }
 
