@@ -184,6 +184,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let body_bb = self.builder.make_block();
                 let exit_bb = self.builder.make_block();
 
+                self.builder.jump(entry_bb, SourceInfo::dummy());
+
                 // Lower while entry.
                 self.builder.move_to_block(entry_bb);
                 let cond = self.lower_expr(test);
@@ -440,40 +442,43 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let iter = self.lower_expr(iter);
         self.builder.jump(entry_bb, SourceInfo::dummy());
 
-        /* Lower entry. */
-        self.builder.move_to_block(entry_bb);
-
-        // Update `loop_value` in each iteration.
-        let iter_elem =
-            self.builder
-                .aggregate_access(iter, loop_idx, iter_elem_ty, SourceInfo::dummy());
-        self.builder
-            .assign(loop_value, iter_elem, SourceInfo::dummy());
-
-        // Increment `loop_idx`.
-        let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
-        let inc = self
-            .builder
-            .add(loop_idx, imm_one, u256_ty, SourceInfo::dummy());
-        self.builder.assign(loop_idx, inc, SourceInfo::dummy());
-        self.builder.jump(body_bb, SourceInfo::dummy());
-
-        /* Lower body. */
-        self.builder.move_to_block(body_bb);
-        for stmt in body {
-            self.lower_stmt(stmt);
-        }
+        // Create maximum loop count.
         let iter_ty = self.builder.value_ty(iter);
         let maximum_iter_count = match iter_ty.data(self.db).as_ref() {
             ir::Type::Array(ir::types::ArrayDef { len, .. }) => *len,
             _ => unreachable!(),
         };
         let maximum_iter_count = self.builder.make_imm(maximum_iter_count.into(), u256_ty);
+
+        /* Lower entry. */
+        self.builder.move_to_block(entry_bb);
+        // if loop_idx == array length, then jump  to loop exit.
         let cond = self
             .builder
-            .lt(loop_idx, maximum_iter_count, u256_ty, SourceInfo::dummy());
+            .eq(loop_idx, maximum_iter_count, u256_ty, SourceInfo::dummy());
         self.builder
-            .branch(cond, entry_bb, exit_bb, SourceInfo::dummy());
+            .branch(cond, exit_bb, body_bb, SourceInfo::dummy());
+
+        /* Lower body. */
+        self.builder.move_to_block(body_bb);
+
+        // loop_variable = array[ioop_idx]
+        let iter_elem =
+            self.builder
+                .aggregate_access(iter, loop_idx, iter_elem_ty, SourceInfo::dummy());
+        self.builder
+            .assign(loop_value, iter_elem, SourceInfo::dummy());
+        // loop_idx+= 1
+        let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
+        let inc = self
+            .builder
+            .add(loop_idx, imm_one, u256_ty, SourceInfo::dummy());
+        self.builder.assign(loop_idx, inc, SourceInfo::dummy());
+
+        for stmt in body {
+            self.lower_stmt(stmt);
+        }
+        self.builder.jump(entry_bb, SourceInfo::dummy());
 
         /* Move to exit bb */
         self.exit_scope();
