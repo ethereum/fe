@@ -109,7 +109,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             self.lower_stmt(stmt)
         }
 
-        if !self.builder.is_block_terminated() {
+        let last_block = self.builder.current_block();
+        if !self.builder.is_block_terminated(last_block) {
             let unit = self.make_unit();
             self.builder.ret(unit, SourceInfo::dummy());
         }
@@ -206,58 +207,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 test,
                 body,
                 or_else,
-            } => {
-                if or_else.is_empty() {
-                    let then_bb = self.builder.make_block();
-                    let merge_bb = self.builder.make_block();
-
-                    // Lower if entry.
-                    let cond = self.lower_expr(test);
-                    self.builder
-                        .branch(cond, then_bb, merge_bb, SourceInfo::dummy());
-
-                    // Lower then block.
-                    self.builder.move_to_block(then_bb);
-                    self.enter_scope();
-                    for stmt in body {
-                        self.lower_stmt(stmt);
-                    }
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.exit_scope();
-
-                    self.builder.move_to_block(merge_bb);
-                } else {
-                    let then_bb = self.builder.make_block();
-                    let else_bb = self.builder.make_block();
-                    let merge_bb = self.builder.make_block();
-
-                    // Lower if entry.
-                    let cond = self.lower_expr(test);
-                    self.builder
-                        .branch(cond, then_bb, else_bb, SourceInfo::dummy());
-
-                    // Lower then block.
-                    self.builder.move_to_block(then_bb);
-                    self.enter_scope();
-                    for stmt in body {
-                        self.lower_stmt(stmt);
-                    }
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.exit_scope();
-
-                    // Lower else_block.
-                    self.builder.move_to_block(else_bb);
-                    self.enter_scope();
-                    for stmt in or_else {
-                        self.lower_stmt(stmt);
-                    }
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.exit_scope();
-
-                    // Move to merge bb.
-                    self.builder.move_to_block(merge_bb);
-                }
-            }
+            } => self.lower_if(test, body, or_else),
 
             ast::FuncStmt::Assert { test, msg } => {
                 let then_bb = self.builder.make_block();
@@ -363,6 +313,84 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                         })
                 }
                 result
+            }
+        }
+    }
+
+    fn lower_if(
+        &mut self,
+        cond: &Node<ast::Expr>,
+        then: &[Node<ast::FuncStmt>],
+        else_: &[Node<ast::FuncStmt>],
+    ) {
+        let cond = self.lower_expr(cond);
+
+        if else_.is_empty() {
+            let then_bb = self.builder.make_block();
+            let merge_bb = self.builder.make_block();
+
+            self.builder
+                .branch(cond, then_bb, merge_bb, SourceInfo::dummy());
+
+            // Lower then block.
+            self.builder.move_to_block(then_bb);
+            self.enter_scope();
+            for stmt in then {
+                self.lower_stmt(stmt);
+            }
+            if !self.builder.is_block_terminated(then_bb) {
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+            }
+            self.builder.move_to_block(merge_bb);
+            self.exit_scope();
+        } else {
+            let then_bb = self.builder.make_block();
+            let else_bb = self.builder.make_block();
+
+            self.builder
+                .branch(cond, then_bb, else_bb, SourceInfo::dummy());
+
+            // Lower then block.
+            self.builder.move_to_block(then_bb);
+            self.enter_scope();
+            for stmt in then {
+                self.lower_stmt(stmt);
+            }
+            self.exit_scope();
+
+            // Lower else_block.
+            self.builder.move_to_block(else_bb);
+            self.enter_scope();
+            for stmt in else_ {
+                self.lower_stmt(stmt);
+            }
+            self.exit_scope();
+
+            match (
+                self.builder.is_block_terminated(then_bb),
+                self.builder.is_block_terminated(else_bb),
+            ) {
+                (true, true) => {}
+                (false, true) => {
+                    let merge_bb = self.builder.make_block();
+                    self.builder.move_to_block(then_bb);
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.builder.move_to_block(merge_bb);
+                }
+                (true, false) => {
+                    let merge_bb = self.builder.make_block();
+                    self.builder.move_to_block(else_bb);
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.builder.move_to_block(merge_bb);
+                }
+                (false, false) => {
+                    let merge_bb = self.builder.make_block();
+                    self.builder.move_to_block(then_bb);
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.builder.move_to_block(else_bb);
+                    self.builder.jump(merge_bb, SourceInfo::dummy());
+                    self.builder.move_to_block(merge_bb);
+                }
             }
         }
     }

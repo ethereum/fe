@@ -317,14 +317,17 @@ impl BodyBuilder {
     }
 
     /// Returns `true` if current block is terminated.
-    pub fn is_block_terminated(&mut self) -> bool {
-        let block = self.cursor().expect_block();
-
+    pub fn is_block_terminated(&mut self, block: BasicBlockId) -> bool {
         self.body.order.is_terminated(&self.body.store, block)
     }
 
+    pub fn current_block(&mut self) -> BasicBlockId {
+        self.cursor().expect_block()
+    }
+
     fn insert_inst(&mut self, inst: Inst, result_ty: Option<TypeId>) -> Option<ValueId> {
-        if self.is_block_terminated() {
+        let block = self.current_block();
+        if self.is_block_terminated(block) {
             return None;
         }
 
