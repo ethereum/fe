@@ -18,6 +18,7 @@ macro_rules! test_lowering {
 
             for func in db.mir_lower_module_all_functions(module).iter() {
                 func.body(&db);
+                func.cfg(&db);
             }
         }
     };
@@ -38,6 +39,7 @@ fn mir_lower_std_lib() {
     for &module in std_ingot.all_modules(db.upcast()).iter() {
         for func in db.mir_lower_module_all_functions(module).iter() {
             func.body(&db);
+            func.cfg(&db);
         }
     }
 }

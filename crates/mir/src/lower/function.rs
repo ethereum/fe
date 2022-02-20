@@ -340,7 +340,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             for stmt in then {
                 self.lower_stmt(stmt);
             }
-            if !self.builder.is_block_terminated(then_bb) {
+            let current_block = self.builder.current_block();
+            if !self.builder.is_block_terminated(current_block) {
                 self.builder.jump(merge_bb, SourceInfo::dummy());
             }
             self.builder.move_to_block(merge_bb);
@@ -359,6 +360,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.lower_stmt(stmt);
             }
             self.exit_scope();
+            let then_block_end_bb = self.builder.current_block();
 
             // Lower else_block.
             self.builder.move_to_block(else_bb);
@@ -367,29 +369,30 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.lower_stmt(stmt);
             }
             self.exit_scope();
+            let else_block_end_bb = self.builder.current_block();
 
             match (
-                self.builder.is_block_terminated(then_bb),
-                self.builder.is_block_terminated(else_bb),
+                self.builder.is_block_terminated(then_block_end_bb),
+                self.builder.is_block_terminated(else_block_end_bb),
             ) {
                 (true, true) => {}
                 (false, true) => {
                     let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(then_bb);
+                    self.builder.move_to_block(then_block_end_bb);
                     self.builder.jump(merge_bb, SourceInfo::dummy());
                     self.builder.move_to_block(merge_bb);
                 }
                 (true, false) => {
                     let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(else_bb);
+                    self.builder.move_to_block(else_block_end_bb);
                     self.builder.jump(merge_bb, SourceInfo::dummy());
                     self.builder.move_to_block(merge_bb);
                 }
                 (false, false) => {
                     let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(then_bb);
+                    self.builder.move_to_block(then_block_end_bb);
                     self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.builder.move_to_block(else_bb);
+                    self.builder.move_to_block(else_block_end_bb);
                     self.builder.jump(merge_bb, SourceInfo::dummy());
                     self.builder.move_to_block(merge_bb);
                 }
