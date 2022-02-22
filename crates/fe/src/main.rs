@@ -128,6 +128,10 @@ pub fn main() {
         }
 
         let files = match load_files_from_dir(input_path) {
+            Ok(files) if files.is_empty() => {
+                eprintln!("Input directory is not an ingot: `{}`", input_path);
+                std::process::exit(1)
+            }
             Ok(files) => files,
             Err(err) => {
                 eprintln!("Failed to load project files. Error: {}", err);
@@ -167,15 +171,17 @@ pub fn main() {
 }
 
 fn load_files_from_dir(dir_path: &str) -> Result<Vec<(String, String)>, std::io::Error> {
-    WalkDir::new(dir_path)
-        .into_iter()
-        .map(|entry| {
-            let entry = entry?;
-            let path = entry.path();
+    let entries = WalkDir::new(dir_path);
+    let mut files = vec![];
+    for entry in entries.into_iter() {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map(std::ffi::OsStr::to_str).flatten() == Some("fe") {
             let content = std::fs::read_to_string(path)?;
-            Ok((path.to_string_lossy().to_string(), content))
-        })
-        .collect::<Result<Vec<_>, std::io::Error>>()
+            files.push((path.to_string_lossy().to_string(), content));
+        }
+    }
+    Ok(files)
 }
 
 fn write_compiled_module(
