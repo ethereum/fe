@@ -27,12 +27,20 @@ impl ControlFlowGraph {
         cfg
     }
 
+    pub fn entry(&self) -> BasicBlockId {
+        self.entry
+    }
+
     pub fn preds(&self, block: BasicBlockId) -> &[BasicBlockId] {
         self.blocks[&block].preds()
     }
 
     pub fn succs(&self, block: BasicBlockId) -> &[BasicBlockId] {
         self.blocks[&block].succs()
+    }
+
+    pub fn post_order(&self) -> CfgPostOrder {
+        CfgPostOrder::new(self)
     }
 
     fn analyze_terminator(&mut self, func: &FunctionBody, terminator: InstId) {
@@ -80,5 +88,71 @@ impl BlockNode {
 
     fn succs(&self) -> &[BasicBlockId] {
         &self.succs
+    }
+}
+
+pub struct CfgPostOrder<'a> {
+    cfg: &'a ControlFlowGraph,
+    node_state: FxHashMap<BasicBlockId, NodeState>,
+    stack: Vec<BasicBlockId>,
+}
+
+impl<'a> CfgPostOrder<'a> {
+    fn new(cfg: &'a ControlFlowGraph) -> Self {
+        let stack = vec![cfg.entry()];
+
+        Self {
+            cfg,
+            node_state: FxHashMap::default(),
+            stack,
+        }
+    }
+}
+
+impl<'a> Iterator for CfgPostOrder<'a> {
+    type Item = BasicBlockId;
+
+    fn next(&mut self) -> Option<BasicBlockId> {
+        while let Some(&block) = self.stack.last() {
+            let node_state = self.node_state.entry(block).or_default();
+            if node_state.is_unvisited() {
+                node_state.set_visited();
+                for &succ in self.cfg.succs(block) {
+                    let pred_state = self.node_state.entry(succ).or_default();
+                    if pred_state.is_unvisited() {
+                        self.stack.push(succ);
+                    }
+                }
+            } else {
+                self.stack.pop().unwrap();
+                if !node_state.has_finished() {
+                    node_state.set_finished();
+                    return Some(block);
+                }
+            }
+        }
+
+        None
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+struct NodeState(u8);
+
+impl NodeState {
+    fn is_unvisited(self) -> bool {
+        self.0 == 0
+    }
+
+    fn has_finished(self) -> bool {
+        self.0 == 2
+    }
+
+    fn set_visited(&mut self) {
+        self.0 = 1;
+    }
+
+    fn set_finished(&mut self) {
+        self.0 = 2;
     }
 }
