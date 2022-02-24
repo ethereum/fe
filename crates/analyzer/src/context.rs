@@ -499,7 +499,10 @@ impl CallType {
         if let CallType::Intrinsic(_) = self {
             true
         } else if let CallType::TypeConstructor(Type::Struct(struct_)) = self {
-            struct_.name == "Context"
+            // check that this is the `Context` struct defined in `std`
+            // this should be deleted once associated functions are supported and we can
+            // define unsafe constructors in Fe
+            struct_.name == "Context" && struct_.id.module(db).ingot(db).name(db) == "std"
         } else {
             self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
         }
