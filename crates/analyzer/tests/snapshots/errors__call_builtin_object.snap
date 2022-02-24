@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: no function `foo` exists on `block`
+error: cannot find value `block` in this scope
   ┌─ compile_errors/call_builtin_object.fe:4:5
   │
 4 │     block.foo()
-  │     ^^^^^^^^^ undefined function
+  │     ^^^^^ undefined
 
 

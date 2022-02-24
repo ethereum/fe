@@ -1,3 +1,5 @@
+use std::context::Context
+
 contract Foo:
     num: u256
     nums: Array<u256, 42>
@@ -26,8 +28,9 @@ contract Foo:
     pub fn read_str(self) -> String<26>:
         return self.str.to_mem()
 
-    pub fn emit_event(self):
+    pub fn emit_event(self, ctx: Context):
         emit MyEvent(
+            ctx,
             num: self.num,
             nums: self.nums.to_mem(),
             str: self.str.to_mem()

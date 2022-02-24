@@ -73,11 +73,13 @@ We don't need to do anything further yet with these files that the compiler prod
 Let's focus on the functionality of our world changing application and add a method to sign the guestbook.
 
 ```python
+use std::context::Context
+
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
-      self.messages[msg.sender] = book_msg
+  pub fn sign(self, ctx: Context, book_msg: String<100>):
+      self.messages[ctx.msg_sender()] = book_msg
 ```
 
 The code should look familiar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](../spec/items/visibility_and_privacy.md) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
@@ -117,11 +119,13 @@ Since our contract now has a public `sign` method the corresponding ABI has chan
 To make the guest book more useful we will also add a method `get_msg` to read entries from a given address.
 
 ```python
+use std::context::Context
+
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
-      self.messages[msg.sender] = book_msg
+  pub fn sign(self, ctx: Context, book_msg: String<100>):
+      self.messages[ctx.msg_sender()] = book_msg
 
   pub fn get_msg(self, addr: address) -> String<100>:
       return self.messages[addr]
@@ -148,11 +152,13 @@ When we try to return a reference type such as an array from the storage of the 
 The code should compile fine when we change it accordingly.
 
 ```python
+use std::context::Context
+
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
-      self.messages[msg.sender] = book_msg
+  pub fn sign(self, ctx: Context, book_msg: String<100>):
+      self.messages[ctx.msg_sender()] = book_msg
 
   pub fn get_msg(self, addr: address) -> String<100>:
       return self.messages[addr].to_mem()

@@ -1,3 +1,5 @@
+use std::context::Context
+
 contract Foo:
     event Nums:
         idx num1: u256
@@ -16,17 +18,17 @@ contract Foo:
     event Addresses:
         addrs: Array<address, 2>
 
-    pub fn emit_nums():
-        emit Nums(num1: 26, num2: 42)
+    pub fn emit_nums(ctx: Context):
+        emit Nums(ctx, num1: 26, num2: 42)
 
-    pub fn emit_bases(addr: address):
-        emit Bases(num: 26, addr)
+    pub fn emit_bases(ctx: Context, addr: address):
+        emit Bases(ctx, num: 26, addr)
 
-    pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
-        emit Mix(num1: 26, addr, num2: 42, my_bytes)
+    pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>):
+        emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
 
-    pub fn emit_addresses(addr1: address, addr2: address):
+    pub fn emit_addresses(ctx: Context, addr1: address, addr2: address):
         let addrs: Array<address, 2>
         addrs[0] = addr1
         addrs[1] = addr2
-        emit Addresses(addrs)
+        emit Addresses(ctx, addrs)

@@ -1,7 +1,8 @@
+use std::context::Context
 
 contract Foo:
   val: u8
 
 contract Bar:
-  pub fn test():
-    Foo(address(0)).doesnt_exist()
+  pub fn test(ctx: Context):
+    Foo(ctx, address(0)).doesnt_exist()

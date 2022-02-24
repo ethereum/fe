@@ -13,10 +13,11 @@ note:
    · │
 13 │ │             z = 1
 14 │ │         return z
-   │ ╰────────────────^ attributes hash: 3075818098030342593
+   │ ╰────────────────^ attributes hash: 6692289661045278817
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "val",
@@ -145,10 +146,11 @@ note:
    │  
 16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
-   │ ╰────────────────────────────────^ attributes hash: 4022593831796629401
+   │ ╰────────────────────────────────^ attributes hash: 3620942230080591742
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",

@@ -20,6 +20,7 @@ pub fn build_with_init(
     init_function_name: &str,
     init_params: &[AbiType],
     init_callgraph: Vec<yul::Statement>,
+    expects_ctx: bool,
 ) -> yul::Code {
     // Generate names for our constructor parameters.
     let (param_idents, param_exprs) = abi_names::vals("init", init_params.len());
@@ -47,6 +48,13 @@ pub fn build_with_init(
 
     let deployment = deployment();
 
+    let init_call = if expects_ctx {
+        // we pass in a `0` for the expected `Context` argument
+        expression! { [init_function_name](0, [param_exprs...]) }
+    } else {
+        expression! { [init_function_name]([param_exprs...]) }
+    };
+
     // Build a constructor that runs a user defined init function. Parameters for
     // init functions are appended to the end of the initialization code.
     //
@@ -71,7 +79,7 @@ pub fn build_with_init(
         [maybe_decode_params...]
 
         // call the init function defined above
-        (pop(([init_function_name]([param_exprs...]))))
+        (pop([init_call]))
 
         // deploy the contract
         [deployment...]

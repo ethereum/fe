@@ -1,0 +1,5 @@
+use std::context::Context
+
+contract Foo:
+    pub fn bar() -> u256:
+        return ctx.block_number()

@@ -1,6 +1,7 @@
 //! Simple contract tests that narrowly test a given feature
 
 #![cfg(feature = "solc-backend")]
+use evm::{Capture, ExitReason};
 use evm_runtime::Handler;
 use primitive_types::{H160, U256};
 use rstest::rstest;
@@ -317,7 +318,6 @@ fn test_arrays() {
     case("pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_standalone.fe", &[uint_token(5)], uint_token(210)),
-    case("dummy_std.fe", &[], uint_token(1092)),
     // unary invert
     case("return_invert_i256.fe", &[int_token(1)], int_token(-2)),
     case("return_invert_i128.fe", &[int_token(1)], int_token(-2)),
@@ -1832,4 +1832,58 @@ fn signext_int_array2(method: &str, value: ethabi::Token) {
 
         harness.test_function(&mut executor, method, &[value.clone()], Some(&value));
     })
+}
+
+#[test]
+fn ctx_param_simple() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "ctx_param_simple.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(0)));
+    });
+}
+
+#[test]
+fn ctx_param_internal_func_call() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "ctx_param_internal_func_call.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(0)));
+    });
+}
+
+#[test]
+fn ctx_param_external_func_call() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "ctx_param_external_func_call.fe", "Bar", &[]);
+
+        harness.test_function(&mut executor, "call_bing", &[], Some(&uint_token(42)));
+
+        let foo_harness =
+            deploy_contract(&mut executor, "ctx_param_external_func_call.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "call_baz",
+            &[ethabi::Token::Address(foo_harness.address)],
+            Some(&uint_token(0)),
+        );
+    });
+}
+
+#[test]
+fn ctx_init_in_call() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "ctx_init_in_call.fe", "Foo", &[]);
+
+        match harness.capture_call_raw_bytes(&mut executor, vec![]) {
+            Capture::Exit((ExitReason::Succeed(_), return_bytes)) => {
+                assert_eq!(
+                    [&[0; 12], harness.address.as_bytes()].concat(),
+                    return_bytes
+                )
+            }
+            Capture::Exit(_) => panic!("call didn't succeed"),
+            Capture::Trap(_) => panic!("trapped!"),
+        }
+    });
 }

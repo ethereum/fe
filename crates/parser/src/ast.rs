@@ -174,7 +174,7 @@ pub struct RegularFunctionArg {
 #[allow(clippy::large_enum_variant)]
 pub enum FunctionArg {
     Regular(RegularFunctionArg),
-    Zelf,
+    Self_,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -382,14 +382,14 @@ impl Node<FunctionArg> {
     pub fn name(&self) -> &str {
         match &self.kind {
             FunctionArg::Regular(arg) => &arg.name.kind,
-            FunctionArg::Zelf => "self",
+            FunctionArg::Self_ => "self",
         }
     }
 
     pub fn name_span(&self) -> Span {
         match &self.kind {
             FunctionArg::Regular(arg) => arg.name.span,
-            FunctionArg::Zelf => self.span,
+            FunctionArg::Self_ => self.span,
         }
     }
 }
@@ -639,7 +639,7 @@ impl fmt::Display for FunctionArg {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             FunctionArg::Regular(arg) => write!(f, "{}", arg),
-            FunctionArg::Zelf => write!(f, "self"),
+            FunctionArg::Self_ => write!(f, "self"),
         }
     }
 }

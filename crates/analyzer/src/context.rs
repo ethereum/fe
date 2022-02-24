@@ -1,6 +1,6 @@
 use crate::errors::{self, CannotMove, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
-use crate::namespace::types::{FixedSize, SelfDecl, Type};
+use crate::namespace::types::{FixedSize, SelfDecl, Struct, Type};
 use crate::AnalyzerDb;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
@@ -140,6 +140,9 @@ pub trait AnalyzerContext {
 
     /// Returns `true` if the scope or any of its parents is of the given type.
     fn inherits_type(&self, typ: BlockScopeType) -> bool;
+
+    /// Returns the `Context` type, if it is defined.
+    fn get_context_type(&self) -> Option<Struct>;
 
     fn type_error(
         &mut self,
@@ -322,6 +325,10 @@ impl AnalyzerContext for TempContext {
     fn resolve_path(&mut self, _path: &ast::Path) -> Option<NamedThing> {
         panic!("TempContext can't resolve paths")
     }
+
+    fn get_context_type(&self) -> Option<Struct> {
+        panic!("TempContext can't resolve Context")
+    }
 }
 
 /// Indicates where an expression is stored.
@@ -491,6 +498,11 @@ impl CallType {
     pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
         if let CallType::Intrinsic(_) = self {
             true
+        } else if let CallType::TypeConstructor(Type::Struct(struct_)) = self {
+            // check that this is the `Context` struct defined in `std`
+            // this should be deleted once associated functions are supported and we can
+            // define unsafe constructors in Fe
+            struct_.name == "Context" && struct_.id.module(db).ingot(db).name(db) == "std"
         } else {
             self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
         }

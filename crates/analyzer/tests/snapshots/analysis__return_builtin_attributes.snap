@@ -4,15 +4,30 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_builtin_attributes.fe:2:5
+  ┌─ return_builtin_attributes.fe:4:5
   │  
-2 │ ╭     pub fn coinbase() -> address:
-3 │ │         return block.coinbase
-  │ ╰─────────────────────────────^ attributes hash: 14219262914863437447
+4 │ ╭     pub fn coinbase(ctx: Context) -> address:
+5 │ │         return ctx.block_coinbase()
+  │ ╰───────────────────────────────────^ attributes hash: 17345910255563017853
   │  
   = FunctionSignature {
         self_decl: None,
-        params: [],
+        ctx_decl: Some(
+            Mutable,
+        ),
+        params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
         return_type: Ok(
             Base(
                 Address,
@@ -21,21 +36,42 @@ note:
     }
 
 note: 
-  ┌─ return_builtin_attributes.fe:3:16
+  ┌─ return_builtin_attributes.fe:5:16
   │
-3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ address: Value
+5 │         return ctx.block_coinbase()
+  │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_builtin_attributes.fe:5:5
+  ┌─ return_builtin_attributes.fe:5:16
+  │
+5 │         return ctx.block_coinbase()
+  │                ^^^^^^^^^^^^^^^^^^^^ address: Value
+
+note: 
+  ┌─ return_builtin_attributes.fe:7:5
   │  
-5 │ ╭     pub fn difficulty() -> u256:
-6 │ │         return block.difficulty
-  │ ╰───────────────────────────────^ attributes hash: 17979516652885443340
+7 │ ╭     pub fn difficulty(ctx: Context) -> u256:
+8 │ │         return ctx.block_difficulty()
+  │ ╰─────────────────────────────────────^ attributes hash: 8461121747246443614
   │  
   = FunctionSignature {
         self_decl: None,
-        params: [],
+        ctx_decl: Some(
+            Mutable,
+        ),
+        params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
         return_type: Ok(
             Base(
                 Numeric(
@@ -46,46 +82,42 @@ note:
     }
 
 note: 
-  ┌─ return_builtin_attributes.fe:6:16
+  ┌─ return_builtin_attributes.fe:8:16
   │
-6 │         return block.difficulty
-  │                ^^^^^^^^^^^^^^^^ u256: Value
+8 │         return ctx.block_difficulty()
+  │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_builtin_attributes.fe:8:5
-  │  
-8 │ ╭     pub fn number() -> u256:
-9 │ │         return block.number
-  │ ╰───────────────────────────^ attributes hash: 17979516652885443340
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
-
-note: 
-  ┌─ return_builtin_attributes.fe:9:16
+  ┌─ return_builtin_attributes.fe:8:16
   │
-9 │         return block.number
-  │                ^^^^^^^^^^^^ u256: Value
+8 │         return ctx.block_difficulty()
+  │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:11:5
+   ┌─ return_builtin_attributes.fe:10:5
    │  
-11 │ ╭     pub fn timestamp() -> u256:
-12 │ │         return block.timestamp
-   │ ╰──────────────────────────────^ attributes hash: 17979516652885443340
+10 │ ╭     pub fn number(ctx: Context) -> u256:
+11 │ │         return ctx.block_number()
+   │ ╰─────────────────────────────────^ attributes hash: 8461121747246443614
    │  
    = FunctionSignature {
          self_decl: None,
-         params: [],
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
          return_type: Ok(
              Base(
                  Numeric(
@@ -96,46 +128,224 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:12:16
+   ┌─ return_builtin_attributes.fe:11:16
    │
-12 │         return block.timestamp
+11 │         return ctx.block_number()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:11:16
+   │
+11 │         return ctx.block_number()
+   │                ^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:13:5
+   │  
+13 │ ╭     pub fn timestamp(ctx: Context) -> u256:
+14 │ │         return ctx.block_timestamp()
+   │ ╰────────────────────────────────────^ attributes hash: 8461121747246443614
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_builtin_attributes.fe:14:16
+   │
+14 │         return ctx.block_timestamp()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:14:16
+   │
+14 │         return ctx.block_timestamp()
+   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:16:5
+   │  
+16 │ ╭     pub fn chainid(ctx: Context) -> u256:
+17 │ │         return ctx.chain_id()
+   │ ╰─────────────────────────────^ attributes hash: 8461121747246443614
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_builtin_attributes.fe:17:16
+   │
+17 │         return ctx.chain_id()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:17:16
+   │
+17 │         return ctx.chain_id()
+   │                ^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:19:5
+   │  
+19 │ ╭     pub fn sender(ctx: Context) -> address:
+20 │ │         return ctx.msg_sender()
+   │ ╰───────────────────────────────^ attributes hash: 17345910255563017853
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Address,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_builtin_attributes.fe:20:16
+   │
+20 │         return ctx.msg_sender()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:20:16
+   │
+20 │         return ctx.msg_sender()
+   │                ^^^^^^^^^^^^^^^^ address: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:22:5
+   │  
+22 │ ╭     pub fn value(ctx: Context) -> u256:
+23 │ │         return ctx.msg_value()
+   │ ╰──────────────────────────────^ attributes hash: 8461121747246443614
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_builtin_attributes.fe:23:16
+   │
+23 │         return ctx.msg_value()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:23:16
+   │
+23 │         return ctx.msg_value()
    │                ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:14:5
+   ┌─ return_builtin_attributes.fe:25:5
    │  
-14 │ ╭     pub fn chainid() -> u256:
-15 │ │         return chain.id
-   │ ╰───────────────────────^ attributes hash: 17979516652885443340
+25 │ ╭     pub fn origin(ctx: Context) -> address:
+26 │ │         return ctx.tx_origin()
+   │ ╰──────────────────────────────^ attributes hash: 17345910255563017853
    │  
    = FunctionSignature {
          self_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
+         ctx_decl: Some(
+             Mutable,
          ),
-     }
-
-note: 
-   ┌─ return_builtin_attributes.fe:15:16
-   │
-15 │         return chain.id
-   │                ^^^^^^^^ u256: Value
-
-note: 
-   ┌─ return_builtin_attributes.fe:17:5
-   │  
-17 │ ╭     pub fn sender() -> address:
-18 │ │         return msg.sender
-   │ ╰─────────────────────────^ attributes hash: 14219262914863437447
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [],
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
          return_type: Ok(
              Base(
                  Address,
@@ -144,21 +354,42 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:18:16
+   ┌─ return_builtin_attributes.fe:26:16
    │
-18 │         return msg.sender
-   │                ^^^^^^^^^^ address: Value
+26 │         return ctx.tx_origin()
+   │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:20:5
+   ┌─ return_builtin_attributes.fe:26:16
+   │
+26 │         return ctx.tx_origin()
+   │                ^^^^^^^^^^^^^^^ address: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:28:5
    │  
-20 │ ╭     pub fn value() -> u256:
-21 │ │         return msg.value
-   │ ╰────────────────────────^ attributes hash: 17979516652885443340
+28 │ ╭     pub fn gas_price(ctx: Context) -> u256:
+29 │ │         return ctx.tx_gas_price()
+   │ ╰─────────────────────────────────^ attributes hash: 8461121747246443614
    │  
    = FunctionSignature {
          self_decl: None,
-         params: [],
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
          return_type: Ok(
              Base(
                  Numeric(
@@ -169,57 +400,15 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:21:16
+   ┌─ return_builtin_attributes.fe:29:16
    │
-21 │         return msg.value
-   │                ^^^^^^^^^ u256: Value
+29 │         return ctx.tx_gas_price()
+   │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:23:5
-   │  
-23 │ ╭     pub fn origin() -> address:
-24 │ │         return tx.origin
-   │ ╰────────────────────────^ attributes hash: 14219262914863437447
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
-
-note: 
-   ┌─ return_builtin_attributes.fe:24:16
+   ┌─ return_builtin_attributes.fe:29:16
    │
-24 │         return tx.origin
-   │                ^^^^^^^^^ address: Value
-
-note: 
-   ┌─ return_builtin_attributes.fe:26:5
-   │  
-26 │ ╭     pub fn gas_price() -> u256:
-27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 17979516652885443340
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ return_builtin_attributes.fe:27:16
-   │
-27 │         return tx.gas_price
-   │                ^^^^^^^^^^^^ u256: Value
+29 │         return ctx.tx_gas_price()
+   │                ^^^^^^^^^^^^^^^^^^ u256: Value
 
 

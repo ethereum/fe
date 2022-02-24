@@ -1,3 +1,5 @@
+use std::context::Context
+
 contract Foo:
     my_tuple_field: (bool, address)
 
@@ -21,8 +23,9 @@ contract Foo:
     ):
         pass
 
-    pub fn food():
+    pub fn food(ctx: Context):
         emit MyEvent(
+            ctx,
             my_tuple: (false, true),
             my_other_tuple: (address(0), address(1))
         )

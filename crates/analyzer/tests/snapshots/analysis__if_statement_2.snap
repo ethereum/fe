@@ -13,10 +13,11 @@ note:
 7 │ │             assert true
 8 │ │ 
 9 │ │         return 0
-  │ ╰────────────────^ attributes hash: 3075818098030342593
+  │ ╰────────────────^ attributes hash: 6692289661045278817
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "val",

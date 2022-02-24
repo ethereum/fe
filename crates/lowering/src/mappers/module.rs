@@ -57,7 +57,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
 
         Item::GenericType(_) => todo!("generic types can't be defined in fe yet"),
         Item::Event(id) => Some(ast::ModuleStmt::Event(events::event_def(&mut context, *id))),
-        Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {
+        Item::BuiltinFunction(_) | Item::Intrinsic(_) => {
             unreachable!("special built-in stuff")
         }
 

@@ -1,11 +1,13 @@
+use std::context::Context
+
 contract Foo:
     event MyEvent:
         my_num: u256
         my_addrs: Array<address, 5>
         my_string: String<11>
 
-    pub fn emit_event(my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
-        emit MyEvent(my_num, my_addrs, my_string)
+    pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
+        emit MyEvent(ctx, my_num, my_addrs, my_string)
 
     pub fn build_array(a: u256, b: u256) -> Array<u256, 3>:
         let my_array: Array<u256, 3>
@@ -16,18 +18,20 @@ contract Foo:
 
 contract FooProxy:
     pub fn call_emit_event(
+        ctx: Context,
         foo_address: address,
         my_num: u256,
         my_addrs: Array<address, 5>,
         my_string: String<11>
     ):
-        let foo: Foo = Foo(foo_address)
+        let foo: Foo = Foo(ctx, foo_address)
         foo.emit_event(my_num, my_addrs, my_string)
 
     pub fn call_build_array(
-         foo_address: address,
-         a: u256,
-         b: u256,
+        ctx: Context,
+        foo_address: address,
+        a: u256,
+        b: u256,
     ) -> Array<u256, 3>:
-        let foo: Foo = Foo(foo_address)
+        let foo: Foo = Foo(ctx, foo_address)
         return foo.build_array(a, b)

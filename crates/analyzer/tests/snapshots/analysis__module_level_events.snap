@@ -4,99 +4,121 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ module_level_events.fe:2:5
+  ┌─ module_level_events.fe:4:5
   │
-2 │     idx sender: address
+4 │     idx sender: address
   │     ^^^^^^^^^^^^^^^^^^^ address
-3 │     idx receiver: address
+5 │     idx receiver: address
   │     ^^^^^^^^^^^^^^^^^^^^^ address
-4 │     value: u256
+6 │     value: u256
   │     ^^^^^^^^^^^ u256
 
 note: 
-  ┌─ module_level_events.fe:6:5
-  │  
-6 │ ╭     fn transfer(to : address, value : u256):
-7 │ │         emit Transfer(sender: msg.sender, receiver: to, value)
-  │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 5430479256040439660
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [
-            FunctionParam {
-                name: "to",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-            FunctionParam {
-                name: "value",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
+   ┌─ module_level_events.fe:9:5
+   │  
+ 9 │ ╭     fn transfer(ctx: Context, to : address, value : u256):
+10 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 6905847783095140889
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "to",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "value",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
 
 note: 
-  ┌─ module_level_events.fe:7:31
-  │
-7 │         emit Transfer(sender: msg.sender, receiver: to, value)
-  │                               ^^^^^^^^^^            ^^  ^^^^^ u256: Value
-  │                               │                     │    
-  │                               │                     address: Value
-  │                               address: Value
+   ┌─ module_level_events.fe:10:23
+   │
+10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+   │                       ^^^          ^^^ Context: Memory
+   │                       │             
+   │                       Context: Memory
 
 note: 
-  ┌─ module_level_events.fe:7:9
-  │
-7 │         emit Transfer(sender: msg.sender, receiver: to, value)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
-  │
-  = Event {
-        name: "Transfer",
-        fields: [
-            EventField {
-                name: "sender",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-                is_indexed: true,
-            },
-            EventField {
-                name: "receiver",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-                is_indexed: true,
-            },
-            EventField {
-                name: "value",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-                is_indexed: false,
-            },
-        ],
-    }
+   ┌─ module_level_events.fe:10:36
+   │
+10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+   │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
+   │                                    │                           │    
+   │                                    │                           address: Value
+   │                                    address: Value
+
+note: 
+   ┌─ module_level_events.fe:10:9
+   │
+10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
+   │
+   = Event {
+         name: "Transfer",
+         fields: [
+             EventField {
+                 name: "sender",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+                 is_indexed: true,
+             },
+             EventField {
+                 name: "receiver",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+                 is_indexed: true,
+             },
+             EventField {
+                 name: "value",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 is_indexed: false,
+             },
+         ],
+     }
 
 

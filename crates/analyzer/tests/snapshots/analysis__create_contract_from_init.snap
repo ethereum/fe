@@ -4,14 +4,15 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ create_contract_from_init.fe:2:5
+  ┌─ create_contract_from_init.fe:4:5
   │  
-2 │ ╭     pub fn get_my_num() -> u256:
-3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 17979516652885443340
+4 │ ╭     pub fn get_my_num() -> u256:
+5 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 6115314201970082834
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -23,28 +24,29 @@ note:
     }
 
 note: 
-  ┌─ create_contract_from_init.fe:3:16
+  ┌─ create_contract_from_init.fe:5:16
   │
-3 │         return 42
+5 │         return 42
   │                ^^ u256: Value
 
 note: 
-  ┌─ create_contract_from_init.fe:6:5
+  ┌─ create_contract_from_init.fe:8:5
   │
-6 │     foo_addr: address
+8 │     foo_addr: address
   │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ create_contract_from_init.fe:11:5
+   ┌─ create_contract_from_init.fe:13:5
    │  
-11 │ ╭     pub fn get_foo_addr(self) -> address:
-12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 10447292744135180405
+13 │ ╭     pub fn get_foo_addr(self) -> address:
+14 │ │         return self.foo_addr
+   │ ╰────────────────────────────^ attributes hash: 227275695522088782
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -54,15 +56,15 @@ note:
      }
 
 note: 
-   ┌─ create_contract_from_init.fe:12:16
+   ┌─ create_contract_from_init.fe:14:16
    │
-12 │         return self.foo_addr
+14 │         return self.foo_addr
    │                ^^^^ FooFactory: Value
 
 note: 
-   ┌─ create_contract_from_init.fe:12:16
+   ┌─ create_contract_from_init.fe:14:16
    │
-12 │         return self.foo_addr
+14 │         return self.foo_addr
    │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 

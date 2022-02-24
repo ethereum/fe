@@ -4,6 +4,7 @@ use bing::Bing as Bong
 use bing::get_42_backend
 use ding::{dang::Dang as Dung, dong}
 use bing::BingContract
+use std::context::Context
 
 contract Foo:
     pub fn get_my_baz() -> Baz:
@@ -17,7 +18,7 @@ contract Foo:
         return get_42_backend()
 
     pub fn get_26() -> u256:
-        return std::bar::bar::get_26()
+        return std::evm::add(13, 13)
 
     pub fn get_my_dyng() -> dong::Dyng:
         return dong::Dyng(
@@ -26,6 +27,6 @@ contract Foo:
             my_i8: -1
         )
 
-    pub fn create_bing_contract() -> u256:
-        let bing_contract: BingContract = BingContract.create(0)
+    pub fn create_bing_contract(ctx: Context) -> u256:
+        let bing_contract: BingContract = BingContract.create(ctx, 0)
         return bing_contract.add(40, 50)

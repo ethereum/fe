@@ -4,32 +4,33 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ strings.fe:3:9
-  │
-3 │         s2: String<26>
-  │         ^^^^^^^^^^^^^^ String<26>
-4 │         u: u256
-  │         ^^^^^^^ u256
-5 │         s1: String<42>
-  │         ^^^^^^^^^^^^^^ String<42>
-6 │         s3: String<100>
-  │         ^^^^^^^^^^^^^^^ String<100>
-7 │         a: address
-  │         ^^^^^^^^^^ address
-8 │         s4: String<18>
-  │         ^^^^^^^^^^^^^^ String<18>
-9 │         s5: String<100>
-  │         ^^^^^^^^^^^^^^^ String<100>
+   ┌─ strings.fe:5:9
+   │
+ 5 │         s2: String<26>
+   │         ^^^^^^^^^^^^^^ String<26>
+ 6 │         u: u256
+   │         ^^^^^^^ u256
+ 7 │         s1: String<42>
+   │         ^^^^^^^^^^^^^^ String<42>
+ 8 │         s3: String<100>
+   │         ^^^^^^^^^^^^^^^ String<100>
+ 9 │         a: address
+   │         ^^^^^^^^^^ address
+10 │         s4: String<18>
+   │         ^^^^^^^^^^^^^^ String<18>
+11 │         s5: String<100>
+   │         ^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ strings.fe:14:5
+   ┌─ strings.fe:16:5
    │  
-14 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
-15 │ │         return s2
-   │ ╰─────────────────^ attributes hash: 9796174980111478041
+16 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
+17 │ │         return s2
+   │ ╰─────────────────^ attributes hash: 17275759829526043442
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "s1",
@@ -62,20 +63,21 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:15:16
+   ┌─ strings.fe:17:16
    │
-15 │         return s2
+17 │         return s2
    │                ^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:17:5
+   ┌─ strings.fe:19:5
    │  
-17 │ ╭     pub fn return_static_string() -> String<43>:
-18 │ │         return "The quick brown fox jumps over the lazy dog"
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 3426951284599168562
+19 │ ╭     pub fn return_static_string() -> String<43>:
+20 │ │         return "The quick brown fox jumps over the lazy dog"
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16859220121746101219
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              String(
@@ -87,20 +89,21 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:18:16
+   ┌─ strings.fe:20:16
    │
-18 │         return "The quick brown fox jumps over the lazy dog"
+20 │         return "The quick brown fox jumps over the lazy dog"
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
 
 note: 
-   ┌─ strings.fe:20:5
+   ┌─ strings.fe:22:5
    │  
-20 │ ╭     pub fn return_casted_static_string() -> String<100>:
-21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 15820744965541513152
+22 │ ╭     pub fn return_casted_static_string() -> String<100>:
+23 │ │         return String<100>("foo")
+   │ ╰─────────────────────────────────^ attributes hash: 11555139189894875514
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              String(
@@ -112,26 +115,27 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:21:28
+   ┌─ strings.fe:23:28
    │
-21 │         return String<100>("foo")
+23 │         return String<100>("foo")
    │                            ^^^^^ String<3>: Memory
 
 note: 
-   ┌─ strings.fe:21:16
+   ┌─ strings.fe:23:16
    │
-21 │         return String<100>("foo")
+23 │         return String<100>("foo")
    │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:23:5
+   ┌─ strings.fe:25:5
    │  
-23 │ ╭     pub fn shorter_string_assign():
-24 │ │         let s: String<18> = "fe"
-   │ ╰────────────────────────────────^ attributes hash: 15148455653558261645
+25 │ ╭     pub fn shorter_string_assign():
+26 │ │         let s: String<18> = "fe"
+   │ ╰────────────────────────────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -141,27 +145,28 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:24:16
+   ┌─ strings.fe:26:16
    │
-24 │         let s: String<18> = "fe"
+26 │         let s: String<18> = "fe"
    │                ^^^^^^^^^^ String<18>
 
 note: 
-   ┌─ strings.fe:24:29
+   ┌─ strings.fe:26:29
    │
-24 │         let s: String<18> = "fe"
+26 │         let s: String<18> = "fe"
    │                             ^^^^ String<18>: Memory
 
 note: 
-   ┌─ strings.fe:26:5
+   ┌─ strings.fe:28:5
    │  
-26 │ ╭     pub fn return_special_chars() -> String<18>:
-27 │ │         return "\n\"'\r\t
-28 │ │         foo\\"
-   │ ╰──────────────^ attributes hash: 14991635520577142188
+28 │ ╭     pub fn return_special_chars() -> String<18>:
+29 │ │         return "\n\"'\r\t
+30 │ │         foo\\"
+   │ ╰──────────────^ attributes hash: 15142206137302311439
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              String(
@@ -173,11 +178,11 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:27:16
+   ┌─ strings.fe:29:16
    │  
-27 │           return "\n\"'\r\t
+29 │           return "\n\"'\r\t
    │ ╭────────────────^
-28 │ │         foo\\"
+30 │ │         foo\\"
    │ ╰──────────────^ String<18>: Memory
 
 

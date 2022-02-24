@@ -4,49 +4,64 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ events.fe:3:9
+  ┌─ events.fe:5:9
   │
-3 │         idx num1: u256
+5 │         idx num1: u256
   │         ^^^^^^^^^^^^^^ u256
-4 │         num2: u256
+6 │         num2: u256
   │         ^^^^^^^^^^ u256
 
 note: 
-  ┌─ events.fe:7:9
-  │
-7 │         num: u256
-  │         ^^^^^^^^^ u256
-8 │         addr: address
-  │         ^^^^^^^^^^^^^ address
+   ┌─ events.fe:9:9
+   │
+ 9 │         num: u256
+   │         ^^^^^^^^^ u256
+10 │         addr: address
+   │         ^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ events.fe:11:9
+   ┌─ events.fe:13:9
    │
-11 │         num1: u256
+13 │         num1: u256
    │         ^^^^^^^^^^ u256
-12 │         idx addr: address
+14 │         idx addr: address
    │         ^^^^^^^^^^^^^^^^^ address
-13 │         num2: u256
+15 │         num2: u256
    │         ^^^^^^^^^^ u256
-14 │         my_bytes: Array<u8, 100>
+16 │         my_bytes: Array<u8, 100>
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
-   ┌─ events.fe:17:9
+   ┌─ events.fe:19:9
    │
-17 │         addrs: Array<address, 2>
+19 │         addrs: Array<address, 2>
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 note: 
-   ┌─ events.fe:19:5
+   ┌─ events.fe:21:5
    │  
-19 │ ╭     pub fn emit_nums():
-20 │ │         emit Nums(num1: 26, num2: 42)
-   │ ╰─────────────────────────────────────^ attributes hash: 15148455653558261645
+21 │ ╭     pub fn emit_nums(ctx: Context):
+22 │ │         emit Nums(ctx, num1: 26, num2: 42)
+   │ ╰──────────────────────────────────────────^ attributes hash: 11452088215302469574
    │  
    = FunctionSignature {
          self_decl: None,
-         params: [],
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
          return_type: Ok(
              Base(
                  Unit,
@@ -55,18 +70,19 @@ note:
      }
 
 note: 
-   ┌─ events.fe:20:25
+   ┌─ events.fe:22:19
    │
-20 │         emit Nums(num1: 26, num2: 42)
-   │                         ^^        ^^ u256: Value
-   │                         │          
-   │                         u256: Value
+22 │         emit Nums(ctx, num1: 26, num2: 42)
+   │                   ^^^        ^^        ^^ u256: Value
+   │                   │          │          
+   │                   │          u256: Value
+   │                   Context: Memory
 
 note: 
-   ┌─ events.fe:20:9
+   ┌─ events.fe:22:9
    │
-20 │         emit Nums(num1: 26, num2: 42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
+22 │         emit Nums(ctx, num1: 26, num2: 42)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
    │
    = Event {
          name: "Nums",
@@ -97,15 +113,29 @@ note:
      }
 
 note: 
-   ┌─ events.fe:22:5
+   ┌─ events.fe:24:5
    │  
-22 │ ╭     pub fn emit_bases(addr: address):
-23 │ │         emit Bases(num: 26, addr)
-   │ ╰─────────────────────────────────^ attributes hash: 14507092098124791222
+24 │ ╭     pub fn emit_bases(ctx: Context, addr: address):
+25 │ │         emit Bases(ctx, num: 26, addr)
+   │ ╰──────────────────────────────────────^ attributes hash: 991311692967983
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
          params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
              FunctionParam {
                  name: "addr",
                  typ: Ok(
@@ -123,18 +153,19 @@ note:
      }
 
 note: 
-   ┌─ events.fe:23:25
+   ┌─ events.fe:25:20
    │
-23 │         emit Bases(num: 26, addr)
-   │                         ^^  ^^^^ address: Value
-   │                         │    
-   │                         u256: Value
+25 │         emit Bases(ctx, num: 26, addr)
+   │                    ^^^       ^^  ^^^^ address: Value
+   │                    │         │    
+   │                    │         u256: Value
+   │                    Context: Memory
 
 note: 
-   ┌─ events.fe:23:9
+   ┌─ events.fe:25:9
    │
-23 │         emit Bases(num: 26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
+25 │         emit Bases(ctx, num: 26, addr)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
    │
    = Event {
          name: "Bases",
@@ -163,15 +194,29 @@ note:
      }
 
 note: 
-   ┌─ events.fe:25:5
+   ┌─ events.fe:27:5
    │  
-25 │ ╭     pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
-26 │ │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
-   │ ╰────────────────────────────────────────────────────^ attributes hash: 11181555056051097974
+27 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>):
+28 │ │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 15744261199202133709
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
          params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
              FunctionParam {
                  name: "addr",
                  typ: Ok(
@@ -202,20 +247,21 @@ note:
      }
 
 note: 
-   ┌─ events.fe:26:24
+   ┌─ events.fe:28:18
    │
-26 │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
-   │                        ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>: Memory
-   │                        │   │           │    
-   │                        │   │           u256: Value
-   │                        │   address: Value
-   │                        u256: Value
+28 │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
+   │                  ^^^        ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>: Memory
+   │                  │          │   │           │    
+   │                  │          │   │           u256: Value
+   │                  │          │   address: Value
+   │                  │          u256: Value
+   │                  Context: Memory
 
 note: 
-   ┌─ events.fe:26:9
+   ┌─ events.fe:28:9
    │
-26 │         emit Mix(num1: 26, addr, num2: 42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
+28 │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
    │
    = Event {
          name: "Mix",
@@ -269,18 +315,32 @@ note:
      }
 
 note: 
-   ┌─ events.fe:28:5
+   ┌─ events.fe:30:5
    │  
-28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
-29 │ │         let addrs: Array<address, 2>
-30 │ │         addrs[0] = addr1
-31 │ │         addrs[1] = addr2
-32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 13018113254659996848
+30 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address):
+31 │ │         let addrs: Array<address, 2>
+32 │ │         addrs[0] = addr1
+33 │ │         addrs[1] = addr2
+34 │ │         emit Addresses(ctx, addrs)
+   │ ╰──────────────────────────────────^ attributes hash: 6001294227515901672
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
          params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
              FunctionParam {
                  name: "addr1",
                  typ: Ok(
@@ -306,46 +366,48 @@ note:
      }
 
 note: 
-   ┌─ events.fe:29:20
+   ┌─ events.fe:31:20
    │
-29 │         let addrs: Array<address, 2>
+31 │         let addrs: Array<address, 2>
    │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
-
-note: 
-   ┌─ events.fe:30:9
-   │
-30 │         addrs[0] = addr1
-   │         ^^^^^ ^ u256: Value
-   │         │      
-   │         Array<address, 2>: Memory
-
-note: 
-   ┌─ events.fe:30:9
-   │
-30 │         addrs[0] = addr1
-   │         ^^^^^^^^   ^^^^^ address: Value
-   │         │           
-   │         address: Memory
-31 │         addrs[1] = addr2
-   │         ^^^^^ ^ u256: Value
-   │         │      
-   │         Array<address, 2>: Memory
-
-note: 
-   ┌─ events.fe:31:9
-   │
-31 │         addrs[1] = addr2
-   │         ^^^^^^^^   ^^^^^ address: Value
-   │         │           
-   │         address: Memory
-32 │         emit Addresses(addrs)
-   │                        ^^^^^ Array<address, 2>: Memory
 
 note: 
    ┌─ events.fe:32:9
    │
-32 │         emit Addresses(addrs)
-   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17766225573703958283
+32 │         addrs[0] = addr1
+   │         ^^^^^ ^ u256: Value
+   │         │      
+   │         Array<address, 2>: Memory
+
+note: 
+   ┌─ events.fe:32:9
+   │
+32 │         addrs[0] = addr1
+   │         ^^^^^^^^   ^^^^^ address: Value
+   │         │           
+   │         address: Memory
+33 │         addrs[1] = addr2
+   │         ^^^^^ ^ u256: Value
+   │         │      
+   │         Array<address, 2>: Memory
+
+note: 
+   ┌─ events.fe:33:9
+   │
+33 │         addrs[1] = addr2
+   │         ^^^^^^^^   ^^^^^ address: Value
+   │         │           
+   │         address: Memory
+34 │         emit Addresses(ctx, addrs)
+   │                        ^^^  ^^^^^ Array<address, 2>: Memory
+   │                        │     
+   │                        Context: Memory
+
+note: 
+   ┌─ events.fe:34:9
+   │
+34 │         emit Addresses(ctx, addrs)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17766225573703958283
    │
    = Event {
          name: "Addresses",

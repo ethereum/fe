@@ -14,12 +14,13 @@ note:
   │  
 7 │ ╭     pub fn read_bar(self) -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 2875164910451995213
+  │ ╰───────────────────────────^ attributes hash: 11773348765973600208
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(

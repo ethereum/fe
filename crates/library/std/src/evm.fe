@@ -1,69 +1,51 @@
 # Basic context accessor functions.
-# These should be unsafe when the Context object is introduced.
+pub unsafe fn chain_id() -> u256:
+  return __chainid()
 
-pub fn chain_id() -> u256:
-  unsafe:
-    return __chainid()
+pub unsafe fn base_fee() -> u256:
+  return __basefee()
 
-pub fn base_fee() -> u256:
-  unsafe:
-    return __basefee()
+pub unsafe fn origin() -> address:
+  return address(__origin())
 
-pub fn origin() -> address:
-  unsafe:
-    return address(__origin())
+pub unsafe fn gas_price() -> u256:
+  return __gasprice()
 
-pub fn gas_price() -> u256:
-  unsafe:
-    return __gasprice()
+pub unsafe fn block_hash(b: u256) -> u256:
+  return __blockhash(b)
 
-pub fn block_hash(b: u256) -> u256:
-  unsafe:
-    return __blockhash(b)
+pub unsafe fn coin_base() -> address:
+  return address(__coinbase())
 
-pub fn coin_base() -> address:
-  unsafe:
-    return address(__coinbase())
+pub unsafe fn timestamp() -> u256:
+  return __timestamp()
 
-pub fn timestamp() -> u256:
-  unsafe:
-    return __timestamp()
+pub unsafe fn block_number() -> u256:
+  return __number()
 
-pub fn block_number() -> u256:
-  unsafe:
-    return __number()
+pub unsafe fn difficulty() -> u256:
+  return __difficulty()
 
-pub fn difficulty() -> u256:
-  unsafe:
-    return __difficulty()
+pub unsafe fn gas_limit() -> u256:
+  return __gaslimit()
 
-pub fn gas_limit() -> u256:
-  unsafe:
-    return __gaslimit()
+pub unsafe fn gas() -> u256:
+  return __gas()
 
-pub fn gas() -> u256:
-  unsafe:
-    return __gas()
+pub unsafe fn self_address() -> address:
+  return address(__address())
 
-pub fn self_address() -> address:
-  unsafe:
-    return address(__address())
+pub unsafe fn balance_of(addr: address) -> u256:
+  return __balance(u256(addr))
 
-pub fn balance_of(addr: address) -> u256:
-  unsafe:
-    return __balance(u256(addr))
+pub unsafe fn balance() -> u256:
+  return __selfbalance()
 
-pub fn balance() -> u256:
-  unsafe:
-    return __selfbalance()
+pub unsafe fn caller() -> address:
+  return address(__caller())
 
-pub fn caller() -> address:
-  unsafe:
-    return address(__caller())
-
-pub fn call_value() -> u256:
-  unsafe:
-    return __callvalue()
+pub unsafe fn call_value() -> u256:
+  return __callvalue()
 
 
 # Overflowing math ops. Should these be unsafe or named
@@ -177,22 +159,22 @@ pub fn sar(x: u256, y: u256) -> u256:
 
 # Evm state access and control
 pub unsafe fn return_mem(location: u256, len: u256):
-    return __return(location, len)
+    __return(location, len)
 
 pub unsafe fn revert_mem(location: u256, len: u256):
-    return __revert(location, len)
+    __revert(location, len)
 
 pub unsafe fn selfdestruct(addr: address):
-    return __selfdestruct(u256(addr))
+    __selfdestruct(u256(addr))
 
 # Invalid opcode. Equivalent to revert(0, 0),
 # except that all remaining gas in the current context
 # is consumed.
 pub unsafe fn invalid():
-    return __invalid()
+    __invalid()
 
 pub unsafe fn stop():
-    return __stop()
+    __stop()
 
 pub unsafe fn pc() -> u256:
     return __pc()
@@ -205,16 +187,16 @@ pub unsafe fn mload(p: u256) -> u256:
     return __mload(p)
 
 pub unsafe fn mstore(p: u256, v: u256):
-    return __mstore(p, v)
+    __mstore(p, v)
 
 pub unsafe fn mstore8(p: u256, v: u256):
-    return __mstore8(p, v)
+    __mstore8(p, v)
 
 pub unsafe fn sload(p: u256) -> u256:
     return __sload(p)
 
 pub unsafe fn sstore(p: u256, v: u256):
-    return __sstore(p, v)
+    __sstore(p, v)
 
 pub unsafe fn msize() -> u256:
     return __msize()
@@ -226,25 +208,25 @@ pub unsafe fn call_data_size() -> u256:
     return __calldatasize()
 
 pub unsafe fn call_data_copy(t: u256, f: u256, s: u256):
-    return __calldatacopy(t, f, s)
+    __calldatacopy(t, f, s)
 
 pub unsafe fn code_size() -> u256:
     return __codesize()
 
 pub unsafe fn code_copy(t: u256, f: u256, s: u256):
-    return __codecopy(t, f, s)
+    __codecopy(t, f, s)
 
 pub unsafe fn return_data_size() -> u256:
     return __returndatasize()
 
 pub unsafe fn return_data_copy(t: u256, f: u256, s: u256):
-    return __returndatacopy(t, f, s)
+    __returndatacopy(t, f, s)
 
 pub unsafe fn extcodesize(addr: address) -> u256:
     return __extcodesize(u256(addr))
 
 pub unsafe fn ext_code_copy(addr: address, t: u256, f: u256, s: u256):
-    return __extcodecopy(u256(addr), t, f, s)
+    __extcodecopy(u256(addr), t, f, s)
 
 pub unsafe fn ext_code_hash(addr: address) -> u256:
     return __extcodehash(u256(addr))

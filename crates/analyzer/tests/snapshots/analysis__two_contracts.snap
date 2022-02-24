@@ -4,82 +4,98 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ two_contracts.fe:2:5
+  ┌─ two_contracts.fe:4:5
   │
-2 │     other: Bar
+4 │     other: Bar
   │     ^^^^^^^^^^ Bar
 
 note: 
-  ┌─ two_contracts.fe:7:5
-  │  
-7 │ ╭     pub fn foo(self) -> u256:
-8 │ │         self.other.set_foo_addr(self.address)
-9 │ │         return self.other.answer()
-  │ ╰──────────────────────────────────^ attributes hash: 2875164910451995213
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
-
-note: 
-  ┌─ two_contracts.fe:8:9
-  │
-8 │         self.other.set_foo_addr(self.address)
-  │         ^^^^ Foo: Value
-
-note: 
-  ┌─ two_contracts.fe:8:9
-  │
-8 │         self.other.set_foo_addr(self.address)
-  │         ^^^^^^^^^^              ^^^^ Foo: Value
-  │         │                        
-  │         Bar: Storage { nonce: Some(0) } => Value
-
-note: 
-  ┌─ two_contracts.fe:8:33
-  │
-8 │         self.other.set_foo_addr(self.address)
-  │                                 ^^^^^^^^^^^^ address: Value
-
-note: 
-  ┌─ two_contracts.fe:8:9
-  │
-8 │         self.other.set_foo_addr(self.address)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-9 │         return self.other.answer()
-  │                ^^^^ Foo: Value
-
-note: 
-  ┌─ two_contracts.fe:9:16
-  │
-9 │         return self.other.answer()
-  │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
-
-note: 
-  ┌─ two_contracts.fe:9:16
-  │
-9 │         return self.other.answer()
-  │                ^^^^^^^^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ two_contracts.fe:11:5
+   ┌─ two_contracts.fe:9:5
    │  
-11 │ ╭     pub fn add(x: u256, y: u256) -> u256:
-12 │ │         return x + y
-   │ ╰────────────────────^ attributes hash: 4022593831796629401
+ 9 │ ╭     pub fn foo(self, ctx: Context) -> u256:
+10 │ │         self.other.set_foo_addr(ctx.self_address())
+11 │ │         return self.other.answer()
+   │ ╰──────────────────────────────────^ attributes hash: 15791625094174035122
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ two_contracts.fe:10:9
+   │
+10 │         self.other.set_foo_addr(ctx.self_address())
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ two_contracts.fe:10:9
+   │
+10 │         self.other.set_foo_addr(ctx.self_address())
+   │         ^^^^^^^^^^              ^^^ Context: Memory
+   │         │                        
+   │         Bar: Storage { nonce: Some(0) } => Value
+
+note: 
+   ┌─ two_contracts.fe:10:33
+   │
+10 │         self.other.set_foo_addr(ctx.self_address())
+   │                                 ^^^^^^^^^^^^^^^^^^ address: Value
+
+note: 
+   ┌─ two_contracts.fe:10:9
+   │
+10 │         self.other.set_foo_addr(ctx.self_address())
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+11 │         return self.other.answer()
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ two_contracts.fe:11:16
+   │
+11 │         return self.other.answer()
+   │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
+
+note: 
+   ┌─ two_contracts.fe:11:16
+   │
+11 │         return self.other.answer()
+   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ two_contracts.fe:13:5
+   │  
+13 │ ╭     pub fn add(x: u256, y: u256) -> u256:
+14 │ │         return x + y
+   │ ╰────────────────────^ attributes hash: 3620942230080591742
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",
@@ -112,37 +128,51 @@ note:
      }
 
 note: 
-   ┌─ two_contracts.fe:12:16
+   ┌─ two_contracts.fe:14:16
    │
-12 │         return x + y
+14 │         return x + y
    │                ^   ^ u256: Value
    │                │    
    │                u256: Value
 
 note: 
-   ┌─ two_contracts.fe:12:16
+   ┌─ two_contracts.fe:14:16
    │
-12 │         return x + y
+14 │         return x + y
    │                ^^^^^ u256: Value
 
 note: 
-   ┌─ two_contracts.fe:15:5
+   ┌─ two_contracts.fe:17:5
    │
-15 │     other: Foo
+17 │     other: Foo
    │     ^^^^^^^^^^ Foo
 
 note: 
-   ┌─ two_contracts.fe:17:5
+   ┌─ two_contracts.fe:19:5
    │  
-17 │ ╭     pub fn set_foo_addr(self, addr: address):
-18 │ │         self.other = Foo(addr)
-   │ ╰──────────────────────────────^ attributes hash: 13016862792707996445
+19 │ ╭     pub fn set_foo_addr(self, ctx: Context, addr: address):
+20 │ │         self.other = Foo(ctx, addr)
+   │ ╰───────────────────────────────────^ attributes hash: 2501636549900236199
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: Some(
+             Mutable,
+         ),
          params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
              FunctionParam {
                  name: "addr",
                  typ: Ok(
@@ -160,36 +190,38 @@ note:
      }
 
 note: 
-   ┌─ two_contracts.fe:18:9
+   ┌─ two_contracts.fe:20:9
    │
-18 │         self.other = Foo(addr)
+20 │         self.other = Foo(ctx, addr)
    │         ^^^^ Bar: Value
 
 note: 
-   ┌─ two_contracts.fe:18:9
+   ┌─ two_contracts.fe:20:9
    │
-18 │         self.other = Foo(addr)
-   │         ^^^^^^^^^^       ^^^^ address: Value
-   │         │                 
+20 │         self.other = Foo(ctx, addr)
+   │         ^^^^^^^^^^       ^^^  ^^^^ address: Value
+   │         │                │     
+   │         │                Context: Memory
    │         Foo: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ two_contracts.fe:18:22
+   ┌─ two_contracts.fe:20:22
    │
-18 │         self.other = Foo(addr)
-   │                      ^^^^^^^^^ Foo: Value
+20 │         self.other = Foo(ctx, addr)
+   │                      ^^^^^^^^^^^^^^ Foo: Value
 
 note: 
-   ┌─ two_contracts.fe:20:5
+   ┌─ two_contracts.fe:22:5
    │  
-20 │ ╭     pub fn answer(self) -> u256:
-21 │ │         return self.other.add(20, 22)
-   │ ╰─────────────────────────────────────^ attributes hash: 2875164910451995213
+22 │ ╭     pub fn answer(self) -> u256:
+23 │ │         return self.other.add(20, 22)
+   │ ╰─────────────────────────────────────^ attributes hash: 11773348765973600208
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -201,24 +233,24 @@ note:
      }
 
 note: 
-   ┌─ two_contracts.fe:21:16
+   ┌─ two_contracts.fe:23:16
    │
-21 │         return self.other.add(20, 22)
+23 │         return self.other.add(20, 22)
    │                ^^^^ Bar: Value
 
 note: 
-   ┌─ two_contracts.fe:21:16
+   ┌─ two_contracts.fe:23:16
    │
-21 │         return self.other.add(20, 22)
+23 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^     ^^  ^^ u256: Value
    │                │              │    
    │                │              u256: Value
    │                Foo: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ two_contracts.fe:21:16
+   ┌─ two_contracts.fe:23:16
    │
-21 │         return self.other.add(20, 22)
+23 │         return self.other.add(20, 22)
    │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

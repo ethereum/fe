@@ -352,8 +352,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             | Item::BuiltinFunction(_)
             | Item::Intrinsic(_)
             | Item::Ingot(_)
-            | Item::Module(_)
-            | Item::Object(_) => vec![],
+            | Item::Module(_) => vec![],
         })
         .collect::<Vec<_>>();
 

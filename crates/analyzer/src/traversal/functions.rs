@@ -2,9 +2,10 @@ use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing
 use crate::errors::FatalError;
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{Base, FixedSize, Type};
+use crate::namespace::types::{Base, EventField, FixedSize, Type};
 use crate::traversal::call_args::LabelPolicy;
 use crate::traversal::{assignments, call_args, declarations, expressions};
+use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
@@ -164,15 +165,48 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
             }
             Some(NamedThing::Item(Item::Event(event))) => {
                 scope.root.add_emit(stmt, event);
-                let params = event.typ(scope.db()).fields.clone();
-                call_args::validate_named_args(
-                    scope,
-                    &name.kind,
-                    name.span,
-                    args,
-                    &params,
-                    LabelPolicy::AllowUnlabeledIfNameEqual,
-                )?;
+                if let Some(context_type) = scope.get_context_type() {
+                    // we add ctx to the list of expected params
+                    let params_with_ctx = [
+                        vec![EventField {
+                            name: "ctx".into(),
+                            typ: Ok(FixedSize::Struct(context_type)),
+                            is_indexed: false,
+                        }],
+                        event.typ(scope.db()).fields.clone(),
+                    ]
+                    .concat();
+                    call_args::validate_named_args(
+                        scope,
+                        &name.kind,
+                        name.span,
+                        args,
+                        &params_with_ctx,
+                        LabelPolicy::AllowUnlabeledIfNameEqual,
+                    )?;
+                } else {
+                    scope.fancy_error(
+                        "`Context` is not defined",
+                        vec![
+                            Label::primary(
+                                stmt.span,
+                                "`ctx` must be defined and passed into the event",
+                            ),
+                            Label::secondary(
+                                scope.parent_function().name_span(scope.db()),
+                                "Note: declare `ctx` in this function signature",
+                            ),
+                            Label::secondary(
+                                scope.parent_function().name_span(scope.db()),
+                                "Example: `pub fn foo(ctx: Context, ...)`",
+                            ),
+                        ],
+                        vec![
+                            "Note: import context with `use std::context::Context`".into(),
+                            "Example: emit MyEvent(ctx, ...)".into(),
+                        ],
+                    );
+                }
             }
             Some(named_thing) => {
                 scope.error(

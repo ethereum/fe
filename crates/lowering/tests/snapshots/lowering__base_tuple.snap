@@ -32,6 +32,8 @@ struct $tuple_address_address_u16_i32_bool_:
     pub item3: i32
     pub item4: bool
 
+use std::context::Context
+
 contract Foo:
     my_tuple_field: $tuple_bool_address_
 
@@ -53,6 +55,6 @@ contract Foo:
         pass
         return ()
 
-    pub fn food() -> ():
-        emit MyEvent(my_tuple: $tuple_bool_bool_(item0: false, item1: true), my_other_tuple: $tuple_address_address_(item0: address(0), item1: address(1)))
+    pub fn food(ctx: Context) -> ():
+        emit MyEvent(ctx, my_tuple: $tuple_bool_bool_(item0: false, item1: true), my_other_tuple: $tuple_address_address_(item0: address(0), item1: address(1)))
         return ()

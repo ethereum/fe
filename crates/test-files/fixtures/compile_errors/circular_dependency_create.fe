@@ -1,5 +1,7 @@
+use std::context::Context
+
 contract Foo:
-    pub fn bar() -> address:
-        let foo: Foo = Foo.create(0)
+    pub fn bar(ctx: Context) -> address:
+        let foo: Foo = Foo.create(ctx, 0)
 
         return address(foo)

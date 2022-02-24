@@ -5,7 +5,7 @@ use crate::namespace::items::{
     Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Contract, FixedSize, SelfDecl, Struct, Type};
+use crate::namespace::types::{self, Contract, CtxDecl, FixedSize, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -39,13 +39,14 @@ pub fn function_signature(
     }
 
     let mut self_decl = None;
+    let mut ctx_decl = None;
     let mut names = HashMap::new();
     let params = def
         .args
         .iter()
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
-            ast::FunctionArg::Zelf => {
+            ast::FunctionArg::Self_ => {
                 if fn_parent.is_none() {
                     scope.error(
                         "`self` can only be used in contract or struct functions",
@@ -76,6 +77,38 @@ pub fn function_signature(
                         "`Map` type can't be used as a function parameter",
                     ))),
                 });
+
+                if let Some(context_type) = scope.get_context_type() {
+                    if typ == Ok(FixedSize::Struct(context_type)) {
+                        if arg.name() != "ctx" {
+                            scope.error(
+                                "invalid `Context` instance name",
+                                arg.span,
+                                "instances of `Context` must be named `ctx`",
+                            );
+                        } else if !function.parent(db).is_contract() {
+                            scope.error(
+                                "`ctx` cannot be passed into pure functions",
+                                arg.span,
+                                "`ctx` can only be passed into contract functions",
+                            );
+                        } else if self_decl.is_some() && index != 1 {
+                            scope.error(
+                                "invalid parameter order",
+                                arg.span,
+                                "`ctx: Context` must be placed after the `self` parameter",
+                            );
+                        } else if self_decl.is_none() && index != 0 {
+                            scope.error(
+                                "invalid parameter order",
+                                arg.span,
+                                "`ctx: Context` must be the first parameter",
+                            );
+                        } else {
+                            ctx_decl = Some(CtxDecl::Mutable);
+                        }
+                    }
+                }
 
                 if let Ok(Some(named_item)) = scope.resolve_name(&name.kind) {
                     scope.name_conflict_error(
@@ -144,6 +177,7 @@ pub fn function_signature(
     Analysis {
         value: Rc::new(types::FunctionSignature {
             self_decl,
+            ctx_decl,
             params,
             return_type,
         }),

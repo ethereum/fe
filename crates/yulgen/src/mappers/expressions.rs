@@ -5,10 +5,7 @@ use crate::operations::{
     math as math_operations, structs as struct_operations,
 };
 use crate::types::{AsAbiType, EvmSized};
-use fe_analyzer::builtins::{
-    self, BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction,
-    GlobalObject, MsgField, TxField,
-};
+use fe_analyzer::builtins::{self, ContractTypeMethod, GlobalFunction};
 use fe_analyzer::context::{CallType, Location};
 use fe_analyzer::namespace::items::Class;
 use fe_analyzer::namespace::types::{Base, FixedSize, Type};
@@ -18,7 +15,6 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
@@ -138,7 +134,14 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         CallType::TypeConstructor(Type::Base(Base::Numeric(integer))) => {
             math_operations::adjust_numeric_size(&integer, yul_args[0].clone())
         }
-        CallType::TypeConstructor(_) => yul_args[0].clone(),
+        CallType::TypeConstructor(typ) => {
+            if matches!(typ, Type::Contract(_)) {
+                // the first argument is `ctx`, so we ignore it and give the contract's address
+                yul_args[1].clone()
+            } else {
+                yul_args[0].clone()
+            }
+        }
         CallType::Pure(func) => {
             let func_name = identifier! { (context.db.function_yul_name(func)) };
             expression! { [func_name]([yul_args...]) }
@@ -148,8 +151,8 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             match function {
                 ContractTypeMethod::Create2 => contract_operations::create2(
                     &contract_name,
-                    yul_args[0].clone(),
                     yul_args[1].clone(),
+                    yul_args[2].clone(),
                 ),
                 ContractTypeMethod::Create => {
                     contract_operations::create(&contract_name, yul_args[0].clone())
@@ -412,35 +415,6 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
         _ => unreachable!(),
     };
 
-    // Check if it's a magical global object first.
-    if let fe::Expr::Name(name) = &target.kind {
-        match GlobalObject::from_str(name) {
-            Ok(GlobalObject::Block) => match BlockField::from_str(&field.kind) {
-                Ok(BlockField::Coinbase) => return expression! { coinbase() },
-                Ok(BlockField::Difficulty) => return expression! { difficulty() },
-                Ok(BlockField::Number) => return expression! { number() },
-                Ok(BlockField::Timestamp) => return expression! { timestamp() },
-                Err(_) => panic!("invalid `block` attribute name"),
-            },
-            Ok(GlobalObject::Chain) => match ChainField::from_str(&field.kind) {
-                Ok(ChainField::Id) => return expression! { chainid() },
-                Err(_) => panic!("invalid `chain` attribute name"),
-            },
-            Ok(GlobalObject::Msg) => match MsgField::from_str(&field.kind) {
-                Ok(MsgField::Sender) => return expression! { caller() },
-                Ok(MsgField::Sig) => return expression! { cloadn(0, 4) },
-                Ok(MsgField::Value) => return expression! { callvalue() },
-                Err(_) => panic!("invalid `msg` attribute name"),
-            },
-            Ok(GlobalObject::Tx) => match TxField::from_str(&field.kind) {
-                Ok(TxField::GasPrice) => return expression! { gasprice() },
-                Ok(TxField::Origin) => return expression! { origin() },
-                Err(_) => panic!("invalid `msg` attribute name"),
-            },
-            Err(_) => {}
-        }
-    }
-
     let target_attrs = context.expression_attributes(target).clone();
 
     match &target_attrs.typ {
@@ -449,9 +423,6 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
             unreachable!("only `self` contract fields can be accessed for now")
         }
         Type::SelfContract(_) => {
-            if let Ok(ContractSelfField::Address) = ContractSelfField::from_str(&field.kind) {
-                return expression! { address() };
-            }
             let exp_attrs = context.expression_attributes(exp);
             let nonce = match exp_attrs.location {
                 Location::Storage { nonce: Some(nonce) } => nonce,

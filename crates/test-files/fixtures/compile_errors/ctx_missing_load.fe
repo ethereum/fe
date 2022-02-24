@@ -1,0 +1,9 @@
+use std::context::Context
+
+contract Foo:
+    pub fn bar():
+        pass
+
+contract Bar:
+    pub fn create_foo(ctx: Context):
+        Foo(0)

@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: Not a `tx` field
-  ┌─ compile_errors/invalid_tx_field.fe:4:8
+error: cannot find value `tx` in this scope
+  ┌─ compile_errors/invalid_tx_field.fe:4:5
   │
 4 │     tx.foo
-  │        ^^^
-  │
-  = Note: Only `gas_price` and `origin` can be accessed on `tx`.
+  │     ^^ undefined
 
 

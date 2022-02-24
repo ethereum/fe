@@ -1,0 +1,13 @@
+use std::context::Context
+
+contract Foo:
+
+    pub fn bar(ctx: Context) -> u256:
+        return ctx.block_number()
+
+contract Bing:
+    favorite_number: u256
+
+    pub fn baz(self, ctx: Context):
+        let foo: Foo = Foo.create(ctx, 0)
+        self.favorite_number = foo.bar(ctx)

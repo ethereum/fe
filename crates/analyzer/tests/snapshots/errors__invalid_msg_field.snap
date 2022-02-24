@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: Not a `msg` field
-  ┌─ compile_errors/invalid_msg_field.fe:4:9
+error: cannot find value `msg` in this scope
+  ┌─ compile_errors/invalid_msg_field.fe:4:5
   │
 4 │     msg.foo
-  │         ^^^
-  │
-  = Note: Only `sender`, `sig` and `value` can be accessed on `msg`.
+  │     ^^^ undefined
 
 

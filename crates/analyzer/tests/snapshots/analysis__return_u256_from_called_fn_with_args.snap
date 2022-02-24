@@ -14,10 +14,11 @@ note:
   │  
 3 │ ╭     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
 4 │ │         return val1 + val2 + val3 + val4 + val5
-  │ ╰───────────────────────────────────────────────^ attributes hash: 4629287087811571223
+  │ ╰───────────────────────────────────────────────^ attributes hash: 16545546616934674984
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "val1",
@@ -122,10 +123,11 @@ note:
   │  
 6 │ ╭     pub fn cem() -> u256:
 7 │ │         return 100
-  │ ╰──────────────────^ attributes hash: 17979516652885443340
+  │ ╰──────────────────^ attributes hash: 6115314201970082834
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -148,12 +150,13 @@ note:
  9 │ ╭     pub fn bar(self) -> u256:
 10 │ │         self.baz[0] = 43
 11 │ │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │ ╰─────────────────────────────────────────────────────^ attributes hash: 2875164910451995213
+   │ ╰─────────────────────────────────────────────────────^ attributes hash: 11773348765973600208
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

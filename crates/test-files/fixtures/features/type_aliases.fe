@@ -1,3 +1,5 @@
+use std::context::Context
+
 type Posts = Map<PostId, PostBody>
 type Scoreboard = Map<PostId, Score>
 type AuthorPosts = Map<Author, PostId>
@@ -12,11 +14,11 @@ contract Forum:
     authors: AuthorPosts
     scoreboard: Scoreboard
 
-    pub fn post(self, body: PostBody):
+    pub fn post(self, ctx: Context, body: PostBody):
         # id: PostId = keccak256(body.abi_encode())
         let id: PostId = 0
         self.posts[id] = body
-        self.authors[msg.sender]
+        self.authors[ctx.msg_sender()]
         self.scoreboard[id] = 0
 
     pub fn upvote(self, id: PostId) -> Score:

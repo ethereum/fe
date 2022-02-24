@@ -1,0 +1,14 @@
+use std::context::Context
+
+event WorldMessage:
+    message: String<42>
+
+contract Barn:
+    pub fn cow():
+        pass
+
+contract Foo:
+    pub fn bar(ctx: Context):
+        let existing_barn: Barn = Barn("hello world", address(0))
+        let created_barn: Barn = Barn.create(address(26), 0)
+        emit WorldMessage(42, message: "hello world")

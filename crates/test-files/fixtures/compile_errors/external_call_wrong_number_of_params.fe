@@ -1,7 +1,9 @@
+use std::context::Context
+
 contract Foo:
     pub fn bar(a: u256, b: u256):
         pass
 
 contract FooProxy:
-    pub fn baz():
-        Foo(address(0)).bar(42)
+    pub fn baz(ctx: Context):
+        Foo(ctx, address(0)).bar(42)

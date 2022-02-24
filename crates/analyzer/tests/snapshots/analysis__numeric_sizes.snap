@@ -8,10 +8,11 @@ note:
   │  
 3 │ ╭     pub fn get_u8_min() -> u8:
 4 │ │         return u8(0)
-  │ ╰────────────────────^ attributes hash: 15462761770183730040
+  │ ╰────────────────────^ attributes hash: 18193502560299416939
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -39,10 +40,11 @@ note:
   │  
 6 │ ╭     pub fn get_u16_min() -> u16:
 7 │ │         return u16(0)
-  │ ╰─────────────────────^ attributes hash: 10017164652541649600
+  │ ╰─────────────────────^ attributes hash: 3086088635989474166
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -70,10 +72,11 @@ note:
    │  
  9 │ ╭     pub fn get_u32_min() -> u32:
 10 │ │         return u32(0)
-   │ ╰─────────────────────^ attributes hash: 4354472668127410067
+   │ ╰─────────────────────^ attributes hash: 1978352585063323439
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -101,10 +104,11 @@ note:
    │  
 12 │ ╭     pub fn get_u64_min() -> u64:
 13 │ │         return u64(0)
-   │ ╰─────────────────────^ attributes hash: 8805350184699333576
+   │ ╰─────────────────────^ attributes hash: 3966212821348382963
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -132,10 +136,11 @@ note:
    │  
 15 │ ╭     pub fn get_u128_min() -> u128:
 16 │ │         return u128(0)
-   │ ╰──────────────────────^ attributes hash: 11305728023724764506
+   │ ╰──────────────────────^ attributes hash: 104322826323649285
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -163,10 +168,11 @@ note:
    │  
 18 │ ╭     pub fn get_u256_min() -> u256:
 19 │ │         return u256(0)
-   │ ╰──────────────────────^ attributes hash: 17979516652885443340
+   │ ╰──────────────────────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -194,10 +200,11 @@ note:
    │  
 21 │ ╭     pub fn get_i8_min() -> i8:
 22 │ │         return i8(-128)
-   │ ╰───────────────────────^ attributes hash: 731104252696575145
+   │ ╰───────────────────────^ attributes hash: 15762448841602984320
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -231,10 +238,11 @@ note:
    │  
 24 │ ╭     pub fn get_i16_min() -> i16:
 25 │ │         return i16(-32768)
-   │ ╰──────────────────────────^ attributes hash: 10826937395839813106
+   │ ╰──────────────────────────^ attributes hash: 1032717434757427850
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -268,10 +276,11 @@ note:
    │  
 27 │ ╭     pub fn get_i32_min() -> i32:
 28 │ │         return i32(-2147483648)
-   │ ╰───────────────────────────────^ attributes hash: 10625528290137096297
+   │ ╰───────────────────────────────^ attributes hash: 18058099208132403133
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -305,10 +314,11 @@ note:
    │  
 30 │ ╭     pub fn get_i64_min() -> i64:
 31 │ │         return i64(-9223372036854775808)
-   │ ╰────────────────────────────────────────^ attributes hash: 13048789010407555817
+   │ ╰────────────────────────────────────────^ attributes hash: 6774734901144681103
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -342,10 +352,11 @@ note:
    │  
 33 │ ╭     pub fn get_i128_min() -> i128:
 34 │ │         return i128(-170141183460469231731687303715884105728)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 11475314391007551899
+   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 155533728466856391
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -379,10 +390,11 @@ note:
    │  
 36 │ ╭     pub fn get_i256_min() -> i256:
 37 │ │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8698921636126413081
+   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8116994679119332188
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -416,10 +428,11 @@ note:
    │  
 39 │ ╭     pub fn get_u8_max() -> u8:
 40 │ │         return u8(255)
-   │ ╰──────────────────────^ attributes hash: 15462761770183730040
+   │ ╰──────────────────────^ attributes hash: 18193502560299416939
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -447,10 +460,11 @@ note:
    │  
 42 │ ╭     pub fn get_u16_max() -> u16:
 43 │ │         return u16(65535)
-   │ ╰─────────────────────────^ attributes hash: 10017164652541649600
+   │ ╰─────────────────────────^ attributes hash: 3086088635989474166
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -478,10 +492,11 @@ note:
    │  
 45 │ ╭     pub fn get_u32_max() -> u32:
 46 │ │         return u32(4294967295)
-   │ ╰──────────────────────────────^ attributes hash: 4354472668127410067
+   │ ╰──────────────────────────────^ attributes hash: 1978352585063323439
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -509,10 +524,11 @@ note:
    │  
 48 │ ╭     pub fn get_u64_max() -> u64:
 49 │ │         return u64(18446744073709551615)
-   │ ╰────────────────────────────────────────^ attributes hash: 8805350184699333576
+   │ ╰────────────────────────────────────────^ attributes hash: 3966212821348382963
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -540,10 +556,11 @@ note:
    │  
 51 │ ╭     pub fn get_u128_max() -> u128:
 52 │ │         return u128(340282366920938463463374607431768211455)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 11305728023724764506
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 104322826323649285
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -571,10 +588,11 @@ note:
    │  
 54 │ ╭     pub fn get_u256_max() -> u256:
 55 │ │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 17979516652885443340
+   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -602,10 +620,11 @@ note:
    │  
 57 │ ╭     pub fn get_i8_max() -> i8:
 58 │ │         return i8(127)
-   │ ╰──────────────────────^ attributes hash: 731104252696575145
+   │ ╰──────────────────────^ attributes hash: 15762448841602984320
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -633,10 +652,11 @@ note:
    │  
 60 │ ╭     pub fn get_i16_max() -> i16:
 61 │ │         return i16(32767)
-   │ ╰─────────────────────────^ attributes hash: 10826937395839813106
+   │ ╰─────────────────────────^ attributes hash: 1032717434757427850
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -664,10 +684,11 @@ note:
    │  
 63 │ ╭     pub fn get_i32_max() -> i32:
 64 │ │         return i32(2147483647)
-   │ ╰──────────────────────────────^ attributes hash: 10625528290137096297
+   │ ╰──────────────────────────────^ attributes hash: 18058099208132403133
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -695,10 +716,11 @@ note:
    │  
 66 │ ╭     pub fn get_i64_max() -> i64:
 67 │ │         return i64(9223372036854775807)
-   │ ╰───────────────────────────────────────^ attributes hash: 13048789010407555817
+   │ ╰───────────────────────────────────────^ attributes hash: 6774734901144681103
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -726,10 +748,11 @@ note:
    │  
 69 │ ╭     pub fn get_i128_max() -> i128:
 70 │ │         return i128(170141183460469231731687303715884105727)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 11475314391007551899
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 155533728466856391
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -757,10 +780,11 @@ note:
    │  
 72 │ ╭     pub fn get_i256_max() -> i256:
 73 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8698921636126413081
+   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8116994679119332188
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

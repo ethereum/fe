@@ -1,3 +1,5 @@
+use std::context::Context
+
 contract Foo:
   pub fn __call__():
     pass
@@ -6,6 +8,6 @@ contract Foo:
 
 
 contract Bar:
-  fn b():
-    let foo: Foo = Foo(address(0))
+  fn b(ctx: Context):
+    let foo: Foo = Foo(ctx, address(0))
     foo.__call__()

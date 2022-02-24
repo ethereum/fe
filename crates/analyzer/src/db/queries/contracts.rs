@@ -398,15 +398,18 @@ pub fn contract_runtime_dependency_graph(
     // the runtime object for a contract.
 
     let root = Item::Type(TypeDef::Contract(contract));
-    let pub_fns = contract
-        .public_functions(db)
-        .values()
-        .map(|fun| (root, Item::Function(*fun), DepLocality::Local))
-        .collect::<Vec<_>>();
+    let root_fns = if let Some(call_id) = contract.call_function(db) {
+        vec![call_id]
+    } else {
+        contract.public_functions(db).values().copied().collect()
+    }
+    .into_iter()
+    .map(|fun| (root, Item::Function(fun), DepLocality::Local))
+    .collect::<Vec<_>>();
 
-    let mut graph = DepGraph::from_edges(pub_fns.iter());
+    let mut graph = DepGraph::from_edges(root_fns.iter());
 
-    for (_, item, _) in pub_fns {
+    for (_, item, _) in root_fns {
         if let Some(subgraph) = item.dependency_graph(db) {
             graph.extend(subgraph.all_edges())
         }

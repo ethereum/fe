@@ -1,6 +1,7 @@
+use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
-use crate::namespace::items::{Class, FunctionId, Item};
+use crate::namespace::items::{Class, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
@@ -9,13 +10,6 @@ use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
 use crate::traversal::types::apply_generic_type_args;
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
-use crate::{
-    builtins::{
-        BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction,
-        GlobalObject, Intrinsic, MsgField, TxField, ValueMethod,
-    },
-    namespace::items::TypeDef,
-};
 use fe_common::diagnostics::Label;
 use fe_common::{numeric, Span};
 use fe_parser::ast as fe;
@@ -536,105 +530,20 @@ fn expr_attribute(
         fe::Expr::Attribute { value, attr } => (value, attr),
         _ => unreachable!(),
     };
-    let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
-
-    // We have to check if its a global object first, because the global
-    // objects are magical type-less things that don't work with normal expr
-    // checking. This will all go away when the `Context` struct is ready.
-
-    if let fe::Expr::Name(name) = &target.kind {
-        match GlobalObject::from_str(name) {
-            Ok(GlobalObject::Block) => {
-                return match BlockField::from_str(&field.kind) {
-                    Ok(BlockField::Coinbase) => base_type(Base::Address),
-                    Ok(BlockField::Difficulty | BlockField::Number | BlockField::Timestamp) => base_type(U256),
-                    Err(_) => {
-                        Err(FatalError::new(context.fancy_error(
-                            "Not a block field",
-                            vec![
-                                Label::primary(
-                                    field.span,
-                                    "",
-                                ),
-                            ],
-                            vec!["Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.".into()],
-                        )))
-                    }
-                }
-            }
-            Ok(GlobalObject::Chain) => {
-                return match ChainField::from_str(&field.kind) {
-                    Ok(ChainField::Id) => base_type(U256),
-                    Err(_) => {
-                        Err(FatalError::new(context.fancy_error(
-                            "Not a chain field",
-                            vec![Label::primary(field.span, "")],
-                            vec!["Note: Only `id` can be accessed on `chain`.".into()],
-                        )))
-                    }
-                }
-            }
-            Ok(GlobalObject::Msg) => {
-                return match MsgField::from_str(&field.kind) {
-                    Ok(MsgField::Sender) => base_type(Base::Address),
-                    Ok(MsgField::Sig | MsgField::Value) => base_type(U256),
-                    Err(_) => {
-                        Err(FatalError::new(context.fancy_error(
-                            "Not a `msg` field",
-                            vec![
-                                Label::primary(
-                                    field.span,
-                                    "",
-                                ),
-                            ],
-                            vec!["Note: Only `sender`, `sig` and `value` can be accessed on `msg`.".into()],
-                        )))
-                    }
-                }
-            }
-            Ok(GlobalObject::Tx) => {
-                return match TxField::from_str(&field.kind) {
-                    Ok(TxField::GasPrice) => base_type(U256),
-                    Ok(TxField::Origin) => base_type(Base::Address),
-                    Err(_) => {
-                        Err(FatalError::new(context.fancy_error(
-                            "Not a `tx` field",
-                            vec![Label::primary(field.span, "")],
-                            vec![
-                                "Note: Only `gas_price` and `origin` can be accessed on `tx`."
-                                    .into(),
-                            ],
-                        )))
-                    }
-                }
-            }
-            Err(_) => {}
-        }
-    }
 
     let attrs = expr(context, target, None)?;
     return match attrs.typ {
-        Type::SelfContract(contract) => {
-            // Check built-in `.address` field first. (This will go away soon.)
-            if let Ok(ContractSelfField::Address) = ContractSelfField::from_str(&field.kind) {
-                return Ok(ExpressionAttributes::new(
-                    Type::Base(Base::Address),
-                    Location::Value,
-                ));
-            }
-
-            match contract.id.field_type(context.db(), &field.kind) {
-                Some((typ, nonce)) => Ok(ExpressionAttributes::new(
-                    typ?,
-                    Location::Storage { nonce: Some(nonce) },
-                )),
-                None => Err(FatalError::new(context.fancy_error(
-                    &format!("No field `{}` exists on this contract", &field.kind),
-                    vec![Label::primary(field.span, "undefined field")],
-                    vec![],
-                ))),
-            }
-        }
+        Type::SelfContract(contract) => match contract.id.field_type(context.db(), &field.kind) {
+            Some((typ, nonce)) => Ok(ExpressionAttributes::new(
+                typ?,
+                Location::Storage { nonce: Some(nonce) },
+            )),
+            None => Err(FatalError::new(context.fancy_error(
+                &format!("No field `{}` exists on this contract", &field.kind),
+                vec![Label::primary(field.span, "undefined field")],
+                vec![],
+            ))),
+        },
         // If the value is a struct, we return the type of the struct field. The location stays the
         // same and can be memory or storage.
         Type::Struct(struct_) => {
@@ -1013,14 +922,6 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 id.typ(context.db())?,
             ),
         ))),
-        NamedThing::Item(Item::Object(_)) => Err(FatalError::new(context.error(
-            &format!("`{}` is not callable", func.kind),
-            func.span,
-            &format!(
-                "`{}` is a built-in object, and can't be used as a function",
-                func.kind
-            ),
-        ))),
         NamedThing::Item(Item::Event(_)) => Err(FatalError::new(context.fancy_error(
             &format!("`{}` is not callable", func.kind),
             vec![Label::primary(
@@ -1223,9 +1124,15 @@ fn expr_call_type_constructor(
         _ => {}
     }
 
-    // These all expect 1 arg, for now.
-    validate_arg_count(context, &format!("{}", typ), name_span, args, 1, "argument");
-    expect_no_label_on_arg(context, args, 0);
+    if matches!(typ, Type::Contract(_)) {
+        validate_arg_count(context, &format!("{}", typ), name_span, args, 2, "argument");
+        expect_no_label_on_arg(context, args, 0);
+        expect_no_label_on_arg(context, args, 1);
+    } else {
+        // These all expect 1 arg, for now.
+        validate_arg_count(context, &format!("{}", typ), name_span, args, 1, "argument");
+        expect_no_label_on_arg(context, args, 0);
+    }
 
     let expr_attrs = match &typ {
         Type::String(string_type) => {
@@ -1236,10 +1143,50 @@ fn expr_call_type_constructor(
             ExpressionAttributes::new(typ.clone(), Location::Memory)
         }
         Type::Contract(_) => {
-            if let Some(arg) = args.kind.first() {
-                let arg_attr = assignable_expr(context, &arg.kind.value, None)?;
-                if arg_attr.typ != Type::Base(Base::Address) {
-                    context.type_error("type mismatch", arg.span, &Base::Address, &typ);
+            if let Some(first_arg) = &args.kind.get(0) {
+                let first_arg_attr = assignable_expr(context, &first_arg.kind.value, None)?;
+                if let Some(context_type) = context.get_context_type() {
+                    if first_arg_attr.typ != Type::Struct(context_type.clone()) {
+                        context.type_error(
+                            "type mismatch",
+                            first_arg.span,
+                            &context_type,
+                            &first_arg_attr.typ,
+                        );
+                    }
+                } else {
+                    context.fancy_error(
+                        "`Context` is not defined",
+                        vec![
+                            Label::primary(
+                                args.span,
+                                "`ctx` must be defined and passed into the contract constructor",
+                            ),
+                            Label::secondary(
+                                context.parent_function().name_span(context.db()),
+                                "Note: declare `ctx` in this function signature",
+                            ),
+                            Label::secondary(
+                                context.parent_function().name_span(context.db()),
+                                "Example: `pub fn foo(ctx: Context, ...)`",
+                            ),
+                        ],
+                        vec![
+                            "Note: import context with `use std::context::Context`".into(),
+                            "Example: MyContract(ctx, contract_address)".into(),
+                        ],
+                    );
+                }
+            }
+            if let Some(second_arg) = &args.kind.get(1) {
+                let second_arg_attr = assignable_expr(context, &second_arg.kind.value, None)?;
+                if second_arg_attr.typ != Type::Base(Base::Address) {
+                    context.type_error(
+                        "type mismatch",
+                        second_arg.span,
+                        &Base::Address,
+                        &second_arg_attr.typ,
+                    );
                 }
             }
             ExpressionAttributes::new(typ.clone(), Location::Value)
@@ -1371,30 +1318,9 @@ fn expr_call_method(
     // and the global objects are replaced by `Context`, we can remove this.
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
-        match context.resolve_name(name) {
-            Ok(Some(NamedThing::Item(Item::Type(id)))) => {
-                let typ = id.typ(context.db())?;
-                return expr_call_type_attribute(
-                    context,
-                    typ,
-                    target.span,
-                    field,
-                    generic_args,
-                    args,
-                );
-            }
-            Ok(Some(NamedThing::Item(Item::Object(object)))) => {
-                return Err(FatalError::new(context.error(
-                    &format!(
-                        "no function `{}` exists on `{}`",
-                        &field.kind,
-                        object.as_ref(),
-                    ),
-                    target.span + field.span,
-                    "undefined function",
-                )));
-            }
-            _ => {}
+        if let Ok(Some(NamedThing::Item(Item::Type(id)))) = context.resolve_name(name) {
+            let typ = id.typ(context.db())?;
+            return expr_call_type_attribute(context, typ, target.span, field, generic_args, args);
         }
     }
 
@@ -1450,12 +1376,17 @@ fn expr_call_method(
             }
 
             let sig = method.signature(context.db());
+            let params = if is_self {
+                &sig.params
+            } else {
+                sig.external_params()
+            };
             validate_named_args(
                 context,
                 &field.kind,
                 field.span,
                 args,
-                &sig.params,
+                params,
                 LabelPolicy::AllowAnyUnlabeled,
             )?;
 
@@ -1709,7 +1640,50 @@ fn expr_call_type_attribute(
 
                 for i in 0..arg_count {
                     if let Some(attrs) = arg_attributes.get(i) {
-                        if !matches!(&attrs.typ, Type::Base(Base::Numeric(_))) {
+                        if i == 0 {
+                            if let Some(context_type) = context.get_context_type() {
+                                if attrs.typ != Type::Struct(context_type) {
+                                    context.fancy_error(
+                                        &format!(
+                                            "incorrect type for argument to `{}.{}`",
+                                            &class_name,
+                                            function.as_ref()
+                                        ),
+                                        vec![Label::primary(
+                                            args.kind[i].span,
+                                            format!(
+                                                "this has type `{}`; expected `Context`",
+                                                &attrs.typ
+                                            ),
+                                        )],
+                                        vec![],
+                                    );
+                                }
+                            } else {
+                                context.fancy_error(
+                                    "`Context` is not defined",
+                                    vec![
+                                        Label::primary(
+                                            args.span,
+                                            "`ctx` must be defined and passed into the function",
+                                        ),
+                                        Label::secondary(
+                                            context.parent_function().name_span(context.db()),
+                                            "Note: declare `ctx` in this function signature",
+                                        ),
+                                        Label::secondary(
+                                            context.parent_function().name_span(context.db()),
+                                            "Example: `pub fn foo(ctx: Context, ...)`",
+                                        ),
+                                    ],
+                                    vec![
+                                        "Note: import context with `use std::context::Context`"
+                                            .into(),
+                                        "Example: `MyContract.create(ctx, 0)`".into(),
+                                    ],
+                                );
+                            }
+                        } else if !matches!(&attrs.typ, Type::Base(Base::Numeric(_))) {
                             context.fancy_error(
                                 &format!(
                                     "incorrect type for argument to `{}.{}`",

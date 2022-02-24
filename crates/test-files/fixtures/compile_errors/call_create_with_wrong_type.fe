@@ -1,7 +1,9 @@
+use std::context::Context
+
 contract Bar:
     pass
 
 contract Foo:
-    pub fn foo():
-        Bar.create(true)
-        Bar.create()     # agroce #447
+    pub fn foo(ctx: Context):
+        Bar.create(ctx, true)
+        Bar.create(ctx)     # agroce #447

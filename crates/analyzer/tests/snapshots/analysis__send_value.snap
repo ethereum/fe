@@ -4,15 +4,29 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ send_value.fe:2:5
+  ┌─ send_value.fe:4:5
   │  
-2 │ ╭     pub fn send_them_wei(to: address, wei: u256):
-3 │ │         std::send_value(to, wei)
-  │ ╰────────────────────────────────^ attributes hash: 1344491078926082800
+4 │ ╭     pub fn send_them_wei(ctx: Context, to: address, wei: u256):
+5 │ │         ctx.send_value(to, wei)
+  │ ╰───────────────────────────────^ attributes hash: 3182874939886264923
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: Some(
+            Mutable,
+        ),
         params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
             FunctionParam {
                 name: "to",
                 typ: Ok(
@@ -40,17 +54,18 @@ note:
     }
 
 note: 
-  ┌─ send_value.fe:3:25
+  ┌─ send_value.fe:5:9
   │
-3 │         std::send_value(to, wei)
-  │                         ^^  ^^^ u256: Value
-  │                         │    
-  │                         address: Value
+5 │         ctx.send_value(to, wei)
+  │         ^^^            ^^  ^^^ u256: Value
+  │         │              │    
+  │         │              address: Value
+  │         Context: Memory
 
 note: 
-  ┌─ send_value.fe:3:9
+  ┌─ send_value.fe:5:9
   │
-3 │         std::send_value(to, wei)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+5 │         ctx.send_value(to, wei)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 

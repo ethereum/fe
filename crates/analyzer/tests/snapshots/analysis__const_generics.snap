@@ -13,10 +13,11 @@ note:
    · │
 45 │ │ 
 46 │ │         let array_with_const: Array<i32, { DOUBLE_ARRAY_LENGTH / TWO }>
-   │ ╰───────────────────────────────────────────────────────────────────────^ attributes hash: 15148455653558261645
+   │ ╰───────────────────────────────────────────────────────────────────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(

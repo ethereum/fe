@@ -14,12 +14,13 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: u16) -> u16:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 9873798429331488760
+  │ ╰────────────────────────────^ attributes hash: 3799284136953683722
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "key",
@@ -66,12 +67,13 @@ note:
   │  
 7 │ ╭     pub fn write_bar(self, key: u16, value: u16):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 6039485858219602437
+  │ ╰─────────────────────────────^ attributes hash: 2862224086297333864
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "key",

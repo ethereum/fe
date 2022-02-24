@@ -73,32 +73,32 @@ contract ERC20:
 
         self._balances[sender] = self._balances[sender] - value
         self._balances[recipient] = self._balances[recipient] + value
-        emit Transfer(from: sender, to: recipient, value: value)
+        emit Transfer(ctx, from: sender, to: recipient, value: value)
 
-    fn _mint(account: address, value: u256):
+    fn _mint(ctx: Context, account: address, value: u256):
         assert account != address(0)
 
         self._before_token_transfer(address(0), account, value)
 
         self._total_supply = self._total_supply + value
         self._balances[account] = self._balances[account] + value
-        emit Transfer(from: address(0), to: account, value: value)
+        emit Transfer(ctx, from: address(0), to: account, value: value)
 
-    fn _burn(account: address, value: u256):
+    fn _burn(ctx: Context, account: address, value: u256):
         assert account != address(0)
 
         self._before_token_transfer(account, address(0), value)
 
         self._balances[account] = self._balances[account] - value
         self._total_supply = self._total_supply - value
-        emit Transfer(from: account, to: address(0), value)
+        emit Transfer(ctx, from: account, to: address(0), value)
 
-    fn _approve(owner: address, spender: address, value: u256):
+    fn _approve(ctx: Context, owner: address, spender: address, value: u256):
         assert owner != address(0)
         assert spender != address(0)
 
         self._allowances[owner][spender] = value
-        emit Approval(owner, spender, value)
+        emit Approval(ctx, owner, spender, value)
 
     fn _setup_decimals(decimals_: u8):
         self._decimals = decimals_

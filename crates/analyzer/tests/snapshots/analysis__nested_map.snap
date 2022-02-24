@@ -16,12 +16,13 @@ note:
   │  
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 11552336276528305972
+  │ ╰─────────────────────────────^ attributes hash: 17417949435712456140
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "a",
@@ -82,12 +83,13 @@ note:
   │  
 8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 3270671894149924575
+  │ ╰──────────────────────────────^ attributes hash: 1779063144971354227
   │  
   = FunctionSignature {
         self_decl: Some(
             Mutable,
         ),
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "a",
@@ -158,12 +160,13 @@ note:
    │  
 11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 14681365744320240516
+   │ ╰─────────────────────────────^ attributes hash: 16759134235645813766
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -224,12 +227,13 @@ note:
    │  
 14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 15885712977262083842
+   │ ╰──────────────────────────────^ attributes hash: 2108296425256224856
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "a",

@@ -4,15 +4,30 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_msg_sig.fe:2:5
+  ┌─ return_msg_sig.fe:4:5
   │  
-2 │ ╭     pub fn bar() -> u256:
-3 │ │         return msg.sig
-  │ ╰──────────────────────^ attributes hash: 17979516652885443340
+4 │ ╭     pub fn bar(ctx: Context) -> u256:
+5 │ │         return ctx.msg_sig()
+  │ ╰────────────────────────────^ attributes hash: 8461121747246443614
   │  
   = FunctionSignature {
         self_decl: None,
-        params: [],
+        ctx_decl: Some(
+            Mutable,
+        ),
+        params: [
+            FunctionParam {
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
         return_type: Ok(
             Base(
                 Numeric(
@@ -23,9 +38,15 @@ note:
     }
 
 note: 
-  ┌─ return_msg_sig.fe:3:16
+  ┌─ return_msg_sig.fe:5:16
   │
-3 │         return msg.sig
-  │                ^^^^^^^ u256: Value
+5 │         return ctx.msg_sig()
+  │                ^^^ Context: Memory
+
+note: 
+  ┌─ return_msg_sig.fe:5:16
+  │
+5 │         return ctx.msg_sig()
+  │                ^^^^^^^^^^^^^ u256: Value
 
 

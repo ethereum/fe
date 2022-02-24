@@ -16,10 +16,11 @@ note:
   │  
 5 │ ╭   pub fn new(x: u64, y: u64) -> Point:
 6 │ │     return Point(x, y)
-  │ ╰──────────────────────^ attributes hash: 18058161240499911688
+  │ ╰──────────────────────^ attributes hash: 15722930327333552684
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [
             FunctionParam {
                 name: "x",
@@ -71,10 +72,11 @@ note:
   │  
 8 │ ╭   pub fn origin() -> Point:
 9 │ │     return Point(x: 0, y: 0)
-  │ ╰────────────────────────────^ attributes hash: 3063535909107835097
+  │ ╰────────────────────────────^ attributes hash: 6013258294670043138
   │  
   = FunctionSignature {
         self_decl: None,
+        ctx_decl: None,
         params: [],
         return_type: Ok(
             Struct(
@@ -105,12 +107,13 @@ note:
    │  
 12 │ ╭   pub fn x(self) -> u64:
 13 │ │     return self.x
-   │ ╰─────────────────^ attributes hash: 10750879109964165534
+   │ ╰─────────────────^ attributes hash: 10117872852848404071
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -140,12 +143,13 @@ note:
 16 │ │     let old: u64 = self.x
 17 │ │     self.x = x
 18 │ │     return old
-   │ ╰──────────────^ attributes hash: 14269972139460780041
+   │ ╰──────────────^ attributes hash: 2742220358163612616
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",
@@ -206,12 +210,13 @@ note:
 23 │ │     # self.x = self.y panics. see issue #590
 24 │ │     self.x = y
 25 │ │     self.y = x
-   │ ╰──────────────^ attributes hash: 17603814563784536273
+   │ ╰──────────────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -275,12 +280,13 @@ note:
 27 │ ╭   pub fn translate(self, x: u64, y: u64):
 28 │ │     self.x += x
 29 │ │     self.y += y
-   │ ╰───────────────^ attributes hash: 7098045318883584041
+   │ ╰───────────────^ attributes hash: 13052419481389358350
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",
@@ -341,12 +347,13 @@ note:
 32 │ │     let x: u64 = self.x + other.x
 33 │ │     let y: u64 = self.y + other.y
 34 │ │     return Point(x, y)
-   │ ╰──────────────────────^ attributes hash: 2850570852780374671
+   │ ╰──────────────────────^ attributes hash: 3240940104805858179
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "other",
@@ -446,10 +453,11 @@ note:
    · │
 42 │ │ 
 43 │ │   assert p3.x == 6 and p3.y == 12
-   │ ╰─────────────────────────────────^ attributes hash: 15148455653558261645
+   │ ╰─────────────────────────────────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -556,10 +564,11 @@ note:
    · │
 55 │ │     assert p.x() == y and p.y == 100
 56 │ │     return p.y
-   │ ╰──────────────^ attributes hash: 11047046466719380007
+   │ ╰──────────────^ attributes hash: 16979873837687926622
    │  
    = FunctionSignature {
          self_decl: None,
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "x",

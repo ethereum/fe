@@ -8,20 +8,28 @@ use yultsur::*;
 /// Builds a switch statement that dispatches calls to the contract and wraps it in
 /// a `$$__call__` function.
 pub fn dispatcher(
-    functions: &[(SmolStr, SmolStr, impl AsRef<[AbiType]>, Option<AbiType>)],
+    functions: &[(
+        SmolStr,
+        SmolStr,
+        impl AsRef<[AbiType]>,
+        Option<AbiType>,
+        bool,
+    )],
 ) -> yul::Statement {
     let arms = functions
         .iter()
-        .map(|(name, qname, params, ret)| dispatch_arm(name, qname, params.as_ref(), ret))
+        .map(|(name, qname, params, ret, expects_ctx)| {
+            dispatch_arm(name, qname, params.as_ref(), ret, *expects_ctx)
+        })
         .collect::<Vec<_>>();
 
     let dispatcher = if arms.is_empty() {
-        statement! { return(0, 0) }
+        statement! { revert(0, 0) }
     } else {
         switch! {
             switch (cloadn(0, 4))
             [arms...]
-            (default { (return(0, 0)) })
+            (default { (revert(0, 0)) })
         }
     };
 
@@ -39,6 +47,7 @@ fn dispatch_arm(
     qualified_name: &str,
     params: &[AbiType],
     return_type: &Option<AbiType>,
+    expects_ctx: bool,
 ) -> yul::Case {
     let selector = selector(bare_name, params);
 
@@ -61,7 +70,12 @@ fn dispatch_arm(
     // nothing. Otherwise, we encode the value and return it.
     let call_and_maybe_encode_return = {
         let name = identifier! { (qualified_name) };
-        let call = expression! { [name]([param_exprs...]) };
+        // we pass in a `0` for the expected `Context` argument
+        let call = if expects_ctx {
+            expression! { [name](0, [param_exprs...]) }
+        } else {
+            expression! { [name]([param_exprs...]) }
+        };
         if let Some(return_type) = return_type {
             let return_expr = expressions! { return_val };
             let encoding_size = abi_operations::encoding_size(&[return_type.clone()], &return_expr);

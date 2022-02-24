@@ -38,9 +38,6 @@ pub enum Item {
     // We can't represent keccak256's arg type yet.
     BuiltinFunction(builtins::GlobalFunction),
     Intrinsic(builtins::Intrinsic),
-    // This should go away soon. The globals (block, msg, etc) will be replaced
-    // with a context struct that'll appear in the fn parameter list.
-    Object(builtins::GlobalObject),
 }
 
 impl Item {
@@ -52,7 +49,6 @@ impl Item {
             Item::Function(id) => id.name(db),
             Item::BuiltinFunction(id) => id.as_ref().into(),
             Item::Intrinsic(id) => id.as_ref().into(),
-            Item::Object(id) => id.as_ref().into(),
             Item::Constant(id) => id.name(db),
             Item::Ingot(id) => id.name(db),
             Item::Module(id) => id.name(db),
@@ -66,11 +62,9 @@ impl Item {
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
             Item::Constant(id) => Some(id.name_span(db)),
-            Item::BuiltinFunction(_)
-            | Item::Intrinsic(_)
-            | Item::Object(_)
-            | Item::Ingot(_)
-            | Item::Module(_) => None,
+            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Ingot(_) | Item::Module(_) => {
+                None
+            }
         }
     }
 
@@ -79,7 +73,6 @@ impl Item {
             Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
-            | Item::Object(_)
             | Item::Intrinsic(_) => true,
             Item::Type(_)
             | Item::Event(_)
@@ -94,13 +87,16 @@ impl Item {
         matches!(self, Item::Type(TypeDef::Struct(current)) if current == val)
     }
 
+    pub fn is_contract(&self) -> bool {
+        matches!(self, Item::Type(TypeDef::Contract(_)))
+    }
+
     pub fn item_kind_display_name(&self) -> &'static str {
         match self {
             Item::Type(_) | Item::GenericType(_) => "type",
             Item::Event(_) => "event",
             Item::Function(_) | Item::BuiltinFunction(_) => "function",
             Item::Intrinsic(_) => "intrinsic function",
-            Item::Object(_) => "object",
             Item::Constant(_) => "constant",
             Item::Ingot(_) => "ingot",
             Item::Module(_) => "module",
@@ -117,8 +113,7 @@ impl Item {
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
-            | Item::Intrinsic(_)
-            | Item::Object(_) => Rc::new(indexmap! {}),
+            | Item::Intrinsic(_) => Rc::new(indexmap! {}),
         }
     }
 
@@ -130,9 +125,7 @@ impl Item {
             Item::Function(id) => Some(id.parent(db)),
             Item::Constant(id) => Some(id.parent(db)),
             Item::Module(id) => Some(id.parent(db)),
-            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) | Item::Ingot(_) => {
-                None
-            }
+            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Ingot(_) => None,
         }
     }
 
@@ -204,10 +197,7 @@ impl Item {
             Item::Type(id) => id.sink_diagnostics(db, sink),
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
-            Item::GenericType(_)
-            | Item::BuiltinFunction(_)
-            | Item::Intrinsic(_)
-            | Item::Object(_) => {}
+            Item::GenericType(_) | Item::BuiltinFunction(_) | Item::Intrinsic(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
             Item::Ingot(id) => id.sink_diagnostics(db, sink),
             Item::Module(id) => id.sink_diagnostics(db, sink),
@@ -234,8 +224,6 @@ pub fn std_prelude_items() -> IndexMap<SmolStr, Item> {
     );
     items
         .extend(builtins::Intrinsic::iter().map(|fun| (fun.as_ref().into(), Item::Intrinsic(fun))));
-    items
-        .extend(builtins::GlobalObject::iter().map(|obj| (obj.as_ref().into(), Item::Object(obj))));
     items
 }
 
@@ -1123,7 +1111,7 @@ impl FunctionId {
                 .kind
                 .args
                 .iter()
-                .find_map(|arg| matches!(arg.kind, ast::FunctionArg::Zelf).then(|| arg.span))
+                .find_map(|arg| matches!(arg.kind, ast::FunctionArg::Self_).then(|| arg.span))
         } else {
             None
         }

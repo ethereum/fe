@@ -1,11 +1,13 @@
+use std::context::Context
+
 contract Foo:
     other: Bar
 
-    pub fn __init__(self):
-        self.other = Bar.create(0)
+    pub fn __init__(self, ctx: Context):
+        self.other = Bar.create(ctx, 0)
 
-    pub fn foo(self) -> u256:
-        self.other.set_foo_addr(self.address)
+    pub fn foo(self, ctx: Context) -> u256:
+        self.other.set_foo_addr(ctx.self_address())
         return self.other.answer()
 
     pub fn add(x: u256, y: u256) -> u256:
@@ -14,8 +16,8 @@ contract Foo:
 contract Bar:
     other: Foo
 
-    pub fn set_foo_addr(self, addr: address):
-        self.other = Foo(addr)
+    pub fn set_foo_addr(self, ctx: Context, addr: address):
+        self.other = Foo(ctx, addr)
 
     pub fn answer(self) -> u256:
         return self.other.add(20, 22)

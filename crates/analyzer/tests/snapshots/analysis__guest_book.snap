@@ -4,33 +4,47 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ guest_book.fe:5:5
+  ┌─ guest_book.fe:7:5
   │
-5 │     messages: Map<address, String<100>>
+7 │     messages: Map<address, String<100>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
-  ┌─ guest_book.fe:9:9
-  │
-9 │         book_msg: String<100>
-  │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
+   ┌─ guest_book.fe:11:9
+   │
+11 │         book_msg: String<100>
+   │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ guest_book.fe:11:5
+   ┌─ guest_book.fe:13:5
    │  
-11 │ ╭     pub fn sign(self, book_msg: String<100>):
-12 │ │         # All storage access is explicit using `self.<some-key>`
-13 │ │         self.messages[msg.sender] = book_msg
-14 │ │ 
-15 │ │         # Emit the `Signed` event
-16 │ │         emit Signed(book_msg)
-   │ ╰─────────────────────────────^ attributes hash: 13094560277149760495
+13 │ ╭     pub fn sign(self, ctx: Context, book_msg: String<100>):
+14 │ │         # All storage access is explicit using `self.<some-key>`
+15 │ │         self.messages[ctx.msg_sender()] = book_msg
+16 │ │ 
+17 │ │         # Emit the `Signed` event
+18 │ │         emit Signed(ctx, book_msg)
+   │ ╰──────────────────────────────────^ attributes hash: 2339837799335282240
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: Some(
+             Mutable,
+         ),
          params: [
+             FunctionParam {
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
              FunctionParam {
                  name: "book_msg",
                  typ: Ok(
@@ -50,35 +64,43 @@ note:
      }
 
 note: 
-   ┌─ guest_book.fe:13:9
+   ┌─ guest_book.fe:15:9
    │
-13 │         self.messages[msg.sender] = book_msg
+15 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^ GuestBook: Value
 
 note: 
-   ┌─ guest_book.fe:13:9
+   ┌─ guest_book.fe:15:9
    │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^ ^^^^^^^^^^ address: Value
+15 │         self.messages[ctx.msg_sender()] = book_msg
+   │         ^^^^^^^^^^^^^ ^^^ Context: Memory
    │         │              
    │         Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ guest_book.fe:13:9
+   ┌─ guest_book.fe:15:23
    │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
-   │         │                            
-   │         String<100>: Storage { nonce: None }
-   ·
-16 │         emit Signed(book_msg)
-   │                     ^^^^^^^^ String<100>: Memory
+15 │         self.messages[ctx.msg_sender()] = book_msg
+   │                       ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ guest_book.fe:16:9
+   ┌─ guest_book.fe:15:9
    │
-16 │         emit Signed(book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
+15 │         self.messages[ctx.msg_sender()] = book_msg
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
+   │         │                                  
+   │         String<100>: Storage { nonce: None }
+   ·
+18 │         emit Signed(ctx, book_msg)
+   │                     ^^^  ^^^^^^^^ String<100>: Memory
+   │                     │     
+   │                     Context: Memory
+
+note: 
+   ┌─ guest_book.fe:18:9
+   │
+18 │         emit Signed(ctx, book_msg)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
    │
    = Event {
          name: "Signed",
@@ -98,18 +120,19 @@ note:
      }
 
 note: 
-   ┌─ guest_book.fe:18:5
+   ┌─ guest_book.fe:20:5
    │  
-18 │ ╭     pub fn get_msg(self, addr: address) -> String<100>:
-19 │ │         # Copying data from storage to memory
-20 │ │         # has to be done explicitly via `to_mem()`
-21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 9675466326050585910
+20 │ ╭     pub fn get_msg(self, addr: address) -> String<100>:
+21 │ │         # Copying data from storage to memory
+22 │ │         # has to be done explicitly via `to_mem()`
+23 │ │         return self.messages[addr].to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 8481751960582380743
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
+         ctx_decl: None,
          params: [
              FunctionParam {
                  name: "addr",
@@ -130,29 +153,29 @@ note:
      }
 
 note: 
-   ┌─ guest_book.fe:21:16
+   ┌─ guest_book.fe:23:16
    │
-21 │         return self.messages[addr].to_mem()
+23 │         return self.messages[addr].to_mem()
    │                ^^^^ GuestBook: Value
 
 note: 
-   ┌─ guest_book.fe:21:16
+   ┌─ guest_book.fe:23:16
    │
-21 │         return self.messages[addr].to_mem()
+23 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^ ^^^^ address: Value
    │                │              
    │                Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ guest_book.fe:21:16
+   ┌─ guest_book.fe:23:16
    │
-21 │         return self.messages[addr].to_mem()
+23 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
 
 note: 
-   ┌─ guest_book.fe:21:16
+   ┌─ guest_book.fe:23:16
    │
-21 │         return self.messages[addr].to_mem()
+23 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
 
