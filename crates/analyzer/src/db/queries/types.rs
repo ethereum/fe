@@ -14,7 +14,7 @@ pub fn type_alias_type(
     let mut scope = ItemScope::new(db, alias.data(db).module);
     let typ = type_desc(&mut scope, &alias.data(db).ast.kind.typ);
 
-    Analysis::new(typ, scope.diagnostics.into())
+    Analysis::new(typ, scope.diagnostics.take().into())
 }
 
 pub fn type_alias_type_cycle(
@@ -29,5 +29,5 @@ pub fn type_alias_type_cycle(
         "",
     )));
 
-    Analysis::new(err, context.diagnostics.into())
+    Analysis::new(err, context.diagnostics.take().into())
 }

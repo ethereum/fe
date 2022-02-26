@@ -44,7 +44,7 @@ pub fn struct_field_map(
     db: &dyn AnalyzerDb,
     struct_: StructId,
 ) -> Analysis<Rc<IndexMap<SmolStr, StructFieldId>>> {
-    let mut scope = ItemScope::new(db, struct_.module(db));
+    let scope = ItemScope::new(db, struct_.module(db));
     let mut fields = IndexMap::<SmolStr, StructFieldId>::new();
 
     let struct_name = struct_.name(db);
@@ -66,7 +66,7 @@ pub fn struct_field_map(
         }
     }
 
-    Analysis::new(Rc::new(fields), scope.diagnostics.into())
+    Analysis::new(Rc::new(fields), scope.diagnostics.take().into())
 }
 
 pub fn struct_field_type(
@@ -110,7 +110,7 @@ pub fn struct_field_type(
         Err(err) => Err(err),
     };
 
-    Analysis::new(typ, scope.diagnostics.into())
+    Analysis::new(typ, scope.diagnostics.take().into())
 }
 
 pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[FunctionId]> {
@@ -144,7 +144,7 @@ pub fn struct_function_map(
             continue;
         }
 
-        if let Ok(Some(named_item)) = scope.resolve_name(def_name) {
+        if let Ok(Some(named_item)) = scope.resolve_name(def_name, func.name_span(db)) {
             scope.name_conflict_error(
                 "function",
                 def_name,
@@ -181,13 +181,14 @@ pub fn struct_function_map(
             }
         }
     }
-    Analysis::new(Rc::new(map), scope.diagnostics.into())
+    Analysis::new(Rc::new(map), scope.diagnostics.take().into())
 }
 
 pub fn struct_dependency_graph(db: &dyn AnalyzerDb, struct_: StructId) -> DepGraphWrapper {
-    // A struct depends on the types of its fields and on everything they depend on. It *does not*
-    // depend on its public functions; those will only be part of the broader dependency graph if
-    // they're in the call graph of some public contract function.
+    // A struct depends on the types of its fields and on everything they depend on.
+    // It *does not* depend on its public functions; those will only be part of
+    // the broader dependency graph if they're in the call graph of some public
+    // contract function.
 
     let root = Item::Type(TypeDef::Struct(struct_));
     let fields = struct_

@@ -1,7 +1,9 @@
+use crate::context::AnalyzerContext;
 use crate::errors::{NotFixedSize, TypeError};
 use crate::namespace::items::{Class, ContractId, StructId};
 use crate::AnalyzerDb;
 
+use fe_common::Span;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
@@ -397,7 +399,8 @@ impl FunctionSignature {
         }
     }
 
-    /// Parameter types without `ctx`, if it is a contract function that declares it.
+    /// Parameter types without `ctx`, if it is a contract function that
+    /// declares it.
     ///
     /// This is used when calling a contract method externally.
     ///
@@ -421,6 +424,14 @@ impl Type {
             Type::String(inner) => inner.to_string().into(),
             Type::Struct(inner) => inner.name.clone(),
             Type::Contract(inner) | Type::SelfContract(inner) => inner.name.clone(),
+        }
+    }
+
+    pub fn def_span(&self, context: &dyn AnalyzerContext) -> Option<Span> {
+        match self {
+            Self::Struct(inner) => Some(inner.id.span(context.db())),
+            Self::Contract(inner) | Self::SelfContract(inner) => Some(inner.id.span(context.db())),
+            _ => None,
         }
     }
 

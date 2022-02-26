@@ -1,6 +1,6 @@
 use ingot::bing::Bing
 
-struct Dyng:
+pub struct Dyng:
   pub my_address: address
   pub my_u256: u256
   pub my_i8: i8

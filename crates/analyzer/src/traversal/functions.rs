@@ -155,7 +155,7 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
 
 fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        match scope.resolve_name(&name.kind)? {
+        match scope.resolve_name(&name.kind, name.span)? {
             None => {
                 scope.error(
                     &format!("undefined event: `{}`", name.kind),
@@ -165,6 +165,27 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
             }
             Some(NamedThing::Item(Item::Event(event))) => {
                 scope.root.add_emit(stmt, event);
+                // Check visibility of event.
+                if !event.is_public(scope.db()) && event.module(scope.db()) != scope.module() {
+                    let module_name = event.module(scope.db()).name(scope.db());
+                    scope.fancy_error(
+                             &format!(
+                                 "the event `{}` is private",
+                                 name.kind,
+                             ),
+                             vec![
+                                 Label::primary(name.span, "this event is not `pub`"),
+                                 Label::secondary(
+                                     event.data(scope.db()).ast.span,
+                                     format!("`{}` is defined here", name.kind)
+                                 ),
+                             ],
+                             vec![
+                                 format!("`{}` can only be used within `{}`", name.kind, module_name),
+                                 format!("Hint: use `pub event {event}` to make `{event}` visible from outside of `{module}`", event=name.kind, module=module_name),
+                             ],
+                         );
+                }
                 if let Some(context_type) = scope.get_context_type() {
                     // we add ctx to the list of expected params
                     let params_with_ctx = [

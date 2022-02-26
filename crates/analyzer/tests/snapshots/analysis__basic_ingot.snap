@@ -299,7 +299,7 @@ note:
 note: 
   ┌─ ingots/basic_ingot/src/bing.fe:6:1
   │  
-6 │ ╭ fn get_42_backend() -> u256:
+6 │ ╭ pub fn get_42_backend() -> u256:
 7 │ │     return std::evm::add(21, 21)
   │ ╰────────────────────────────────^ attributes hash: 6115314201970082834
   │  

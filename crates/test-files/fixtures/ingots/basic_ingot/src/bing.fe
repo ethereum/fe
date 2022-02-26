@@ -1,11 +1,11 @@
 use std::error::Error
 
-struct Bing:
+pub struct Bing:
     pub my_address: address
 
-fn get_42_backend() -> u256:
+pub fn get_42_backend() -> u256:
     return std::evm::add(21, 21)
 
-contract BingContract:
+pub contract BingContract:
    pub fn add(x: u256, y: u256) -> u256:
        return x + y

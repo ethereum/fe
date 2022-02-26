@@ -147,6 +147,8 @@ test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool,
 test_parse! { event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { empty_event_def, try_parse_module, "event Foo:\n  pass" }
 test_parse! { pub_event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { const_def, try_parse_module, "const FOO: i32 = 1" }
+test_parse! { pub_const_def, try_parse_module, "pub const FOO: i32 = 1" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
 test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
 test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }

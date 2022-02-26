@@ -10,7 +10,7 @@ use crate::namespace::types::{FixedSize, Struct};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
-use fe_parser::{ast, node::NodeId};
+use fe_parser::{ast, node::NodeId, Label};
 use fe_parser::{ast::Expr, node::Node};
 use indexmap::IndexMap;
 use std::cell::RefCell;
@@ -23,7 +23,7 @@ pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
     module: ModuleId,
     expressions: RefCell<IndexMap<NodeId, ExpressionAttributes>>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: RefCell<Vec<Diagnostic>>,
 }
 impl<'a> ItemScope<'a> {
     pub fn new(db: &'a dyn AnalyzerDb, module: ModuleId) -> Self {
@@ -31,7 +31,7 @@ impl<'a> ItemScope<'a> {
             db,
             module,
             expressions: RefCell::new(IndexMap::default()),
-            diagnostics: vec![],
+            diagnostics: RefCell::new(vec![]),
         }
     }
 }
@@ -72,6 +72,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn constant_value_by_name(
         &self,
         name: &ast::SmolStr,
+        _span: Span,
     ) -> Result<Option<Constant>, IncompleteItem> {
         if let Some(constant) = self.module.resolve_constant(self.db, name)? {
             // It's ok to ignore an error.
@@ -84,6 +85,10 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
 
     fn parent(&self) -> Item {
         Item::Module(self.module)
+    }
+
+    fn module(&self) -> ModuleId {
+        self.module
     }
 
     fn parent_function(&self) -> FunctionId {
@@ -106,30 +111,39 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         false
     }
 
-    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
-        self.module
-            .resolve_name(self.db, name)
-            .map(|opt| opt.map(NamedThing::Item))
+    fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
+        let item = self.module.resolve_name(self.db, name)?;
+
+        if let Some(item) = item {
+            check_item_visibility(self, item, span);
+        }
+
+        Ok(item.map(NamedThing::Item))
     }
 
-    fn add_diagnostic(&mut self, diag: Diagnostic) {
-        self.diagnostics.push(diag)
-    }
-
-    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
         let item = self.module.resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
             self.add_diagnostic(diagnostic.clone())
         }
 
+        if let Some(item) = item.value {
+            check_item_visibility(self, item, span);
+        }
+
         item.value.map(NamedThing::Item)
+    }
+
+    fn add_diagnostic(&self, diag: Diagnostic) {
+        self.diagnostics.borrow_mut().push(diag)
     }
 
     /// Gets `std::context::Context` if it exists
     fn get_context_type(&self) -> Option<Struct> {
         if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
-            self.resolve_name("Context")
+            // `Context` is guaranteed to be public, so we can use `Span::dummy()` .
+            self.resolve_name("Context", Span::dummy())
         {
             // we just assume that there is only one `Context` defined in `std`
             if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
@@ -209,7 +223,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         self.db
     }
 
-    fn add_diagnostic(&mut self, diag: Diagnostic) {
+    fn add_diagnostic(&self, diag: Diagnostic) {
         self.diagnostics.borrow_mut().push(diag)
     }
 
@@ -252,12 +266,17 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
     fn constant_value_by_name(
         &self,
         _name: &ast::SmolStr,
+        _span: Span,
     ) -> Result<Option<Constant>, IncompleteItem> {
         Ok(None)
     }
 
     fn parent(&self) -> Item {
         self.function.parent(self.db())
+    }
+
+    fn module(&self) -> ModuleId {
+        self.function.module(self.db())
     }
 
     fn parent_function(&self) -> FunctionId {
@@ -287,7 +306,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         false
     }
 
-    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
+    fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
         let sig = self.function.signature(self.db);
 
         if name == "self" {
@@ -323,16 +342,21 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if let Some(param) = param {
             Ok(Some(param))
         } else {
-            if let Some(Class::Contract(contract)) = self.function.class(self.db) {
+            let item = if let Some(Class::Contract(contract)) = self.function.class(self.db) {
                 contract.resolve_name(self.db, name)
             } else {
                 self.function.module(self.db).resolve_name(self.db, name)
+            }?;
+
+            if let Some(item) = item {
+                check_item_visibility(self, item, span);
             }
-            .map(|opt| opt.map(NamedThing::Item))
+
+            Ok(item.map(NamedThing::Item))
         }
     }
 
-    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
         let item = self
             .function
             .module(self.db())
@@ -342,12 +366,16 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             self.add_diagnostic(diagnostic.clone())
         }
 
+        if let Some(item) = item.value {
+            check_item_visibility(self, item, span);
+        }
+
         item.value.map(NamedThing::Item)
     }
 
     fn get_context_type(&self) -> Option<Struct> {
         if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
-            self.resolve_name("Context")
+            self.resolve_name("Context", Span::dummy())
         {
             if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
                 return Some(id.typ(self.db()).deref().clone());
@@ -380,7 +408,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.db
     }
 
-    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
+    fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
         if let Some(var) =
             self.variable_defs
                 .get(name)
@@ -393,9 +421,9 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         {
             Ok(Some(var))
         } else if let Some(parent) = self.parent {
-            parent.resolve_name(name)
+            parent.resolve_name(name, span)
         } else {
-            self.root.resolve_name(name)
+            self.root.resolve_name(name, span)
         }
     }
 
@@ -423,13 +451,14 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     fn constant_value_by_name(
         &self,
         name: &ast::SmolStr,
+        span: Span,
     ) -> Result<Option<Constant>, IncompleteItem> {
         if let Some(constant) = self.constant_defs.borrow().get(name.as_str()) {
             Ok(Some(constant.clone()))
         } else if let Some(parent) = self.parent {
-            parent.constant_value_by_name(name)
+            parent.constant_value_by_name(name, span)
         } else {
-            match self.resolve_name(name)? {
+            match self.resolve_name(name, span)? {
                 Some(NamedThing::Item(Item::Constant(constant))) => {
                     Ok(constant.constant_value(self.db()).ok())
                 }
@@ -440,6 +469,10 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn parent(&self) -> Item {
         Item::Function(self.root.function)
+    }
+
+    fn module(&self) -> ModuleId {
+        self.root.module()
     }
 
     fn parent_function(&self) -> FunctionId {
@@ -462,34 +495,16 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
     }
 
-    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
-        let item = self
-            .root
-            .function
-            .module(self.db())
-            .resolve_path_internal(self.db(), path);
-
-        for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.clone())
-        }
-
-        item.value.map(NamedThing::Item)
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
+        self.root.resolve_path(path, span)
     }
 
-    fn add_diagnostic(&mut self, diag: Diagnostic) {
+    fn add_diagnostic(&self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)
     }
 
     fn get_context_type(&self) -> Option<Struct> {
-        if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
-            self.resolve_name("Context")
-        {
-            if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
-                return Some(id.typ(self.db()).deref().clone());
-            }
-        }
-
-        None
+        self.root.get_context_type()
     }
 }
 
@@ -522,7 +537,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         is_const: bool,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
-        match self.resolve_name(name) {
+        match self.resolve_name(name, span) {
             Ok(Some(NamedThing::SelfValue { .. })) => {
                 self.error(
                     "`self` can't be used as a variable name",
@@ -579,5 +594,33 @@ impl<T> OptionExt for Option<T> {
         if self.is_some() {
             panic!("{}", msg)
         }
+    }
+}
+
+/// Check an item visibility and sink diagnostics if an item is invisible from
+/// the scope.
+fn check_item_visibility(context: &dyn AnalyzerContext, item: Item, span: Span) {
+    let item_module = item
+        .module(context.db())
+        .unwrap_or_else(|| context.module());
+    if !item.is_public(context.db()) && item_module != context.module() {
+        let module_name = item_module.name(context.db());
+        let item_name = item.name(context.db());
+        let item_span = item.name_span(context.db()).unwrap_or(span);
+        let item_kind_name = item.item_kind_display_name();
+        context.fancy_error(
+            &format!("the {} `{}` is private", item_kind_name, item_name,),
+            vec![
+                Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
+                Label::secondary(item_span, format!("`{}` is defined here", item_name)),
+            ],
+            vec![
+                format!("`{}` can only be used within `{}`", item_name, module_name),
+                format!(
+                    "Hint: use `pub` to make `{}` visible from outside of `{}`",
+                    item_name, module_name,
+                ),
+            ],
+        );
     }
 }

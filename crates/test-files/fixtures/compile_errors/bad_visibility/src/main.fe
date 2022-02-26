@@ -1,0 +1,23 @@
+use foo::{MyInt, MY_CONST, MyEvent, MyStruct, my_func, MyContract}
+use std::context::Context
+
+contract Main:
+    pub fn priv_type_alias() -> MyInt:
+        let x: MyInt = 1
+        return x
+        
+    pub fn priv_const() -> i32:
+        return MY_CONST
+        
+    pub fn priv_event():
+        emit MyEvent(ctx, x: 1)
+        
+    pub fn priv_struct():
+        let s: MyStruct = MyStruct(x: 1)
+        
+    pub fn priv_func():
+        my_func()
+        
+    pub fn priv_contract(ctx: Context, addr: address):
+        let _: MyContract = MyContract(ctx, addr)
+        MyContract.create(ctx, 1)

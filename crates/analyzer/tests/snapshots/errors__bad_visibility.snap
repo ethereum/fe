@@ -1,0 +1,189 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: error_string_ingot(&path)
+
+---
+error: the type `MyInt` is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:5:33
+  │
+5 │     pub fn priv_type_alias() -> MyInt:
+  │                                 ^^^^^ this type is not `pub`
+  │
+  ┌─ compile_errors/bad_visibility/src/foo.fe:1:6
+  │
+1 │ type MyInt = i32
+  │      ----- `MyInt` is defined here
+  │
+  = `MyInt` can only be used within `foo`
+  = Hint: use `pub` to make `MyInt` visible from outside of `foo`
+
+error: the type `MyInt` is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:6:16
+  │
+6 │         let x: MyInt = 1
+  │                ^^^^^ this type is not `pub`
+  │
+  ┌─ compile_errors/bad_visibility/src/foo.fe:1:6
+  │
+1 │ type MyInt = i32
+  │      ----- `MyInt` is defined here
+  │
+  = `MyInt` can only be used within `foo`
+  = Hint: use `pub` to make `MyInt` visible from outside of `foo`
+
+error: the constant `MY_CONST` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:10:16
+   │
+10 │         return MY_CONST
+   │                ^^^^^^^^ this constant is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:3:7
+   │
+ 3 │ const MY_CONST: MyInt = 1
+   │       -------- `MY_CONST` is defined here
+   │
+   = `MY_CONST` can only be used within `foo`
+   = Hint: use `pub` to make `MY_CONST` visible from outside of `foo`
+
+error: the constant `MY_CONST` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:10:16
+   │
+10 │         return MY_CONST
+   │                ^^^^^^^^ this constant is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:3:1
+   │
+ 3 │ const MY_CONST: MyInt = 1
+   │ ------------------------- `MY_CONST` is defined here
+   │
+   = `MY_CONST` can only be used within `foo`
+   = Hint: use `pub const MY_CONST` to make `MY_CONST` visible from outside of `foo`
+
+error: the event `MyEvent` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:13:14
+   │
+13 │         emit MyEvent(ctx, x: 1)
+   │              ^^^^^^^ this event is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:5:7
+   │
+ 5 │ event MyEvent:
+   │       ------- `MyEvent` is defined here
+   │
+   = `MyEvent` can only be used within `foo`
+   = Hint: use `pub` to make `MyEvent` visible from outside of `foo`
+
+error: the event `MyEvent` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:13:14
+   │
+13 │         emit MyEvent(ctx, x: 1)
+   │              ^^^^^^^ this event is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:5:1
+   │  
+ 5 │ ╭ event MyEvent:
+ 6 │ │     x: i32
+   │ ╰──────────' `MyEvent` is defined here
+   │  
+   = `MyEvent` can only be used within `foo`
+   = Hint: use `pub event MyEvent` to make `MyEvent` visible from outside of `foo`
+
+error: cannot find value `ctx` in this scope
+   ┌─ compile_errors/bad_visibility/src/main.fe:13:22
+   │
+13 │         emit MyEvent(ctx, x: 1)
+   │                      ^^^ undefined
+
+error: the type `MyStruct` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:16:16
+   │
+16 │         let s: MyStruct = MyStruct(x: 1)
+   │                ^^^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:8:8
+   │
+ 8 │ struct MyStruct:
+   │        -------- `MyStruct` is defined here
+   │
+   = `MyStruct` can only be used within `foo`
+   = Hint: use `pub` to make `MyStruct` visible from outside of `foo`
+
+error: the type `MyStruct` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:16:27
+   │
+16 │         let s: MyStruct = MyStruct(x: 1)
+   │                           ^^^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:8:8
+   │
+ 8 │ struct MyStruct:
+   │        -------- `MyStruct` is defined here
+   │
+   = `MyStruct` can only be used within `foo`
+   = Hint: use `pub` to make `MyStruct` visible from outside of `foo`
+
+error: Can not call private constructor of struct `MyStruct` 
+  ┌─ compile_errors/bad_visibility/src/foo.fe:9:5
+  │
+9 │     x: i32
+  │     ^^^^^^ Field `x` is private
+  │
+  = Suggestion: implement a method `new(...)` on struct `MyStruct` to call the constructor and return the struct
+
+error: the function `my_func` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:19:9
+   │
+19 │         my_func()
+   │         ^^^^^^^ this function is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:11:4
+   │
+11 │ fn my_func():
+   │    ------- `my_func` is defined here
+   │
+   = `my_func` can only be used within `foo`
+   = Hint: use `pub` to make `my_func` visible from outside of `foo`
+
+error: the type `MyContract` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:22:16
+   │
+22 │         let _: MyContract = MyContract(ctx, addr)
+   │                ^^^^^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:14:10
+   │
+14 │ contract MyContract:
+   │          ---------- `MyContract` is defined here
+   │
+   = `MyContract` can only be used within `foo`
+   = Hint: use `pub` to make `MyContract` visible from outside of `foo`
+
+error: the type `MyContract` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:22:29
+   │
+22 │         let _: MyContract = MyContract(ctx, addr)
+   │                             ^^^^^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:14:10
+   │
+14 │ contract MyContract:
+   │          ---------- `MyContract` is defined here
+   │
+   = `MyContract` can only be used within `foo`
+   = Hint: use `pub` to make `MyContract` visible from outside of `foo`
+
+error: the type `MyContract` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:23:9
+   │
+23 │         MyContract.create(ctx, 1)
+   │         ^^^^^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:14:10
+   │
+14 │ contract MyContract:
+   │          ---------- `MyContract` is defined here
+   │
+   = `MyContract` can only be used within `foo`
+   = Hint: use `pub` to make `MyContract` visible from outside of `foo`
+
+

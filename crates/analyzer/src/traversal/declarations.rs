@@ -3,8 +3,7 @@ use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::FixedSize;
 use crate::traversal::{const_expr, expressions, types};
-use fe_common::diagnostics::Label;
-use fe_common::utils::humanize::pluralize_conditionally;
+use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

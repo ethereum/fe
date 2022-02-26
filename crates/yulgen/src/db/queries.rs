@@ -17,7 +17,7 @@ pub fn compile_module(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, S
 }
 
 fn to_safe_json(obj: yul::Object) -> String {
-    normalize_object(obj).to_string().replace("\"", "\\\"")
+    normalize_object(obj).to_string().replace('"', "\\\"")
 }
 
 fn normalize_object(obj: yul::Object) -> yul::Object {
@@ -30,7 +30,7 @@ fn normalize_object(obj: yul::Object) -> yul::Object {
                 .value
                 .replace('\\', "\\\\\\\\")
                 .replace('\n', "\\\\n")
-                .replace("\"", "\\\\\"")
+                .replace('"', "\\\\\"")
                 .replace('\r', "\\\\r")
                 .replace('\t', "\\\\t"),
         })

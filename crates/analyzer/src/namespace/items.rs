@@ -68,6 +68,21 @@ impl Item {
         }
     }
 
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        match self {
+            // TODO: Consider whether to allow `pub module`.
+            Self::Ingot(_)
+            | Self::Module(_)
+            | Self::BuiltinFunction(_)
+            | Self::Intrinsic(_)
+            | Self::GenericType(_) => true,
+            Self::Type(id) => id.is_public(db),
+            Self::Event(id) => id.is_public(db),
+            Self::Function(id) => id.is_public(db),
+            Self::Constant(id) => id.is_public(db),
+        }
+    }
+
     pub fn is_builtin(&self) -> bool {
         match self {
             Item::Type(TypeDef::Primitive(_))
@@ -127,6 +142,22 @@ impl Item {
             Item::Module(id) => Some(id.parent(db)),
             Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Ingot(_) => None,
         }
+    }
+
+    pub fn module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
+        if let Self::Module(id) = self {
+            return Some(*id);
+        }
+
+        let mut cur_item = *self;
+        while let Some(item) = cur_item.parent(db) {
+            if let Self::Module(id) = item {
+                return Some(id);
+            }
+            cur_item = item;
+        }
+
+        None
     }
 
     pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<[SmolStr]> {
@@ -767,6 +798,10 @@ impl ModuleConstantId {
         Item::Module(self.data(db).module)
     }
 
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
+    }
+
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
     }
@@ -825,6 +860,15 @@ impl TypeDef {
         }
     }
 
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        match self {
+            Self::Alias(id) => id.is_public(db),
+            Self::Struct(id) => id.is_public(db),
+            Self::Contract(id) => id.is_public(db),
+            Self::Primitive(_) => true,
+        }
+    }
+
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
         match self {
             TypeDef::Alias(id) => Some(id.parent(db)),
@@ -867,6 +911,9 @@ impl TypeAliasId {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
+    }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
         db.type_alias_type(*self).value
     }
@@ -900,6 +947,9 @@ impl ContractId {
     }
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.name().into()
+    }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
     }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> types::Type {
         types::Type::Contract(types::Contract::from_id(*self, db))
@@ -1075,7 +1125,7 @@ impl FunctionId {
         self.data(db).ast.kind.name.span
     }
 
-    // This should probably be scrapped in favor of `parent()`
+    // This should probably be scrapped in favor of `parent(`
     pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.data(db).parent
     }
@@ -1213,9 +1263,15 @@ impl StructId {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
+
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
+    }
+
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
     }
+
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Struct> {
         db.struct_type(*self)
     }
@@ -1355,6 +1411,9 @@ impl EventId {
     }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Event> {
         db.lookup_intern_event(*self)
+    }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
     }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Event> {
         db.event_type(*self).value

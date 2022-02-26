@@ -35,7 +35,7 @@ pub fn compile_single_contract(
 
     let bytecode = output["contracts"]["input.yul"][name]["evm"]["bytecode"]["object"]
         .to_string()
-        .replace("\"", "");
+        .replace('"', "");
 
     if bytecode == "null" {
         return Err(YulcError(output.to_string()));
@@ -70,7 +70,7 @@ fn test_solc_sanity() {
 
     let bytecode = output["contracts"]["input.yul"]["object"]["evm"]["bytecode"]["object"]
         .to_string()
-        .replace("\"", "");
+        .replace('"', "");
 
     // solc 0.8.4: push1 0; push1 0; sstore  "6000600055"
     // solc 0.8.7: push1 0; dup1;    sstore  "60008055"

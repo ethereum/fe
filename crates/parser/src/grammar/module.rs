@@ -45,7 +45,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par, None)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
-        TokenKind::Const => ModuleStmt::Constant(Box::new(parse_constant(par)?)),
+        TokenKind::Const => ModuleStmt::Constant(parse_constant(par, None)?),
 
         // Let these be parse errors for now:
         TokenKind::Event => ModuleStmt::Event(parse_event_def(par, None)?),
@@ -59,6 +59,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                 }
                 TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
                 TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?),
+                TokenKind::Const => ModuleStmt::Constant(parse_constant(par, Some(pub_span))?),
                 TokenKind::Contract => {
                     ModuleStmt::Contract(parse_contract_def(par, Some(pub_span))?)
                 }
@@ -90,7 +91,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
 /// Parse a constant, e.g. `const MAGIC_NUMBER: u256 = 4711`.
 /// # Panics
 /// Panics if the next token isn't `const`.
-pub fn parse_constant(par: &mut Parser) -> ParseResult<Node<ConstantDecl>> {
+pub fn parse_constant(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ConstantDecl>> {
     let const_tok = par.assert(TokenKind::Const);
     let name = par.expect(TokenKind::Name, "failed to parse constant declaration")?;
     par.expect_with_notes(
@@ -127,6 +128,7 @@ pub fn parse_constant(par: &mut Parser) -> ParseResult<Node<ConstantDecl>> {
             name: name.into(),
             typ,
             value: exp,
+            pub_qual,
         },
         span,
     ))

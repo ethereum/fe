@@ -3,7 +3,7 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: The function `do_private_thingz` on `contract Foo` is private
+error: the function `do_private_thingz` on `contract Foo` is private
    ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:10:26
    │  
  5 │ ╭   fn do_private_thingz(self):

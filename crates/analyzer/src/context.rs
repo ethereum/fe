@@ -1,10 +1,13 @@
-use crate::errors::{self, CannotMove, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
 use crate::namespace::types::{FixedSize, SelfDecl, Struct, Type};
 use crate::AnalyzerDb;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
     namespace::scopes::BlockScopeType,
+};
+use crate::{
+    errors::{self, CannotMove, IncompleteItem, TypeError},
+    namespace::items::ModuleId,
 };
 use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
@@ -15,11 +18,11 @@ use fe_parser::node::{Node, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Analysis<T> {
@@ -36,9 +39,9 @@ impl<T> Analysis<T> {
 }
 
 pub trait AnalyzerContext {
-    fn resolve_name(&self, name: &str) -> Result<Option<NamedThing>, IncompleteItem>;
-    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing>;
-    fn add_diagnostic(&mut self, diag: Diagnostic);
+    fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing>;
+    fn add_diagnostic(&self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
 
     fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
@@ -73,6 +76,7 @@ pub trait AnalyzerContext {
     fn constant_value_by_name(
         &self,
         name: &ast::SmolStr,
+        span: Span,
     ) -> Result<Option<Constant>, IncompleteItem>;
 
     /// Returns an item enclosing current context.
@@ -90,6 +94,9 @@ pub trait AnalyzerContext {
     /// If the context is in `then` block, then this function returns
     /// `Item::Function(..)`.
     fn parent(&self) -> Item;
+
+    /// Returns the module enclosing current context.
+    fn module(&self) -> ModuleId;
 
     /// Returns a function id that encloses a context.
     ///
@@ -145,7 +152,7 @@ pub trait AnalyzerContext {
     fn get_context_type(&self) -> Option<Struct>;
 
     fn type_error(
-        &mut self,
+        &self,
         message: &str,
         span: Span,
         expected: &dyn Display,
@@ -154,12 +161,12 @@ pub trait AnalyzerContext {
         self.register_diag(errors::type_error(message, span, expected, actual))
     }
 
-    fn not_yet_implemented(&mut self, feature: &str, span: Span) -> DiagnosticVoucher {
+    fn not_yet_implemented(&self, feature: &str, span: Span) -> DiagnosticVoucher {
         self.register_diag(errors::not_yet_implemented(feature, span))
     }
 
     fn fancy_error(
-        &mut self,
+        &self,
         message: &str,
         labels: Vec<Label>,
         notes: Vec<String>,
@@ -168,7 +175,7 @@ pub trait AnalyzerContext {
     }
 
     fn duplicate_name_error(
-        &mut self,
+        &self,
         message: &str,
         name: &str,
         original: Span,
@@ -180,7 +187,7 @@ pub trait AnalyzerContext {
     }
 
     fn name_conflict_error(
-        &mut self,
+        &self,
         name_kind: &str, // Eg "function parameter" or "variable name"
         name: &str,
         original: &NamedThing,
@@ -196,7 +203,7 @@ pub trait AnalyzerContext {
         ))
     }
 
-    fn register_diag(&mut self, diag: Diagnostic) -> DiagnosticVoucher {
+    fn register_diag(&self, diag: Diagnostic) -> DiagnosticVoucher {
         self.add_diagnostic(diag);
         DiagnosticVoucher(PhantomData::default())
     }
@@ -260,15 +267,19 @@ impl DiagnosticVoucher {
 
 #[derive(Default)]
 pub struct TempContext {
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: RefCell<Vec<Diagnostic>>,
 }
 impl AnalyzerContext for TempContext {
     fn db(&self) -> &dyn AnalyzerDb {
         panic!("TempContext has no analyzer db")
     }
 
-    fn resolve_name(&self, _name: &str) -> Result<Option<NamedThing>, IncompleteItem> {
+    fn resolve_name(&self, _name: &str, _span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
         panic!("TempContext can't resolve names")
+    }
+
+    fn resolve_path(&self, _path: &ast::Path, _span: Span) -> Option<NamedThing> {
+        panic!("TempContext can't resolve paths")
     }
 
     fn add_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
@@ -290,12 +301,17 @@ impl AnalyzerContext for TempContext {
     fn constant_value_by_name(
         &self,
         _name: &ast::SmolStr,
+        _span: Span,
     ) -> Result<Option<Constant>, IncompleteItem> {
         Ok(None)
     }
 
     fn parent(&self) -> Item {
         panic!("TempContext has no root item")
+    }
+
+    fn module(&self) -> ModuleId {
+        panic!("TempContext has no module")
     }
 
     fn parent_function(&self) -> FunctionId {
@@ -318,12 +334,8 @@ impl AnalyzerContext for TempContext {
         false
     }
 
-    fn add_diagnostic(&mut self, diag: Diagnostic) {
-        self.diagnostics.push(diag)
-    }
-
-    fn resolve_path(&mut self, _path: &ast::Path) -> Option<NamedThing> {
-        panic!("TempContext can't resolve paths")
+    fn add_diagnostic(&self, diag: Diagnostic) {
+        self.diagnostics.borrow_mut().push(diag)
     }
 
     fn get_context_type(&self) -> Option<Struct> {
