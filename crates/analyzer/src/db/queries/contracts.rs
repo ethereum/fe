@@ -14,7 +14,8 @@ use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
 use std::rc::Rc;
 
-/// A `Vec` of every function defined in the contract, including duplicates and the init function.
+/// A `Vec` of every function defined in the contract, including duplicates and
+/// the init function.
 pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[FunctionId]> {
     let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
@@ -36,7 +37,7 @@ pub fn contract_function_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
 ) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
-    let mut scope = ItemScope::new(db, contract.module(db));
+    let scope = ItemScope::new(db, contract.module(db));
     let mut map = IndexMap::<SmolStr, FunctionId>::new();
 
     for func in db.contract_all_functions(contract).iter() {
@@ -57,7 +58,7 @@ pub fn contract_function_map(
             continue;
         }
 
-        if let Ok(Some(named_item)) = scope.resolve_name(def_name) {
+        if let Ok(Some(named_item)) = scope.resolve_name(def_name, func.name_span(db)) {
             scope.name_conflict_error(
                 "function",
                 def_name,
@@ -87,7 +88,7 @@ pub fn contract_function_map(
     }
     Analysis {
         value: Rc::new(map),
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
@@ -227,7 +228,8 @@ pub fn contract_call_function(
     }
 }
 
-/// A `Vec` of all events defined within the contract, including those with duplicate names.
+/// A `Vec` of all events defined within the contract, including those with
+/// duplicate names.
 pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[EventId]> {
     let body = &contract.data(db).ast.kind.body;
     body.iter()
@@ -246,7 +248,7 @@ pub fn contract_event_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
 ) -> Analysis<Rc<IndexMap<SmolStr, EventId>>> {
-    let mut scope = ItemScope::new(db, contract.module(db));
+    let scope = ItemScope::new(db, contract.module(db));
     let mut map = IndexMap::<SmolStr, EventId>::new();
 
     let contract_name = contract.name(db);
@@ -270,7 +272,7 @@ pub fn contract_event_map(
 
     Analysis {
         value: Rc::new(map),
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
@@ -295,7 +297,7 @@ pub fn contract_field_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
 ) -> Analysis<Rc<IndexMap<SmolStr, ContractFieldId>>> {
-    let mut scope = ItemScope::new(db, contract.module(db));
+    let scope = ItemScope::new(db, contract.module(db));
     let mut map = IndexMap::<SmolStr, ContractFieldId>::new();
 
     let contract_name = contract.name(db);
@@ -319,7 +321,7 @@ pub fn contract_field_map(
 
     Analysis {
         value: Rc::new(map),
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
@@ -344,14 +346,14 @@ pub fn contract_field_type(
 
     Analysis {
         value: typ,
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
 pub fn contract_dependency_graph(db: &dyn AnalyzerDb, contract: ContractId) -> DepGraphWrapper {
-    // A contract depends on the types of its fields, and the things those types depend on.
-    // Note that this *does not* include the contract's public function graph.
-    // (See `contract_runtime_dependency_graph` below)
+    // A contract depends on the types of its fields, and the things those types
+    // depend on. Note that this *does not* include the contract's public
+    // function graph. (See `contract_runtime_dependency_graph` below)
 
     let fields = contract.fields(db);
     let field_types = fields
@@ -393,9 +395,9 @@ pub fn contract_runtime_dependency_graph(
     db: &dyn AnalyzerDb,
     contract: ContractId,
 ) -> DepGraphWrapper {
-    // This is the dependency graph of the (as yet imaginary) `__call__` function, which
-    // dispatches to the contract's public functions. This should be used when compiling
-    // the runtime object for a contract.
+    // This is the dependency graph of the (as yet imaginary) `__call__` function,
+    // which dispatches to the contract's public functions. This should be used
+    // when compiling the runtime object for a contract.
 
     let root = Item::Type(TypeDef::Contract(contract));
     let root_fns = if let Some(call_id) = contract.call_function(db) {

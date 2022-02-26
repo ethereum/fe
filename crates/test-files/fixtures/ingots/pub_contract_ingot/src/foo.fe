@@ -1,7 +1,7 @@
 pub struct Foo:
     my_address: address
 
-struct Bar:
+pub struct Bar:
     pub my_u256: u256
 
 pub contract FooBar:

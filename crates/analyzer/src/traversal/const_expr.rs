@@ -1,4 +1,5 @@
-//! This module provides evaluator for constant expression to resolve const generics.
+//! This module provides evaluator for constant expression to resolve const
+//! generics.
 
 use num_bigint::BigInt;
 use num_traits::{One, ToPrimitive, Zero};
@@ -38,7 +39,7 @@ pub(crate) fn eval_expr(
         ast::Expr::UnaryOperation { op, operand } => eval_unary_op(context, op, operand),
         ast::Expr::CompOperation { left, op, right } => eval_comp_op(context, left, op, right),
         ast::Expr::Bool(val) => Ok(Constant::Bool(*val)),
-        ast::Expr::Name(name) => match context.constant_value_by_name(name)? {
+        ast::Expr::Name(name) => match context.constant_value_by_name(name, expr.span)? {
             Some(const_value) => Ok(const_value),
             _ => Err(not_const_error(context, expr.span)),
         },
@@ -164,7 +165,8 @@ fn eval_bin_op(
         BinOperator::LShift => {
             if let Some(exponent) = rhs.to_usize() {
                 let type_bits = extract_int_typ(&lhs_ty).bits();
-                // If rhs is larger than or equal to lhs type bits, then we emits overflow error.
+                // If rhs is larger than or equal to lhs type bits, then we emits overflow
+                // error.
                 if exponent >= type_bits {
                     return Err(overflow_error(context, span));
                 } else {
@@ -180,7 +182,8 @@ fn eval_bin_op(
         BinOperator::RShift => {
             if let Some(exponent) = rhs.to_usize() {
                 let type_bits = extract_int_typ(&lhs_ty).bits();
-                // If rhs is larger than or equal to lhs type bits, then we emits overflow error.
+                // If rhs is larger than or equal to lhs type bits, then we emits overflow
+                // error.
                 if exponent >= type_bits {
                     return Err(overflow_error(context, span));
                 } else {
@@ -346,7 +349,8 @@ fn extract_int_typ(typ: &Type) -> types::Integer {
 }
 
 /// Returns bit mask corresponding to typ.
-/// e.g. If type is `Type::Base(Base::Numeric(Integer::I32))`, then returns `0xffff_ffff`.
+/// e.g. If type is `Type::Base(Base::Numeric(Integer::I32))`, then returns
+/// `0xffff_ffff`.
 ///
 /// # Panic
 /// Panics if `typ` is not a numeric type.

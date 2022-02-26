@@ -19,7 +19,7 @@ pub enum ModuleStmt {
     Use(Node<Use>),
     TypeAlias(Node<TypeAlias>),
     Contract(Node<Contract>),
-    Constant(Box<Node<ConstantDecl>>),
+    Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
     Function(Node<Function>),
     Event(Node<Event>),
@@ -61,6 +61,7 @@ pub struct ConstantDecl {
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Node<Expr>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]

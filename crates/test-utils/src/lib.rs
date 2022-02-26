@@ -346,8 +346,8 @@ pub fn deploy_solidity_contract(
     optimized: bool,
 ) -> ContractHarness {
     let src = test_files::fixture(fixture)
-        .replace("\n", "")
-        .replace("\"", "\\\"");
+        .replace('\n', "")
+        .replace('"', "\\\"");
 
     let (bytecode, abi) = compile_solidity_contract(contract_name, &src, optimized)
         .expect("Could not compile contract");
@@ -492,7 +492,7 @@ pub fn compile_solidity_contract(
 
     let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
         .to_string()
-        .replace("\"", "");
+        .replace('"', "");
 
     let abi = if let serde_json::Value::Array(data) = &output["contracts"]["input.sol"][name]["abi"]
     {
@@ -646,7 +646,7 @@ impl ExecutionOutput {
 
 #[cfg(feature = "solc-backend")]
 fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
-    let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
+    let yul_code = runtime.to_yul().to_string().replace('"', "\\\"");
     let bytecode = fe_yulc::compile_single_contract("Contract", &yul_code, false)
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");

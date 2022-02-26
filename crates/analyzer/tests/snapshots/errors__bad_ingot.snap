@@ -66,6 +66,34 @@ error: function name conflicts with the ingot named "std"
 11 │ fn std():
    │    ^^^ `std` is already defined
 
+error: the type `Foo` is private
+  ┌─ compile_errors/bad_ingot/src/main.fe:8:19
+  │
+8 │     pub fn a() -> foo::Foo:
+  │                   ^^^^^^^^ this type is not `pub`
+  │
+  ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
+  │
+5 │ struct Foo:
+  │        --- `Foo` is defined here
+  │
+  = `Foo` can only be used within `foo`
+  = Hint: use `pub` to make `Foo` visible from outside of `foo`
+
+error: the type `Foo` is private
+  ┌─ compile_errors/bad_ingot/src/main.fe:9:16
+  │
+9 │         return foo::Foo(my_num: true)
+  │                ^^^^^^^^ this type is not `pub`
+  │
+  ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
+  │
+5 │ struct Foo:
+  │        --- `Foo` is defined here
+  │
+  = `Foo` can only be used within `foo`
+  = Hint: use `pub` to make `Foo` visible from outside of `foo`
+
 error: incorrect type for `Foo` argument `my_num`
   ┌─ compile_errors/bad_ingot/src/main.fe:9:33
   │

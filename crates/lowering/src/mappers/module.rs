@@ -35,7 +35,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
                             node.kind.typ.clone(),
                             &id.typ(db).expect("type alias error"),
                         ),
-                        pub_qual: None,
+                        pub_qual: node.kind.pub_qual,
                     },
                     id.span(db),
                 )))
@@ -61,9 +61,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
             unreachable!("special built-in stuff")
         }
 
-        Item::Constant(constant) => Some(ast::ModuleStmt::Constant(
-            constant.data(db).ast.clone().into(),
-        )),
+        Item::Constant(constant) => Some(ast::ModuleStmt::Constant(constant.data(db).ast.clone())),
 
         Item::Ingot(_) => unreachable!("ingots cannot be defined in a module"),
         Item::Module(_) => unreachable!("modules cannot be defined in modules (at least not yet)"),

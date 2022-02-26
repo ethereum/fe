@@ -31,15 +31,6 @@ impl LabeledParameter for EventField {
     }
 }
 
-// impl LabeledParameter for StructField {
-//     fn label(&self) -> Option<&str> {
-//         Some(&self.name)
-//     }
-//     fn typ(&self) -> Result<FixedSize, TypeError> {
-//         self.typ.clone()
-//     }
-// }
-
 impl LabeledParameter for (SmolStr, Result<FixedSize, TypeError>) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)

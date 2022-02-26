@@ -1,0 +1,15 @@
+type MyInt = i32
+
+const MY_CONST: MyInt = 1
+
+event MyEvent:
+    x: i32
+    
+struct MyStruct:
+    x: i32
+    
+fn my_func():
+    pass
+    
+contract MyContract:
+    x: i32

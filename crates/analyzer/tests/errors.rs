@@ -332,6 +332,7 @@ test_file! { unsafe_nesting }
 
 test_ingot! { bad_ingot }
 test_ingot! { mainless_ingot }
+test_ingot! { bad_visibility }
 
 test_file! { ctx_not_first }
 test_file! { ctx_not_after_self }

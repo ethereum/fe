@@ -110,7 +110,7 @@ pub fn function_signature(
                     }
                 }
 
-                if let Ok(Some(named_item)) = scope.resolve_name(&name.kind) {
+                if let Ok(Some(named_item)) = scope.resolve_name(&name.kind, name.span) {
                     scope.name_conflict_error(
                         "function parameter",
                         &name.kind,
@@ -181,14 +181,14 @@ pub fn function_signature(
             params,
             return_type,
         }),
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
 /// Gather context information for a function body and check for type errors.
 pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<FunctionBody>> {
     let def = &function.data(db).ast.kind;
-    let mut scope = FunctionScope::new(db, function);
+    let scope = FunctionScope::new(db, function);
 
     // If the return type is unit, explicit return or no return (implicit) is valid,
     // so no scanning is necessary.
@@ -303,7 +303,8 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
             }
             CallType::ValueMethod { class, method, .. } => {
                 // Including the "class" type here is probably redundant; the type will
-                // also be part of the fn sig, or some type decl, or some create/create2 call, or...
+                // also be part of the fn sig, or some type decl, or some create/create2 call,
+                // or...
                 directs.push((root, class.as_item(), DepLocality::Local));
                 directs.push((root, Item::Function(*method), DepLocality::Local));
             }
@@ -328,7 +329,8 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
             }
             CallType::TypeConstructor(_) => {}
             CallType::BuiltinAssociatedFunction { contract, .. } => {
-                // create/create2 call. The contract type is "external" for dependency graph purposes.
+                // create/create2 call. The contract type is "external" for dependency graph
+                // purposes.
                 directs.push((
                     root,
                     Item::Type(TypeDef::Contract(*contract)),

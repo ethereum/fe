@@ -134,7 +134,7 @@ pub fn resolve_concrete_type_name<T: std::fmt::Display>(
     base_desc: &Node<T>,
     generic_args: Option<&Node<Vec<ast::GenericArg>>>,
 ) -> Result<Type, TypeError> {
-    let named_thing = context.resolve_name(name)?;
+    let named_thing = context.resolve_name(name, base_desc.span)?;
     resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
 }
 
@@ -144,7 +144,7 @@ pub fn resolve_concrete_type_path<T: std::fmt::Display>(
     base_desc: &Node<T>,
     generic_args: Option<&Node<Vec<ast::GenericArg>>>,
 ) -> Result<Type, TypeError> {
-    let named_thing = context.resolve_path(path);
+    let named_thing = context.resolve_path(path, base_desc.span);
     resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
 }
 

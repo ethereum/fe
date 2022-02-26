@@ -43,7 +43,7 @@ pub fn contract_def(context: &mut ModuleContext, contract: ContractId) -> Node<a
             name: node.kind.name.clone(),
             fields,
             body: [events, functions].concat(),
-            pub_qual: None,
+            pub_qual: node.kind.pub_qual,
         },
         node.span,
     )

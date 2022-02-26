@@ -264,7 +264,7 @@ fn expr_name(
         _ => unreachable!(),
     };
 
-    let name_thing = context.resolve_name(name)?;
+    let name_thing = context.resolve_name(name, exp.span)?;
     expr_named_thing(context, exp, name_thing, expected_type)
 }
 
@@ -278,7 +278,7 @@ fn expr_path(
         _ => unreachable!(),
     };
 
-    let named_thing = context.resolve_path(path);
+    let named_thing = context.resolve_path(path, exp.span);
     expr_named_thing(context, exp, named_thing, expected_type)
 }
 
@@ -340,6 +340,30 @@ fn expr_named_thing(
                 .typ(context.db())?
                 .try_into()
                 .expect("const type must be fixed size");
+
+            // Check visibility of constant.
+            if !id.is_public(context.db()) && id.module(context.db()) != context.module() {
+                let module_name = id.module(context.db()).name(context.db());
+                let name = id.name(context.db());
+                context.fancy_error(
+                    &format!(
+                        "the constant `{}` is private",
+                        exp.kind,
+                    ),
+                    vec![
+                        Label::primary(exp.span, "this constant is not `pub`"),
+                        Label::secondary(
+                            id.data(context.db()).ast.span,
+                            format!("`{}` is defined here", name)
+                        ),
+                    ],
+                    vec![
+                        format!("`{}` can only be used within `{}`", name, module_name),
+                        format!("Hint: use `pub const {constant}` to make `{constant}` visible from outside of `{module}`", constant=name, module=module_name),
+                    ],
+                );
+            }
+
             let location = Location::assign_location(&typ);
             Ok(ExpressionAttributes::new(typ.into(), location))
         }
@@ -796,7 +820,7 @@ fn expr_call_name<T: std::fmt::Display>(
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
     check_for_call_to_special_fns(context, name, func.span)?;
 
-    let named_thing = context.resolve_name(name)?.ok_or_else(|| {
+    let named_thing = context.resolve_name(name, func.span)?.ok_or_else(|| {
         // Check for call to a fn in the current class that takes self.
         if context.is_in_function() {
             let func_id = context.parent_function();
@@ -848,7 +872,7 @@ fn expr_call_path<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    let named_thing = context.resolve_path(path).ok_or_else(|| {
+    let named_thing = context.resolve_path(path, func.span).ok_or_else(|| {
         FatalError::new(context.error(
             &format!("`{}` is not defined", func.kind),
             func.span,
@@ -1258,7 +1282,11 @@ fn expr_call_struct_constructor(
     struct_: Struct,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    if struct_.id.has_private_field(context.db()) && !context.root_item().is_struct(&struct_.id) {
+    let id = struct_.id;
+    let name = &struct_.name;
+    // Check visibility of struct.
+
+    if id.has_private_field(context.db()) && !context.root_item().is_struct(&struct_.id) {
         let labels = struct_
             .id
             .private_fields(context.db())
@@ -1274,12 +1302,12 @@ fn expr_call_struct_constructor(
         context.fancy_error(
             &format!(
                 "Can not call private constructor of struct `{}` ",
-                struct_.name
+                name
             ),
             labels,
             vec![format!(
                 "Suggestion: implement a method `new(...)` on struct `{}` to call the constructor and return the struct",
-                struct_.name
+                name
             )],
         );
     }
@@ -1293,7 +1321,7 @@ fn expr_call_struct_constructor(
         .collect::<Vec<_>>();
     validate_named_args(
         context,
-        &struct_.name,
+        name,
         name_span,
         args,
         &fields,
@@ -1318,7 +1346,8 @@ fn expr_call_method(
     // and the global objects are replaced by `Context`, we can remove this.
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
-        if let Ok(Some(NamedThing::Item(Item::Type(id)))) = context.resolve_name(name) {
+        if let Ok(Some(NamedThing::Item(Item::Type(id)))) = context.resolve_name(name, target.span)
+        {
             let typ = id.typ(context.db())?;
             return expr_call_type_attribute(context, typ, target.span, field, generic_args, args);
         }
@@ -1359,7 +1388,7 @@ fn expr_call_method(
             } else if !is_self && !method.is_public(context.db()) {
                 context.fancy_error(
                     &format!(
-                        "The function `{}` on `{} {}` is private",
+                        "the function `{}` on `{} {}` is private",
                         &field.kind,
                         class.kind(),
                         class.name(context.db())

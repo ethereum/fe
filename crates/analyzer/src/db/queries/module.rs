@@ -85,7 +85,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
             )))),
             ast::ModuleStmt::Constant(node) => Some(Item::Constant(db.intern_module_const(
                 Rc::new(ModuleConstant {
-                    ast: *node.clone(),
+                    ast: node.clone(),
                     module,
                 }),
             ))),
@@ -281,7 +281,7 @@ pub fn module_constant_type(
         _ => {}
     }
 
-    Analysis::new(typ, scope.diagnostics.into())
+    Analysis::new(typ, scope.diagnostics.take().into())
 }
 
 pub fn module_constant_type_cycle(
@@ -298,7 +298,7 @@ pub fn module_constant_type_cycle(
 
     Analysis {
         value: err,
-        diagnostics: context.diagnostics.into(),
+        diagnostics: context.diagnostics.take().into(),
     }
 }
 
@@ -309,8 +309,9 @@ pub fn module_constant_value(
     let constant_data = constant.data(db);
 
     // Create `ItemScope` to collect expression types for constant evaluation.
-    // TODO: Consider whether it's better to run semantic analysis twice(first analysis is already done in `module_constant_type`) or
-    // cache expression types in salsa.
+    // TODO: Consider whether it's better to run semantic analysis twice(first
+    // analysis is already done in `module_constant_type`) or cache expression
+    // types in salsa.
     let mut scope = ItemScope::new(db, constant.data(db).module);
     let typ = match type_desc(&mut scope, &constant_data.ast.kind.typ) {
         Ok(typ) => typ,
@@ -334,14 +335,14 @@ pub fn module_constant_value(
     }
 
     // Clear diagnostics emitted from `module_constant_type`.
-    scope.diagnostics.clear();
+    scope.diagnostics.borrow_mut().clear();
 
     // Perform constant evaluation.
     let value = const_expr::eval_expr(&mut scope, &constant_data.ast.kind.value);
 
     Analysis {
         value,
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
 
@@ -359,7 +360,7 @@ pub fn module_constant_value_cycle(
 
     Analysis {
         value: err,
-        diagnostics: context.diagnostics.into(),
+        diagnostics: context.diagnostics.take().into(),
     }
 }
 
@@ -482,7 +483,8 @@ pub fn module_submodules(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ModuleId]
     }
 }
 
-/// Resolve a use tree entirely. We set internal to true if the first path item is internal.
+/// Resolve a use tree entirely. We set internal to true if the first path item
+/// is internal.
 ///
 /// e.g. `foo::bar::{baz::bing}`
 ///       ---        ---
@@ -496,8 +498,8 @@ fn resolve_use_tree(
 ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>> {
     let mut diagnostics = vec![];
 
-    // Again, the path resolution method we use depends on whether or not the first item
-    // is internal.
+    // Again, the path resolution method we use depends on whether or not the first
+    // item is internal.
     let resolve_path = |module: ModuleId, db: &dyn AnalyzerDb, path: &ast::Path| {
         if internal {
             module.resolve_path_non_used_internal(db, path)

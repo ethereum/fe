@@ -14,9 +14,9 @@ use fe_parser::node::Node;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-// Event fields aren't interned for now, but they probably should be. If/when events are handled as
-// normal type definitions, the current setup will run into a salsa cycle if a user tries to define
-// an event that contains itself.
+// Event fields aren't interned for now, but they probably should be. If/when
+// events are handled as normal type definitions, the current setup will run
+// into a salsa cycle if a user tries to define an event that contains itself.
 
 pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Event>> {
     let mut scope = ItemScope::new(db, event.module(db));
@@ -110,6 +110,6 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
             name: event_name.kind.clone(),
             fields,
         }),
-        diagnostics: scope.diagnostics.into(),
+        diagnostics: scope.diagnostics.take().into(),
     }
 }
