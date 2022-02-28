@@ -4,7 +4,6 @@ use fe_analyzer::namespace::items as analyzer_items;
 use smol_str::SmolStr;
 
 use crate::{
-    analysis::ControlFlowGraph,
     db::MirDb,
     ir::{self, FunctionSignature, TypeId},
     lower::function::{lower_func_body, lower_func_signature},
@@ -19,13 +18,6 @@ pub fn mir_lowered_func_signature(
 
 pub fn mir_lowered_func_body(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ir::FunctionBody> {
     lower_func_body(db, func)
-}
-
-pub fn mir_func_cfg(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ControlFlowGraph> {
-    let body = func.body(db);
-    let cfg = ControlFlowGraph::compute(&body);
-
-    cfg.into()
 }
 
 impl ir::FunctionId {
@@ -43,10 +35,6 @@ impl ir::FunctionId {
 
     pub fn body(self, db: &dyn MirDb) -> Rc<ir::FunctionBody> {
         db.mir_lowered_func_body(self)
-    }
-
-    pub fn cfg(self, db: &dyn MirDb) -> Rc<ControlFlowGraph> {
-        db.mir_func_cfg(self)
     }
 
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {

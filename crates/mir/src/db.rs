@@ -7,10 +7,7 @@ use fe_analyzer::{
 };
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 
-use crate::{
-    analysis,
-    ir::{self, ConstantId, TypeId},
-};
+use crate::ir::{self, ConstantId, TypeId};
 
 mod queries;
 
@@ -56,9 +53,6 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
     ) -> ir::FunctionId;
     #[salsa::invoke(queries::function::mir_lowered_func_body)]
     fn mir_lowered_func_body(&self, func: ir::FunctionId) -> Rc<ir::FunctionBody>;
-
-    #[salsa::invoke(queries::function::mir_func_cfg)]
-    fn mir_func_cfg(&self, func: ir::FunctionId) -> Rc<analysis::ControlFlowGraph>;
 }
 
 #[salsa::database(SourceDbStorage, AnalyzerDbStorage, MirDbStorage)]
