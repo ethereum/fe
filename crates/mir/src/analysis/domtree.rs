@@ -147,7 +147,7 @@ mod tests {
 
         let dummy_ty = TypeId(0);
         let v0 = builder.make_imm_from_bool(true, dummy_ty);
-        builder.branch(v0, else_block, then_block, SourceInfo::dummy());
+        builder.branch(v0, then_block, else_block, SourceInfo::dummy());
 
         builder.move_to_block(then_block);
         builder.jump(merge_block, SourceInfo::dummy());
