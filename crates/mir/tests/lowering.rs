@@ -1,6 +1,9 @@
 use fe_analyzer::namespace::items::{IngotId, ModuleId};
 use fe_common::{db::Upcast, files::Utf8Path};
-use fe_mir::db::{MirDb, NewDb};
+use fe_mir::{
+    analysis::ControlFlowGraph,
+    db::{MirDb, NewDb},
+};
 
 macro_rules! test_lowering {
     ($name:ident, $path:expr) => {
@@ -17,8 +20,8 @@ macro_rules! test_lowering {
             }
 
             for func in db.mir_lower_module_all_functions(module).iter() {
-                func.body(&db);
-                func.cfg(&db);
+                let body = func.body(&db);
+                ControlFlowGraph::compute(&body);
             }
         }
     };
@@ -38,8 +41,8 @@ fn mir_lower_std_lib() {
 
     for &module in std_ingot.all_modules(db.upcast()).iter() {
         for func in db.mir_lower_module_all_functions(module).iter() {
-            func.body(&db);
-            func.cfg(&db);
+            let body = func.body(&db);
+            ControlFlowGraph::compute(&body);
         }
     }
 }
