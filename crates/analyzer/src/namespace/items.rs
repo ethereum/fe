@@ -750,6 +750,12 @@ impl ModuleId {
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));
     }
+
+    #[doc(hidden)]
+    // DO NOT USE THIS METHOD except for testing purpose.
+    pub fn from_raw_internal(raw: u32) -> Self {
+        Self(raw)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
