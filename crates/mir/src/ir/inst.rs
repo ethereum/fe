@@ -61,7 +61,7 @@ pub enum InstKind {
     /// `foo.y` is lowered into `AggregateAccess(foo, [1])' for example.
     AggregateAccess {
         value: ValueId,
-        index: ValueId,
+        indices: Vec<ValueId>,
     },
 
     MapAccess {

@@ -140,7 +140,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     for (local, indices) in locals {
                         for index in indices {
                             let ty = ty.projection_ty(self.db, self.builder.value_data(rhs));
-                            rhs = self.builder.aggregate_access(rhs, index, ty, expr.into());
+                            rhs = self
+                                .builder
+                                .aggregate_access(rhs, vec![index], ty, expr.into());
                         }
                         self.builder.assign(local, rhs, stmt.into());
                     }
@@ -468,7 +470,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         // loop_variable = array[ioop_idx]
         let iter_elem =
             self.builder
-                .aggregate_access(iter, loop_idx, iter_elem_ty, SourceInfo::dummy());
+                .aggregate_access(iter, vec![loop_idx], iter_elem_ty, SourceInfo::dummy());
         self.builder
             .assign(loop_value, iter_elem, SourceInfo::dummy());
         // loop_idx+= 1
@@ -547,25 +549,27 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.lower_comp_op(op.kind, lhs, rhs, ty, expr.into())
             }
 
-            ast::Expr::Attribute { value, attr } => {
-                let value = self.lower_expr(value);
-                let value_ty = self.builder.value_ty(value);
-                let index = value_ty.index_from_fname(self.db, &attr.kind, self.u256_ty());
-                let index = self.builder.make_value(index);
+            ast::Expr::Attribute { .. } => {
+                let mut indices = vec![];
+                let value = self.lower_aggregate_access(expr, &mut indices);
                 let ty = self.expr_ty(expr);
-                self.builder.aggregate_access(value, index, ty, expr.into())
+                self.builder
+                    .aggregate_access(value, indices, ty, expr.into())
             }
 
             ast::Expr::Subscript { value, index } => {
-                let value = self.lower_expr(value);
-                let index = self.lower_expr(index);
-                let value_ty = self.builder.value_ty(value);
-                if value_ty.is_aggregate(self.db) {
-                    self.builder
-                        .aggregate_access(value, index, self.expr_ty(expr), expr.into())
+                let result_ty = self.expr_ty(expr);
+
+                if !self.expr_ty(value).is_aggregate(self.db) {
+                    // Indices is empty is the `expr` is map
+                    let value = self.lower_expr(value);
+                    let key = self.lower_expr(index);
+                    self.builder.map_access(value, key, result_ty, expr.into())
                 } else {
+                    let mut indices = vec![];
+                    let value = self.lower_aggregate_access(expr, &mut indices);
                     self.builder
-                        .map_access(value, index, self.expr_ty(expr), expr.into())
+                        .aggregate_access(value, indices, result_ty, expr.into())
                 }
             }
 
@@ -794,6 +798,31 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         match &receiver.kind {
             ast::Expr::Attribute { value, .. } => self.lower_expr(value),
             _ => unreachable!(),
+        }
+    }
+
+    fn lower_aggregate_access(
+        &mut self,
+        expr: &Node<ast::Expr>,
+        indices: &mut Vec<ValueId>,
+    ) -> ValueId {
+        match &expr.kind {
+            ast::Expr::Attribute { value, attr } => {
+                let index =
+                    self.expr_ty(value)
+                        .index_from_fname(self.db, &attr.kind, self.u256_ty());
+                let value = self.lower_aggregate_access(value, indices);
+                indices.push(self.builder.make_value(index));
+                value
+            }
+
+            ast::Expr::Subscript { value, index } if self.expr_ty(value).is_aggregate(self.db) => {
+                let value = self.lower_aggregate_access(value, indices);
+                indices.push(self.lower_expr(index));
+                value
+            }
+
+            _ => self.lower_expr(expr),
         }
     }
 
