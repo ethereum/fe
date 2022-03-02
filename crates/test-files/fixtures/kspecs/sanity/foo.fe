@@ -1,0 +1,31 @@
+use std::evm
+
+# always returns 42
+contract Returns42:
+    pub fn __call__():
+        unsafe:
+            evm::mstore(offset: 0, value: 42)
+            evm::return_mem(offset: 0, len: 32)
+
+
+# always returns `input`
+contract ReturnsIn:
+    pub fn __call__():
+        unsafe:
+            let input: u256 = evm::call_data_load(offset: 0)
+            evm::mstore(offset: 0, value: input)
+            evm::return_mem(offset: 0, len: 32)
+
+
+# returns `input`, except when `input == 42`, in which case it will return `26`
+contract ReturnsInCond:
+    pub fn __call__():
+        unsafe:
+            let input: u256 = evm::call_data_load(offset: 0)
+            let output: u256 = input
+
+            if input == 42:
+                output = 26
+
+            evm::mstore(offset: 0, value: output)
+            evm::return_mem(offset: 0, len: 32)

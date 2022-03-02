@@ -23,9 +23,13 @@ pub trait YulgenDb:
 {
     #[salsa::invoke(queries::compile_module)]
     fn compile_module(&self, module_id: ModuleId) -> IndexMap<String, String>;
+    #[salsa::invoke(queries::compile_module_runtimes)]
+    fn compile_module_runtimes(&self, module_id: ModuleId) -> IndexMap<String, String>;
 
     #[salsa::invoke(queries::contracts::contract_object)]
     fn contract_object(&self, contract: ContractId) -> yul::Object;
+    #[salsa::invoke(queries::contracts::contract_runtime_object)]
+    fn contract_runtime_object(&self, contract: ContractId) -> yul::Object;
     #[salsa::invoke(queries::contracts::contract_abi_dispatcher)]
     fn contract_abi_dispatcher(&self, contract: ContractId) -> Vec<yul::Statement>;
 

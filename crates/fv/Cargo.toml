@@ -1,0 +1,20 @@
+[package]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
+description = "Fe formal verification utilities"
+edition = "2021"
+keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
+license = "GPL-3.0-or-later"
+name = "fv"
+readme = "README.md"
+repository = "https://github.com/ethereum/fe"
+version = "0.15.0-alpha"
+
+[features]
+solc-backend = ["fe-driver/solc-backend"]
+kevm-backend = []
+
+[dependencies]
+fe-driver = {path = "../driver", version = "^0.15.0-alpha"}
+fe-yulgen = {path = "../yulgen", version = "^0.15.0-alpha"}
+fe-test-files = {path = "../test-files", version = "^0.15.0-alpha"}

@@ -18,6 +18,18 @@ pub fn compile(
         .collect()
 }
 
+pub fn compile_runtimes(
+    contracts: impl Iterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
+    optimize: bool,
+) -> Result<IndexMap<String, String>, YulcError> {
+    contracts
+        .map(|(name, yul_src)| {
+            compile_single_contract("runtime", yul_src.as_ref(), optimize)
+                .map(|bytecode| (name.as_ref().to_string(), bytecode))
+        })
+        .collect()
+}
+
 #[cfg(feature = "solc-backend")]
 /// Compiles a single Yul contract to bytecode.
 pub fn compile_single_contract(

@@ -16,6 +16,13 @@ pub fn compile_module(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, S
         .collect()
 }
 
+pub fn compile_module_runtimes(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, String> {
+    mappers::module::module_runtimes(db, module)
+        .drain()
+        .map(|(name, object)| (name, to_safe_json(object)))
+        .collect()
+}
+
 fn to_safe_json(obj: yul::Object) -> String {
     normalize_object(obj).to_string().replace('"', "\\\"")
 }

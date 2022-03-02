@@ -16,55 +16,7 @@ use yultsur::*;
 pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
     let adb = db.upcast();
 
-    let runtime_object = {
-        let (mut functions, data, objects) = build_dependency_graph(
-            db,
-            &contract.runtime_dependency_graph(adb),
-            Item::Type(TypeDef::Contract(contract)),
-        );
-
-        // This can all be replaced with a call to the contract's `__call__` function once the
-        // dispatching code has been moved into lowering.
-        //
-        // For now, we must do the following:
-        // - check if a `__call__` function has been defined in the contract and, if so, we map its
-        // body into a Yul function named `$$__call__`
-        // - if a `__call__` function is not defined in the contract, we generate a `$$__call__`
-        // function that dispatches calls using the Solidity ABI
-        // - call the `$$__call__` function
-        let call_fn_ident = identifier! { ("$$__call__") };
-        if let Some(call_fn) = contract.call_function(adb) {
-            let mut fn_context = FnContext::new(db, call_fn.body(adb));
-            let function_statements =
-                multiple_func_stmt(&mut fn_context, &call_fn.data(adb).ast.kind.body);
-            let call_fn_yul = function_definition! {
-                function [call_fn_ident.clone()]() {
-                    // the function body will contain one or more `return_val` assignments
-                    (let return_val := 0)
-                    [function_statements...]
-                }
-            };
-            functions.push(call_fn_yul);
-        } else {
-            functions.extend(db.contract_abi_dispatcher(contract));
-        }
-        functions.sort();
-        functions.dedup();
-
-        yul::Object {
-            name: identifier! { runtime },
-            code: yul::Code {
-                block: yul::Block {
-                    statements: statements! {
-                        [functions...]
-                        ([call_fn_ident]())
-                    },
-                },
-            },
-            objects,
-            data,
-        }
-    };
+    let runtime_object = db.contract_runtime_object(contract);
 
     let contract_name = contract.name(adb);
     if let Some(init_fn) = contract.init_function(adb) {
@@ -94,6 +46,58 @@ pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
             objects: vec![runtime_object],
             data: vec![],
         }
+    }
+}
+
+pub fn contract_runtime_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {
+    let adb = db.upcast();
+
+    let (mut functions, data, objects) = build_dependency_graph(
+        db,
+        &contract.runtime_dependency_graph(adb),
+        Item::Type(TypeDef::Contract(contract)),
+    );
+
+    // This can all be replaced with a call to the contract's `__call__` function once the
+    // dispatching code has been moved into lowering.
+    //
+    // For now, we must do the following:
+    // - check if a `__call__` function has been defined in the contract and, if so, we map its
+    // body into a Yul function named `$$__call__`
+    // - if a `__call__` function is not defined in the contract, we generate a `$$__call__`
+    // function that dispatches calls using the Solidity ABI
+    // - call the `$$__call__` function
+    let call_fn_ident = identifier! { ("$$__call__") };
+    if let Some(call_fn) = contract.call_function(adb) {
+        let mut fn_context = FnContext::new(db, call_fn.body(adb));
+        let function_statements =
+            multiple_func_stmt(&mut fn_context, &call_fn.data(adb).ast.kind.body);
+        let call_fn_yul = function_definition! {
+            function [call_fn_ident.clone()]() {
+                // the function body will contain one or more `return_val` assignments
+                (let return_val := 0)
+                [function_statements...]
+            }
+        };
+        functions.push(call_fn_yul);
+    } else {
+        functions.extend(db.contract_abi_dispatcher(contract));
+    }
+    functions.sort();
+    functions.dedup();
+
+    yul::Object {
+        name: identifier! { runtime },
+        code: yul::Code {
+            block: yul::Block {
+                statements: statements! {
+                    [functions...]
+                    ([call_fn_ident]())
+                },
+            },
+        },
+        objects,
+        data,
     }
 }
 

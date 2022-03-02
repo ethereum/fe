@@ -30,6 +30,8 @@ pub struct CompiledContract {
     pub yul: String,
     #[cfg(feature = "solc-backend")]
     pub bytecode: String,
+    #[cfg(feature = "solc-backend")]
+    pub runtime_bytecode: String,
 }
 
 #[derive(Debug)]
@@ -128,6 +130,15 @@ fn compile_module_id(
         IndexMap::new()
     };
 
+    // compile runtimes to yul
+    let yul_contract_runtimes = fe_yulgen::compile_runtimes(db, lowered_module_id);
+
+    let _bytecode_contract_runtimes = if _with_bytecode {
+        compile_yul_runtimes(yul_contract_runtimes.iter(), _optimize)
+    } else {
+        IndexMap::new()
+    };
+
     // combine all of the named contract maps
     let contracts = json_abis
         .keys()
@@ -140,6 +151,12 @@ fn compile_module_id(
                     #[cfg(feature = "solc-backend")]
                     bytecode: if _with_bytecode {
                         _bytecode_contracts[name].to_owned()
+                    } else {
+                        "".to_string()
+                    },
+                    #[cfg(feature = "solc-backend")]
+                    runtime_bytecode: if _with_bytecode {
+                        _bytecode_contract_runtimes[name].to_owned()
                     } else {
                         "".to_string()
                     },
@@ -162,6 +179,37 @@ fn compile_yul(
     #[cfg(feature = "solc-backend")]
     {
         match fe_yulc::compile(_contracts, _optimize) {
+            Err(error) => {
+                for error in serde_json::from_str::<Value>(&error.0)
+                    .expect("unable to deserialize json output")["errors"]
+                    .as_array()
+                    .expect("errors not an array")
+                {
+                    eprintln!(
+                        "Error: {}",
+                        error["formattedMessage"]
+                            .as_str()
+                            .expect("error value not a string")
+                            .replace("\\\n", "\n")
+                    )
+                }
+                panic!("Yul compilation failed with the above errors")
+            }
+            Ok(contracts) => contracts,
+        }
+    }
+
+    #[cfg(not(feature = "solc-backend"))]
+    IndexMap::new()
+}
+
+fn compile_yul_runtimes(
+    _contracts: impl Iterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
+    _optimize: bool,
+) -> IndexMap<String, String> {
+    #[cfg(feature = "solc-backend")]
+    {
+        match fe_yulc::compile_runtimes(_contracts, _optimize) {
             Err(error) => {
                 for error in serde_json::from_str::<Value>(&error.0)
                     .expect("unable to deserialize json output")["errors"]

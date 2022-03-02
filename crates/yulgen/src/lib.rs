@@ -27,3 +27,7 @@ mod utils;
 pub fn compile(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, String> {
     db.compile_module(module)
 }
+
+pub fn compile_runtimes(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, String> {
+    db.compile_module_runtimes(module)
+}

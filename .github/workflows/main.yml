@@ -121,9 +121,9 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v1
       - name: Build
-        run: cargo test --workspace --all-features --no-run --locked
+        run: cargo test --workspace --features solc-backend --no-run --locked
       - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        run: cargo test --workspace --features solc-backend --verbose
 
   wasm-test:
       runs-on: ubuntu-latest
@@ -179,7 +179,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Build
-        run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
+        run: cargo build --features solc-backend --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

@@ -75,11 +75,11 @@ docker-wasm-test:
 
 .PHONY: coverage
 coverage:
-	cargo tarpaulin --workspace --all-features --verbose --timeout 120 --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html -- --skip differential::
+	cargo tarpaulin --workspace --features solc-backend --verbose --timeout 120 --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html -- --skip differential::
 
 .PHONY: clippy
 clippy:
-	cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms -A clippy::large-enum-variant -W clippy::redundant_closure_for_method_calls
+	cargo clippy --workspace --all-targets --features solc-backend -- -D warnings -A clippy::upper-case-acronyms -A clippy::large-enum-variant -W clippy::redundant_closure_for_method_calls
 
 .PHONY: rustfmt
 rustfmt:

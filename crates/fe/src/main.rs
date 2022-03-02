@@ -22,6 +22,7 @@ arg_enum! {
         Ast,
         LoweredAst,
         Bytecode,
+        RuntimeBytecode,
         Tokens,
         Yul,
     }
@@ -52,7 +53,15 @@ pub fn main() {
                 .short("e")
                 .long("emit")
                 .help("Comma separated compile targets e.g. -e=bytecode,yul")
-                .possible_values(&["abi", "bytecode", "ast", "tokens", "yul", "loweredAst"])
+                .possible_values(&[
+                    "abi",
+                    "bytecode",
+                    "runtimeBytecode",
+                    "ast",
+                    "tokens",
+                    "yul",
+                    "loweredAst",
+                ])
                 .default_value("abi,bytecode")
                 .use_delimiter(true)
                 .takes_value(true),
@@ -239,6 +248,15 @@ fn write_compiled_module(
         if targets.contains(&CompilationTarget::Bytecode) {
             let file_name = format!("{}.bin", &name);
             write_output(&contract_output_dir.join(file_name), &contract.bytecode)?;
+        }
+
+        #[cfg(feature = "solc-backend")]
+        if targets.contains(&CompilationTarget::RuntimeBytecode) {
+            let file_name = format!("{}.runtime.bin", &name);
+            write_output(
+                &contract_output_dir.join(file_name),
+                &contract.runtime_bytecode,
+            )?;
         }
     }
 
