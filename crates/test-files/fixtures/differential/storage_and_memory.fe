@@ -1,3 +1,5 @@
+use std::context::Context
+
 struct MyStruct:
     my_num: u256
     my_num2: u8
@@ -30,11 +32,11 @@ contract Foo:
   pub fn get_items(self) -> Array<i8,1>:
     return self.items.to_mem()
 
-  pub fn set_range(self, from: u256, to: u256):
+  pub fn set_range(self, ctx: Context, from: u256, to: u256):
     let index: u256 = from
     let counter: u256 = 0
     while index < to:
-      self.more_items[index] = self.more_items[index] + block.number
+      self.more_items[index] = self.more_items[index] + ctx.block_number()
       index += 1
       counter += 1
 
