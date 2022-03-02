@@ -170,11 +170,11 @@ impl BodyBuilder {
     pub fn aggregate_access(
         &mut self,
         value: ValueId,
-        index: ValueId,
+        indices: Vec<ValueId>,
         result_ty: TypeId,
         source: SourceInfo,
     ) -> ValueId {
-        let kind = InstKind::AggregateAccess { value, index };
+        let kind = InstKind::AggregateAccess { value, indices };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, Some(result_ty)).unwrap()
     }

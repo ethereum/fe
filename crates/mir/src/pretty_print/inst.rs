@@ -73,11 +73,14 @@ impl PrettyPrint for InstId {
                 write!(w, "}}")
             }
 
-            InstKind::AggregateAccess { value, index } => {
+            InstKind::AggregateAccess { value, indices } => {
                 value.pretty_print(db, store, w)?;
-                write!(w, ".<")?;
-                index.pretty_print(db, store, w)?;
-                write!(w, ">")
+                for index in indices {
+                    write!(w, ".<")?;
+                    index.pretty_print(db, store, w)?;
+                    write!(w, ">")?
+                }
+                Ok(())
             }
 
             InstKind::MapAccess { value, key } => {
