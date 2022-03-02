@@ -1,7 +1,7 @@
 use fe_analyzer::namespace::items::{IngotId, ModuleId};
 use fe_common::{db::Upcast, files::Utf8Path};
 use fe_mir::{
-    analysis::ControlFlowGraph,
+    analysis::{ControlFlowGraph, DomTree, LoopTree, PostDomTree},
     db::{MirDb, NewDb},
 };
 
@@ -42,7 +42,10 @@ fn mir_lower_std_lib() {
     for &module in std_ingot.all_modules(db.upcast()).iter() {
         for func in db.mir_lower_module_all_functions(module).iter() {
             let body = func.body(&db);
-            ControlFlowGraph::compute(&body);
+            let cfg = ControlFlowGraph::compute(&body);
+            let domtree = DomTree::compute(&cfg);
+            LoopTree::compute(&cfg, &domtree);
+            PostDomTree::compute(&body);
         }
     }
 }
