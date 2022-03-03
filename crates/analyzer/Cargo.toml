@@ -1,6 +1,6 @@
 [package]
 name = "fe-analyzer"
-version = "0.13.0-alpha"
+version = "0.14.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,9 +8,9 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 
-fe-common = {path = "../common", version = "^0.13.0-alpha"}
-fe-parser = {path = "../parser", version = "^0.13.0-alpha"}
-fe-library = {path = "../library", version = "^0.13.0-alpha"}
+fe-common = {path = "../common", version = "^0.14.0-alpha"}
+fe-parser = {path = "../parser", version = "^0.14.0-alpha"}
+fe-library = {path = "../library", version = "^0.14.0-alpha"}
 hex = "0.4"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
