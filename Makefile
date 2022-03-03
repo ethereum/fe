@@ -94,7 +94,7 @@ README.md: src/main.rs
 	cargo readme --no-title --no-indent-headings > README.md
 
 notes:
-	towncrier --yes --version $(version)
+	towncrier build --yes --version $(version)
 	git commit -m "Compile release notes"
 
 release:
