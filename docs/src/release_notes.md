@@ -10,6 +10,259 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.14.0-alpha (2022-03-02)
+
+
+### Features
+
+
+- Events can now be defined outside of contracts.
+
+  Example:
+  ```
+  event Transfer:
+      idx sender: address
+      idx receiver: address
+      value: u256
+
+  contract Foo:
+      fn transferFoo(to: address, value: u256):
+          emit Transfer(sender: msg.sender, receiver: to, value)
+
+  contract Bar:
+      fn transferBar(to: address, value: u256):
+          emit Transfer(sender: msg.sender, receiver: to, value)
+  ``` ([#80](https://github.com/ethereum/fe/issues/80))
+- The Fe standard library now includes a `std::evm` module, which provides functions that perform low-level evm operations.
+  Many of these are marked `unsafe`, and thus can only be used inside of an `unsafe` function or an `unsafe` block.
+
+  Example:
+  ```
+  use std::evm::{mstore, mload}
+
+  fn memory_shenanigans():
+    unsafe:
+      mstore(0x20, 42)
+      let x: u256 = mload(0x20)
+      assert x == 42
+  ```
+
+  The global functions `balance` and `balance_of` have been removed; these can now be called as `std::evm::balance()`, etc.
+  The global function `send_value` has been ported to Fe, and is now available as `std::send_value`. ([#629](https://github.com/ethereum/fe/issues/629))
+- Support structs that have non-base type fields in storage.
+
+  Example:
+
+  ```
+  struct Point:
+      pub x: u256
+      pub y: u256
+
+  struct Bar:
+      pub name: String<3>
+      pub numbers: Array<u256, 2>
+      pub point: Point
+      pub something: (u256, bool)
+
+
+  contract Foo:
+      my_bar: Bar
+
+      pub fn complex_struct_in_storage(self) -> String<3>:
+          self.my_bar = Bar(
+              name: "foo",
+              numbers: [1, 2],
+              point: Point(x: 100, y: 200),
+              something: (1, true),
+          )
+
+          # Asserting the values as they were set initially
+          assert self.my_bar.numbers[0] == 1
+          assert self.my_bar.numbers[1] == 2
+          assert self.my_bar.point.x == 100
+          assert self.my_bar.point.y == 200
+          assert self.my_bar.something.item0 == 1
+          assert self.my_bar.something.item1
+
+          # We can change the values of the array
+          self.my_bar.numbers[0] = 10
+          self.my_bar.numbers[1] = 20
+          assert self.my_bar.numbers[0] == 10
+          assert self.my_bar.numbers[1] == 20
+          # We can set the array itself
+          self.my_bar.numbers = [1, 2]
+          assert self.my_bar.numbers[0] == 1
+          assert self.my_bar.numbers[1] == 2
+
+          # We can change the values of the Point
+          self.my_bar.point.x = 1000
+          self.my_bar.point.y = 2000
+          assert self.my_bar.point.x == 1000
+          assert self.my_bar.point.y == 2000
+          # We can set the point itself
+          self.my_bar.point = Point(x=100, y=200)
+          assert self.my_bar.point.x == 100
+          assert self.my_bar.point.y == 200
+
+          # We can change the value of the tuple
+          self.my_bar.something.item0 = 10
+          self.my_bar.something.item1 = false
+          assert self.my_bar.something.item0 == 10
+          assert not self.my_bar.something.item1
+          # We can set the tuple itself
+          self.my_bar.something = (1, true)
+          assert self.my_bar.something.item0 == 1
+          assert self.my_bar.something.item1
+
+          return self.my_bar.name.to_mem()
+  ``` ([#636](https://github.com/ethereum/fe/issues/636))
+- Features that read and modify state outside of contracts are now implemented on a struct 
+  named "Context". `Context` is included in the standard library and can be imported with
+  `use std::context::Context`. Instances of `Context` are created by calls to public functions
+  that declare it in the signature or by unsafe code.
+
+  Basic example:
+
+  ```
+  use std::context::Context
+
+  contract Foo:
+      my_num: u256
+
+      pub fn baz(ctx: Context) -> u256:
+          return ctx.block_number()
+
+      pub fn bing(self, new_num: u256) -> u256:
+          self.my_num = new_num
+          return self.my_num
+
+
+  contract Bar:
+
+      pub fn call_baz(ctx: Context, foo_addr: address) -> u256:
+          # future syntax: `let foo = ctx.load<Foo>(foo_addr)`
+          let foo: Foo = Foo(ctx, foo_addr)
+          return foo.baz()
+
+      pub fn call_bing(ctx: Context) -> u256:
+          # future syntax: `let foo = ctx.create<Foo>(0)`
+          let foo: Foo = Foo.create(ctx, 0)
+          return foo.bing(42)
+  ```
+
+
+  Example with `__call__` and unsafe block:
+
+  ```
+  use std::context::Context
+  use std::evm
+
+  contract Foo:
+
+      pub fn __call__():
+          unsafe:
+              # creating an instance of `Context` is unsafe
+              let ctx: Context = Context()
+              let value: u256 = u256(bar(ctx))
+
+              # return `value`
+              evm::mstore(0, value)
+              evm::return_mem(0, 32)
+
+      fn bar(ctx: Context) -> address:
+          return ctx.self_address()
+  ``` ([#638](https://github.com/ethereum/fe/issues/638))
+- # Features
+
+  ## Support local constant
+
+  Example:
+  ```python
+  contract Foo:
+      pub fn bar():
+          const LOCAL_CONST: i32 = 1
+  ```
+
+  ## Support constant expression
+
+  Example:
+  ```python
+  const GLOBAL: i32 = 8
+
+  contract Foo:
+      pub fn bar():
+          const LOCAL: i32 = GLOBAL * 8
+  ```
+
+  ## Support constant generics expression
+
+  Example:
+  ```python
+  const GLOBAL: u256= 8
+  const USE_GLOBAL: bool = false
+  type MY_ARRAY = Array<i32, { GLOBAL / 4 }>
+
+  contract Foo:
+      pub fn bar():
+          let my_array: Array<i32, { GLOBAL if USE_GLOBAL else 4 }>
+  ```
+
+  # Bug fixes
+
+  ## Fix ICE when constant type is mismatch
+
+  Example:
+  ```python
+  const GLOBAL: i32 = "FOO"
+
+  contract Foo:
+      pub fn bar():
+          let FOO: i32 = GLOBAL
+  ```
+
+  ## Fix ICE when assigning value to constant twice
+
+  Example:
+  ```python
+  const BAR: i32 = 1
+
+  contract FOO:
+      pub fn bar():
+          BAR = 10
+  ``` ([#649](https://github.com/ethereum/fe/issues/649))
+- Argument label syntax now uses `:` instead of `=`. Example:
+
+  ```
+  struct Foo:
+    x: u256
+    y: u256
+
+  let x: MyStruct = MyStruct(x: 10, y: 11)
+  # previously:     MyStruct(x = 10, y = 11)
+  ``` ([#665](https://github.com/ethereum/fe/issues/665))
+- Support module-level `pub` modifier, now default visibility of items in a module is private.
+
+  Example:
+
+  ```python
+  # This constant can be used outside of the module.
+  pub const PUBLIC:i32 = 1
+
+  # This constant can NOT be used outside of the module.
+  const PRIVATE: i32 = 1
+  ``` ([#677](https://github.com/ethereum/fe/issues/677))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- - Source files are now managed by a (salsa) `SourceDb`. A `SourceFileId` now corresponds to a salsa-interned `File` with a path. File content is a salsa input function. This is mostly so that the future (LSP) language server can update file content when the user types or saves, which will trigger a re-analysis of anything that changed.
+  - An ingot's set of modules and dependencies are also salsa inputs, so that when the user adds/removes a file or dependency, analysis is rerun.
+  - Standalone modules (eg a module compiled with `fe fee.fe`) now have a fake ingot parent. Each Ingot has an IngotMode (Lib, Main, StandaloneModule), which is used to disallow `ingot::whatever` paths in standalone modules, and to determine the correct root module file.
+  - `parse_module` now always returns an `ast::Module`, and thus a `ModuleId` will always exist for a source file, even if it contains fatal parse errors. If the parsing fails, the body will end with a `ModuleStmt::ParseError` node. The parsing will stop at all but the simplest of syntax errors, but this at least allows partial analysis of source file with bad syntax.
+  - `ModuleId::ast(db)` is now a query that parses the module's file on demand, rather than the AST being interned into salsa. This makes handling parse diagnostics cleaner, and removes the up-front parsing of every module at ingot creation time. ([#628](https://github.com/ethereum/fe/issues/628))
+
+
 ## 0.13.0-alpha (2022-01-31)## 0.13.0-alpha (2022-01-31)
 
 
