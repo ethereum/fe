@@ -105,7 +105,7 @@ mod tests {
         let func = builder.build();
 
         let post_dom_tree = PostDomTree::compute(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(
             post_dom_tree.post_idom(entry_block),
             PostIDom::Block(merge_block)
@@ -145,7 +145,7 @@ mod tests {
         let func = builder.build();
 
         let post_dom_tree = PostDomTree::compute(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(post_dom_tree.post_idom(entry_block), PostIDom::DummyExit,);
         assert_eq!(
             post_dom_tree.post_idom(then_block),
@@ -175,7 +175,7 @@ mod tests {
         let func = builder.build();
 
         let post_dom_tree = PostDomTree::compute(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(
             post_dom_tree.post_idom(entry_block),
             PostIDom::Block(merge_block),
@@ -216,7 +216,7 @@ mod tests {
         let func = builder.build();
 
         let post_dom_tree = PostDomTree::compute(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(
             post_dom_tree.post_idom(entry_block),
             PostIDom::Block(block3),
@@ -268,7 +268,7 @@ mod tests {
         let func = builder.build();
 
         let post_dom_tree = PostDomTree::compute(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(
             post_dom_tree.post_idom(entry_block),
             PostIDom::Block(block6),

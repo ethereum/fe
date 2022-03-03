@@ -11,7 +11,7 @@ pub struct ControlFlowGraph {
 
 impl ControlFlowGraph {
     pub fn compute(func: &FunctionBody) -> Self {
-        let entry = func.order.entry_block();
+        let entry = func.order.entry();
         let mut cfg = Self {
             entry,
             blocks: FxHashMap::default(),

@@ -17,7 +17,7 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
-    pub return_type: TypeId,
+    pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
     pub analyzer_func_id: analyzer_items::FunctionId,
     pub linkage: Linkage,
@@ -51,7 +51,7 @@ pub enum Linkage {
 
 /// A function body, which is not stored in salsa db to enable in-place
 /// transformation.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionBody {
     pub fid: FunctionId,
 
@@ -78,7 +78,7 @@ impl FunctionBody {
 
 /// A collection of basic block, instructions and values appear in a function
 /// body.
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct BodyDataStore {
     /// Instructions appear in a function body.
     insts: Arena<Inst>,
@@ -108,6 +108,15 @@ impl BodyDataStore {
 
     pub fn inst_data(&self, inst: InstId) -> &Inst {
         &self.insts[inst]
+    }
+
+    pub fn inst_data_mut(&mut self, inst: InstId) -> &mut Inst {
+        &mut self.insts[inst]
+    }
+
+    pub fn replace_inst(&mut self, inst: InstId, new: Inst) -> Inst {
+        let old = &mut self.insts[inst];
+        std::mem::replace(old, new)
     }
 
     pub fn store_value(&mut self, value: Value) -> ValueId {
@@ -159,12 +168,12 @@ impl BodyDataStore {
         self.inst_results.get(&inst).copied()
     }
 
-    pub fn value_ty(&self, vid: ValueId) -> TypeId {
-        self.values[vid].ty()
+    pub fn remove_inst_result(&mut self, inst: InstId) {
+        self.inst_results.remove(&inst);
     }
 
-    pub fn replace_inst(&mut self, inst: InstId, new: Inst) {
-        self.insts[inst] = new;
+    pub fn value_ty(&self, vid: ValueId) -> TypeId {
+        self.values[vid].ty()
     }
 
     pub fn map_result(&mut self, inst: InstId, result: ValueId) {

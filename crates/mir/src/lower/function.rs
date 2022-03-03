@@ -51,7 +51,7 @@ pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) ->
 
     let sig = FunctionSignature {
         params,
-        return_type,
+        return_type: Some(return_type),
         module_id: func.module(db.upcast()),
         analyzer_func_id: func,
         linkage,
@@ -933,7 +933,7 @@ impl Scope {
         };
 
         // Declare function parameters.
-        for param in &func.data(db).params {
+        for param in &func.signature(db).params {
             let local = Local::arg_local(param.name.clone(), param.ty, param.source.clone());
             let value_id = builder.store_func_arg(local);
             root.declare_var(&param.name, value_id)

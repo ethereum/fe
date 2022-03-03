@@ -122,8 +122,12 @@ impl PrettyPrint for InstId {
             }
 
             InstKind::Return { arg } => {
-                write!(w, "return ")?;
-                arg.pretty_print(db, store, w)
+                if let Some(arg) = arg {
+                    write!(w, "return ")?;
+                    arg.pretty_print(db, store, w)
+                } else {
+                    write!(w, "return")
+                }
             }
 
             InstKind::Keccak256 { arg } => {
@@ -144,6 +148,10 @@ impl PrettyPrint for InstId {
             InstKind::AbiEncode { arg } => {
                 write!(w, "abi_encode ")?;
                 arg.pretty_print(db, store, w)
+            }
+
+            InstKind::Nop => {
+                write!(w, "nop")
             }
 
             InstKind::Create { value, contract } => {

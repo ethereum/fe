@@ -21,16 +21,16 @@ pub fn mir_lowered_func_body(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ir::Fun
 }
 
 impl ir::FunctionId {
-    pub fn data(self, db: &dyn MirDb) -> Rc<FunctionSignature> {
+    pub fn signature(self, db: &dyn MirDb) -> Rc<FunctionSignature> {
         db.lookup_mir_intern_function(self)
     }
 
-    pub fn return_type(self, db: &dyn MirDb) -> TypeId {
-        self.data(db).return_type
+    pub fn return_type(self, db: &dyn MirDb) -> Option<TypeId> {
+        self.signature(db).return_type
     }
 
     pub fn analyzer_func(self, db: &dyn MirDb) -> analyzer_items::FunctionId {
-        self.data(db).analyzer_func_id
+        self.signature(db).analyzer_func_id
     }
 
     pub fn body(self, db: &dyn MirDb) -> Rc<ir::FunctionBody> {

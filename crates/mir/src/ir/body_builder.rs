@@ -47,7 +47,7 @@ macro_rules! impl_binary_inst {
 impl BodyBuilder {
     pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
         let body = FunctionBody::new(fid, source);
-        let entry_block = body.order.entry_block();
+        let entry_block = body.order.entry();
         Self {
             body,
             loc: CursorLocation::BlockTop(entry_block),
@@ -303,7 +303,7 @@ impl BodyBuilder {
     }
 
     pub fn ret(&mut self, arg: ValueId, source: SourceInfo) {
-        let kind = InstKind::Return { arg };
+        let kind = InstKind::Return { arg: arg.into() };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst, None);
     }

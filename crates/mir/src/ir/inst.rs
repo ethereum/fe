@@ -96,7 +96,7 @@ pub enum InstKind {
     },
 
     Return {
-        arg: ValueId,
+        arg: Option<ValueId>,
     },
 
     Keccak256 {
@@ -114,6 +114,8 @@ pub enum InstKind {
     AbiEncode {
         arg: ValueId,
     },
+
+    Nop,
 
     Create {
         value: ValueId,
@@ -150,6 +152,13 @@ impl Inst {
     pub fn intrinsic(op: YulIntrinsicOp, args: Vec<ValueId>, source: SourceInfo) -> Self {
         let kind = InstKind::YulIntrinsic { op, args };
         Self::new(kind, source)
+    }
+
+    pub fn nop() -> Self {
+        Self {
+            kind: InstKind::Nop,
+            source: SourceInfo::dummy(),
+        }
     }
 
     pub fn is_terminator(&self) -> bool {
