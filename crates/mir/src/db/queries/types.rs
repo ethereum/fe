@@ -118,7 +118,7 @@ impl TypeId {
     }
 
     /// Returns size of the type in bytes.
-    pub fn size_of(self, db: &dyn MirDb, word_size: usize) -> usize {
+    pub fn size_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
         match self.data(db).as_ref() {
             Type::Bool | Type::I8 | Type::U8 => 1,
             Type::I16 | Type::U16 => 2,
@@ -129,40 +129,55 @@ impl TypeId {
             Type::Address => 20,
             Type::Unit => 0,
 
-            Type::Array(def) => array_elem_size_imp(def, db, word_size) * def.len,
+            Type::Array(def) => array_elem_size_imp(def, db, slot_size) * def.len,
 
             Type::Tuple(def) => {
+                if def.items.is_empty() {
+                    return 0;
+                }
                 let last_idx = def.items.len() - 1;
-                self.aggregate_elem_offset(db, last_idx, word_size)
-                    + def.items[last_idx].size_of(db, word_size)
+                self.aggregate_elem_offset(db, last_idx, slot_size)
+                    + def.items[last_idx].size_of(db, slot_size)
             }
 
             Type::Struct(def) | Type::Contract(def) => {
+                if def.fields.is_empty() {
+                    return 0;
+                }
                 let last_idx = def.fields.len() - 1;
-                self.aggregate_elem_offset(db, last_idx, word_size)
-                    + def.fields[last_idx].1.size_of(db, word_size)
+                self.aggregate_elem_offset(db, last_idx, slot_size)
+                    + def.fields[last_idx].1.size_of(db, slot_size)
             }
 
             Type::Event(def) => {
+                if def.fields.is_empty() {
+                    return 0;
+                }
                 let last_idx = def.fields.len() - 1;
-                self.aggregate_elem_offset(db, last_idx, word_size)
-                    + def.fields[last_idx].1.size_of(db, word_size)
+                self.aggregate_elem_offset(db, last_idx, slot_size)
+                    + def.fields[last_idx].1.size_of(db, slot_size)
             }
         }
     }
 
-    pub fn align_of(self, db: &dyn MirDb, word_size: usize) -> usize {
+    pub fn is_zero_sized(self, db: &dyn MirDb) -> bool {
+        // It's ok to use 1 as a slot size because slot size doesn't affect whether a
+        // type is zero sized or not.
+        self.size_of(db, 1) == 0
+    }
+
+    pub fn align_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
         if self.is_primitive(db) {
             1
         } else {
             // TODO: Too naive, we could implement more efficient layout for aggregate
             // types.
-            word_size
+            slot_size
         }
     }
 
     /// Returns an offset of the element of aggregate type.
-    pub fn aggregate_elem_offset(self, db: &dyn MirDb, elem_idx: usize, word_size: usize) -> usize {
+    pub fn aggregate_elem_offset(self, db: &dyn MirDb, elem_idx: usize, slot_size: usize) -> usize {
         debug_assert!(self.is_aggregate(db));
 
         if elem_idx == 0 {
@@ -170,20 +185,20 @@ impl TypeId {
         }
 
         if let Type::Array(def) = self.data(db).as_ref() {
-            return array_elem_size_imp(def, db, word_size) * elem_idx;
+            return array_elem_size_imp(def, db, slot_size) * elem_idx;
         }
 
-        let mut offset = self.aggregate_elem_offset(db, elem_idx - 1, word_size)
+        let mut offset = self.aggregate_elem_offset(db, elem_idx - 1, slot_size)
             + self
                 .projection_ty_imm(db, elem_idx - 1)
-                .size_of(db, word_size);
+                .size_of(db, slot_size);
 
         let elem_ty = self.projection_ty_imm(db, elem_idx);
-        if (offset % word_size + elem_ty.size_of(db, word_size)) > word_size {
-            offset = round_up(offset, word_size);
+        if (offset % slot_size + elem_ty.size_of(db, slot_size)) > slot_size {
+            offset = round_up(offset, slot_size);
         }
 
-        round_up(offset, elem_ty.align_of(db, word_size))
+        round_up(offset, elem_ty.align_of(db, slot_size))
     }
 
     pub fn is_aggregate(self, db: &dyn MirDb) -> bool {
@@ -197,20 +212,20 @@ impl TypeId {
         matches!(self.data(db).as_ref(), Type::Contract(_))
     }
 
-    pub fn array_elem_size(self, db: &dyn MirDb, word_size: usize) -> usize {
+    pub fn array_elem_size(self, db: &dyn MirDb, slot_size: usize) -> usize {
         let data = self.data(db);
         if let Type::Array(def) = data.as_ref() {
-            array_elem_size_imp(def, db, word_size)
+            array_elem_size_imp(def, db, slot_size)
         } else {
             panic!("expected `Array` type; but got {:?}", data.as_ref())
         }
     }
 }
 
-fn array_elem_size_imp(arr: &ArrayDef, db: &dyn MirDb, word_size: usize) -> usize {
+fn array_elem_size_imp(arr: &ArrayDef, db: &dyn MirDb, slot_size: usize) -> usize {
     let elem_ty = arr.elem_ty;
-    let elem = elem_ty.size_of(db, word_size);
-    round_up(elem, elem_ty.align_of(db, word_size))
+    let elem = elem_ty.size_of(db, slot_size);
+    round_up(elem, elem_ty.align_of(db, slot_size))
 }
 
 fn expect_projection_index(value: &Value) -> usize {
@@ -220,8 +235,8 @@ fn expect_projection_index(value: &Value) -> usize {
     }
 }
 
-fn round_up(value: usize, word_size: usize) -> usize {
-    ((value + word_size - 1) / word_size) * word_size
+fn round_up(value: usize, slot_size: usize) -> usize {
+    ((value + slot_size - 1) / slot_size) * slot_size
 }
 
 #[cfg(test)]

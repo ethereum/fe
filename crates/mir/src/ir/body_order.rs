@@ -25,7 +25,7 @@ impl BodyOrder {
     }
 
     /// Returns an entry block of a function body.
-    pub fn entry_block(&self) -> BasicBlockId {
+    pub fn entry(&self) -> BasicBlockId {
         self.entry_block
     }
 

@@ -162,7 +162,7 @@ mod tests {
         let func = builder.build();
 
         let dom_tree = calc_dom(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(then_block), Some(entry_block));
         assert_eq!(dom_tree.idom(else_block), Some(entry_block));
@@ -198,7 +198,7 @@ mod tests {
         let func = builder.build();
 
         let dom_tree = calc_dom(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(block1), Some(entry_block));
         assert_eq!(dom_tree.idom(block2), Some(entry_block));
@@ -268,7 +268,7 @@ mod tests {
         let func = builder.build();
 
         let dom_tree = calc_dom(&func);
-        let entry_block = func.order.entry_block();
+        let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(block1), Some(entry_block));
         assert_eq!(dom_tree.idom(block2), Some(entry_block));

@@ -594,6 +594,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-codegen"
+version = "0.14.0-alpha"
+dependencies = [
+ "fe-abi",
+ "fe-common",
+ "fe-mir",
+]
+
+[[package]]
 name = "fe-common"
 version = "0.16.0-alpha"
 dependencies = [

@@ -22,6 +22,14 @@ impl<'a> BodyCursor<'a> {
     pub fn new(body: &'a mut FunctionBody, loc: CursorLocation) -> Self {
         Self { body, loc }
     }
+
+    pub fn new_at_entry(body: &'a mut FunctionBody) -> Self {
+        let entry = body.order.entry();
+        Self {
+            body,
+            loc: CursorLocation::BlockTop(entry),
+        }
+    }
     pub fn set_loc(&mut self, loc: CursorLocation) {
         self.loc = loc;
     }
@@ -102,7 +110,7 @@ impl<'a> BodyCursor<'a> {
 
     /// Sets a cursor to an entry block.
     pub fn set_to_entry(&mut self) {
-        let entry_bb = self.body().order.entry_block();
+        let entry_bb = self.body().order.entry();
         let loc = CursorLocation::BlockTop(entry_bb);
         self.set_loc(loc);
     }
@@ -125,15 +133,6 @@ impl<'a> BodyCursor<'a> {
         let inst = self.body.store.store_inst(data);
         self.insert_inst(inst);
         inst
-    }
-
-    /// Replace a current pointed [`Inst`] with `new_inst` in-place.
-    ///
-    /// # Panics
-    /// Panics if a cursor doesn't point [`CursorLocation::Inst`].
-    pub fn replace(&mut self, new_inst: Inst) {
-        let inst = self.expect_inst();
-        self.body.store.replace_inst(inst, new_inst);
     }
 
     /// Remove a current pointed [`Inst`] from a function body. A cursor
