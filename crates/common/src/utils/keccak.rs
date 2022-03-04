@@ -15,13 +15,13 @@ pub fn partial_right_padded(content: &[u8], size: usize) -> String {
         .map(|(index, byte)| if index >= size { 0 } else { *byte })
         .collect();
 
-    format!("0x{}", hex::encode(&padded_output))
+    hex::encode(&padded_output)
 }
 
 /// Take the first `size` number of bytes of the hash with no padding.
 pub fn partial(content: &[u8], size: usize) -> String {
     let result = full_as_bytes(content);
-    format!("0x{}", hex::encode(&result[0..size]))
+    hex::encode(&result[0..size])
 }
 
 /// Get the full 32 byte hash of the content as a byte array.

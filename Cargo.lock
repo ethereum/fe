@@ -560,7 +560,6 @@ version = "0.16.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
- "fe-parser",
  "serde",
  "serde_json",
 ]
@@ -597,8 +596,6 @@ dependencies = [
 name = "fe-codegen"
 version = "0.14.0-alpha"
 dependencies = [
- "fe-abi",
- "fe-common",
  "fe-mir",
 ]
 
@@ -730,6 +727,15 @@ dependencies = [
  "num-traits",
  "salsa",
  "smol_str",
+]
+
+[[package]]
+name = "fe-new_abi"
+version = "0.14.0-alpha"
+dependencies = [
+ "fe-common",
+ "serde",
+ "serde_test",
 ]
 
 [[package]]
@@ -1762,6 +1768,15 @@ checksum = "bcbd0344bc6533bc7ec56df11d42fb70f1b912351c0825ccb7211b59d8af7cf5"
 dependencies = [
  "itoa 1.0.1",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_test"
+version = "1.0.136"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21675ba6f9d97711cc00eee79d8dd7d0a31e571c350fb4d8a7c78f70c0e7b0e9"
+dependencies = [
  "serde",
 ]
 
