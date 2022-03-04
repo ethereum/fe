@@ -14,5 +14,5 @@ pub fn func_selector(name: &str, params: &[String]) -> String {
 
 fn hash_signature(name: &str, params: &[String], size: usize) -> String {
     let signature = format!("{}({})", name, params.join(","));
-    keccak::partial(signature.as_bytes(), size)
+    format!("0x{}", keccak::partial(signature.as_bytes(), size))
 }

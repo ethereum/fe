@@ -6,5 +6,3 @@ edition = "2021"
 
 [dependencies]
 fe-mir = { path = "../mir", version = "^0.14.0-alpha" }
-fe-common = { path = "../common", version = "^0.14.0-alpha" }
-fe-abi= { path = "../abi", version = "^0.14.0-alpha" }
