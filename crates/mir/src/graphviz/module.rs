@@ -41,10 +41,10 @@ impl<'db> GraphWalk<'db> for ModuleGraph<'db> {
         let mut edges = vec![];
         for func in self.db.mir_lower_module_all_functions(self.module).iter() {
             for block in FunctionNode::new(*func).blocks(self.db) {
-                for pred in block.preds(self.db) {
+                for succ in block.succs(self.db) {
                     let edge = ModuleGraphEdge {
-                        from: pred,
-                        to: block,
+                        from: block,
+                        to: succ,
                     };
                     edges.push(edge);
                 }

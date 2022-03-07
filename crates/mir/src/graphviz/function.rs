@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use dot2::{label, Id};
 
-use crate::{db::MirDb, ir::FunctionId, pretty_print::PrettyPrint};
+use crate::{analysis::ControlFlowGraph, db::MirDb, ir::FunctionId, pretty_print::PrettyPrint};
 
 use super::block::BlockNode;
 
@@ -41,8 +41,9 @@ impl FunctionNode {
 
     pub(super) fn blocks(self, db: &dyn MirDb) -> Vec<BlockNode> {
         let body = self.func.body(db);
-        body.order
-            .iter_block()
+        // We use control flow graph to collect reachable blocks.
+        let cfg = ControlFlowGraph::compute(&body);
+        cfg.post_order()
             .map(|block| BlockNode::new(self.func, block))
             .collect()
     }

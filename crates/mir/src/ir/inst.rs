@@ -175,7 +175,7 @@ impl Inst {
     pub fn branch_info(&self) -> BranchInfo {
         match self.kind {
             InstKind::Jump { dest } => BranchInfo::Jump(dest),
-            InstKind::Branch { then, else_, .. } => BranchInfo::Branch((then, else_)),
+            InstKind::Branch { cond, then, else_ } => BranchInfo::Branch(cond, then, else_),
             _ => BranchInfo::NotBranch,
         }
     }
@@ -526,5 +526,5 @@ impl From<fe_analyzer::builtins::Intrinsic> for YulIntrinsicOp {
 pub enum BranchInfo {
     NotBranch,
     Jump(BasicBlockId),
-    Branch((BasicBlockId, BasicBlockId)),
+    Branch(ValueId, BasicBlockId, BasicBlockId),
 }

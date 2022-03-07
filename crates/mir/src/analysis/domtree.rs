@@ -3,6 +3,8 @@
 //! The algorithm is based on Keith D. Cooper., Timothy J. Harvey., and Ken
 //! Kennedy.: A Simple, Fast Dominance Algorithm: <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
 
+use std::collections::BTreeSet;
+
 use fxhash::FxHashMap;
 
 use crate::ir::BasicBlockId;
@@ -120,6 +122,47 @@ impl DomTree {
 
         b1
     }
+
+    /// Compute dominance frontiers of each blocks.
+    pub fn compute_df(&self, cfg: &ControlFlowGraph) -> DFSet {
+        let mut df = DFSet::default();
+
+        for &block in &self.rpo {
+            let preds = cfg.preds(block);
+            if preds.len() < 2 {
+                continue;
+            }
+
+            for pred in preds {
+                let mut runner = *pred;
+                while self.doms.get(&block) != Some(&runner) && self.is_reachable(runner) {
+                    df.0.entry(runner).or_default().insert(block);
+                    runner = self.doms[&runner];
+                }
+            }
+        }
+
+        df
+    }
+}
+
+/// Dominance frontiers of each blocks.
+#[derive(Default, Debug)]
+pub struct DFSet(FxHashMap<BasicBlockId, BTreeSet<BasicBlockId>>);
+
+impl DFSet {
+    /// Returns all dominance frontieres of a `block`.
+    pub fn frontiers(
+        &self,
+        block: BasicBlockId,
+    ) -> Option<impl Iterator<Item = BasicBlockId> + '_> {
+        self.0.get(&block).map(|set| set.iter().copied())
+    }
+
+    /// Returns number of frontier blocks of a `block`.
+    pub fn frontier_num(&self, block: BasicBlockId) -> usize {
+        self.0.get(&block).map(BTreeSet::len).unwrap_or(0)
+    }
 }
 
 #[cfg(test)]
@@ -128,9 +171,11 @@ mod tests {
 
     use crate::ir::{body_builder::BodyBuilder, FunctionBody, FunctionId, SourceInfo, TypeId};
 
-    fn calc_dom(func: &FunctionBody) -> DomTree {
+    fn calc_dom(func: &FunctionBody) -> (DomTree, DFSet) {
         let cfg = ControlFlowGraph::compute(func);
-        DomTree::compute(&cfg)
+        let domtree = DomTree::compute(&cfg);
+        let df = domtree.compute_df(&cfg);
+        (domtree, df)
     }
 
     fn body_builder() -> BodyBuilder {
@@ -161,12 +206,24 @@ mod tests {
 
         let func = builder.build();
 
-        let dom_tree = calc_dom(&func);
+        let (dom_tree, df) = calc_dom(&func);
         let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(then_block), Some(entry_block));
         assert_eq!(dom_tree.idom(else_block), Some(entry_block));
         assert_eq!(dom_tree.idom(merge_block), Some(entry_block));
+
+        assert_eq!(df.frontier_num(entry_block), 0);
+        assert_eq!(df.frontier_num(then_block), 1);
+        assert_eq!(
+            df.frontiers(then_block).unwrap().next().unwrap(),
+            merge_block
+        );
+        assert_eq!(
+            df.frontiers(else_block).unwrap().next().unwrap(),
+            merge_block
+        );
+        assert_eq!(df.frontier_num(merge_block), 0);
     }
 
     #[test]
@@ -197,7 +254,7 @@ mod tests {
 
         let func = builder.build();
 
-        let dom_tree = calc_dom(&func);
+        let (dom_tree, _) = calc_dom(&func);
         let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(block1), Some(entry_block));
@@ -267,7 +324,7 @@ mod tests {
 
         let func = builder.build();
 
-        let dom_tree = calc_dom(&func);
+        let (dom_tree, _) = calc_dom(&func);
         let entry_block = func.order.entry();
         assert_eq!(dom_tree.idom(entry_block), None);
         assert_eq!(dom_tree.idom(block1), Some(entry_block));

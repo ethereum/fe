@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use super::types::AbiType;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiFunction {
     #[serde(rename = "type")]
     func_type: AbiFunctionType,
@@ -86,7 +86,7 @@ impl AbiFunctionSelector {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct AbiFunctionParamInner {
     name: String,
     #[serde(flatten)]
