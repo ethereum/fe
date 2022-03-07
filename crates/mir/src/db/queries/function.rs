@@ -46,6 +46,11 @@ impl ir::FunctionId {
         self.analyzer_func(db).is_constructor(db.upcast())
     }
 
+    pub fn name(&self, db: &dyn MirDb) -> SmolStr {
+        let analyzer_func = self.analyzer_func(db);
+        analyzer_func.name(db.upcast())
+    }
+
     /// Returns `class_name::fn_name` if a function is a method else `fn_name`.
     pub fn name_with_class(self, db: &dyn MirDb) -> SmolStr {
         let analyzer_func = self.analyzer_func(db);

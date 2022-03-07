@@ -1,6 +1,8 @@
-use fe_mir::{db::MirDb, ir::FunctionSignature};
+use fe_mir::ir::FunctionSignature;
 
-pub fn legalize_func_signature(_db: &dyn MirDb, _sig: &mut FunctionSignature) {
+use crate::db::CodegenDb;
+
+pub fn legalize_func_signature(_db: &dyn CodegenDb, _sig: &mut FunctionSignature) {
     // TODO: Remove zero sized types from arguments, also remove return type if
     // it's zero-sized
 }

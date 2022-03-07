@@ -67,7 +67,7 @@ impl ControlFlowGraph {
                 self.exits.push(block)
             }
             BranchInfo::Jump(dest) => self.add_edge(block, dest),
-            BranchInfo::Branch((then, else_)) => {
+            BranchInfo::Branch(_, then, else_) => {
                 self.add_edge(block, then);
                 self.add_edge(block, else_);
             }

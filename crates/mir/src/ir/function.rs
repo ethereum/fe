@@ -7,7 +7,7 @@ use smol_str::SmolStr;
 use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
-    inst::{BranchInfo, Inst, InstId},
+    inst::{BranchInfo, Inst, InstId, InstKind},
     types::TypeId,
     value::{Immediate, Local, Value, ValueId},
     BasicBlockId, SourceInfo,
@@ -32,7 +32,7 @@ pub struct FunctionParam {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(pub(crate) u32);
+pub struct FunctionId(pub u32);
 impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -166,6 +166,25 @@ impl BodyDataStore {
     /// temporary value.
     pub fn inst_result(&self, inst: InstId) -> Option<ValueId> {
         self.inst_results.get(&inst).copied()
+    }
+
+    pub fn rewrite_branch_dest(&mut self, inst: InstId, from: BasicBlockId, to: BasicBlockId) {
+        match &mut self.inst_data_mut(inst).kind {
+            InstKind::Jump { dest } => {
+                if *dest == from {
+                    *dest = to;
+                }
+            }
+            InstKind::Branch { then, else_, .. } => {
+                if *then == from {
+                    *then = to;
+                }
+                if *else_ == from {
+                    *else_ = to;
+                }
+            }
+            _ => unreachable!("inst is not a branch"),
+        }
     }
 
     pub fn remove_inst_result(&mut self, inst: InstId) {

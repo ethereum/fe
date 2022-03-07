@@ -63,9 +63,9 @@ impl Serialize for AbiType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiTupleField {
-    pub(crate) name: String,
+    name: String,
     #[serde(flatten)]
-    pub(crate) ty: AbiType,
+    ty: AbiType,
 }
 
 impl AbiTupleField {

@@ -51,10 +51,10 @@ impl BlockNode {
         label::Text::HtmlStr(label.into())
     }
 
-    pub(super) fn preds(self, db: &dyn MirDb) -> Vec<BlockNode> {
+    pub(super) fn succs(self, db: &dyn MirDb) -> Vec<BlockNode> {
         let func_body = self.func.body(db);
         let cfg = ControlFlowGraph::compute(&func_body);
-        cfg.preds(self.block)
+        cfg.succs(self.block)
             .iter()
             .map(|block| Self::new(self.func, *block))
             .collect()

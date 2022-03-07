@@ -126,7 +126,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 } else {
                     self.make_unit()
                 };
-                self.builder.ret(value, stmt.into())
+                self.builder.ret(value, stmt.into());
+                let next_block = self.builder.make_block();
+                self.builder.move_to_block(next_block);
             }
 
             ast::FuncStmt::VarDecl { target, value, .. } => {
@@ -182,25 +184,23 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::FuncStmt::For { target, iter, body } => self.lower_for_loop(target, iter, body),
 
             ast::FuncStmt::While { test, body } => {
-                let entry_bb = self.builder.make_block();
-                let body_bb = self.builder.make_block();
+                let header_bb = self.builder.make_block();
                 let exit_bb = self.builder.make_block();
 
-                self.builder.jump(entry_bb, SourceInfo::dummy());
-
-                // Lower while entry.
-                self.builder.move_to_block(entry_bb);
                 let cond = self.lower_expr(test);
                 self.builder
-                    .branch(cond, body_bb, exit_bb, SourceInfo::dummy());
+                    .branch(cond, header_bb, exit_bb, SourceInfo::dummy());
 
                 // Lower while body.
-                self.builder.move_to_block(body_bb);
-                self.enter_loop_scope(entry_bb, exit_bb);
+                self.builder.move_to_block(header_bb);
+                self.enter_loop_scope(header_bb, exit_bb);
                 for stmt in body {
                     self.lower_stmt(stmt);
                 }
-                self.builder.jump(entry_bb, SourceInfo::dummy());
+                let cond = self.lower_expr(test);
+                self.builder
+                    .branch(cond, header_bb, exit_bb, SourceInfo::dummy());
+
                 self.exit_scope();
 
                 // Move to while exit bb.
@@ -257,16 +257,37 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 // TODO: Generate appropriate error message.
                 let arg = self.make_unit();
                 self.builder.revert(arg, stmt.into());
+                let next_block = self.builder.make_block();
+                self.builder.move_to_block(next_block);
             }
 
             ast::FuncStmt::Break => {
                 let exit = self.scope().loop_exit(&self.scopes);
-                self.builder.jump(exit, stmt.into())
+                self.builder.jump(exit, stmt.into());
+                let next_block = self.builder.make_block();
+                self.builder.move_to_block(next_block);
             }
 
             ast::FuncStmt::Continue => {
                 let entry = self.scope().loop_entry(&self.scopes);
-                self.builder.jump(entry, stmt.into())
+                if let Some(loop_idx) = self.scope().loop_idx(&self.scopes) {
+                    let u256_ty = self.u256_ty();
+                    let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
+                    let inc = self
+                        .builder
+                        .add(loop_idx, imm_one, u256_ty, SourceInfo::dummy());
+                    self.builder.assign(loop_idx, inc, SourceInfo::dummy());
+                    let maximum_iter_count = self.scope().maximum_iter_count(&self.scopes).unwrap();
+                    let cond = self
+                        .builder
+                        .eq(loop_idx, maximum_iter_count, u256_ty, stmt.into());
+                    let exit = self.scope().loop_exit(&self.scopes);
+                    self.builder.branch(cond, exit, entry, stmt.into());
+                } else {
+                    self.builder.jump(entry, stmt.into())
+                }
+                let next_block = self.builder.make_block();
+                self.builder.move_to_block(next_block);
             }
 
             ast::FuncStmt::Revert { error } => {
@@ -277,6 +298,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 };
 
                 self.builder.revert(error, stmt.into());
+                let next_block = self.builder.make_block();
+                self.builder.move_to_block(next_block);
             }
 
             ast::FuncStmt::Unsafe(stmts) => {
@@ -342,10 +365,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             for stmt in then {
                 self.lower_stmt(stmt);
             }
-            let current_block = self.builder.current_block();
-            if !self.builder.is_block_terminated(current_block) {
-                self.builder.jump(merge_bb, SourceInfo::dummy());
-            }
+            self.builder.jump(merge_bb, SourceInfo::dummy());
             self.builder.move_to_block(merge_bb);
             self.exit_scope();
         } else {
@@ -373,37 +393,17 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             self.exit_scope();
             let else_block_end_bb = self.builder.current_block();
 
-            match (
-                self.builder.is_block_terminated(then_block_end_bb),
-                self.builder.is_block_terminated(else_block_end_bb),
-            ) {
-                (true, true) => {}
-                (false, true) => {
-                    let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(then_block_end_bb);
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.builder.move_to_block(merge_bb);
-                }
-                (true, false) => {
-                    let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(else_block_end_bb);
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.builder.move_to_block(merge_bb);
-                }
-                (false, false) => {
-                    let merge_bb = self.builder.make_block();
-                    self.builder.move_to_block(then_block_end_bb);
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.builder.move_to_block(else_block_end_bb);
-                    self.builder.jump(merge_bb, SourceInfo::dummy());
-                    self.builder.move_to_block(merge_bb);
-                }
-            }
+            let merge_bb = self.builder.make_block();
+            self.builder.move_to_block(then_block_end_bb);
+            self.builder.jump(merge_bb, SourceInfo::dummy());
+            self.builder.move_to_block(else_block_end_bb);
+            self.builder.jump(merge_bb, SourceInfo::dummy());
+            self.builder.move_to_block(merge_bb);
         }
     }
 
     // NOTE: we assume a type of `iter` is array.
-    // TODO: Desugar to `loop` + `match` like rustc.
+    // TODO: Desugar to `loop` + `match` like rustc in HIR to generate better MIR.
     fn lower_for_loop(
         &mut self,
         loop_variable: &Node<SmolStr>,
@@ -412,7 +412,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         let preheader_bb = self.builder.make_block();
         let entry_bb = self.builder.make_block();
-        let body_bb = self.builder.make_block();
         let exit_bb = self.builder.make_block();
         let iter_elem_ty = self.analyzer_body.var_types[&loop_variable.id].clone();
         let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty);
@@ -434,18 +433,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         self.scope_mut()
             .declare_var(&loop_variable.kind, loop_value);
 
-        // Creates index that stores loop iteration count.
+        // Declare and initialize `loop_idx` to 0.
         let u256_ty = self.u256_ty();
         let loop_idx = Local::tmp_local("$loop_idx_tmp".into(), u256_ty);
-
-        // Declare and initialize `loop_idx` to 0.
         let loop_idx = self.builder.declare(loop_idx);
         let imm_zero = self.builder.make_imm(0u32.into(), u256_ty);
         self.builder.assign(loop_idx, imm_zero, SourceInfo::dummy());
 
         // Evaluates loop variable.
         let iter = self.lower_expr(iter);
-        self.builder.jump(entry_bb, SourceInfo::dummy());
 
         // Create maximum loop count.
         let iter_ty = self.builder.value_ty(iter);
@@ -454,36 +450,39 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             _ => unreachable!(),
         };
         let maximum_iter_count = self.builder.make_imm(maximum_iter_count.into(), u256_ty);
-
-        /* Lower entry. */
-        self.builder.move_to_block(entry_bb);
-        // if loop_idx == array length, then jump  to loop exit.
         let cond = self
             .builder
             .eq(loop_idx, maximum_iter_count, u256_ty, SourceInfo::dummy());
         self.builder
-            .branch(cond, exit_bb, body_bb, SourceInfo::dummy());
+            .branch(cond, exit_bb, entry_bb, SourceInfo::dummy());
+        self.scope_mut().loop_idx = Some(loop_idx);
+        self.scope_mut().maximum_iter_count = Some(maximum_iter_count);
 
         /* Lower body. */
-        self.builder.move_to_block(body_bb);
+        self.builder.move_to_block(entry_bb);
 
-        // loop_variable = array[ioop_idx]
+        // loop_variable = array[loop_idx]
         let iter_elem =
             self.builder
                 .aggregate_access(iter, vec![loop_idx], iter_elem_ty, SourceInfo::dummy());
         self.builder
             .assign(loop_value, iter_elem, SourceInfo::dummy());
-        // loop_idx+= 1
+
+        for stmt in body {
+            self.lower_stmt(stmt);
+        }
+
+        // loop_idx += 1
         let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
         let inc = self
             .builder
             .add(loop_idx, imm_one, u256_ty, SourceInfo::dummy());
         self.builder.assign(loop_idx, inc, SourceInfo::dummy());
-
-        for stmt in body {
-            self.lower_stmt(stmt);
-        }
-        self.builder.jump(entry_bb, SourceInfo::dummy());
+        let cond = self
+            .builder
+            .eq(loop_idx, maximum_iter_count, u256_ty, SourceInfo::dummy());
+        self.builder
+            .branch(cond, exit_bb, entry_bb, SourceInfo::dummy());
 
         /* Move to exit bb */
         self.exit_scope();
@@ -921,6 +920,9 @@ struct Scope {
     loop_entry: Option<BasicBlockId>,
     loop_exit: Option<BasicBlockId>,
     variables: FxHashMap<SmolStr, ValueId>,
+    // TODO: Remove the below two fields when `for` loop desugaring is implemented.
+    loop_idx: Option<ValueId>,
+    maximum_iter_count: Option<ValueId>,
 }
 
 impl Scope {
@@ -930,6 +932,8 @@ impl Scope {
             loop_entry: None,
             loop_exit: None,
             variables: FxHashMap::default(),
+            loop_idx: None,
+            maximum_iter_count: None,
         };
 
         // Declare function parameters.
@@ -948,6 +952,8 @@ impl Scope {
             loop_entry: None,
             loop_exit: None,
             variables: FxHashMap::default(),
+            loop_idx: None,
+            maximum_iter_count: None,
         }
     }
 
@@ -957,6 +963,8 @@ impl Scope {
             loop_entry: loop_entry.into(),
             loop_exit: loop_exit.into(),
             variables: FxHashMap::default(),
+            loop_idx: None,
+            maximum_iter_count: None,
         }
     }
 
@@ -971,6 +979,20 @@ impl Scope {
         match self.loop_exit {
             Some(exit) => exit,
             None => scopes[self.parent.unwrap()].loop_exit(scopes),
+        }
+    }
+
+    fn loop_idx(&self, scopes: &Arena<Scope>) -> Option<ValueId> {
+        match self.loop_idx {
+            Some(idx) => Some(idx),
+            None => scopes[self.parent?].loop_idx(scopes),
+        }
+    }
+
+    fn maximum_iter_count(&self, scopes: &Arena<Scope>) -> Option<ValueId> {
+        match self.maximum_iter_count {
+            Some(count) => Some(count),
+            None => scopes[self.parent?].maximum_iter_count(scopes),
         }
     }
 
