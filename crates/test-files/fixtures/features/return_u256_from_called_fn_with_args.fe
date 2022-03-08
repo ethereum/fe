@@ -1,7 +1,7 @@
 contract Foo:
     baz: Map<u256, u256>
-    pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-        return val1 + val2 + val3 + val4 + val5
+    pub fn foo(_ v1: u256, _ v2: u256, _ v3: u256, _ v4: u256, _ v5: u256) -> u256:
+        return v1 + v2 + v3 + v4 + v5
 
     pub fn cem() -> u256:
         return 100

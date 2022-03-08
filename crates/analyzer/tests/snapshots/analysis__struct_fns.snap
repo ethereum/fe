@@ -16,13 +16,14 @@ note:
   │  
 5 │ ╭   pub fn new(x: u64, y: u64) -> Point:
 6 │ │     return Point(x, y)
-  │ ╰──────────────────────^ attributes hash: 15722930327333552684
+  │ ╰──────────────────────^ attributes hash: 16588628800633378656
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "x",
                 typ: Ok(
                     Base(
@@ -33,6 +34,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "y",
                 typ: Ok(
                     Base(
@@ -139,11 +141,11 @@ note:
 note: 
    ┌─ struct_fns.fe:15:3
    │  
-15 │ ╭   pub fn set_x(self, x: u64) -> u64:
+15 │ ╭   pub fn set_x(self, _ x: u64) -> u64:
 16 │ │     let old: u64 = self.x
 17 │ │     self.x = x
 18 │ │     return old
-   │ ╰──────────────^ attributes hash: 2742220358163612616
+   │ ╰──────────────^ attributes hash: 9776752757917359734
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -152,6 +154,9 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "x",
                  typ: Ok(
                      Base(
@@ -280,7 +285,7 @@ note:
 27 │ ╭   pub fn translate(self, x: u64, y: u64):
 28 │ │     self.x += x
 29 │ │     self.y += y
-   │ ╰───────────────^ attributes hash: 13052419481389358350
+   │ ╰───────────────^ attributes hash: 7723021135770029200
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -289,6 +294,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      Base(
@@ -299,6 +305,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "y",
                  typ: Ok(
                      Base(
@@ -343,11 +350,11 @@ note:
 note: 
    ┌─ struct_fns.fe:31:3
    │  
-31 │ ╭   pub fn add(self, other: Point) -> Point:
+31 │ ╭   pub fn add(self, _ other: Point) -> Point:
 32 │ │     let x: u64 = self.x + other.x
 33 │ │     let y: u64 = self.y + other.y
 34 │ │     return Point(x, y)
-   │ ╰──────────────────────^ attributes hash: 3240940104805858179
+   │ ╰──────────────────────^ attributes hash: 13368777112318344367
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -356,6 +363,9 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "other",
                  typ: Ok(
                      Struct(
@@ -448,7 +458,7 @@ note:
    │  
 36 │ ╭ pub fn do_pointy_things():
 37 │ │   let p1: Point = Point.origin()
-38 │ │   p1.translate(5, 10)
+38 │ │   p1.translate(x: 5, y: 10)
 39 │ │ 
    · │
 42 │ │ 
@@ -482,17 +492,17 @@ note:
    │
 37 │   let p1: Point = Point.origin()
    │                   ^^^^^^^^^^^^^^ Point: Memory
-38 │   p1.translate(5, 10)
-   │   ^^           ^  ^^ u64: Value
-   │   │            │   
-   │   │            u64: Value
+38 │   p1.translate(x: 5, y: 10)
+   │   ^^              ^     ^^ u64: Value
+   │   │               │      
+   │   │               u64: Value
    │   Point: Memory
 
 note: 
    ┌─ struct_fns.fe:38:3
    │
-38 │   p1.translate(5, 10)
-   │   ^^^^^^^^^^^^^^^^^^^ (): Value
+38 │   p1.translate(x: 5, y: 10)
+   │   ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 39 │ 
 40 │   let p2: Point = Point(x: 1, y: 2)
    │                            ^     ^ u64: Value
@@ -564,13 +574,14 @@ note:
    · │
 55 │ │     assert p.x() == y and p.y == 100
 56 │ │     return p.y
-   │ ╰──────────────^ attributes hash: 16979873837687926622
+   │ ╰──────────────^ attributes hash: 14881144643149919691
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      Base(
@@ -581,6 +592,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "y",
                  typ: Ok(
                      Base(

@@ -155,6 +155,7 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     let args = (0..array.size)
         .map(|index| {
             ast::FunctionArg::Regular(ast::RegularFunctionArg {
+                label: Some(SmolStr::new("_").into_node()),
                 name: SmolStr::new(format!("val{}", index)).into_node(),
                 typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
             })

@@ -41,8 +41,8 @@ note:
    ┌─ revert.fe:13:5
    │  
 13 │ ╭     pub fn revert_custom_error(ctx: Context):
-14 │ │         ctx.send_value(address(0), 100)
-   │ ╰───────────────────────────────────────^ attributes hash: 11452088215302469574
+14 │ │         ctx.send_value(to: address(0), wei: 100)
+   │ ╰────────────────────────────────────────────────^ attributes hash: 5519676733853656531
    │  
    = FunctionSignature {
          self_decl: None,
@@ -51,6 +51,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -72,24 +73,24 @@ note:
 note: 
    ┌─ revert.fe:14:9
    │
-14 │         ctx.send_value(address(0), 100)
-   │         ^^^                    ^ u256: Value
-   │         │                       
+14 │         ctx.send_value(to: address(0), wei: 100)
+   │         ^^^                        ^ u256: Value
+   │         │                           
    │         Context: Memory
 
 note: 
-   ┌─ revert.fe:14:24
+   ┌─ revert.fe:14:28
    │
-14 │         ctx.send_value(address(0), 100)
-   │                        ^^^^^^^^^^  ^^^ u256: Value
-   │                        │            
-   │                        address: Value
+14 │         ctx.send_value(to: address(0), wei: 100)
+   │                            ^^^^^^^^^^       ^^^ u256: Value
+   │                            │                 
+   │                            address: Value
 
 note: 
    ┌─ revert.fe:14:9
    │
-14 │         ctx.send_value(address(0), 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+14 │         ctx.send_value(to: address(0), wei: 100)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ revert.fe:16:5

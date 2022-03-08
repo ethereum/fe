@@ -15,7 +15,7 @@ note:
  9 │ ╭     pub fn foo(self, ctx: Context) -> u256:
 10 │ │         self.other.set_foo_addr(ctx.self_address())
 11 │ │         return self.other.answer()
-   │ ╰──────────────────────────────────^ attributes hash: 15791625094174035122
+   │ ╰──────────────────────────────────^ attributes hash: 3247318976601732237
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -26,6 +26,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -89,15 +90,18 @@ note:
 note: 
    ┌─ two_contracts.fe:13:5
    │  
-13 │ ╭     pub fn add(x: u256, y: u256) -> u256:
+13 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256:
 14 │ │         return x + y
-   │ ╰────────────────────^ attributes hash: 3620942230080591742
+   │ ╰────────────────────^ attributes hash: 4448606202021980030
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "x",
                  typ: Ok(
                      Base(
@@ -108,6 +112,9 @@ note:
                  ),
              },
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "y",
                  typ: Ok(
                      Base(
@@ -150,9 +157,9 @@ note:
 note: 
    ┌─ two_contracts.fe:19:5
    │  
-19 │ ╭     pub fn set_foo_addr(self, ctx: Context, addr: address):
+19 │ ╭     pub fn set_foo_addr(self, ctx: Context, _ addr: address):
 20 │ │         self.other = Foo(ctx, addr)
-   │ ╰───────────────────────────────────^ attributes hash: 2501636549900236199
+   │ ╰───────────────────────────────────^ attributes hash: 736575608159807992
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -163,6 +170,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -174,6 +182,9 @@ note:
                  ),
              },
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "addr",
                  typ: Ok(
                      Base(

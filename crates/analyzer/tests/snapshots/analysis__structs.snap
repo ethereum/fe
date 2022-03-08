@@ -36,13 +36,14 @@ note:
    │  
 15 │ ╭     pub fn new(val: u256) -> Mixed:
 16 │ │         return Mixed(foo: val, bar: false)
-   │ ╰──────────────────────────────────────────^ attributes hash: 3521701349047213671
+   │ ╰──────────────────────────────────────────^ attributes hash: 2524938698704972422
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "val",
                  typ: Ok(
                      Base(
@@ -1773,7 +1774,7 @@ note:
     │  
 141 │ ╭     pub fn set_house(self, data: House):
 142 │ │         self.my_house = data
-    │ ╰────────────────────────────^ attributes hash: 4344434039965224039
+    │ ╰────────────────────────────^ attributes hash: 571714015924720006
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1782,6 +1783,7 @@ note:
           ctx_decl: None,
           params: [
               FunctionParam {
+                  label: None,
                   name: "data",
                   typ: Ok(
                       Struct(

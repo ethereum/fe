@@ -16,7 +16,7 @@ note:
   │  
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 17417949435712456140
+  │ ╰─────────────────────────────^ attributes hash: 17216960098647945084
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -25,6 +25,7 @@ note:
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "a",
                 typ: Ok(
                     Base(
@@ -33,6 +34,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "b",
                 typ: Ok(
                     Base(
@@ -83,7 +85,7 @@ note:
   │  
 8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 1779063144971354227
+  │ ╰──────────────────────────────^ attributes hash: 1717293224155577849
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -92,6 +94,7 @@ note:
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "a",
                 typ: Ok(
                     Base(
@@ -100,6 +103,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "b",
                 typ: Ok(
                     Base(
@@ -108,6 +112,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "value",
                 typ: Ok(
                     Base(
@@ -160,7 +165,7 @@ note:
    │  
 11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 16759134235645813766
+   │ ╰─────────────────────────────^ attributes hash: 13548986453815092160
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -169,6 +174,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "a",
                  typ: Ok(
                      Base(
@@ -177,6 +183,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "b",
                  typ: Ok(
                      Base(
@@ -227,7 +234,7 @@ note:
    │  
 14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 2108296425256224856
+   │ ╰──────────────────────────────^ attributes hash: 6442389777288668179
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -236,6 +243,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "a",
                  typ: Ok(
                      Base(
@@ -244,6 +252,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "b",
                  typ: Ok(
                      Base(
@@ -254,6 +263,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(

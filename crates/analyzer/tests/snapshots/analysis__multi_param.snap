@@ -12,13 +12,14 @@ note:
 5 │ │         my_array[1] = y
 6 │ │         my_array[2] = z
 7 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 8770278506365184608
+  │ ╰───────────────────────^ attributes hash: 10778435134172267300
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "x",
                 typ: Ok(
                     Base(
@@ -29,6 +30,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "y",
                 typ: Ok(
                     Base(
@@ -39,6 +41,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "z",
                 typ: Ok(
                     Base(

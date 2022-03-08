@@ -19,6 +19,12 @@ error: missing argument label
    │
    = Note: this label is optional if the argument is a variable named `x`.
 
+error: incorrect type for `Foo` argument `x`
+   ┌─ compile_errors/emit_bad_args.fe:10:19
+   │
+10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │                   ^^^^^^ this has type `(u256, u256)`; expected type `address`
+
 error: argument label mismatch
    ┌─ compile_errors/emit_bad_args.fe:10:27
    │
@@ -34,11 +40,5 @@ error: argument label mismatch
    │                                  ^ expected `z`
    │
    = Note: arguments must be provided in order.
-
-error: incorrect type for `Foo` argument `x`
-   ┌─ compile_errors/emit_bad_args.fe:10:19
-   │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                   ^^^^^^ this has type `(u256, u256)`; expected type `address`
 
 

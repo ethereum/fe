@@ -7,7 +7,7 @@ struct $tuple_u256_u256_:
     pub item0: u256
     pub item1: u256
 
-fn list_expr_array_u256_2(val0: u256, val1: u256) -> Array<u256, 2>:
+fn list_expr_array_u256_2(_ val0: u256, _ val1: u256) -> Array<u256, 2>:
     let generated_array: Array<u256, 2>
     generated_array[0] = val0
     generated_array[1] = val1
@@ -59,3 +59,4 @@ contract Foo:
 
 
         return self.table[3]
+

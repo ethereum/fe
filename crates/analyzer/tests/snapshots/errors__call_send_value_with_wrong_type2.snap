@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: incorrect type for `send_value` argument `wei`
+  ┌─ [snippet]:3:40
+  │
+3 │   std::send_value(to: address(0), wei: true)
+  │                                        ^^^^ this has type `bool`; expected type `u256`
+
+

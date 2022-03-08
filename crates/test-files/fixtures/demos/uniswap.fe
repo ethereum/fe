@@ -1,10 +1,10 @@
 use std::context::Context
 
 contract ERC20:
-    pub fn balanceOf(account: address) -> u256:
+    pub fn balanceOf(_ account: address) -> u256:
         return 0
 
-    pub fn transfer(recipient: address, amount: u256) -> bool:
+    pub fn transfer(to: address, _ amount: u256) -> bool:
         return false
 
 contract UniswapV2Pair:
@@ -84,9 +84,11 @@ contract UniswapV2Pair:
         self.total_supply = self.total_supply - value
         emit Transfer(ctx, from, to: address(0), value)
 
+
     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256):
         self.allowances[owner][spender] = value
         emit Approval(ctx, owner, spender, value)
+
 
     fn _transfer(self, ctx: Context, from: address, to: address, value: u256):
         self.balances[from] = self.balances[from] - value
@@ -94,21 +96,20 @@ contract UniswapV2Pair:
         emit Transfer(ctx, from, to, value)
 
     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool:
-        self._approve(ctx, ctx.msg_sender(), spender, value)
+        self._approve(ctx, owner: ctx.msg_sender(), spender, value)
         return true
 
     pub fn transfer(self, ctx: Context, to: address, value: u256) -> bool:
-        self._transfer(ctx, ctx.msg_sender(), to, value)
+        self._transfer(ctx, from: ctx.msg_sender(), to, value)
         return true
 
     pub fn transferFrom(self, ctx: Context, from: address, to: address, value: u256) -> bool:
         assert self.allowances[from][ctx.msg_sender()] >= value
-
         self.allowances[from][ctx.msg_sender()] = self.allowances[from][ctx.msg_sender()] - value
         self._transfer(ctx, from, to, value)
         return true
 
-    pub fn balanceOf(self, account: address) -> u256:
+    pub fn balanceOf(self, _ account: address) -> u256:
         return self.balances[account]
 
     pub fn get_reserves(self) -> (u256, u256, u256):
@@ -150,7 +151,7 @@ contract UniswapV2Pair:
                     let denominator: u256 = root_k * 5 + root_k_last
                     let liquidity: u256 = numerator / denominator
                     if liquidity > 0:
-                        self._mint(ctx, fee_to, liquidity)
+                        self._mint(ctx, to: fee_to, value: liquidity)
         elif k_last != 0:
             self.k_last = 0
 
@@ -171,13 +172,13 @@ contract UniswapV2Pair:
         let liquidity: u256 = 0
         if total_supply == 0:
             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-            self._mint(ctx, address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
+            self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
         else:
             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
 
         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
 
-        self._mint(ctx, to, liquidity)
+        self._mint(ctx, to, value: liquidity)
         self._update(ctx, balance0, balance1, reserve0, reserve1)
 
         if fee_on:
@@ -201,7 +202,7 @@ contract UniswapV2Pair:
         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
-        self._burn(ctx, ctx.self_address(), liquidity)
+        self._burn(ctx, from: ctx.self_address(), value: liquidity)
         token0.transfer(to, amount0)
         token1.transfer(to, amount1)
         balance0 = token0.balanceOf(ctx.self_address())
@@ -266,22 +267,11 @@ contract UniswapV2Pair:
     pub fn sync(self, ctx: Context):
         let token0: ERC20 = ERC20(ctx, self.token0)
         let token1: ERC20 = ERC20(ctx, self.token1)
-        self._update(ctx, token0.balanceOf(ctx.self_address()), token1.balanceOf(ctx.self_address()), self.reserve0, self.reserve1)
-
-    fn sqrt(val: u256) -> u256:
-        let z: u256
-        if (val > 3):
-            z = val
-            let x: u256 = val / 2 + 1
-            while (x < z):
-                z = x
-                x = (val / x + x) / 2
-        elif (val != 0):
-            z = 1
-        return z
-
-    fn min(x: u256, y: u256) -> u256:
-        return x if x < y else y
+        self._update(ctx,
+                     balance0: token0.balanceOf(ctx.self_address()),
+                     balance1: token1.balanceOf(ctx.self_address()),
+                     reserve0: self.reserve0,
+                     reserve1: self.reserve1)
 
 contract UniswapV2Factory:
     fee_to: address
@@ -298,7 +288,7 @@ contract UniswapV2Factory:
         pair: address
         index: u256
 
-    pub fn __init__(self, fee_to_setter: address):
+    pub fn __init__(self, _ fee_to_setter: address):
        self.fee_to_setter = fee_to_setter
 
     pub fn fee_to(self) -> address:
@@ -310,7 +300,7 @@ contract UniswapV2Factory:
     pub fn all_pairs_length(self) -> u256:
         return self.pair_counter
 
-    pub fn create_pair(self, ctx: Context, token_a: address, token_b: address) -> address:
+    pub fn create_pair(self, ctx: Context, _ token_a: address, _ token_b: address) -> address:
         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 
         let token0: address = token_a if token_a < token_b else token_b
@@ -337,3 +327,19 @@ contract UniswapV2Factory:
     pub fn set_fee_to_setter(self, ctx: Context, fee_to_setter: address):
         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
         self.fee_to_setter = fee_to_setter
+
+
+fn sqrt(_ val: u256) -> u256:
+    let z: u256
+    if (val > 3):
+        z = val
+        let x: u256 = val / 2 + 1
+        while (x < z):
+            z = x
+            x = (val / x + x) / 2
+    elif (val != 0):
+        z = 1
+    return z
+
+fn min(_ x: u256, _ y: u256) -> u256:
+    return x if x < y else y

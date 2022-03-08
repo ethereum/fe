@@ -12,10 +12,10 @@ note:
 note: 
   ┌─ call_statement_with_args_2.fe:4:5
   │  
-4 │ ╭     fn assign(self, val: u256) -> u256:
+4 │ ╭     fn assign(self, _ val: u256) -> u256:
 5 │ │         self.baz[0] = val
 6 │ │         return val
-  │ ╰──────────────────^ attributes hash: 10309470657675388254
+  │ ╰──────────────────^ attributes hash: 11102768331449211201
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -24,6 +24,9 @@ note:
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: Some(
+                    "_",
+                ),
                 name: "val",
                 typ: Ok(
                     Base(

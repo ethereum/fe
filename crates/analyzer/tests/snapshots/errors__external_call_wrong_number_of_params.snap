@@ -11,4 +11,12 @@ error: `bar` expects 2 arguments, but 1 was provided
   │                              │    
   │                              expects 2 arguments
 
+error: missing argument label
+  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:34
+  │
+9 │         Foo(ctx, address(0)).bar(42)
+  │                                  ^ add `a:` here
+  │
+  = Note: this label is optional if the argument is a variable named `a`.
+
 

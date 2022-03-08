@@ -167,6 +167,7 @@ pub struct EventField {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct RegularFunctionArg {
+    pub label: Option<Node<SmolStr>>,
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
 }
@@ -179,7 +180,6 @@ pub enum FunctionArg {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum FuncStmt {
     Return {
         value: Option<Node<Expr>>,
@@ -428,7 +428,7 @@ impl Spanned for ContractStmt {
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", double_line_joined(&self.body))
+        writeln!(f, "{}", double_line_joined(&self.body))
     }
 }
 
@@ -632,6 +632,9 @@ impl fmt::Display for EventField {
 
 impl fmt::Display for RegularFunctionArg {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(label) = &self.label {
+            write!(f, "{} ", label.kind)?;
+        }
         write!(f, "{}: {}", self.name.kind, self.typ.kind)
     }
 }

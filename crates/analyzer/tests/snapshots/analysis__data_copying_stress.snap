@@ -40,7 +40,7 @@ note:
    · │
 27 │ │         self.my_u256 = my_u256
 28 │ │         self.my_other_u256 = my_other_u256
-   │ ╰──────────────────────────────────────────^ attributes hash: 11551341132966247307
+   │ ╰──────────────────────────────────────────^ attributes hash: 8414520425977761339
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -49,6 +49,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_string",
                  typ: Ok(
                      String(
@@ -59,6 +60,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_other_string",
                  typ: Ok(
                      String(
@@ -69,6 +71,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_u256",
                  typ: Ok(
                      Base(
@@ -79,6 +82,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_other_u256",
                  typ: Ok(
                      Base(
@@ -207,13 +211,14 @@ note:
    · │
 46 │ │         assert my_2nd_array[3] == 50
 47 │ │         assert my_3rd_array[3] == 50
-   │ ╰────────────────────────────────────^ attributes hash: 17282394372613959387
+   │ ╰────────────────────────────────────^ attributes hash: 16237067187800993503
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_array",
                  typ: Ok(
                      Array(
@@ -408,13 +413,14 @@ note:
 49 │ ╭     pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 50 │ │         my_array[3] = 5
 51 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 6295138771567994061
+   │ ╰───────────────────────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_array",
                  typ: Ok(
                      Array(
@@ -463,13 +469,14 @@ note:
    │  
 53 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 54 │ │         return my_array.clone()
-   │ ╰───────────────────────────────^ attributes hash: 6295138771567994061
+   │ ╰───────────────────────────────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_array",
                  typ: Ok(
                      Array(
@@ -513,13 +520,14 @@ note:
 56 │ ╭     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
 57 │ │         my_array.clone()[3] = 5
 58 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 6295138771567994061
+   │ ╰───────────────────────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_array",
                  typ: Ok(
                      Array(
@@ -726,7 +734,7 @@ note:
 73 │ │             self.my_string.to_mem(),
 74 │ │             self.my_u256.to_mem()
 75 │ │         )
-   │ ╰─────────^ attributes hash: 5828909688388067108
+   │ ╰─────────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -737,6 +745,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -802,9 +811,9 @@ note:
 note: 
    ┌─ data_copying_stress.fe:77:5
    │  
-77 │ ╭     fn emit_my_event_internal(ctx: Context, some_string: String<42>, some_u256: u256):
-78 │ │         emit MyEvent(ctx, my_string: some_string, my_u256: some_u256)
-   │ ╰─────────────────────────────────────────────────────────────────────^ attributes hash: 7895343899207477871
+77 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256):
+78 │ │         emit MyEvent(ctx, my_string, my_u256)
+   │ ╰─────────────────────────────────────────────^ attributes hash: 15658342901286022244
    │  
    = FunctionSignature {
          self_decl: None,
@@ -813,6 +822,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -824,7 +834,10 @@ note:
                  ),
              },
              FunctionParam {
-                 name: "some_string",
+                 label: Some(
+                     "_",
+                 ),
+                 name: "my_string",
                  typ: Ok(
                      String(
                          FeString {
@@ -834,7 +847,10 @@ note:
                  ),
              },
              FunctionParam {
-                 name: "some_u256",
+                 label: Some(
+                     "_",
+                 ),
+                 name: "my_u256",
                  typ: Ok(
                      Base(
                          Numeric(
@@ -854,17 +870,17 @@ note:
 note: 
    ┌─ data_copying_stress.fe:78:22
    │
-78 │         emit MyEvent(ctx, my_string: some_string, my_u256: some_u256)
-   │                      ^^^             ^^^^^^^^^^^           ^^^^^^^^^ u256: Value
-   │                      │               │                      
-   │                      │               String<42>: Memory
+78 │         emit MyEvent(ctx, my_string, my_u256)
+   │                      ^^^  ^^^^^^^^^  ^^^^^^^ u256: Value
+   │                      │    │           
+   │                      │    String<42>: Memory
    │                      Context: Memory
 
 note: 
    ┌─ data_copying_stress.fe:78:9
    │
-78 │         emit MyEvent(ctx, my_string: some_string, my_u256: some_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
+78 │         emit MyEvent(ctx, my_string, my_u256)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
    │
    = Event {
          name: "MyEvent",
@@ -899,7 +915,7 @@ note:
    │  
 80 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>):
 81 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 2361787292225081873
+   │ ╰────────────────────────────────^ attributes hash: 1347763946351267085
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -908,6 +924,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_addrs",
                  typ: Ok(
                      Array(

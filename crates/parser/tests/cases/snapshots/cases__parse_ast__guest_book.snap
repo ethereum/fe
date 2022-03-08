@@ -199,6 +199,7 @@ Node(
                   ),
                   Node(
                     kind: Regular(RegularFunctionArg(
+                      label: None,
                       name: Node(
                         kind: "book_msg",
                         span: Span(
@@ -367,6 +368,7 @@ Node(
                   ),
                   Node(
                     kind: Regular(RegularFunctionArg(
+                      label: None,
                       name: Node(
                         kind: "addr",
                         span: Span(

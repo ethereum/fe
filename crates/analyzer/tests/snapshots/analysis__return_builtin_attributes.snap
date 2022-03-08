@@ -8,7 +8,7 @@ note:
   │  
 4 │ ╭     pub fn coinbase(ctx: Context) -> address:
 5 │ │         return ctx.block_coinbase()
-  │ ╰───────────────────────────────────^ attributes hash: 17345910255563017853
+  │ ╰───────────────────────────────────^ attributes hash: 9364783648076633772
   │  
   = FunctionSignature {
         self_decl: None,
@@ -17,6 +17,7 @@ note:
         ),
         params: [
             FunctionParam {
+                label: None,
                 name: "ctx",
                 typ: Ok(
                     Struct(
@@ -52,7 +53,7 @@ note:
   │  
 7 │ ╭     pub fn difficulty(ctx: Context) -> u256:
 8 │ │         return ctx.block_difficulty()
-  │ ╰─────────────────────────────────────^ attributes hash: 8461121747246443614
+  │ ╰─────────────────────────────────────^ attributes hash: 10526263819290319263
   │  
   = FunctionSignature {
         self_decl: None,
@@ -61,6 +62,7 @@ note:
         ),
         params: [
             FunctionParam {
+                label: None,
                 name: "ctx",
                 typ: Ok(
                     Struct(
@@ -98,7 +100,7 @@ note:
    │  
 10 │ ╭     pub fn number(ctx: Context) -> u256:
 11 │ │         return ctx.block_number()
-   │ ╰─────────────────────────────────^ attributes hash: 8461121747246443614
+   │ ╰─────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
          self_decl: None,
@@ -107,6 +109,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -144,7 +147,7 @@ note:
    │  
 13 │ ╭     pub fn timestamp(ctx: Context) -> u256:
 14 │ │         return ctx.block_timestamp()
-   │ ╰────────────────────────────────────^ attributes hash: 8461121747246443614
+   │ ╰────────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
          self_decl: None,
@@ -153,6 +156,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -190,7 +194,7 @@ note:
    │  
 16 │ ╭     pub fn chainid(ctx: Context) -> u256:
 17 │ │         return ctx.chain_id()
-   │ ╰─────────────────────────────^ attributes hash: 8461121747246443614
+   │ ╰─────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
          self_decl: None,
@@ -199,6 +203,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -236,7 +241,7 @@ note:
    │  
 19 │ ╭     pub fn sender(ctx: Context) -> address:
 20 │ │         return ctx.msg_sender()
-   │ ╰───────────────────────────────^ attributes hash: 17345910255563017853
+   │ ╰───────────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -245,6 +250,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -280,7 +286,7 @@ note:
    │  
 22 │ ╭     pub fn value(ctx: Context) -> u256:
 23 │ │         return ctx.msg_value()
-   │ ╰──────────────────────────────^ attributes hash: 8461121747246443614
+   │ ╰──────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
          self_decl: None,
@@ -289,6 +295,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -326,7 +333,7 @@ note:
    │  
 25 │ ╭     pub fn origin(ctx: Context) -> address:
 26 │ │         return ctx.tx_origin()
-   │ ╰──────────────────────────────^ attributes hash: 17345910255563017853
+   │ ╰──────────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -335,6 +342,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -370,7 +378,7 @@ note:
    │  
 28 │ ╭     pub fn gas_price(ctx: Context) -> u256:
 29 │ │         return ctx.tx_gas_price()
-   │ ╰─────────────────────────────────^ attributes hash: 8461121747246443614
+   │ ╰─────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
          self_decl: None,
@@ -379,6 +387,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(

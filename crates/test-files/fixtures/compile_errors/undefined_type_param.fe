@@ -5,7 +5,7 @@ struct BadField:
 
 contract Foo:
     # case 1: using arg with undefined type within the fn body
-    pub fn a(val: DoesntExist):
+    pub fn a(_ val: DoesntExist):
         val + 10
 
     # case 2: calling a fn that has undefined-type arg

@@ -174,8 +174,25 @@ pub enum CtxDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionParam {
+    label: Option<SmolStr>,
     pub name: SmolStr,
     pub typ: Result<FixedSize, TypeError>,
+}
+impl FunctionParam {
+    pub fn new(label: Option<&str>, name: &str, typ: Result<FixedSize, TypeError>) -> Self {
+        Self {
+            label: label.map(SmolStr::new),
+            name: name.into(),
+            typ,
+        }
+    }
+    pub fn label(&self) -> Option<&str> {
+        match &self.label {
+            Some(label) if label == "_" => None,
+            Some(label) => Some(label),
+            None => Some(&self.name),
+        }
+    }
 }
 
 #[derive(

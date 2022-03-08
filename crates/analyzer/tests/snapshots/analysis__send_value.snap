@@ -8,7 +8,7 @@ note:
   │  
 4 │ ╭     pub fn send_them_wei(ctx: Context, to: address, wei: u256):
 5 │ │         ctx.send_value(to, wei)
-  │ ╰───────────────────────────────^ attributes hash: 3182874939886264923
+  │ ╰───────────────────────────────^ attributes hash: 14069636423119281176
   │  
   = FunctionSignature {
         self_decl: None,
@@ -17,6 +17,7 @@ note:
         ),
         params: [
             FunctionParam {
+                label: None,
                 name: "ctx",
                 typ: Ok(
                     Struct(
@@ -28,6 +29,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "to",
                 typ: Ok(
                     Base(
@@ -36,6 +38,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "wei",
                 typ: Ok(
                     Base(

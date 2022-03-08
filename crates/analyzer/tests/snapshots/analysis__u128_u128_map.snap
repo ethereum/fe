@@ -14,7 +14,7 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: u128) -> u128:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 1727403915407605005
+  │ ╰────────────────────────────^ attributes hash: 1939765458140608268
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -23,6 +23,7 @@ note:
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "key",
                 typ: Ok(
                     Base(
@@ -67,7 +68,7 @@ note:
   │  
 7 │ ╭     pub fn write_bar(self, key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 6770942269102556094
+  │ ╰─────────────────────────────^ attributes hash: 9126735252114279653
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -76,6 +77,7 @@ note:
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "key",
                 typ: Ok(
                     Base(
@@ -86,6 +88,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "value",
                 typ: Ok(
                     Base(

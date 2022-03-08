@@ -1,0 +1,17 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `send_value` expects 2 arguments, but 1 was provided
+   ┌─ src/lib.fe:11:8
+   │
+11 │ pub fn send_value(to: address, wei: u256):
+   │        ^^^^^^^^^^ expects 2 arguments
+   │
+   ┌─ [snippet]:3:19
+   │
+ 3 │   std::send_value(to: address(0))
+   │                   -------------- supplied 1 argument
+
+

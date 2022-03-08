@@ -190,9 +190,9 @@ note:
 note: 
    ┌─ erc20_token.fe:39:5
    │  
-39 │ ╭     pub fn balanceOf(self, account: address) -> u256:
+39 │ ╭     pub fn balanceOf(self, _ account: address) -> u256:
 40 │ │         return self._balances[account]
-   │ ╰──────────────────────────────────────^ attributes hash: 3934661437648326967
+   │ ╰──────────────────────────────────────^ attributes hash: 5993653573135321647
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -201,6 +201,9 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "account",
                  typ: Ok(
                      Base(
@@ -242,9 +245,9 @@ note:
    ┌─ erc20_token.fe:42:5
    │  
 42 │ ╭     pub fn transfer(self, ctx: Context, recipient: address, value: u256) -> bool:
-43 │ │         self._transfer(ctx, ctx.msg_sender(), recipient, value)
+43 │ │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
 44 │ │         return true
-   │ ╰───────────────────^ attributes hash: 2819278576796158995
+   │ ╰───────────────────^ attributes hash: 9700541873563816287
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -255,6 +258,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -266,6 +270,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "recipient",
                  typ: Ok(
                      Base(
@@ -274,6 +279,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -294,26 +300,26 @@ note:
 note: 
    ┌─ erc20_token.fe:43:9
    │
-43 │         self._transfer(ctx, ctx.msg_sender(), recipient, value)
-   │         ^^^^           ^^^  ^^^ Context: Memory
-   │         │              │     
+43 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
+   │         ^^^^           ^^^          ^^^ Context: Memory
+   │         │              │             
    │         │              Context: Memory
    │         ERC20: Value
 
 note: 
-   ┌─ erc20_token.fe:43:29
+   ┌─ erc20_token.fe:43:37
    │
-43 │         self._transfer(ctx, ctx.msg_sender(), recipient, value)
-   │                             ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^ u256: Value
-   │                             │                 │           
-   │                             │                 address: Value
-   │                             address: Value
+43 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
+   │                                     ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^ u256: Value
+   │                                     │                 │           
+   │                                     │                 address: Value
+   │                                     address: Value
 
 note: 
    ┌─ erc20_token.fe:43:9
    │
-43 │         self._transfer(ctx, ctx.msg_sender(), recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+43 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 44 │         return true
    │                ^^^^ bool: Value
 
@@ -322,7 +328,7 @@ note:
    │  
 46 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256:
 47 │ │         return self._allowances[owner][spender]
-   │ ╰───────────────────────────────────────────────^ attributes hash: 12331829167105298691
+   │ ╰───────────────────────────────────────────────^ attributes hash: 3316599995530573429
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -331,6 +337,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "owner",
                  typ: Ok(
                      Base(
@@ -339,6 +346,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "spender",
                  typ: Ok(
                      Base(
@@ -388,9 +396,9 @@ note:
    ┌─ erc20_token.fe:49:5
    │  
 49 │ ╭     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool:
-50 │ │         self._approve(ctx, ctx.msg_sender(), spender, value)
+50 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 51 │ │         return true
-   │ ╰───────────────────^ attributes hash: 15274000982762670572
+   │ ╰───────────────────^ attributes hash: 8309406699454253603
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -401,6 +409,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -412,6 +421,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "spender",
                  typ: Ok(
                      Base(
@@ -420,6 +430,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -440,26 +451,26 @@ note:
 note: 
    ┌─ erc20_token.fe:50:9
    │
-50 │         self._approve(ctx, ctx.msg_sender(), spender, value)
-   │         ^^^^          ^^^  ^^^ Context: Memory
-   │         │             │     
+50 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
+   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         │             │            
    │         │             Context: Memory
    │         ERC20: Value
 
 note: 
-   ┌─ erc20_token.fe:50:28
+   ┌─ erc20_token.fe:50:35
    │
-50 │         self._approve(ctx, ctx.msg_sender(), spender, value)
-   │                            ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^ u256: Value
-   │                            │                 │         
-   │                            │                 address: Value
-   │                            address: Value
+50 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^ u256: Value
+   │                                   │                 │         
+   │                                   │                 address: Value
+   │                                   address: Value
 
 note: 
    ┌─ erc20_token.fe:50:9
    │
-50 │         self._approve(ctx, ctx.msg_sender(), spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+50 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 51 │         return true
    │                ^^^^ bool: Value
 
@@ -469,9 +480,9 @@ note:
 53 │ ╭     pub fn transferFrom(self, ctx: Context, sender: address, recipient: address, value: u256) -> bool:
 54 │ │         assert self._allowances[sender][ctx.msg_sender()] >= value
 55 │ │         self._transfer(ctx, sender, recipient, value)
-56 │ │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
+56 │ │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
 57 │ │         return true
-   │ ╰───────────────────^ attributes hash: 13813289729619831621
+   │ ╰───────────────────^ attributes hash: 14464733394183378558
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -482,6 +493,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -493,6 +505,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "sender",
                  typ: Ok(
                      Base(
@@ -501,6 +514,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "recipient",
                  typ: Ok(
                      Base(
@@ -509,6 +523,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -580,62 +595,62 @@ note:
    │
 55 │         self._transfer(ctx, sender, recipient, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │         ^^^^          ^^^  ^^^^^^  ^^^ Context: Memory
-   │         │             │    │        
-   │         │             │    address: Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │         ^^^^          ^^^         ^^^^^^           ^^^ Context: Memory
+   │         │             │           │                 
+   │         │             │           address: Value
    │         │             Context: Memory
    │         ERC20: Value
 
 note: 
-   ┌─ erc20_token.fe:56:36
+   ┌─ erc20_token.fe:56:52
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                    ^^^^^^^^^^^^^^^^  ^^^^ ERC20: Value
-   │                                    │                  
-   │                                    address: Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                    ^^^^^^^^^^^^^^^^         ^^^^ ERC20: Value
+   │                                                    │                         
+   │                                                    address: Value
 
 note: 
-   ┌─ erc20_token.fe:56:54
+   ┌─ erc20_token.fe:56:77
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                      ^^^^^^^^^^^^^^^^ ^^^^^^ address: Value
-   │                                                      │                 
-   │                                                      Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                                             ^^^^^^^^^^^^^^^^ ^^^^^^ address: Value
+   │                                                                             │                 
+   │                                                                             Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ erc20_token.fe:56:54
+   ┌─ erc20_token.fe:56:77
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                      ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
-   │                                                      │                         
-   │                                                      Map<address, u256>: Storage { nonce: None }
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                             │                         
+   │                                                                             Map<address, u256>: Storage { nonce: None }
 
 note: 
-   ┌─ erc20_token.fe:56:79
+   ┌─ erc20_token.fe:56:102
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                               ^^^^^^^^^^^^^^^^ address: Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                                                                      ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ erc20_token.fe:56:54
+   ┌─ erc20_token.fe:56:77
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
-   │                                                      │                                             
-   │                                                      u256: Storage { nonce: None } => Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                                                                             │                                             
+   │                                                                             u256: Storage { nonce: None } => Value
 
 note: 
-   ┌─ erc20_token.fe:56:54
+   ┌─ erc20_token.fe:56:77
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ erc20_token.fe:56:9
    │
-56 │         self._approve(ctx, sender, ctx.msg_sender(), self._allowances[sender][ctx.msg_sender()] - value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+56 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 57 │         return true
    │                ^^^^ bool: Value
 
@@ -643,9 +658,9 @@ note:
    ┌─ erc20_token.fe:59:5
    │  
 59 │ ╭     pub fn increaseAllowance(self, ctx: Context, spender: address, addedValue: u256) -> bool:
-60 │ │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
+60 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
 61 │ │         return true
-   │ ╰───────────────────^ attributes hash: 12213130191491072064
+   │ ╰───────────────────^ attributes hash: 14606848714789380929
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -656,6 +671,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -667,6 +683,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "spender",
                  typ: Ok(
                      Base(
@@ -675,6 +692,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "addedValue",
                  typ: Ok(
                      Base(
@@ -695,62 +713,62 @@ note:
 note: 
    ┌─ erc20_token.fe:60:9
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │         ^^^^          ^^^  ^^^ Context: Memory
-   │         │             │     
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         │             │            
    │         │             Context: Memory
    │         ERC20: Value
 
 note: 
-   ┌─ erc20_token.fe:60:28
+   ┌─ erc20_token.fe:60:35
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                            ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^ ERC20: Value
-   │                            │                 │         
-   │                            │                 address: Value
-   │                            address: Value
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20: Value
+   │                                   │                 │                
+   │                                   │                 address: Value
+   │                                   address: Value
 
 note: 
-   ┌─ erc20_token.fe:60:55
+   ┌─ erc20_token.fe:60:69
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                       ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
-   │                                                       │                 
-   │                                                       Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                     │                 
+   │                                                                     Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ erc20_token.fe:60:72
+   ┌─ erc20_token.fe:60:86
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                        ^^^^^^^^^^^^^^^^ address: Value
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                                                                      ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ erc20_token.fe:60:55
+   ┌─ erc20_token.fe:60:69
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
-   │                                                       │                                   
-   │                                                       Map<address, u256>: Storage { nonce: None }
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                                                                     │                                   
+   │                                                                     Map<address, u256>: Storage { nonce: None }
 
 note: 
-   ┌─ erc20_token.fe:60:55
+   ┌─ erc20_token.fe:60:69
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256: Value
-   │                                                       │                                              
-   │                                                       u256: Storage { nonce: None } => Value
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256: Value
+   │                                                                     │                                              
+   │                                                                     u256: Storage { nonce: None } => Value
 
 note: 
-   ┌─ erc20_token.fe:60:55
+   ┌─ erc20_token.fe:60:69
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ erc20_token.fe:60:9
    │
-60 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+60 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 61 │         return true
    │                ^^^^ bool: Value
 
@@ -758,9 +776,9 @@ note:
    ┌─ erc20_token.fe:63:5
    │  
 63 │ ╭     pub fn decreaseAllowance(self, ctx: Context, spender: address, subtractedValue: u256) -> bool:
-64 │ │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+64 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
 65 │ │         return true
-   │ ╰───────────────────^ attributes hash: 3246531694812819193
+   │ ╰───────────────────^ attributes hash: 9154612140799800808
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -771,6 +789,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -782,6 +801,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "spender",
                  typ: Ok(
                      Base(
@@ -790,6 +810,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "subtractedValue",
                  typ: Ok(
                      Base(
@@ -810,62 +831,62 @@ note:
 note: 
    ┌─ erc20_token.fe:64:9
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │         ^^^^          ^^^  ^^^ Context: Memory
-   │         │             │     
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         │             │            
    │         │             Context: Memory
    │         ERC20: Value
 
 note: 
-   ┌─ erc20_token.fe:64:28
+   ┌─ erc20_token.fe:64:35
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                            ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^ ERC20: Value
-   │                            │                 │         
-   │                            │                 address: Value
-   │                            address: Value
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20: Value
+   │                                   │                 │                
+   │                                   │                 address: Value
+   │                                   address: Value
 
 note: 
-   ┌─ erc20_token.fe:64:55
+   ┌─ erc20_token.fe:64:69
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                       ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
-   │                                                       │                 
-   │                                                       Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                     │                 
+   │                                                                     Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ erc20_token.fe:64:72
+   ┌─ erc20_token.fe:64:86
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                        ^^^^^^^^^^^^^^^^ address: Value
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                                                                      ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ erc20_token.fe:64:55
+   ┌─ erc20_token.fe:64:69
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
-   │                                                       │                                   
-   │                                                       Map<address, u256>: Storage { nonce: None }
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                                                                     │                                   
+   │                                                                     Map<address, u256>: Storage { nonce: None }
 
 note: 
-   ┌─ erc20_token.fe:64:55
+   ┌─ erc20_token.fe:64:69
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256: Value
-   │                                                       │                                              
-   │                                                       u256: Storage { nonce: None } => Value
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256: Value
+   │                                                                     │                                              
+   │                                                                     u256: Storage { nonce: None } => Value
 
 note: 
-   ┌─ erc20_token.fe:64:55
+   ┌─ erc20_token.fe:64:69
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ erc20_token.fe:64:9
    │
-64 │         self._approve(ctx, ctx.msg_sender(), spender, self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+64 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 65 │         return true
    │                ^^^^ bool: Value
 
@@ -875,11 +896,11 @@ note:
 67 │ ╭     fn _transfer(self, ctx: Context, sender: address, recipient: address, value: u256):
 68 │ │         assert sender != address(0)
 69 │ │         assert recipient != address(0)
-70 │ │         _before_token_transfer(sender, recipient, value)
+70 │ │         _before_token_transfer(from: sender, to: recipient, value)
 71 │ │         self._balances[sender] = self._balances[sender] - value
 72 │ │         self._balances[recipient] = self._balances[recipient] + value
 73 │ │         emit Transfer(ctx, from: sender, to: recipient, value)
-   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 16619149998539230527
+   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 10648262769466339085
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -890,6 +911,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -901,6 +923,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "sender",
                  typ: Ok(
                      Base(
@@ -909,6 +932,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "recipient",
                  typ: Ok(
                      Base(
@@ -917,6 +941,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -969,17 +994,17 @@ note:
    │
 69 │         assert recipient != address(0)
    │                ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-70 │         _before_token_transfer(sender, recipient, value)
-   │                                ^^^^^^  ^^^^^^^^^  ^^^^^ u256: Value
-   │                                │       │           
-   │                                │       address: Value
-   │                                address: Value
+70 │         _before_token_transfer(from: sender, to: recipient, value)
+   │                                      ^^^^^^      ^^^^^^^^^  ^^^^^ u256: Value
+   │                                      │           │           
+   │                                      │           address: Value
+   │                                      address: Value
 
 note: 
    ┌─ erc20_token.fe:70:9
    │
-70 │         _before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+70 │         _before_token_transfer(from: sender, to: recipient, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 71 │         self._balances[sender] = self._balances[sender] - value
    │         ^^^^ ERC20: Value
 
@@ -1113,11 +1138,11 @@ note:
    │  
 75 │ ╭     fn _mint(self, ctx: Context, account: address, value: u256):
 76 │ │         assert account != address(0)
-77 │ │         _before_token_transfer(address(0), account, value)
+77 │ │         _before_token_transfer(from: address(0), to: account, value)
 78 │ │         self._total_supply = self._total_supply + value
 79 │ │         self._balances[account] = self._balances[account] + value
 80 │ │         emit Transfer(ctx, from: address(0), to: account, value)
-   │ ╰────────────────────────────────────────────────────────────────^ attributes hash: 8767370088938020905
+   │ ╰────────────────────────────────────────────────────────────────^ attributes hash: 6502254374233415580
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1128,6 +1153,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -1139,6 +1165,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "account",
                  typ: Ok(
                      Base(
@@ -1147,6 +1174,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -1183,23 +1211,23 @@ note:
    │
 76 │         assert account != address(0)
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-77 │         _before_token_transfer(address(0), account, value)
-   │                                        ^ u256: Value
+77 │         _before_token_transfer(from: address(0), to: account, value)
+   │                                              ^ u256: Value
 
 note: 
-   ┌─ erc20_token.fe:77:32
+   ┌─ erc20_token.fe:77:38
    │
-77 │         _before_token_transfer(address(0), account, value)
-   │                                ^^^^^^^^^^  ^^^^^^^  ^^^^^ u256: Value
-   │                                │           │         
-   │                                │           address: Value
-   │                                address: Value
+77 │         _before_token_transfer(from: address(0), to: account, value)
+   │                                      ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256: Value
+   │                                      │               │         
+   │                                      │               address: Value
+   │                                      address: Value
 
 note: 
    ┌─ erc20_token.fe:77:9
    │
-77 │         _before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+77 │         _before_token_transfer(from: address(0), to: account, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 78 │         self._total_supply = self._total_supply + value
    │         ^^^^ ERC20: Value
 
@@ -1324,11 +1352,11 @@ note:
    │  
 82 │ ╭     fn _burn(self, ctx: Context, account: address, value: u256):
 83 │ │         assert account != address(0)
-84 │ │         _before_token_transfer(account, address(0), value)
+84 │ │         _before_token_transfer(from: account, to: address(0), value)
 85 │ │         self._balances[account] = self._balances[account] - value
 86 │ │         self._total_supply = self._total_supply - value
 87 │ │         emit Transfer(ctx, from: account, to: address(0), value)
-   │ ╰────────────────────────────────────────────────────────────────^ attributes hash: 8767370088938020905
+   │ ╰────────────────────────────────────────────────────────────────^ attributes hash: 6502254374233415580
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1339,6 +1367,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -1350,6 +1379,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "account",
                  typ: Ok(
                      Base(
@@ -1358,6 +1388,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -1394,24 +1425,24 @@ note:
    │
 83 │         assert account != address(0)
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-84 │         _before_token_transfer(account, address(0), value)
-   │                                ^^^^^^^          ^ u256: Value
-   │                                │                 
-   │                                address: Value
+84 │         _before_token_transfer(from: account, to: address(0), value)
+   │                                      ^^^^^^^              ^ u256: Value
+   │                                      │                     
+   │                                      address: Value
 
 note: 
-   ┌─ erc20_token.fe:84:41
+   ┌─ erc20_token.fe:84:51
    │
-84 │         _before_token_transfer(account, address(0), value)
-   │                                         ^^^^^^^^^^  ^^^^^ u256: Value
-   │                                         │            
-   │                                         address: Value
+84 │         _before_token_transfer(from: account, to: address(0), value)
+   │                                                   ^^^^^^^^^^  ^^^^^ u256: Value
+   │                                                   │            
+   │                                                   address: Value
 
 note: 
    ┌─ erc20_token.fe:84:9
    │
-84 │         _before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+84 │         _before_token_transfer(from: account, to: address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 85 │         self._balances[account] = self._balances[account] - value
    │         ^^^^ ERC20: Value
 
@@ -1539,7 +1570,7 @@ note:
 91 │ │         assert spender != address(0)
 92 │ │         self._allowances[owner][spender] = value
 93 │ │         emit Approval(ctx, owner, spender, value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 16582163020557730049
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 1630416716014819616
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1550,6 +1581,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -1561,6 +1593,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "owner",
                  typ: Ok(
                      Base(
@@ -1569,6 +1602,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "spender",
                  typ: Ok(
                      Base(
@@ -1577,6 +1611,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(
@@ -1706,9 +1741,9 @@ note:
 note: 
    ┌─ erc20_token.fe:95:5
    │  
-95 │ ╭     fn _setup_decimals(self, decimals_: u8):
+95 │ ╭     fn _setup_decimals(self, _ decimals_: u8):
 96 │ │         self._decimals = decimals_
-   │ ╰──────────────────────────────────^ attributes hash: 8343414465215343884
+   │ ╰──────────────────────────────────^ attributes hash: 2241116105643912660
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -1717,6 +1752,9 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "decimals_",
                  typ: Ok(
                      Base(
@@ -1751,15 +1789,16 @@ note:
 note: 
    ┌─ erc20_token.fe:98:5
    │  
-98 │ ╭     fn _before_token_transfer(from: address, to: address, value: u256):
+98 │ ╭     fn _before_token_transfer(from: address, to: address, _ value: u256):
 99 │ │         pass
-   │ ╰────────────^ attributes hash: 5251049759615532223
+   │ ╰────────────^ attributes hash: 10552855728897650120
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "from",
                  typ: Ok(
                      Base(
@@ -1768,6 +1807,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "to",
                  typ: Ok(
                      Base(
@@ -1776,6 +1816,9 @@ note:
                  ),
              },
              FunctionParam {
+                 label: Some(
+                     "_",
+                 ),
                  name: "value",
                  typ: Ok(
                      Base(

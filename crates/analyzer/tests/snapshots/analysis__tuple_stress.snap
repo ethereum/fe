@@ -24,13 +24,14 @@ note:
 12 │ │         my_address: address
 13 │ │     ) -> (u256, bool, address):
 14 │ │         return (my_num, my_bool, my_address)
-   │ ╰────────────────────────────────────────────^ attributes hash: 4437387623605149102
+   │ ╰────────────────────────────────────────────^ attributes hash: 10223738621782129186
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_num",
                  typ: Ok(
                      Base(
@@ -41,6 +42,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_bool",
                  typ: Ok(
                      Base(
@@ -49,6 +51,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_address",
                  typ: Ok(
                      Base(
@@ -98,13 +101,14 @@ note:
    │  
 16 │ ╭     pub fn read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
 17 │ │         return my_tuple.item0
-   │ ╰─────────────────────────────^ attributes hash: 374081722650765571
+   │ ╰─────────────────────────────^ attributes hash: 1005385906871296536
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(
@@ -153,13 +157,14 @@ note:
    │  
 19 │ ╭     pub fn read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
 20 │ │         return my_tuple.item1
-   │ ╰─────────────────────────────^ attributes hash: 9811602730257365589
+   │ ╰─────────────────────────────^ attributes hash: 5615774585289781220
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(
@@ -206,13 +211,14 @@ note:
    │  
 22 │ ╭     pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
 23 │ │         return my_tuple.item2
-   │ ╰─────────────────────────────^ attributes hash: 8496136767779128416
+   │ ╰─────────────────────────────^ attributes hash: 13024428391414866682
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(
@@ -259,13 +265,14 @@ note:
    │  
 25 │ ╭     pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address:
 26 │ │         return my_tuple.item10
-   │ ╰──────────────────────────────^ attributes hash: 10640903536150521058
+   │ ╰──────────────────────────────^ attributes hash: 11830390438544540912
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(
@@ -354,7 +361,7 @@ note:
    │  
 28 │ ╭     pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)):
 29 │ │         emit MyEvent(ctx, my_tuple)
-   │ ╰───────────────────────────────────^ attributes hash: 8668761244029568427
+   │ ╰───────────────────────────────────^ attributes hash: 10535390144430265813
    │  
    = FunctionSignature {
          self_decl: None,
@@ -363,6 +370,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -374,6 +382,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(
@@ -452,7 +461,7 @@ note:
 31 │ ╭     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32):
 32 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 33 │ │         self.my_sto_tuple = (my_u256, my_i32)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 11434807878539479894
+   │ ╰─────────────────────────────────────────────^ attributes hash: 14404502892103280650
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -461,6 +470,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_u256",
                  typ: Ok(
                      Base(
@@ -471,6 +481,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_i32",
                  typ: Ok(
                      Base(
@@ -632,7 +643,7 @@ note:
    · │
 44 │ │         )
 45 │ │         emit_my_event(ctx, my_tuple)
-   │ ╰────────────────────────────────────^ attributes hash: 5828909688388067108
+   │ ╰────────────────────────────────────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -643,6 +654,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -746,13 +758,14 @@ note:
    │  
 47 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96>:
 48 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 12982826473068515083
+   │ ╰────────────────────────────────────^ attributes hash: 3539305055628398466
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_tuple",
                  typ: Ok(
                      Tuple(

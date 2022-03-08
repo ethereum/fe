@@ -8,13 +8,14 @@ note:
   │  
 2 │ ╭     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
 3 │ │         return (my_num, my_bool)
-  │ ╰────────────────────────────────^ attributes hash: 6474071346316096232
+  │ ╰────────────────────────────────^ attributes hash: 10319049298189511667
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "my_num",
                 typ: Ok(
                     Base(
@@ -25,6 +26,7 @@ note:
                 ),
             },
             FunctionParam {
+                label: None,
                 name: "my_bool",
                 typ: Ok(
                     Base(

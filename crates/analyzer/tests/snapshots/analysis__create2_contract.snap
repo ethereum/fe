@@ -36,7 +36,7 @@ note:
  9 │ │         # value and salt
 10 │ │         let foo: Foo = Foo.create2(ctx, 0, 52)
 11 │ │         return address(foo)
-   │ ╰───────────────────────────^ attributes hash: 17345910255563017853
+   │ ╰───────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -45,6 +45,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(

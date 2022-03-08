@@ -9,8 +9,8 @@ contract Foo:
             let value: u256 = u256(bar(ctx))
 
             # return `value`
-            evm::mstore(0, value)
-            evm::return_mem(0, 32)
+            evm::mstore(offset: 0, value)
+            evm::return_mem(offset: 0, len: 32)
 
     fn bar(ctx: Context) -> address:
         return ctx.self_address()

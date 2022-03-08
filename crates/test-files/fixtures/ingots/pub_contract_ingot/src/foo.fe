@@ -5,5 +5,5 @@ pub struct Bar:
     pub my_u256: u256
 
 pub contract FooBar:
-   pub fn add(x: u256, y: u256) -> u256:
+   pub fn add(_ x: u256, _ y: u256) -> u256:
        return x + y

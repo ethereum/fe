@@ -2,10 +2,10 @@ fn foo():
   let self: u8 = 10
   self = 5
 
-fn change_x(s: S):
+fn change_x(_ s: S):
   s.x = 100
 
-fn bar(c: C):
+fn bar(_ c: C):
   pass
 
 struct S:

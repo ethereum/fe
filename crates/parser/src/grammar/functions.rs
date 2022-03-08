@@ -104,11 +104,19 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                 break;
             }
             TokenKind::Name | TokenKind::SelfValue => {
-                let name = par.next()?;
+                let ident = par.next()?;
 
-                if name.kind == TokenKind::SelfValue {
-                    params.push(Node::new(FunctionArg::Self_, name.span));
+                if ident.kind == TokenKind::SelfValue {
+                    params.push(Node::new(FunctionArg::Self_, ident.span));
                 } else {
+                    // Parameter can have an optional label specifier. Example:
+                    //     fn transfer(from sender: address, to recipient: address, _ val: u256)
+                    //     transfer(from: me, to: you, 100)
+
+                    let (label, name) = match par.optional(TokenKind::Name) {
+                        Some(name) => (Some(ident), name),
+                        None => (None, ident),
+                    };
                     par.expect_with_notes(
                         TokenKind::Colon,
                         "failed to parse function parameter",
@@ -124,7 +132,8 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                     let param_span = name.span + typ.span;
                     params.push(Node::new(
                         FunctionArg::Regular(RegularFunctionArg {
-                            name: Node::new(name.text.into(), name.span),
+                            label: label.map(Node::from),
+                            name: name.into(),
                             typ,
                         }),
                         param_span,

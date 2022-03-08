@@ -1,4 +1,2 @@
 pub fn get_42() -> u256:
     return 42
-
-# TODO: move these into some module of standard error codes

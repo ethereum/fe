@@ -90,6 +90,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         .map(|(pnode, ptype)| {
             if let fe::FunctionArg::Regular(regular) = &pnode.kind {
                 fe::FunctionArg::Regular(RegularFunctionArg {
+                    label: regular.label.clone(),
                     name: regular.name.clone(),
                     typ: types::type_desc(fn_ctx.module, regular.typ.clone(), &ptype),
                 })

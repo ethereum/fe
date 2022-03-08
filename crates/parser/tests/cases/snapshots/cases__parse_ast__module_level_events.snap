@@ -166,6 +166,7 @@ Node(
                 args: [
                   Node(
                     kind: Regular(RegularFunctionArg(
+                      label: None,
                       name: Node(
                         kind: "ctx",
                         span: Span(
@@ -190,6 +191,7 @@ Node(
                   ),
                   Node(
                     kind: Regular(RegularFunctionArg(
+                      label: None,
                       name: Node(
                         kind: "to",
                         span: Span(
@@ -214,6 +216,7 @@ Node(
                   ),
                   Node(
                     kind: Regular(RegularFunctionArg(
+                      label: None,
                       name: Node(
                         kind: "value",
                         span: Span(

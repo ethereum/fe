@@ -3,7 +3,6 @@ use crate::errors::FatalError;
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, EventField, FixedSize, Type};
-use crate::traversal::call_args::LabelPolicy;
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
@@ -165,6 +164,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
             }
             Some(NamedThing::Item(Item::Event(event))) => {
                 scope.root.add_emit(stmt, event);
+
                 // Check visibility of event.
                 if !event.is_public(scope.db()) && event.module(scope.db()) != scope.module() {
                     let module_name = event.module(scope.db()).name(scope.db());
@@ -203,7 +203,6 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                         name.span,
                         args,
                         &params_with_ctx,
-                        LabelPolicy::AllowUnlabeledIfNameEqual,
                     )?;
                 } else {
                     scope.fancy_error(
