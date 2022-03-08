@@ -350,7 +350,7 @@ pub fn alloc_mstoren() -> yul::Statement {
 pub fn map_value_ptr() -> yul::Statement {
     function_definition! {
         function map_value_ptr(a, b) -> return_val {
-            (let ptr := avail())
+            (let ptr := alloc(64))
             (mstore(ptr, a))
             (mstore((add(ptr, 32)), b))
             (let hash := keccak256(ptr, 64))
