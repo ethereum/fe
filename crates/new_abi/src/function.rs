@@ -45,6 +45,7 @@ impl AbiFunction {
 #[serde(rename_all = "lowercase")]
 pub enum AbiFunctionType {
     Function,
+    Constructor,
     Receive,
     Payable,
     Fallback,

@@ -1,26 +1,26 @@
-use std::rc::Rc;
-
 use crate::{
     db::MirDb,
     ir::{
         types::{ArrayDef, EventDef, MapDef, StructDef, TupleDef},
-        Type, TypeId,
+        Type, TypeId, TypeKind,
     },
 };
 
 use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
-pub fn lower_type(db: &dyn MirDb, ty: &analyzer_types::Type) -> TypeId {
-    match ty {
-        analyzer_types::Type::Base(base) => lower_base(db, base),
+pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::Type) -> TypeId {
+    let ty_kind = match analyzer_ty {
+        analyzer_types::Type::Base(base) => lower_base(base),
         analyzer_types::Type::Array(arr) => lower_array(db, arr),
         analyzer_types::Type::Map(map) => lower_map(db, map),
         analyzer_types::Type::Tuple(tup) => lower_tuple(db, tup),
-        analyzer_types::Type::String(string) => lower_string(db, string),
-        analyzer_types::Type::Contract(_) => db.mir_intern_type(Type::Address.into()),
+        analyzer_types::Type::String(string) => TypeKind::String(string.max_size),
+        analyzer_types::Type::Contract(_) => TypeKind::Address,
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
-    }
+    };
+
+    intern_type(db, ty_kind, Some(analyzer_ty))
 }
 
 pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
@@ -48,56 +48,52 @@ pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeI
         span,
         module_id,
     };
-    let ty = Type::Event(def);
-    intern_type(db, ty)
+    let ty = TypeKind::Event(def);
+    intern_type(db, ty, None)
 }
 
-fn lower_base(db: &dyn MirDb, base: &analyzer_types::Base) -> TypeId {
+fn lower_base(base: &analyzer_types::Base) -> TypeKind {
     use analyzer_types::{Base, Integer};
 
-    let ty = match base {
+    match base {
         Base::Numeric(int_ty) => match int_ty {
-            Integer::I8 => Type::I8,
-            Integer::I16 => Type::I16,
-            Integer::I32 => Type::I32,
-            Integer::I64 => Type::I64,
-            Integer::I128 => Type::I128,
-            Integer::I256 => Type::I256,
-            Integer::U8 => Type::U8,
-            Integer::U16 => Type::U16,
-            Integer::U32 => Type::U32,
-            Integer::U64 => Type::U64,
-            Integer::U128 => Type::U128,
-            Integer::U256 => Type::U256,
+            Integer::I8 => TypeKind::I8,
+            Integer::I16 => TypeKind::I16,
+            Integer::I32 => TypeKind::I32,
+            Integer::I64 => TypeKind::I64,
+            Integer::I128 => TypeKind::I128,
+            Integer::I256 => TypeKind::I256,
+            Integer::U8 => TypeKind::U8,
+            Integer::U16 => TypeKind::U16,
+            Integer::U32 => TypeKind::U32,
+            Integer::U64 => TypeKind::U64,
+            Integer::U128 => TypeKind::U128,
+            Integer::U256 => TypeKind::U256,
         },
 
-        Base::Bool => Type::Bool,
-        Base::Address => Type::Address,
-        Base::Unit => Type::Unit,
-    };
-
-    intern_type(db, ty)
+        Base::Bool => TypeKind::Bool,
+        Base::Address => TypeKind::Address,
+        Base::Unit => TypeKind::Unit,
+    }
 }
 
-fn lower_array(db: &dyn MirDb, arr: &analyzer_types::Array) -> TypeId {
+fn lower_array(db: &dyn MirDb, arr: &analyzer_types::Array) -> TypeKind {
     let len = arr.size;
-    let elem_ty = lower_base(db, &arr.inner);
+    let elem_ty = db.mir_lowered_type(arr.inner.into());
 
     let def = ArrayDef { elem_ty, len };
-    let ty = Type::Array(def);
-    intern_type(db, ty)
+    TypeKind::Array(def)
 }
 
-fn lower_map(db: &dyn MirDb, map: &analyzer_types::Map) -> TypeId {
-    let key_ty = lower_base(db, &map.key);
+fn lower_map(db: &dyn MirDb, map: &analyzer_types::Map) -> TypeKind {
+    let key_ty = db.mir_lowered_type(map.key.into());
     let value_ty = db.mir_lowered_type(*map.value.clone());
 
     let def = MapDef { key_ty, value_ty };
-    let ty = Type::Map(def);
-    intern_type(db, ty)
+    TypeKind::Map(def)
 }
 
-fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeId {
+fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeKind {
     let items = tup
         .items
         .iter()
@@ -105,22 +101,10 @@ fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeId {
         .collect();
 
     let def = TupleDef { items };
-    let ty = Type::Tuple(def);
-    intern_type(db, ty)
+    TypeKind::Tuple(def)
 }
 
-/// `FeString` type is lowered into Array<u8> type.
-fn lower_string(db: &dyn MirDb, string: &analyzer_types::FeString) -> TypeId {
-    // We assume a string consists of only ascii encoding chars.
-    let elem_ty = intern_type(db, Type::U8);
-    let len = string.max_size;
-
-    let def = ArrayDef { elem_ty, len };
-    let ty = Type::Array(def);
-    intern_type(db, ty)
-}
-
-fn lower_contract(db: &dyn MirDb, contract: &analyzer_types::Contract) -> TypeId {
+fn lower_contract(db: &dyn MirDb, contract: &analyzer_types::Contract) -> TypeKind {
     let id = contract.id;
 
     let name = id.name(db.upcast());
@@ -147,11 +131,10 @@ fn lower_contract(db: &dyn MirDb, contract: &analyzer_types::Contract) -> TypeId
         span,
         module_id,
     };
-    let ty = Type::Contract(def);
-    intern_type(db, ty)
+    TypeKind::Contract(def)
 }
 
-fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
+fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeKind {
     let id = struct_.id;
 
     let name = id.name(db.upcast());
@@ -178,10 +161,13 @@ fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
         span,
         module_id,
     };
-    let ty = Type::Struct(def);
-    intern_type(db, ty)
+    TypeKind::Struct(def)
 }
 
-fn intern_type(db: &dyn MirDb, ty: Type) -> TypeId {
-    db.mir_intern_type(Rc::new(ty))
+fn intern_type(
+    db: &dyn MirDb,
+    ty_kind: TypeKind,
+    analyzer_type: Option<&analyzer_types::Type>,
+) -> TypeId {
+    db.mir_intern_type(Type::new(ty_kind, analyzer_type.cloned()).into())
 }

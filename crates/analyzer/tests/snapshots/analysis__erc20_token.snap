@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ erc20_token.fe:4:5
@@ -1790,8 +1789,8 @@ note:
    ┌─ erc20_token.fe:98:5
    │  
 98 │ ╭     fn _before_token_transfer(from: address, to: address, _ value: u256):
-99 │ │         pass
-   │ ╰────────────^ attributes hash: 10552855728897650120
+99 │ │         return
+   │ ╰──────────────^ attributes hash: 10552855728897650120
    │  
    = FunctionSignature {
          self_decl: None,

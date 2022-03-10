@@ -22,7 +22,7 @@ impl CriticalEdgeSplitter {
     pub fn run(&mut self, func: &mut FunctionBody) {
         let cfg = ControlFlowGraph::compute(func);
 
-        for block in func.order.iter_block() {
+        for block in cfg.post_order() {
             let terminator = func.order.terminator(&func.store, block).unwrap();
             self.add_critical_edges(terminator, func, &cfg);
         }

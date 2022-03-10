@@ -17,7 +17,9 @@ impl PrettyPrint for InstId {
         if let Some(result) = store.inst_result(*self) {
             result.pretty_print(db, store, w)?;
             write!(w, ": ")?;
-            store.value_ty(result).pretty_print(db, store, w)?;
+
+            let result_ty = result.ty(db, store);
+            result_ty.pretty_print(db, store, w)?;
             write!(w, " = ")?;
         }
 
@@ -27,14 +29,6 @@ impl PrettyPrint for InstId {
                 local.pretty_print(db, store, w)?;
                 write!(w, ": ")?;
                 store.value_ty(*local).pretty_print(db, store, w)
-            }
-
-            InstKind::Assign { lhs, rhs } => {
-                lhs.pretty_print(db, store, w)?;
-                write!(w, ": ")?;
-                store.value_ty(*lhs).pretty_print(db, store, w)?;
-                write!(w, " = ")?;
-                rhs.pretty_print(db, store, w)
             }
 
             InstKind::Unary { op, value } => {
@@ -71,6 +65,16 @@ impl PrettyPrint for InstId {
                 write!(w, "<{}>: ", arg_len - 1)?;
                 arg.pretty_print(db, store, w)?;
                 write!(w, "}}")
+            }
+
+            InstKind::Bind { src } => {
+                write!(w, "bind ")?;
+                src.pretty_print(db, store, w)
+            }
+
+            InstKind::MemCopy { src } => {
+                write!(w, "memcopy ")?;
+                src.pretty_print(db, store, w)
             }
 
             InstKind::AggregateAccess { value, indices } => {
@@ -113,7 +117,10 @@ impl PrettyPrint for InstId {
 
             InstKind::Revert { arg } => {
                 write!(w, "revert ")?;
-                arg.pretty_print(db, store, w)
+                if let Some(arg) = arg {
+                    arg.pretty_print(db, store, w)?;
+                }
+                Ok(())
             }
 
             InstKind::Emit { arg } => {
@@ -132,16 +139,6 @@ impl PrettyPrint for InstId {
 
             InstKind::Keccak256 { arg } => {
                 write!(w, "keccak256 ")?;
-                arg.pretty_print(db, store, w)
-            }
-
-            InstKind::Clone { arg } => {
-                write!(w, "clone ")?;
-                arg.pretty_print(db, store, w)
-            }
-
-            InstKind::ToMem { arg } => {
-                write!(w, "to_mem ")?;
                 arg.pretty_print(db, store, w)
             }
 
@@ -177,7 +174,7 @@ impl PrettyPrint for InstId {
             InstKind::YulIntrinsic { op, args } => {
                 write!(w, "{}(", op)?;
                 args.as_slice().pretty_print(db, store, w)?;
-                write!(w, "{})", op)
+                write!(w, ")")
             }
         }
     }

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
    ┌─ data_copying_stress.fe:4:5
@@ -732,7 +731,7 @@ note:
 71 │ │         emit_my_event_internal(
 72 │ │             ctx,
 73 │ │             self.my_string.to_mem(),
-74 │ │             self.my_u256.to_mem()
+74 │ │             self.my_u256
 75 │ │         )
    │ ╰─────────^ attributes hash: 1731341862738941170
    │  
@@ -783,20 +782,14 @@ note:
    │
 73 │             self.my_string.to_mem(),
    │             ^^^^^^^^^^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) } => Memory
-74 │             self.my_u256.to_mem()
+74 │             self.my_u256
    │             ^^^^ Foo: Value
 
 note: 
    ┌─ data_copying_stress.fe:74:13
    │
-74 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^ u256: Storage { nonce: Some(2) }
-
-note: 
-   ┌─ data_copying_stress.fe:74:13
-   │
-74 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
+74 │             self.my_u256
+   │             ^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
 
 note: 
    ┌─ data_copying_stress.fe:71:9
@@ -804,7 +797,7 @@ note:
 71 │ ╭         emit_my_event_internal(
 72 │ │             ctx,
 73 │ │             self.my_string.to_mem(),
-74 │ │             self.my_u256.to_mem()
+74 │ │             self.my_u256
 75 │ │         )
    │ ╰─────────^ (): Value
 

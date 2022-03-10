@@ -7,7 +7,10 @@ use num_traits::ToPrimitive;
 
 use crate::{
     db::MirDb,
-    ir::{types::ArrayDef, value::Immediate, Type, TypeId, Value},
+    ir::{
+        types::{ArrayDef, TypeKind},
+        Type, TypeId, Value,
+    },
     lower::types::{lower_event_type, lower_type},
 };
 
@@ -25,17 +28,18 @@ impl TypeId {
     }
 
     pub fn projection_ty(self, db: &dyn MirDb, access: &Value) -> TypeId {
-        match self.data(db).as_ref() {
-            Type::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
-            Type::Tuple(def) => {
+        let ty = self.deref(db);
+        match &ty.data(db).as_ref().kind {
+            TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
+            TypeKind::Tuple(def) => {
                 let index = expect_projection_index(access);
                 def.items[index]
             }
-            Type::Struct(def) | Type::Contract(def) => {
+            TypeKind::Struct(def) | TypeKind::Contract(def) => {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
-            Type::Event(def) => {
+            TypeKind::Event(def) => {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
@@ -43,54 +47,66 @@ impl TypeId {
         }
     }
 
+    pub fn deref(self, db: &dyn MirDb) -> TypeId {
+        match &self.data(db).as_ref().kind {
+            TypeKind::SPtr(inner) => *inner,
+            TypeKind::MPtr(inner) => *inner,
+            _ => self,
+        }
+    }
+
+    pub fn make_sptr(self, db: &dyn MirDb) -> TypeId {
+        db.mir_intern_type(Type::new(TypeKind::SPtr(self), None).into())
+    }
+
+    pub fn make_mptr(self, db: &dyn MirDb) -> TypeId {
+        db.mir_intern_type(Type::new(TypeKind::MPtr(self), None).into())
+    }
+
     pub fn projection_ty_imm(self, db: &dyn MirDb, index: usize) -> TypeId {
         debug_assert!(self.is_aggregate(db));
 
-        match self.data(db).as_ref() {
-            Type::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
-            Type::Tuple(def) => def.items[index],
-            Type::Struct(def) | Type::Contract(def) => def.fields[index].1,
-            Type::Event(def) => def.fields[index].1,
+        match &self.data(db).as_ref().kind {
+            TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
+            TypeKind::Tuple(def) => def.items[index],
+            TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
+            TypeKind::Event(def) => def.fields[index].1,
             _ => unreachable!(),
         }
     }
 
-    pub fn index_from_fname(self, db: &dyn MirDb, fname: &str, index_ty: TypeId) -> Immediate {
-        match self.data(db).as_ref() {
-            Type::Tuple(_) => {
+    pub fn aggregate_field_num(self, db: &dyn MirDb) -> usize {
+        match &self.data(db).as_ref().kind {
+            TypeKind::Array(ArrayDef { len, .. }) => *len,
+            TypeKind::Tuple(def) => def.items.len(),
+            TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields.len(),
+            TypeKind::Event(def) => def.fields.len(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn index_from_fname(self, db: &dyn MirDb, fname: &str) -> BigInt {
+        let ty = self.deref(db);
+        match &ty.data(db).as_ref().kind {
+            TypeKind::Tuple(_) => {
                 // TODO: Fix this when the syntax for tuple access changes.
                 let index_str = &fname[4..];
-                Immediate {
-                    value: BigInt::from_str(index_str).unwrap(),
-                    ty: index_ty,
-                }
+                BigInt::from_str(index_str).unwrap()
             }
 
-            Type::Struct(def) | Type::Contract(def) => {
-                let index = def
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, field)| (field.0 == fname).then(|| i.into()))
-                    .unwrap();
-                Immediate {
-                    value: index,
-                    ty: index_ty,
-                }
-            }
+            TypeKind::Struct(def) | TypeKind::Contract(def) => def
+                .fields
+                .iter()
+                .enumerate()
+                .find_map(|(i, field)| (field.0 == fname).then(|| i.into()))
+                .unwrap(),
 
-            Type::Event(def) => {
-                let index = def
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, field)| (field.0 == fname).then(|| i.into()))
-                    .unwrap();
-                Immediate {
-                    value: index,
-                    ty: index_ty,
-                }
-            }
+            TypeKind::Event(def) => def
+                .fields
+                .iter()
+                .enumerate()
+                .find_map(|(i, field)| (field.0 == fname).then(|| i.into()))
+                .unwrap(),
 
             other => unreachable!("{:?} does not have fields", other),
         }
@@ -98,40 +114,86 @@ impl TypeId {
 
     pub fn is_primitive(self, db: &dyn MirDb) -> bool {
         matches!(
-            self.data(db).as_ref(),
-            Type::I8
-                | Type::I16
-                | Type::I32
-                | Type::I64
-                | Type::I128
-                | Type::I256
-                | Type::U8
-                | Type::U16
-                | Type::U32
-                | Type::U64
-                | Type::U128
-                | Type::U256
-                | Type::Bool
-                | Type::Address
-                | Type::Unit
+            &self.data(db).as_ref().kind,
+            TypeKind::I8
+                | TypeKind::I16
+                | TypeKind::I32
+                | TypeKind::I64
+                | TypeKind::I128
+                | TypeKind::I256
+                | TypeKind::U8
+                | TypeKind::U16
+                | TypeKind::U32
+                | TypeKind::U64
+                | TypeKind::U128
+                | TypeKind::U256
+                | TypeKind::Bool
+                | TypeKind::Address
+                | TypeKind::Unit
+        )
+    }
+
+    pub fn is_integral(self, db: &dyn MirDb) -> bool {
+        matches!(
+            &self.data(db).as_ref().kind,
+            TypeKind::I8
+                | TypeKind::I16
+                | TypeKind::I32
+                | TypeKind::I64
+                | TypeKind::I128
+                | TypeKind::I256
+                | TypeKind::U8
+                | TypeKind::U16
+                | TypeKind::U32
+                | TypeKind::U64
+                | TypeKind::U128
+                | TypeKind::U256
+        )
+    }
+
+    pub fn is_address(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).as_ref().kind, TypeKind::Address)
+    }
+
+    pub fn is_signed(self, db: &dyn MirDb) -> bool {
+        matches!(
+            &self.data(db).kind,
+            TypeKind::I8
+                | TypeKind::I16
+                | TypeKind::I32
+                | TypeKind::I64
+                | TypeKind::I128
+                | TypeKind::I256
+        )
+    }
+
+    pub fn is_fe_string(self, db: &dyn MirDb) -> bool {
+        matches!(
+            &self.data(db).analyzer_ty,
+            Some(analyzer_types::Type::String(_))
         )
     }
 
     /// Returns size of the type in bytes.
     pub fn size_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
-        match self.data(db).as_ref() {
-            Type::Bool | Type::I8 | Type::U8 => 1,
-            Type::I16 | Type::U16 => 2,
-            Type::I32 | Type::U32 => 4,
-            Type::I64 | Type::U64 => 8,
-            Type::I128 | Type::U128 => 16,
-            Type::I256 | Type::U256 | Type::Map(_) => 32,
-            Type::Address => 20,
-            Type::Unit => 0,
+        match &self.data(db).as_ref().kind {
+            TypeKind::Bool | TypeKind::I8 | TypeKind::U8 => 1,
+            TypeKind::I16 | TypeKind::U16 => 2,
+            TypeKind::I32 | TypeKind::U32 => 4,
+            TypeKind::I64 | TypeKind::U64 => 8,
+            TypeKind::I128 | TypeKind::U128 => 16,
+            TypeKind::String(len) => 32 + len,
+            TypeKind::MPtr(..)
+            | TypeKind::SPtr(..)
+            | TypeKind::I256
+            | TypeKind::U256
+            | TypeKind::Map(_) => 32,
+            TypeKind::Address => 20,
+            TypeKind::Unit => 0,
 
-            Type::Array(def) => array_elem_size_imp(def, db, slot_size) * def.len,
+            TypeKind::Array(def) => array_elem_size_imp(def, db, slot_size) * def.len,
 
-            Type::Tuple(def) => {
+            TypeKind::Tuple(def) => {
                 if def.items.is_empty() {
                     return 0;
                 }
@@ -140,7 +202,7 @@ impl TypeId {
                     + def.items[last_idx].size_of(db, slot_size)
             }
 
-            Type::Struct(def) | Type::Contract(def) => {
+            TypeKind::Struct(def) | TypeKind::Contract(def) => {
                 if def.fields.is_empty() {
                     return 0;
                 }
@@ -149,7 +211,7 @@ impl TypeId {
                     + def.fields[last_idx].1.size_of(db, slot_size)
             }
 
-            Type::Event(def) => {
+            TypeKind::Event(def) => {
                 if def.fields.is_empty() {
                     return 0;
                 }
@@ -177,14 +239,18 @@ impl TypeId {
     }
 
     /// Returns an offset of the element of aggregate type.
-    pub fn aggregate_elem_offset(self, db: &dyn MirDb, elem_idx: usize, slot_size: usize) -> usize {
+    pub fn aggregate_elem_offset<T>(self, db: &dyn MirDb, elem_idx: T, slot_size: usize) -> usize
+    where
+        T: num_traits::ToPrimitive,
+    {
         debug_assert!(self.is_aggregate(db));
+        let elem_idx = elem_idx.to_usize().unwrap();
 
         if elem_idx == 0 {
             return 0;
         }
 
-        if let Type::Array(def) = self.data(db).as_ref() {
+        if let TypeKind::Array(def) = &self.data(db).kind {
             return array_elem_size_imp(def, db, slot_size) * elem_idx;
         }
 
@@ -203,18 +269,53 @@ impl TypeId {
 
     pub fn is_aggregate(self, db: &dyn MirDb) -> bool {
         matches!(
-            self.data(db).as_ref(),
-            Type::Array(_) | Type::Tuple(_) | Type::Struct(_) | Type::Contract(_) | Type::Event(_)
+            &self.data(db).as_ref().kind,
+            TypeKind::Array(_)
+                | TypeKind::Tuple(_)
+                | TypeKind::Struct(_)
+                | TypeKind::Contract(_)
+                | TypeKind::Event(_)
         )
     }
 
+    pub fn is_array(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).as_ref().kind, TypeKind::Array(_))
+    }
+
+    pub fn is_string(self, db: &dyn MirDb) -> bool {
+        matches! {
+            &self.data(db).as_ref().kind,
+            TypeKind::String(_)
+        }
+    }
+
+    pub fn is_ptr(self, db: &dyn MirDb) -> bool {
+        self.is_mptr(db) || self.is_sptr(db)
+    }
+
+    pub fn is_mptr(self, db: &dyn MirDb) -> bool {
+        matches!(self.data(db).kind, TypeKind::MPtr(_))
+    }
+
+    pub fn is_sptr(self, db: &dyn MirDb) -> bool {
+        matches!(self.data(db).kind, TypeKind::SPtr(_))
+    }
+
+    pub fn is_map(self, db: &dyn MirDb) -> bool {
+        matches!(self.data(db).kind, TypeKind::Map(_))
+    }
+
     pub fn is_contract(self, db: &dyn MirDb) -> bool {
-        matches!(self.data(db).as_ref(), Type::Contract(_))
+        matches!(self.data(db).kind, TypeKind::Contract(_))
+    }
+
+    pub fn is_event(self, db: &dyn MirDb) -> bool {
+        matches!(self.data(db).kind, TypeKind::Event(_))
     }
 
     pub fn array_elem_size(self, db: &dyn MirDb, slot_size: usize) -> usize {
         let data = self.data(db);
-        if let Type::Array(def) = data.as_ref() {
+        if let TypeKind::Array(def) = &data.kind {
             array_elem_size_imp(def, db, slot_size)
         } else {
             panic!("expected `Array` type; but got {:?}", data.as_ref())
@@ -225,12 +326,17 @@ impl TypeId {
 fn array_elem_size_imp(arr: &ArrayDef, db: &dyn MirDb, slot_size: usize) -> usize {
     let elem_ty = arr.elem_ty;
     let elem = elem_ty.size_of(db, slot_size);
-    round_up(elem, elem_ty.align_of(db, slot_size))
+    let align = if elem_ty.is_address(db) {
+        slot_size
+    } else {
+        elem_ty.align_of(db, slot_size)
+    };
+    round_up(elem, align)
 }
 
 fn expect_projection_index(value: &Value) -> usize {
     match value {
-        Value::Immediate(imm) => imm.value.to_usize().unwrap(),
+        Value::Immediate { imm, .. } => imm.to_usize().unwrap(),
         _ => panic!("given `value` is not an immediate"),
     }
 }
@@ -253,8 +359,8 @@ mod tests {
     #[test]
     fn test_primitive_type_info() {
         let db = NewDb::default();
-        let i8 = db.mir_intern_type(Type::I8.into());
-        let bool = db.mir_intern_type(Type::Bool.into());
+        let i8 = db.mir_intern_type(Type::new(TypeKind::I8, None).into());
+        let bool = db.mir_intern_type(Type::new(TypeKind::Bool, None).into());
 
         debug_assert_eq!(i8.size_of(&db, 1), 1);
         debug_assert_eq!(i8.size_of(&db, 32), 1);
@@ -265,12 +371,12 @@ mod tests {
         debug_assert_eq!(i8.align_of(&db, 32), 1);
         debug_assert_eq!(i8.align_of(&db, 32), 1);
 
-        let u32 = db.mir_intern_type(Type::U32.into());
+        let u32 = db.mir_intern_type(Type::new(TypeKind::U32, None).into());
         debug_assert_eq!(u32.size_of(&db, 1), 4);
         debug_assert_eq!(u32.size_of(&db, 32), 4);
         debug_assert_eq!(u32.align_of(&db, 32), 1);
 
-        let address = db.mir_intern_type(Type::Address.into());
+        let address = db.mir_intern_type(Type::new(TypeKind::Address, None).into());
         debug_assert_eq!(address.size_of(&db, 1), 20);
         debug_assert_eq!(address.size_of(&db, 32), 20);
         debug_assert_eq!(address.align_of(&db, 32), 1);
@@ -279,14 +385,14 @@ mod tests {
     #[test]
     fn test_primitive_elem_array_type_info() {
         let db = NewDb::default();
-        let i32 = db.mir_intern_type(Type::I32.into());
+        let i32 = db.mir_intern_type(Type::new(TypeKind::I32, None).into());
 
         let array_len = 10;
         let array_def = ArrayDef {
             elem_ty: i32,
             len: array_len,
         };
-        let array = db.mir_intern_type(Type::Array(array_def).into());
+        let array = db.mir_intern_type(Type::new(TypeKind::Array(array_def), None).into());
 
         let elem_size = array.array_elem_size(&db, 1);
         debug_assert_eq!(elem_size, 4);
@@ -304,9 +410,9 @@ mod tests {
     #[test]
     fn test_aggregate_elem_array_type_info() {
         let db = NewDb::default();
-        let i8 = db.mir_intern_type(Type::I8.into());
-        let i64 = db.mir_intern_type(Type::I64.into());
-        let i128 = db.mir_intern_type(Type::I128.into());
+        let i8 = db.mir_intern_type(Type::new(TypeKind::I8, None).into());
+        let i64 = db.mir_intern_type(Type::new(TypeKind::I64, None).into());
+        let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields = vec![
             ("".into(), i64),
@@ -322,14 +428,14 @@ mod tests {
             span: Span::dummy(),
             module_id: ModuleId::from_raw_internal(0),
         };
-        let aggregate = db.mir_intern_type(Type::Struct(struct_def).into());
+        let aggregate = db.mir_intern_type(Type::new(TypeKind::Struct(struct_def), None).into());
 
         let array_len = 10;
         let array_def = ArrayDef {
             elem_ty: aggregate,
             len: array_len,
         };
-        let array = db.mir_intern_type(Type::Array(array_def).into());
+        let array = db.mir_intern_type(Type::new(TypeKind::Array(array_def), None).into());
 
         debug_assert_eq!(array.array_elem_size(&db, 1), 34);
         debug_assert_eq!(array.array_elem_size(&db, 32), 64);
@@ -347,9 +453,9 @@ mod tests {
     #[test]
     fn test_primitive_elem_aggregate_type_info() {
         let db = NewDb::default();
-        let i8 = db.mir_intern_type(Type::I8.into());
-        let i64 = db.mir_intern_type(Type::I64.into());
-        let i128 = db.mir_intern_type(Type::I128.into());
+        let i8 = db.mir_intern_type(Type::new(TypeKind::I8, None).into());
+        let i64 = db.mir_intern_type(Type::new(TypeKind::I64, None).into());
+        let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields = vec![
             ("".into(), i64),
@@ -365,7 +471,7 @@ mod tests {
             span: Span::dummy(),
             module_id: ModuleId::from_raw_internal(0),
         };
-        let aggregate = db.mir_intern_type(Type::Struct(struct_def).into());
+        let aggregate = db.mir_intern_type(Type::new(TypeKind::Struct(struct_def), None).into());
 
         debug_assert_eq!(aggregate.size_of(&db, 1), 34);
         debug_assert_eq!(aggregate.size_of(&db, 32), 49);
@@ -384,9 +490,9 @@ mod tests {
     #[test]
     fn test_aggregate_elem_aggregate_type_info() {
         let db = NewDb::default();
-        let i8 = db.mir_intern_type(Type::I8.into());
-        let i64 = db.mir_intern_type(Type::I64.into());
-        let i128 = db.mir_intern_type(Type::I128.into());
+        let i8 = db.mir_intern_type(Type::new(TypeKind::I8, None).into());
+        let i64 = db.mir_intern_type(Type::new(TypeKind::I64, None).into());
+        let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields_inner = vec![
             ("".into(), i64),
@@ -402,7 +508,8 @@ mod tests {
             span: Span::dummy(),
             module_id: ModuleId::from_raw_internal(0),
         };
-        let aggregate_inner = db.mir_intern_type(Type::Struct(struct_def_inner).into());
+        let aggregate_inner =
+            db.mir_intern_type(Type::new(TypeKind::Struct(struct_def_inner), None).into());
 
         let fields = vec![("".into(), i8), ("".into(), aggregate_inner)];
         let struct_def = StructDef {
@@ -411,7 +518,7 @@ mod tests {
             span: Span::dummy(),
             module_id: ModuleId::from_raw_internal(0),
         };
-        let aggregate = db.mir_intern_type(Type::Struct(struct_def).into());
+        let aggregate = db.mir_intern_type(Type::new(TypeKind::Struct(struct_def), None).into());
 
         debug_assert_eq!(aggregate.size_of(&db, 1), 35);
         debug_assert_eq!(aggregate.size_of(&db, 32), 81);

@@ -15,3 +15,11 @@ pub fn legalized_body(db: &dyn CodegenDb, function: FunctionId) -> Rc<FunctionBo
     legalize::legalize_func_body(db, &mut body);
     body.into()
 }
+
+pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
+    let module = function.signature(db.upcast()).module_id;
+    let module_name = module.name(db.upcast());
+    let func_name = function.name_with_class(db.upcast()).replace("::", "$");
+
+    format!("{}${}", module_name, func_name).into()
+}

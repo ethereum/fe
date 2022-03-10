@@ -96,4 +96,4 @@ contract ERC20:
         self._decimals = decimals_
 
     fn _before_token_transfer(from: address, to: address, _ value: u256):
-        pass
+        return

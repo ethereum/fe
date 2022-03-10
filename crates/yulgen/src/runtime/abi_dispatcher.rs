@@ -5,8 +5,8 @@ use fe_abi::utils as abi_utils;
 use smol_str::SmolStr;
 use yultsur::*;
 
-/// Builds a switch statement that dispatches calls to the contract and wraps it in
-/// a `$$__call__` function.
+/// Builds a switch statement that dispatches calls to the contract and wraps it
+/// in a `$$__call__` function.
 pub fn dispatcher(
     functions: &[(
         SmolStr,

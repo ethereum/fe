@@ -4,8 +4,8 @@ use crate::{
     db::MirDb,
     ir::{
         function::BodyDataStore,
-        types::{ArrayDef, TupleDef},
-        Type, TypeId,
+        types::{ArrayDef, TupleDef, TypeKind},
+        TypeId,
     },
 };
 
@@ -18,28 +18,29 @@ impl PrettyPrint for TypeId {
         store: &BodyDataStore,
         w: &mut W,
     ) -> fmt::Result {
-        match self.data(db).as_ref() {
-            Type::I8 => write!(w, "i8"),
-            Type::I16 => write!(w, "i16"),
-            Type::I32 => write!(w, "i32"),
-            Type::I64 => write!(w, "i64"),
-            Type::I128 => write!(w, "i128"),
-            Type::I256 => write!(w, "i256"),
-            Type::U8 => write!(w, "u8"),
-            Type::U16 => write!(w, "u16"),
-            Type::U32 => write!(w, "u32"),
-            Type::U64 => write!(w, "u64"),
-            Type::U128 => write!(w, "u128"),
-            Type::U256 => write!(w, "u256"),
-            Type::Bool => write!(w, "bool"),
-            Type::Address => write!(w, "address"),
-            Type::Unit => write!(w, "()"),
-            Type::Array(ArrayDef { elem_ty, len }) => {
+        match &self.data(db).kind {
+            TypeKind::I8 => write!(w, "i8"),
+            TypeKind::I16 => write!(w, "i16"),
+            TypeKind::I32 => write!(w, "i32"),
+            TypeKind::I64 => write!(w, "i64"),
+            TypeKind::I128 => write!(w, "i128"),
+            TypeKind::I256 => write!(w, "i256"),
+            TypeKind::U8 => write!(w, "u8"),
+            TypeKind::U16 => write!(w, "u16"),
+            TypeKind::U32 => write!(w, "u32"),
+            TypeKind::U64 => write!(w, "u64"),
+            TypeKind::U128 => write!(w, "u128"),
+            TypeKind::U256 => write!(w, "u256"),
+            TypeKind::Bool => write!(w, "bool"),
+            TypeKind::Address => write!(w, "address"),
+            TypeKind::Unit => write!(w, "()"),
+            TypeKind::String(size) => write!(w, "Str<{}>", size),
+            TypeKind::Array(ArrayDef { elem_ty, len }) => {
                 write!(w, "[")?;
                 elem_ty.pretty_print(db, store, w)?;
                 write!(w, "; {}]", len)
             }
-            Type::Tuple(TupleDef { items }) => {
+            TypeKind::Tuple(TupleDef { items }) => {
                 write!(w, "(")?;
                 if items.is_empty() {
                     return write!(w, ")");
@@ -53,21 +54,29 @@ impl PrettyPrint for TypeId {
                 items.last().unwrap().pretty_print(db, store, w)?;
                 write!(w, ")")
             }
-            Type::Struct(def) => {
+            TypeKind::Struct(def) => {
                 write!(w, "{}", def.name)
             }
-            Type::Event(def) => {
+            TypeKind::Event(def) => {
                 write!(w, "{}", def.name)
             }
-            Type::Contract(def) => {
+            TypeKind::Contract(def) => {
                 write!(w, "{}", def.name)
             }
-            Type::Map(def) => {
+            TypeKind::Map(def) => {
                 write!(w, "Map<")?;
                 def.key_ty.pretty_print(db, store, w)?;
                 write!(w, ",")?;
                 def.value_ty.pretty_print(db, store, w)?;
                 write!(w, ">")
+            }
+            TypeKind::MPtr(inner) => {
+                write!(w, "*@s ")?;
+                inner.pretty_print(db, store, w)
+            }
+            TypeKind::SPtr(inner) => {
+                write!(w, "*@m ")?;
+                inner.pretty_print(db, store, w)
             }
         }
     }

@@ -38,6 +38,8 @@ pub fn compile_single_contract(
         .replace('"', "");
 
     if bytecode == "null" {
+        println! {"{}", name};
+        println! {"{}", output["contracts"]["input.yul"]};
         return Err(YulcError(output.to_string()));
     }
 

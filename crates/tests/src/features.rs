@@ -916,7 +916,6 @@ fn checked_arithmetic() {
             // ADDITION
 
             // unsigned: max_value + 1 fails
-
             harness.test_function_reverts(
                 &mut executor,
                 &format!("add_u{}", config.size),
@@ -1603,7 +1602,7 @@ fn abi_decode_checks() {
             harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
         }
 
-        // decode_u128_bool
+        // // decode_u128_bool
         {
             let input = [uint_token(99999999), bool_token(true)];
             let data = harness.build_calldata("decode_u128_bool", &input);
@@ -1742,8 +1741,8 @@ fn abi_decode_checks() {
             // this would break the equivalence of string's `data_offset + data_size` and
             // the bytes' `data_offset`, making the encoding invalid
             tampered_data[byte_index] = 33;
-            // the string length is completely valid otherwise. 32 for example will not revert
-            // tampered_data[byte_index] = 32;
+            // the string length is completely valid otherwise. 32 for example will not
+            // revert tampered_data[byte_index] = 32;
             harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the string

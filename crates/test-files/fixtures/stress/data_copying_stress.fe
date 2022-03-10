@@ -71,7 +71,7 @@ contract Foo:
         emit_my_event_internal(
             ctx,
             self.my_string.to_mem(),
-            self.my_u256.to_mem()
+            self.my_u256
         )
 
     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256):

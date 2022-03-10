@@ -1,8 +1,7 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
-sqrt([Uint(16000)]) used 1780 gas
-min([Uint(1), Uint(2)]) used 356 gas
+sqrt([Uint(16000)]) used 2612 gas
+min([Uint(1), Uint(2)]) used 322 gas
 

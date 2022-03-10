@@ -2,7 +2,7 @@ use super::{event::AbiEvent, function::AbiFunction};
 
 use serde::{ser::SerializeSeq, Serialize, Serializer};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AbiContract {
     /// Public functions in the contract.
     funcs: Vec<AbiFunction>,

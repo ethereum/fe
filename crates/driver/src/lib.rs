@@ -1,11 +1,13 @@
 #![allow(unused_imports, dead_code)]
 
-pub use fe_mir::db::NewDb;
+pub use fe_codegen::db::{CodegenDb, NewDb};
+use fe_codegen::yul::runtime::RuntimeProvider;
 pub use fe_yulgen::Db;
 
-use fe_analyzer::context::Analysis;
 use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
 use fe_analyzer::AnalyzerDb;
+use fe_analyzer::{context::Analysis, namespace::items::ContractId};
+use fe_common::db::Upcast;
 use fe_common::diagnostics::{print_diagnostics, Diagnostic};
 use fe_common::files::{FileKind, SourceFileId};
 use fe_mir::db::MirDb;
@@ -36,7 +38,7 @@ pub struct CompiledContract {
 pub struct CompileError(pub Vec<Diagnostic>);
 
 pub fn compile_single_file(
-    db: &mut Db,
+    db: &mut NewDb,
     path: &str,
     src: &str,
     with_bytecode: bool,
@@ -57,7 +59,7 @@ pub fn compile_single_file(
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile_ingot(
-    db: &mut Db,
+    db: &mut NewDb,
     name: &str,
     files: &[(impl AsRef<str>, impl AsRef<str>)],
     with_bytecode: bool,
@@ -99,89 +101,122 @@ pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<Str
     Ok(String::from_utf8(text).unwrap())
 }
 
-fn compile_module_id(
-    db: &mut Db,
-    module_id: ModuleId,
-    _with_bytecode: bool,
-    _optimize: bool,
-) -> Result<CompiledModule, CompileError> {
-    // build abi
-    let json_abis = fe_abi::build(db, module_id).expect("failed to generate abi");
+// TODO: Remove this!!!!
+pub fn dump_codegen_funcs(db: &mut NewDb, path: &str, src: &str) -> Result<String, CompileError> {
+    let module = ModuleId::new_standalone(db, path, src);
 
-    // lower the AST
-    let lowered_module_id = fe_lowering::lower_main_module(db, module_id);
-    let lowered_ast = format!("{:#?}", &lowered_module_id.ast(db));
-
-    if !lowered_module_id.diagnostics(db).is_empty() {
-        eprintln!("Error: Analysis of lowered module resulted in the following errors:");
-        print_diagnostics(db, &lowered_module_id.diagnostics(db));
-        panic!("Lowered module has errors. Unfortunately, this is a bug in the Fe compiler.")
+    let diags = module.diagnostics(db);
+    if !diags.is_empty() {
+        return Err(CompileError(diags));
     }
 
-    // compile to yul
-    let yul_contracts = fe_yulgen::compile(db, lowered_module_id);
+    let mut contracts = String::new();
+    for contract in db.module_contracts(module).as_ref() {
+        contracts.push_str(&format!(
+            "{}",
+            fe_codegen::yul::isel::lower_contract_deployable(db, *contract)
+        ))
+    }
 
-    // compile to bytecode if required
-    let _bytecode_contracts = if _with_bytecode {
-        compile_yul(yul_contracts.iter(), _optimize)
-    } else {
-        IndexMap::new()
-    };
+    Ok(contracts)
+}
 
-    // combine all of the named contract maps
-    let contracts = json_abis
-        .keys()
-        .map(|name| {
-            (
-                name.clone(),
-                CompiledContract {
-                    json_abi: json_abis[name].clone(),
-                    yul: yul_contracts[name].clone(),
-                    #[cfg(feature = "solc-backend")]
-                    bytecode: if _with_bytecode {
-                        _bytecode_contracts[name].to_owned()
-                    } else {
-                        "".to_string()
-                    },
-                },
-            )
-        })
-        .collect::<IndexMap<_, _>>();
+#[cfg(feature = "solc-backend")]
+fn compile_module_id(
+    db: &mut NewDb,
+    module_id: ModuleId,
+    with_bytecode: bool,
+    optimize: bool,
+) -> Result<CompiledModule, CompileError> {
+    let mut contracts = IndexMap::default();
+    for &contract in module_id.all_contracts(db.upcast()).as_ref() {
+        let name = &contract.data(db.upcast()).name;
+        let abi = db.codegen_abi_contract(contract);
+        let yul_contract = compile_to_yul(db, contract);
+
+        let bytecode = if with_bytecode {
+            let deployable_name = db.codegen_contract_deployer_symbol_name(contract);
+            compile_to_evm(deployable_name.as_str(), &yul_contract, optimize)
+        } else {
+            "".to_string()
+        };
+
+        contracts.insert(
+            name.to_string(),
+            CompiledContract {
+                json_abi: serde_json::to_string_pretty(&abi).unwrap(),
+                yul: yul_contract,
+                bytecode,
+            },
+        );
+    }
 
     Ok(CompiledModule {
         src_ast: format!("{:?}", module_id.ast(db)),
-        lowered_ast,
+        lowered_ast: format!("{:?}", module_id.ast(db)),
         contracts,
     })
 }
 
-fn compile_yul(
-    _contracts: impl Iterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
+#[cfg(not(feature = "solc-backend"))]
+fn compile_module_id(
+    db: &mut NewDb,
+    module_id: ModuleId,
+    _with_bytecode: bool,
     _optimize: bool,
-) -> IndexMap<String, String> {
-    #[cfg(feature = "solc-backend")]
-    {
-        match fe_yulc::compile(_contracts, _optimize) {
-            Err(error) => {
-                for error in serde_json::from_str::<Value>(&error.0)
-                    .expect("unable to deserialize json output")["errors"]
-                    .as_array()
-                    .expect("errors not an array")
-                {
-                    eprintln!(
-                        "Error: {}",
-                        error["formattedMessage"]
-                            .as_str()
-                            .expect("error value not a string")
-                            .replace("\\\n", "\n")
-                    )
-                }
-                panic!("Yul compilation failed with the above errors")
-            }
-            Ok(contracts) => contracts,
-        }
+) -> Result<CompiledModule, CompileError> {
+    let mut contracts = IndexMap::default();
+    for &contract in module_id.all_contracts(db.upcast()).as_ref() {
+        let name = &contract.data(db.upcast()).name;
+        let abi = db.codegen_abi_contract(contract);
+        let yul_contract = compile_to_yul(db, contract);
+
+        contracts.insert(
+            name.to_string(),
+            CompiledContract {
+                json_abi: serde_json::to_string_pretty(&abi).unwrap(),
+                yul: yul_contract,
+            },
+        );
     }
 
-    #[cfg(not(feature = "solc-backend"))]
-    IndexMap::new()
+    Ok(CompiledModule {
+        src_ast: format!("{:?}", module_id.ast(db)),
+        lowered_ast: format!("{:?}", module_id.ast(db)),
+        contracts,
+    })
+}
+
+fn compile_to_yul(db: &mut NewDb, contract: ContractId) -> String {
+    let yul_contract = fe_codegen::yul::isel::lower_contract_deployable(db, contract);
+    yul_contract.to_string().replace('"', "\\\"")
+}
+
+#[cfg(feature = "solc-backend")]
+fn compile_to_evm(name: &str, yul_object: &str, optimize: bool) -> String {
+    match fe_yulc::compile_single_contract(name, yul_object, optimize) {
+        Ok(contracts) => contracts,
+
+        Err(error) => {
+            for error in serde_json::from_str::<Value>(&error.0)
+                .expect("unable to deserialize json output")["errors"]
+                .as_array()
+                .expect("errors not an array")
+            {
+                eprintln!(
+                    "Error: {}",
+                    error["formattedMessage"]
+                        .as_str()
+                        .expect("error value not a string")
+                        .replace("\\\n", "\n")
+                )
+            }
+            panic!("Yul compilation failed with the above errors")
+        }
+    }
+}
+
+#[cfg(not(feature = "solc-backend"))]
+fn compile_to_evm(_: &str, _: &str, _: bool) -> String {
+    unreachable!()
 }

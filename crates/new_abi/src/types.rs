@@ -9,6 +9,8 @@ pub enum AbiType {
     Function,
     Array { elem_ty: Box<AbiType>, len: usize },
     Tuple(Vec<AbiTupleField>),
+    Bytes,
+    String,
 }
 
 impl AbiType {
@@ -19,7 +21,13 @@ impl AbiType {
             Self::Address => "address".to_string(),
             Self::Bool => "bool".to_string(),
             Self::Function => "function".to_string(),
-            Self::Array { elem_ty, len } => format!("{}[{}]", elem_ty.selector_type_name(), len),
+            Self::Array { elem_ty, len } => {
+                if elem_ty.as_ref() == &AbiType::UInt(8) {
+                    "bytes".to_string()
+                } else {
+                    format!("{}[{}]", elem_ty.selector_type_name(), len)
+                }
+            }
             Self::Tuple(elems) => format!(
                 "({})",
                 elems
@@ -28,14 +36,88 @@ impl AbiType {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
+
+            Self::Bytes => "bytes".to_string(),
+            Self::String => "string".to_string(),
         }
     }
 
     pub fn abi_type_name(&self) -> String {
         match self {
             Self::Tuple(_) => "tuple".to_string(),
-            Self::Array { elem_ty, len } => format!("{}[{}]", elem_ty.abi_type_name(), len),
+            Self::Array { elem_ty, len } => {
+                if elem_ty.as_ref() == &AbiType::UInt(8) {
+                    "bytes".to_string()
+                } else {
+                    format!("{}[{}]", elem_ty.abi_type_name(), len)
+                }
+            }
             _ => self.selector_type_name(),
+        }
+    }
+
+    pub fn header_size(&self) -> usize {
+        match self {
+            Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool | Self::Function => 32,
+            Self::Array { elem_ty, len } => elem_ty.header_size() * len,
+            Self::Tuple(fields) => {
+                if self.is_static() {
+                    fields
+                        .iter()
+                        .fold(0, |acc, field| acc + field.ty.header_size())
+                } else {
+                    32
+                }
+            }
+            Self::Bytes | Self::String => 32,
+        }
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        matches! {
+            self,
+            Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool
+        }
+    }
+
+    pub fn is_bytes(&self) -> bool {
+        matches! {
+            self,
+            Self::Bytes,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches! {
+            self,
+            Self::String
+        }
+    }
+
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool | Self::Function => true,
+            Self::Array { elem_ty, .. } => elem_ty.is_static(),
+            Self::Tuple(fields) => fields.iter().all(|field| field.ty.is_static()),
+            Self::Bytes | Self::String => false,
+        }
+    }
+
+    /// Returns bytes size of the encoded type if the type is static.
+    pub fn size(&self) -> Option<usize> {
+        match self {
+            Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool => Some(32),
+            Self::Function => Some(24),
+            Self::Array { elem_ty, len } => Some(elem_ty.size()? * len),
+            Self::Tuple(fields) => {
+                let mut size = 0;
+                for field in fields.iter() {
+                    size += field.ty.size()?;
+                }
+                Some(size)
+            }
+
+            Self::Bytes | Self::String => None,
         }
     }
 }
