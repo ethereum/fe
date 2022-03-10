@@ -33,7 +33,7 @@ pub fn all() -> Vec<yul::Statement> {
     ]
 }
 
-/// Returns the highest available pointer.
+/// Returns the highest available pointerhttps://buy.gazelle.com/collections/ipads?_=pf&pf_v_model=iPad%20Pro%2012.9%204th%20Gen.
 pub fn avail() -> yul::Statement {
     function_definition! {
         function avail() -> ptr {
@@ -315,7 +315,7 @@ pub fn bytes_sloadn() -> yul::Statement {
         function bytes_sloadn(sptr, size) -> val {
             (let word_ptr := div(sptr, 32))
             (let bytes_offset := mod(sptr, 32))
-            (val := sloadn(word_ptr, bytes_offset, size))
+            (val := sload(word_ptr))
         }
     }
 }
@@ -354,7 +354,7 @@ pub fn map_value_ptr() -> yul::Statement {
             (mstore(ptr, a))
             (mstore((add(ptr, 32)), b))
             (let hash := keccak256(ptr, 64))
-            (return_val := set_zero(248, 256, hash))
+            (return_val := mul((div(hash, 256)), 256))
         }
     }
 }

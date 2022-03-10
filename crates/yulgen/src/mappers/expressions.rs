@@ -456,5 +456,6 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
 pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     // set the last byte to `0x00` to ensure our pointer sits at the start of a word
     let ptr = keccak::partial_right_padded(nonce.to_string().as_bytes(), 31);
+    println!("{}", ptr);
     literal_expression! { (ptr) }
 }

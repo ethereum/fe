@@ -409,9 +409,13 @@ pub fn decode_component_string(max_size: usize, location: AbiDecodeLocation) -> 
 pub fn is_left_padded() -> yul::Statement {
     function_definition! {
         function is_left_padded(size_bits, val) -> return_val {
-            (let bits_shifted := sub(256, size_bits))
-            (let shifted_val := shr(bits_shifted, val))
-            (return_val := iszero(shifted_val))
+            (if (eq(size_bits, 0)) {
+                (return_val := 1)
+                (leave)
+            })
+
+            (let right_size := sub(256, size_bits))
+            (return_val := lt(val, (exp(2, right_size))))
         }
     }
 }
