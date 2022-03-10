@@ -15,7 +15,7 @@ pub use basic_block::{BasicBlock, BasicBlockId};
 pub use constant::{Constant, ConstantId};
 pub use function::{FunctionBody, FunctionId, FunctionParam, FunctionSignature};
 pub use inst::{Inst, InstId};
-pub use types::{Type, TypeId};
+pub use types::{Type, TypeId, TypeKind};
 pub use value::{Value, ValueId};
 
 /// An original source information that indicates where `mir` entities derive

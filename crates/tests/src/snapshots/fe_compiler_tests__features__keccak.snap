@@ -1,11 +1,10 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
-return_hash_from_u256([Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])]) used 602 gas
-return_hash_from_u256([Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])]) used 602 gas
-return_hash_from_u8([Bytes([1])]) used 519 gas
-return_hash_from_u8([Bytes([0])]) used 519 gas
-return_hash_from_foo([Bytes([102, 111, 111])]) used 583 gas
+return_hash_from_u256([Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])]) used 467 gas
+return_hash_from_u256([Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])]) used 467 gas
+return_hash_from_u8([Bytes([1])]) used 383 gas
+return_hash_from_u8([Bytes([0])]) used 383 gas
+return_hash_from_foo([Bytes([102, 111, 111])]) used 450 gas
 

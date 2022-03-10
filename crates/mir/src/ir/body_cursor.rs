@@ -2,7 +2,9 @@
 //! in-place.
 // The design used here is greatly inspired by [`cranelift`](https://crates.io/crates/cranelift)
 
-use super::{BasicBlock, BasicBlockId, FunctionBody, Inst, InstId, Value, ValueId};
+use super::{
+    value::AssignableValue, BasicBlock, BasicBlockId, FunctionBody, Inst, InstId, ValueId,
+};
 
 /// Specify a current location of [`BodyCursor`]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,11 +199,11 @@ impl<'a> BodyCursor<'a> {
         block_id
     }
 
-    pub fn store_and_map_result(&mut self, result: Value) -> ValueId {
+    pub fn map_result(&mut self, result: AssignableValue) -> Option<ValueId> {
         let inst = self.expect_inst();
-        let result_id = self.body.store.store_value(result);
-        self.body.store.map_result(inst, result_id);
-        result_id
+        let result_value = result.value_id();
+        self.body.store.map_result(inst, result);
+        result_value
     }
 
     /// Returns current inst that cursor points.

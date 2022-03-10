@@ -21,11 +21,6 @@ pub enum InstKind {
         local: ValueId,
     },
 
-    Assign {
-        lhs: ValueId,
-        rhs: ValueId,
-    },
-
     /// Unary instruction.
     Unary {
         op: UnOp,
@@ -50,6 +45,14 @@ pub enum InstKind {
         args: Vec<ValueId>,
     },
 
+    Bind {
+        src: ValueId,
+    },
+
+    MemCopy {
+        src: ValueId,
+    },
+
     /// Access to aggregate fields or elements.
     /// # Example
     ///
@@ -65,8 +68,8 @@ pub enum InstKind {
     },
 
     MapAccess {
-        value: ValueId,
         key: ValueId,
+        value: ValueId,
     },
 
     Call {
@@ -88,7 +91,7 @@ pub enum InstKind {
     },
 
     Revert {
-        arg: ValueId,
+        arg: Option<ValueId>,
     },
 
     Emit {
@@ -100,14 +103,6 @@ pub enum InstKind {
     },
 
     Keccak256 {
-        arg: ValueId,
-    },
-
-    Clone {
-        arg: ValueId,
-    },
-
-    ToMem {
         arg: ValueId,
     },
 
@@ -177,6 +172,84 @@ impl Inst {
             InstKind::Jump { dest } => BranchInfo::Jump(dest),
             InstKind::Branch { cond, then, else_ } => BranchInfo::Branch(cond, then, else_),
             _ => BranchInfo::NotBranch,
+        }
+    }
+
+    pub fn args(&self) -> ArgIter {
+        use InstKind::*;
+        match &self.kind {
+            Declare { local: arg }
+            | Bind { src: arg }
+            | MemCopy { src: arg }
+            | Unary { value: arg, .. }
+            | Cast { value: arg, .. }
+            | Emit { arg }
+            | Keccak256 { arg }
+            | AbiEncode { arg }
+            | Create { value: arg, .. }
+            | Branch { cond: arg, .. } => ArgIter::One(Some(*arg)),
+
+            Binary { lhs, rhs, .. }
+            | MapAccess {
+                value: lhs,
+                key: rhs,
+            }
+            | Create2 {
+                value: lhs,
+                salt: rhs,
+                ..
+            } => ArgIter::One(Some(*lhs)).chain(ArgIter::One(Some(*rhs))),
+
+            Revert { arg } | Return { arg } => ArgIter::One(*arg),
+
+            Nop | Jump { .. } => ArgIter::Zero,
+
+            AggregateAccess { value, indices } => {
+                ArgIter::One(Some(*value)).chain(ArgIter::Slice(indices.iter()))
+            }
+
+            AggregateConstruct { args, .. } | Call { args, .. } | YulIntrinsic { args, .. } => {
+                ArgIter::Slice(args.iter())
+            }
+        }
+    }
+
+    pub fn args_mut(&mut self) -> ArgMutIter {
+        use InstKind::*;
+        match &mut self.kind {
+            Declare { local: arg }
+            | Bind { src: arg }
+            | MemCopy { src: arg }
+            | Unary { value: arg, .. }
+            | Cast { value: arg, .. }
+            | Emit { arg }
+            | Keccak256 { arg }
+            | AbiEncode { arg }
+            | Create { value: arg, .. }
+            | Branch { cond: arg, .. } => ArgMutIter::One(Some(arg)),
+
+            Binary { lhs, rhs, .. }
+            | MapAccess {
+                value: lhs,
+                key: rhs,
+            }
+            | Create2 {
+                value: lhs,
+                salt: rhs,
+                ..
+            } => ArgMutIter::One(Some(lhs)).chain(ArgMutIter::One(Some(rhs))),
+
+            Revert { arg } | Return { arg } => ArgMutIter::One(arg.as_mut()),
+
+            Nop | Jump { .. } => ArgMutIter::Zero,
+
+            AggregateAccess { value, indices } => {
+                ArgMutIter::One(Some(value)).chain(ArgMutIter::Slice(indices.iter_mut()))
+            }
+
+            AggregateConstruct { args, .. } | Call { args, .. } | YulIntrinsic { args, .. } => {
+                ArgMutIter::Slice(args.iter_mut())
+            }
         }
     }
 }
@@ -527,4 +600,70 @@ pub enum BranchInfo {
     NotBranch,
     Jump(BasicBlockId),
     Branch(ValueId, BasicBlockId, BasicBlockId),
+}
+
+#[derive(Debug)]
+pub enum ArgIter<'a> {
+    Zero,
+    One(Option<ValueId>),
+    Slice(std::slice::Iter<'a, ValueId>),
+    Chain(Box<ArgIter<'a>>, Box<ArgIter<'a>>),
+}
+
+impl<'a> ArgIter<'a> {
+    fn chain(self, rhs: Self) -> Self {
+        Self::Chain(self.into(), rhs.into())
+    }
+}
+
+impl<'a> Iterator for ArgIter<'a> {
+    type Item = ValueId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Zero => None,
+            Self::One(value) => value.take(),
+            Self::Slice(s) => s.next().copied(),
+            Self::Chain(first, second) => {
+                if let Some(value) = first.next() {
+                    Some(value)
+                } else {
+                    second.next()
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ArgMutIter<'a> {
+    Zero,
+    One(Option<&'a mut ValueId>),
+    Slice(std::slice::IterMut<'a, ValueId>),
+    Chain(Box<ArgMutIter<'a>>, Box<ArgMutIter<'a>>),
+}
+
+impl<'a> ArgMutIter<'a> {
+    fn chain(self, rhs: Self) -> Self {
+        Self::Chain(self.into(), rhs.into())
+    }
+}
+
+impl<'a> Iterator for ArgMutIter<'a> {
+    type Item = &'a mut ValueId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Zero => None,
+            Self::One(value) => value.take(),
+            Self::Slice(s) => s.next(),
+            Self::Chain(first, second) => {
+                if let Some(value) = first.next() {
+                    Some(value)
+                } else {
+                    second.next()
+                }
+            }
+        }
+    }
 }

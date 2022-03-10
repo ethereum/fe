@@ -330,7 +330,7 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let mut db = driver::Db::default();
+    let mut db = driver::NewDb::default();
     let compiled_module = match driver::compile_single_file(
         &mut db,
         fixture,
@@ -367,7 +367,7 @@ pub fn deploy_contract_from_ingot(
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
     let files = test_files::fixture_dir_files(path);
-    let mut db = driver::Db::default();
+    let mut db = driver::NewDb::default();
     let compiled_module = match driver::compile_ingot(&mut db, "test", &files, true, true) {
         Ok(module) => module,
         Err(error) => {
@@ -476,7 +476,11 @@ fn _deploy_contract(
         bytecode,
         None,
     ) {
-        return ContractHarness::new(exit.1.expect("Unable to retrieve contract address"), abi);
+        return ContractHarness::new(
+            exit.1
+                .unwrap_or_else(|| panic!("Unable to retrieve contract address: {:?}", exit.0)),
+            abi,
+        );
     }
 
     panic!("Failed to create contract")
@@ -574,7 +578,7 @@ pub fn compile_solidity_contract(
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let mut db = driver::Db::default();
+    let mut db = driver::NewDb::default();
     let compiled_module =
         driver::compile_single_file(&mut db, fixture, test_files::fixture(fixture), true, true)
             .unwrap_or_else(|err| {

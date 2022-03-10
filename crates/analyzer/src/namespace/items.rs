@@ -1223,6 +1223,10 @@ impl FunctionId {
         sink.push_all(db.function_signature(*self).diagnostics.iter());
         sink.push_all(db.function_body(*self).diagnostics.iter());
     }
+
+    pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
+        matches! {self.parent(db), Item::Type(TypeDef::Contract(_))}
+    }
 }
 
 /// A `Class` is an item that can have member functions.

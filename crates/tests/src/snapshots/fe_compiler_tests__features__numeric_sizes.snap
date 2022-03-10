@@ -1,30 +1,29 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
-get_u8_min([]) used 171 gas
-get_u8_max([]) used 447 gas
-get_i8_min([]) used 318 gas
-get_i8_max([]) used 579 gas
-get_u16_min([]) used 193 gas
-get_u16_max([]) used 469 gas
-get_i16_min([]) used 340 gas
-get_i16_max([]) used 601 gas
-get_u32_min([]) used 215 gas
-get_u32_max([]) used 491 gas
-get_i32_min([]) used 362 gas
-get_i32_max([]) used 623 gas
-get_u64_min([]) used 237 gas
-get_u64_max([]) used 513 gas
-get_i64_min([]) used 384 gas
-get_i64_max([]) used 645 gas
-get_u128_min([]) used 259 gas
-get_u128_max([]) used 535 gas
-get_i128_min([]) used 406 gas
-get_i128_max([]) used 667 gas
-get_u256_min([]) used 281 gas
-get_u256_max([]) used 560 gas
-get_i256_min([]) used 431 gas
-get_i256_max([]) used 696 gas
+get_u8_min([]) used 125 gas
+get_u8_max([]) used 389 gas
+get_i8_min([]) used 260 gas
+get_i8_max([]) used 521 gas
+get_u16_min([]) used 147 gas
+get_u16_max([]) used 411 gas
+get_i16_min([]) used 282 gas
+get_i16_max([]) used 543 gas
+get_u32_min([]) used 169 gas
+get_u32_max([]) used 433 gas
+get_i32_min([]) used 304 gas
+get_i32_max([]) used 565 gas
+get_u64_min([]) used 191 gas
+get_u64_max([]) used 455 gas
+get_i64_min([]) used 326 gas
+get_i64_max([]) used 587 gas
+get_u128_min([]) used 213 gas
+get_u128_max([]) used 477 gas
+get_i128_min([]) used 348 gas
+get_i128_max([]) used 609 gas
+get_u256_min([]) used 235 gas
+get_u256_max([]) used 502 gas
+get_i256_min([]) used 373 gas
+get_i256_max([]) used 638 gas
 

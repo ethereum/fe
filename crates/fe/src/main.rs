@@ -9,7 +9,7 @@ use clap::{arg_enum, values_t, App, Arg};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::SourceFileId;
 use fe_common::panic::install_panic_hook;
-use fe_driver::{CompiledModule, Db};
+use fe_driver::CompiledModule;
 use walkdir::WalkDir;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -77,6 +77,12 @@ pub fn main() {
                 .help("dump mir dot file")
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("codegen")
+                .long("codegen")
+                .help("todo")
+                .takes_value(false),
+        )
         .get_matches();
 
     let input_path = matches.value_of("input").unwrap();
@@ -90,12 +96,17 @@ pub fn main() {
     if matches.is_present("mir") {
         return mir_dump(input_path);
     }
+
+    if matches.is_present("codegen") {
+        return yul_functions_dump(input_path);
+    }
+
     #[cfg(not(feature = "solc-backend"))]
     if with_bytecode {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
-    let mut db = Db::default();
+    let mut db = fe_driver::NewDb::default();
 
     let (content, compiled_module) = if Path::new(input_path).is_file() {
         let content = match std::fs::read_to_string(input_path) {
@@ -285,6 +296,33 @@ fn mir_dump(input_path: &str) {
 
         match fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
             Ok(text) => println!("{}", text),
+            Err(err) => {
+                eprintln!("Unable to dump mir `{}", input_path);
+                print_diagnostics(&db, &err.0);
+                std::process::exit(1)
+            }
+        }
+    } else {
+        eprintln!("mir doesn't support ingot yet");
+        std::process::exit(1)
+    }
+}
+
+fn yul_functions_dump(input_path: &str) {
+    let mut db = fe_driver::NewDb::default();
+    if Path::new(input_path).is_file() {
+        let content = match std::fs::read_to_string(input_path) {
+            Err(err) => {
+                eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
+                std::process::exit(1)
+            }
+            Ok(content) => content,
+        };
+
+        match fe_driver::dump_codegen_funcs(&mut db, input_path, &content) {
+            Ok(contract) => {
+                println!("{}", contract)
+            }
             Err(err) => {
                 eprintln!("Unable to dump mir `{}", input_path);
                 print_diagnostics(&db, &err.0);

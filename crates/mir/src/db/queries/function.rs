@@ -5,7 +5,7 @@ use smol_str::SmolStr;
 
 use crate::{
     db::MirDb,
-    ir::{self, FunctionSignature, TypeId},
+    ir::{self, function::Linkage, FunctionSignature, TypeId},
     lower::function::{lower_func_body, lower_func_signature},
 };
 
@@ -27,6 +27,10 @@ impl ir::FunctionId {
 
     pub fn return_type(self, db: &dyn MirDb) -> Option<TypeId> {
         self.signature(db).return_type
+    }
+
+    pub fn linkage(self, db: &dyn MirDb) -> Linkage {
+        self.signature(db).linkage
     }
 
     pub fn analyzer_func(self, db: &dyn MirDb) -> analyzer_items::FunctionId {
@@ -62,5 +66,11 @@ impl ir::FunctionId {
         } else {
             func_name
         }
+    }
+
+    pub fn returns_aggregate(self, db: &dyn MirDb) -> bool {
+        self.return_type(db)
+            .map(|ty| ty.is_aggregate(db))
+            .unwrap_or_default()
     }
 }

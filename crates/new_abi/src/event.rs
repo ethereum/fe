@@ -6,10 +6,10 @@ use serde::Serialize;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiEvent {
     #[serde(rename = "type")]
-    ty: &'static str,
-    name: String,
-    inputs: Vec<AbiEventField>,
-    anonymous: bool,
+    pub ty: &'static str,
+    pub name: String,
+    pub inputs: Vec<AbiEventField>,
+    pub anonymous: bool,
 }
 
 impl AbiEvent {
@@ -62,10 +62,10 @@ impl AbiEventSignature {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiEventField {
-    name: String,
+    pub name: String,
     #[serde(flatten)]
-    ty: AbiType,
-    indexed: bool,
+    pub ty: AbiType,
+    pub indexed: bool,
 }
 
 impl AbiEventField {

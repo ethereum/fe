@@ -2,69 +2,91 @@ use id_arena::Id;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use super::{constant::ConstantId, inst::InstId, types::TypeId, SourceInfo};
+use crate::db::MirDb;
+
+use super::{
+    constant::ConstantId,
+    function::BodyDataStore,
+    inst::InstId,
+    types::{TypeId, TypeKind},
+    SourceInfo,
+};
 
 pub type ValueId = Id<Value>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     /// A value resulted from an instruction.
-    Temporary(Temporary),
+    Temporary { inst: InstId, ty: TypeId },
 
     /// A local variable declared in a function body.
     Local(Local),
 
     /// An immediate value.
-    Immediate(Immediate),
+    Immediate { imm: BigInt, ty: TypeId },
 
     /// A constant value.
-    Constant(Constant),
+    Constant { constant: ConstantId, ty: TypeId },
 
     /// A singleton value representing `Unit` type.
-    Unit(Unit),
+    Unit { ty: TypeId },
 }
 
 impl Value {
     pub fn ty(&self) -> TypeId {
         match self {
-            Self::Temporary(val) => val.ty,
             Self::Local(val) => val.ty,
-            Self::Immediate(val) => val.ty,
-            Self::Constant(val) => val.ty,
-            Self::Unit(val) => val.ty,
+            Self::Immediate { ty, .. }
+            | Self::Temporary { ty, .. }
+            | Self::Unit { ty }
+            | Self::Constant { ty, .. } => *ty,
         }
     }
 }
 
-macro_rules! embed {
-    ($(($variant: expr, $ty: ty)),*) => {
-        $(
-        impl From<$ty> for Value {
-            fn from(val: $ty) -> Self {
-                $variant(val)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AssignableValue {
+    Value(ValueId),
+    Aggregate {
+        lhs: Box<AssignableValue>,
+        idx: ValueId,
+    },
+    Map {
+        lhs: Box<AssignableValue>,
+        key: ValueId,
+    },
+}
+
+impl From<ValueId> for AssignableValue {
+    fn from(value: ValueId) -> Self {
+        Self::Value(value)
+    }
+}
+
+impl AssignableValue {
+    pub fn ty(&self, db: &dyn MirDb, store: &BodyDataStore) -> TypeId {
+        match self {
+            Self::Value(value) => store.value_ty(*value),
+            Self::Aggregate { lhs, idx } => {
+                let lhs_ty = lhs.ty(db, store);
+                lhs_ty.projection_ty(db, store.value_data(*idx))
             }
-        })*
-    };
-}
+            Self::Map { lhs, .. } => {
+                let lhs_ty = lhs.ty(db, store);
+                match lhs_ty.data(db).kind {
+                    TypeKind::Map(def) => def.value_ty,
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 
-embed! {
-    (Value::Temporary, Temporary),
-    (Value::Local, Local),
-    (Value::Immediate, Immediate),
-    (Value::Constant, Constant),
-    (Value::Unit, Unit)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Temporary {
-    pub inst: InstId,
-    pub ty: TypeId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Immediate {
-    pub value: BigInt,
-    pub ty: TypeId,
+    pub fn value_id(&self) -> Option<ValueId> {
+        match self {
+            Self::Value(value) => Some(*value),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -113,15 +135,4 @@ impl Local {
             source: SourceInfo::dummy(),
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Constant {
-    pub constant: ConstantId,
-    pub ty: TypeId,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Unit {
-    pub ty: TypeId,
 }
