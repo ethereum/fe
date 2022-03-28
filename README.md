@@ -66,7 +66,7 @@ contract GuestBook:
 
     pub fn sign(self, ctx: Context, book_msg: String<100>):
         self.messages[ctx.msg_sender()] = book_msg
-        emit Signed(ctx, book_msg=book_msg)
+        emit Signed(ctx, book_msg: book_msg)
 
     pub fn get_msg(self, addr: address) -> String<100>:
         return self.messages[addr].to_mem()
