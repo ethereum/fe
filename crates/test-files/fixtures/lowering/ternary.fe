@@ -23,12 +23,11 @@ contract Foo:
         let b: u256 = 20
         let x: u256 = 10
         let y: u256 = 20
-        
-        let z: (u256, u256) = (a if true else b, x if true else y) 
 
-    pub fn baz(val: u256):
+        let z: (u256, u256) = (a if true else b, x if true else y)
+
+    pub fn baz(_ val: u256):
         pass
 
-    pub fn double_baz(val1: u256, val2: u256):
+    pub fn double_baz(_ val1: u256, _ val2: u256):
         pass
-

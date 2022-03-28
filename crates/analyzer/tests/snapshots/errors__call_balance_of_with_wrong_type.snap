@@ -3,7 +3,7 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: incorrect type for `balance_of` argument `addr`
+error: incorrect type for `balance_of` argument at position 0
   ┌─ [snippet]:4:26
   │
 4 │     std::evm::balance_of(true)

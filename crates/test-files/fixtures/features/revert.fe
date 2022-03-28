@@ -11,7 +11,7 @@ contract Foo:
         revert
 
     pub fn revert_custom_error(ctx: Context):
-        ctx.send_value(address(0), 100)
+        ctx.send_value(to: address(0), wei: 100)
 
     pub fn revert_other_error():
         revert OtherError(msg: 1, val: true)

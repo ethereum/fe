@@ -18,7 +18,7 @@ note:
    │  
  9 │ ╭     fn transfer(ctx: Context, to : address, value : u256):
 10 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 6905847783095140889
+   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 10847004199357482546
    │  
    = FunctionSignature {
          self_decl: None,
@@ -27,6 +27,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -38,6 +39,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "to",
                  typ: Ok(
                      Base(
@@ -46,6 +48,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "value",
                  typ: Ok(
                      Base(

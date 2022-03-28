@@ -8,7 +8,7 @@ note:
   │  
 4 │ ╭     pub fn bar(ctx: Context) -> u256:
 5 │ │         return ctx.msg_sig()
-  │ ╰────────────────────────────^ attributes hash: 8461121747246443614
+  │ ╰────────────────────────────^ attributes hash: 10526263819290319263
   │  
   = FunctionSignature {
         self_decl: None,
@@ -17,6 +17,7 @@ note:
         ),
         params: [
             FunctionParam {
+                label: None,
                 name: "ctx",
                 typ: Ok(
                     Struct(

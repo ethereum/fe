@@ -78,10 +78,11 @@ contract Foo:
         let z: $tuple_u256_u256_ = $tuple_u256_u256_(item0: $ternary_result_1, item1: $ternary_result_0)
         return ()
 
-    pub fn baz(val: u256) -> ():
+    pub fn baz(_ val: u256) -> ():
         pass
         return ()
 
-    pub fn double_baz(val1: u256, val2: u256) -> ():
+    pub fn double_baz(_ val1: u256, _ val2: u256) -> ():
         pass
         return ()
+

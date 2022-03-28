@@ -28,7 +28,7 @@ note:
    │  
 13 │ ╭     pub fn write_num(self, x: u256):
 14 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 13114605224717333419
+   │ ╰────────────────────^ attributes hash: 4582507849783874218
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -37,6 +37,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      Base(
@@ -107,7 +108,7 @@ note:
    │  
 19 │ ╭     pub fn write_nums(self, x: Array<u256, 42>):
 20 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 9901766097095470194
+   │ ╰─────────────────────^ attributes hash: 15243923981938152137
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -116,6 +117,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      Array(
@@ -198,7 +200,7 @@ note:
    │  
 25 │ ╭     pub fn write_str(self, x: String<26>):
 26 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 9017792115505263739
+   │ ╰────────────────────^ attributes hash: 3874088449945578306
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -207,6 +209,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      String(
@@ -288,7 +291,7 @@ note:
 35 │ │             nums: self.nums.to_mem(),
 36 │ │             str: self.str.to_mem()
 37 │ │         )
-   │ ╰─────────^ attributes hash: 5828909688388067108
+   │ ╰─────────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -299,6 +302,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(

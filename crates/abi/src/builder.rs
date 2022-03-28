@@ -130,11 +130,12 @@ mod tests {
     use crate::builder;
     use fe_analyzer::namespace::items::ModuleId;
     use fe_analyzer::TestDb;
+    use fe_common::diagnostics::print_diagnostics;
 
     #[test]
     fn build_contract_abi() {
         let contract = r#"
-pub fn add(x: u256, y: u256) -> u256:
+pub fn add(_ x: u256, _ y: u256) -> u256:
   return x + y
 
 contract Foo:
@@ -142,16 +143,19 @@ contract Foo:
     idx barge: u256
   pub fn __init__(x: address):
     pass
-  fn baz(x: address) -> u256:
+  fn baz(_ x: address) -> u256:
     add(10, 20)
     revert
-  pub fn bar(x: u256) -> Array<u256, 10>:
+  pub fn bar(_ x: u256) -> Array<u256, 10>:
     revert"#;
 
         let mut db = TestDb::default();
         let module = ModuleId::new_standalone(&mut db, "test_module", contract);
 
-        fe_analyzer::analyze_module(&db, module).expect("failed to analyze source");
+        if !module.diagnostics(&db).is_empty() {
+            print_diagnostics(&db, &module.diagnostics(&db));
+            panic!("failed to analyze source")
+        }
         let abis = builder::module(&db, module).expect("unable to build ABI");
 
         if let Some(abi) = abis.get("Foo") {

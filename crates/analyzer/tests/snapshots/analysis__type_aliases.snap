@@ -64,7 +64,7 @@ note:
 20 │ │         self.posts[id] = body
 21 │ │         self.authors[ctx.msg_sender()]
 22 │ │         self.scoreboard[id] = 0
-   │ ╰───────────────────────────────^ attributes hash: 16028139387423377736
+   │ ╰───────────────────────────────^ attributes hash: 4649056442968527631
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -75,6 +75,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -86,6 +87,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "body",
                  typ: Ok(
                      String(
@@ -180,7 +182,7 @@ note:
 25 │ │         let score: Score = self.scoreboard[id] + 1
 26 │ │         self.scoreboard[id] = score
 27 │ │         return score
-   │ ╰────────────────────^ attributes hash: 15818897980290454718
+   │ ╰────────────────────^ attributes hash: 4383698668262923633
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -189,6 +191,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "id",
                  typ: Ok(
                      Base(
@@ -267,7 +270,7 @@ note:
    │  
 29 │ ╭     pub fn get_post(self, id: PostId) -> PostBody:
 30 │ │         return self.posts[id].to_mem()
-   │ ╰──────────────────────────────────────^ attributes hash: 9921789917420135973
+   │ ╰──────────────────────────────────────^ attributes hash: 6772945894090223199
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -276,6 +279,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "id",
                  typ: Ok(
                      Base(

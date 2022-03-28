@@ -41,6 +41,8 @@ pub fn function_signature(
     let mut self_decl = None;
     let mut ctx_decl = None;
     let mut names = HashMap::new();
+    let mut labels = HashMap::new();
+
     let params = def
         .args
         .iter()
@@ -65,15 +67,12 @@ pub fn function_signature(
                 }
                 None
             }
-            ast::FunctionArg::Regular(ast::RegularFunctionArg {
-                name,
-                typ: typ_node,
-            }) => {
-                let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ.try_into() {
+            ast::FunctionArg::Regular(reg) => {
+                let typ = type_desc(&mut scope, &reg.typ).and_then(|typ| match typ.try_into() {
                     Ok(typ) => Ok(typ),
                     Err(_) => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
-                        typ_node.span,
+                        reg.typ.span,
                         "`Map` type can't be used as a function parameter",
                     ))),
                 });
@@ -110,30 +109,50 @@ pub fn function_signature(
                     }
                 }
 
-                if let Ok(Some(named_item)) = scope.resolve_name(&name.kind, name.span) {
+                if let Some(label) = &reg.label {
+                    if_chain! {
+                        if label.kind != "_";
+                        if let Some(dup_idx) = labels.get(&label.kind);
+                        then {
+                            let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
+                            scope.fancy_error(
+                                &format!("duplicate parameter labels in function `{}`", def.name.kind),
+                                vec![
+                                    Label::primary(dup_arg.span, "the label `{}` was first used here"),
+                                    Label::primary(label.span, "label `{}` used again here"),
+                                ], vec![]);
+                            return None;
+                        } else {
+                            labels.insert(&label.kind, index);
+                        }
+                    }
+                }
+
+                if let Ok(Some(named_item)) = scope.resolve_name(&reg.name.kind, reg.name.span) {
                     scope.name_conflict_error(
                         "function parameter",
-                        &name.kind,
+                        &reg.name.kind,
                         &named_item,
                         named_item.name_span(db),
-                        name.span,
+                        reg.name.span,
                     );
                     None
-                } else if let Some(dup_idx) = names.get(&name.kind) {
+                } else if let Some(dup_idx) = names.get(&reg.name.kind) {
                     let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
                     scope.duplicate_name_error(
                         &format!("duplicate parameter names in function `{}`", def.name.kind),
-                        &name.kind,
+                        &reg.name.kind,
                         dup_arg.span,
                         arg.span,
                     );
                     None
                 } else {
-                    names.insert(&name.kind, index);
-                    Some(types::FunctionParam {
-                        name: name.kind.clone(),
+                    names.insert(&reg.name.kind, index);
+                    Some(types::FunctionParam::new(
+                        reg.label.as_ref().map(|s| s.kind.as_str()),
+                        &reg.name.kind,
                         typ,
-                    })
+                    ))
                 }
             }
         })

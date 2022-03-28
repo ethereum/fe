@@ -7,5 +7,5 @@ pub fn get_42_backend() -> u256:
     return std::evm::add(21, 21)
 
 pub contract BingContract:
-   pub fn add(x: u256, y: u256) -> u256:
+   pub fn add(_ x: u256, _ y: u256) -> u256:
        return x + y

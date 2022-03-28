@@ -13,13 +13,14 @@ note:
    · │
 13 │ │             z = 1
 14 │ │         return z
-   │ ╰────────────────^ attributes hash: 6692289661045278817
+   │ ╰────────────────^ attributes hash: 12367727332255217641
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "val",
                  typ: Ok(
                      Base(
@@ -146,13 +147,14 @@ note:
    │  
 16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
-   │ ╰────────────────────────────────^ attributes hash: 3620942230080591742
+   │ ╰────────────────────────────────^ attributes hash: 6847926207878778580
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "x",
                  typ: Ok(
                      Base(
@@ -163,6 +165,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "y",
                  typ: Ok(
                      Base(

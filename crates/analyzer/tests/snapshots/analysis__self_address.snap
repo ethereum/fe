@@ -8,7 +8,7 @@ note:
   │  
 4 │ ╭     pub fn my_address(ctx: Context) -> address:
 5 │ │         return ctx.self_address()
-  │ ╰─────────────────────────────────^ attributes hash: 17345910255563017853
+  │ ╰─────────────────────────────────^ attributes hash: 9364783648076633772
   │  
   = FunctionSignature {
         self_decl: None,
@@ -17,6 +17,7 @@ note:
         ),
         params: [
             FunctionParam {
+                label: None,
                 name: "ctx",
                 typ: Ok(
                     Struct(

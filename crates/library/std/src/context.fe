@@ -8,7 +8,7 @@ use ingot::error::{
 pub struct Context:
     pub fn block_coinbase(self) -> address:
         unsafe:
-            return evm::coin_base()
+            return evm::coinbase()
 
     pub fn block_difficulty(self) -> u256:
         unsafe:
@@ -44,9 +44,9 @@ pub struct Context:
 
     pub fn msg_sig(self) -> u256:
         unsafe:
-            return evm::shr(224, evm::call_data_load(0))
+            return evm::shr(224, evm::call_data_load(offset: 0))
 
-    pub fn balance_of(self, account: address) -> u256:
+    pub fn balance_of(self, _ account: address) -> u256:
         unsafe:
             return evm::balance_of(account)
 
@@ -63,6 +63,8 @@ pub struct Context:
         if evm::balance() < wei:
             revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
 
-        let success: u256 = evm::call(evm::gas(), to, wei, 0, 0, 0, 0)
+        let success: u256 = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
+                                      input_offset: 0, input_len: 0,
+                                      output_offset: 0, output_len: 0)
         if success == 0:
             revert Error(code: ERROR_FAILED_SEND_VALUE)

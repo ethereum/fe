@@ -11,7 +11,7 @@ struct $tuple_address_tuple_u256_u8__:
     pub item0: address
     pub item1: $tuple_u256_u8_
 
-fn list_expr_array_u8_3(val0: u8, val1: u8, val2: u8) -> Array<u8, 3>:
+fn list_expr_array_u8_3(_ val0: u8, _ val1: u8, _ val2: u8) -> Array<u8, 3>:
     let generated_array: Array<u8, 3>
     generated_array[0] = val0
     generated_array[1] = val1
@@ -32,3 +32,4 @@ contract Foo:
     pub fn sum_things() -> u8:
         let x: Array<u8, 3> = return_array()
         return x[0] + x[1] + x[2]
+

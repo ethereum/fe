@@ -10,13 +10,14 @@ note:
 3 │ │         let my_array: Array<u256,5>
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 9827501578243669852
+  │ ╰───────────────────────^ attributes hash: 5752237891839439208
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "x",
                 typ: Ok(
                     Base(

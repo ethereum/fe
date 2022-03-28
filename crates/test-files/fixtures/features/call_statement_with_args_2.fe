@@ -1,7 +1,7 @@
 contract Foo:
     baz: Map<u256, u256>
 
-    fn assign(self, val: u256) -> u256:
+    fn assign(self, _ val: u256) -> u256:
         self.baz[0] = val
         return val
 

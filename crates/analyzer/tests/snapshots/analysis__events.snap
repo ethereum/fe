@@ -42,7 +42,7 @@ note:
    │  
 21 │ ╭     pub fn emit_nums(ctx: Context):
 22 │ │         emit Nums(ctx, num1: 26, num2: 42)
-   │ ╰──────────────────────────────────────────^ attributes hash: 11452088215302469574
+   │ ╰──────────────────────────────────────────^ attributes hash: 5519676733853656531
    │  
    = FunctionSignature {
          self_decl: None,
@@ -51,6 +51,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -117,7 +118,7 @@ note:
    │  
 24 │ ╭     pub fn emit_bases(ctx: Context, addr: address):
 25 │ │         emit Bases(ctx, num: 26, addr)
-   │ ╰──────────────────────────────────────^ attributes hash: 991311692967983
+   │ ╰──────────────────────────────────────^ attributes hash: 15383426943610850221
    │  
    = FunctionSignature {
          self_decl: None,
@@ -126,6 +127,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -137,6 +139,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "addr",
                  typ: Ok(
                      Base(
@@ -198,7 +201,7 @@ note:
    │  
 27 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>):
 28 │ │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 15744261199202133709
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 9652612436637375041
    │  
    = FunctionSignature {
          self_decl: None,
@@ -207,6 +210,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -218,6 +222,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "addr",
                  typ: Ok(
                      Base(
@@ -226,6 +231,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_bytes",
                  typ: Ok(
                      Array(
@@ -322,7 +328,7 @@ note:
 32 │ │         addrs[0] = addr1
 33 │ │         addrs[1] = addr2
 34 │ │         emit Addresses(ctx, addrs)
-   │ ╰──────────────────────────────────^ attributes hash: 6001294227515901672
+   │ ╰──────────────────────────────────^ attributes hash: 18438233211486921531
    │  
    = FunctionSignature {
          self_decl: None,
@@ -331,6 +337,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -342,6 +349,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "addr1",
                  typ: Ok(
                      Base(
@@ -350,6 +358,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "addr2",
                  typ: Ok(
                      Base(

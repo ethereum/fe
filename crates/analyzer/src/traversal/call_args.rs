@@ -15,7 +15,7 @@ pub trait LabeledParameter {
 
 impl LabeledParameter for FunctionParam {
     fn label(&self) -> Option<&str> {
-        Some(&self.name)
+        self.label()
     }
     fn typ(&self) -> Result<FixedSize, TypeError> {
         self.typ.clone()
@@ -38,20 +38,6 @@ impl LabeledParameter for (SmolStr, Result<FixedSize, TypeError>) {
     fn typ(&self) -> Result<FixedSize, TypeError> {
         self.1.clone()
     }
-}
-
-pub fn validate_named_args(
-    context: &mut dyn AnalyzerContext,
-    name: &str,
-    name_span: Span,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    params: &[impl LabeledParameter],
-    label_policy: LabelPolicy,
-) -> Result<(), FatalError> {
-    validate_arg_count(context, name, name_span, args, params.len(), "argument");
-    validate_arg_labels(context, args, params, label_policy);
-    validate_arg_types(context, name, args, params)?;
-    Ok(())
 }
 
 pub fn validate_arg_count(
@@ -102,22 +88,18 @@ pub fn validate_arg_count(
     }
 }
 
-pub enum LabelPolicy {
-    AllowAnyUnlabeled,
-    AllowUnlabeledIfNameEqual,
-}
-
-pub fn validate_arg_labels(
+// TODO: missing label error should suggest adding `_` to fn def
+pub fn validate_named_args(
     context: &mut dyn AnalyzerContext,
+    name: &str,
+    name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
-    label_policy: LabelPolicy,
-) {
-    for (expected_label, arg) in params
-        .iter()
-        .map(LabeledParameter::label)
-        .zip(args.kind.iter())
-    {
+) -> Result<(), FatalError> {
+    validate_arg_count(context, name, name_span, args, params.len(), "argument");
+
+    for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
+        let expected_label = param.label();
         let arg_val = &arg.kind.value;
         match (expected_label, &arg.kind.label) {
             (Some(expected_label), Some(actual_label)) => {
@@ -143,8 +125,7 @@ pub fn validate_arg_labels(
             (Some(expected_label), None) => match &arg_val.kind {
                 fe::Expr::Name(var_name) if var_name == expected_label => {}
                 _ => {
-                    if let LabelPolicy::AllowUnlabeledIfNameEqual = label_policy {
-                        context.fancy_error(
+                    context.fancy_error(
                             "missing argument label",
                             vec![Label::primary(
                                 Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
@@ -155,7 +136,6 @@ pub fn validate_arg_labels(
                                 expected_label
                             )],
                         );
-                    }
                 }
             },
             (None, Some(actual_label)) => {
@@ -167,16 +147,7 @@ pub fn validate_arg_labels(
             }
             (None, None) => {}
         }
-    }
-}
 
-pub fn validate_arg_types(
-    context: &mut dyn AnalyzerContext,
-    name: &str,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    params: &[impl LabeledParameter],
-) -> Result<(), FatalError> {
-    for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
         let param_type = param.typ()?;
         let val_attrs =
             assignable_expr(context, &arg.kind.value, Some(&param_type.clone().into()))?;

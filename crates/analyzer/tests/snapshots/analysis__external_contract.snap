@@ -18,7 +18,7 @@ note:
    │  
  9 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
 10 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
-   │ ╰──────────────────────────────────────────────────────^ attributes hash: 3451677617796919513
+   │ ╰──────────────────────────────────────────────────────^ attributes hash: 14584319691445179306
    │  
    = FunctionSignature {
          self_decl: None,
@@ -27,6 +27,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -38,6 +39,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_num",
                  typ: Ok(
                      Base(
@@ -48,6 +50,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_addrs",
                  typ: Ok(
                      Array(
@@ -59,6 +62,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_string",
                  typ: Ok(
                      String(
@@ -141,13 +145,14 @@ note:
 15 │ │         my_array[1] = a * b
 16 │ │         my_array[2] = b
 17 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 3088089836276252510
+   │ ╰───────────────────────^ attributes hash: 14276910879408601208
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "a",
                  typ: Ok(
                      Base(
@@ -158,6 +163,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "b",
                  typ: Ok(
                      Base(
@@ -245,7 +251,7 @@ note:
    · │
 27 │ │         let foo: Foo = Foo(ctx, foo_address)
 28 │ │         foo.emit_event(my_num, my_addrs, my_string)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 14924385499184953581
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 11744736773867210426
    │  
    = FunctionSignature {
          self_decl: None,
@@ -254,6 +260,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -265,6 +272,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "foo_address",
                  typ: Ok(
                      Base(
@@ -273,6 +281,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_num",
                  typ: Ok(
                      Base(
@@ -283,6 +292,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_addrs",
                  typ: Ok(
                      Array(
@@ -294,6 +304,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "my_string",
                  typ: Ok(
                      String(
@@ -353,7 +364,7 @@ note:
    · │
 36 │ │         let foo: Foo = Foo(ctx, foo_address)
 37 │ │         return foo.build_array(a, b)
-   │ ╰────────────────────────────────────^ attributes hash: 16451349032805053607
+   │ ╰────────────────────────────────────^ attributes hash: 14801245347360386258
    │  
    = FunctionSignature {
          self_decl: None,
@@ -362,6 +373,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -373,6 +385,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "foo_address",
                  typ: Ok(
                      Base(
@@ -381,6 +394,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "a",
                  typ: Ok(
                      Base(
@@ -391,6 +405,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "b",
                  typ: Ok(
                      Base(

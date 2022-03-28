@@ -10,9 +10,9 @@ error: undefined type
   │            ^^^^^^^^^^^ `MysteryType` has not been defined
 
 error: undefined type
-  ┌─ compile_errors/undefined_type_param.fe:8:19
+  ┌─ compile_errors/undefined_type_param.fe:8:21
   │
-8 │     pub fn a(val: DoesntExist):
-  │                   ^^^^^^^^^^^ `DoesntExist` has not been defined
+8 │     pub fn a(_ val: DoesntExist):
+  │                     ^^^^^^^^^^^ `DoesntExist` has not been defined
 
 

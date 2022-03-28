@@ -74,8 +74,8 @@ contract Foo:
             self.my_u256.to_mem()
         )
 
-    fn emit_my_event_internal(ctx: Context, some_string: String<42>, some_u256: u256):
-        emit MyEvent(ctx, my_string: some_string, my_u256: some_u256)
+    fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256):
+        emit MyEvent(ctx, my_string, my_u256)
 
     pub fn set_my_addrs(self, my_addrs: Array<address, 3>):
         self.my_addrs = my_addrs

@@ -52,7 +52,7 @@ note:
    │  
 25 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 5>):
 26 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 7225178954146834617
+   │ ╰────────────────────────────────^ attributes hash: 8893819222299525150
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -61,6 +61,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_addrs",
                  typ: Ok(
                      Array(
@@ -139,7 +140,7 @@ note:
    │  
 31 │ ╭     pub fn set_my_u128(self, my_u128: u128):
 32 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 16833095980961190060
+   │ ╰──────────────────────────────^ attributes hash: 15199964699853061770
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -148,6 +149,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_u128",
                  typ: Ok(
                      Base(
@@ -218,7 +220,7 @@ note:
    │  
 37 │ ╭     pub fn set_my_string(self, my_string: String<10>):
 38 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 13678851319113960096
+   │ ╰──────────────────────────────────^ attributes hash: 241116312146617781
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -227,6 +229,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_string",
                  typ: Ok(
                      String(
@@ -303,7 +306,7 @@ note:
    │  
 43 │ ╭     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>):
 44 │ │         self.my_u16s = my_u16s
-   │ ╰──────────────────────────────^ attributes hash: 9530217842745939939
+   │ ╰──────────────────────────────^ attributes hash: 15015381430419725173
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -312,6 +315,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_u16s",
                  typ: Ok(
                      Array(
@@ -394,7 +398,7 @@ note:
    │  
 49 │ ╭     pub fn set_my_bool(self, my_bool: bool):
 50 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 10417435431418466528
+   │ ╰──────────────────────────────^ attributes hash: 3845928701529339179
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -403,6 +407,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_bool",
                  typ: Ok(
                      Base(
@@ -469,7 +474,7 @@ note:
    │  
 55 │ ╭     pub fn set_my_bytes(self, my_bytes: Array<u8, 100>):
 56 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 13662868865403802267
+   │ ╰────────────────────────────────^ attributes hash: 11573101353594183790
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -478,6 +483,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_bytes",
                  typ: Ok(
                      Array(
@@ -626,13 +632,14 @@ note:
 72 │ │         my_struct.my_bool = false
 73 │ │         my_struct.my_addr = address(9999)
 74 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 1420756747700131039
+   │ ╰────────────────────────^ attributes hash: 11747697140833990696
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "my_struct",
                  typ: Ok(
                      Struct(
@@ -722,7 +729,7 @@ note:
    · │
 84 │ │             my_bytes: self.my_bytes.to_mem()
 85 │ │         )
-   │ ╰─────────^ attributes hash: 5828909688388067108
+   │ ╰─────────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -733,6 +740,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(

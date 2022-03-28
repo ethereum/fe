@@ -26,29 +26,29 @@ contract Foo:
 
         let z: (bool, bool) = (a and b, x or y)
 
-    pub fn short_or(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_or(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return first or second or third or fourth
 
-    pub fn short_or2(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_or2(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return (first or second) or (third or fourth)
 
-    pub fn short_or3(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_or3(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return (first or second) or third or fourth
 
-    pub fn short_and(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_and(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return first and second and third and fourth
 
-    pub fn short_and2(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_and2(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return (first and second) and (third and fourth)
 
-    pub fn short_and3(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_and3(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return (first and second) and third and fourth
 
-    pub fn short_mixed(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+    pub fn short_mixed(_ first: bool, _ second: bool, _ third: bool, _ fourth: bool) -> bool:
         return (first or second) and third or fourth
 
-    pub fn baz(val: bool) -> bool:
+    pub fn baz(_ val: bool) -> bool:
         return val
 
-    pub fn double_baz(val: bool, val2: bool):
+    pub fn double_baz(_ val: bool, _ val2: bool):
         pass

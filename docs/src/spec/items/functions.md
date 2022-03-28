@@ -33,7 +33,10 @@
 > &nbsp;&nbsp;  `self`<sup>?</sup> | `self,`<sup>?</sup>   _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
 >
 > _FunctionParam_ :\
-> &nbsp;&nbsp; [IDENTIFIER] `:` [_Types_]
+> &nbsp;&nbsp; _FunctionParamLabel_<sup>?</sup> [IDENTIFIER] `:` [_Types_]
+>
+> _FunctionParamLabel_ :\
+> &nbsp;&nbsp; _ | [IDENTIFIER]
 >
 > _FunctionReturnType_ :\
 > &nbsp;&nbsp; `->` [_Types_]
@@ -41,7 +44,7 @@
 
 A _function_ definition consists of name and code block along with an optional
 list of parameters and return value. Functions are declared with the
-keyword `fn`. Functions may declare a set of *input* arguments,
+keyword `fn`. Functions may declare a set of *input* parameters,
 through which the caller passes arguments into the function, and
 the *output* [*type*][_Types_] of the value the function will return to its caller
 on completion.
@@ -55,25 +58,83 @@ A function header ends with a colon (`:`) after which the function body begins.
 For example, this is a simple function:
 
 ```python
-fn answer_to_life_the_universe_and_everything() -> u256:
-    return 42
+fn add(x: u256, y: u256) -> u256:
+    return x + y
 ```
 
-A function may accept `self` as a parameter. This gives the function the ability 
-to read and mutate contract storage.
+Functions can be defined inside of a contract, inside of a struct, or at the
+"top level" of a module (that is, not nested within another item).
 
 Example:
 
 ```python
-contract Foo:
-    my_stored_num: u256
+fn add(_ x: u256, _ y: u256) -> u256:
+    return x + y
 
-    pub fn my_pure_func():
-        pass
-        
-    pub fn my_self_func(self):
-        self.my_stored_num = 26
+contract CoolCoin:
+    balance: Map<address, u256>
+
+    fn transfer(self, from sender: address, to recipient: address, value: u256) -> bool:
+        if self.balance[sender] < value:
+            return false
+        self.balance[sender] -= value
+        self.balance[recipient] += value
+        return true
+
+    pub fn demo(self):
+        let ann: address = address(0xaa)
+        let bob: address = address(0xbb)
+        self.balance[ann] = 100
+
+        let bonus: u256 = 2
+        let value: u256 = add(10, bonus)
+        let ok: bool = self.transfer(from: ann, to: bob, value)
 ```
+
+Function parameters have optional labels. When a function is called, the
+arguments must be labeled and provided in the order specified in the
+function definition.
+
+The label of a parameter defaults to the parameter name; a different label
+can be specified by adding an explicit label prior to the parameter name.
+For example:
+```
+fn encrypt(msg cleartext: u256, key: u256) -> u256:
+    return cleartext ^ key
+
+fn demo():
+    let out: u256 = encrypt(msg: 0xdecafbad, key: 0xfefefefe)
+```
+
+Here, the first parameter of the `encrypt` function has the label `msg`,
+which is used when calling the function, while the parameter name is
+`cleartext`, which is used inside the function body. The parameter name
+is an implementation detail of the function, and can be changed without
+modifying any function calls, as long as the label remains the same.
+
+When calling a function, a label can be omitted when the argument is
+a variable with a name that matches the parameter label. Example:
+```
+let msg: u256 = 0xdecafbad
+let cyf: u256 = encrypt(msg, key: 0x1234)
+```
+
+A parameter can also be specified to have no label, by using `_` in place of a
+label in the function definition. In this case, when calling the function, the
+corresponding argument must not be labeled. Example:
+```
+fn add(_ x: u256, _ y: u256) -> u256:
+    return x + y
+
+fn demo():
+    let sum: u256 = add(16, 32)
+```
+
+Functions defined inside of a contract or struct may take `self` as a
+parameter. This gives the function the ability to read and write contract
+storage or struct fields, respectively. If a function takes `self`
+as a parameter, the function must be called via `self`. For example:
+`let ok: bool = self.transfer(from, to, value)`
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [INDENT]: ../lexical_structure/tokens.md#indent

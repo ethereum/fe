@@ -6,7 +6,7 @@ expression: "error_string(\"[snippet]\", &src)"
 error: `balance_of` expects 1 argument, but 2 were provided
    ┌─ src/evm.fe:38:15
    │
-38 │ pub unsafe fn balance_of(addr: address) -> u256:
+38 │ pub unsafe fn balance_of(_ addr: address) -> u256:
    │               ^^^^^^^^^^ expects 1 argument
    │
    ┌─ [snippet]:4:26

@@ -56,7 +56,7 @@ note:
 17 │ │     assert ctx.msg_sender() == self._owner
 18 │ │     self._owner = address(0)
 19 │ │     emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
-   │ ╰─────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 5828909688388067108
+   │ ╰─────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -67,6 +67,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -183,7 +184,7 @@ note:
 23 │ │     assert newOwner != address(0)
 24 │ │     self._owner = newOwner
 25 │ │     emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────────────────^ attributes hash: 1868732709090605566
+   │ ╰─────────────────────────────────────────────────────────────────────────────^ attributes hash: 5690910393288515862
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -194,6 +195,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -205,6 +207,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "newOwner",
                  typ: Ok(
                      Base(

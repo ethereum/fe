@@ -26,13 +26,14 @@ note:
    │  
 16 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
 17 │ │         return s2
-   │ ╰─────────────────^ attributes hash: 17275759829526043442
+   │ ╰─────────────────^ attributes hash: 4992726103398710247
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "s1",
                  typ: Ok(
                      String(
@@ -43,6 +44,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "s2",
                  typ: Ok(
                      String(

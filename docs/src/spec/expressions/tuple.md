@@ -40,7 +40,7 @@ contract Foo:
         let some_tuple: (u256, bool) = (1, false)
 
         # Accessing the first tuple field via the `item0` field
-        baz(some_tuple.item0)
+        baz(input: some_tuple.item0)
 
     pub fn baz(input: u256):
         pass

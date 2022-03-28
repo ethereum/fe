@@ -12,16 +12,19 @@ note:
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:3:5
   │  
-3 │ ╭     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-4 │ │         return val1 + val2 + val3 + val4 + val5
-  │ ╰───────────────────────────────────────────────^ attributes hash: 16545546616934674984
+3 │ ╭     pub fn foo(_ v1: u256, _ v2: u256, _ v3: u256, _ v4: u256, _ v5: u256) -> u256:
+4 │ │         return v1 + v2 + v3 + v4 + v5
+  │ ╰─────────────────────────────────────^ attributes hash: 1504347162142127509
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
-                name: "val1",
+                label: Some(
+                    "_",
+                ),
+                name: "v1",
                 typ: Ok(
                     Base(
                         Numeric(
@@ -31,7 +34,10 @@ note:
                 ),
             },
             FunctionParam {
-                name: "val2",
+                label: Some(
+                    "_",
+                ),
+                name: "v2",
                 typ: Ok(
                     Base(
                         Numeric(
@@ -41,7 +47,10 @@ note:
                 ),
             },
             FunctionParam {
-                name: "val3",
+                label: Some(
+                    "_",
+                ),
+                name: "v3",
                 typ: Ok(
                     Base(
                         Numeric(
@@ -51,7 +60,10 @@ note:
                 ),
             },
             FunctionParam {
-                name: "val4",
+                label: Some(
+                    "_",
+                ),
+                name: "v4",
                 typ: Ok(
                     Base(
                         Numeric(
@@ -61,7 +73,10 @@ note:
                 ),
             },
             FunctionParam {
-                name: "val5",
+                label: Some(
+                    "_",
+                ),
+                name: "v5",
                 typ: Ok(
                     Base(
                         Numeric(
@@ -83,40 +98,40 @@ note:
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:16
   │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^   ^^^^ u256: Value
-  │                │       
+4 │         return v1 + v2 + v3 + v4 + v5
+  │                ^^   ^^ u256: Value
+  │                │     
   │                u256: Value
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:16
   │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^   ^^^^ u256: Value
-  │                │              
+4 │         return v1 + v2 + v3 + v4 + v5
+  │                ^^^^^^^   ^^ u256: Value
+  │                │          
   │                u256: Value
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:16
   │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^   ^^^^ u256: Value
-  │                │                     
+4 │         return v1 + v2 + v3 + v4 + v5
+  │                ^^^^^^^^^^^^   ^^ u256: Value
+  │                │               
   │                u256: Value
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:16
   │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ u256: Value
-  │                │                            
+4 │         return v1 + v2 + v3 + v4 + v5
+  │                ^^^^^^^^^^^^^^^^^   ^^ u256: Value
+  │                │                    
   │                u256: Value
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:16
   │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+4 │         return v1 + v2 + v3 + v4 + v5
+  │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:6:5

@@ -24,7 +24,7 @@ note:
 16 │ │ 
 17 │ │         # Emit the `Signed` event
 18 │ │         emit Signed(ctx, book_msg)
-   │ ╰──────────────────────────────────^ attributes hash: 2339837799335282240
+   │ ╰──────────────────────────────────^ attributes hash: 12497999579229810685
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -35,6 +35,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
@@ -46,6 +47,7 @@ note:
                  ),
              },
              FunctionParam {
+                 label: None,
                  name: "book_msg",
                  typ: Ok(
                      String(
@@ -126,7 +128,7 @@ note:
 21 │ │         # Copying data from storage to memory
 22 │ │         # has to be done explicitly via `to_mem()`
 23 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 8481751960582380743
+   │ ╰───────────────────────────────────────────^ attributes hash: 3325224293767249368
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -135,6 +137,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "addr",
                  typ: Ok(
                      Base(

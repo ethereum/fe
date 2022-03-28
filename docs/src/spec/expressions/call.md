@@ -17,7 +17,7 @@
 > _CallArgLabel_ :\
 > &nbsp;&nbsp; [IDENTIFIER]<sup>Label must correspond to the name of the called function argument at the given position. It can be omitted if parameter name and the name of the called function argument are equal.</sup>
 
-A *call expression* calls a function. The syntax of a call expression is an [expression], followed by a parenthesized comma-separated list of call arguments. Call arguments are expressions which optionally may be labeled in which case the label must correspond to name of the function argument at the given position. Labels do **not allow** to change the order in which parameters can be applied to a function. If the function eventually returns, then the expression completes.
+A *call expression* calls a function. The syntax of a call expression is an [expression], followed by a parenthesized comma-separated list of call arguments. Call arguments are expressions, and must be labeled and provided in the order specified in the [function definition]. If the function eventually returns, then the expression completes.
 
 
 Example:
@@ -25,10 +25,12 @@ Example:
 ```python
 contract Foo:
 
-    pub fn baz():
-        bar(100, val2: 300)
+    pub fn demo(self):
+        let ann: address = address(0xaa)
+        let bob: address = address(0xbb)
+        self.transfer(from: ann, to: bob, 25)
 
-    pub fn bar(val1: u256, val2: u256):
+    pub fn transfer(self, from: address, to: address, _ val: u256):
         pass
 ```
 
@@ -36,3 +38,4 @@ contract Foo:
 [expression]: ./index.md
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [INTEGER_LITERAL]: ../lexical_structure/tokens.md#integer-literals
+[function definition]: ../items/functions.md

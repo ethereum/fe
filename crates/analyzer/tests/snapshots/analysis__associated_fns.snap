@@ -8,13 +8,14 @@ note:
   │  
 3 │ ╭   pub fn square(x: u256) -> u256:
 4 │ │     return x * x
-  │ ╰────────────────^ attributes hash: 15549141040406273197
+  │ ╰────────────────^ attributes hash: 6622018637299644818
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "x",
                 typ: Ok(
                     Base(
@@ -59,13 +60,14 @@ note:
   │  
 8 │ ╭   pub fn new(x: u256) -> MyStruct:
 9 │ │     return MyStruct(x)
-  │ ╰──────────────────────^ attributes hash: 11200806103849825396
+  │ ╰──────────────────────^ attributes hash: 2145703897684373991
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                label: None,
                 name: "x",
                 typ: Ok(
                     Base(
@@ -110,7 +112,7 @@ note:
 14 │ ╭   pub fn bar(self, val: u256) -> u256:
 15 │ │     self.my_struct = MyStruct.new(val)
 16 │ │     return Lib.square(self.my_struct.x)
-   │ ╰───────────────────────────────────────^ attributes hash: 10309470657675388254
+   │ ╰───────────────────────────────────────^ attributes hash: 2950430758151367369
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -119,6 +121,7 @@ note:
          ctx_decl: None,
          params: [
              FunctionParam {
+                 label: None,
                  name: "val",
                  typ: Ok(
                      Base(

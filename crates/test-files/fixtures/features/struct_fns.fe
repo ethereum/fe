@@ -12,7 +12,7 @@ struct Point:
   pub fn x(self) -> u64:
     return self.x
 
-  pub fn set_x(self, x: u64) -> u64:
+  pub fn set_x(self, _ x: u64) -> u64:
     let old: u64 = self.x
     self.x = x
     return old
@@ -28,14 +28,14 @@ struct Point:
     self.x += x
     self.y += y
 
-  pub fn add(self, other: Point) -> Point:
+  pub fn add(self, _ other: Point) -> Point:
     let x: u64 = self.x + other.x
     let y: u64 = self.y + other.y
     return Point(x, y)
 
 pub fn do_pointy_things():
   let p1: Point = Point.origin()
-  p1.translate(5, 10)
+  p1.translate(x: 5, y: 10)
 
   let p2: Point = Point(x: 1, y: 2)
   let p3: Point = p1.add(p2)

@@ -35,7 +35,7 @@ note:
  8 │ ╭     pub fn create_foo(ctx: Context) -> address:
  9 │ │         let foo: Foo = Foo.create(ctx, 0)
 10 │ │         return address(foo)
-   │ ╰───────────────────────────^ attributes hash: 17345910255563017853
+   │ ╰───────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -44,6 +44,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 label: None,
                  name: "ctx",
                  typ: Ok(
                      Struct(
