@@ -3,7 +3,7 @@ use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
 use crate::namespace::items::{DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Contract, CtxDecl, SelfDecl, Struct, Type};
+use crate::namespace::types::{self, Contract, CtxDecl, SelfDecl, SelfDeclKind, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -35,7 +35,7 @@ pub fn function_signature(
         .iter()
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
-            ast::FunctionArg::Self_ => {
+            ast::FunctionArg::Self_ { mut_ } => {
                 if fn_parent.is_none() {
                     scope.error(
                         "`self` can only be used in contract or struct functions",
@@ -43,7 +43,10 @@ pub fn function_signature(
                         "not allowed in functions defined outside of a contract or struct",
                     );
                 } else {
-                    self_decl = Some(SelfDecl::Mutable);
+                    self_decl = Some(SelfDecl {
+                        kind: if mut_.is_some() { SelfDeclKind::MutRef } else { SelfDeclKind::Ref },
+                        span: arg.span,
+                    });
                     if index != 0 {
                         scope.error(
                             "`self` is not the first parameter",
@@ -54,12 +57,13 @@ pub fn function_signature(
                 }
                 None
             }
-            ast::FunctionArg::Regular(reg) => {
-                let typ = type_desc(&mut scope, &reg.typ).and_then(|typ| match typ {
+
+            ast::FunctionArg::Regular { mut_, label, name, typ: typedesc } => {
+                let typ = type_desc(&mut scope, typedesc).and_then(|typ| match typ {
                     typ if typ.has_fixed_size() => Ok(typ),
                     _ => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
-                        reg.typ.span,
+                        typedesc.span,
                         "`Map` type can't be used as a function parameter",
                     ))),
                 });
@@ -71,12 +75,6 @@ pub fn function_signature(
                                 "invalid `Context` instance name",
                                 arg.span,
                                 "instances of `Context` must be named `ctx`",
-                            );
-                        } else if !function.parent(db).is_contract() {
-                            scope.error(
-                                "`ctx` cannot be passed into pure functions",
-                                arg.span,
-                                "`ctx` can only be passed into contract functions",
                             );
                         } else if self_decl.is_some() && index != 1 {
                             scope.error(
@@ -96,7 +94,7 @@ pub fn function_signature(
                     }
                 }
 
-                if let Some(label) = &reg.label {
+                if let Some(label) = &label {
                     if_chain! {
                         if label.kind != "_";
                         if let Some(dup_idx) = labels.get(&label.kind);
@@ -115,30 +113,31 @@ pub fn function_signature(
                     }
                 }
 
-                if let Ok(Some(named_item)) = scope.resolve_name(&reg.name.kind, reg.name.span) {
+                if let Ok(Some(named_item)) = scope.resolve_name(&name.kind, name.span) {
                     scope.name_conflict_error(
                         "function parameter",
-                        &reg.name.kind,
+                        &name.kind,
                         &named_item,
                         named_item.name_span(db),
-                        reg.name.span,
+                        name.span,
                     );
                     None
-                } else if let Some(dup_idx) = names.get(&reg.name.kind) {
+                } else if let Some(dup_idx) = names.get(&name.kind) {
                     let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
                     scope.duplicate_name_error(
                         &format!("duplicate parameter names in function `{}`", def.name.kind),
-                        &reg.name.kind,
+                        &name.kind,
                         dup_arg.span,
                         arg.span,
                     );
                     None
                 } else {
-                    names.insert(&reg.name.kind, index);
+                    names.insert(&name.kind, index);
                     Some(types::FunctionParam::new(
-                        reg.label.as_ref().map(|s| s.kind.as_str()),
-                        &reg.name.kind,
+                        label.as_ref().map(|s| s.kind.as_str()),
+                        &name.kind,
                         typ,
+                        mut_.is_some(),
                     ))
                 }
             }

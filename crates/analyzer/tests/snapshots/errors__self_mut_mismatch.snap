@@ -1,0 +1,33 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: function `set_things` requires `mut self`
+  ┌─ compile_errors/self_mut_mismatch.fe:5:14
+  │
+4 │     fn foo(self):
+  │            ---- consider changing this to be mutable: `mut self`
+5 │         self.set_things(x: 10)
+  │         ---- ^^^^^^^^^^ requires `mut self`
+  │         │     
+  │         not mutable
+
+error: cannot modify `self`, as it is not mutable
+  ┌─ compile_errors/self_mut_mismatch.fe:6:9
+  │
+4 │     fn foo(self):
+  │            ---- consider changing this to be mutable: `mut self`
+5 │         self.set_things(x: 10)
+6 │         self.x = 100
+  │         ^^^^ not mutable
+
+error: cannot modify `self`, as it is not mutable
+   ┌─ compile_errors/self_mut_mismatch.fe:28:9
+   │
+27 │     pub fn get_name(self) -> String<100>:
+   │                     ---- consider changing this to be mutable: `mut self`
+28 │         self.name = "shouldnt work"
+   │         ^^^^ not mutable
+
+

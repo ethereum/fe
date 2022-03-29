@@ -1,4 +1,4 @@
-use crate::context::AnalyzerContext;
+use crate::context::{AnalyzerContext, BindingMutability};
 use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::Type;
@@ -9,35 +9,47 @@ use fe_parser::node::Node;
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
-        let declared_type = types::type_desc(scope, typ)?;
-        if let Type::Map(_) = declared_type {
-            return Err(FatalError::new(scope.error(
-                "invalid variable type",
-                typ.span,
-                "`Map` type can only be used as a contract field",
-            )));
-        }
-
-        if let Some(value) = value {
-            let value_attributes =
-                expressions::assignable_expr(scope, value, Some(&declared_type))?;
-
-            if declared_type != value_attributes.typ {
-                scope.type_error(
-                    "type mismatch",
-                    value.span,
-                    &declared_type,
-                    &value_attributes.typ,
-                );
-            }
-        }
-
-        add_var(scope, target, declared_type)?;
-        return Ok(());
+    let (mut_, target, typ, value) = match &stmt.kind {
+        fe::FuncStmt::VarDecl {
+            mut_,
+            target,
+            typ,
+            value,
+        } => (mut_, target, typ, value),
+        _ => unreachable!(),
+    };
+    let declared_type = types::type_desc(scope, typ)?;
+    if let Type::Map(_) = declared_type {
+        return Err(FatalError::new(scope.error(
+            "invalid variable type",
+            typ.span,
+            "`Map` type can only be used as a contract field",
+        )));
     }
 
-    unreachable!()
+    if let Some(value) = value {
+        let value_attr = expressions::assignable_expr(scope, value, Some(&declared_type))?;
+
+        if declared_type != value_attr.typ {
+            scope.type_error("type mismatch", value.span, &declared_type, &value_attr.typ);
+        } else if mut_.is_some() && !value_attr.mutable && !value_attr.typ.is_base() {
+            scope.fancy_error(
+                "mutability mismatch",
+                vec![
+                    Label::primary(target.span, "this is defined to be mutable"),
+                    Label::secondary(value.span, "this value is not mutable"),
+                ],
+                vec![],
+            );
+        }
+    }
+    let mutability = match mut_ {
+        Some(_) => BindingMutability::Mutable,
+        None => BindingMutability::Immutable,
+    };
+
+    add_var(scope, target, declared_type, mutability)?;
+    Ok(())
 }
 
 pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
@@ -55,15 +67,10 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         };
 
         // Perform semantic analysis before const evaluation.
-        let value_attributes = expressions::assignable_expr(scope, value, Some(&declared_type))?;
+        let value_attr = expressions::assignable_expr(scope, value, Some(&declared_type))?;
 
-        if declared_type != value_attributes.typ {
-            scope.type_error(
-                "type mismatch",
-                value.span,
-                &declared_type,
-                &value_attributes.typ,
-            );
+        if declared_type != value_attr.typ {
+            scope.type_error("type mismatch", value.span, &declared_type, &value_attr.typ);
         }
 
         // Perform constant evaluation.
@@ -71,7 +78,12 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
 
         scope.root.map_variable_type(name, declared_type.clone());
         // this logs a message on err, so it's safe to ignore here.
-        let _ = scope.add_var(name.kind.as_str(), declared_type, true, name.span);
+        let _ = scope.add_var(
+            name.kind.as_str(),
+            declared_type,
+            BindingMutability::Const,
+            name.span,
+        );
         scope.add_constant(name, value, const_value);
         return Ok(());
     }
@@ -84,12 +96,13 @@ fn add_var(
     scope: &mut BlockScope,
     target: &Node<fe::VarDeclTarget>,
     typ: Type,
+    mutability: BindingMutability,
 ) -> Result<(), FatalError> {
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
             scope.root.map_variable_type(target, typ.clone());
             // this logs a message on err, so it's safe to ignore here.
-            let _ = scope.add_var(name, typ, false, target.span);
+            let _ = scope.add_var(name, typ, mutability, target.span);
             Ok(())
         }
         fe::VarDeclTarget::Tuple(items) => {
@@ -111,7 +124,7 @@ fn add_var(
                         )));
                     }
                     for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
-                        add_var(scope, item, item_ty)?;
+                        add_var(scope, item, item_ty, mutability)?;
                     }
                     Ok(())
                 }

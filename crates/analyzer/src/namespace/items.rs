@@ -2,7 +2,7 @@ use crate::context;
 
 use crate::context::{Analysis, Constant};
 use crate::errors::{self, IncompleteItem, TypeError};
-use crate::namespace::types::{self, GenericType};
+use crate::namespace::types::{self, GenericType, SelfDecl};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use crate::{builtins, errors::ConstEvalError};
@@ -758,7 +758,7 @@ impl TypeDef {
                     val.functions(db)
                         .iter()
                         .filter_map(|(name, field)| {
-                            if field.takes_self(db) {
+                            if field.self_decl(db).is_some() {
                                 // In the future we probably want to resolve instance methods as well. But this would require
                                 // the caller to pass an instance as the first argument e.g. `Rectangle::can_hold(self_instance, other)`.
                                 // This isn't yet supported so for now path access to functions is limited to static functions only.
@@ -931,7 +931,7 @@ impl ContractId {
     ) -> Result<Option<Item>, IncompleteItem> {
         if let Some(item) = self
             .function(db, name)
-            .filter(|f| !f.takes_self(db))
+            .filter(|f| f.self_decl(db).is_none())
             .map(Item::Function)
             .or_else(|| self.event(db, name).map(Item::Event))
         {
@@ -1094,17 +1094,14 @@ impl FunctionId {
         self.data(db).module
     }
 
-    pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
-        self.signature(db).self_decl.is_some()
+    pub fn self_decl(&self, db: &dyn AnalyzerDb) -> Option<SelfDecl> {
+        self.signature(db).self_decl
     }
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
-        if self.takes_self(db) {
-            self.data(db)
-                .ast
-                .kind
-                .args
-                .iter()
-                .find_map(|arg| matches!(arg.kind, ast::FunctionArg::Self_).then(|| arg.span))
+        if self.self_decl(db).is_some() {
+            self.data(db).ast.kind.args.iter().find_map(|arg| {
+                matches!(arg.kind, ast::FunctionArg::Self_ { .. }).then(|| arg.span)
+            })
         } else {
             None
         }
@@ -1159,7 +1156,7 @@ impl Class {
     }
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         let fun = self.function(db, name)?;
-        fun.takes_self(db).then(|| fun)
+        fun.self_decl(db).map(|_| fun)
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {

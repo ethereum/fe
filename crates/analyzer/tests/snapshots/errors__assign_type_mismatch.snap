@@ -9,6 +9,6 @@ error: mismatched types
 4 │   x = address(0)
   │   ^   ---------- this value has incompatible type `address`
   │   │    
-  │   this variable has type `u256`
+  │   this has type `u256`
 
 

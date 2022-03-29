@@ -214,7 +214,7 @@ pub enum NamedThing {
     Item(Item),
     SelfValue {
         /// Function `self` parameter.
-        decl: Option<SelfDecl>,
+        decl: Option<SelfDecl>, // XXX is this used?
 
         /// The function's parent, if any. If `None`, `self` has been
         /// used in a module-level function.
@@ -225,7 +225,7 @@ pub enum NamedThing {
     Variable {
         name: String,
         typ: Result<Type, TypeError>,
-        is_const: bool,
+        mutability: BindingMutability,
         span: Span,
     },
 }
@@ -253,6 +253,13 @@ impl NamedThing {
             NamedThing::SelfValue { .. } => "value",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BindingMutability {
+    Mutable,
+    Immutable,
+    Const,
 }
 
 /// This should only be created by [`AnalyzerContext`].
@@ -386,15 +393,28 @@ pub struct ExpressionAttributes {
     pub move_location: Option<Location>,
     // Evaluated constant value of const local definition.
     pub const_value: Option<Constant>,
+    pub mutable: bool,
 }
 
 impl ExpressionAttributes {
-    pub fn new(typ: Type, location: Location) -> Self {
+    pub fn new(typ: Type, location: Location, mutable: bool) -> Self {
         Self {
             typ,
             location,
             move_location: None,
             const_value: None,
+            mutable,
+        }
+    }
+
+    // XXX
+    pub fn immutable(typ: Type, location: Location) -> Self {
+        Self {
+            typ,
+            location,
+            move_location: None,
+            const_value: None,
+            mutable: false,
         }
     }
 

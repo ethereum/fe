@@ -5,6 +5,7 @@ expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt,\n
 ---
 Node(
   kind: VarDecl(
+    mut_: None,
     target: Node(
       kind: Name("foo"),
       span: Span(

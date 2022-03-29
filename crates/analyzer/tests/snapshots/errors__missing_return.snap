@@ -11,4 +11,12 @@ error: function body is missing a return or revert statement
   │            │             
   │            all paths of this function must `return` or `revert`
 
+error: cannot modify `self.baz`, as it is not mutable
+  ┌─ compile_errors/missing_return.fe:5:9
+  │
+4 │     pub fn bar(self) -> u256:
+  │                ---- consider changing this to be mutable: `mut self`
+5 │         self.baz[0] = 1
+  │         ^^^^^^^^ not mutable
+
 

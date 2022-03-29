@@ -1,7 +1,8 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
 use crate::context::{
-    AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
+    AnalyzerContext, BindingMutability, CallType, Constant, ExpressionAttributes, FunctionBody,
+    NamedThing,
 };
 use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
@@ -112,6 +113,8 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
         let item = self.module.resolve_name(self.db, name)?;
 
+        // TODO: do this somewhere else, so name resolution can be attempted
+        // without emitting an error
         if let Some(item) = item {
             check_item_visibility(self, item, span);
         }
@@ -315,9 +318,13 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                     .expect("found param type but not span");
 
                 NamedThing::Variable {
-                    name: name.to_string(),
+                    name: name.into(),
                     typ: param.typ.clone(),
-                    is_const: false,
+                    mutability: if param.is_mut {
+                        BindingMutability::Mutable
+                    } else {
+                        BindingMutability::Immutable
+                    },
                     span,
                 }
             })
@@ -374,7 +381,7 @@ pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
     /// Maps Name -> (Type, is_const, span)
-    pub variable_defs: BTreeMap<String, (Type, bool, Span)>,
+    pub variable_defs: BTreeMap<String, (Type, BindingMutability, Span)>,
     pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
@@ -396,10 +403,10 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         if let Some(var) =
             self.variable_defs
                 .get(name)
-                .map(|(typ, is_const, span)| NamedThing::Variable {
-                    name: name.to_string(),
+                .map(|(typ, mutability, span)| NamedThing::Variable {
+                    name: name.into(),
                     typ: Ok(typ.clone()),
-                    is_const: *is_const,
+                    mutability: *mutability,
                     span: *span,
                 })
         {
@@ -513,12 +520,22 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         }
     }
 
+    pub fn expr_is_mutable(&self, expr: &Node<Expr>) -> bool {
+        self.root
+            .body
+            .borrow()
+            .expressions
+            .get(&expr.id)
+            .unwrap()
+            .mutable
+    }
+
     /// Add a variable to the block scope.
     pub fn add_var(
         &mut self,
         name: &str,
         typ: Type,
-        is_const: bool,
+        binding_kind: BindingMutability,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name, span) {
@@ -561,7 +578,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             }
             _ => {
                 self.variable_defs
-                    .insert(name.to_string(), (typ, is_const, span));
+                    .insert(name.to_string(), (typ, binding_kind, span));
                 Ok(())
             }
         }

@@ -2,8 +2,7 @@ use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
 use crate::ast::{
-    BinOperator, Expr, FuncStmt, Function, FunctionArg, GenericParameter, RegularFunctionArg,
-    VarDeclTarget,
+    BinOperator, Expr, FuncStmt, Function, FunctionArg, GenericParameter, VarDeclTarget,
 };
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
@@ -185,17 +184,29 @@ pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericPar
 fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionArg>>>> {
     let mut span = par.assert(TokenKind::ParenOpen).span;
     let mut params = vec![];
+    let mut mut_ = None;
     loop {
         match par.peek_or_err()? {
+            TokenKind::Mut => {
+                if mut_.is_some() {
+                    todo!() // XXX
+                }
+                mut_ = Some(par.next()?.span);
+                continue;
+            }
             TokenKind::ParenClose => {
+                if mut_.is_some() {
+                    todo!() // XXX
+                }
                 span += par.next()?.span;
                 break;
             }
             TokenKind::Name | TokenKind::SelfValue => {
+                let mut_ = mut_.take();
                 let ident = par.next()?;
 
                 if ident.kind == TokenKind::SelfValue {
-                    params.push(Node::new(FunctionArg::Self_, ident.span));
+                    params.push(Node::new(FunctionArg::Self_ { mut_ }, ident.span));
                 } else {
                     // Parameter can have an optional label specifier. Example:
                     //     fn transfer(from sender: address, to recipient: address, _ val: u256)
@@ -219,11 +230,12 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                     let typ = parse_type_desc(par)?;
                     let param_span = name.span + typ.span;
                     params.push(Node::new(
-                        FunctionArg::Regular(RegularFunctionArg {
+                        FunctionArg::Regular {
+                            mut_,
                             label: label.map(Node::from),
                             name: name.into(),
                             typ,
-                        }),
+                        },
                         param_span,
                     ));
                 }
@@ -322,6 +334,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 
 fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let let_tkn = par.assert(TokenKind::Let);
+    let mut_ = par.optional(TokenKind::Mut).map(|t| t.span);
     let expr = parse_expr(par)?;
     let target = expr_to_vardecl_target(par, expr.clone())?;
     let node = match par.peek() {
@@ -336,7 +349,15 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             };
             let span = let_tkn.span + target.span + typ.span + value.as_ref();
             par.expect_stmt_end("variable declaration")?;
-            Node::new(FuncStmt::VarDecl { target, typ, value }, span)
+            Node::new(
+                FuncStmt::VarDecl {
+                    mut_,
+                    target,
+                    typ,
+                    value,
+                },
+                span,
+            )
         }
         _ => {
             par.fancy_error(

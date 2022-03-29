@@ -126,6 +126,7 @@ test_parse! { stmt_if2, functions::parse_stmt, "if a { b } else if c { d } else 
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
+test_parse! { stmt_var_decl_mut, functions::parse_stmt, "let mut x: Foo" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
 test_parse! { stmt_semicolons, functions::parse_stmt, "if a { b; c; d; for x in y {}; }" }
@@ -150,6 +151,7 @@ test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, th
 test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool { x }"}
 test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool {\n x\n}"}
 test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool{x}"}
+test_parse! { fn_def_mut_args, try_parse_module, "fn transfer(mut from sender: address, to recip: address, mut val: u64) -> bool { \n return false \n}"}
 test_parse! { event_def, try_parse_module, "event Foo {\n  x: address\n  idx y: u8\n}" }
 test_parse! { empty_event_def, try_parse_module, "event Foo {}" }
 test_parse! { pub_event_def, try_parse_module, "pub event Foo {\nx: address\nidx y: u8\n}" }

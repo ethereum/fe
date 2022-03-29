@@ -1,0 +1,44 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: mutability mismatch
+  ┌─ compile_errors/sneaky_mutation.fe:7:13
+  │
+7 │     let mut y0: Array<u8, 3> = x
+  │             ^^                 - this value is not mutable
+  │             │                   
+  │             this is defined to be mutable
+
+error: sneaky mutation
+   ┌─ compile_errors/sneaky_mutation.fe:12:5
+   │
+12 │     y1 = x
+   │     ^^   - this is immutable
+   │     │     
+   │     this is mutable
+
+error: sneaky mutation
+   ┌─ compile_errors/sneaky_mutation.fe:26:5
+   │
+26 │     w1.array = imm
+   │     ^^^^^^^^   --- this is immutable
+   │     │           
+   │     this is mutable
+
+error: expected mut arg
+   ┌─ compile_errors/sneaky_mutation.fe:33:19
+   │
+33 │     w2.set_array2(imm)
+   │                   ^^^ this is not mutable
+
+error: sneaky mutation
+   ┌─ compile_errors/sneaky_mutation.fe:42:9
+   │
+42 │         self.array = array
+   │         ^^^^^^^^^^   ----- this is immutable
+   │         │             
+   │         this is mutable
+
+

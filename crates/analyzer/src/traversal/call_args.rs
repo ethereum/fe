@@ -11,6 +11,7 @@ use smol_str::SmolStr;
 pub trait LabeledParameter {
     fn label(&self) -> Option<&str>;
     fn typ(&self) -> Result<Type, TypeError>;
+    fn mutable(&self) -> bool;
 }
 
 impl LabeledParameter for FunctionParam {
@@ -19,6 +20,9 @@ impl LabeledParameter for FunctionParam {
     }
     fn typ(&self) -> Result<Type, TypeError> {
         self.typ.clone()
+    }
+    fn mutable(&self) -> bool {
+        self.is_mut
     }
 }
 
@@ -29,14 +33,21 @@ impl LabeledParameter for EventField {
     fn typ(&self) -> Result<Type, TypeError> {
         self.typ.clone()
     }
+    fn mutable(&self) -> bool {
+        self.name == "ctx" // hacktastic
+    }
 }
 
-impl LabeledParameter for (SmolStr, Result<Type, TypeError>) {
+// XXX wtf is this
+impl LabeledParameter for (SmolStr, Result<Type, TypeError>, bool) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
     }
     fn typ(&self) -> Result<Type, TypeError> {
         self.1.clone()
+    }
+    fn mutable(&self) -> bool {
+        self.2
     }
 }
 
@@ -100,55 +111,6 @@ pub fn validate_named_args(
     // TODO: if the first arg is missing, every other arg will get a label and type error
 
     for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
-        let expected_label = param.label();
-        let arg_val = &arg.kind.value;
-        match (expected_label, &arg.kind.label) {
-            (Some(expected_label), Some(actual_label)) => {
-                if expected_label != actual_label.kind {
-                    let notes = if params
-                        .iter()
-                        .any(|param| param.label() == Some(actual_label.kind.as_str()))
-                    {
-                        vec!["Note: arguments must be provided in order.".into()]
-                    } else {
-                        vec![]
-                    };
-                    context.fancy_error(
-                        "argument label mismatch",
-                        vec![Label::primary(
-                            actual_label.span,
-                            format!("expected `{}`", expected_label),
-                        )],
-                        notes,
-                    );
-                }
-            }
-            (Some(expected_label), None) => match &arg_val.kind {
-                fe::Expr::Name(var_name) if var_name == expected_label => {}
-                _ => {
-                    context.fancy_error(
-                            "missing argument label",
-                            vec![Label::primary(
-                                Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
-                                format!("add `{}:` here", expected_label),
-                            )],
-                            vec![format!(
-                                "Note: this label is optional if the argument is a variable named `{}`.",
-                                expected_label
-                            )],
-                        );
-                }
-            },
-            (None, Some(actual_label)) => {
-                context.error(
-                    "argument should not be labeled",
-                    actual_label.span,
-                    "remove this label",
-                );
-            }
-            (None, None) => {}
-        }
-
         let param_type = param.typ()?;
         let val_attrs = assignable_expr(context, &arg.kind.value, Some(&param_type.clone()))?;
         if param_type != val_attrs.typ {
@@ -161,6 +123,69 @@ pub fn validate_named_args(
                 )
             };
             context.type_error(&msg, arg.kind.value.span, &param_type, &val_attrs.typ);
+        } else {
+            let arg_val = &arg.kind.value;
+
+            // We only emit label and mutability errors if the types match.
+            // If the types don't match, these errors can be confusing.
+            if param.mutable() && !val_attrs.mutable {
+                context.fancy_error(
+                    "expected mut arg", // XXX better error
+                    vec![
+                        Label::primary(arg_val.span, "this is not mutable"),
+                        // Label::secondary(param.span, "mutates arg"), XXX parameter span
+                    ],
+                    vec![],
+                );
+            }
+
+            let expected_label = param.label();
+            match (expected_label, &arg.kind.label) {
+                (Some(expected_label), Some(actual_label)) => {
+                    if expected_label != actual_label.kind {
+                        let notes = if params
+                            .iter()
+                            .any(|param| param.label() == Some(actual_label.kind.as_str()))
+                        {
+                            vec!["Note: arguments must be provided in order.".into()]
+                        } else {
+                            vec![]
+                        };
+                        context.fancy_error(
+                            "argument label mismatch",
+                            vec![Label::primary(
+                                actual_label.span,
+                                format!("expected `{}`", expected_label),
+                            )],
+                            notes,
+                        );
+                    }
+                }
+                (Some(expected_label), None) => match &arg_val.kind {
+                    fe::Expr::Name(var_name) if var_name == expected_label => {}
+                    _ => {
+                        context.fancy_error(
+                            "missing argument label",
+                            vec![Label::primary(
+                                Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
+                                format!("add `{}:` here", expected_label),
+                            )],
+                            vec![format!(
+                                "Note: this label is optional if the argument is a variable named `{}`.",
+                                expected_label
+                            )],
+                        );
+                    }
+                },
+                (None, Some(actual_label)) => {
+                    context.error(
+                        "argument should not be labeled",
+                        actual_label.span,
+                        "remove this label",
+                    );
+                }
+                (None, None) => {}
+            }
         }
     }
     Ok(())

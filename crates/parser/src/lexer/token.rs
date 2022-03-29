@@ -112,6 +112,8 @@ pub enum TokenKind {
     Or,
     #[token("let")]
     Let,
+    #[token("mut")]
+    Mut,
     #[token("use")]
     Use,
     // Symbols
@@ -225,6 +227,7 @@ impl TokenKind {
             Fn => "keyword `fn`",
             Const => "keyword `const`",
             Let => "keyword `let`",
+            Mut => "keyword `mut`",
             Else => "keyword `else`",
             Emit => "keyword `emit`",
             Event => "keyword `event`",

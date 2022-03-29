@@ -1,0 +1,47 @@
+
+fn f():
+    # Mutate an immutable via aliasing...
+
+    # ...at constuction time
+    let x: Array<u8, 3> = [1, 2, 3]
+    let mut y0: Array<u8, 3> = x
+    y0[0] = 10
+
+    # ...in an assignment
+    let mut y1: Array<u8, 3>
+    y1 = x
+    y1[0] = 20
+
+
+fn g():
+    # Put an immutable array into a mutable struct...
+
+    # ...at construction time
+    let imm: Array<u8, 3> = [5, 5, 5]
+    let mut w0: ArrayWrapper = ArrayWrapper(array: imm) # XXX error
+    w0.array[0] = 100
+
+    # ...by setting a field
+    let mut w1: ArrayWrapper = ArrayWrapper(array: [1, 2, 3])
+    w1.array = imm
+    w1.array[1] = 100
+
+    # ...via a fn call that takes non-mut
+    let mut w2: ArrayWrapper = ArrayWrapper(array: [1, 2, 3])
+    w2.set_array(imm)
+    # ...via a fn call that takes mut
+    w2.set_array2(imm)
+
+    # This should work.
+    w2.set_array2([10, 10, 10])
+
+struct ArrayWrapper:
+    pub array: Array<u8, 3>
+
+    pub fn set_array(mut self, _ array: Array<u8, 3>):
+        self.array = array
+        self.array[2] = 100
+
+    pub fn set_array2(mut self, mut _ array: Array<u8, 3>):
+        self.array = array
+        self.array[2] = 100

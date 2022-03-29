@@ -30,7 +30,7 @@ type ScopeId = Id<Scope>;
 pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
-    let has_self = func.takes_self(db.upcast());
+    let has_self = func.self_decl(db.upcast()).is_some();
     if has_self {
         let self_ty = func.self_typ(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
@@ -1131,7 +1131,7 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
         .kind
         .args
         .iter()
-        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_))
+        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_ { .. }))
         .unwrap()
         .into()
 }
@@ -1143,14 +1143,14 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
         .args
         .iter()
         .find_map(|arg| match &arg.kind {
-            ast::FunctionArg::Regular(ast::RegularFunctionArg { name, .. }) => {
+            ast::FunctionArg::Regular { name, .. } => {
                 if name.kind == arg_name {
                     Some(name.into())
                 } else {
                     None
                 }
             }
-            ast::FunctionArg::Self_ => None,
+            ast::FunctionArg::Self_ { .. } => None,
         })
         .unwrap()
 }

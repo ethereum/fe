@@ -1,10 +1,15 @@
 use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
+
+use crate::context::{
+    AnalyzerContext, BindingMutability, CallType, ExpressionAttributes, Location, NamedThing,
+};
 use crate::errors::{FatalError, IndexingError};
+
 use crate::namespace::items::{Class, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{
-    Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
+    Array, Base, Contract, FeString, Integer, SelfDecl, SelfDeclKind, Struct, Tuple, Type,
+    TypeDowncast, U256,
 };
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
@@ -20,6 +25,12 @@ use smol_str::SmolStr;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 use vec1::Vec1;
+
+// XXX
+// pub struct Expectation<'a> {
+//     typ: Option<&'a Type>,
+//     mutable: Option<bool>,
+// }
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -47,7 +58,10 @@ pub fn expr(
         fe::Expr::List { elts } => expr_list(context, elts, expected_type.as_array()),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp, expected_type.as_tuple()),
         fe::Expr::Str(_) => expr_str(context, exp, expected_type.as_string()),
-        fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
+        fe::Expr::Unit => Ok(ExpressionAttributes::immutable(
+            Type::unit(),
+            Location::Value,
+        )),
     }?;
 
     context.add_expression(exp, attributes.clone());
@@ -60,15 +74,14 @@ pub fn expr_list(
     expected_type: Option<&Array>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if elts.is_empty() {
-        return Ok(ExpressionAttributes {
-            typ: Type::Array(Array {
+        return Ok(ExpressionAttributes::new(
+            Type::Array(Array {
                 size: 0,
                 inner: expected_type.map_or(Base::Unit, |arr| arr.inner),
             }),
-            location: Location::Memory,
-            move_location: None,
-            const_value: None,
-        });
+            Location::Memory,
+            true,
+        ));
     }
 
     let inner_type = if let Some(expected) = expected_type {
@@ -129,12 +142,11 @@ pub fn expr_list(
         inner: inner_type,
     };
 
-    Ok(ExpressionAttributes {
-        typ: Type::Array(array_typ),
-        location: Location::Memory,
-        move_location: None,
-        const_value: None,
-    })
+    Ok(ExpressionAttributes::new(
+        Type::Array(array_typ),
+        Location::Memory,
+        true,
+    ))
 }
 
 /// Gather context information for expressions and check for type errors.
@@ -243,6 +255,7 @@ fn expr_tuple(
         Ok(ExpressionAttributes::new(
             Type::Tuple(tuple),
             Location::Memory,
+            true,
         ))
     } else {
         unreachable!()
@@ -284,10 +297,19 @@ fn expr_named_thing(
     expected_type: Option<&Type>,
 ) -> Result<ExpressionAttributes, FatalError> {
     match named_thing {
-        Some(NamedThing::Variable { typ, .. }) => {
+        Some(NamedThing::Variable {
+            typ, mutability, ..
+        }) => {
             let typ = typ?;
             let location = Location::assign_location(&typ);
-            Ok(ExpressionAttributes::new(typ, location))
+            let mutable = !typ.is_base() && mutability == BindingMutability::Mutable;
+            Ok(ExpressionAttributes {
+                typ,
+                location,
+                move_location: None,
+                const_value: None,
+                mutable,
+            })
         }
         Some(NamedThing::SelfValue { decl, class, .. }) => {
             if let Some(class) = class {
@@ -309,16 +331,30 @@ fn expr_named_thing(
                         },
                     );
                 }
-                match class {
-                    Class::Struct(id) => Ok(ExpressionAttributes::new(
+                let mutable = matches!(
+                    decl,
+                    Some(SelfDecl {
+                        kind: SelfDeclKind::MutRef,
+                        ..
+                    })
+                );
+                let (typ, location) = match class {
+                    Class::Struct(id) => (
                         Type::Struct(Struct::from_id(id, context.db())),
                         Location::Memory,
-                    )),
-                    Class::Contract(id) => Ok(ExpressionAttributes::new(
+                    ),
+                    Class::Contract(id) => (
                         Type::SelfContract(Contract::from_id(id, context.db())),
                         Location::Value,
-                    )),
-                }
+                    ),
+                };
+                Ok(ExpressionAttributes {
+                    typ,
+                    location,
+                    move_location: None,
+                    const_value: None,
+                    mutable,
+                })
             } else {
                 Err(FatalError::new(context.fancy_error(
                     "`self` can only be used in contract or struct functions",
@@ -361,7 +397,7 @@ fn expr_named_thing(
             }
 
             let location = Location::assign_location(&typ);
-            Ok(ExpressionAttributes::new(typ, location))
+            Ok(ExpressionAttributes::immutable(typ, location))
         }
         Some(item) => {
             let item_kind = item.item_kind_display_name();
@@ -402,10 +438,12 @@ fn expr_named_thing(
                 "undefined",
             );
             match expected_type {
-                Some(typ) => Ok(ExpressionAttributes::new(
-                    typ.clone(),
-                    Location::assign_location(&typ.clone()),
-                )),
+                Some(typ) => {
+                    let location = Location::assign_location(&typ);
+                    // I guess we'll say this is mutable, to minimize downstream errors.
+                    let mutability = !typ.is_base();
+                    Ok(ExpressionAttributes::new(typ.clone(), location, mutability))
+                }
                 None => Err(FatalError::new(diag)),
             }
         }
@@ -445,6 +483,7 @@ fn expr_str(
         return Ok(ExpressionAttributes::new(
             Type::String(FeString { max_size }),
             Location::Memory,
+            true,
         ));
     }
 
@@ -472,7 +511,7 @@ fn is_valid_string(val: &str) -> bool {
 
 fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Bool(_) = &exp.kind {
-        return Ok(ExpressionAttributes::new(
+        return Ok(ExpressionAttributes::immutable(
             Type::Base(Base::Bool),
             Location::Value,
         ));
@@ -490,7 +529,7 @@ fn expr_num(
         let int_typ = expected_type.unwrap_or(Integer::U256);
         let num = to_bigint(num);
         validate_numeric_literal_fits_type(context, num, exp.span, int_typ);
-        return ExpressionAttributes::new(Type::int(int_typ), Location::Value);
+        return ExpressionAttributes::immutable(Type::int(int_typ), Location::Value);
     }
 
     unreachable!()
@@ -533,8 +572,8 @@ fn expr_subscript(
             // neither maps or arrays can be stored as values, so this is unreachable
             Location::Value => unreachable!(),
         };
-
-        return Ok(ExpressionAttributes::new(typ, location));
+        let mutable = value_attributes.mutable && !typ.is_base();
+        return Ok(ExpressionAttributes::new(typ, location, mutable));
     }
 
     unreachable!()
@@ -552,10 +591,15 @@ fn expr_attribute(
     let attrs = expr(context, target, None)?;
     return match attrs.typ {
         Type::SelfContract(contract) => match contract.id.field_type(context.db(), &field.kind) {
-            Some((typ, nonce)) => Ok(ExpressionAttributes::new(
-                typ?,
-                Location::Storage { nonce: Some(nonce) },
-            )),
+            Some((typ, nonce)) => {
+                let typ = typ?;
+                let mutable = attrs.mutable && !typ.is_base();
+                Ok(ExpressionAttributes::new(
+                    typ,
+                    Location::Storage { nonce: Some(nonce) },
+                    mutable,
+                ))
+            }
             None => Err(FatalError::new(context.fancy_error(
                 &format!("No field `{}` exists on this contract", &field.kind),
                 vec![Label::primary(field.span, "undefined field")],
@@ -578,10 +622,9 @@ fn expr_attribute(
                         vec![],
                     );
                 }
-                Ok(ExpressionAttributes::new(
-                    struct_field.typ(context.db())?,
-                    attrs.location,
-                ))
+                let typ = struct_field.typ(context.db())?;
+                let mutable = attrs.mutable && !typ.is_base();
+                Ok(ExpressionAttributes::new(typ, attrs.location, mutable))
             } else {
                 Err(FatalError::new(context.fancy_error(
                     &format!(
@@ -611,7 +654,11 @@ fn expr_attribute(
             };
 
             if let Some(typ) = tuple.items.get(item_index) {
-                Ok(ExpressionAttributes::new(typ.clone(), attrs.location))
+                Ok(ExpressionAttributes::new(
+                    typ.clone(),
+                    attrs.location,
+                    attrs.mutable && !typ.is_base(),
+                ))
             } else {
                 Err(FatalError::new(context.fancy_error(
                     &format!("No field `item{}` exists on this tuple", item_index),
@@ -675,7 +722,7 @@ fn expr_bin_operation(
             Ok(val) => val,
         };
 
-        return Ok(ExpressionAttributes::new(typ, Location::Value));
+        return Ok(ExpressionAttributes::immutable(typ, Location::Value));
     }
 
     unreachable!()
@@ -730,7 +777,7 @@ fn expr_unary_operation(
                     }
                     _ => emit_err(context, "a numeric type"),
                 }
-                Ok(ExpressionAttributes::new(
+                Ok(ExpressionAttributes::immutable(
                     Type::int(expected_int_type),
                     Location::Value,
                 ))
@@ -739,7 +786,7 @@ fn expr_unary_operation(
                 if !matches!(operand_attributes.typ, Type::Base(Base::Bool)) {
                     emit_err(context, "type `bool`");
                 }
-                Ok(ExpressionAttributes::new(
+                Ok(ExpressionAttributes::immutable(
                     Type::Base(Base::Bool),
                     Location::Value,
                 ))
@@ -749,7 +796,7 @@ fn expr_unary_operation(
                     emit_err(context, "a numeric type")
                 }
 
-                Ok(ExpressionAttributes::new(
+                Ok(ExpressionAttributes::immutable(
                     operand_attributes.typ,
                     Location::Value,
                 ))
@@ -1032,7 +1079,7 @@ fn expr_call_builtin_function(
                     );
                 }
             };
-            ExpressionAttributes::new(Type::Base(U256), Location::Value)
+            ExpressionAttributes::immutable(Type::Base(U256), Location::Value)
         }
     };
     Ok((attrs, CallType::BuiltinFunction(function)))
@@ -1078,7 +1125,7 @@ fn expr_call_intrinsic(
     }
 
     Ok((
-        ExpressionAttributes::new(Type::Base(function.return_type()), Location::Value),
+        ExpressionAttributes::immutable(Type::Base(function.return_type()), Location::Value),
         CallType::Intrinsic(function),
     ))
 }
@@ -1107,8 +1154,9 @@ fn expr_call_pure(
 
     let return_type = sig.return_type.clone()?;
     let return_location = Location::assign_location(&return_type);
+    let mutable = !return_type.is_base();
     Ok((
-        ExpressionAttributes::new(return_type, return_location),
+        ExpressionAttributes::new(return_type, return_location, mutable),
         CallType::Pure(function),
     ))
 }
@@ -1157,7 +1205,7 @@ fn expr_call_type_constructor(
                 assignable_expr(context, &arg.kind.value, None)?;
                 validate_str_literal_fits_type(context, &arg.kind.value, string_type);
             }
-            ExpressionAttributes::new(typ.clone(), Location::Memory)
+            ExpressionAttributes::new(typ.clone(), Location::Memory, true)
         }
         Type::Contract(_) => {
             if let Some(arg) = &args.kind.get(0) {
@@ -1166,7 +1214,7 @@ fn expr_call_type_constructor(
                     context.type_error("type mismatch", arg.span, &Base::Address, &arg_attr.typ);
                 }
             }
-            ExpressionAttributes::new(typ.clone(), Location::Value)
+            ExpressionAttributes::new(typ.clone(), Location::Value, true)
         }
         Type::Base(Base::Numeric(integer)) => {
             if let Some(arg) = args.kind.first() {
@@ -1199,7 +1247,7 @@ fn expr_call_type_constructor(
                     }
                 }
             }
-            ExpressionAttributes::new(typ.clone(), Location::Value)
+            ExpressionAttributes::immutable(typ.clone(), Location::Value)
         }
         Type::Base(Base::Address) => {
             if let Some(arg) = args.kind.first() {
@@ -1215,7 +1263,7 @@ fn expr_call_type_constructor(
                     }
                 }
             };
-            ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
+            ExpressionAttributes::immutable(Type::Base(Base::Address), Location::Value)
         }
         Type::Base(Base::Unit) => unreachable!(), // rejected in expr_call_type
         Type::Base(Base::Bool) => unreachable!(), // handled above
@@ -1270,12 +1318,14 @@ fn expr_call_struct_constructor(
         .id
         .fields(db)
         .iter()
-        .map(|(name, field)| (name.clone(), field.typ(db)))
+        .map(|(name, field)| (name.clone(), field.typ(db), false))
         .collect::<Vec<_>>();
     validate_named_args(context, name, name_span, args, &fields)?;
 
+    let mutable = true; // XXX mutable = args.iter().all(|a| a.mutable)
+
     Ok((
-        ExpressionAttributes::new(Type::Struct(struct_.clone()), Location::Memory),
+        ExpressionAttributes::new(Type::Struct(struct_.clone()), Location::Memory, mutable),
         CallType::TypeConstructor(Type::Struct(struct_)),
     ))
 }
@@ -1322,32 +1372,71 @@ fn expr_call_method(
         if let Some(method) = class.function(context.db(), &field.kind) {
             let is_self = is_self_value(target);
 
-            if is_self && !method.takes_self(context.db()) {
-                context.fancy_error(
-                    &format!("`{}` must be called without `self`", &field.kind),
-                    vec![Label::primary(field.span, "function does not take self")],
-                    vec![format!(
-                        "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                        &field.kind, &field.kind
-                    )],
-                );
-            } else if !is_self && !method.is_public(context.db()) {
-                context.fancy_error(
-                    &format!(
-                        "the function `{}` on `{} {}` is private",
-                        &field.kind,
-                        class.kind(),
-                        class.name(context.db())
-                    ),
-                    vec![
-                        Label::primary(field.span, "this function is not `pub`"),
-                        Label::secondary(
-                            method.data(context.db()).ast.span,
-                            format!("`{}` is defined here", &field.kind),
+            if is_self {
+                match method.self_decl(context.db()) {
+                    None => {
+                        // TODO: this should suggest (future) `Self::foo` syntax
+                        context.fancy_error(
+                            &format!("`{}` must be called without `self`", &field.kind),
+                            vec![Label::primary(field.span, "function does not take self")],
+                            vec![format!(
+                                "Suggestion: try `{}(...)` instead of `self.{}(...)`",
+                                &field.kind, &field.kind
+                            )],
+                        );
+                    }
+                    Some(SelfDecl {
+                        kind: SelfDeclKind::MutRef,
+                        ..
+                    }) => {
+                        if let Some(SelfDecl {
+                            kind: SelfDeclKind::Ref,
+                            span,
+                        }) = context.parent_function().self_decl(context.db())
+                        {
+                            context.fancy_error(
+                                &format!(
+                                    "function `{}` requires `mut self`",
+                                    method.name(context.db())
+                                ),
+                                vec![
+                                    Label::primary(field.span, "requires `mut self`"),
+                                    Label::secondary(target.span, "not mutable"),
+                                    Label::secondary(
+                                        span,
+                                        &format!(
+                                            "consider changing this to be mutable: `mut self`"
+                                        ),
+                                    ),
+                                ],
+                                vec![],
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            } else {
+                if !method.is_public(context.db()) {
+                    context.fancy_error(
+                        &format!(
+                            "the function `{}` on `{} {}` is private",
+                            &field.kind,
+                            class.kind(),
+                            class.name(context.db())
                         ),
-                    ],
-                    vec![],
-                );
+                        vec![
+                            Label::primary(field.span, "this function is not `pub`"),
+                            Label::secondary(
+                                method.data(context.db()).ast.span,
+                                format!("`{}` is defined here", &field.kind),
+                            ),
+                        ],
+                        vec![],
+                    );
+                }
+
+                // if target_attributes.mutable == Mutable::No && method.self_decl
+                // XXX check expr mutability and method self decl
             }
 
             let sig = method.signature(context.db());
@@ -1400,7 +1489,28 @@ fn expr_call_method(
 
             let return_type = sig.return_type.clone()?;
             let location = Location::assign_location(&return_type);
-            return Ok((ExpressionAttributes::new(return_type, location), calltype));
+
+            // If this is a struct fn that takes non-mut self, it *might*
+            // be returning a reference to one of its non-base-type fields,
+            // so to be conservative we restrict the return value to non-mut.
+            // (Contract non-mut self fns can only return a non-base-types if
+            // they are copied to memory first.)
+            // This should be improved when we add explicit references.
+            let self_decl = method.self_decl(context.db());
+            let mutable = !return_type.is_base()
+                && !(matches!(class, Class::Struct(_))
+                    && matches!(
+                        self_decl,
+                        Some(SelfDecl {
+                            kind: SelfDeclKind::Ref,
+                            ..
+                        })
+                    ));
+
+            return Ok((
+                ExpressionAttributes::new(return_type, location, mutable),
+                calltype,
+            ));
         }
     }
     Err(FatalError::new(context.fancy_error(
@@ -1460,7 +1570,9 @@ fn expr_call_builtin_value_method(
                 }
                 Location::Memory => {}
             }
-            Ok((value_attrs.into_cloned(), calltype))
+            let mut attrs = value_attrs.into_cloned();
+            attrs.mutable = !attrs.typ.is_base();
+            Ok((attrs, calltype))
         }
         ValueMethod::ToMem => {
             match value_attrs.location {
@@ -1492,7 +1604,9 @@ fn expr_call_builtin_value_method(
                     );
                 }
             }
-            Ok((value_attrs.into_cloned(), calltype))
+            let mut attrs = value_attrs.into_cloned();
+            attrs.mutable = !attrs.typ.is_base();
+            Ok((attrs, calltype))
         }
         ValueMethod::AbiEncode => match &value_attrs.typ {
             Type::Struct(struct_) => {
@@ -1513,6 +1627,7 @@ fn expr_call_builtin_value_method(
                             size: struct_.id.fields(context.db()).len() * 32,
                         }),
                         Location::Memory,
+                        true,
                     ),
                     calltype,
                 ))
@@ -1535,6 +1650,7 @@ fn expr_call_builtin_value_method(
                             size: tuple.items.len() * 32,
                         }),
                         Location::Memory,
+                        true,
                     ),
                     calltype,
                 ))
@@ -1598,6 +1714,7 @@ fn expr_call_type_attribute(
                     "argument",
                 );
 
+                // XXX require mut ctx
                 for i in 0..arg_count {
                     if let Some(attrs) = arg_attributes.get(i) {
                         if i == 0 {
@@ -1660,14 +1777,14 @@ fn expr_call_type_attribute(
                     }
                 }
                 return Ok((
-                    ExpressionAttributes::new(typ, Location::Value),
+                    ExpressionAttributes::new(typ, Location::Value, true),
                     CallType::BuiltinAssociatedFunction { contract, function },
                 ));
             }
         }
 
         if let Some(function) = class.function(context.db(), &field.kind) {
-            if function.takes_self(context.db()) {
+            if function.self_decl(context.db()).is_some() {
                 return Err(FatalError::new(context.fancy_error(
                     &format!(
                         "`{}` function `{}` must be called on an instance of `{}`",
@@ -1745,8 +1862,9 @@ fn expr_call_type_attribute(
 
             let ret_type = function.signature(context.db()).return_type.clone()?;
             let location = Location::assign_location(&ret_type);
+            let mutable = !ret_type.is_base();
             return Ok((
-                ExpressionAttributes::new(ret_type, location),
+                ExpressionAttributes::new(ret_type, location, mutable),
                 CallType::AssociatedFunction { class, function },
             ));
         }
@@ -1871,7 +1989,7 @@ fn expr_comp_operation(
         }
 
         // for now we assume these are the only possible attributes
-        return Ok(ExpressionAttributes::new(
+        return Ok(ExpressionAttributes::immutable(
             Type::Base(Base::Bool),
             Location::Value,
         ));
@@ -1928,7 +2046,11 @@ fn expr_ternary(
         }
 
         let loc = if_expr_attributes.final_location();
-        return Ok(ExpressionAttributes::new(if_expr_attributes.typ, loc));
+        return Ok(ExpressionAttributes::new(
+            if_expr_attributes.typ,
+            loc,
+            if_expr_attributes.mutable && else_expr_attributes.mutable,
+        ));
     }
     unreachable!()
 }
@@ -1948,7 +2070,7 @@ fn expr_bool_operation(
                 );
             }
         }
-        return Ok(ExpressionAttributes::new(
+        return Ok(ExpressionAttributes::immutable(
             Type::Base(Base::Bool),
             Location::Value,
         ));

@@ -15,11 +15,27 @@ error: `self` can only be used in contract or struct functions
 3 │     self = 5
   │     ^^^^ not allowed in functions defined outside of a contract or struct
 
+error: cannot modify `s`, as it is not mutable
+  ┌─ compile_errors/self_misuse.fe:6:3
+  │
+5 │ fn change_x(_ s: S):
+  │               - consider changing this to be mutable: `mut s`
+6 │   s.x = 100
+  │   ^ not mutable
+
 error: `self` is not callable
    ┌─ compile_errors/self_misuse.fe:16:9
    │
 16 │         self()
    │         ^^^^ can't be used as a function
+
+error: invalid assignment target
+   ┌─ compile_errors/self_misuse.fe:18:5
+   │
+18 │     self = S(x: 10)
+   │     ^^^^
+   │
+   = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
 
 error: `g` must be called via `self`
    ┌─ compile_errors/self_misuse.fe:31:8

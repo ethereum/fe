@@ -1,4 +1,6 @@
-use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
+use crate::context::{
+    AnalyzerContext, BindingMutability, ExpressionAttributes, Location, NamedThing,
+};
 use crate::errors::FatalError;
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
@@ -61,7 +63,12 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
-            let _ = body_scope.add_var(&target.kind, target_type, false, target.span);
+            let _ = body_scope.add_var(
+                &target.kind,
+                target_type,
+                BindingMutability::Immutable,
+                target.span,
+            );
 
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)
@@ -183,10 +190,12 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                              ],
                          );
                 }
+
                 if let Some(context_type) = scope.get_context_type() {
                     // we add ctx to the list of expected params
                     let params_with_ctx = [
                         vec![EventField {
+                            // `mut` requirement is hackily handled in call_args::LabeledParameter
                             name: "ctx".into(),
                             typ: Ok(Type::Struct(context_type)),
                             is_indexed: false,
@@ -299,7 +308,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
 
         let attributes = match value {
             Some(val) => expressions::assignable_expr(scope, val, Some(&expected_type))?,
-            None => ExpressionAttributes::new(Type::unit(), Location::Value),
+            None => ExpressionAttributes::immutable(Type::unit(), Location::Value),
         };
 
         if attributes.typ != expected_type {

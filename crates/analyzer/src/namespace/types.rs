@@ -152,9 +152,16 @@ pub struct FunctionSignature {
     pub return_type: Result<Type, TypeError>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub enum SelfDecl {
-    Mutable,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SelfDecl {
+    pub kind: SelfDeclKind,
+    pub span: Span,
+}
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SelfDeclKind {
+    Ref,
+    MutRef,
+    // Value
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -164,13 +171,20 @@ pub enum CtxDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionParam {
+    pub is_mut: bool,
     label: Option<SmolStr>,
     pub name: SmolStr,
     pub typ: Result<Type, TypeError>,
 }
 impl FunctionParam {
-    pub fn new(label: Option<&str>, name: &str, typ: Result<Type, TypeError>) -> Self {
+    pub fn new(
+        label: Option<&str>,
+        name: &str,
+        typ: Result<Type, TypeError>,
+        is_mut: bool,
+    ) -> Self {
         Self {
+            is_mut,
             label: label.map(SmolStr::new),
             name: name.into(),
             typ,
