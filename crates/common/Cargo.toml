@@ -1,13 +1,13 @@
 [package]
 name = "fe-common"
-version = "0.14.0-alpha"
+version = "0.15.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-library = {path = "../library", version = "^0.14.0-alpha"}
+fe-library = {path = "../library", version = "^0.15.0-alpha"}
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
 codespan-reporting = "0.11.1"
