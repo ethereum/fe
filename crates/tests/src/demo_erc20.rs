@@ -1,6 +1,7 @@
 #![cfg(feature = "solc-backend")]
 
 use fe_compiler_test_utils::*;
+use insta::assert_snapshot;
 
 #[test]
 fn erc20_token() {
@@ -177,5 +178,7 @@ fn erc20_token() {
                 ),
             ],
         );
+
+        assert_harness_gas_report!(harness);
     });
 }

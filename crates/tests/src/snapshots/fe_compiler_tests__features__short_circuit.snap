@@ -1,0 +1,9 @@
+---
+source: crates/tests/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+
+---
+bar([Uint(6)]) used 290 gas
+short_circuit_and([Bool(false)]) used 345 gas
+short_circuit_or([Bool(true)]) used 365 gas
+

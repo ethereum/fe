@@ -1,0 +1,7 @@
+---
+source: crates/tests/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+
+---
+add_from_sto([Uint(2), Uint(5)]) used 21403 gas
+

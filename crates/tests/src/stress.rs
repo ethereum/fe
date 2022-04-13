@@ -2,6 +2,7 @@
 
 #![cfg(feature = "solc-backend")]
 use fe_compiler_test_utils::*;
+use insta::assert_snapshot;
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -99,6 +100,8 @@ fn data_copying_stress() {
                 ),
             ],
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -161,6 +164,8 @@ fn abi_encoding_stress() {
                 &[my_addrs, my_u128, my_string, my_u16s, my_bool, my_bytes],
             )],
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -246,6 +251,8 @@ fn tuple_stress() {
                 ),
             ],
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -336,5 +343,7 @@ fn external_calls_stress() {
             &[],
             &encode_revert("SomeError(uint256)", &[uint_token(4711)]),
         );
-    })
+
+        assert_harness_gas_report!(proxy_harness);
+    });
 }

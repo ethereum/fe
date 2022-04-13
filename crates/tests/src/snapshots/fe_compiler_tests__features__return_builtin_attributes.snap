@@ -1,0 +1,15 @@
+---
+source: crates/tests/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+
+---
+coinbase([]) used 171 gas
+difficulty([]) used 204 gas
+number([]) used 226 gas
+timestamp([]) used 248 gas
+chainid([]) used 270 gas
+sender([]) used 292 gas
+value([]) used 314 gas
+origin([]) used 336 gas
+gas_price([]) used 353 gas
+

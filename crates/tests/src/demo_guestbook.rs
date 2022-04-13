@@ -1,6 +1,7 @@
 #![cfg(feature = "solc-backend")]
 
 use fe_compiler_test_utils::*;
+use insta::assert_snapshot;
 
 #[test]
 fn guest_book() {
@@ -17,5 +18,7 @@ fn guest_book() {
         harness.test_function(&mut executor, "get_msg", &[sender], Some(&msg));
 
         harness.events_emitted(executor, &[("Signed", &[msg])]);
+
+        assert_harness_gas_report!(harness);
     })
 }

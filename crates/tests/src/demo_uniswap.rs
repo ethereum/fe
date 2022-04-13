@@ -1,6 +1,7 @@
 #![cfg(feature = "solc-backend")]
 
 use fe_compiler_test_utils::*;
+use insta::assert_snapshot;
 
 #[test]
 fn uniswap_contracts() {
@@ -283,5 +284,8 @@ fn uniswap_contracts() {
             &[pair_address],
             Some(&uint_token_from_dec_str("708")),
         );
+
+        assert_harness_gas_report!(pair_harness);
+        assert_harness_gas_report!(factory_harness);
     });
 }
