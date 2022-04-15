@@ -3,6 +3,7 @@
 #![cfg(feature = "solc-backend")]
 use evm::{Capture, ExitReason};
 use evm_runtime::Handler;
+use insta::assert_snapshot;
 use primitive_types::{H160, U256};
 use rstest::rstest;
 use std::collections::BTreeMap;
@@ -106,6 +107,8 @@ fn test_send_value() {
             ),
             &encode_revert("Error(uint256)", &[uint_token(0x101)]),
         );
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -183,6 +186,8 @@ fn test_balances() {
             &[bob_token],
             Some(&uint_token(10)),
         );
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -437,7 +442,8 @@ fn test_arrays() {
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, fixture_file, "Foo", &[]);
-        harness.test_function(&mut executor, "bar", input, Some(&expected))
+        harness.test_function(&mut executor, "bar", input, Some(&expected));
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -451,7 +457,9 @@ fn return_array() {
             "bar",
             &[uint_token(42)],
             Some(&uint_array_token(&[0, 0, 0, 42, 0])),
-        )
+        );
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -460,7 +468,8 @@ fn numeric_casts() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "numeric_casts.fe", "Foo", &[]);
 
-        harness.test_function(&mut executor, "bar", &[], None)
+        harness.test_function(&mut executor, "bar", &[], None);
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -474,7 +483,8 @@ fn multi_param() {
             "bar",
             &[uint_token(4), uint_token(42), uint_token(420)],
             Some(&uint_array_token(&[4, 42, 420])),
-        )
+        );
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -518,6 +528,7 @@ fn test_map(fixture_file: &str) {
             &[uint_token(26)],
             Some(&uint_token(12)),
         );
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -548,6 +559,7 @@ fn address_bytes10_map() {
 
         harness.test_function(&mut executor, "read_bar", &[address1], Some(&bytes1));
         harness.test_function(&mut executor, "read_bar", &[address2], Some(&bytes2));
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -611,6 +623,7 @@ fn return_builtin_attributes() {
             &[],
             Some(&uint_token(gas_price)),
         );
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -702,6 +715,7 @@ fn nested_map() {
             &[address2, uint_token(100)],
             Some(&bool_token(false)),
         );
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -739,6 +753,7 @@ fn events() {
                 ("Addresses", &[addr_array]),
             ],
         );
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -753,6 +768,7 @@ fn constructor() {
         );
 
         harness.test_function(&mut executor, "read_bar", &[], Some(&uint_token(68)));
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -818,6 +834,7 @@ fn strings() {
                 ],
             )],
         );
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -852,6 +869,8 @@ fn test_numeric_sizes() {
                 Some(&config.i_max.clone()),
             );
         }
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -875,6 +894,8 @@ fn sized_vals_in_sto() {
 
         harness.test_function(&mut executor, "emit_event", &[], None);
         harness.events_emitted(executor, &[("MyEvent", &[num, nums, string])]);
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1190,6 +1211,8 @@ fn checked_arithmetic() {
                 Some(&config.i_min),
             );
         }
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1245,6 +1268,8 @@ fn structs() {
             &[],
             Some(&string_token("foo")),
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1298,6 +1323,8 @@ fn keccak() {
                 keccak::full_as_bytes("foo".as_bytes()).into(),
             )),
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1324,6 +1351,8 @@ fn short_circuit() {
             Some(&bool_token(true)),
         );
         harness.test_function_reverts(&mut executor, "short_circuit_or", &[bool_token(false)], &[]);
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1344,14 +1373,17 @@ fn math() {
             &[uint_token(1), uint_token(2)],
             Some(&uint_token(1)),
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
 #[test]
 fn two_contracts() {
     with_executor(&|mut executor| {
-        let foo_harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", &[]);
-        foo_harness.test_function(&mut executor, "foo", &[], Some(&uint_token(42)));
+        let harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", &[]);
+        harness.test_function(&mut executor, "foo", &[], Some(&uint_token(42)));
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -1390,6 +1422,8 @@ fn external_contract() {
         );
 
         foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
+
+        assert_harness_gas_report!(proxy_harness);
     })
 }
 
@@ -1408,6 +1442,8 @@ fn create2_contract() {
         let foo_harness = load_contract(foo_address, "create2_contract.fe", "Foo");
 
         foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
+
+        assert_harness_gas_report!(factory_harness);
     })
 }
 
@@ -1426,6 +1462,8 @@ fn create_contract() {
         let foo_harness = load_contract(foo_address, "create_contract.fe", "Foo");
 
         foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
+
+        assert_harness_gas_report!(factory_harness);
     })
 }
 
@@ -1448,6 +1486,8 @@ fn create_contract_from_init() {
         let foo_harness = load_contract(foo_address, "create_contract_from_init.fe", "Foo");
 
         foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
+
+        assert_harness_gas_report!(factory_harness);
     })
 }
 
@@ -1505,6 +1545,7 @@ fn aug_assign(target: u64, op: &str, value: u64, expected: u64) {
             &[uint_token(target), uint_token(value)],
             Some(&uint_token(expected)),
         );
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1518,6 +1559,7 @@ fn base_tuple() {
             &[uint_token(42), bool_token(true)],
             Some(&tuple_token(&[uint_token(42), bool_token(true)])),
         );
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1532,6 +1574,7 @@ fn tuple_destructuring() {
             &[uint_token(1), bool_token(false)],
             Some(&uint_token(1)),
         );
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1787,6 +1830,8 @@ fn intrinsics() {
             &[],
             Some(&ethabi::Token::Address(harness.caller)),
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1801,7 +1846,9 @@ fn call_fn() {
         harness.test_call_reverts(&mut executor, calldata.clone(), &[]);
 
         calldata[31] = 0;
-        harness.test_call_returns(&mut executor, calldata, &[])
+        harness.test_call_returns(&mut executor, calldata, &[]);
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1817,6 +1864,8 @@ fn signext_int_array1(method: &str, params: &[ethabi::Token], expected: Option<e
         let harness = deploy_contract(&mut executor, "return_from_storage_array_i8.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, method, params, expected.as_ref());
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -1831,6 +1880,8 @@ fn signext_int_array2(method: &str, value: ethabi::Token) {
         let harness = deploy_contract(&mut executor, "return_int_array.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, method, &[value.clone()], Some(&value));
+
+        assert_harness_gas_report!(harness);
     })
 }
 
@@ -1840,6 +1891,8 @@ fn ctx_param_simple() {
         let harness = deploy_contract(&mut executor, "ctx_param_simple.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, "bar", &[], Some(&uint_token(0)));
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1849,6 +1902,8 @@ fn ctx_param_internal_func_call() {
         let harness = deploy_contract(&mut executor, "ctx_param_internal_func_call.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, "bar", &[], Some(&uint_token(0)));
+
+        assert_harness_gas_report!(harness);
     });
 }
 
@@ -1867,6 +1922,8 @@ fn ctx_param_external_func_call() {
             &[ethabi::Token::Address(foo_harness.address)],
             Some(&uint_token(0)),
         );
+
+        assert_harness_gas_report!(harness);
     });
 }
 

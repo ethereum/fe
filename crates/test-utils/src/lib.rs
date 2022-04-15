@@ -4,9 +4,53 @@ use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
 use primitive_types::{H160, U256};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use yultsur::*;
+
+#[macro_export]
+macro_rules! assert_harness_gas_report {
+    ($harness:ident) => {
+        assert_snapshot!(format!("{}", $harness.gas_reporter));
+    };
+}
+
+#[derive(Default, Debug)]
+pub struct GasReporter {
+    records: RefCell<Vec<GasRecord>>,
+}
+
+impl GasReporter {
+    pub fn add_record(&self, description: &str, gas_used: u64) {
+        self.records.borrow_mut().push(GasRecord {
+            description: description.to_string(),
+            gas_used,
+        })
+    }
+
+    pub fn add_func_call_record(&self, function: &str, input: &[ethabi::Token], gas_used: u64) {
+        let description = format!("{}({:?})", function, input);
+        self.add_record(&description, gas_used)
+    }
+}
+
+impl Display for GasReporter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for record in self.records.borrow().iter() {
+            writeln!(f, "{} used {} gas", record.description, record.gas_used)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct GasRecord {
+    pub description: String,
+    pub gas_used: u64,
+}
 
 pub trait ToBeBytes {
     fn to_be_bytes(&self) -> [u8; 32];
@@ -34,6 +78,7 @@ pub const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
 
 #[allow(dead_code)]
 pub struct ContractHarness {
+    pub gas_reporter: GasReporter,
     pub address: H160,
     pub abi: ethabi::Contract,
     pub caller: H160,
@@ -46,6 +91,7 @@ impl ContractHarness {
         let caller = address(DEFAULT_CALLER);
 
         ContractHarness {
+            gas_reporter: GasReporter::default(),
             address: contract_address,
             abi,
             caller,
@@ -92,6 +138,7 @@ impl ContractHarness {
         output: Option<&ethabi::Token>,
     ) {
         let actual_output = self.call_function(executor, name, input);
+
         assert_eq!(
             output.map(ToOwned::to_owned),
             actual_output,
@@ -107,8 +154,13 @@ impl ContractHarness {
         input: &[ethabi::Token],
     ) -> Option<ethabi::Token> {
         let function = &self.abi.functions[name][0];
+        let start_gas = executor.used_gas();
+        let capture = self.capture_call(executor, name, input);
+        let gas_used = executor.used_gas() - start_gas;
+        self.gas_reporter
+            .add_func_call_record(name, input, gas_used);
 
-        match self.capture_call(executor, name, input) {
+        match capture {
             evm::Capture::Exit((ExitReason::Succeed(_), output)) => function
                 .decode_output(&output)
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))

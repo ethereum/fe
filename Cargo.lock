@@ -625,6 +625,7 @@ dependencies = [
  "getrandom 0.2.3",
  "hex",
  "indexmap",
+ "insta",
  "primitive-types",
  "serde_json",
  "solc",
