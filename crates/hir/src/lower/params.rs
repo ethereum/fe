@@ -10,7 +10,7 @@ impl GenericArgListId {
             .into_iter()
             .map(|arg| GenericArg::lower_ast(ctxt, arg))
             .collect();
-        Self::new(ctxt.db, args)
+        Self::new(ctxt.db(), args)
     }
 
     pub(super) fn lower_ast_opt(
@@ -18,7 +18,7 @@ impl GenericArgListId {
         ast: Option<ast::GenericArgList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db, Vec::new()))
+            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new()))
     }
 }
 
@@ -28,7 +28,7 @@ impl GenericParamListId {
             .into_iter()
             .map(|param| GenericParam::lower_ast(ctxt, param))
             .collect();
-        Self::new(ctxt.db, params)
+        Self::new(ctxt.db(), params)
     }
 
     pub(super) fn lower_ast_opt(
@@ -36,7 +36,7 @@ impl GenericParamListId {
         ast: Option<ast::GenericParamList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db, Vec::new()))
+            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new()))
     }
 }
 
@@ -46,7 +46,7 @@ impl FnParamListId {
             .into_iter()
             .map(|param| FnParam::lower_ast(ctxt, param))
             .collect();
-        Self::new(ctxt.db, params)
+        Self::new(ctxt.db(), params)
     }
 }
 
@@ -56,7 +56,7 @@ impl WhereClauseId {
             .into_iter()
             .map(|pred| WherePredicate::lower_ast(ctxt, pred))
             .collect();
-        Self::new(ctxt.db, predicates)
+        Self::new(ctxt.db(), predicates)
     }
 
     pub(super) fn lower_ast_opt(
@@ -64,7 +64,7 @@ impl WhereClauseId {
         ast: Option<ast::WhereClause>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db, Vec::new()))
+            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new()))
     }
 }
 

@@ -909,6 +909,7 @@ dependencies = [
  "camino",
  "cranelift-entity",
  "derive_more",
+ "either",
  "fe-common2",
  "fe-parser2",
  "num-bigint",

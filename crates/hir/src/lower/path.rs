@@ -1,6 +1,6 @@
 use parser::{ast, SyntaxToken};
 
-use crate::hir_def::{IdentId, Partial, PathId, PathSegment};
+use crate::hir_def::{IdentId, Partial, PathId};
 
 use super::FileLowerCtxt;
 
@@ -9,20 +9,18 @@ impl PathId {
         let mut segments = Vec::new();
         for seg in ast.into_iter() {
             let segment = match seg.kind() {
-                Some(ast::PathSegmentKind::Ingot(_)) => Some(PathSegment::Ingot),
-                Some(ast::PathSegmentKind::Super(_)) => Some(PathSegment::Super),
-                Some(ast::PathSegmentKind::SelfTy(_)) => Some(PathSegment::SelfTy),
-                Some(ast::PathSegmentKind::Self_(_)) => Some(PathSegment::Self_),
-                Some(ast::PathSegmentKind::Ident(ident)) => {
-                    Some(PathSegment::Ident(IdentId::lower_token(ctxt, ident)))
-                }
+                Some(ast::PathSegmentKind::Ingot(_)) => Some(IdentId::ingot_kw(ctxt.db())),
+                Some(ast::PathSegmentKind::Super(_)) => Some(IdentId::super_kw(ctxt.db())),
+                Some(ast::PathSegmentKind::SelfTy(_)) => Some(IdentId::self_ty_kw(ctxt.db())),
+                Some(ast::PathSegmentKind::Self_(_)) => Some(IdentId::self_kw(ctxt.db())),
+                Some(ast::PathSegmentKind::Ident(ident)) => Some(IdentId::lower_token(ctxt, ident)),
                 None => None,
             }
             .into();
             segments.push(segment);
         }
 
-        Self::new(ctxt.db, segments)
+        Self::new(ctxt.db(), segments)
     }
 
     pub(super) fn lower_ast_partial(
@@ -33,8 +31,8 @@ impl PathId {
     }
 
     pub(super) fn from_ident(ctxt: &mut FileLowerCtxt<'_>, ast: SyntaxToken) -> Self {
-        let ident_id = IdentId::new(ctxt.db, ast.text().to_string());
-        let seg = vec![Partial::Present(PathSegment::Ident(ident_id))];
-        Self::new(ctxt.db, seg)
+        let ident_id = IdentId::new(ctxt.db(), ast.text().to_string());
+        let seg = vec![Partial::Present(ident_id)];
+        Self::new(ctxt.db(), seg)
     }
 }

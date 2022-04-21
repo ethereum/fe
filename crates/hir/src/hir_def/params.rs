@@ -1,4 +1,4 @@
-use crate::{hir_def::TypeId, HirDb};
+use crate::hir_def::TypeId;
 
 use super::{Body, IdentId, Partial, PathId};
 

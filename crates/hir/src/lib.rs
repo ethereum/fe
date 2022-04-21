@@ -3,8 +3,9 @@ use hir_def::module_tree_impl;
 pub use lower::parse::ParseDiagnostic;
 
 use lower::{
-    item_tree_impl, map_file_to_mod_impl,
+    map_file_to_mod_impl,
     parse::{parse_file_impl, ParseDiagnosticAccumulator},
+    scope_graph_impl,
 };
 
 pub mod diagnostics;
@@ -49,7 +50,7 @@ pub struct Jar(
     /// thus, can't be accessed from outside of the crate without implementing
     /// [`LowerHirDb`] marker trait.
     module_tree_impl,
-    item_tree_impl,
+    scope_graph_impl,
     map_file_to_mod_impl,
     parse_file_impl,
 );
@@ -87,8 +88,8 @@ mod test_db {
     };
 
     use crate::{
-        hir_def::{ItemKind, ItemTree, TopLevelMod},
-        lower::{item_tree, map_file_to_mod},
+        hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
+        lower::{map_file_to_mod, scope_graph},
         span::LazySpan,
         LowerHirDb, SpannedHirDb,
     };
@@ -124,10 +125,10 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&mut self, text: &str) -> &ItemTree {
+        pub fn parse_source(&mut self, text: &str) -> &ScopeGraph {
             let file = self.standalone_file(text);
             let top_mod = map_file_to_mod(self, file);
-            item_tree(self, top_mod)
+            scope_graph(self, top_mod)
         }
 
         /// Parses the given source text and returns the first inner item in the
@@ -137,7 +138,7 @@ mod test_db {
             ItemKind: TryInto<T, Error = &'static str>,
         {
             let tree = self.parse_source(text);
-            tree.dfs().find_map(|it| it.try_into().ok()).unwrap()
+            tree.items_dfs().find_map(|it| it.try_into().ok()).unwrap()
         }
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {

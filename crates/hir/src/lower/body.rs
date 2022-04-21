@@ -92,7 +92,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     }
 
     fn new(f_ctxt: &'ctxt mut FileLowerCtxt<'db>, bid: TrackedBodyId) -> Self {
-        f_ctxt.enter_scope();
+        f_ctxt.enter_scope(false);
         Self {
             f_ctxt,
             bid,
@@ -106,12 +106,12 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     fn build(self, ast: &ast::Expr) -> Body {
         let origin = HirOrigin::raw(ast);
         let body = Body::new(
-            self.f_ctxt.db,
+            self.f_ctxt.db(),
             self.bid,
             self.stmts,
             self.exprs,
             self.pats,
-            self.f_ctxt.top_mod,
+            self.f_ctxt.top_mod(),
             self.source_map,
             origin,
         );

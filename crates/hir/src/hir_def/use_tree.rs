@@ -8,26 +8,24 @@ pub struct UseTreeId {
     /// `Foo::Foo2` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`
     ///
     /// NOTE: If the tree root is started with `{}`, then the `path` is `None`.
+    #[return_ref]
     pub path: Vec<Partial<UsePathSegment>>,
+
     /// The subtree of the use tree.
     ///
     /// `Bar::*` and `Baz::{x, y}` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`.
+    #[return_ref]
     pub subtree: Vec<UseTreeId>,
 
     //// The alias of this use tree.
     /// `Bar` in `Foo as Bar;`
+    #[return_ref]
     pub alias: Option<Partial<UseAlias>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UsePathSegment {
     Ident(IdentId),
-    /// `ingot`.
-    Ingot,
-    /// `super`.
-    Super,
-    /// `self`.
-    Self_,
     /// `*`.
     Glob,
 }

@@ -25,7 +25,7 @@ impl UseTreeId {
             .alias()
             .map(|ast| UseAlias::lower_ast_partial(ctxt, ast));
 
-        Self::new(ctxt.db, path, subtree, alias)
+        Self::new(ctxt.db(), path, subtree, alias)
     }
 
     pub(super) fn lower_ast_partial(
@@ -43,12 +43,12 @@ impl UsePathSegment {
     ) -> Partial<Self> {
         ast.kind()
             .map(|kind| match kind {
-                ast::UsePathSegmentKind::Ingot(_) => Self::Ingot,
-                ast::UsePathSegmentKind::Super(_) => Self::Super,
+                ast::UsePathSegmentKind::Ingot(_) => Self::Ident(IdentId::ingot_kw(ctxt.db())),
+                ast::UsePathSegmentKind::Super(_) => Self::Ident(IdentId::super_kw(ctxt.db())),
                 ast::UsePathSegmentKind::Ident(ident) => {
                     Self::Ident(IdentId::lower_token(ctxt, ident))
                 }
-                ast::UsePathSegmentKind::Self_(_) => Self::Self_,
+                ast::UsePathSegmentKind::Self_(_) => Self::Ident(IdentId::self_kw(ctxt.db())),
                 ast::UsePathSegmentKind::Glob(_) => Self::Glob,
             })
             .into()

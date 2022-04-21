@@ -10,7 +10,6 @@ pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
-pub(crate) mod item_tree;
 pub(crate) mod module_tree;
 
 pub use attr::*;
@@ -25,7 +24,6 @@ pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
 
-pub use item_tree::*;
 pub use module_tree::*;
 
 use crate::HirDb;
@@ -34,11 +32,38 @@ use crate::HirDb;
 pub struct IdentId {
     data: String,
 }
+// TODO: Keyword should be prefilled in the database.
+// ref: https://github.com/salsa-rs/salsa/pull/440
 impl IdentId {
-    pub fn is_self(&self, db: &dyn HirDb) -> bool {
-        // TODO: Keyword should be prefilled in the database.
-        // ref: https://github.com/salsa-rs/salsa/pull/440
-        self.data(db) == "self"
+    pub fn is_super(self, db: &dyn HirDb) -> bool {
+        self == Self::super_kw(db)
+    }
+
+    pub fn is_ingot(self, db: &dyn HirDb) -> bool {
+        self == Self::ingot_kw(db)
+    }
+
+    pub fn is_self(self, db: &dyn HirDb) -> bool {
+        self == Self::self_kw(db)
+    }
+
+    pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
+        self == Self::self_ty_kw(db)
+    }
+    pub fn super_kw(db: &dyn HirDb) -> Self {
+        IdentId::new(db, "super".to_string())
+    }
+
+    pub fn ingot_kw(db: &dyn HirDb) -> Self {
+        IdentId::new(db, "ingot".to_string())
+    }
+
+    pub fn self_kw(db: &dyn HirDb) -> Self {
+        IdentId::new(db, "self".to_string())
+    }
+
+    pub fn self_ty_kw(db: &dyn HirDb) -> Self {
+        IdentId::new(db, "Self".to_string())
     }
 }
 
@@ -88,7 +113,10 @@ impl<T> Partial<T> {
     }
 
     pub fn to_opt(self) -> Option<T> {
-        self.into()
+        match self {
+            Self::Present(value) => Some(value),
+            Self::Absent => None,
+        }
     }
 }
 
@@ -108,11 +136,8 @@ impl<T> From<Option<T>> for Partial<T> {
     }
 }
 
-impl<T> Into<Option<T>> for Partial<T> {
-    fn into(self) -> Option<T> {
-        match self {
-            Self::Present(value) => Some(value),
-            Self::Absent => None,
-        }
+impl<T> From<Partial<T>> for Option<T> {
+    fn from(value: Partial<T>) -> Option<T> {
+        value.to_opt()
     }
 }

@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::{
-    module_tree_impl, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, ItemTree,
-    ModuleTree, Partial, TypeId, WhereClauseId,
+    module_tree_impl, scope_graph::ScopeGraph, AttrListId, Body, FnParamListId, GenericParamListId,
+    IdentId, ModuleTree, Partial, TypeId, WhereClauseId,
 };
 
 #[derive(
@@ -58,7 +58,7 @@ pub enum ItemKind {
 #[salsa::tracked]
 pub struct TopLevelMod {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
-    // of `module_item_tree`.
+    // of `module_scope_graph`.
     pub name: IdentId,
 
     pub(crate) ingot: InputIngot,
@@ -69,8 +69,8 @@ impl TopLevelMod {
         LazyTopLevelModSpan::new(self)
     }
 
-    pub fn module_item_tree(self, db: &dyn HirDb) -> &ItemTree {
-        lower::item_tree_impl(db, self)
+    pub fn module_scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
+        lower::scope_graph_impl(db, self)
     }
 
     pub fn ingot_module_tree(self, db: &dyn HirDb) -> &ModuleTree {

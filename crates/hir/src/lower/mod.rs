@@ -1,5 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use common::{InputFile, InputIngot};
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -10,7 +8,7 @@ use parser::{
 
 use crate::{
     hir_def::{
-        module_tree_impl, IdentId, IntegerId, ItemKind, ItemTree, ItemTreeNode, LitKind,
+        module_tree_impl, scope_graph::ScopeGraph, IdentId, IntegerId, ItemKind, LitKind,
         ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
     },
     HirDb, LowerHirDb, ParseDiagnostic,
@@ -19,6 +17,7 @@ use crate::{
 use self::{
     item::lower_module_items,
     parse::{parse_file_impl, ParseDiagnosticAccumulator},
+    scope_builder::ScopeGraphBuilder,
 };
 
 pub(crate) mod parse;
@@ -44,8 +43,8 @@ pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
 }
 
 /// Returns the item tree of the given top-level module.
-pub fn item_tree(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ItemTree {
-    item_tree_impl(db.upcast(), top_mod)
+pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
+    scope_graph_impl(db.upcast(), top_mod)
 }
 
 /// Returns the root node of the given top-level module.
@@ -81,11 +80,10 @@ pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, file: InputFile) -> TopLevelM
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn item_tree_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ItemTree {
+pub(crate) fn scope_graph_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ScopeGraph {
     let ast = top_mod_ast(db, top_mod);
-    let mut ctxt = FileLowerCtxt::new(db, top_mod);
+    let mut ctxt = FileLowerCtxt::enter_top_mod(db, top_mod);
 
-    ctxt.enter_scope();
     let id = TrackedItemId::TopLevelMod(top_mod.name(db));
     if let Some(items) = ast.items() {
         lower_module_items(&mut ctxt, id, items);
@@ -102,32 +100,31 @@ pub(crate) fn top_mod_ast(db: &dyn HirDb, top_mod: TopLevelMod) -> ast::Root {
 }
 
 pub struct FileLowerCtxt<'db> {
-    db: &'db dyn HirDb,
-    scope_stack: Vec<BTreeSet<ItemKind>>,
-    item_tree: BTreeMap<ItemKind, ItemTreeNode>,
-    top_mod: TopLevelMod,
+    builder: ScopeGraphBuilder<'db>,
 }
 
 impl<'db> FileLowerCtxt<'db> {
-    pub(super) fn new(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
+    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
         Self {
-            db,
-            scope_stack: vec![],
-            item_tree: BTreeMap::new(),
-            top_mod,
+            builder: ScopeGraphBuilder::enter_top_mod(db, top_mod),
         }
     }
 
-    pub(super) fn build(self) -> ItemTree {
-        ItemTree {
-            top_mod: self.top_mod,
-            item_tree: self.item_tree,
-        }
+    pub(super) fn build(self) -> ScopeGraph {
+        self.builder.build()
+    }
+
+    pub(super) fn db(&self) -> &'db dyn HirDb {
+        self.builder.db
+    }
+
+    pub(super) fn top_mod(&self) -> TopLevelMod {
+        self.builder.top_mod
     }
 
     /// Creates a new scope for an item.
-    fn enter_scope(&mut self) {
-        self.scope_stack.push(BTreeSet::default());
+    fn enter_scope(&mut self, is_mod: bool) {
+        self.builder.enter_scope(is_mod);
     }
 
     /// Leaves the current scope, `item` should be the generated item which owns
@@ -136,31 +133,14 @@ impl<'db> FileLowerCtxt<'db> {
     where
         I: Into<ItemKind> + Copy,
     {
-        let item_kind = item.into();
-        let item_scope = self.scope_stack.pop().unwrap();
-
-        for item in &item_scope {
-            self.item_tree.get_mut(item).unwrap().parent = Some(item_kind);
-        }
-
-        self.item_tree.insert(
-            item_kind,
-            ItemTreeNode {
-                parent: None,
-                children: item_scope,
-            },
-        );
-
-        if !matches!(item_kind, ItemKind::TopMod(_)) {
-            self.scope_stack.last_mut().unwrap().insert(item.into());
-        }
+        self.builder.leave_scope(item.into());
         item
     }
 }
 
 impl IdentId {
     fn lower_token(ctxt: &mut FileLowerCtxt<'_>, token: SyntaxToken) -> Self {
-        Self::new(ctxt.db, token.text().to_string())
+        Self::new(ctxt.db(), token.text().to_string())
     }
 
     fn lower_token_partial(
@@ -177,7 +157,10 @@ impl LitKind {
             ast::LitKind::Int(int) => Self::Int(IntegerId::lower_ast(ctxt, int)),
             ast::LitKind::String(string) => {
                 let text = string.token().text();
-                Self::String(StringId::new(ctxt.db, text[1..text.len() - 1].to_string()))
+                Self::String(StringId::new(
+                    ctxt.db(),
+                    text[1..text.len() - 1].to_string(),
+                ))
             }
             ast::LitKind::Bool(bool) => match bool.token().text() {
                 "true" => Self::Bool(true),
@@ -193,7 +176,7 @@ impl IntegerId {
         let text = ast.token().text();
         // Parser ensures that the text is valid pair with a radix and a number.
         if text.len() < 2 {
-            return Self::new(ctxt.db, BigUint::from_str_radix(text, 10).unwrap());
+            return Self::new(ctxt.db(), BigUint::from_str_radix(text, 10).unwrap());
         }
 
         let int = match &text[0..2] {
@@ -203,6 +186,6 @@ impl IntegerId {
             _ => BigUint::from_str_radix(text, 10).unwrap(),
         };
 
-        Self::new(ctxt.db, int)
+        Self::new(ctxt.db(), int)
     }
 }
