@@ -1,4 +1,4 @@
-use crate::hir_def::TypeId;
+use crate::{hir_def::TypeId, HirDb};
 
 use super::{Body, IdentId, Partial, PathId};
 
@@ -11,13 +11,13 @@ pub struct GenericArgListId {
 #[salsa::interned]
 pub struct GenericParamListId {
     #[return_ref]
-    pub params: Vec<GenericParam>,
+    pub data: Vec<GenericParam>,
 }
 
 #[salsa::interned]
 pub struct FnParamListId {
     #[return_ref]
-    args: Vec<FnParam>,
+    pub data: Vec<FnParam>,
 }
 
 #[salsa::interned]
@@ -30,6 +30,14 @@ pub struct WhereClauseId {
 pub enum GenericParam {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
+}
+impl GenericParam {
+    pub fn name(&self) -> Partial<IdentId> {
+        match self {
+            Self::Type(ty) => ty.name,
+            Self::Const(c) => c.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
