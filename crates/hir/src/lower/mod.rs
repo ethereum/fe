@@ -30,6 +30,7 @@ mod item;
 mod params;
 mod pat;
 mod path;
+mod scope_builder;
 mod stmt;
 mod types;
 mod use_tree;

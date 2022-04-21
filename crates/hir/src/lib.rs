@@ -18,7 +18,6 @@ pub struct Jar(
     hir_def::TopLevelMod,
     hir_def::Mod,
     hir_def::Func,
-    hir_def::ExternFunc,
     hir_def::Struct,
     hir_def::Contract,
     hir_def::Enum,

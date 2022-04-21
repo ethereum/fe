@@ -76,7 +76,7 @@ mod tests {
 
         let foo_children: Vec<_> = item_tree.children(inner_items[0]).collect();
         assert!(matches!(foo_children[0], ItemKind::Func(_)));
-        assert!(matches!(foo_children[1], ItemKind::ExternFunc(_)));
+        assert!(matches!(foo_children[1], ItemKind::Func(_)));
 
         let baz_children: Vec<_> = item_tree.children(inner_items[1]).collect();
         assert!(matches!(baz_children[0], ItemKind::Struct(_)));

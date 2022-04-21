@@ -8,17 +8,17 @@ use parser::{
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
-        Trait, TypeAlias, Use,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
+        TypeAlias, Use,
     },
     lower::{map_file_to_mod_impl, top_mod_ast},
     SpannedHirDb,
 };
 
 use super::{
-    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, extern_func_ast, func_ast,
-    impl_ast, impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast,
-    type_alias_ast, use_ast, AugAssignDesugared, DesugaredOrigin, HirOrigin, LazySpan,
+    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
+    impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
+    use_ast, AugAssignDesugared, DesugaredOrigin, HirOrigin, LazySpan,
 };
 
 /// This type represents function from the hir origin to another hir origin to
@@ -51,7 +51,6 @@ pub(crate) enum ChainRoot {
     TopMod(TopLevelMod),
     Mod(Mod),
     Func(Func),
-    ExternFunc(ExternFunc),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -71,6 +70,7 @@ pub(crate) struct ResolvedOrigin {
     pub(crate) file: InputFile,
     pub(crate) kind: ResolvedOriginKind,
 }
+
 impl ResolvedOrigin {
     pub(crate) fn new(file: InputFile, kind: ResolvedOriginKind) -> Self {
         Self { file, kind }
@@ -94,17 +94,7 @@ impl ResolvedOrigin {
 
         ResolvedOrigin::new(top_mod.file(db.upcast()), kind)
     }
-}
 
-pub(crate) enum ResolvedOriginKind {
-    Node(SyntaxNode),
-    Token(SyntaxToken),
-    Expanded(SyntaxNode),
-    Desugared(DesugaredOrigin),
-    None,
-}
-
-impl ResolvedOrigin {
     pub(crate) fn map<F>(self, f: F) -> Self
     where
         F: FnOnce(SyntaxNode) -> Option<NodeOrToken>,
@@ -125,13 +115,20 @@ impl ResolvedOrigin {
     }
 }
 
+pub(crate) enum ResolvedOriginKind {
+    Node(SyntaxNode),
+    Token(SyntaxToken),
+    Expanded(SyntaxNode),
+    Desugared(DesugaredOrigin),
+    None,
+}
+
 impl ChainInitiator for ChainRoot {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
         match self {
             Self::TopMod(top_mod) => top_mod.init(db),
             Self::Mod(mod_) => mod_.init(db),
             Self::Func(func) => func.init(db),
-            Self::ExternFunc(extern_func) => extern_func.init(db),
             Self::Struct(struct_) => struct_.init(db),
             Self::Contract(contract) => contract.init(db),
             Self::Enum(enum_) => enum_.init(db),
@@ -222,7 +219,6 @@ macro_rules! impl_chain_root {
 impl_chain_root! {
     (Mod, mod_ast),
     (Func, func_ast),
-    (ExternFunc, extern_func_ast),
     (Struct, struct_ast),
     (Contract, contract_ast),
     (Enum, enum_ast),

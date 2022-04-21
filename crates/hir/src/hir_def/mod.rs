@@ -5,6 +5,7 @@ pub mod item;
 pub mod params;
 pub mod pat;
 pub mod path;
+pub mod scope_graph;
 pub mod stmt;
 pub mod types;
 pub mod use_tree;
@@ -85,6 +86,10 @@ impl<T> Partial<T> {
             Self::Absent => panic!("unwrap called on absent value"),
         }
     }
+
+    pub fn to_opt(self) -> Option<T> {
+        self.into()
+    }
 }
 
 impl<T> Default for Partial<T> {
@@ -99,6 +104,15 @@ impl<T> From<Option<T>> for Partial<T> {
             Self::Present(value)
         } else {
             Self::Absent
+        }
+    }
+}
+
+impl<T> Into<Option<T>> for Partial<T> {
+    fn into(self) -> Option<T> {
+        match self {
+            Self::Present(value) => Some(value),
+            Self::Absent => None,
         }
     }
 }

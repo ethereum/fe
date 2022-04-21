@@ -7,8 +7,8 @@ use common::diagnostics::Span;
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
-        Trait, TypeAlias, Use,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
+        TypeAlias, Use,
     },
     lower::top_mod_ast,
     SpannedHirDb,
@@ -54,10 +54,6 @@ pub fn mod_ast(db: &dyn SpannedHirDb, item: Mod) -> &HirOrigin<ast::Mod> {
 }
 
 pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Fn> {
-    item.origin(db.upcast())
-}
-
-pub fn extern_func_ast(db: &dyn SpannedHirDb, item: ExternFunc) -> &HirOrigin<ast::Fn> {
     item.origin(db.upcast())
 }
 

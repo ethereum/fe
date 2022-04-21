@@ -11,9 +11,9 @@ use crate::{
     lower,
     span::{
         item::{
-            LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyExternFuncSpan, LazyFuncSpan,
-            LazyImplSpan, LazyImplTraitSpan, LazyModSpan, LazyStructSpan, LazyTopLevelModSpan,
-            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
+            LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
+            LazyImplTraitSpan, LazyModSpan, LazyStructSpan, LazyTopLevelModSpan, LazyTraitSpan,
+            LazyTypeAliasSpan, LazyUseSpan,
         },
         HirOrigin,
     },
@@ -41,7 +41,6 @@ pub enum ItemKind {
     TopMod(TopLevelMod),
     Mod(Mod),
     Func(Func),
-    ExternFunc(ExternFunc),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -76,6 +75,20 @@ impl TopLevelMod {
 
     pub fn ingot_module_tree(self, db: &dyn HirDb) -> &ModuleTree {
         module_tree_impl(db, self.ingot(db))
+    }
+
+    pub fn ingot_root(self, db: &dyn HirDb) -> TopLevelMod {
+        self.ingot_module_tree(db).root_data().top_mod
+    }
+
+    pub fn parent(self, db: &dyn HirDb) -> Option<TopLevelMod> {
+        let module_tree = self.ingot_module_tree(db);
+        module_tree.parent(self)
+    }
+
+    pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
+        let module_tree = self.ingot_module_tree(db);
+        module_tree.children(self)
     }
 }
 
@@ -112,6 +125,7 @@ pub struct Func {
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
     pub body: Option<Body>,
+    pub is_extern: bool,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -120,27 +134,6 @@ pub struct Func {
 impl Func {
     pub fn lazy_span(self) -> LazyFuncSpan {
         LazyFuncSpan::new(self)
-    }
-}
-
-#[salsa::tracked]
-pub struct ExternFunc {
-    #[id]
-    id: TrackedItemId,
-
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
-    pub params: Partial<FnParamListId>,
-    pub ret_ty: Option<TypeId>,
-    pub modifier: ItemModifier,
-    pub top_mod: TopLevelMod,
-
-    #[return_ref]
-    pub(crate) origin: HirOrigin<ast::Fn>,
-}
-impl ExternFunc {
-    pub fn lazy_span(self) -> LazyExternFuncSpan {
-        LazyExternFuncSpan::new(self)
     }
 }
 
@@ -348,7 +341,7 @@ impl ItemModifier {
 #[salsa::interned]
 pub struct RecordFieldListId {
     #[return_ref]
-    pub fields: Vec<RecordField>,
+    pub data: Vec<RecordField>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -361,7 +354,7 @@ pub struct RecordField {
 #[salsa::interned]
 pub struct EnumVariantListId {
     #[return_ref]
-    pub variants: Vec<EnumVariant>,
+    pub data: Vec<EnumVariant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

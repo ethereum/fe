@@ -92,6 +92,21 @@ impl ModuleTree {
     pub fn all_modules(&self) -> impl Iterator<Item = TopLevelMod> + '_ {
         self.mod_map.keys().copied()
     }
+
+    pub fn parent(&self, top_mod: TopLevelMod) -> Option<TopLevelMod> {
+        let node = self.tree_node_data(top_mod);
+        node.parent.map(|id| self.module_tree[id].top_mod)
+    }
+
+    pub fn children(&self, top_mod: TopLevelMod) -> impl Iterator<Item = TopLevelMod> + '_ {
+        self.tree_node_data(top_mod)
+            .children
+            .iter()
+            .map(move |&id| {
+                let node = &self.module_tree[id];
+                node.top_mod
+            })
+    }
 }
 
 /// Returns a module tree of the given ingot. The resulted tree only includes

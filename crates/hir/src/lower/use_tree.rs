@@ -23,7 +23,7 @@ impl UseTreeId {
         };
         let alias = ast
             .alias()
-            .map(|ast| UseTreeAlias::lower_ast_partial(ctxt, ast));
+            .map(|ast| UseAlias::lower_ast_partial(ctxt, ast));
 
         Self::new(ctxt.db, path, subtree, alias)
     }
@@ -55,7 +55,7 @@ impl UsePathSegment {
     }
 }
 
-impl UseTreeAlias {
+impl UseAlias {
     pub(super) fn lower_ast_partial(
         ctxt: &mut FileLowerCtxt<'_>,
         ast: ast::UseTreeAlias,

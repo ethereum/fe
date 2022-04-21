@@ -21,7 +21,7 @@ pub(crate) fn lower_module_items(
                 Mod::lower_ast(ctxt, id.clone(), mod_);
             }
             ast::ItemKind::Fn(fn_) => {
-                Func::lower_ast(ctxt, id.clone(), fn_);
+                Func::lower_ast(ctxt, id.clone(), fn_, false);
             }
             ast::ItemKind::Struct(struct_) => {
                 Struct::lower_ast(ctxt, id.clone(), struct_);
@@ -53,7 +53,7 @@ pub(crate) fn lower_module_items(
             ast::ItemKind::Extern(extern_) => {
                 if let Some(extern_block) = extern_.extern_block() {
                     for fn_ in extern_block {
-                        ExternFunc::lower_ast(ctxt, id.clone(), fn_);
+                        Func::lower_ast(ctxt, id.clone(), fn_, true);
                     }
                 }
             }
@@ -88,6 +88,7 @@ impl Func {
         ctxt: &mut FileLowerCtxt<'_>,
         parent_id: TrackedItemId,
         ast: ast::Fn,
+        is_extern: bool,
     ) -> Self {
         ctxt.enter_scope();
 
@@ -123,6 +124,7 @@ impl Func {
             ret_ty,
             modifier,
             body,
+            is_extern,
             ctxt.top_mod,
             origin,
         );
@@ -280,7 +282,7 @@ impl Impl {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item, false);
             }
         }
 
@@ -317,7 +319,7 @@ impl Trait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item, false);
             }
         }
 
@@ -356,7 +358,7 @@ impl ImplTrait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item, false);
             }
         }
 
@@ -410,41 +412,6 @@ impl Use {
         let origin = HirOrigin::raw(&ast);
         let use_ = Self::new(ctxt.db, id, tree, ctxt.top_mod, origin);
         ctxt.leave_scope(use_)
-    }
-}
-
-impl ExternFunc {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent: TrackedItemId,
-        ast: ast::Fn,
-    ) -> Self {
-        ctxt.enter_scope();
-
-        let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Extern.join(parent);
-
-        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let params = ast
-            .params()
-            .map(|params| FnParamListId::lower_ast(ctxt, params))
-            .into();
-        let ret_ty = ast.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
-        let modifier = ItemModifier::lower_ast(ast.modifier());
-        let origin = HirOrigin::raw(&ast);
-
-        let extern_func = Self::new(
-            ctxt.db,
-            id,
-            name,
-            attributes,
-            params,
-            ret_ty,
-            modifier,
-            ctxt.top_mod,
-            origin,
-        );
-        ctxt.leave_scope(extern_func)
     }
 }
 

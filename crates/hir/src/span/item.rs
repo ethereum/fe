@@ -1,8 +1,8 @@
 use parser::ast;
 
 use crate::hir_def::{
-    Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
-    Trait, TypeAlias, Use,
+    Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait, TypeAlias,
+    Use,
 };
 
 use super::{
@@ -41,21 +41,6 @@ define_lazy_span_node!(
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
-        (modifier, modifier, LazyItemModifierSpan),
-        (params, params, LazyFnParamListSpan),
-        (ret_ty, ret_ty, LazyTypeSpan),
-    }
-);
-
-define_lazy_span_node!(
-    LazyExternFuncSpan,
-    ast::Fn,
-    new(ExternFunc),
-    @token {
-        (name, name),
-    }
-    @node {
-        (attributes, attr_list, LazyAttrListSpan),
         (modifier, modifier, LazyItemModifierSpan),
         (params, params, LazyFnParamListSpan),
         (ret_ty, ret_ty, LazyTypeSpan),

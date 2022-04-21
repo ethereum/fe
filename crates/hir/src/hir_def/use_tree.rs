@@ -16,7 +16,7 @@ pub struct UseTreeId {
 
     //// The alias of this use tree.
     /// `Bar` in `Foo as Bar;`
-    pub alias: Option<Partial<UseTreeAlias>>,
+    pub alias: Option<Partial<UseAlias>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -33,7 +33,7 @@ pub enum UsePathSegment {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UseTreeAlias {
+pub enum UseAlias {
     Ident(IdentId),
     Underscore,
 }
