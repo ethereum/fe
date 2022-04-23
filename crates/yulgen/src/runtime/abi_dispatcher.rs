@@ -24,12 +24,12 @@ pub fn dispatcher(
         .collect::<Vec<_>>();
 
     let dispatcher = if arms.is_empty() {
-        statement! { revert(0, 0) }
+        statement! { return(0, 0) }
     } else {
         switch! {
             switch (cloadn(0, 4))
             [arms...]
-            (default { (revert(0, 0)) })
+            (default { (return(0, 0)) })
         }
     };
 
