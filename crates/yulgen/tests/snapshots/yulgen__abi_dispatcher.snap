@@ -17,4 +17,4 @@ case 0x771602f7 {
     let encoding_size := add(32, 0)
     return(encoding_start, encoding_size)
 }
-default { revert(0, 0) } }
+default { return(0, 0) } }
