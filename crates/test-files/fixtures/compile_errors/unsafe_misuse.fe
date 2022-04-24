@@ -14,10 +14,10 @@ pub fn g():
     mod_priv() # OK
 
 contract Foo:
-  # pub unsafe contract functions aren't allowed
-  pub unsafe fn pub_self(self): # BAD
+  # pub unsafe contract functions are allowed
+  pub unsafe fn pub_self(self): # Ok
     pass
-  pub unsafe fn pub_noself(): # BAD
+  pub unsafe fn pub_noself(): # Ok
     pass
 
   # non-pub contract fns can be unsafe

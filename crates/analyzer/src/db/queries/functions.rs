@@ -2,7 +2,7 @@ use crate::context::{AnalyzerContext, CallType, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
+    DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, Contract, CtxDecl, FixedSize, SelfDecl, Struct, Type};
@@ -26,17 +26,6 @@ pub fn function_signature(
 
     let mut scope = ItemScope::new(db, function.module(db));
     let fn_parent = function.class(db);
-
-    if_chain! {
-        if let Some(Class::Contract(_)) = fn_parent;
-        if let Some(pub_span) = function.pub_span(db);
-        if let Some(unsafe_span) = function.unsafe_span(db);
-        then {
-            scope.error("public contract functions can't be unsafe",
-                        pub_span + unsafe_span,
-                        "a contract function can be either `pub` or `unsafe`, but not both");
-        }
-    }
 
     let mut self_decl = None;
     let mut ctx_decl = None;
