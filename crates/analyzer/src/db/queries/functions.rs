@@ -1,9 +1,7 @@
 use crate::context::{AnalyzerContext, CallType, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
-use crate::namespace::items::{
-    DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
-};
+use crate::namespace::items::{DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, Contract, CtxDecl, FixedSize, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
