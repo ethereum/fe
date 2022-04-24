@@ -12,19 +12,19 @@ contract StoreU256:
 contract StoreSolMap:
     pub fn __call__():
         unsafe:
-            let key: u256 = evm::call_data_load(0)
-            evm::mstore(0, key)
-            evm::mstore(32, 0)
-            let slot: u256 = evm::keccak256_mem(0, 64)
-            let value: u256 = evm::sload(slot)
-            evm::mstore(0, value)
-            evm::return_mem(0, 32)
+            let key: u256 = evm::call_data_load(offset: 0)
+            evm::mstore(offset: 0, value: key)
+            evm::mstore(offset: 32, value: 0)
+            let slot: u256 = evm::keccak256_mem(offset: 0, len: 64)
+            let value: u256 = evm::sload(offset: slot)
+            evm::mstore(offset: 0, value)
+            evm::return_mem(offset: 0, len: 32)
 
 contract StoreFeMap:
     my_map: Map<u256, u256>
 
     pub fn __call__(self):
         unsafe:
-            let key: u256 = evm::call_data_load(0)
-            evm::mstore(0, self.my_map[key])
-            evm::return_mem(0, 32)
+            let key: u256 = evm::call_data_load(offset: 0)
+            evm::mstore(offset: 0, value: self.my_map[key])
+            evm::return_mem(offset: 0, len: 32)
