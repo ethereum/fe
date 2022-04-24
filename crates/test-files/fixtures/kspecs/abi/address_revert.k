@@ -70,6 +70,7 @@ module $TEST_NAME
                     <mixHash> _ </mixHash>
                     <blockNonce> _ </blockNonce>
                     <ommerBlockHeaders> _ </ommerBlockHeaders>
+                    <baseFee> _ </baseFee>
                 </block>
             </evm>
 
