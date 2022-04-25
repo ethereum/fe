@@ -2,12 +2,15 @@ use crate::{
     db::CodegenDb,
     yul::{runtime::AbiSrcLocation, YulVariable},
 };
+use std::rc::Rc;
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
 use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{FunctionId, Type, TypeKind};
 
+use fe_analyzer::namespace;
+use fe_mir::db::MirDb;
 use yultsur::*;
 
 pub(super) fn make_create(
@@ -23,12 +26,24 @@ pub(super) fn make_create(
 
     let size = YulVariable::new("size");
     let value = YulVariable::new("value");
+    let args = YulVariable::new("args");
+    let encode_tuple = {
+        let params = &contract
+            .init_function(db.upcast())
+            .unwrap()
+            .signature(db.upcast())
+            .params;
+        // let types = params.iter().map(|param| param.typ.unwrap()).collect();
+        db.mir_intern_type(Rc::new(fe_mir::ir::types::Type::new(TypeKind::Unit, None)))
+    };
+
     let func = function_definition! {
-        function [func_name.ident()]([value.ident()]) -> addr {
+        function [func_name.ident()]([value.ident()], [args.ident()]) -> addr {
             (let [size.ident()] := datasize([contract_symbol.clone()]))
             (let mem_ptr := [provider.avail(db)])
             (let contract_ptr := dataoffset([contract_symbol]))
             (datacopy(mem_ptr, contract_ptr, [size.expr()]))
+            (pop([provider.abi_encode(db, args.expr(), args.expr(), encode_tuple, false)]))
             (addr := create([value.expr()], mem_ptr, [size.expr()]))
         }
     };

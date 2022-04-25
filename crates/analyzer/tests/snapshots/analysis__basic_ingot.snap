@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: snapshot
-
 ---
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:9:5
@@ -168,7 +167,7 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:35:5
    │  
 35 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256 {
-36 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+36 │ │         let bing_contract: BingContract = ctx.create<BingContract>(args: (), value: 0)
 37 │ │         return bing_contract.add(40, 50)
 38 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
@@ -176,22 +175,23 @@ note:
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:13
    │
-36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+36 │         let bing_contract: BingContract = ctx.create<BingContract>(args: (), value: 0)
    │             ^^^^^^^^^^^^^ BingContract
-
-note: 
-   ┌─ ingots/basic_ingot/src/main.fe:36:63
-   │
-36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-   │                                                               ^^^  ^ u256: Value
-   │                                                               │     
-   │                                                               Context: Memory
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:43
    │
-36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract: Value
+36 │         let bing_contract: BingContract = ctx.create<BingContract>(args: (), value: 0)
+   │                                           ^^^                            ^^         ^ u256: Value
+   │                                           │                              │           
+   │                                           │                              (): Value
+   │                                           Context: Memory
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:36:43
+   │
+36 │         let bing_contract: BingContract = ctx.create<BingContract>(args: (), value: 0)
+   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract: Value
 37 │         return bing_contract.add(40, 50)
    │                ^^^^^^^^^^^^^     ^^  ^^ u256: Value
    │                │                 │    

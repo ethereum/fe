@@ -18,7 +18,7 @@ contract Bar {
     }
 
     pub fn call_bing(ctx: Context) -> u256 {
-        let foo: Foo = Foo.create(ctx, 0)
+        let foo: Foo = ctx.create<Foo>(args: (), value: 0)
         return foo.bing(42)
     }
 }

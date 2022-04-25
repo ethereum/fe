@@ -171,7 +171,11 @@ impl PrettyPrint for InstId {
                 write!(w, "nop")
             }
 
-            InstKind::Create { value, contract } => {
+            InstKind::Create {
+                value,
+                args,
+                contract,
+            } => {
                 write!(w, "create ")?;
                 let contract_name = contract.name(db.upcast());
                 write!(w, "{} ", contract_name)?;

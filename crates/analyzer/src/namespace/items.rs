@@ -1392,6 +1392,10 @@ impl StructId {
         db.struct_all_functions(*self)
     }
 
+    pub fn is_std_context(&self, db: &dyn AnalyzerDb) -> bool {
+        self.name(db) == "Context" && self.module(db).ingot(db).name(db) == "std"
+    }
+
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.struct_function_map(*self).value
     }

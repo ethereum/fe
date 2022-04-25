@@ -2,7 +2,9 @@ use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
-use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
+use crate::namespace::types::{
+    Array, Base, FeString, FunctionParam, Integer, Tuple, Type, TypeDowncast, TypeId,
+};
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
 use crate::traversal::const_expr::eval_expr;
@@ -19,15 +21,18 @@ use crate::{
 
 use fe_common::diagnostics::Label;
 use fe_common::{numeric, Span};
-use fe_parser::ast as fe;
 use fe_parser::ast::GenericArg;
 use fe_parser::node::Node;
+// cleanup
+use fe_parser::{ast as fe, ast};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 use std::str::FromStr;
+
+use super::types::type_desc;
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -1509,6 +1514,7 @@ fn expr_call_method(
             target,
             method,
             field,
+            generic_args,
             args,
         );
     }
@@ -1702,17 +1708,28 @@ fn expr_call_builtin_value_method(
     value: &Node<fe::Expr>,
     method: ValueMethod,
     method_name: &Node<SmolStr>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    // for now all of these functions expect 0 arguments
-    validate_arg_count(
-        context,
-        &method_name.kind,
-        method_name.span,
-        args,
-        0,
-        "argument",
-    );
+    if method == ValueMethod::Create {
+        validate_arg_count(
+            context,
+            &method_name.kind,
+            method_name.span,
+            args,
+            2,
+            "argument",
+        );
+    } else {
+        validate_arg_count(
+            context,
+            &method_name.kind,
+            method_name.span,
+            args,
+            0,
+            "argument",
+        );
+    }
 
     let calltype = CallType::BuiltinValueMethod {
         method,
@@ -1857,6 +1874,33 @@ fn expr_call_builtin_value_method(
                 ],
             ))),
         },
+        ValueMethod::Create => {
+            if let GenericArg::TypeDesc(desc) =
+                generic_args.as_ref().unwrap().kind.get(0).clone().unwrap()
+            {
+                let typ = type_desc(context, &desc)?;
+                let args_type = context
+                    .db()
+                    .intern_type(Type::unit());
+                    // .intern_type(Type::Tuple(Tuple { items: Rc::new([]) }));
+                let value = context
+                    .db()
+                    .intern_type(Type::Base(Base::u256()));
+                validate_named_args(
+                    context,
+                    &method_name.kind,
+                    method_name.span,
+                    &args,
+                    &[
+                        FunctionParam::new(None, "args", Ok(args_type)),
+                        FunctionParam::new(None, "value", Ok(value)),
+                    ],
+                )?;
+                Ok((ExpressionAttributes::new(typ, Location::Value), calltype))
+            } else {
+                panic!("shit")
+            }
+        }
     }
 }
 

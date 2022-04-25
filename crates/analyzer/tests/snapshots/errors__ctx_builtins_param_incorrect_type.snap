@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `Barn` expects 1 argument, but 2 were provided
   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:7:35
@@ -17,10 +16,10 @@ error: type mismatch
 7 │         let existing_barn: Barn = Barn("hello world", address(0))
   │                                        ^^^^^^^^^^^^^ this has type `String<11>`; expected type `address`
 
-error: incorrect type for argument to `Barn.create`
-  ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:8:46
+error: No function `create` exists on type `Barn`
+  ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:8:39
   │
 8 │         let created_barn: Barn = Barn.create(address(26), 0)
-  │                                              ^^^^^^^^^^^ this has type `address`; expected `Context`
+  │                                       ^^^^^^ undefined function
 
 

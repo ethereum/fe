@@ -1,5 +1,7 @@
+use std::any::Any;
 use std::{collections::BTreeMap, rc::Rc, vec};
 
+use fe_analyzer::namespace::items::ContractId;
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
     constants::{EMITTABLE_TRAIT_NAME, EMIT_FN_NAME},
@@ -774,7 +776,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
-        let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
+        let analyzer_ty = self
+            .analyzer_body
+            .expressions
+            .get(&expr.id)
+            .unwrap_or_else(|| panic!("{}", &expr.kind))
+            .typ;
         self.lower_analyzer_type(analyzer_ty)
     }
 
@@ -899,7 +906,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn lower_call(
         &mut self,
         func: &Node<ast::Expr>,
-        _generic_args: &Option<Node<Vec<ast::GenericArg>>>,
+        generic_args: &Option<Node<Vec<ast::GenericArg>>>,
         args: &[Node<ast::CallArg>],
         ty: TypeId,
         source: SourceInfo,
@@ -926,12 +933,27 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 match method {
                     ValueMethod::ToMem | ValueMethod::Clone => self.builder.mem_copy(arg, source),
                     ValueMethod::AbiEncode => self.builder.abi_encode(arg, source),
+                    ValueMethod::Create => {
+                        let node_id = if let ast::GenericArg::TypeDesc(type_desc) =
+                            &generic_args.clone().unwrap().kind[0]
+                        {
+                            type_desc.id
+                        } else {
+                            panic!("")
+                        };
+                        let contract = self.analyzer_body.types[&func.id];
+                        self.builder.create(
+                            args[0],
+                            args[1],
+                            contract.as_contract(self.db.upcast()).unwrap(),
+                            source,
+                        )
+                    }
                 }
             }
 
             // We ignores `args[0]', which represents `context` and not used for now.
             AnalyzerCallType::BuiltinAssociatedFunction { contract, function } => match function {
-                ContractTypeMethod::Create => self.builder.create(args[1], *contract, source),
                 ContractTypeMethod::Create2 => {
                     self.builder.create2(args[1], args[2], *contract, source)
                 }

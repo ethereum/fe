@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: unresolved path item
   ┌─ compile_errors/bad_visibility/src/main.fe:1:68
@@ -142,6 +141,12 @@ error: the type `MyContract` is private
    │
    = `MyContract` can only be used within `foo`
    = Hint: use `pub` to make `MyContract` visible from outside of `foo`
+
+error: No function `create` exists on type `MyContract`
+   ┌─ compile_errors/bad_visibility/src/main.fe:26:20
+   │
+26 │         MyContract.create(ctx, 1)
+   │                    ^^^^^^ undefined function
 
 error: the trait `MyTrait` is private
   ┌─ compile_errors/bad_visibility/src/foo.fe:5:7

@@ -412,6 +412,7 @@ impl Location {
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
     // Map match statements to the corresponding [`PatternMatrix`]
+    pub types: IndexMap<NodeId, TypeId>,
     pub matches: IndexMap<NodeId, PatternMatrix>,
     // Map lhs of variable declaration to type.
     pub var_types: IndexMap<NodeId, TypeId>,
@@ -566,8 +567,8 @@ impl CallType {
             // check that this is the `Context` struct defined in `std`
             // this should be deleted once associated functions are supported and we can
             // define unsafe constructors in Fe
-            if let Type::Struct(struct_) = type_id.typ(db) {
-                struct_.name(db) == "Context" && struct_.module(db).ingot(db).name(db) == "std"
+            if let Some(struct_id) = type_id.as_struct(db) {
+                struct_id.is_std_context(db)
             } else {
                 false
             }

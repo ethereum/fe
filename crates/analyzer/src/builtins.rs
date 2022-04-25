@@ -1,3 +1,4 @@
+use crate::namespace::items::ContractId;
 use crate::namespace::types::Base;
 use strum::{AsRefStr, EnumIter, EnumString};
 
@@ -7,6 +8,7 @@ pub enum ValueMethod {
     Clone,
     ToMem,
     AbiEncode,
+    Create,
 }
 
 #[derive(
@@ -20,14 +22,12 @@ pub enum GlobalFunction {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString, AsRefStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum ContractTypeMethod {
-    Create,
     Create2,
 }
 
 impl ContractTypeMethod {
     pub fn arg_count(&self) -> usize {
         match self {
-            ContractTypeMethod::Create => 2,
             ContractTypeMethod::Create2 => 3,
         }
     }

@@ -398,7 +398,11 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 });
             }
 
-            InstKind::Create { value, contract } => {
+            InstKind::Create {
+                value,
+                args,
+                contract,
+            } => {
                 self.ctx.contract_dependency.insert(*contract);
 
                 let value_expr = self.value_expr(*value);
