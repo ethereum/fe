@@ -457,7 +457,7 @@ note:
    ┌─ struct_fns.fe:36:1
    │  
 36 │ ╭ pub fn do_pointy_things():
-37 │ │   let p1: Point = Point.origin()
+37 │ │   let p1: Point = Point::origin()
 38 │ │   p1.translate(x: 5, y: 10)
 39 │ │ 
    · │
@@ -479,7 +479,7 @@ note:
 note: 
    ┌─ struct_fns.fe:37:11
    │
-37 │   let p1: Point = Point.origin()
+37 │   let p1: Point = Point::origin()
    │           ^^^^^ Point
    ·
 40 │   let p2: Point = Point(x: 1, y: 2)
@@ -490,8 +490,8 @@ note:
 note: 
    ┌─ struct_fns.fe:37:19
    │
-37 │   let p1: Point = Point.origin()
-   │                   ^^^^^^^^^^^^^^ Point: Memory
+37 │   let p1: Point = Point::origin()
+   │                   ^^^^^^^^^^^^^^^ Point: Memory
 38 │   p1.translate(x: 5, y: 10)
    │   ^^              ^     ^^ u64: Value
    │   │               │      
@@ -570,7 +570,7 @@ note:
 48 │ ╭   pub fn bar(x: u64, y: u64) -> u64:
 49 │ │     do_pointy_things()
 50 │ │ 
-51 │ │     let p: Point = Point.new(x, y)
+51 │ │     let p: Point = Point::new(x, y)
    · │
 55 │ │     assert p.x() == y and p.y == 100
 56 │ │     return p.y
@@ -615,7 +615,7 @@ note:
 note: 
    ┌─ struct_fns.fe:51:12
    │
-51 │     let p: Point = Point.new(x, y)
+51 │     let p: Point = Point::new(x, y)
    │            ^^^^^ Point
 
 note: 
@@ -624,16 +624,16 @@ note:
 49 │     do_pointy_things()
    │     ^^^^^^^^^^^^^^^^^^ (): Value
 50 │ 
-51 │     let p: Point = Point.new(x, y)
-   │                              ^  ^ u64: Value
-   │                              │   
-   │                              u64: Value
+51 │     let p: Point = Point::new(x, y)
+   │                               ^  ^ u64: Value
+   │                               │   
+   │                               u64: Value
 
 note: 
    ┌─ struct_fns.fe:51:20
    │
-51 │     let p: Point = Point.new(x, y)
-   │                    ^^^^^^^^^^^^^^^ Point: Memory
+51 │     let p: Point = Point::new(x, y)
+   │                    ^^^^^^^^^^^^^^^^ Point: Memory
 52 │     assert p.x == x and p.y == y
    │            ^ Point: Memory
 

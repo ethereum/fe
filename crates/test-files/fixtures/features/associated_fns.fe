@@ -12,5 +12,5 @@ contract Foo:
   my_struct: MyStruct
 
   pub fn bar(self, val: u256) -> u256:
-    self.my_struct = MyStruct.new(val)
-    return Lib.square(self.my_struct.x)
+    self.my_struct = MyStruct::new(x: val)
+    return Lib::square(x: self.my_struct.x)

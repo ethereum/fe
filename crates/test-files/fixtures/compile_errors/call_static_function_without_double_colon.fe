@@ -1,0 +1,8 @@
+struct Bar:
+    pub fn call_me():
+        pass
+
+contract Foo:
+
+    fn bar(self):
+        Bar.call_me()

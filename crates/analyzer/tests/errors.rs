@@ -238,6 +238,7 @@ test_file! { call_builtin_object }
 test_file! { call_create_with_wrong_type }
 test_file! { call_create2_with_wrong_type }
 test_file! { call_event_with_wrong_types }
+test_file! { call_static_function_without_double_colon }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }

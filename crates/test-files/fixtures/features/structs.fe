@@ -135,7 +135,7 @@ contract Foo:
         return val.name
 
     pub fn create_mixed(self) -> u256:
-        let mixed: Mixed = Mixed.new(1)
+        let mixed: Mixed = Mixed::new(val:1)
         return mixed.foo
 
     pub fn set_house(self, data: House):

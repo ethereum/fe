@@ -122,7 +122,7 @@ impl Item {
         match self {
             Item::Ingot(ingot) => ingot.items(db),
             Item::Module(module) => module.items(db),
-            Item::Type(_) => todo!("cannot access items in types yet"),
+            Item::Type(val) => val.items(db),
             Item::GenericType(_)
             | Item::Event(_)
             | Item::Function(_)
@@ -826,6 +826,29 @@ pub enum TypeDef {
     Primitive(types::Base),
 }
 impl TypeDef {
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
+        match self {
+            TypeDef::Struct(val) => {
+                Rc::new(
+                    val.functions(db)
+                        .iter()
+                        .filter_map(|(name, field)| {
+                            if field.takes_self(db) {
+                                // In the future we probably want to resolve instance methods as well. But this would require
+                                // the caller to pass an instance as the first argument e.g. `Rectangle::can_hold(self_instance, other)`.
+                                // This isn't yet supported so for now path access to functions is limited to static functions only.
+                                None
+                            } else {
+                                Some((name.to_owned(), Item::Function(*field)))
+                            }
+                        })
+                        .collect(),
+                )
+            }
+            _ => todo!("cannot access items in types yet"),
+        }
+    }
+
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             TypeDef::Alias(id) => id.name(db),
