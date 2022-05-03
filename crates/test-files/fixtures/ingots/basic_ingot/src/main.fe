@@ -20,6 +20,10 @@ contract Foo:
     pub fn get_26() -> u256:
         return std::evm::add(13, 13)
 
+    pub fn call_on_path():
+        assert bar::mee::Mee::kawum() == 1
+        assert bar::mee::Mee().rums() == 1
+
     pub fn get_my_dyng() -> dong::Dyng:
         return dong::Dyng(
             my_address: address(8),

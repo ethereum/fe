@@ -1731,6 +1731,18 @@ fn expr_call_type_attribute(
                     )],
                     vec![],
                 )));
+            } else {
+                context.fancy_error(
+                    "Static functions need to be called with `::` not `.`",
+                    vec![Label::primary(
+                        field.span,
+                        "This is a static function (doesn't take a `self` parameter)",
+                    )],
+                    vec![format!(
+                        "Try `{}::{}(...)` instead",
+                        &class_name, &field.kind
+                    )],
+                );
             }
 
             // Returns `true` if the current contract belongs to the same class as an input

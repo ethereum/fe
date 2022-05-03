@@ -1,0 +1,6 @@
+pub struct Mee:
+    pub fn kawum() -> u256:
+        return 1
+
+    pub fn rums(self) -> u256:
+        return 1

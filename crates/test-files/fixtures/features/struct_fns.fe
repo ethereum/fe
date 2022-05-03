@@ -34,7 +34,7 @@ struct Point:
     return Point(x, y)
 
 pub fn do_pointy_things():
-  let p1: Point = Point.origin()
+  let p1: Point = Point::origin()
   p1.translate(x: 5, y: 10)
 
   let p2: Point = Point(x: 1, y: 2)
@@ -48,7 +48,7 @@ contract Foo:
   pub fn bar(x: u64, y: u64) -> u64:
     do_pointy_things()
 
-    let p: Point = Point.new(x, y)
+    let p: Point = Point::new(x, y)
     assert p.x == x and p.y == y
     p.set_x(100)
     p.reflect()

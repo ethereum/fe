@@ -143,12 +143,61 @@ note:
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:5
    │  
-23 │ ╭     pub fn get_my_dyng() -> dong::Dyng:
-24 │ │         return dong::Dyng(
-25 │ │             my_address: address(8),
-26 │ │             my_u256: 42,
-27 │ │             my_i8: -1
-28 │ │         )
+23 │ ╭     pub fn call_on_path():
+24 │ │         assert bar::mee::Mee::kawum() == 1
+25 │ │         assert bar::mee::Mee().rums() == 1
+   │ ╰──────────────────────────────────────────^ attributes hash: 8319796915330632390
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:24:16
+   │
+24 │         assert bar::mee::Mee::kawum() == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                          
+   │                u256: Value
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:24:16
+   │
+24 │         assert bar::mee::Mee::kawum() == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+25 │         assert bar::mee::Mee().rums() == 1
+   │                ^^^^^^^^^^^^^^^ Mee: Memory
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:25:16
+   │
+25 │         assert bar::mee::Mee().rums() == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                          
+   │                u256: Value
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:25:16
+   │
+25 │         assert bar::mee::Mee().rums() == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ ingots/basic_ingot/src/main.fe:27:5
+   │  
+27 │ ╭     pub fn get_my_dyng() -> dong::Dyng:
+28 │ │         return dong::Dyng(
+29 │ │             my_address: address(8),
+30 │ │             my_u256: 42,
+31 │ │             my_i8: -1
+32 │ │         )
    │ ╰─────────^ attributes hash: 13186223862505072309
    │  
    = FunctionSignature {
@@ -166,44 +215,44 @@ note:
      }
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:25:33
+   ┌─ ingots/basic_ingot/src/main.fe:29:33
    │
-25 │             my_address: address(8),
+29 │             my_address: address(8),
    │                                 ^ u256: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:25:25
+   ┌─ ingots/basic_ingot/src/main.fe:29:25
    │
-25 │             my_address: address(8),
+29 │             my_address: address(8),
    │                         ^^^^^^^^^^ address: Value
-26 │             my_u256: 42,
+30 │             my_u256: 42,
    │                      ^^ u256: Value
-27 │             my_i8: -1
+31 │             my_i8: -1
    │                     ^ u256: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:27:20
+   ┌─ ingots/basic_ingot/src/main.fe:31:20
    │
-27 │             my_i8: -1
+31 │             my_i8: -1
    │                    ^^ i8: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:24:16
+   ┌─ ingots/basic_ingot/src/main.fe:28:16
    │  
-24 │           return dong::Dyng(
+28 │           return dong::Dyng(
    │ ╭────────────────^
-25 │ │             my_address: address(8),
-26 │ │             my_u256: 42,
-27 │ │             my_i8: -1
-28 │ │         )
+29 │ │             my_address: address(8),
+30 │ │             my_u256: 42,
+31 │ │             my_i8: -1
+32 │ │         )
    │ ╰─────────^ Dyng: Memory
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:30:5
+   ┌─ ingots/basic_ingot/src/main.fe:34:5
    │  
-30 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256:
-31 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-32 │ │         return bing_contract.add(40, 50)
+34 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256:
+35 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+36 │ │         return bing_contract.add(40, 50)
    │ ╰────────────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -235,34 +284,34 @@ note:
      }
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:31:28
+   ┌─ ingots/basic_ingot/src/main.fe:35:28
    │
-31 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+35 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                            ^^^^^^^^^^^^ BingContract
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:31:63
+   ┌─ ingots/basic_ingot/src/main.fe:35:63
    │
-31 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+35 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                                                               ^^^  ^ u256: Value
    │                                                               │     
    │                                                               Context: Memory
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:31:43
+   ┌─ ingots/basic_ingot/src/main.fe:35:43
    │
-31 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
+35 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract: Value
-32 │         return bing_contract.add(40, 50)
+36 │         return bing_contract.add(40, 50)
    │                ^^^^^^^^^^^^^     ^^  ^^ u256: Value
    │                │                 │    
    │                │                 u256: Value
    │                BingContract: Value
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:32:16
+   ┌─ ingots/basic_ingot/src/main.fe:36:16
    │
-32 │         return bing_contract.add(40, 50)
+36 │         return bing_contract.add(40, 50)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 
@@ -401,6 +450,61 @@ note:
   │     ^^^^^^^^^^^^^^^^^ bool
 3 │     pub my_u256: u256
   │     ^^^^^^^^^^^^^^^^^ u256
+
+
+note: 
+  ┌─ ingots/basic_ingot/src/bar/mee.fe:2:5
+  │  
+2 │ ╭     pub fn kawum() -> u256:
+3 │ │         return 1
+  │ ╰────────────────^ attributes hash: 6115314201970082834
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        ctx_decl: None,
+        params: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ ingots/basic_ingot/src/bar/mee.fe:3:16
+  │
+3 │         return 1
+  │                ^ u256: Value
+
+note: 
+  ┌─ ingots/basic_ingot/src/bar/mee.fe:5:5
+  │  
+5 │ ╭     pub fn rums(self) -> u256:
+6 │ │         return 1
+  │ ╰────────────────^ attributes hash: 11773348765973600208
+  │  
+  = FunctionSignature {
+        self_decl: Some(
+            Mutable,
+        ),
+        ctx_decl: None,
+        params: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ ingots/basic_ingot/src/bar/mee.fe:6:16
+  │
+6 │         return 1
+  │                ^ u256: Value
 
 
 note: 

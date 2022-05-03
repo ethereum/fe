@@ -53,6 +53,7 @@ fn test_basic_ingot() {
                 int_token(-1),
             ])),
         );
+        harness.test_function(&mut executor, "call_on_path", &[], None);
         harness.test_function(
             &mut executor,
             "create_bing_contract",

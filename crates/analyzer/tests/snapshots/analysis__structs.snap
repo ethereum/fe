@@ -1724,7 +1724,7 @@ note:
     ┌─ structs.fe:137:5
     │  
 137 │ ╭     pub fn create_mixed(self) -> u256:
-138 │ │         let mixed: Mixed = Mixed.new(1)
+138 │ │         let mixed: Mixed = Mixed::new(val:1)
 139 │ │         return mixed.foo
     │ ╰────────────────────────^ attributes hash: 11773348765973600208
     │  
@@ -1746,20 +1746,20 @@ note:
 note: 
     ┌─ structs.fe:138:20
     │
-138 │         let mixed: Mixed = Mixed.new(1)
+138 │         let mixed: Mixed = Mixed::new(val:1)
     │                    ^^^^^ Mixed
 
 note: 
-    ┌─ structs.fe:138:38
+    ┌─ structs.fe:138:43
     │
-138 │         let mixed: Mixed = Mixed.new(1)
-    │                                      ^ u256: Value
+138 │         let mixed: Mixed = Mixed::new(val:1)
+    │                                           ^ u256: Value
 
 note: 
     ┌─ structs.fe:138:28
     │
-138 │         let mixed: Mixed = Mixed.new(1)
-    │                            ^^^^^^^^^^^^ Mixed: Memory
+138 │         let mixed: Mixed = Mixed::new(val:1)
+    │                            ^^^^^^^^^^^^^^^^^ Mixed: Memory
 139 │         return mixed.foo
     │                ^^^^^ Mixed: Memory
 
