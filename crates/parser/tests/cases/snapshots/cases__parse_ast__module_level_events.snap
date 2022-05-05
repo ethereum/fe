@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_level_events), try_parse_module,\n           r#\"\nuse std::context::Context\n\nevent Transfer:\n    idx sender: address\n    idx receiver: address\n    value: u256\n\ncontract Foo:\n    fn transfer(ctx: Context, to: address, value: u256):\n        emit Transfer(ctx, sender: msg.sender, receiver: to, value)\n\"#)"
+expression: "ast_string(stringify!(module_level_events), try_parse_module,\n    r#\"\nuse std::context::Context\n\nevent Transfer:\n    idx sender: address\n    idx receiver: address\n    value: u256\n\ncontract Foo:\n    fn transfer(ctx: Context, to: address, value: u256):\n        emit Transfer(ctx, sender: msg.sender, receiver: to, value)\n\"#)"
 
 ---
 Node(
@@ -158,6 +158,13 @@ Node(
                 unsafe_: None,
                 name: Node(
                   kind: "transfer",
+                  span: Span(
+                    start: 132,
+                    end: 140,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
                   span: Span(
                     start: 132,
                     end: 140,

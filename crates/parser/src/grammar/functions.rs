@@ -2,11 +2,11 @@ use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
 use crate::ast::{
-    BinOperator, Expr, FuncStmt, Function, FunctionArg, RegularFunctionArg, VarDeclTarget,
+    BinOperator, Expr, FuncStmt, Function, FunctionArg, GenericParameter, RegularFunctionArg,
+    VarDeclTarget,
 };
-use crate::lexer::TokenKind;
 use crate::node::{Node, Span};
-use crate::{Label, ParseFailed, ParseResult, Parser};
+use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
 /// Parse a function definition. The optional `pub` qualifier must be parsed by
 /// the caller, and passed in. Next token must be `unsafe` or `fn`.
@@ -28,7 +28,14 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
     }
     let fn_tok = par.expect(TokenKind::Fn, "failed to parse function definition")?;
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let mut span = fn_tok.span + unsafe_qual + pub_qual + name.span;
+
+    let generic_params = if par.peek() == Some(TokenKind::Lt) {
+        parse_generic_params(par)?
+    } else {
+        Node::new(vec![], name.span)
+    };
+
+    let mut span = fn_tok.span + unsafe_qual + pub_qual + name.span + generic_params.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => {
@@ -87,11 +94,91 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
             unsafe_: unsafe_qual,
             name: name.into(),
             args,
+            generic_params,
             return_type,
             body,
         },
         span,
     ))
+}
+
+/// Parse a single generic function parameter (eg. `T:SomeTrait` in `fn foo<T: SomeTrait>(some_arg: u256) -> bool`).
+/// # Panics
+/// Panics if the first token isn't `Name`.
+pub fn parse_generic_param(par: &mut Parser) -> ParseResult<GenericParameter> {
+    use TokenKind::*;
+
+    let name = par.assert(Name);
+    match par.optional(Colon) {
+        Some(_) => {
+            let bound = par.assert(Name);
+            Ok(GenericParameter::Bounded {
+                name: Node::new(name.text.into(), name.span),
+                bound: Node::new(bound.text.into(), bound.span),
+            })
+        }
+        None => Ok(GenericParameter::Unbounded(Node::new(
+            name.text.into(),
+            name.span,
+        ))),
+    }
+}
+
+/// Parse an angle-bracket-wrapped list of generic arguments (eg. `<T, R: SomeTrait>` in `fn foo<T, R: SomeTrait>(some_arg: u256) -> bool`).
+/// # Panics
+/// Panics if the first token isn't `<`.
+pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericParameter>>> {
+    use TokenKind::*;
+    let mut span = par.assert(Lt).span;
+
+    let mut args = vec![];
+
+    let expect_end = |par: &mut Parser| {
+        // If there's no comma, the next token must be `>`
+        match par.peek_or_err()? {
+            Gt => Ok(par.next()?.span),
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(
+                    tok.span,
+                    "Unexpected token while parsing generic arg list",
+                    vec!["Expected a `>` here".to_string()],
+                );
+                Err(ParseFailed)
+            }
+        }
+    };
+
+    loop {
+        match par.peek_or_err()? {
+            Gt => {
+                span += par.next()?.span;
+                break;
+            }
+            Name => {
+                let typ = parse_generic_param(par)?;
+                args.push(typ);
+                if par.peek() == Some(Comma) {
+                    par.next()?;
+                } else {
+                    span += expect_end(par)?;
+                    break;
+                }
+            }
+
+            // Invalid generic argument.
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(
+                    tok.span,
+                    "failed to parse list of generic function parameters",
+                    vec!["Expected a generic parameter name such as `T` here".to_string()],
+                );
+                return Err(ParseFailed);
+            }
+        }
+    }
+    Ok(Node::new(args, span))
 }
 
 fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionArg>>>> {

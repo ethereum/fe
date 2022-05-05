@@ -141,6 +141,8 @@ test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
 test_parse! { fn_def, try_parse_module, "fn transfer(from sender: address, to recip: address, _ val: u64) -> bool:\n false"}
+
+test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, that: R, _ val: u64) -> bool:\n false"}
 test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}

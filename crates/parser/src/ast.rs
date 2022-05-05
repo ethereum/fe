@@ -123,6 +123,24 @@ impl Spanned for GenericArg {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum GenericParameter {
+    Unbounded(Node<SmolStr>),
+    Bounded {
+        name: Node<SmolStr>,
+        bound: Node<SmolStr>,
+    },
+}
+
+impl Spanned for GenericParameter {
+    fn span(&self) -> Span {
+        match self {
+            GenericParameter::Unbounded(node) => node.span,
+            GenericParameter::Bounded { name, bound } => name.span + bound.span,
+        }
+    }
+}
+
 /// struct or contract field, with optional 'pub' and 'const' qualifiers
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Field {
@@ -153,6 +171,7 @@ pub struct Function {
     pub pub_: Option<Span>,
     pub unsafe_: Option<Span>,
     pub name: Node<SmolStr>,
+    pub generic_params: Node<Vec<GenericParameter>>,
     pub args: Vec<Node<FunctionArg>>,
     pub return_type: Option<Node<TypeDesc>>,
     pub body: Vec<Node<FuncStmt>>,

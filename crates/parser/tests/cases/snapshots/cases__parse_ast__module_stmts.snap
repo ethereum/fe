@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_stmts), try_parse_module,\n           r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8:\n    return x * 2\n\nfn secret() -> u8:\n    return 0xBEEF\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
+expression: "ast_string(stringify!(module_stmts), try_parse_module,\n    r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8:\n    return x * 2\n\nfn secret() -> u8:\n    return 0xBEEF\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
 
 ---
 Node(
@@ -173,6 +173,13 @@ Node(
               end: 100,
             ),
           ),
+          generic_params: Node(
+            kind: [],
+            span: Span(
+              start: 94,
+              end: 100,
+            ),
+          ),
           args: [
             Node(
               kind: Regular(RegularFunctionArg(
@@ -260,6 +267,13 @@ Node(
           unsafe_: None,
           name: Node(
             kind: "secret",
+            span: Span(
+              start: 136,
+              end: 142,
+            ),
+          ),
+          generic_params: Node(
+            kind: [],
             span: Span(
               start: 136,
               end: 142,

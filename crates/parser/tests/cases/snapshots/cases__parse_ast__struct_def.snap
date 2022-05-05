@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(struct_def), module::parse_module,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8:\n    return self.z + self.y\n  unsafe fn bar():\n    pass\n\"#)"
+expression: "ast_string(stringify!(struct_def), try_parse_module,\n    r#\"struct S:\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8:\n    return self.z + self.y\n  unsafe fn bar():\n    pass\n\"#)"
 
 ---
 Node(
@@ -172,6 +172,13 @@ Node(
                     end: 78,
                   ),
                 ),
+                generic_params: Node(
+                  kind: [],
+                  span: Span(
+                    start: 75,
+                    end: 78,
+                  ),
+                ),
                 args: [
                   Node(
                     kind: Self_,
@@ -274,6 +281,13 @@ Node(
                 )),
                 name: Node(
                   kind: "bar",
+                  span: Span(
+                    start: 131,
+                    end: 134,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
                   span: Span(
                     start: 131,
                     end: 134,

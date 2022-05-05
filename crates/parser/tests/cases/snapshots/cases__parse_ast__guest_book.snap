@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(guest_book), try_parse_module,\n           r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub fn sign(self, book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n\n    pub fn get_msg(self, addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
+expression: "ast_string(stringify!(guest_book), try_parse_module,\n    r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub fn sign(self, book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n\n    pub fn get_msg(self, addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
 
 ---
 Node(
@@ -189,6 +189,13 @@ Node(
                     end: 162,
                   ),
                 ),
+                generic_params: Node(
+                  kind: [],
+                  span: Span(
+                    start: 158,
+                    end: 162,
+                  ),
+                ),
                 args: [
                   Node(
                     kind: Self_,
@@ -353,6 +360,13 @@ Node(
                 unsafe_: None,
                 name: Node(
                   kind: "get_msg",
+                  span: Span(
+                    start: 289,
+                    end: 296,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
                   span: Span(
                     start: 289,
                     end: 296,
