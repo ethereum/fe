@@ -1,6 +1,7 @@
 use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
+use super::traits::parse_trait_def;
 use super::types::{
     parse_event_def, parse_path_tail, parse_struct_def, parse_type_alias, parse_type_desc,
 };
@@ -44,6 +45,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par, None)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
+        TokenKind::Trait => ModuleStmt::Trait(parse_trait_def(par, None)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
         TokenKind::Const => ModuleStmt::Constant(parse_constant(par, None)?),
 

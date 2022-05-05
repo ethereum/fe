@@ -21,6 +21,7 @@ pub enum ModuleStmt {
     Contract(Node<Contract>),
     Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
+    Trait(Node<Trait>),
     Function(Node<Function>),
     Event(Node<Event>),
     ParseError(Span),
@@ -84,6 +85,12 @@ pub struct Struct {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
+    pub pub_qual: Option<Span>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Trait {
+    pub name: Node<SmolStr>,
     pub pub_qual: Option<Span>,
 }
 
@@ -425,6 +432,7 @@ impl Spanned for ModuleStmt {
         match self {
             ModuleStmt::Pragma(inner) => inner.span,
             ModuleStmt::Use(inner) => inner.span,
+            ModuleStmt::Trait(inner) => inner.span,
             ModuleStmt::TypeAlias(inner) => inner.span,
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Constant(inner) => inner.span,
@@ -456,6 +464,7 @@ impl fmt::Display for ModuleStmt {
         match self {
             ModuleStmt::Pragma(node) => write!(f, "{}", node.kind),
             ModuleStmt::Use(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Trait(node) => write!(f, "{}", node.kind),
             ModuleStmt::TypeAlias(node) => write!(f, "{}", node.kind),
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
@@ -520,6 +529,14 @@ impl fmt::Display for ConstantDecl {
             "const {}: {} = {}",
             self.name.kind, self.typ.kind, self.value.kind
         )
+    }
+}
+
+impl fmt::Display for Trait {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "trait {}:", self.name.kind)?;
+
+        Ok(())
     }
 }
 

@@ -97,6 +97,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
                 }))))
             }
             ast::ModuleStmt::Pragma(_) => None,
+            ast::ModuleStmt::Trait(_) => None,
             ast::ModuleStmt::Use(_) => None,
             ast::ModuleStmt::Event(node) => Some(Item::Event(db.intern_event(Rc::new(Event {
                 ast: node.clone(),

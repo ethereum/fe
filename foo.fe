@@ -1,0 +1,7 @@
+trait Foo:
+  pass
+
+contract Meh:
+
+  pub fn bar<T>(x: T) -> bool:
+    return true
