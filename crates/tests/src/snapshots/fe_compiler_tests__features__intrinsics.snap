@@ -8,5 +8,6 @@ self_balance([]) used 251 gas
 calldatasize([]) used 358 gas
 calldatacopy([Uint(36), Uint(32)]) used 465 gas
 callvalue([]) used 314 gas
+basefee([]) used 490 gas
 caller([]) used 292 gas
 

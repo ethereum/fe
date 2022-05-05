@@ -6,6 +6,10 @@ use ingot::error::{
 }
 
 pub struct Context:
+    pub fn base_fee(self) -> u256:
+        unsafe:
+            return evm::base_fee()
+
     pub fn block_coinbase(self) -> address:
         unsafe:
             return evm::coinbase()

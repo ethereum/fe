@@ -1,6 +1,10 @@
 use std::context::Context
 
 contract Foo:
+
+    pub fn base_fee(ctx: Context) -> u256:
+        return ctx.base_fee()
+
     pub fn coinbase(ctx: Context) -> address:
         return ctx.block_coinbase()
 

@@ -572,7 +572,7 @@ fn return_builtin_attributes() {
     let block_coinbase = address_token("0000000000000000000000000000000000000002");
     let block_timestamp = 1234567890;
     let block_difficulty = 12345;
-    let block_base_fee_per_gas = 1337;
+    let basefee = 1;
 
     let vicinity = evm::backend::MemoryVicinity {
         gas_price: U256::from(gas_price),
@@ -584,7 +584,7 @@ fn return_builtin_attributes() {
         block_timestamp: U256::from(block_timestamp),
         block_difficulty: U256::from(block_difficulty),
         block_gas_limit: primitive_types::U256::MAX,
-        block_base_fee_per_gas: U256::from(block_base_fee_per_gas),
+        block_base_fee_per_gas: U256::from(basefee),
     };
 
     let backend = evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new());
@@ -596,6 +596,7 @@ fn return_builtin_attributes() {
         harness.caller = sender.clone().into_address().unwrap();
         let value = 55555;
         harness.value = U256::from(value);
+        harness.test_function(&mut executor, "base_fee", &[], Some(&uint_token(basefee)));
         harness.test_function(&mut executor, "coinbase", &[], Some(&block_coinbase));
         harness.test_function(
             &mut executor,
@@ -1822,9 +1823,7 @@ fn intrinsics() {
             Some(&uint_token(32)),
         );
         harness.test_function(&mut executor, "callvalue", &[], Some(&uint_token(0)));
-
-        // TODO: need an evm update for the basefee opcode
-        // harness.test_function(&mut executor, "basefee", &[], Some(&uint_token(0)));
+        harness.test_function(&mut executor, "basefee", &[], Some(&uint_token(0)));
 
         harness.test_function(
             &mut executor,
