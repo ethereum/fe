@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_contract_def), module::parse_module,\n           r#\"pub contract Foo:\n    pub fn foo() -> u8:\n      return 10\n\"#)"
+expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n    r#\"pub contract Foo:\n    pub fn foo() -> u8:\n      return 10\n\"#)"
 
 ---
 Node(
@@ -26,6 +26,13 @@ Node(
                 unsafe_: None,
                 name: Node(
                   kind: "foo",
+                  span: Span(
+                    start: 29,
+                    end: 32,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
                   span: Span(
                     start: 29,
                     end: 32,

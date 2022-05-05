@@ -22,6 +22,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         unsafe_,
         name,
         args,
+        generic_params,
         return_type: return_type_node,
         body,
     } = &node.kind;
@@ -113,6 +114,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         unsafe_: *unsafe_,
         name: name.clone(),
         args,
+        generic_params: generic_params.clone(),
         return_type: Some(lowered_return_type),
         body: lowered_body,
     };
