@@ -10,6 +10,21 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.16.0-alpha (2022-05-05)
+
+### Features
+
+
+- Change static function call syntax from `Bar.foo()` to `Bar::foo()` ([#241](https://github.com/ethereum/fe/issues/241))
+- Added support for retrieving the base fee via `ctx.base_fee()` ([#503](https://github.com/ethereum/fe/issues/503))
+
+
+### Bugfixes
+
+
+- Resolve functions on structs via path (e.g. `bi::ba::bums()`) ([#241](https://github.com/ethereum/fe/issues/241))
+
+
 ## 0.15.0-alpha (2022-04-04)
 
 
