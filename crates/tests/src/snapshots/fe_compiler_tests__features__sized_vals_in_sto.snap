@@ -3,11 +3,11 @@ source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
-write_num([Uint(68)]) used 20132 gas
-read_num([]) used 1010 gas
-write_nums([FixedArray([Uint(0), Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10), Uint(11), Uint(12), Uint(13), Uint(14), Uint(15), Uint(16), Uint(17), Uint(18), Uint(19), Uint(20), Uint(21), Uint(22), Uint(23), Uint(24), Uint(25), Uint(26), Uint(27), Uint(28), Uint(29), Uint(30), Uint(31), Uint(32), Uint(33), Uint(34), Uint(35), Uint(36), Uint(37), Uint(38), Uint(39), Uint(40), Uint(41)])]) used 831566 gas
-read_nums([]) used 44958 gas
-write_str([String("there are 26 protons in fe")]) used 40853 gas
-read_str([]) used 2889 gas
-emit_event([]) used 63132 gas
+write_num([Uint(68)]) used 22232 gas
+read_num([]) used 310 gas
+write_nums([FixedArray([Uint(0), Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10), Uint(11), Uint(12), Uint(13), Uint(14), Uint(15), Uint(16), Uint(17), Uint(18), Uint(19), Uint(20), Uint(21), Uint(22), Uint(23), Uint(24), Uint(25), Uint(26), Uint(27), Uint(28), Uint(29), Uint(30), Uint(31), Uint(32), Uint(33), Uint(34), Uint(35), Uint(36), Uint(37), Uint(38), Uint(39), Uint(40), Uint(41)])]) used 919066 gas
+read_nums([]) used 15558 gas
+write_str([String("there are 26 protons in fe")]) used 45053 gas
+read_str([]) used 1489 gas
+emit_event([]) used 30232 gas
 

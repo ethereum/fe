@@ -3,13 +3,13 @@ source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
-create_house([]) used 102604 gas
+create_house([]) used 92804 gas
 bar([]) used 1215 gas
-set_house([Tuple([Uint(1000000), Uint(250), Uint(6), Bool(true)])]) used 4359 gas
-get_house([]) used 4661 gas
+set_house([Tuple([Uint(1000000), Uint(250), Uint(6), Bool(true)])]) used 1559 gas
+get_house([]) used 1861 gas
 encode_house([]) used 1805 gas
 hashed_house([]) used 1270 gas
 create_mixed([]) used 351 gas
 complex_struct_in_memory([]) used 3004 gas
-complex_struct_in_storage([]) used 285098 gas
+complex_struct_in_storage([]) used 283698 gas
 

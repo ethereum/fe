@@ -572,6 +572,7 @@ fn return_builtin_attributes() {
     let block_coinbase = address_token("0000000000000000000000000000000000000002");
     let block_timestamp = 1234567890;
     let block_difficulty = 12345;
+    let block_base_fee_per_gas = 1337;
 
     let vicinity = evm::backend::MemoryVicinity {
         gas_price: U256::from(gas_price),
@@ -583,6 +584,7 @@ fn return_builtin_attributes() {
         block_timestamp: U256::from(block_timestamp),
         block_difficulty: U256::from(block_difficulty),
         block_gas_limit: primitive_types::U256::MAX,
+        block_base_fee_per_gas: U256::from(block_base_fee_per_gas),
     };
 
     let backend = evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new());
