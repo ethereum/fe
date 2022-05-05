@@ -202,6 +202,7 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
         unsafe_: None,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,
+        generic_params: Vec::new().into_node(),
         return_type,
         body: [vec![var_decl], assignments, vec![return_stmt]].concat(),
     }

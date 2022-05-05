@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(fn_def_pub), try_parse_module,\n           \"pub fn foo21(x: bool, y: address,) -> bool:\\n x\")"
+expression: "ast_string(stringify!(fn_def_pub), try_parse_module,\n    \"pub fn foo21(x: bool, y: address,) -> bool:\\n x\")"
 
 ---
 Node(
@@ -15,6 +15,13 @@ Node(
           unsafe_: None,
           name: Node(
             kind: "foo21",
+            span: Span(
+              start: 7,
+              end: 12,
+            ),
+          ),
+          generic_params: Node(
+            kind: [],
             span: Span(
               start: 7,
               end: 12,
