@@ -4,56 +4,11 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_builtin_attributes.fe:4:5
+  ┌─ return_builtin_attributes.fe:5:5
   │  
-4 │ ╭     pub fn coinbase(ctx: Context) -> address:
-5 │ │         return ctx.block_coinbase()
-  │ ╰───────────────────────────────────^ attributes hash: 9364783648076633772
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: Some(
-            Mutable,
-        ),
-        params: [
-            FunctionParam {
-                label: None,
-                name: "ctx",
-                typ: Ok(
-                    Struct(
-                        Struct {
-                            name: "Context",
-                            field_count: 0,
-                        },
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Address,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ return_builtin_attributes.fe:5:16
-  │
-5 │         return ctx.block_coinbase()
-  │                ^^^ Context: Memory
-
-note: 
-  ┌─ return_builtin_attributes.fe:5:16
-  │
-5 │         return ctx.block_coinbase()
-  │                ^^^^^^^^^^^^^^^^^^^^ address: Value
-
-note: 
-  ┌─ return_builtin_attributes.fe:7:5
-  │  
-7 │ ╭     pub fn difficulty(ctx: Context) -> u256:
-8 │ │         return ctx.block_difficulty()
-  │ ╰─────────────────────────────────────^ attributes hash: 10526263819290319263
+5 │ ╭     pub fn base_fee(ctx: Context) -> u256:
+6 │ │         return ctx.base_fee()
+  │ ╰─────────────────────────────^ attributes hash: 10526263819290319263
   │  
   = FunctionSignature {
         self_decl: None,
@@ -84,22 +39,114 @@ note:
     }
 
 note: 
-  ┌─ return_builtin_attributes.fe:8:16
+  ┌─ return_builtin_attributes.fe:6:16
   │
-8 │         return ctx.block_difficulty()
+6 │         return ctx.base_fee()
   │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_builtin_attributes.fe:8:16
+  ┌─ return_builtin_attributes.fe:6:16
   │
-8 │         return ctx.block_difficulty()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+6 │         return ctx.base_fee()
+  │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:10:5
+  ┌─ return_builtin_attributes.fe:8:5
+  │  
+8 │ ╭     pub fn coinbase(ctx: Context) -> address:
+9 │ │         return ctx.block_coinbase()
+  │ ╰───────────────────────────────────^ attributes hash: 9364783648076633772
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        ctx_decl: Some(
+            Mutable,
+        ),
+        params: [
+            FunctionParam {
+                label: None,
+                name: "ctx",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "Context",
+                            field_count: 0,
+                        },
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Base(
+                Address,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ return_builtin_attributes.fe:9:16
+  │
+9 │         return ctx.block_coinbase()
+  │                ^^^ Context: Memory
+
+note: 
+  ┌─ return_builtin_attributes.fe:9:16
+  │
+9 │         return ctx.block_coinbase()
+  │                ^^^^^^^^^^^^^^^^^^^^ address: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:11:5
    │  
-10 │ ╭     pub fn number(ctx: Context) -> u256:
-11 │ │         return ctx.block_number()
+11 │ ╭     pub fn difficulty(ctx: Context) -> u256:
+12 │ │         return ctx.block_difficulty()
+   │ ╰─────────────────────────────────────^ attributes hash: 10526263819290319263
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "ctx",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Context",
+                             field_count: 0,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_builtin_attributes.fe:12:16
+   │
+12 │         return ctx.block_difficulty()
+   │                ^^^ Context: Memory
+
+note: 
+   ┌─ return_builtin_attributes.fe:12:16
+   │
+12 │         return ctx.block_difficulty()
+   │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ return_builtin_attributes.fe:14:5
+   │  
+14 │ ╭     pub fn number(ctx: Context) -> u256:
+15 │ │         return ctx.block_number()
    │ ╰─────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -131,22 +178,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:11:16
+   ┌─ return_builtin_attributes.fe:15:16
    │
-11 │         return ctx.block_number()
+15 │         return ctx.block_number()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:11:16
+   ┌─ return_builtin_attributes.fe:15:16
    │
-11 │         return ctx.block_number()
+15 │         return ctx.block_number()
    │                ^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:13:5
+   ┌─ return_builtin_attributes.fe:17:5
    │  
-13 │ ╭     pub fn timestamp(ctx: Context) -> u256:
-14 │ │         return ctx.block_timestamp()
+17 │ ╭     pub fn timestamp(ctx: Context) -> u256:
+18 │ │         return ctx.block_timestamp()
    │ ╰────────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -178,22 +225,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:14:16
+   ┌─ return_builtin_attributes.fe:18:16
    │
-14 │         return ctx.block_timestamp()
+18 │         return ctx.block_timestamp()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:14:16
+   ┌─ return_builtin_attributes.fe:18:16
    │
-14 │         return ctx.block_timestamp()
+18 │         return ctx.block_timestamp()
    │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:16:5
+   ┌─ return_builtin_attributes.fe:20:5
    │  
-16 │ ╭     pub fn chainid(ctx: Context) -> u256:
-17 │ │         return ctx.chain_id()
+20 │ ╭     pub fn chainid(ctx: Context) -> u256:
+21 │ │         return ctx.chain_id()
    │ ╰─────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -225,22 +272,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:17:16
+   ┌─ return_builtin_attributes.fe:21:16
    │
-17 │         return ctx.chain_id()
+21 │         return ctx.chain_id()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:17:16
+   ┌─ return_builtin_attributes.fe:21:16
    │
-17 │         return ctx.chain_id()
+21 │         return ctx.chain_id()
    │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:19:5
+   ┌─ return_builtin_attributes.fe:23:5
    │  
-19 │ ╭     pub fn sender(ctx: Context) -> address:
-20 │ │         return ctx.msg_sender()
+23 │ ╭     pub fn sender(ctx: Context) -> address:
+24 │ │         return ctx.msg_sender()
    │ ╰───────────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
@@ -270,22 +317,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:20:16
+   ┌─ return_builtin_attributes.fe:24:16
    │
-20 │         return ctx.msg_sender()
+24 │         return ctx.msg_sender()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:20:16
+   ┌─ return_builtin_attributes.fe:24:16
    │
-20 │         return ctx.msg_sender()
+24 │         return ctx.msg_sender()
    │                ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:22:5
+   ┌─ return_builtin_attributes.fe:26:5
    │  
-22 │ ╭     pub fn value(ctx: Context) -> u256:
-23 │ │         return ctx.msg_value()
+26 │ ╭     pub fn value(ctx: Context) -> u256:
+27 │ │         return ctx.msg_value()
    │ ╰──────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -317,22 +364,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:23:16
+   ┌─ return_builtin_attributes.fe:27:16
    │
-23 │         return ctx.msg_value()
+27 │         return ctx.msg_value()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:23:16
+   ┌─ return_builtin_attributes.fe:27:16
    │
-23 │         return ctx.msg_value()
+27 │         return ctx.msg_value()
    │                ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:25:5
+   ┌─ return_builtin_attributes.fe:29:5
    │  
-25 │ ╭     pub fn origin(ctx: Context) -> address:
-26 │ │         return ctx.tx_origin()
+29 │ ╭     pub fn origin(ctx: Context) -> address:
+30 │ │         return ctx.tx_origin()
    │ ╰──────────────────────────────^ attributes hash: 9364783648076633772
    │  
    = FunctionSignature {
@@ -362,22 +409,22 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:26:16
+   ┌─ return_builtin_attributes.fe:30:16
    │
-26 │         return ctx.tx_origin()
+30 │         return ctx.tx_origin()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:26:16
+   ┌─ return_builtin_attributes.fe:30:16
    │
-26 │         return ctx.tx_origin()
+30 │         return ctx.tx_origin()
    │                ^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:28:5
+   ┌─ return_builtin_attributes.fe:32:5
    │  
-28 │ ╭     pub fn gas_price(ctx: Context) -> u256:
-29 │ │         return ctx.tx_gas_price()
+32 │ ╭     pub fn gas_price(ctx: Context) -> u256:
+33 │ │         return ctx.tx_gas_price()
    │ ╰─────────────────────────────────^ attributes hash: 10526263819290319263
    │  
    = FunctionSignature {
@@ -409,15 +456,15 @@ note:
      }
 
 note: 
-   ┌─ return_builtin_attributes.fe:29:16
+   ┌─ return_builtin_attributes.fe:33:16
    │
-29 │         return ctx.tx_gas_price()
+33 │         return ctx.tx_gas_price()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:29:16
+   ┌─ return_builtin_attributes.fe:33:16
    │
-29 │         return ctx.tx_gas_price()
+33 │         return ctx.tx_gas_price()
    │                ^^^^^^^^^^^^^^^^^^ u256: Value
 
 
