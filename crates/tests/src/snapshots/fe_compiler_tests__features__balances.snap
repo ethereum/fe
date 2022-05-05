@@ -4,9 +4,9 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
 my_balance([]) used 174 gas
-other_balance([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643)]) used 960 gas
-other_balance([Address(0x2000000000000000000000000000000000000002)]) used 960 gas
+other_balance([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643)]) used 360 gas
+other_balance([Address(0x2000000000000000000000000000000000000002)]) used 2860 gas
 my_balance([]) used 174 gas
-other_balance([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643)]) used 960 gas
-other_balance([Address(0x2000000000000000000000000000000000000002)]) used 960 gas
+other_balance([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643)]) used 360 gas
+other_balance([Address(0x2000000000000000000000000000000000000002)]) used 360 gas
 

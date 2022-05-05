@@ -3,6 +3,6 @@ source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
-call_bing([]) used 94964 gas
-call_baz([Address(0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d)]) used 1424 gas
+call_bing([]) used 96464 gas
+call_baz([Address(0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d)]) used 824 gas
 

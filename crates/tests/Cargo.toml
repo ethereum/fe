@@ -9,9 +9,9 @@ repository = "https://github.com/ethereum/fe"
 [dependencies]
 
 [dev-dependencies]
-ethabi = "14.0"
-evm = "0.26.0"
-evm-runtime = "0.26.0"
+ethabi = "17.0"
+evm = "0.35.0"
+evm-runtime = "0.35.0"
 fe-analyzer = {path = "../analyzer", version = "^0.15.0-alpha"}
 fe-common = {path = "../common", version = "^0.15.0-alpha"}
 fe-compiler-test-utils = {path = "../test-utils" }
@@ -22,7 +22,7 @@ fe-yulc = {path = "../yulc", version = "^0.15.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.15.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
-primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
+primitive-types = {version = "0.11.1", default-features = false, features = ["rlp"]}
 rand = "0.7.3"
 rstest = "0.6.4"
 # This fork contains the shorthand macros and some other necessary updates.
