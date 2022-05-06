@@ -82,6 +82,8 @@ test_parse_err! { expr_bad_prefix, expressions::parse_expr, "*x + 1" }
 test_parse_err! { expr_path_left, expressions::parse_expr, "(1 + 2)::foo::bar" }
 test_parse_err! { expr_path_right, expressions::parse_expr, "foo::10::bar" }
 test_parse_err! { expr_dotted_number, expressions::parse_expr, "3.14" }
+test_parse_err! { expr_number_end_with_underscore, expressions::parse_expr, "42_42_" }
+test_parse_err! { expr_number_start_with_underscore, expressions::parse_expr, "_42_42" }
 test_parse_err! { expr_call_eq_label, expressions::parse_expr, "foo(bar=1, baz = 2)" }
 test_parse_err! { expr_assignment, expressions::parse_expr, "1 + (x = y)" }
 test_parse_err! { for_no_in, functions::parse_stmt, "for x:\n pass" }

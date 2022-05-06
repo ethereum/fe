@@ -1,0 +1,6 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(expr_number_end_with_underscore),\n           expressions::parse_expr, \"42_42_\")"
+
+---
+
