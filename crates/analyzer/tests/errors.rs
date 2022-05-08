@@ -306,6 +306,7 @@ test_file! { strict_boolean_if_else }
 test_file! { struct_private_constructor }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
+test_file! { struct_recursive_cycles }
 test_file! { non_pub_init }
 test_file! { init_wrong_return_type }
 test_file! { init_duplicate_def }

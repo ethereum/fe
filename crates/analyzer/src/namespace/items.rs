@@ -1340,10 +1340,12 @@ impl StructId {
         )
     }
     pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
-        db.struct_dependency_graph(*self).0
+        db.struct_dependency_graph(*self).value.0
     }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.struct_field_map(*self).diagnostics.iter());
+        sink.push_all(db.struct_dependency_graph(*self).diagnostics.iter());
+
         db.struct_all_fields(*self)
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));

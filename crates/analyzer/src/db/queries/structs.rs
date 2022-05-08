@@ -184,12 +184,16 @@ pub fn struct_function_map(
     Analysis::new(Rc::new(map), scope.diagnostics.take().into())
 }
 
-pub fn struct_dependency_graph(db: &dyn AnalyzerDb, struct_: StructId) -> DepGraphWrapper {
+pub fn struct_dependency_graph(
+    db: &dyn AnalyzerDb,
+    struct_: StructId,
+) -> Analysis<DepGraphWrapper> {
     // A struct depends on the types of its fields and on everything they depend on.
     // It *does not* depend on its public functions; those will only be part of
     // the broader dependency graph if they're in the call graph of some public
     // contract function.
 
+    let scope = ItemScope::new(db, struct_.module(db));
     let root = Item::Type(TypeDef::Struct(struct_));
     let fields = struct_
         .fields(db)
@@ -214,5 +218,31 @@ pub fn struct_dependency_graph(db: &dyn AnalyzerDb, struct_: StructId) -> DepGra
             graph.extend(subgraph.all_edges())
         }
     }
-    DepGraphWrapper(Rc::new(graph))
+
+    Analysis::new(
+        DepGraphWrapper(Rc::new(graph)),
+        scope.diagnostics.take().into(),
+    )
+}
+
+pub fn struct_cycle(
+    db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    struct_: &StructId,
+) -> Analysis<DepGraphWrapper> {
+    let mut scope = ItemScope::new(db, struct_.module(db));
+    let struct_data = &struct_.data(db).ast;
+    scope.error(
+        &format!("recursive struct `{}`", struct_data.name()),
+        struct_data.kind.name.span,
+        &format!(
+            "struct `{}` has infinite size due to recursive definition",
+            struct_data.name(),
+        ),
+    );
+
+    Analysis::new(
+        DepGraphWrapper(Rc::new(DepGraph::new())),
+        scope.diagnostics.take().into(),
+    )
 }

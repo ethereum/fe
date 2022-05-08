@@ -154,8 +154,9 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn struct_all_functions(&self, id: StructId) -> Rc<[FunctionId]>;
     #[salsa::invoke(queries::structs::struct_function_map)]
     fn struct_function_map(&self, id: StructId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
+    #[salsa::cycle(queries::structs::struct_cycle)]
     #[salsa::invoke(queries::structs::struct_dependency_graph)]
-    fn struct_dependency_graph(&self, id: StructId) -> DepGraphWrapper;
+    fn struct_dependency_graph(&self, id: StructId) -> Analysis<DepGraphWrapper>;
 
     // Event
     #[salsa::invoke(queries::events::event_type)]
