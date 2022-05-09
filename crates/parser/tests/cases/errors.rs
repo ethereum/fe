@@ -82,8 +82,6 @@ test_parse_err! { expr_bad_prefix, expressions::parse_expr, "*x + 1" }
 test_parse_err! { expr_path_left, expressions::parse_expr, "(1 + 2)::foo::bar" }
 test_parse_err! { expr_path_right, expressions::parse_expr, "foo::10::bar" }
 test_parse_err! { expr_dotted_number, expressions::parse_expr, "3.14" }
-test_parse_err! { expr_number_end_with_underscore, expressions::parse_expr, "42_42_" }
-test_parse_err! { expr_number_start_with_underscore, expressions::parse_expr, "_42_42" }
 test_parse_err! { expr_call_eq_label, expressions::parse_expr, "foo(bar=1, baz = 2)" }
 test_parse_err! { expr_assignment, expressions::parse_expr, "1 + (x = y)" }
 test_parse_err! { for_no_in, functions::parse_stmt, "for x:\n pass" }
@@ -104,6 +102,7 @@ test_parse_err! { stmt_vardecl_missing_type_annotation_2, functions::parse_stmt,
 test_parse_err! { stmt_vardecl_missing_type_annotation_3, functions::parse_stmt, "let x:" }
 test_parse_err! { stmt_vardecl_invalid_type_annotation, functions::parse_stmt, "let x: y + z" }
 test_parse_err! { stmt_vardecl_invalid_name, functions::parse_stmt, "let x + y: u8" }
+test_parse_err! { number_end_with_underscore, functions::parse_stmt, "42_42_"}
 test_parse_err! { array_old_syntax, functions::parse_stmt, "let x: u8[10]" }
 test_parse_err! { array_old_syntax_invalid, functions::parse_stmt, "let x: u8[10" }
 test_parse_err! { self_const, module::parse_module, "const self: u8 = 10" }
