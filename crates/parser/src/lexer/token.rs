@@ -43,7 +43,7 @@ pub enum TokenKind {
 
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Name,
-    #[regex("[0-9]+")]
+    #[regex("[0-9]+(?:_[0-9]+)*")]
     Int,
     #[regex("0[xX][0-9a-fA-F]+")]
     Hex,

@@ -1,0 +1,12 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(expr_num3), expressions::parse_expr, \"1000_000\")"
+
+---
+Node(
+  kind: Num("1000_000"),
+  span: Span(
+    start: 0,
+    end: 8,
+  ),
+)

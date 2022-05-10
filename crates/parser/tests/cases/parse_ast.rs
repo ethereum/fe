@@ -72,6 +72,7 @@ test_parse! { expr_attr1, expressions::parse_expr, "foo.bar[0][y]" }
 test_parse! { expr_attr2, expressions::parse_expr, "a[x].b[y](1)" }
 test_parse! { expr_num1, expressions::parse_expr, "12345" }
 test_parse! { expr_num2, expressions::parse_expr, "00001" }
+test_parse! { expr_num3, expressions::parse_expr, "1000_000" }
 test_parse! { expr_hex1, expressions::parse_expr, "0xbeefbeef" }
 test_parse! { expr_hex2, expressions::parse_expr, "0xFEED1234" }
 test_parse! { expr_path_call, expressions::parse_expr, "foo::bar::abc1()" }
