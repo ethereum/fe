@@ -1,5 +1,6 @@
+use fe_analyzer::errors::NotFixedSize;
 use fe_analyzer::namespace::types::{
-    Array, Base, Contract, FeString, FixedSize, Integer, Struct, Tuple,
+    Array, Base, Contract, FeString, Integer, Struct, Tuple, Type,
 };
 use fe_analyzer::AnalyzerDb;
 
@@ -8,15 +9,31 @@ pub trait EvmSized {
     fn size(&self) -> usize;
 }
 
-impl EvmSized for FixedSize {
-    fn size(&self) -> usize {
-        match self {
-            FixedSize::Base(base) => base.size(),
-            FixedSize::Array(array) => array.size(),
-            FixedSize::Tuple(tuple) => tuple.size(),
-            FixedSize::String(string) => string.size(),
-            FixedSize::Contract(contract) => contract.size(),
-            FixedSize::Struct(val) => val.size(),
+pub trait AsEvmSized {
+    fn as_evm_sized(&self) -> Box<dyn EvmSized>;
+}
+
+impl AsEvmSized for Type {
+    fn as_evm_sized(&self) -> Box<dyn EvmSized> {
+        let sized: Box<dyn EvmSized> = self.clone().try_into().unwrap_or_else(|_| {
+            panic!("Expected type that implements EvmSized trait but is {self}")
+        });
+        sized
+    }
+}
+
+impl TryFrom<Type> for Box<dyn EvmSized> {
+    type Error = NotFixedSize;
+
+    fn try_from(value: Type) -> Result<Self, NotFixedSize> {
+        match value {
+            Type::Array(val) => Ok(Box::new(val)),
+            Type::Base(val) => Ok(Box::new(val)),
+            Type::Tuple(val) => Ok(Box::new(val)),
+            Type::String(val) => Ok(Box::new(val)),
+            Type::Struct(val) => Ok(Box::new(val)),
+            Type::Contract(val) => Ok(Box::new(val)),
+            Type::Map(_) | Type::SelfContract(_) => Err(NotFixedSize),
         }
     }
 }
@@ -53,7 +70,14 @@ impl EvmSized for Array {
 
 impl EvmSized for Tuple {
     fn size(&self) -> usize {
-        self.items.iter().map(EvmSized::size).sum()
+        self.items
+            .iter()
+            .map(|val| {
+                let size: Box<dyn EvmSized> =
+                    val.clone().try_into().expect("Invalid type of tuple item");
+                size.size()
+            })
+            .sum()
     }
 }
 
@@ -166,15 +190,16 @@ pub trait AsAbiType {
     fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType;
 }
 
-impl AsAbiType for FixedSize {
+impl AsAbiType for Type {
     fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
         match self {
-            FixedSize::Base(base) => base.as_abi_type(db),
-            FixedSize::Array(array) => array.as_abi_type(db),
-            FixedSize::Tuple(tuple) => tuple.as_abi_type(db),
-            FixedSize::String(string) => string.as_abi_type(db),
-            FixedSize::Contract(_) => AbiType::Address,
-            FixedSize::Struct(val) => val.as_abi_type(db),
+            Type::Base(base) => base.as_abi_type(db),
+            Type::Array(array) => array.as_abi_type(db),
+            Type::Tuple(tuple) => tuple.as_abi_type(db),
+            Type::String(string) => string.as_abi_type(db),
+            Type::Contract(_) => AbiType::Address,
+            Type::Struct(val) => val.as_abi_type(db),
+            _ => panic!("Can not force {self} into an AbiType"),
         }
     }
 }

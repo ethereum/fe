@@ -1,5 +1,5 @@
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
-use crate::namespace::types::{FixedSize, SelfDecl, Struct, Type};
+use crate::namespace::types::{SelfDecl, Struct, Type};
 use crate::AnalyzerDb;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
@@ -224,7 +224,7 @@ pub enum NamedThing {
     // SelfType // when/if we add a `Self` type keyword
     Variable {
         name: String,
-        typ: Result<FixedSize, TypeError>,
+        typ: Result<Type, TypeError>,
         is_const: bool,
         span: Span,
     },
@@ -358,13 +358,11 @@ pub enum Location {
 impl Location {
     /// The expected location of a value with the given type when being
     /// assigned, returned, or passed.
-    pub fn assign_location(typ: &FixedSize) -> Self {
+    pub fn assign_location(typ: &Type) -> Self {
         match typ {
-            FixedSize::Base(_) | FixedSize::Contract(_) => Location::Value,
-            FixedSize::Array(_)
-            | FixedSize::Tuple(_)
-            | FixedSize::String(_)
-            | FixedSize::Struct(_) => Location::Memory,
+            Type::Base(_) | Type::Contract(_) => Location::Value,
+            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
+            other => panic!("Type {other} can not be assigned, returned or passed"),
         }
     }
 }
@@ -379,7 +377,7 @@ pub struct FunctionBody {
 
     // This is the id of the VarDecl TypeDesc node
     // TODO: Do we really need this?
-    pub var_decl_types: IndexMap<NodeId, FixedSize>,
+    pub var_decl_types: IndexMap<NodeId, Type>,
     pub calls: IndexMap<NodeId, CallType>,
     pub spans: HashMap<NodeId, Span>,
 }

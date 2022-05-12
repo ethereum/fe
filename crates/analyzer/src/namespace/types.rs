@@ -1,5 +1,5 @@
 use crate::context::AnalyzerContext;
-use crate::errors::{NotFixedSize, TypeError};
+use crate::errors::TypeError;
 use crate::namespace::items::{Class, ContractId, StructId};
 use crate::AnalyzerDb;
 
@@ -46,16 +46,6 @@ pub enum Type {
     /// The type of a contract while it's being executed. Ie. the type
     /// of `self` within a contract function.
     SelfContract(Contract),
-    Struct(Struct),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum FixedSize {
-    Base(Base),
-    Array(Array),
-    Tuple(Tuple),
-    String(FeString),
-    Contract(Contract),
     Struct(Struct),
 }
 
@@ -116,7 +106,7 @@ pub struct Map {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Tuple {
-    pub items: Vec1<FixedSize>,
+    pub items: Vec1<Type>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -159,7 +149,7 @@ pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
     pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
-    pub return_type: Result<FixedSize, TypeError>,
+    pub return_type: Result<Type, TypeError>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -176,10 +166,10 @@ pub enum CtxDecl {
 pub struct FunctionParam {
     label: Option<SmolStr>,
     pub name: SmolStr,
-    pub typ: Result<FixedSize, TypeError>,
+    pub typ: Result<Type, TypeError>,
 }
 impl FunctionParam {
-    pub fn new(label: Option<&str>, name: &str, typ: Result<FixedSize, TypeError>) -> Self {
+    pub fn new(label: Option<&str>, name: &str, typ: Result<Type, TypeError>) -> Self {
         Self {
             label: label.map(SmolStr::new),
             name: name.into(),
@@ -385,14 +375,14 @@ pub struct Event {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EventField {
     pub name: SmolStr,
-    pub typ: Result<FixedSize, TypeError>,
+    pub typ: Result<Type, TypeError>,
     pub is_indexed: bool,
 }
 
 impl FunctionSignature {
     /// # Panics
     /// Panics if any param type is an `Err`
-    pub fn param_types(&self) -> Vec<FixedSize> {
+    pub fn param_types(&self) -> Vec<Type> {
         self.params
             .iter()
             .map(|param| param.typ.clone().expect("fn param type error"))
@@ -401,7 +391,7 @@ impl FunctionSignature {
 
     /// # Panics
     /// Panics if the return type is an `Err`
-    pub fn expect_return_type(&self) -> FixedSize {
+    pub fn expect_return_type(&self) -> Type {
         self.return_type.clone().expect("fn return type error")
     }
 
@@ -423,7 +413,7 @@ impl FunctionSignature {
     ///
     /// # Panics
     /// Panics if any param type is an `Err`
-    pub fn external_param_types(&self) -> Vec<FixedSize> {
+    pub fn external_param_types(&self) -> Vec<Type> {
         self.external_params()
             .iter()
             .map(|param| param.typ.clone().expect("fn param type error"))
@@ -452,6 +442,10 @@ impl Type {
         }
     }
 
+    pub fn is_base(&self) -> bool {
+        matches!(self, Type::Base(_))
+    }
+
     /// Returns `true` if the type is integer.
     pub fn is_integer(&self) -> bool {
         matches!(self, Type::Base(Base::Numeric(_)))
@@ -464,9 +458,31 @@ impl Type {
         false
     }
 
+    /// Creates an instance of bool.
+    pub fn bool() -> Self {
+        Type::Base(Base::Bool)
+    }
+
+    /// Creates an instance of address.
+    pub fn address() -> Self {
+        Type::Base(Base::Address)
+    }
+
+    /// Creates an instance of u256.
+    pub fn u256() -> Self {
+        Type::Base(Base::Numeric(Integer::U256))
+    }
+
+    /// Creates an instance of u8.
+    pub fn u8() -> Self {
+        Type::Base(Base::Numeric(Integer::U8))
+    }
+
+    /// Creates an instance of `()`.
     pub fn unit() -> Self {
         Type::Base(Base::Unit)
     }
+
     pub fn is_unit(&self) -> bool {
         *self == Type::Base(Base::Unit)
     }
@@ -487,6 +503,18 @@ impl Type {
                 _ => None,
             },
             _ => None,
+        }
+    }
+
+    pub fn has_fixed_size(&self) -> bool {
+        match self {
+            Type::Base(_)
+            | Type::Array(_)
+            | Type::Tuple(_)
+            | Type::String(_)
+            | Type::Struct(_)
+            | Type::Contract(_) => true,
+            Type::Map(_) | Type::SelfContract(_) => false,
         }
     }
 }
@@ -571,118 +599,22 @@ impl TypeDowncast for Option<&Type> {
     }
 }
 
-impl From<FixedSize> for Type {
-    fn from(value: FixedSize) -> Self {
-        match value {
-            FixedSize::Array(array) => Type::Array(array),
-            FixedSize::Base(base) => Type::Base(base),
-            FixedSize::Tuple(tuple) => Type::Tuple(tuple),
-            FixedSize::String(string) => Type::String(string),
-            FixedSize::Contract(contract) => Type::Contract(contract),
-            FixedSize::Struct(val) => Type::Struct(val),
-        }
-    }
-}
-
 impl From<Base> for Type {
     fn from(value: Base) -> Self {
         Type::Base(value)
     }
 }
 
-impl FixedSize {
-    /// Returns true if the type is `()`.
-    pub fn is_unit(&self) -> bool {
-        self == &Self::Base(Base::Unit)
-    }
-
-    pub fn is_base(&self) -> bool {
-        matches!(self, FixedSize::Base(_))
-    }
-
-    /// Creates an instance of bool.
-    pub fn bool() -> Self {
-        FixedSize::Base(Base::Bool)
-    }
-
-    /// Creates an instance of address.
-    pub fn address() -> Self {
-        FixedSize::Base(Base::Address)
-    }
-
-    /// Creates an instance of u256.
-    pub fn u256() -> Self {
-        FixedSize::Base(Base::Numeric(Integer::U256))
-    }
-
-    /// Creates an instance of u8.
-    pub fn u8() -> Self {
-        FixedSize::Base(Base::Numeric(Integer::U8))
-    }
-
-    /// Creates an instance of `()`.
-    pub fn unit() -> Self {
-        FixedSize::Base(Base::Unit)
-    }
-}
-
-impl PartialEq<Type> for FixedSize {
-    fn eq(&self, other: &Type) -> bool {
-        match (self, other) {
-            (FixedSize::Array(in1), Type::Array(in2)) => in1 == in2,
-            (FixedSize::Base(in1), Type::Base(in2)) => in1 == in2,
-            (FixedSize::Tuple(in1), Type::Tuple(in2)) => in1 == in2,
-            (FixedSize::String(in1), Type::String(in2)) => in1 == in2,
-            (FixedSize::Contract(in1), Type::Contract(in2)) => in1 == in2,
-            (FixedSize::Struct(in1), Type::Struct(in2)) => in1 == in2,
-            _ => false,
-        }
-    }
-}
-
-impl From<Base> for FixedSize {
-    fn from(value: Base) -> Self {
-        FixedSize::Base(value)
-    }
-}
-
-impl From<FeString> for FixedSize {
-    fn from(value: FeString) -> Self {
-        FixedSize::String(value)
-    }
-}
-
-impl TryFrom<Type> for FixedSize {
-    type Error = NotFixedSize;
-
-    fn try_from(value: Type) -> Result<Self, NotFixedSize> {
-        match value {
-            Type::Array(array) => Ok(FixedSize::Array(array)),
-            Type::Base(base) => Ok(FixedSize::Base(base)),
-            Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
-            Type::String(string) => Ok(FixedSize::String(string)),
-            Type::Struct(val) => Ok(FixedSize::Struct(val)),
-            Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
-            Type::Map(_) | Type::SelfContract(_) => Err(NotFixedSize),
-        }
-    }
-}
-
-impl From<Tuple> for FixedSize {
-    fn from(value: Tuple) -> Self {
-        FixedSize::Tuple(value)
-    }
-}
-
-impl SafeNames for FixedSize {
+impl SafeNames for Type {
     fn lower_snake(&self) -> String {
         match self {
-            FixedSize::Array(array) => array.lower_snake(),
-            FixedSize::Base(base) => base.lower_snake(),
-            FixedSize::Tuple(tuple) => tuple.lower_snake(),
-            FixedSize::String(string) => string.lower_snake(),
-            FixedSize::Contract(contract) => contract.lower_snake(),
-            FixedSize::Struct(val) => val.lower_snake(),
+            Type::Array(array) => array.lower_snake(),
+            Type::Base(base) => base.lower_snake(),
+            Type::Tuple(tuple) => tuple.lower_snake(),
+            Type::String(string) => string.lower_snake(),
+            Type::Contract(contract) => contract.lower_snake(),
+            Type::Struct(val) => val.lower_snake(),
+            _ => panic!("Can not construct safe name for {self}"),
         }
     }
 }
@@ -762,19 +694,6 @@ impl fmt::Display for Type {
             Type::Contract(inner) => inner.fmt(f),
             Type::SelfContract(inner) => inner.fmt(f),
             Type::Struct(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl fmt::Display for FixedSize {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FixedSize::Base(inner) => inner.fmt(f),
-            FixedSize::Array(inner) => inner.fmt(f),
-            FixedSize::Tuple(inner) => inner.fmt(f),
-            FixedSize::String(inner) => inner.fmt(f),
-            FixedSize::Contract(inner) => inner.fmt(f),
-            FixedSize::Struct(inner) => inner.fmt(f),
         }
     }
 }

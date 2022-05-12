@@ -9,8 +9,8 @@ use crate::mappers::expressions;
 use crate::mappers::types;
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::FunctionId;
+use fe_analyzer::namespace::types::TypeDowncast;
 use fe_analyzer::namespace::types::{Base, Type};
-use fe_analyzer::namespace::types::{FixedSize, TypeDowncast};
 use fe_parser::ast::{self as fe, Expr, FuncStmt, RegularFunctionArg, SmolStr};
 use fe_parser::node::Node;
 
@@ -79,7 +79,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
             types.push(Type::Base(Base::Unit));
         }
         for param in params {
-            types.push(param.typ.clone().expect("fn param type error").into())
+            types.push(param.typ.clone().expect("fn param type error"))
         }
         types
     };
@@ -105,7 +105,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
     // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
     let lowered_return_type = return_type_node
         .clone()
-        .map(|type_desc| types::type_desc(fn_ctx.module, type_desc, &return_type.clone().into()))
+        .map(|type_desc| types::type_desc(fn_ctx.module, type_desc, &return_type.clone()))
         .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
 
     let lowered_function = fe::Function {
@@ -125,7 +125,7 @@ fn lower_iteratively(
     statements: Vec<Node<FuncStmt>>,
     result_name: &str,
     getter_fn: &dyn Fn(&[Node<FuncStmt>]) -> Vec<Node<Expr>>,
-    mapper_fn: &dyn Fn(FixedSize, &Node<Expr>, &str) -> Vec<Node<FuncStmt>>,
+    mapper_fn: &dyn Fn(Type, &Node<Expr>, &str) -> Vec<Node<FuncStmt>>,
 ) -> Vec<Node<FuncStmt>> {
     let mut current_statements = statements;
 
@@ -137,9 +137,7 @@ fn lower_iteratively(
                 .expression_attributes(current_expression.original_id)
                 .expect("missing attributes");
 
-            let expression_type =
-                FixedSize::try_from(expr_attr.typ.clone()).expect("Not a fixed size");
-
+            let expression_type = expr_attr.typ.clone();
             let unique_name = context.make_unique_name(result_name);
             let generated_statements =
                 mapper_fn(expression_type.clone(), current_expression, &unique_name);
@@ -168,8 +166,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
             let var_type = context
                 .var_decl_type(typ.id)
                 .expect("missing var decl type")
-                .clone()
-                .into();
+                .clone();
 
             match target.kind {
                 fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
@@ -186,8 +183,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
             let var_type = context
                 .const_decl_type(typ.id)
                 .expect("missing var decl type")
-                .clone()
-                .into();
+                .clone();
 
             vec![fe::FuncStmt::ConstantDecl {
                 name,
@@ -391,7 +387,7 @@ fn declare_tuple_items(
                     context,
                     target,
                     type_desc,
-                    &typ.clone().into(),
+                    &typ.clone(),
                     tmp_tuple,
                     indices,
                     stmts,

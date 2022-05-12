@@ -2,7 +2,7 @@ use crate::context::FnContext;
 use crate::mappers::expressions;
 use crate::names;
 use crate::types::EvmSized;
-use fe_analyzer::namespace::types::FixedSize;
+use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
@@ -19,8 +19,9 @@ pub fn var_decl(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Stat
             statement! { let [target] := [value] }
         } else {
             match decl_type {
-                FixedSize::Base(_) => statement! { let [target] := 0 },
+                Type::Base(_) => statement! { let [target] := 0 },
                 typ => {
+                    let typ: Box<dyn EvmSized> = typ.clone().try_into().expect("Invalid type");
                     let size = literal_expression! { (typ.size()) };
                     statement! { let [target] := alloc([size]) }
                 }

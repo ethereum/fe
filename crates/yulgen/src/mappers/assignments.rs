@@ -2,8 +2,9 @@ use crate::context::FnContext;
 use crate::mappers::expressions;
 use crate::operations::data as data_operations;
 use crate::operations::structs as struct_operations;
+use crate::types::AsEvmSized;
 use fe_analyzer::context::Location;
-use fe_analyzer::namespace::types::{FixedSize, Type};
+use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::yul::FunctionCall;
@@ -20,8 +21,7 @@ pub fn assign(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         let value = expressions::expr(context, value_node);
 
         let target_attributes = context.expression_attributes(target_node);
-        let typ = FixedSize::try_from(target_attributes.typ.clone()).expect("invalid attributes");
-
+        let typ = target_attributes.typ.as_evm_sized();
         let value_attributes = context.expression_attributes(value_node);
 
         return match (

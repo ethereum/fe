@@ -2,7 +2,7 @@ use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing
 use crate::errors::FatalError;
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{Base, EventField, FixedSize, Type};
+use crate::namespace::types::{Base, EventField, Type};
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
@@ -48,7 +48,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
             // Make sure iter is in the function scope & it should be an array.
             let iter_type = expressions::assignable_expr(scope, iter, None)?.typ;
             let target_type = if let Type::Array(array) = iter_type {
-                FixedSize::Base(array.inner)
+                Type::Base(array.inner)
             } else {
                 return Err(FatalError::new(scope.type_error(
                     "invalid `for` loop iterator type",
@@ -58,9 +58,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                 )));
             };
 
-            scope
-                .root
-                .map_variable_type(target, target_type.clone().into());
+            scope.root.map_variable_type(target, target_type.clone());
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
@@ -191,7 +189,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                     let params_with_ctx = [
                         vec![EventField {
                             name: "ctx".into(),
-                            typ: Ok(FixedSize::Struct(context_type)),
+                            typ: Ok(Type::Struct(context_type)),
                             is_indexed: false,
                         }],
                         event.typ(scope.db()).fields.clone(),
@@ -298,7 +296,7 @@ fn revert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fatal
 
 fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
-        let expected_type = scope.root.function_return_type()?.into();
+        let expected_type = scope.root.function_return_type()?;
 
         let attributes = match value {
             Some(val) => expressions::assignable_expr(scope, val, Some(&expected_type))?,

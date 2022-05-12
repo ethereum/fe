@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{FatalError, TypeError};
-use crate::namespace::types::{EventField, FixedSize, FunctionParam};
+use crate::namespace::types::{EventField, FunctionParam, Type};
 use crate::traversal::expressions::assignable_expr;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
@@ -10,14 +10,14 @@ use smol_str::SmolStr;
 
 pub trait LabeledParameter {
     fn label(&self) -> Option<&str>;
-    fn typ(&self) -> Result<FixedSize, TypeError>;
+    fn typ(&self) -> Result<Type, TypeError>;
 }
 
 impl LabeledParameter for FunctionParam {
     fn label(&self) -> Option<&str> {
         self.label()
     }
-    fn typ(&self) -> Result<FixedSize, TypeError> {
+    fn typ(&self) -> Result<Type, TypeError> {
         self.typ.clone()
     }
 }
@@ -26,16 +26,16 @@ impl LabeledParameter for EventField {
     fn label(&self) -> Option<&str> {
         Some(&self.name)
     }
-    fn typ(&self) -> Result<FixedSize, TypeError> {
+    fn typ(&self) -> Result<Type, TypeError> {
         self.typ.clone()
     }
 }
 
-impl LabeledParameter for (SmolStr, Result<FixedSize, TypeError>) {
+impl LabeledParameter for (SmolStr, Result<Type, TypeError>) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
     }
-    fn typ(&self) -> Result<FixedSize, TypeError> {
+    fn typ(&self) -> Result<Type, TypeError> {
         self.1.clone()
     }
 }
@@ -149,8 +149,7 @@ pub fn validate_named_args(
         }
 
         let param_type = param.typ()?;
-        let val_attrs =
-            assignable_expr(context, &arg.kind.value, Some(&param_type.clone().into()))?;
+        let val_attrs = assignable_expr(context, &arg.kind.value, Some(&param_type.clone()))?;
         if param_type != val_attrs.typ {
             let msg = if let Some(label) = param.label() {
                 format!("incorrect type for `{}` argument `{}`", name, label)

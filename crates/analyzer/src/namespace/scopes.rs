@@ -6,7 +6,7 @@ use crate::context::{
 use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
-use crate::namespace::types::{FixedSize, Struct};
+use crate::namespace::types::{Struct, Type};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -16,8 +16,6 @@ use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
-
-use super::types::Type;
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
@@ -172,7 +170,7 @@ impl<'a> FunctionScope<'a> {
         }
     }
 
-    pub fn function_return_type(&self) -> Result<FixedSize, TypeError> {
+    pub fn function_return_type(&self) -> Result<Type, TypeError> {
         self.function.signature(self.db).return_type.clone()
     }
 
@@ -195,7 +193,7 @@ impl<'a> FunctionScope<'a> {
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
-    pub fn add_declaration(&self, node: &Node<ast::TypeDesc>, typ: FixedSize) {
+    pub fn add_declaration(&self, node: &Node<ast::TypeDesc>, typ: Type) {
         self.add_node(node);
         self.body
             .borrow_mut()
@@ -390,7 +388,7 @@ pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
     /// Maps Name -> (Type, is_const, span)
-    pub variable_defs: BTreeMap<String, (FixedSize, bool, Span)>,
+    pub variable_defs: BTreeMap<String, (Type, bool, Span)>,
     pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
@@ -533,7 +531,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     pub fn add_var(
         &mut self,
         name: &str,
-        typ: FixedSize,
+        typ: Type,
         is_const: bool,
         span: Span,
     ) -> Result<(), AlreadyDefined> {

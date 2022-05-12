@@ -1,6 +1,6 @@
 use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
-use crate::errors::{FatalError, IndexingError, NotFixedSize};
+use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{Class, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{
@@ -9,7 +9,7 @@ use crate::namespace::types::{
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
 use crate::traversal::types::apply_generic_type_args;
-use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
+use crate::traversal::utils::add_bin_operations_errors;
 use fe_common::diagnostics::Label;
 use fe_common::{numeric, Span};
 use fe_parser::ast as fe;
@@ -223,26 +223,21 @@ fn expr_tuple(
             .iter()
             .enumerate()
             .map(|(idx, elt)| {
-                let exp_type = expected_type
-                    .and_then(|tup| tup.items.get(idx))
-                    .map(|fixed| fixed.clone().into());
+                let exp_type = expected_type.and_then(|tup| tup.items.get(idx)).cloned();
                 assignable_expr(context, elt, exp_type.as_ref()).map(|attributes| attributes.typ)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tuple_types = match types_to_fixed_sizes(&types) {
-            Err(NotFixedSize) => {
-                return Err(FatalError::new(context.error(
-                    "variable size types can not be part of tuples",
-                    exp.span,
-                    "",
-                )));
-            }
-            Ok(val) => val,
-        };
+        if !&types.iter().all(Type::has_fixed_size) {
+            return Err(FatalError::new(context.error(
+                "variable size types can not be part of tuples",
+                exp.span,
+                "",
+            )));
+        }
 
         let tuple = Tuple {
-            items: Vec1::try_from_vec(tuple_types).expect("tuple is empty"),
+            items: Vec1::try_from_vec(types.to_vec()).expect("tuple is empty"),
         };
 
         Ok(ExpressionAttributes::new(
@@ -292,7 +287,7 @@ fn expr_named_thing(
         Some(NamedThing::Variable { typ, .. }) => {
             let typ = typ?;
             let location = Location::assign_location(&typ);
-            Ok(ExpressionAttributes::new(typ.into(), location))
+            Ok(ExpressionAttributes::new(typ, location))
         }
         Some(NamedThing::SelfValue { decl, class, .. }) => {
             if let Some(class) = class {
@@ -336,10 +331,11 @@ fn expr_named_thing(
             }
         }
         Some(NamedThing::Item(Item::Constant(id))) => {
-            let typ = id
-                .typ(context.db())?
-                .try_into()
-                .expect("const type must be fixed size");
+            let typ = id.typ(context.db())?;
+
+            if !typ.has_fixed_size() {
+                panic!("const type must be fixed size")
+            }
 
             // Check visibility of constant.
             if !id.is_public(context.db()) && id.module(context.db()) != context.module() {
@@ -365,7 +361,7 @@ fn expr_named_thing(
             }
 
             let location = Location::assign_location(&typ);
-            Ok(ExpressionAttributes::new(typ.into(), location))
+            Ok(ExpressionAttributes::new(typ, location))
         }
         Some(item) => {
             let item_kind = item.item_kind_display_name();
@@ -408,9 +404,7 @@ fn expr_named_thing(
             match expected_type {
                 Some(typ) => Ok(ExpressionAttributes::new(
                     typ.clone(),
-                    Location::assign_location(
-                        &typ.clone().try_into().map_err(|_| FatalError::new(diag))?,
-                    ),
+                    Location::assign_location(&typ.clone()),
                 )),
                 None => Err(FatalError::new(diag)),
             }
@@ -585,7 +579,7 @@ fn expr_attribute(
                     );
                 }
                 Ok(ExpressionAttributes::new(
-                    struct_field.typ(context.db())?.into(),
+                    struct_field.typ(context.db())?,
                     attrs.location,
                 ))
             } else {
@@ -617,10 +611,7 @@ fn expr_attribute(
             };
 
             if let Some(typ) = tuple.items.get(item_index) {
-                Ok(ExpressionAttributes::new(
-                    typ.clone().into(),
-                    attrs.location,
-                ))
+                Ok(ExpressionAttributes::new(typ.clone(), attrs.location))
             } else {
                 Err(FatalError::new(context.fancy_error(
                     &format!("No field `item{}` exists on this tuple", item_index),
@@ -1102,7 +1093,7 @@ fn expr_call_pure(
     let return_type = sig.return_type.clone()?;
     let return_location = Location::assign_location(&return_type);
     Ok((
-        ExpressionAttributes::new(return_type.into(), return_location),
+        ExpressionAttributes::new(return_type, return_location),
         CallType::Pure(function),
     ))
 }
@@ -1446,10 +1437,7 @@ fn expr_call_method(
 
             let return_type = sig.return_type.clone()?;
             let location = Location::assign_location(&return_type);
-            return Ok((
-                ExpressionAttributes::new(return_type.into(), location),
-                calltype,
-            ));
+            return Ok((ExpressionAttributes::new(return_type, location), calltype));
         }
     }
     Err(FatalError::new(context.fancy_error(
@@ -1795,7 +1783,7 @@ fn expr_call_type_attribute(
             let ret_type = function.signature(context.db()).return_type.clone()?;
             let location = Location::assign_location(&ret_type);
             return Ok((
-                ExpressionAttributes::new(ret_type.into(), location),
+                ExpressionAttributes::new(ret_type, location),
                 CallType::AssociatedFunction { class, function },
             ));
         }

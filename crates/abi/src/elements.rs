@@ -1,5 +1,5 @@
 use crate::errors::AbiError;
-use fe_analyzer::namespace::types::{Array, Base, FeString, FixedSize, Integer, Struct, Tuple};
+use fe_analyzer::namespace::types::{Array, Base, FeString, Integer, Struct, Tuple, Type};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -76,15 +76,16 @@ pub trait JsonAbi {
     fn abi_json_name(&self) -> String;
 }
 
-impl JsonAbi for FixedSize {
+impl JsonAbi for Type {
     fn abi_json_name(&self) -> String {
         match self {
-            FixedSize::Array(array) => array.abi_json_name(),
-            FixedSize::Base(base) => base.abi_json_name(),
-            FixedSize::Tuple(tuple) => tuple.abi_json_name(),
-            FixedSize::String(string) => string.abi_json_name(),
-            FixedSize::Contract(_) => "address".to_string(),
-            FixedSize::Struct(val) => val.abi_json_name(),
+            Type::Array(array) => array.abi_json_name(),
+            Type::Base(base) => base.abi_json_name(),
+            Type::Tuple(tuple) => tuple.abi_json_name(),
+            Type::String(string) => string.abi_json_name(),
+            Type::Contract(_) => "address".to_string(),
+            Type::Struct(val) => val.abi_json_name(),
+            _ => panic!("not abi encodable"),
         }
     }
 }

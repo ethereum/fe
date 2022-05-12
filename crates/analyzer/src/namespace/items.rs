@@ -2,7 +2,6 @@ use crate::context;
 
 use crate::context::{Analysis, Constant};
 use crate::errors::{self, IncompleteItem, TypeError};
-use crate::namespace::types::FixedSize;
 use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
@@ -1310,12 +1309,12 @@ impl StructId {
         &self,
         db: &dyn AnalyzerDb,
         name: &str,
-    ) -> Option<Result<types::FixedSize, TypeError>> {
+    ) -> Option<Result<types::Type, TypeError>> {
         Some(self.field(db, name)?.typ(db))
     }
 
     pub fn is_base_type(&self, db: &dyn AnalyzerDb, name: &str) -> bool {
-        matches!(self.field_type(db, name), Some(Ok(FixedSize::Base(_))))
+        matches!(self.field_type(db, name), Some(Ok(types::Type::Base(_))))
     }
 
     pub fn field_index(&self, db: &dyn AnalyzerDb, name: &str) -> Option<usize> {
@@ -1396,11 +1395,11 @@ impl StructFieldId {
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::FixedSize, TypeError> {
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
         db.struct_field_type(*self).value
     }
     pub fn is_base_type(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.typ(db), Ok(FixedSize::Base(_)))
+        matches!(self.typ(db), Ok(types::Type::Base(_)))
     }
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.is_pub

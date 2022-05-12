@@ -3,7 +3,7 @@ use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
 use crate::namespace::items::{DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Contract, CtxDecl, FixedSize, SelfDecl, Struct, Type};
+use crate::namespace::types::{self, Contract, CtxDecl, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -55,9 +55,9 @@ pub fn function_signature(
                 None
             }
             ast::FunctionArg::Regular(reg) => {
-                let typ = type_desc(&mut scope, &reg.typ).and_then(|typ| match typ.try_into() {
-                    Ok(typ) => Ok(typ),
-                    Err(_) => Err(TypeError::new(scope.error(
+                let typ = type_desc(&mut scope, &reg.typ).and_then(|typ| match typ {
+                    typ if typ.has_fixed_size() => Ok(typ),
+                    _ => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
                         reg.typ.span,
                         "`Map` type can't be used as a function parameter",
@@ -65,7 +65,7 @@ pub fn function_signature(
                 });
 
                 if let Some(context_type) = scope.get_context_type() {
-                    if typ == Ok(FixedSize::Struct(context_type)) {
+                    if typ == Ok(Type::Struct(context_type)) {
                         if arg.name() != "ctx" {
                             scope.error(
                                 "invalid `Context` instance name",
@@ -162,15 +162,16 @@ pub fn function_signature(
                         ],
                     );
                 }
-                Ok(FixedSize::unit())
+                Ok(Type::unit())
             } else {
-                match type_desc(&mut scope, type_node)?.try_into() {
-                    Ok(FixedSize::Struct(val)) if val.id.has_complex_fields(db) && function.is_public(db) => {
+
+                match type_desc(&mut scope, type_node)? {
+                    Type::Struct(val) if val.id.has_complex_fields(db) && function.is_public(db) => {
                         scope.not_yet_implemented("structs with complex fields can't be returned from public functions yet", type_node.span);
-                        Ok(FixedSize::Struct(val))
+                        Ok(Type::Struct(val))
                     }
-                    Ok(typ) => Ok(typ),
-                    Err(_) => Err(TypeError::new(scope.error(
+                    typ if typ.has_fixed_size() => Ok(typ),
+                    _ => Err(TypeError::new(scope.error(
                         "function return type must have a fixed size",
                         type_node.span,
                         "this can't be returned from a function",
@@ -178,7 +179,7 @@ pub fn function_signature(
                 }
             }
         })
-        .unwrap_or_else(|| Ok(FixedSize::unit()));
+        .unwrap_or_else(|| Ok(Type::unit()));
 
     Analysis {
         value: Rc::new(types::FunctionSignature {
@@ -279,7 +280,7 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
             .into_iter()
             .chain(sig.params.iter().filter_map(|param| param.typ.clone().ok()))
             .filter_map(|typ| match typ {
-                FixedSize::Contract(Contract { id, .. }) => {
+                Type::Contract(Contract { id, .. }) => {
                     // Contract types that are taken as (non-self) args or returned are "external",
                     // meaning that they're addresses of other contracts, so we don't have direct
                     // access to their fields, etc.
@@ -289,7 +290,7 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                         DepLocality::External,
                     ))
                 }
-                FixedSize::Struct(Struct { id, .. }) => {
+                Type::Struct(Struct { id, .. }) => {
                     Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local))
                 }
                 _ => None,
@@ -356,12 +357,12 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
             .map(|event| (root, Item::Event(*event), DepLocality::Local)),
     );
     directs.extend(body.var_decl_types.values().filter_map(|typ| match typ {
-        FixedSize::Contract(Contract { id, .. }) => Some((
+        Type::Contract(Contract { id, .. }) => Some((
             root,
             Item::Type(TypeDef::Contract(*id)),
             DepLocality::External,
         )),
-        FixedSize::Struct(Struct { id, .. }) => {
+        Type::Struct(Struct { id, .. }) => {
             Some((root, Item::Type(TypeDef::Struct(*id)), DepLocality::Local))
         }
         _ => None,

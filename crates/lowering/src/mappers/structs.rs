@@ -39,7 +39,7 @@ fn struct_field(context: &mut ModuleContext, field: StructFieldId) -> Node<ast::
             is_pub: node.kind.is_pub,
             is_const: node.kind.is_const,
             name: node.kind.name.clone(),
-            typ: types::type_desc(context, node.kind.typ.clone(), &typ.into()),
+            typ: types::type_desc(context, node.kind.typ.clone(), &typ),
             value: node.kind.value.clone(),
         },
         node.span,

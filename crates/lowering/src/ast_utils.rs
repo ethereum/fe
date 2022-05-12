@@ -1,4 +1,4 @@
-use fe_analyzer::namespace::types::FixedSize;
+use fe_analyzer::namespace::types::Type;
 use fe_parser::ast::{BoolOperator, CallArg, Expr, FuncStmt, UnaryOperator, VarDeclTarget};
 use fe_parser::node::{Node, NodeId};
 
@@ -437,7 +437,7 @@ pub fn inject_before_expression(
 /// Turns a ternary expression into a set of statements resembling an if/else block with equal
 /// functionality. Expects the type and variable result name to be provided as parameters.
 pub fn ternary_to_if(
-    ternary_type: FixedSize,
+    ternary_type: Type,
     expr: &Node<Expr>,
     result_name: &str,
 ) -> Vec<Node<FuncStmt>> {
@@ -449,7 +449,7 @@ pub fn ternary_to_if(
     {
         let mut stmts = vec![FuncStmt::VarDecl {
             target: VarDeclTarget::Name(result_name.into()).into_node(),
-            typ: names::fixed_size_type_desc(&ternary_type).into_node(),
+            typ: names::build_type_desc(&ternary_type).into_node(),
             value: None,
         }
         .into_node()];
@@ -490,7 +490,7 @@ pub fn ternary_to_if(
 /// Turns a boolean expression into a set of statements resembling an if/else block with equal
 /// functionality. Expects the type and variable result name to be provided as parameters.
 pub fn boolean_expr_to_if(
-    expr_type: FixedSize,
+    expr_type: Type,
     expr: &Node<Expr>,
     result_name: &str,
 ) -> Vec<Node<FuncStmt>> {
@@ -506,7 +506,7 @@ pub fn boolean_expr_to_if(
 
                 let mut stmts = vec![FuncStmt::VarDecl {
                     target: VarDeclTarget::Name(result_name.into()).into_node(),
-                    typ: names::fixed_size_type_desc(&expr_type).into_node(),
+                    typ: names::build_type_desc(&expr_type).into_node(),
                     value: Some(Expr::Bool(false).into_node()),
                 }
                 .into_node()];
@@ -534,7 +534,7 @@ pub fn boolean_expr_to_if(
                 //     res = right
                 let mut stmts = vec![FuncStmt::VarDecl {
                     target: VarDeclTarget::Name(result_name.into()).into_node(),
-                    typ: names::fixed_size_type_desc(&expr_type).into_node(),
+                    typ: names::build_type_desc(&expr_type).into_node(),
                     value: Some(Expr::Bool(true).into_node()),
                 }
                 .into_node()];
@@ -656,7 +656,7 @@ mod tests {
     use crate::ast_utils::ternary_to_if;
     use crate::ast_utils::StmtOrExpr;
     use crate::utils::ZeroSpanNode;
-    use fe_analyzer::namespace::types::FixedSize;
+    use fe_analyzer::namespace::types::Type;
     use fe_parser::ast::BinOperator;
     use fe_parser::ast::CallArg;
     use fe_parser::ast::Expr;
@@ -886,7 +886,7 @@ else:
         let second_ternary = all_ternary.get(1).unwrap();
         assert_eq!(second_ternary.original_id, ternary.original_id);
 
-        let ternary_type = FixedSize::u256();
+        let ternary_type = Type::u256();
 
         let transformed_outer = ternary_to_if(ternary_type.clone(), second_ternary, "outer");
 

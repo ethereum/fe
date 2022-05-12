@@ -37,7 +37,7 @@ pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) ->
         let source = arg_source(db, func, &param.name);
         make_param(db, param.name.clone(), param.typ.clone().unwrap(), source)
     }));
-    let return_type = db.mir_lowered_type(analyzer_signature.return_type.clone().unwrap().into());
+    let return_type = db.mir_lowered_type(analyzer_signature.return_type.clone().unwrap());
 
     let linkage = if func.is_public(db.upcast()) {
         if has_self {

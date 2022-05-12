@@ -19,12 +19,7 @@ pub fn event_def(context: &mut ModuleContext, event: EventId) -> Node<ast::Event
                 typ: types::type_desc(
                     context,
                     node.kind.typ.clone(),
-                    &field
-                        .typ
-                        .as_ref()
-                        .expect("event field type error")
-                        .clone()
-                        .into(),
+                    &field.typ.as_ref().expect("event field type error").clone(),
                 ),
             }
             .into_node()

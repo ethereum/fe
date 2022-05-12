@@ -146,10 +146,7 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::structs::struct_field_map)]
     fn struct_field_map(&self, id: StructId) -> Analysis<Rc<IndexMap<SmolStr, StructFieldId>>>;
     #[salsa::invoke(queries::structs::struct_field_type)]
-    fn struct_field_type(
-        &self,
-        field: StructFieldId,
-    ) -> Analysis<Result<types::FixedSize, TypeError>>;
+    fn struct_field_type(&self, field: StructFieldId) -> Analysis<Result<types::Type, TypeError>>;
     #[salsa::invoke(queries::structs::struct_all_functions)]
     fn struct_all_functions(&self, id: StructId) -> Rc<[FunctionId]>;
     #[salsa::invoke(queries::structs::struct_function_map)]

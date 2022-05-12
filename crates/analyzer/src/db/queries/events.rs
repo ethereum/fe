@@ -39,9 +39,9 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
                 typ: typ_node,
             } = &field.kind;
 
-            let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ.try_into() {
-                Ok(typ) => Ok(typ),
-                Err(_) => Err(TypeError::new(scope.error(
+            let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ {
+                typ if typ.has_fixed_size() => Ok(typ),
+                _ => Err(TypeError::new(scope.error(
                     "event field type must have a fixed size",
                     typ_node.span,
                     "this can't be used as an event field",

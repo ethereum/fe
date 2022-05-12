@@ -1,7 +1,7 @@
 use crate::context::{AnalyzerContext, Constant, NamedThing};
 use crate::errors::TypeError;
 use crate::namespace::items::Item;
-use crate::namespace::types::{FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type};
+use crate::namespace::types::{GenericArg, GenericParamKind, GenericType, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
@@ -223,9 +223,9 @@ pub fn type_desc(
         ast::TypeDesc::Tuple { items } => {
             let types = items
                 .iter()
-                .map(|typ| match FixedSize::try_from(type_desc(context, typ)?) {
-                    Ok(typ) => Ok(typ),
-                    Err(_) => Err(TypeError::new(context.error(
+                .map(|typ| match type_desc(context, typ) {
+                    Ok(typ) if typ.has_fixed_size() => Ok(typ),
+                    _ => Err(TypeError::new(context.error(
                         "tuple elements must have fixed size",
                         typ.span,
                         "this can't be stored in a tuple",
