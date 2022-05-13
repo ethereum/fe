@@ -1,6 +1,6 @@
 use crate::elements::{
     Component, Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, JsonAbi,
-    ModuleAbis,
+    ModuleAbis, StateMutability,
 };
 use crate::AbiError;
 use fe_analyzer::namespace::items::{ContractId, FunctionId, ModuleId};
@@ -97,6 +97,7 @@ fn function_def(db: &dyn AnalyzerDb, name: &str, fn_id: FunctionId, typ: FuncTyp
         typ,
         inputs,
         outputs,
+        state_mutability: StateMutability::Payable,
     }
 }
 
