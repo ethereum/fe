@@ -1,0 +1,7 @@
+---
+source: crates/tests/src/demo_simple_open_auction.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+bid([]) used 45989 gas
+bid([]) used 24970 gas
+

@@ -7,6 +7,8 @@ mod demo_guestbook;
 #[cfg(test)]
 mod demo_uniswap;
 #[cfg(test)]
+mod demo_simple_open_auction;
+#[cfg(test)]
 mod differential;
 #[cfg(test)]
 mod features;
