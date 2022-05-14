@@ -1,9 +1,9 @@
 use std::context::Context
 
 contract SimpleOpenAuction:
-    # declare contract state
-    beneficiary: address
+    # states
     auction_end_time: u256
+    beneficiary: address
 
     highest_bidder: address
     highest_bid: u256
@@ -12,7 +12,7 @@ contract SimpleOpenAuction:
 
     ended: bool 
 
-    # declare event
+    # events
     event HighestBidIncreased:
         idx bidder: address
         amount: u256
@@ -23,11 +23,10 @@ contract SimpleOpenAuction:
 
     
     # constructor 
-
     pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address): 
         self.beneficiary = beneficiary_addr
         self.auction_end_time = ctx.block_timestamp() + bidding_time
-
+ 
     pub fn bid(self, ctx: Context):
         assert ctx.block_timestamp() <= self.auction_end_time, "Auction already ended"
 
