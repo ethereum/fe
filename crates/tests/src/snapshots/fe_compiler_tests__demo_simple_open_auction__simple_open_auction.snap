@@ -4,4 +4,6 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 ---
 bid([]) used 45989 gas
 bid([]) used 24970 gas
+withdraw([]) used 15536 gas
+withdraw([]) used 2553 gas
 
