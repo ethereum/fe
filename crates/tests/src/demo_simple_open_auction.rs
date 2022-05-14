@@ -17,7 +17,7 @@ fn simple_open_auction() {
             &mut executor,
             "demos/simple_open_auction.fe",
             "SimpleOpenAuction",
-            &[bidding_time.clone(), beneficiary.clone()],
+            &[bidding_time, beneficiary],
         );
 
         // alice bid first
@@ -51,7 +51,7 @@ fn simple_open_auction() {
         harness.test_function(&mut executor, "withdraw", &[], Some(&bool_token(true)));
 
         //charlie withdraw money
-        harness.caller = charlie.clone().into_address().unwrap();
+        harness.caller = charlie.into_address().unwrap();
         harness.value = U256::zero();
         harness.test_function(&mut executor, "withdraw", &[], Some(&bool_token(true)));
 
