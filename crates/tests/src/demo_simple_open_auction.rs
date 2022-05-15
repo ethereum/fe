@@ -121,8 +121,9 @@ fn simple_open_auction() {
                 ),
                 (
                     "HighestBidIncreased",
-                    &[bob, uint_token_from_dec_str("100000")],
+                    &[bob.clone(), uint_token_from_dec_str("100000")],
                 ),
+                ("AuctionEnded", &[bob, uint_token_from_dec_str("100000")]),
             ],
         );
 
