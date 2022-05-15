@@ -1,8 +1,8 @@
 #![cfg(feature = "solc-backend")]
+use evm_runtime::Handler;
 use fe_compiler_test_utils::*;
 use insta::assert_snapshot;
-use primitive_types::{U256,H256, H160};
-use evm_runtime::Handler;
+use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 
 #[test]
@@ -22,7 +22,6 @@ fn simple_open_auction() {
     let state: BTreeMap<primitive_types::H160, evm::backend::MemoryAccount> = BTreeMap::new();
     let backend = evm::backend::MemoryBackend::new(&vicinity, state);
 
-    
     with_executor_backend(backend, &|mut executor| {
         let beneficiary = address_token(DEFAULT_CALLER);
         let alice = address_token("2000000000000000000000000000000000000002");
@@ -80,11 +79,19 @@ fn simple_open_auction() {
             &encode_error_reason("Action not end yet"),
         );
 
-        executor.set_storage(
-            harness.address,
-            H256::from_slice(&[0,34,66,149,149,51,133,111,42,3,243,199,217,67,30,40,239,79,229,203,42,21,3,140,55,241,215,109,53,220,80,136]),
-            H256::from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100]),
-        ).unwrap();
+        executor
+            .set_storage(
+                harness.address,
+                H256::from_slice(&[
+                    0, 34, 66, 149, 149, 51, 133, 111, 42, 3, 243, 199, 217, 67, 30, 40, 239, 79,
+                    229, 203, 42, 21, 3, 140, 55, 241, 215, 109, 53, 220, 80, 136,
+                ]),
+                H256::from_slice(&[
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 100,
+                ]),
+            )
+            .unwrap();
 
         harness.caller = alice.clone().into_address().unwrap();
         harness.value = U256::from(10000);
@@ -97,14 +104,13 @@ fn simple_open_auction() {
         );
 
         harness.test_function(&mut executor, "action_end", &[], None);
-        
         harness.test_function_reverts(
             &mut executor,
             "action_end",
             &[],
             &encode_error_reason("Auction end already called"),
         );
-               
+
         // verify event emitted
         harness.events_emitted(
             executor,

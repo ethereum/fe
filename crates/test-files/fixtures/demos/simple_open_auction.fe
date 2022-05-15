@@ -26,7 +26,8 @@ contract SimpleOpenAuction:
     pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address): 
         self.beneficiary = beneficiary_addr
         self.auction_end_time = ctx.block_timestamp() + bidding_time
- 
+    
+    #method
     pub fn bid(self, ctx: Context):
         assert ctx.block_timestamp() <= self.auction_end_time, "Auction already ended"
 
