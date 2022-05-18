@@ -1,5 +1,18 @@
 use std::context::Context
 
+# errors 
+struct AuctionAlreadyEnded:
+    pass
+
+struct BidNotHighEnough:
+    pub highest_bid: u256
+
+struct AuctionNotYetEnded:
+    pass
+
+struct AuctionEndAlreadyCalled:
+    pass
+
 contract SimpleOpenAuction:
     # states
     auction_end_time: u256
@@ -21,7 +34,6 @@ contract SimpleOpenAuction:
         idx winner: address
         amount: u256
 
-    
     # constructor 
     pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address): 
         self.beneficiary = beneficiary_addr
@@ -29,9 +41,11 @@ contract SimpleOpenAuction:
     
     #method
     pub fn bid(self, ctx: Context):
-        assert ctx.block_timestamp() <= self.auction_end_time, "Auction already ended"
+        if ctx.block_timestamp() > self.auction_end_time:
+            revert AuctionAlreadyEnded()
 
-        assert ctx.msg_value() > self.highest_bid, "Bid not high enough"
+        if ctx.msg_value() <= self.highest_bid:
+            revert BidNotHighEnough(highest_bid: self.highest_bid)
 
         if self.highest_bid != 0:
             self.pending_returns[self.highest_bidder] += self.highest_bid
@@ -51,9 +65,12 @@ contract SimpleOpenAuction:
         return true
 
     pub fn action_end(self, ctx: Context):
-        assert ctx.block_timestamp() > self.auction_end_time, "Action not end yet"
-        assert self.ended == false, "Auction end already called"
+        if ctx.block_timestamp() <= self.auction_end_time:
+            revert AuctionNotYetEnded()
 
+        if self.ended:
+            revert AuctionEndAlreadyCalled()
+    
         self.ended = true
         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
 

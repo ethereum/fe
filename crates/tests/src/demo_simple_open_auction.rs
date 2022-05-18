@@ -55,11 +55,9 @@ fn simple_open_auction() {
         harness.caller = alice.clone().into_address().unwrap();
         harness.value = U256::from(10000);
 
-        harness.test_function_reverts(
-            &mut executor,
-            "bid",
-            &[],
-            &encode_error_reason("Bid not high enough"),
+        validate_revert(
+            harness.capture_call(&mut executor, "bid", &[]),
+            &encode_revert("BidNotHighEnough(uint256)", &[uint_token(100000)]),
         );
 
         // alice withdraw money
@@ -72,13 +70,16 @@ fn simple_open_auction() {
         harness.value = U256::zero();
         harness.test_function(&mut executor, "withdraw", &[], Some(&bool_token(true)));
 
-        harness.test_function_reverts(
-            &mut executor,
-            "action_end",
-            &[],
-            &encode_error_reason("Action not end yet"),
+        // call action_end before auction_end_time.
+        validate_revert(
+            harness.capture_call(&mut executor, "action_end", &[]),
+            &encode_revert("AuctionNotYetEnded()", &[]),
         );
 
+        // change auction_end_time to 100.
+        // I set auction_end_time because I can't change the block_timestamp.
+        // Notes: Data layout of fe is different with solidity
+        // https://fe-lang.org/docs/spec/data_layout/storage/constant_size_values_in_storage.html
         executor
             .set_storage(
                 harness.address,
@@ -93,22 +94,19 @@ fn simple_open_auction() {
             )
             .unwrap();
 
+        // bid after auction_end_time
         harness.caller = alice.clone().into_address().unwrap();
         harness.value = U256::from(10000);
-
-        harness.test_function_reverts(
-            &mut executor,
-            "bid",
-            &[],
-            &encode_error_reason("Auction already ended"),
+        validate_revert(
+            harness.capture_call(&mut executor, "bid", &[]),
+            &encode_revert("AuctionAlreadyEnded()", &[]),
         );
 
+        // action_end test
         harness.test_function(&mut executor, "action_end", &[], None);
-        harness.test_function_reverts(
-            &mut executor,
-            "action_end",
-            &[],
-            &encode_error_reason("Auction end already called"),
+        validate_revert(
+            harness.capture_call(&mut executor, "action_end", &[]),
+            &encode_revert("AuctionEndAlreadyCalled()", &[]),
         );
 
         // verify event emitted
