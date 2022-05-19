@@ -1,11 +1,11 @@
-use fe_analyzer::namespace::items::ContractId;
-use fe_mir::ir::{self, FunctionId, TypeId};
-use fe_new_abi::{
+use fe_abi::{
     contract::AbiContract,
     event::{AbiEvent, AbiEventField},
     function::{AbiFunction, AbiFunctionType},
     types::{AbiTupleField, AbiType},
 };
+use fe_analyzer::namespace::items::ContractId;
+use fe_mir::ir::{self, FunctionId, TypeId};
 
 use crate::db::CodegenDb;
 

@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "abi_operations::decode_data(&[FeString{max_size: 26,}], expression! { 42 },\n                            expression! { 10 }, AbiDecodeLocation::Calldata)"
-
----
-abi_decode_data_string_26_calldata(42, 10)

@@ -1,6 +1,7 @@
 #![allow(unused)]
 use super::{context::Context, inst_order::InstSerializer};
 
+use fe_abi::function::{AbiFunction, AbiFunctionType};
 use fe_common::db::Upcast;
 use fe_mir::ir::{
     self,
@@ -10,7 +11,6 @@ use fe_mir::ir::{
     Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind, Value,
     ValueId,
 };
-use fe_new_abi::function::{AbiFunction, AbiFunctionType};
 use fxhash::FxHashMap;
 use smol_str::SmolStr;
 use yultsur::{

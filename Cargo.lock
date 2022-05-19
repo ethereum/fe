@@ -558,11 +558,9 @@ dependencies = [
 name = "fe-abi"
 version = "0.16.0-alpha"
 dependencies = [
- "fe-analyzer",
  "fe-common",
- "fe-parser",
  "serde",
- "serde_json",
+ "serde_test",
 ]
 
 [[package]]
@@ -597,10 +595,10 @@ dependencies = [
 name = "fe-codegen"
 version = "0.16.0-alpha"
 dependencies = [
+ "fe-abi",
  "fe-analyzer",
  "fe-common",
  "fe-mir",
- "fe-new_abi",
  "fxhash",
  "num-bigint",
  "salsa",
@@ -639,7 +637,6 @@ dependencies = [
  "fe-driver",
  "fe-test-files",
  "fe-yulc",
- "fe-yulgen",
  "getrandom 0.2.3",
  "hex",
  "indexmap",
@@ -661,11 +658,9 @@ dependencies = [
  "fe-common",
  "fe-compiler-test-utils",
  "fe-driver",
- "fe-lowering",
  "fe-parser",
  "fe-test-files",
  "fe-yulc",
- "fe-yulgen",
  "hex",
  "insta",
  "pretty_assertions",
@@ -685,11 +680,9 @@ dependencies = [
  "fe-analyzer",
  "fe-codegen",
  "fe-common",
- "fe-lowering",
  "fe-mir",
  "fe-parser",
  "fe-yulc",
- "fe-yulgen",
  "indexmap",
  "serde_json",
  "smol_str",
@@ -702,23 +695,6 @@ name = "fe-library"
 version = "0.16.0-alpha"
 dependencies = [
  "include_dir",
-]
-
-[[package]]
-name = "fe-lowering"
-version = "0.16.0-alpha"
-dependencies = [
- "fe-analyzer",
- "fe-common",
- "fe-parser",
- "fe-test-files",
- "indexmap",
- "insta",
- "pretty_assertions",
- "regex",
- "rstest",
- "salsa",
- "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -737,15 +713,6 @@ dependencies = [
  "num-traits",
  "salsa",
  "smol_str",
-]
-
-[[package]]
-name = "fe-new_abi"
-version = "0.16.0-alpha"
-dependencies = [
- "fe-common",
- "serde",
- "serde_test",
 ]
 
 [[package]]
@@ -781,32 +748,9 @@ dependencies = [
 name = "fe-yulc"
 version = "0.16.0-alpha"
 dependencies = [
- "fe-yulgen",
  "indexmap",
  "serde_json",
  "solc",
-]
-
-[[package]]
-name = "fe-yulgen"
-version = "0.16.0-alpha"
-dependencies = [
- "fe-abi",
- "fe-analyzer",
- "fe-common",
- "fe-lowering",
- "fe-parser",
- "fe-test-files",
- "if_chain",
- "indexmap",
- "insta",
- "maplit",
- "num-bigint",
- "pretty_assertions",
- "salsa",
- "smol_str",
- "wasm-bindgen-test",
- "yultsur",
 ]
 
 [[package]]
@@ -1137,12 +1081,6 @@ dependencies = [
  "syn",
  "utf8-ranges",
 ]
-
-[[package]]
-name = "maplit"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "memchr"

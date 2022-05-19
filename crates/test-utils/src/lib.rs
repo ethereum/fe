@@ -2,7 +2,6 @@ use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;
 use fe_driver as driver;
-use fe_yulgen::runtime::functions;
 use primitive_types::{H160, U256};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -602,7 +601,7 @@ pub struct Runtime {
 
 impl Default for Runtime {
     fn default() -> Self {
-        Self::new().with_functions(functions::std())
+        Self::new()
     }
 }
 

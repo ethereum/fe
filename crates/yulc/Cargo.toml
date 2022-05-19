@@ -7,7 +7,6 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-yulgen = {path = "../yulgen", version = "^0.16.0-alpha"}
 # This fork supports concurrent compilation, which is required for Rust tests.
 solc = { git = "https://github.com/g-r-a-n-t/solc-rust", rev = "52d4146", optional = true}
 serde_json = "1.0"

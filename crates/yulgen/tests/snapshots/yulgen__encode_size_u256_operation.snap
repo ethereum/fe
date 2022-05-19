@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "abi_operations::encoding_size(&[U256], vec![expression ! { 42 }])"
-
----
-add(32, 0)

@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "structs_functions::generate_get_fn(&struct_bool_bool(),\n                                   &struct_bool_bool().fields[1].0)"
-
----
-function struct_Foo_get_bar2_ptr(ptr) -> return_val { return_val := add(ptr, 63) }

@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "abi_names::decode_data(&[U256], AbiDecodeLocation::Calldata)"
-
----
-abi_decode_data_uint256_calldata

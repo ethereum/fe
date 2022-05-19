@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "abi_names::encode(&[FixedSize::Base(U256),\n                    FixedSize::Array(Array{inner: Base::Numeric(Integer::U8),\n                                           size: 100,})])"
-
----
-abi_encode_uint256_bytes_100

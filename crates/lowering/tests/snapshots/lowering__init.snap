@@ -1,9 +1,0 @@
----
-source: crates/lowering/tests/lowering.rs
-expression: lowered_code
-
----
-contract Foo:
-    pub fn __init__() -> ():
-        pass
-        return ()

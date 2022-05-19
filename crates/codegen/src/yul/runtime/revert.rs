@@ -5,8 +5,8 @@ use crate::{
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
+use fe_abi::function::{AbiFunction, AbiFunctionType};
 use fe_mir::ir::{self, TypeId};
-use fe_new_abi::function::{AbiFunction, AbiFunctionType};
 use yultsur::*;
 
 pub(super) fn make_revert(

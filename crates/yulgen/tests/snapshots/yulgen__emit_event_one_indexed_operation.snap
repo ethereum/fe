@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "data_operations::emit_event(event_one_indexed(),\n                            vec![expression ! { 26 }, expression ! { 0x42 }])"
-
----
-log2(abi_encode_address(0x42), add(32, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb, 26)
