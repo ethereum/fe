@@ -1,6 +1,6 @@
 use fe_analyzer::context::{ExpressionAttributes, FunctionBody};
 use fe_analyzer::namespace::items::{FunctionId, ModuleId};
-use fe_analyzer::namespace::types::{Array, FixedSize, Tuple};
+use fe_analyzer::namespace::types::{Array, Tuple, Type};
 use fe_analyzer::AnalyzerDb;
 use fe_parser::node::NodeId;
 use indexmap::IndexSet;
@@ -65,11 +65,11 @@ impl<'a, 'db> FnContext<'a, 'db> {
         self.body.expressions.get(&node_id.into())
     }
 
-    pub fn var_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
+    pub fn var_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&Type> {
         self.body.var_decl_types.get(&node_id.into())
     }
 
-    pub fn const_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
+    pub fn const_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&Type> {
         self.body.var_decl_types.get(&node_id.into())
     }
 }

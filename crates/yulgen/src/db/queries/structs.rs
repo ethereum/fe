@@ -1,5 +1,5 @@
 use crate::db::YulgenDb;
-use crate::types::{AbiType, AsAbiType, EvmSized};
+use crate::types::{AbiType, AsAbiType, AsEvmSized};
 use fe_analyzer::namespace::items::{Item, StructId, TypeDef};
 use smol_str::SmolStr;
 use std::rc::Rc;
@@ -48,6 +48,7 @@ pub fn struct_getter_fn(db: &dyn YulgenDb, struct_: StructId, field: SmolStr) ->
         .expect("invalid struct field name");
 
     let field_type = field_id.typ(db.upcast()).expect("struct field error");
+    let field_sized = field_type.as_evm_sized();
     // The value of each field occupies 32 bytes. This includes values with sizes
     // less than 32 bytes. So, when we get the pointer to the value of a struct
     // field, we must take into consideration the left-padding. The left-padding is
@@ -57,10 +58,10 @@ pub fn struct_getter_fn(db: &dyn YulgenDb, struct_: StructId, field: SmolStr) ->
         // For now we just assume that non-base types are always stored as references and so the size of the field
         // is always of the size of a pointer (32 bytes)
         index * 32
-    } else if field_type.size() < 32 {
-        index * 32 + (32 - field_type.size())
+    } else if field_sized.size() < 32 {
+        index * 32 + (32 - field_sized.size())
     } else {
-        index * field_type.size()
+        index * field_sized.size()
     };
 
     let function_name = identifier! { (db.struct_getter_name(struct_, field)) };

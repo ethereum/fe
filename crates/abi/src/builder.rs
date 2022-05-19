@@ -101,9 +101,9 @@ fn function_def(db: &dyn AnalyzerDb, name: &str, fn_id: FunctionId, typ: FuncTyp
     }
 }
 
-fn components(db: &dyn AnalyzerDb, typ: &types::FixedSize) -> Vec<Component> {
+fn components(db: &dyn AnalyzerDb, typ: &types::Type) -> Vec<Component> {
     match typ {
-        types::FixedSize::Struct(types::Struct { id, .. }) => id
+        types::Type::Struct(types::Struct { id, .. }) => id
             .fields(db)
             .iter()
             .map(|(name, field_id)| Component {
@@ -114,7 +114,7 @@ fn components(db: &dyn AnalyzerDb, typ: &types::FixedSize) -> Vec<Component> {
                     .abi_json_name(),
             })
             .collect(),
-        types::FixedSize::Tuple(types::Tuple { items }) => items
+        types::Type::Tuple(types::Tuple { items }) => items
             .iter()
             .enumerate()
             .map(|(index, item)| Component {

@@ -1,10 +1,7 @@
 use crate::operations::data as data_operations;
+use crate::types::AsEvmSized;
 use crate::YulgenDb;
-use fe_analyzer::{
-    context::Location,
-    namespace::types::Struct,
-    namespace::{items::StructId, types::FixedSize},
-};
+use fe_analyzer::{context::Location, namespace::items::StructId, namespace::types::Struct};
 use yultsur::*;
 
 pub fn init(db: &dyn YulgenDb, struct_: StructId, params: Vec<yul::Expression>) -> yul::Expression {
@@ -45,7 +42,7 @@ pub fn copy_to_storage(
         // The memory references are a pointless waste of storage space and are never read or written to.
         // We'll fix that later.
         vec![data_operations::mcopys(
-            FixedSize::Struct(struct_.clone()),
+            Box::new(struct_.clone()),
             target.clone(),
             value.clone(),
         )],
@@ -74,7 +71,11 @@ pub fn copy_to_storage(
                     );
                     // We have to go over all struct fields to copy the actual data of the reference type fields
                     // to their respective location in storage because all we copied so far were useless memory references
-                    Some(data_operations::mcopys(typ, field_to, field_from))
+                    Some(data_operations::mcopys(
+                        typ.as_evm_sized(),
+                        field_to,
+                        field_from,
+                    ))
                 }
             })
             .collect(),

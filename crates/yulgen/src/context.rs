@@ -1,6 +1,6 @@
 use crate::{AnalyzerDb, YulgenDb};
 use fe_analyzer::context::{CallType, ExpressionAttributes, FunctionBody};
-use fe_analyzer::namespace::types::{Event, FixedSize};
+use fe_analyzer::namespace::types::{Event, Type};
 use fe_parser::ast;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -29,7 +29,7 @@ impl<'a> FnContext<'a> {
     }
 
     /// Get the type of a variable declaration.
-    pub fn declaration_type(&self, typ: &Node<ast::TypeDesc>) -> &FixedSize {
+    pub fn declaration_type(&self, typ: &Node<ast::TypeDesc>) -> &Type {
         self.fn_body
             .var_decl_types
             .get(&typ.id)

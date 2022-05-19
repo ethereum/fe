@@ -7,7 +7,6 @@ use crate::types::{AbiDecodeLocation, AsAbiType};
 use fe_analyzer::builtins::ValueMethod;
 use fe_analyzer::context::CallType;
 use fe_analyzer::namespace::items::{walk_local_dependencies, ContractId, DepGraph, Item, TypeDef};
-use fe_analyzer::namespace::types::FixedSize;
 use fe_common::utils::keccak;
 use indexmap::IndexSet;
 use smol_str::SmolStr;
@@ -166,10 +165,6 @@ fn build_dependency_graph(
                             method: ValueMethod::AbiEncode,
                             typ,
                         } => {
-                            let typ: FixedSize = typ
-                                .clone()
-                                .try_into()
-                                .expect("abi_encode non-fixedsize type");
                             yulfns.push(functions::abi::encode(&[typ.as_abi_type(adb)]));
                         }
                         CallType::BuiltinAssociatedFunction { contract, .. } => {

@@ -4,11 +4,11 @@ use crate::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     math as math_operations, structs as struct_operations,
 };
-use crate::types::{AsAbiType, EvmSized};
+use crate::types::{AsAbiType, AsEvmSized, EvmSized};
 use fe_analyzer::builtins::{self, ContractTypeMethod, GlobalFunction};
 use fe_analyzer::context::{CallType, Location};
 use fe_analyzer::namespace::items::Class;
-use fe_analyzer::namespace::types::{Base, FixedSize, Type};
+use fe_analyzer::namespace::types::{Base, Type};
 use fe_common::numeric;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
@@ -51,8 +51,7 @@ fn move_expression(
     from: Location,
     to: Location,
 ) -> yul::Expression {
-    let fixed_size = FixedSize::try_from(typ.clone()).expect("Invalid type");
-
+    let fixed_size = typ.as_evm_sized();
     match (from, to) {
         (Location::Storage { .. }, Location::Value) => {
             if let Type::Base(Base::Numeric(integer)) = typ {
@@ -97,7 +96,9 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             GlobalFunction::Keccak256 => {
                 let first_arg = &args.kind.first().expect("Missing argument").kind.value;
                 let attributes = context.expression_attributes(first_arg);
-                let size = FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
+
+                let size: Box<dyn EvmSized> =
+                    attributes.typ.clone().try_into().expect("Invalid type");
                 let func_name = identifier! { (func.as_ref()) };
                 let size = identifier_expression! { (size.size()) };
                 expression! { [func_name]([yul_args[0].clone()], [size]) }

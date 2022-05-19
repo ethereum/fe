@@ -1,9 +1,9 @@
 use crate::context::ModuleContext;
 use crate::mappers::{contracts, events, functions, structs, types};
-use crate::names;
+use crate::names::{self, build_type_desc};
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::{Item, ModuleId, TypeDef};
-use fe_analyzer::namespace::types::{Array, Base, FixedSize, Tuple};
+use fe_analyzer::namespace::types::{Array, Tuple, Type};
 use fe_analyzer::AnalyzerDb;
 use fe_parser::ast::{self, SmolStr};
 use fe_parser::node::Node;
@@ -117,39 +117,6 @@ fn build_struct_field(name: String, type_desc: ast::TypeDesc) -> ast::Field {
     }
 }
 
-fn build_type_desc(typ: &FixedSize) -> ast::TypeDesc {
-    match typ {
-        FixedSize::Base(Base::Unit) => ast::TypeDesc::Unit,
-        FixedSize::Base(base) => ast::TypeDesc::Base { base: base.name() },
-        FixedSize::Array(array) => ast::TypeDesc::Generic {
-            base: SmolStr::new("Array").into_node(),
-            args: vec![
-                ast::GenericArg::TypeDesc(
-                    ast::TypeDesc::Base {
-                        base: array.inner.name(),
-                    }
-                    .into_node(),
-                ),
-                ast::GenericArg::Int(array.size.into_node()),
-            ]
-            .into_node(),
-        },
-        FixedSize::Tuple(tuple) => ast::TypeDesc::Base {
-            base: names::tuple_struct_name(tuple),
-        },
-        FixedSize::String(string) => ast::TypeDesc::Generic {
-            base: SmolStr::new("String").into_node(),
-            args: vec![ast::GenericArg::Int(string.max_size.into_node())].into_node(),
-        },
-        FixedSize::Contract(contract) => ast::TypeDesc::Base {
-            base: contract.name.clone(),
-        },
-        FixedSize::Struct(strukt) => ast::TypeDesc::Base {
-            base: strukt.name.clone(),
-        },
-    }
-}
-
 fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     // Built the AST nodes for the function arguments
     let args = (0..array.size)
@@ -157,7 +124,7 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
             ast::FunctionArg::Regular(ast::RegularFunctionArg {
                 label: Some(SmolStr::new("_").into_node()),
                 name: SmolStr::new(format!("val{}", index)).into_node(),
-                typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
+                typ: build_type_desc(&Type::Base(array.inner)).into_node(),
             })
             .into_node()
         })
@@ -167,7 +134,7 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     let var_decl_name = "generated_array";
     let var_decl = ast::FuncStmt::VarDecl {
         target: ast::VarDeclTarget::Name(var_decl_name.into()).into_node(),
-        typ: names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node(),
+        typ: build_type_desc(&Type::Array(array.clone())).into_node(),
         value: None,
     }
     .into_node();
@@ -193,8 +160,7 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     }
     .into_node();
 
-    let return_type =
-        Some(names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node());
+    let return_type = Some(build_type_desc(&Type::Array(array.clone())).into_node());
 
     // Put it all together in one AST node that holds the entire function definition
     ast::Function {

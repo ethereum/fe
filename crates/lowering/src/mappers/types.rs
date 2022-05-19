@@ -12,7 +12,7 @@ pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) 
             let typ = typ.as_tuple().expect("expected tuple type");
 
             for (item_desc, item_type) in items.into_iter().zip(typ.items.iter()) {
-                type_desc(context, item_desc, &item_type.clone().into());
+                type_desc(context, item_desc, &item_type.clone());
             }
             context.tuples.insert(typ.clone());
             Node::new(

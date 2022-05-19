@@ -2,13 +2,9 @@ use fe_common::diagnostics::Label;
 use fe_common::Span;
 
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
-use crate::errors::{BinaryOperationError, NotFixedSize};
-use crate::namespace::types::{FixedSize, Type};
+use crate::errors::BinaryOperationError;
+use crate::namespace::types::Type;
 use std::fmt::Display;
-
-pub fn types_to_fixed_sizes(sizes: &[Type]) -> Result<Vec<FixedSize>, NotFixedSize> {
-    sizes.iter().map(|param| param.clone().try_into()).collect()
-}
 
 pub fn add_bin_operations_errors(
     context: &mut dyn AnalyzerContext,

@@ -7,7 +7,7 @@ use crate::namespace::items::{
     StructFieldId, StructId, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, Contract, FixedSize, Struct};
+use crate::namespace::types::{self, Contract, Struct, Type};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 use fe_parser::ast;
@@ -72,7 +72,7 @@ pub fn struct_field_map(
 pub fn struct_field_type(
     db: &dyn AnalyzerDb,
     field: StructFieldId,
-) -> Analysis<Result<types::FixedSize, TypeError>> {
+) -> Analysis<Result<Type, TypeError>> {
     let field_data = field.data(db);
 
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
@@ -92,16 +92,16 @@ pub fn struct_field_type(
         scope.not_yet_implemented("struct field initial value assignment", field_data.ast.span);
     }
     let typ = match type_desc(&mut scope, typ) {
-        Ok(typ) => match typ.try_into() {
-            Ok(FixedSize::Contract(contract)) => {
+        Ok(typ) => match typ {
+            Type::Contract(contract) => {
                 scope.not_yet_implemented(
                     "contract types aren't yet supported as struct fields",
                     field_data.ast.span,
                 );
-                Ok(FixedSize::Contract(contract))
+                Ok(Type::Contract(contract))
             }
-            Ok(typ) => Ok(typ),
-            Err(_) => Err(TypeError::new(scope.error(
+            typ if typ.has_fixed_size() => Ok(typ),
+            _ => Err(TypeError::new(scope.error(
                 "struct field type must have a fixed size",
                 field_data.ast.span,
                 "this can't be used as an struct field",
@@ -199,13 +199,13 @@ pub fn struct_dependency_graph(
         .fields(db)
         .values()
         .filter_map(|field| match field.typ(db).ok()? {
-            FixedSize::Contract(Contract { id, .. }) => Some((
+            Type::Contract(Contract { id, .. }) => Some((
                 root,
                 Item::Type(TypeDef::Contract(id)),
                 DepLocality::External,
             )),
             // Not possible yet, but it will be soon
-            FixedSize::Struct(Struct { id, .. }) => {
+            Type::Struct(Struct { id, .. }) => {
                 Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local))
             }
             _ => None,

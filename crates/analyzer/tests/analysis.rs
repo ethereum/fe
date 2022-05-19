@@ -1,5 +1,5 @@
 use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::namespace::types::{Event, FixedSize};
+use fe_analyzer::namespace::types::{Event, Type};
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::{FileKind, Utf8Path};
@@ -451,7 +451,7 @@ fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnost
                     .iter()
                     .map(|field| field.typ.clone().unwrap()),
             )
-            .collect::<Vec<(Span, FixedSize)>>(),
+            .collect::<Vec<(Span, Type)>>(),
     )
 }
 

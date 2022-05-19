@@ -32,7 +32,7 @@ pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeI
         .fields
         .iter()
         .map(|field| {
-            let ty = db.mir_lowered_type(field.typ.clone().unwrap().into());
+            let ty = db.mir_lowered_type(field.typ.clone().unwrap());
             (field.name.clone(), ty, field.is_indexed)
         })
         .collect();
@@ -101,7 +101,7 @@ fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeId {
     let items = tup
         .items
         .iter()
-        .map(|item| db.mir_lowered_type(item.clone().into()))
+        .map(|item| db.mir_lowered_type(item.clone()))
         .collect();
 
     let def = TupleDef { items };
@@ -162,7 +162,7 @@ fn lower_struct(db: &dyn MirDb, struct_: &analyzer_types::Struct) -> TypeId {
         .iter()
         .map(|(fname, fid)| {
             let analyzer_types = fid.typ(db.upcast()).unwrap();
-            let ty = db.mir_lowered_type(analyzer_types.into());
+            let ty = db.mir_lowered_type(analyzer_types);
             (fname.clone(), ty)
         })
         .collect();

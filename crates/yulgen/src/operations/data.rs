@@ -4,14 +4,14 @@ use fe_analyzer::namespace::types::Array;
 use yultsur::*;
 
 /// Loads a value of the given type from storage.
-pub fn sload<T: EvmSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
+pub fn sload(typ: Box<dyn EvmSized>, sptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { bytes_sloadn([sptr], [size]) }
 }
 
 /// Stores a value of the given type in storage.
-pub fn sstore<T: EvmSized>(
-    typ: T,
+pub fn sstore(
+    typ: Box<dyn EvmSized>,
     sptr: yul::Expression,
     value: yul::Expression,
 ) -> yul::Statement {
@@ -20,14 +20,14 @@ pub fn sstore<T: EvmSized>(
 }
 
 /// Loads a value of the given type from memory.
-pub fn mload<T: EvmSized>(typ: T, mptr: yul::Expression) -> yul::Expression {
+pub fn mload(typ: Box<dyn EvmSized>, mptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { mloadn([mptr], [size]) }
 }
 
 /// Stores a value of the given type in memory.
-pub fn mstore<T: EvmSized>(
-    typ: T,
+pub fn mstore(
+    typ: Box<dyn EvmSized>,
     mptr: yul::Expression,
     value: yul::Expression,
 ) -> yul::Statement {
@@ -36,7 +36,11 @@ pub fn mstore<T: EvmSized>(
 }
 
 /// Copies a segment of memory into storage.
-pub fn mcopys<T: EvmSized>(typ: T, sptr: yul::Expression, mptr: yul::Expression) -> yul::Statement {
+pub fn mcopys(
+    typ: Box<dyn EvmSized>,
+    sptr: yul::Expression,
+    mptr: yul::Expression,
+) -> yul::Statement {
     let size = literal_expression! { (typ.size()) };
     let word_ptr = expression! { div([sptr], 32) };
     statement! { mcopys([mptr], [word_ptr], [size]) }
@@ -45,15 +49,15 @@ pub fn mcopys<T: EvmSized>(typ: T, sptr: yul::Expression, mptr: yul::Expression)
 /// Copies a segment of storage into memory.
 ///
 /// Returns the address of the data in memory.
-pub fn scopym<T: EvmSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
+pub fn scopym(typ: Box<dyn EvmSized>, sptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     let word_ptr = expression! { div([sptr], 32) };
     expression! { scopym([word_ptr], [size]) }
 }
 
 /// Copies a segment of storage to another segment of storage.
-pub fn scopys<T: EvmSized>(
-    typ: T,
+pub fn scopys(
+    typ: Box<dyn EvmSized>,
     dest_ptr: yul::Expression,
     origin_ptr: yul::Expression,
 ) -> yul::Statement {
@@ -64,7 +68,7 @@ pub fn scopys<T: EvmSized>(
 }
 
 /// Copies a segment of memory to another segment of memory.
-pub fn mcopym<T: EvmSized>(typ: T, ptr: yul::Expression) -> yul::Expression {
+pub fn mcopym(typ: Box<dyn EvmSized>, ptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { mcopym([ptr], [size]) }
 }
