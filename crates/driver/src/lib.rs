@@ -2,7 +2,6 @@
 
 pub use fe_codegen::db::{CodegenDb, NewDb};
 use fe_codegen::yul::runtime::RuntimeProvider;
-pub use fe_yulgen::Db;
 
 use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
 use fe_analyzer::AnalyzerDb;
@@ -12,7 +11,6 @@ use fe_common::diagnostics::{print_diagnostics, Diagnostic};
 use fe_common::files::{FileKind, SourceFileId};
 use fe_mir::db::MirDb;
 use fe_parser::ast::SmolStr;
-use fe_yulgen::YulgenDb;
 use indexmap::{indexmap, IndexMap};
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;

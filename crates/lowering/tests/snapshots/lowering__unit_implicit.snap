@@ -1,9 +1,0 @@
----
-source: crates/lowering/tests/lowering.rs
-expression: lowered_code
-
----
-contract Foo:
-    fn bar() -> ():
-        pass
-        return ()

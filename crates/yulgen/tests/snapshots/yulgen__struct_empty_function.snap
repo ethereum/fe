@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "structs_functions::generate_new_fn(&Struct::new(\"Foo\"))"
-
----
-function struct_Foo_new() -> return_val { return_val := 0 }

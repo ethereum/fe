@@ -8,7 +8,7 @@ edition = "2021"
 fe-analyzer = { path = "../analyzer", version = "^0.16.0-alpha"}
 fe-mir = { path = "../mir", version = "^0.16.0-alpha" }
 fe-common = { path = "../common", version = "^0.16.0-alpha" }
-fe-new_abi = { path = "../new_abi", version = "^0.16.0-alpha" }
+fe-abi = { path = "../abi", version = "^0.16.0-alpha" }
 salsa = "0.16.1"
 num-bigint = "0.4.3"
 fxhash = "0.2.1"

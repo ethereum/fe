@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
+use fe_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};
 use fe_analyzer::{db::AnalyzerDbStorage, namespace::items::ContractId, AnalyzerDb};
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_mir::{
     db::{MirDb, MirDbStorage},
     ir::{FunctionBody, FunctionId, FunctionSignature, TypeId},
 };
-use fe_new_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};
 
 mod queries;
 

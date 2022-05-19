@@ -15,11 +15,9 @@ serde_json = "1.0"
 fe-abi = {path = "../abi", version = "^0.16.0-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.16.0-alpha"}
 fe-common = {path = "../common", version = "^0.16.0-alpha"}
-fe-lowering = {path = "../lowering", version = "^0.16.0-alpha"}
 fe-mir = {path = "../mir", version = "^0.16.0-alpha"}
 fe-codegen = {path = "../codegen", version = "^0.16.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.16.0-alpha"}
-fe-yulgen = {path = "../yulgen", version = "^0.16.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.16.0-alpha", features = ["solc-backend"], optional = true}
 indexmap = "1.6.2"
 vfs = "0.5.1"

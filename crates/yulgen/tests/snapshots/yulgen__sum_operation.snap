@@ -1,6 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "data_operations::sum(expressions! { 42 26 99 })"
-
----
-add(add(42, 26), 99)
