@@ -9,4 +9,10 @@ error: literal out of range for `u128`
 3 │   let x: u128 = -1
   │                 ^^ does not fit into type `u128`
 
+error: Can not apply unary operator
+  ┌─ [snippet]:3:17
+  │
+3 │   let x: u128 = -1
+  │                 ^^ Expected unsigned type `u128`. Unary operator `-` can not be used here.
+
 

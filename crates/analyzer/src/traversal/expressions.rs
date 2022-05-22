@@ -705,18 +705,33 @@ fn expr_unary_operation(
 
         return match op.kind {
             fe::UnaryOperator::USub => {
-                let int_type = expected_type.as_int().unwrap_or(Integer::I256);
+                let expected_int_type = expected_type.as_int().unwrap_or(Integer::I256);
                 match operand_attributes.typ {
                     Type::Base(Base::Numeric(_)) => {
                         if let fe::Expr::Num(num_str) = &operand.kind {
                             let num = -to_bigint(num_str);
-                            validate_numeric_literal_fits_type(context, num, exp.span, int_type);
+                            validate_numeric_literal_fits_type(
+                                context,
+                                num,
+                                exp.span,
+                                expected_int_type,
+                            );
+                        }
+                        if !expected_int_type.is_signed() {
+                            context.error(
+                                "Can not apply unary operator",
+                                op.span + operand.span,
+                                &format!(
+                                    "Expected unsigned type `{}`. Unary operator `-` can not be used here.",
+                                    expected_int_type,
+                                ),
+                            );
                         }
                     }
                     _ => emit_err(context, "a numeric type"),
                 }
                 Ok(ExpressionAttributes::new(
-                    Type::int(int_type),
+                    Type::int(expected_int_type),
                     Location::Value,
                 ))
             }

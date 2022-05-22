@@ -221,6 +221,8 @@ test_stmt! { change_sign_and_type_in_cast, "let x: bool\nlet y: u16 = u16(x)" }
 test_stmt! { type_constructor_arg_count, "let x: u8 = u8(1, 10)" }
 test_stmt! { unary_minus_on_bool, "let x: bool = true\n-x" }
 test_stmt! { unary_not_on_int, "let x: u256 = 10\nnot x" }
+test_stmt! { unary_always_mismatch_type_case_1, "let x:u256 = 10\nlet y:u256 = -x"}
+test_stmt! { unary_always_mismatch_type_case_2, "let x:i32 = -10\nlet y:u256 = -x"}
 test_stmt! { undefined_generic_type, "let x: foobar<u256> = 10" }
 test_stmt! { undefined_name, "let x: u16 = y\nlet z: u16 = y\nlet v: u16 = _42" }
 test_stmt! { undefined_type, "let x: foobar = 10" }
