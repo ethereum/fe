@@ -9,4 +9,10 @@ error: literal out of range for `u256`
 3 │   u256(-1)
   │        ^^ does not fit into type `u256`
 
+error: Can not apply unary operator
+  ┌─ [snippet]:3:8
+  │
+3 │   u256(-1)
+  │        ^^ Expected unsigned type `u256`. Unary operator `-` can not be used here.
+
 

@@ -9,4 +9,10 @@ error: literal out of range for `u64`
 3 │   u64(-1)
   │       ^^ does not fit into type `u64`
 
+error: Can not apply unary operator
+  ┌─ [snippet]:3:7
+  │
+3 │   u64(-1)
+  │       ^^ Expected unsigned type `u64`. Unary operator `-` can not be used here.
+
 
