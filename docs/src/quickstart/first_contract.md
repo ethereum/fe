@@ -90,7 +90,7 @@ Let's recompile the contract again and see what happens.
 Failed to write output to directory: `output`. Error: Directory 'output' is not empty. Use --overwrite to overwrite.
 ```
 
-Oops, the compiler is telling us that the `output` directory is a non-empty directory and plays it safe by asking us if we are sure that we want to overwrite it. We have to use the `--overwrite` flag to allow the compiler to overwrite it is that is stored in the `output` directory.
+Oops, the compiler is telling us that the `output` directory is a non-empty directory and plays it safe by asking us if we are sure that we want to overwrite it. We have to use the `--overwrite` flag to allow the compiler to overwrite what is stored in the `output` directory.
 
 Let's try it again with `./fe guest_book.fe --overwrite`.
 

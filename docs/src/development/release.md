@@ -36,12 +36,12 @@ This will also run the tests again as the last step because some of them may nee
 
 **Prerequisite**: Make sure the central repository is configured as `upstream`, **not** `origin`.
 
-After the tests were adjusted run `make push-tag` to create the tag and push it to Github.
+After the tests are adjusted run `make push-tag` to create the tag and push it to Github.
 
 
 ### Manually edit the release on GitHub
 
-Running the previous command will push a new tag to Github and cause CI to create a [release](https://github.com/ethereum/fe/releases) with the Fe binaries attached. We may want to edit the release afterwards to put in some verbiage about the release.
+Running the previous command will push a new tag to Github and cause the CI to create a [release](https://github.com/ethereum/fe/releases) with the Fe binaries attached. We may want to edit the release afterwards to put in some verbiage about the release.
 
 ## Updating Docs & Website
 

@@ -2,7 +2,7 @@
 
 ## Significant whitespace
 
-In Fe whitespace is not just used to guide the human eye but it also carries meaning. The rules are essentially [borrowed from Python](https://docs.python.org/2.0/ref/indentation.html).
+In Fe, whitespace is not just used to guide the human eye but it also carries meaning. The rules are essentially [borrowed from Python](https://docs.python.org/2.0/ref/indentation.html).
 
 ### `NEWLINE`
 

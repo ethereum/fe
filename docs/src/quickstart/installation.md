@@ -17,7 +17,7 @@ Depending on your operating system, the file that you download is either named `
 
 In order to be able to execute the Fe compiler we will have to make the file *executable*. This can be done by navigating to the directory where the file is located and executing `chmod + x <filename>` (e.g. `chmod +x fe`).
 
-After we have set the proper permissions we should be able to run `./fe_amd64 --help` and an output that should be roughly comparable to:
+After we have set the proper permissions we should be able to run `./fe_amd64 --help` or `./fe_mac -h` and an output that should be roughly comparable to:
 
 ```
 Fe 0.4.0-alpha

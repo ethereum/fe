@@ -12,3 +12,7 @@ additional-css = ["theme/reference.css"]
 follow-web-links = true
 warning-policy = "error"
 exclude = [ 'github\.com', 'goerli\.etherscan\.io' ]
+
+[output.html.fold]
+enable = true
+level = 1

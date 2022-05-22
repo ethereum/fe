@@ -8,7 +8,7 @@ Fe divides keywords into two categories:
 ## Strict keywords
 
 These keywords can only be used in their correct contexts. They cannot
-be used as the [identifies](./identifiers.md).
+be used as the [identifiers](./identifiers.md).
 
 > **Lexer:**\
 > KW_AS             : `as`\
