@@ -1,7 +1,7 @@
 #![allow(unused_imports, dead_code)]
 
-pub use fe_codegen::db::{CodegenDb, NewDb};
-use fe_codegen::yul::runtime::RuntimeProvider;
+pub use fe_codegen::db::{CodegenDb, Db};
+//use fe_codegen::yul::runtime::RuntimeProvider;
 
 use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
 use fe_analyzer::AnalyzerDb;
@@ -36,7 +36,7 @@ pub struct CompiledContract {
 pub struct CompileError(pub Vec<Diagnostic>);
 
 pub fn compile_single_file(
-    db: &mut NewDb,
+    db: &mut Db,
     path: &str,
     src: &str,
     with_bytecode: bool,
@@ -57,7 +57,7 @@ pub fn compile_single_file(
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile_ingot(
-    db: &mut NewDb,
+    db: &mut Db,
     name: &str,
     files: &[(impl AsRef<str>, impl AsRef<str>)],
     with_bytecode: bool,
@@ -86,7 +86,7 @@ pub fn compile_ingot(
 
 /// Returns graphviz string.
 // TODO: This is temporary function for debugging.
-pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<String, CompileError> {
+pub fn dump_mir_single_file(db: &mut Db, path: &str, src: &str) -> Result<String, CompileError> {
     let module = ModuleId::new_standalone(db, path, src);
 
     let diags = module.diagnostics(db);
@@ -99,29 +99,9 @@ pub fn dump_mir_single_file(db: &mut NewDb, path: &str, src: &str) -> Result<Str
     Ok(String::from_utf8(text).unwrap())
 }
 
-// TODO: Remove this!!!!
-pub fn dump_codegen_funcs(db: &mut NewDb, path: &str, src: &str) -> Result<String, CompileError> {
-    let module = ModuleId::new_standalone(db, path, src);
-
-    let diags = module.diagnostics(db);
-    if !diags.is_empty() {
-        return Err(CompileError(diags));
-    }
-
-    let mut contracts = String::new();
-    for contract in db.module_contracts(module).as_ref() {
-        contracts.push_str(&format!(
-            "{}",
-            fe_codegen::yul::isel::lower_contract_deployable(db, *contract)
-        ))
-    }
-
-    Ok(contracts)
-}
-
 #[cfg(feature = "solc-backend")]
 fn compile_module_id(
-    db: &mut NewDb,
+    db: &mut Db,
     module_id: ModuleId,
     with_bytecode: bool,
     optimize: bool,
@@ -158,7 +138,7 @@ fn compile_module_id(
 
 #[cfg(not(feature = "solc-backend"))]
 fn compile_module_id(
-    db: &mut NewDb,
+    db: &mut Db,
     module_id: ModuleId,
     _with_bytecode: bool,
     _optimize: bool,
@@ -185,7 +165,7 @@ fn compile_module_id(
     })
 }
 
-fn compile_to_yul(db: &mut NewDb, contract: ContractId) -> String {
+fn compile_to_yul(db: &mut Db, contract: ContractId) -> String {
     let yul_contract = fe_codegen::yul::isel::lower_contract_deployable(db, contract);
     yul_contract.to_string().replace('"', "\\\"")
 }

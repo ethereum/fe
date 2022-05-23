@@ -5,7 +5,7 @@ macro_rules! test_file {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let mut db = fe_driver::NewDb::default();
+            let mut db = fe_driver::Db::default();
             let path = concat!("crashes/", stringify!($name), ".fe");
             let src = test_files::fixture(path);
             fe_driver::compile_single_file(&mut db, path, src, true, true).ok();
