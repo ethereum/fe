@@ -49,42 +49,42 @@ pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
 // TODO: Move this to driver.
 #[salsa::database(SourceDbStorage, AnalyzerDbStorage, MirDbStorage, CodegenDbStorage)]
 #[derive(Default)]
-pub struct NewDb {
-    storage: salsa::Storage<NewDb>,
+pub struct Db {
+    storage: salsa::Storage<Db>,
 }
-impl salsa::Database for NewDb {}
+impl salsa::Database for Db {}
 
-impl Upcast<dyn MirDb> for NewDb {
+impl Upcast<dyn MirDb> for Db {
     fn upcast(&self) -> &(dyn MirDb + 'static) {
         &*self
     }
 }
 
-impl UpcastMut<dyn MirDb> for NewDb {
+impl UpcastMut<dyn MirDb> for Db {
     fn upcast_mut(&mut self) -> &mut (dyn MirDb + 'static) {
         &mut *self
     }
 }
 
-impl Upcast<dyn SourceDb> for NewDb {
+impl Upcast<dyn SourceDb> for Db {
     fn upcast(&self) -> &(dyn SourceDb + 'static) {
         &*self
     }
 }
 
-impl UpcastMut<dyn SourceDb> for NewDb {
+impl UpcastMut<dyn SourceDb> for Db {
     fn upcast_mut(&mut self) -> &mut (dyn SourceDb + 'static) {
         &mut *self
     }
 }
 
-impl Upcast<dyn AnalyzerDb> for NewDb {
+impl Upcast<dyn AnalyzerDb> for Db {
     fn upcast(&self) -> &(dyn AnalyzerDb + 'static) {
         &*self
     }
 }
 
-impl UpcastMut<dyn AnalyzerDb> for NewDb {
+impl UpcastMut<dyn AnalyzerDb> for Db {
     fn upcast_mut(&mut self) -> &mut (dyn AnalyzerDb + 'static) {
         &mut *self
     }

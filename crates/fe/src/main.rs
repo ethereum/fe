@@ -53,7 +53,7 @@ pub fn main() {
                 .long("emit")
                 .help("Comma separated compile targets e.g. -e=bytecode,yul")
                 .possible_values(&["abi", "bytecode", "ast", "tokens", "yul", "loweredAst"])
-                .default_value("abi,bytecode,yul")
+                .default_value("abi,bytecode")
                 .use_delimiter(true)
                 .takes_value(true),
         )
@@ -77,12 +77,6 @@ pub fn main() {
                 .help("dump mir dot file")
                 .takes_value(false),
         )
-        .arg(
-            Arg::with_name("codegen")
-                .long("codegen")
-                .help("todo")
-                .takes_value(false),
-        )
         .get_matches();
 
     let input_path = matches.value_of("input").unwrap();
@@ -97,16 +91,12 @@ pub fn main() {
         return mir_dump(input_path);
     }
 
-    if matches.is_present("codegen") {
-        return yul_functions_dump(input_path);
-    }
-
     #[cfg(not(feature = "solc-backend"))]
     if with_bytecode {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
-    let mut db = fe_driver::NewDb::default();
+    let mut db = fe_driver::Db::default();
 
     let (content, compiled_module) = if Path::new(input_path).is_file() {
         let content = match std::fs::read_to_string(input_path) {
@@ -284,7 +274,7 @@ fn verify_nonexistent_or_empty(dir: &Path) -> Result<(), String> {
 }
 
 fn mir_dump(input_path: &str) {
-    let mut db = fe_driver::NewDb::default();
+    let mut db = fe_driver::Db::default();
     if Path::new(input_path).is_file() {
         let content = match std::fs::read_to_string(input_path) {
             Err(err) => {
@@ -303,34 +293,7 @@ fn mir_dump(input_path: &str) {
             }
         }
     } else {
-        eprintln!("mir doesn't support ingot yet");
-        std::process::exit(1)
-    }
-}
-
-fn yul_functions_dump(input_path: &str) {
-    let mut db = fe_driver::NewDb::default();
-    if Path::new(input_path).is_file() {
-        let content = match std::fs::read_to_string(input_path) {
-            Err(err) => {
-                eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
-                std::process::exit(1)
-            }
-            Ok(content) => content,
-        };
-
-        match fe_driver::dump_codegen_funcs(&mut db, input_path, &content) {
-            Ok(contract) => {
-                println!("{}", contract)
-            }
-            Err(err) => {
-                eprintln!("Unable to dump mir `{}", input_path);
-                print_diagnostics(&db, &err.0);
-                std::process::exit(1)
-            }
-        }
-    } else {
-        eprintln!("mir doesn't support ingot yet");
+        eprintln!("dumping mir for ingot is not supported yet");
         std::process::exit(1)
     }
 }
