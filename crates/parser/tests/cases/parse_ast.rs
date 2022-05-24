@@ -68,6 +68,8 @@ macro_rules! test_parse {
 
 test_parse! { expr_call1, expressions::parse_expr, "foo()" }
 test_parse! { expr_call2, expressions::parse_expr, "foo(1,2,x:3)" }
+test_parse! { expr_call3, expressions::parse_expr, "bing.foo<Bar>(x:3)" }
+test_parse! { expr_call4, expressions::parse_expr, "bang.bing.foo<Bar, Baz>(26, 42)" }
 test_parse! { expr_attr1, expressions::parse_expr, "foo.bar[0][y]" }
 test_parse! { expr_attr2, expressions::parse_expr, "a[x].b[y](1)" }
 test_parse! { expr_num1, expressions::parse_expr, "12345" }

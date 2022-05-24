@@ -441,6 +441,40 @@ fn infix_op(
                     par.error(span, "floats not supported");
                     return Err(ParseFailed);
                 }
+                Expr::Call {
+                    func,
+                    generic_args,
+                    args,
+                } => {
+                    let func_span = left.span + func.span;
+                    let func = Box::new(Node::new(
+                        Expr::Attribute {
+                            value: Box::new(left),
+                            attr: {
+                                if let Expr::Name(name) = func.kind {
+                                    Node::new(name, func.span)
+                                } else {
+                                    par.fancy_error(
+                                        "failed to parse attribute expression",
+                                        vec![Label::primary(func.span, "expected a name")],
+                                        vec![],
+                                    );
+                                    return Err(ParseFailed);
+                                }
+                            },
+                        },
+                        func_span,
+                    ));
+
+                    Node::new(
+                        Expr::Call {
+                            func,
+                            generic_args,
+                            args,
+                        },
+                        span,
+                    )
+                }
                 _ => {
                     par.fancy_error(
                         "failed to parse attribute expression",
