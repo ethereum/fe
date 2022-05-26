@@ -1,14 +1,14 @@
 [package]
 name = "fe-codegen"
-version = "0.16.0-alpha"
+version = "0.17.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 
 [dependencies]
-fe-analyzer = { path = "../analyzer", version = "^0.16.0-alpha"}
-fe-mir = { path = "../mir", version = "^0.16.0-alpha" }
-fe-common = { path = "../common", version = "^0.16.0-alpha" }
-fe-abi = { path = "../abi", version = "^0.16.0-alpha" }
+fe-analyzer = { path = "../analyzer", version = "^0.17.0-alpha"}
+fe-mir = { path = "../mir", version = "^0.17.0-alpha"}
+fe-common = { path = "../common", version = "^0.17.0-alpha"}
+fe-abi = { path = "../abi", version = "^0.17.0-alpha"}
 salsa = "0.16.1"
 num-bigint = "0.4.3"
 fxhash = "0.2.1"
