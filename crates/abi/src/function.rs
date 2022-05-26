@@ -4,6 +4,16 @@ use serde::Serialize;
 
 use super::types::AbiType;
 
+/// The mutability of a public function.
+#[derive(Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum StateMutability {
+    Pure,
+    View,
+    Nonpayable,
+    Payable,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiFunction {
     #[serde(rename = "type")]
@@ -11,6 +21,8 @@ pub struct AbiFunction {
     name: String,
     inputs: Vec<AbiFunctionParamInner>,
     outputs: Vec<AbiFunctionParamInner>,
+    #[serde(rename = "stateMutability")]
+    state_mutability: StateMutability,
 }
 
 impl AbiFunction {
@@ -33,6 +45,10 @@ impl AbiFunction {
             name,
             inputs,
             outputs,
+            // In the future we will derive that based on the fact whether `self` or `ctx` are taken as `mut` or not.
+            // For now, we default to payable so that tooling such as hardhat simply assumes all functions need to be
+            // called with a transaction.
+            state_mutability: StateMutability::Payable,
         }
     }
 
@@ -137,7 +153,7 @@ mod tests {
             &[
                 Token::Struct {
                     name: "AbiFunction",
-                    len: 4,
+                    len: 5,
                 },
                 Token::Str("type"),
                 Token::UnitVariant {
@@ -185,6 +201,11 @@ mod tests {
                 Token::String("uint64"),
                 Token::MapEnd,
                 Token::SeqEnd,
+                Token::Str("stateMutability"),
+                Token::UnitVariant {
+                    name: "StateMutability",
+                    variant: "payable",
+                },
                 Token::StructEnd,
             ],
         )
