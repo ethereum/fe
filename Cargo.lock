@@ -544,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "clap",
  "fe-common",
@@ -556,7 +556,7 @@ dependencies = [
 
 [[package]]
 name = "fe-abi"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "fe-common",
  "serde",
@@ -565,7 +565,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "fe-codegen"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -608,7 +608,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "camino",
  "codespan-reporting",
@@ -627,7 +627,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-test-utils"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -692,14 +692,14 @@ dependencies = [
 
 [[package]]
 name = "fe-library"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "include_dir",
 ]
 
 [[package]]
 name = "fe-mir"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "dot2",
  "fe-analyzer",
@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "criterion",
  "fe-common",
@@ -738,7 +738,7 @@ dependencies = [
 
 [[package]]
 name = "fe-test-files"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "fe-library",
  "include_dir",
@@ -746,7 +746,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulc"
-version = "0.17.0-alpha"
+version = "0.17.1-alpha"
 dependencies = [
  "indexmap",
  "serde_json",
