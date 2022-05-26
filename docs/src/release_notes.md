@@ -10,6 +10,93 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.17.0-alpha "Quartz" (2022-05-26)
+
+### Features
+
+
+- Support for underscores in numbers to improve readability e.g. `100_000`.
+
+  Example 
+
+  ```
+      let num: u256 = 1000_000_000_000
+  ```
+  ([#149](https://github.com/ethereum/fe/issues/149))
+- Optimized access of struct fields in storage ([#249](https://github.com/ethereum/fe/issues/249))
+- Unit type `()` is now ABI encodable ([#442](https://github.com/ethereum/fe/issues/442))
+- Temporary default `stateMutability` to `payable` in ABI
+
+  The ABI metadata that the compiler previously generated did not include the `stateMutability` field. This piece of information is important for tooling such as hardhat because it determines whether a function needs to be called with or without sending a transaction.
+
+  As soon as we have support for `mut self` and `mut ctx` we will be able to derive that information from the function signature. In the meantime we now default to `payable`. ([#705](https://github.com/ethereum/fe/issues/705))
+
+
+### Bugfixes
+
+
+- Fixed a crash caused by certain memory to memory assignments.
+
+  E.g. the following code would previously lead to a compiler crash:
+
+  ```
+  my_struct.x = my_struct.y
+  ```
+  ([#590](https://github.com/ethereum/fe/issues/590))
+- Reject unary minus operation if the target type is an unsigned integer number.
+
+  Code below should be reject by `fe` compiler: 
+
+  ```python 
+  contract Foo:
+      pub fn bar(self) -> u32:
+          let unsigned: u32 = 1
+          return -unsigned
+    
+      pub fn foo():
+          let a: i32 = 1
+          let b: u32 = -a
+  ```
+  ([#651](https://github.com/ethereum/fe/issues/651))
+- Fixed crash when passing a struct that contains an array
+
+  E.g. the following would previously result in a compiler crash:
+
+  ```
+  struct MyArray:
+      pub x: Array<i32, 2>
+    
+    
+  contract Foo:
+      pub fn bar(my_arr: MyArray):
+          pass
+  ```
+  ([#681](https://github.com/ethereum/fe/issues/681))
+- reject infinite size struct definitions.
+
+  Fe `structs` having infinite size due to recursive definitions were not rejected earlier and would cause ICE in the analyzer since they were not properly handled. Now `structs` having infinite size are properly identified by detecting cycles in the dependency graph of the struct field definitions and an error is thrown by the analyzer. ([#682](https://github.com/ethereum/fe/issues/682))
+- Return instead of revert when contract is called without data.
+
+  If a contract is called without data so that no function is invoked,
+  we would previously `revert` but that would leave us without a 
+  way to send ETH to a contract so instead it will cause a `return` now. ([#694](https://github.com/ethereum/fe/issues/694))
+- Resolve compiler crash when using certain reserved YUL words as struct field names.
+
+  E.g. the following would previously lead to a compiler crash because `numer` is
+  a reserved keyword in YUL.
+
+  ```
+  struct Foo:
+    pub number: u256
+
+  contract Meh:
+
+    pub fn yay() -> Foo:
+      return Foo(number:2)
+  ```
+  ([#709](https://github.com/ethereum/fe/issues/709))
+
+
 ## 0.16.0-alpha (2022-05-05)
 
 ### Features
