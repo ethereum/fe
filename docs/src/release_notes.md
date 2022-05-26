@@ -1588,7 +1588,7 @@ Fe is moving fast. Read up on all the latest improvements.
 
   ```python
   contract Foo:
-      pub fn build_array(a: u256, b: u256) -> u256[3]:
+      pub fn build_array(a: u256, b: u256) -> Array<u256, 3>:
           my_array: u256[3]
           my_array[0] = a
           my_array[1] = a * b
@@ -1600,7 +1600,7 @@ Fe is moving fast. Read up on all the latest improvements.
           foo_address: address,
           a: u256,
           b: u256,
-      ) -> u256[3]:
+      ) -> Array<u256, 3>:
           foo: Foo = Foo(foo_address)
           return foo.build_array(a, b)
   ```
