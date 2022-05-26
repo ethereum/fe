@@ -21,6 +21,7 @@ CODE_SNIPPET_END_MARKER = '```'
 SKIP_LIST = [
     'release_notes.md_0.fe',
     'release_notes.md_6.fe',
+    'release_notes.md_7.fe',
     'sequence_types_in_memory.md_0.fe',
     'to_mem_function.md_0.fe',
     'visibility_and_privacy.md_0.fe',
