@@ -455,6 +455,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
         )}
     }
+
     fn lower_assign(&mut self, lhs: &AssignableValue, rhs: ValueId) -> yul::Statement {
         match lhs {
             AssignableValue::Value(value) => {
@@ -494,14 +495,23 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn lower_unary(&mut self, op: UnOp, value: ValueId) -> yul::Expression {
-        let value = self.value_expr(value);
+        let value_expr = self.value_expr(value);
         match op {
-            UnOp::Not => expression! { iszero([value])},
+            UnOp::Not => expression! { iszero([value_expr])},
             UnOp::Neg => {
                 let zero = literal_expression! {0};
-                expression! { sub([zero], [value])}
+                if self.body.store.value_data(value).is_imm() {
+                    // Literals are checked at compile time (e.g. -128) so there's no point
+                    // in adding a runtime check.
+                    expression! {sub([zero], [value_expr])}
+                } else {
+                    let value_ty = self.body.store.value_ty(value);
+                    self.ctx
+                        .runtime
+                        .safe_sub(self.db, zero, value_expr, value_ty)
+                }
             }
-            UnOp::Inv => expression! { not([value])},
+            UnOp::Inv => expression! { not([value_expr])},
         }
     }
 
@@ -535,6 +545,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             BinOp::Mod => self.ctx.runtime.safe_mod(self.db, lhs, rhs, inst_result_ty),
             BinOp::Pow => self.ctx.runtime.safe_pow(self.db, lhs, rhs, inst_result_ty),
             BinOp::Shl => expression! {shl([rhs], [lhs])},
+            BinOp::Shr if is_signed => expression! {sar([rhs], [lhs])},
             BinOp::Shr => expression! {shr([rhs], [lhs])},
             BinOp::BitOr | BinOp::LogicalOr => expression! {or([lhs], [rhs])},
             BinOp::BitXor => expression! {xor([lhs], [rhs])},
