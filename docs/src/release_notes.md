@@ -10,6 +10,22 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.18.0-alpha "Ruby" (2022-05-27)
+
+### Features
+
+
+- Added support for parsing of attribute calls with generic arguments (e.g. `foo.bar<Baz>()`). ([#719](https://github.com/ethereum/fe/issues/719))
+
+
+### Bugfixes
+
+- Fix a regression where the `stateMutability` field would not be included in the generated ABI ([#722](https://github.com/ethereum/fe/issues/722))
+- Fix two regressions introduced in `0.17.0`
+  * Properly lower right shift operation to yul's `sar` if operand is signed type
+  * Properly lower negate operation to call `safe_sub` ([#723](https://github.com/ethereum/fe/issues/723))
+
+
 ## 0.17.0-alpha "Quartz" (2022-05-26)
 
 ### Features
