@@ -42,6 +42,10 @@ impl Value {
             | Self::Constant { ty, .. } => *ty,
         }
     }
+
+    pub fn is_imm(&self) -> bool {
+        matches!(self, Self::Immediate { .. })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
