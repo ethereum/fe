@@ -8,7 +8,7 @@ contract Foo {
 
 contract Bar {
     fn b(ctx: Context) {
-        let foo: Foo = Foo(ctx, address(0))
+        let foo: Foo = Foo(address(0))
         foo.__call__()
     }
 }

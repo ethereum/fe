@@ -5,7 +5,7 @@ contract Foo {
 }
 
 contract FooProxy {
-    pub fn baz(ctx: Context) {
-        Foo(ctx, address(0)).bar("hello world")
+    pub fn baz() {
+        Foo(address(0)).bar("hello world")
     }
 }

@@ -159,31 +159,17 @@ note:
 note: 
    ┌─ two_contracts.fe:23:5
    │  
-23 │ ╭     pub fn set_foo_addr(self, ctx: Context, _ addr: address) {
-24 │ │         self.other = Foo(ctx, addr)
+23 │ ╭     pub fn set_foo_addr(self, _ addr: address) {
+24 │ │         self.other = Foo(addr)
 25 │ │     }
-   │ ╰─────^ attributes hash: 736575608159807992
+   │ ╰─────^ attributes hash: 3263176293298741376
    │  
    = FunctionSignature {
          self_decl: Some(
              Mutable,
          ),
-         ctx_decl: Some(
-             Mutable,
-         ),
+         ctx_decl: None,
          params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
              FunctionParam {
                  label: Some(
                      "_",
@@ -206,23 +192,22 @@ note:
 note: 
    ┌─ two_contracts.fe:24:9
    │
-24 │         self.other = Foo(ctx, addr)
+24 │         self.other = Foo(addr)
    │         ^^^^ Bar: Value
 
 note: 
    ┌─ two_contracts.fe:24:9
    │
-24 │         self.other = Foo(ctx, addr)
-   │         ^^^^^^^^^^       ^^^  ^^^^ address: Value
-   │         │                │     
-   │         │                Context: Memory
+24 │         self.other = Foo(addr)
+   │         ^^^^^^^^^^       ^^^^ address: Value
+   │         │                 
    │         Foo: Storage { nonce: Some(0) }
 
 note: 
    ┌─ two_contracts.fe:24:22
    │
-24 │         self.other = Foo(ctx, addr)
-   │                      ^^^^^^^^^^^^^^ Foo: Value
+24 │         self.other = Foo(addr)
+   │                      ^^^^^^^^^ Foo: Value
 
 note: 
    ┌─ two_contracts.fe:27:5

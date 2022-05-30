@@ -61,8 +61,8 @@ contract Foo {
 contract FooProxy {
     foo: Foo
 
-    pub fn __init__(self, ctx: Context, foo_addr: address) {
-        self.foo = Foo(ctx, foo_addr)
+    pub fn __init__(self, foo_addr: address) {
+        self.foo = Foo(foo_addr)
     }
 
     pub fn call_set_my_string(self, some_string: String<100>) {

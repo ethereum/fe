@@ -5,7 +5,7 @@ contract Foo {
 }
 
 contract Bar {
-    pub fn test(ctx: Context) {
-        Foo(ctx, address(0)).doesnt_exist()
+    pub fn test() {
+        Foo(address(0)).doesnt_exist()
     }
 }

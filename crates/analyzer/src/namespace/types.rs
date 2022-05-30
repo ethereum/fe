@@ -379,33 +379,6 @@ pub struct EventField {
     pub is_indexed: bool,
 }
 
-impl FunctionSignature {
-    /// Parameters without `ctx`, if it is a contract function that declares it.
-    ///
-    /// This is used when calling a contract method externally.
-    pub fn external_params(&self) -> &[FunctionParam] {
-        if self.ctx_decl.is_some() {
-            &self.params[1..]
-        } else {
-            &self.params
-        }
-    }
-
-    /// Parameter types without `ctx`, if it is a contract function that
-    /// declares it.
-    ///
-    /// This is used when calling a contract method externally.
-    ///
-    /// # Panics
-    /// Panics if any param type is an `Err`
-    pub fn external_param_types(&self) -> Vec<Type> {
-        self.external_params()
-            .iter()
-            .map(|param| param.typ.clone().expect("fn param type error"))
-            .collect()
-    }
-}
-
 impl Type {
     pub fn name(&self) -> SmolStr {
         match self {

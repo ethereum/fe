@@ -148,7 +148,7 @@ error: the function `my_func` is private
 error: the type `MyContract` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:27:16
    │
-27 │         let _: MyContract = MyContract(ctx, addr)
+27 │         let _: MyContract = MyContract(addr)
    │                ^^^^^^^^^^ this type is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:15:10
@@ -162,7 +162,7 @@ error: the type `MyContract` is private
 error: the type `MyContract` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:27:29
    │
-27 │         let _: MyContract = MyContract(ctx, addr)
+27 │         let _: MyContract = MyContract(addr)
    │                             ^^^^^^^^^^ this type is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:15:10

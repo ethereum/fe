@@ -20,8 +20,8 @@ contract Foo {
 contract Bar {
     other: Foo
 
-    pub fn set_foo_addr(self, ctx: Context, _ addr: address) {
-        self.other = Foo(ctx, addr)
+    pub fn set_foo_addr(self, _ addr: address) {
+        self.other = Foo(addr)
     }
 
     pub fn answer(self) -> u256 {

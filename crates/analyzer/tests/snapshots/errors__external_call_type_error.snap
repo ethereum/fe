@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: incorrect type for `bar` argument at position 0
-  ┌─ compile_errors/external_call_type_error.fe:9:34
+  ┌─ compile_errors/external_call_type_error.fe:9:29
   │
-9 │         Foo(ctx, address(0)).bar("hello world")
-  │                                  ^^^^^^^^^^^^^ this has type `String<11>`; expected type `u256`
+9 │         Foo(address(0)).bar("hello world")
+  │                             ^^^^^^^^^^^^^ this has type `String<11>`; expected type `u256`
 
 

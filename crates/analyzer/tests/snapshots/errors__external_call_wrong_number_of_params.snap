@@ -4,18 +4,18 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `bar` expects 2 arguments, but 1 was provided
-  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:30
+  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:25
   │
-9 │         Foo(ctx, address(0)).bar(42)
-  │                              ^^^ -- supplied 1 argument
-  │                              │    
-  │                              expects 2 arguments
+9 │         Foo(address(0)).bar(42)
+  │                         ^^^ -- supplied 1 argument
+  │                         │    
+  │                         expects 2 arguments
 
 error: missing argument label
-  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:34
+  ┌─ compile_errors/external_call_wrong_number_of_params.fe:9:29
   │
-9 │         Foo(ctx, address(0)).bar(42)
-  │                                  ^ add `a:` here
+9 │         Foo(address(0)).bar(42)
+  │                             ^ add `a:` here
   │
   = Note: this label is optional if the argument is a variable named `a`.
 

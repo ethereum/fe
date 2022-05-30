@@ -118,6 +118,7 @@ test_stmt! { break_without_loop, "break" }
 test_stmt! { break_without_loop_2, "if true { break }" }
 test_stmt! { call_undefined_function_on_contract, "self.doesnt_exist()" }
 test_stmt! { call_address_with_wrong_type, "address(true)" }
+test_stmt! { call_address_with_label, "address(val: 0)" }
 test_stmt! { call_keccak_without_parameter, "keccak256()" }
 test_stmt! { call_keccak_with_wrong_type, "keccak256(true)" }
 test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
@@ -323,12 +324,10 @@ test_file! { ctx_init }
 test_file! { ctx_pure }
 test_file! { ctx_undeclared }
 test_file! { ctx_missing_internal_call }
-test_file! { ctx_passed_external_call }
 test_file! { ctx_missing_create }
 test_file! { ctx_missing_load }
 test_file! { ctx_missing_event }
 test_file! { ctx_builtins_param_incorrect_type }
-test_file! { ctx_undefined_contract_init }
 test_file! { ctx_undefined_create }
 test_file! { ctx_undefined_create2 }
 test_file! { ctx_undefined_event }
