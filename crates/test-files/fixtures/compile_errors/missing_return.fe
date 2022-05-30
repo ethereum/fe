@@ -1,5 +1,7 @@
-contract Foo:
+contract Foo {
     baz: Map<u256, u256>
 
-    pub fn bar(self) -> u256:
+    pub fn bar(self) -> u256 {
         self.baz[0] = 1
+    }
+}

@@ -22,11 +22,12 @@ note:
    │         ^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ strings.fe:16:5
+   ┌─ strings.fe:18:5
    │  
-16 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
-17 │ │         return s2
-   │ ╰─────────────────^ attributes hash: 4992726103398710247
+18 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {
+19 │ │         return s2
+20 │ │     }
+   │ ╰─────^ attributes hash: 4992726103398710247
    │  
    = FunctionSignature {
          self_decl: None,
@@ -65,17 +66,18 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:17:16
+   ┌─ strings.fe:19:16
    │
-17 │         return s2
+19 │         return s2
    │                ^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:19:5
+   ┌─ strings.fe:22:5
    │  
-19 │ ╭     pub fn return_static_string() -> String<43>:
-20 │ │         return "The quick brown fox jumps over the lazy dog"
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16859220121746101219
+22 │ ╭     pub fn return_static_string() -> String<43> {
+23 │ │         return "The quick brown fox jumps over the lazy dog"
+24 │ │     }
+   │ ╰─────^ attributes hash: 16859220121746101219
    │  
    = FunctionSignature {
          self_decl: None,
@@ -91,17 +93,18 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:20:16
+   ┌─ strings.fe:23:16
    │
-20 │         return "The quick brown fox jumps over the lazy dog"
+23 │         return "The quick brown fox jumps over the lazy dog"
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
 
 note: 
-   ┌─ strings.fe:22:5
+   ┌─ strings.fe:26:5
    │  
-22 │ ╭     pub fn return_casted_static_string() -> String<100>:
-23 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 11555139189894875514
+26 │ ╭     pub fn return_casted_static_string() -> String<100> {
+27 │ │         return String<100>("foo")
+28 │ │     }
+   │ ╰─────^ attributes hash: 11555139189894875514
    │  
    = FunctionSignature {
          self_decl: None,
@@ -117,23 +120,24 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:23:28
+   ┌─ strings.fe:27:28
    │
-23 │         return String<100>("foo")
+27 │         return String<100>("foo")
    │                            ^^^^^ String<3>: Memory
 
 note: 
-   ┌─ strings.fe:23:16
+   ┌─ strings.fe:27:16
    │
-23 │         return String<100>("foo")
+27 │         return String<100>("foo")
    │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:25:5
+   ┌─ strings.fe:30:5
    │  
-25 │ ╭     pub fn shorter_string_assign():
-26 │ │         let s: String<18> = "fe"
-   │ ╰────────────────────────────────^ attributes hash: 8319796915330632390
+30 │ ╭     pub fn shorter_string_assign() {
+31 │ │         let s: String<18> = "fe"
+32 │ │     }
+   │ ╰─────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
@@ -147,24 +151,25 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:26:16
+   ┌─ strings.fe:31:16
    │
-26 │         let s: String<18> = "fe"
+31 │         let s: String<18> = "fe"
    │                ^^^^^^^^^^ String<18>
 
 note: 
-   ┌─ strings.fe:26:29
+   ┌─ strings.fe:31:29
    │
-26 │         let s: String<18> = "fe"
+31 │         let s: String<18> = "fe"
    │                             ^^^^ String<18>: Memory
 
 note: 
-   ┌─ strings.fe:28:5
+   ┌─ strings.fe:34:5
    │  
-28 │ ╭     pub fn return_special_chars() -> String<18>:
-29 │ │         return "\n\"'\r\t
-30 │ │         foo\\"
-   │ ╰──────────────^ attributes hash: 15142206137302311439
+34 │ ╭     pub fn return_special_chars() -> String<18> {
+35 │ │         return "\n\"'\r\t
+36 │ │         foo\\"
+37 │ │     }
+   │ ╰─────^ attributes hash: 15142206137302311439
    │  
    = FunctionSignature {
          self_decl: None,
@@ -180,11 +185,11 @@ note:
      }
 
 note: 
-   ┌─ strings.fe:29:16
+   ┌─ strings.fe:35:16
    │  
-29 │           return "\n\"'\r\t
+35 │           return "\n\"'\r\t
    │ ╭────────────────^
-30 │ │         foo\\"
+36 │ │         foo\\"
    │ ╰──────────────^ String<18>: Memory
 
 

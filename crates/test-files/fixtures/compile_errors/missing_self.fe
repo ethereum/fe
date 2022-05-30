@@ -1,12 +1,15 @@
-contract Foo:
-    fn pure_fn():
+contract Foo {
+    fn pure_fn() {
         self.mut_fn()
+    }
 
-    fn mut_fn(self):
-        pass
+    fn mut_fn(self) {}
+}
 
-struct Bar:
+struct Bar {
     x: u8
 
-    fn f() -> u8:
+    fn f() -> u8 {
         return self.x
+    }
+}

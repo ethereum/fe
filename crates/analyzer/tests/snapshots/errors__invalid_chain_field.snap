@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: cannot find value `chain` in this scope
-  ┌─ compile_errors/invalid_chain_field.fe:4:5
+  ┌─ compile_errors/invalid_chain_field.fe:3:9
   │
-4 │     chain.foo
-  │     ^^^^^ undefined
+3 │         chain.foo
+  │         ^^^^^ undefined
 
 

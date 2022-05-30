@@ -1,6 +1,8 @@
-contract Foo:
+contract Foo {
     tuples: Map<u256, (address, u256)>
 
-    pub fn bar(self, x: u256) -> u256:
+    pub fn bar(self, x: u256) -> u256 {
         self.tuples[0] = (address(100), x)
         return self.tuples[0].item1
+    }
+}

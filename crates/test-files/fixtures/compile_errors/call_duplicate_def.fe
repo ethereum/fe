@@ -1,12 +1,13 @@
-contract Foo:
-    pub fn __call__():
-        pass
+contract Foo {
+    pub fn __call__() {}
 
-    fn bar():
-        pass
+    fn bar() {}
 
-    pub fn __call__():
+    pub fn __call__() {
         1 + 2
+    }
 
-    pub fn __call__():
+    pub fn __call__() {
         3 + 4
+    }
+}

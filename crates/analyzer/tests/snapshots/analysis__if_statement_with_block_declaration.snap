@@ -4,52 +4,52 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ if_statement_with_block_declaration.fe:3:5
-  │  
-3 │ ╭     pub fn bar() -> u256:
-4 │ │         if true:
-5 │ │             let y: u256 = 1
-6 │ │             return y
-7 │ │         else:
-8 │ │             let y: u256 = 1
-9 │ │             return y
-  │ ╰────────────────────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+   ┌─ if_statement_with_block_declaration.fe:2:5
+   │  
+ 2 │ ╭     pub fn bar() -> u256 {
+ 3 │ │         if true {
+ 4 │ │             let y: u256 = 1
+ 5 │ │             return y
+   · │
+ 9 │ │         }
+10 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
 
 note: 
-  ┌─ if_statement_with_block_declaration.fe:5:20
+  ┌─ if_statement_with_block_declaration.fe:4:20
   │
-5 │             let y: u256 = 1
+4 │             let y: u256 = 1
   │                    ^^^^ u256
   ·
-8 │             let y: u256 = 1
+7 │             let y: u256 = 1
   │                    ^^^^ u256
 
 note: 
-  ┌─ if_statement_with_block_declaration.fe:4:12
+  ┌─ if_statement_with_block_declaration.fe:3:12
   │
-4 │         if true:
+3 │         if true {
   │            ^^^^ bool: Value
-5 │             let y: u256 = 1
+4 │             let y: u256 = 1
   │                           ^ u256: Value
-6 │             return y
+5 │             return y
   │                    ^ u256: Value
-7 │         else:
-8 │             let y: u256 = 1
+6 │         } else {
+7 │             let y: u256 = 1
   │                           ^ u256: Value
-9 │             return y
+8 │             return y
   │                    ^ u256: Value
 
 

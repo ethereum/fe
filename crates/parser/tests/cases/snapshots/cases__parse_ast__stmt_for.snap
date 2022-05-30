@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_for), functions::parse_stmt,\n           \"for a in b[0]:\\n pass\")"
+expression: "ast_string(stringify!(stmt_for), functions::parse_stmt, \"for a in b[0] {}\")"
 
 ---
 Node(
@@ -34,18 +34,10 @@ Node(
         end: 13,
       ),
     ),
-    body: [
-      Node(
-        kind: Pass,
-        span: Span(
-          start: 16,
-          end: 20,
-        ),
-      ),
-    ],
+    body: [],
   ),
   span: Span(
     start: 0,
-    end: 20,
+    end: 16,
   ),
 )

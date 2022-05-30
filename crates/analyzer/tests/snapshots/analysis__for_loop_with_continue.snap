@@ -4,16 +4,16 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ for_loop_with_continue.fe:3:5
+   ┌─ for_loop_with_continue.fe:2:5
    │  
- 3 │ ╭     pub fn bar() -> u256:
- 4 │ │         let my_array: Array<u256, 5>
- 5 │ │         my_array[0] = 2
- 6 │ │         my_array[1] = 3
+ 2 │ ╭     pub fn bar() -> u256 {
+ 3 │ │         let my_array: Array<u256, 5>
+ 4 │ │         my_array[0] = 2
+ 5 │ │         my_array[1] = 3
    · │
-14 │ │             sum = sum + i
-15 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 6115314201970082834
+16 │ │         return sum
+17 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
@@ -29,18 +29,30 @@ note:
      }
 
 note: 
-   ┌─ for_loop_with_continue.fe:4:23
-   │
- 4 │         let my_array: Array<u256, 5>
-   │                       ^^^^^^^^^^^^^^ Array<u256, 5>
-   ·
-10 │         let sum: u256 = 0
-   │                  ^^^^ u256
+  ┌─ for_loop_with_continue.fe:3:23
+  │
+3 │         let my_array: Array<u256, 5>
+  │                       ^^^^^^^^^^^^^^ Array<u256, 5>
+  ·
+9 │         let sum: u256 = 0
+  │                  ^^^^ u256
 
 note: 
-  ┌─ for_loop_with_continue.fe:5:9
+  ┌─ for_loop_with_continue.fe:4:9
   │
-5 │         my_array[0] = 2
+4 │         my_array[0] = 2
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Array<u256, 5>: Memory
+
+note: 
+  ┌─ for_loop_with_continue.fe:4:9
+  │
+4 │         my_array[0] = 2
+  │         ^^^^^^^^^^^   ^ u256: Value
+  │         │              
+  │         u256: Memory
+5 │         my_array[1] = 3
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 5>: Memory
@@ -48,11 +60,11 @@ note:
 note: 
   ┌─ for_loop_with_continue.fe:5:9
   │
-5 │         my_array[0] = 2
+5 │         my_array[1] = 3
   │         ^^^^^^^^^^^   ^ u256: Value
   │         │              
   │         u256: Memory
-6 │         my_array[1] = 3
+6 │         my_array[2] = 5
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 5>: Memory
@@ -60,11 +72,11 @@ note:
 note: 
   ┌─ for_loop_with_continue.fe:6:9
   │
-6 │         my_array[1] = 3
+6 │         my_array[2] = 5
   │         ^^^^^^^^^^^   ^ u256: Value
   │         │              
   │         u256: Memory
-7 │         my_array[2] = 5
+7 │         my_array[3] = 6
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 5>: Memory
@@ -72,57 +84,45 @@ note:
 note: 
   ┌─ for_loop_with_continue.fe:7:9
   │
-7 │         my_array[2] = 5
+7 │         my_array[3] = 6
   │         ^^^^^^^^^^^   ^ u256: Value
   │         │              
   │         u256: Memory
-8 │         my_array[3] = 6
+8 │         my_array[4] = 9
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 5>: Memory
 
 note: 
-  ┌─ for_loop_with_continue.fe:8:9
-  │
-8 │         my_array[3] = 6
-  │         ^^^^^^^^^^^   ^ u256: Value
-  │         │              
-  │         u256: Memory
-9 │         my_array[4] = 9
-  │         ^^^^^^^^ ^ u256: Value
-  │         │         
-  │         Array<u256, 5>: Memory
-
-note: 
-   ┌─ for_loop_with_continue.fe:9:9
+   ┌─ for_loop_with_continue.fe:8:9
    │
- 9 │         my_array[4] = 9
+ 8 │         my_array[4] = 9
    │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
    │         u256: Memory
-10 │         let sum: u256 = 0
+ 9 │         let sum: u256 = 0
    │                         ^ u256: Value
-11 │         for i in my_array:
+10 │         for i in my_array {
    │                  ^^^^^^^^ Array<u256, 5>: Memory
-12 │             if i % 2 == 0:
+11 │             if i % 2 == 0 {
    │                ^   ^ u256: Value
    │                │    
    │                u256: Value
 
 note: 
-   ┌─ for_loop_with_continue.fe:12:16
+   ┌─ for_loop_with_continue.fe:11:16
    │
-12 │             if i % 2 == 0:
+11 │             if i % 2 == 0 {
    │                ^^^^^    ^ u256: Value
    │                │         
    │                u256: Value
 
 note: 
-   ┌─ for_loop_with_continue.fe:12:16
+   ┌─ for_loop_with_continue.fe:11:16
    │
-12 │             if i % 2 == 0:
+11 │             if i % 2 == 0 {
    │                ^^^^^^^^^^ bool: Value
-13 │                 continue
+   ·
 14 │             sum = sum + i
    │             ^^^   ^^^   ^ u256: Value
    │             │     │      
@@ -134,7 +134,8 @@ note:
    │
 14 │             sum = sum + i
    │                   ^^^^^^^ u256: Value
-15 │         return sum
+15 │         }
+16 │         return sum
    │                ^^^ u256: Value
 
 

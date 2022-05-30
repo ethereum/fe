@@ -4,15 +4,15 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: incorrect type for argument to `Bar.create`
-  ┌─ compile_errors/call_create_with_wrong_type.fe:8:25
+  ┌─ compile_errors/call_create_with_wrong_type.fe:7:25
   │
-8 │         Bar.create(ctx, true)
+7 │         Bar.create(ctx, true)
   │                         ^^^^ this has type `bool`; expected a number
 
 error: `create` expects 2 arguments, but 1 was provided
-  ┌─ compile_errors/call_create_with_wrong_type.fe:9:13
+  ┌─ compile_errors/call_create_with_wrong_type.fe:8:13
   │
-9 │         Bar.create(ctx)     # agroce #447
+8 │         Bar.create(ctx)     # agroce #447
   │             ^^^^^^ --- supplied 1 argument
   │             │       
   │             expects 2 arguments

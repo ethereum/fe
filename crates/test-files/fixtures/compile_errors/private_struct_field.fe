@@ -1,8 +1,11 @@
-struct Bar:
-  id: u256
+struct Bar {
+    id: u256
+}
 
-contract Foo:
-  val: Bar
+contract Foo {
+    val: Bar
 
-  pub fn foo(self):
-    self.val.id
+    pub fn foo(self) {
+        self.val.id
+    }
+}

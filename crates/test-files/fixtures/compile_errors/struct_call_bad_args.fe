@@ -1,8 +1,10 @@
-struct House:
+struct House {
     pub vacant: bool
     pub price: u256
+}
 
-contract Foo:
-
-    pub fn bar():
+contract Foo {
+    pub fn bar() {
         let my_house: House = House(price: false, vacant: 100, bar: address(0))
+    }
+}

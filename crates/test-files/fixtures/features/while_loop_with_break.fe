@@ -1,7 +1,10 @@
-contract Foo:
-    pub fn bar() -> u256:
+contract Foo {
+    pub fn bar() -> u256 {
         let val: u256 = 0
-        while val < 2:
+        while val < 2 {
             val = val + 1
             break
+        }
         return val
+    }
+}

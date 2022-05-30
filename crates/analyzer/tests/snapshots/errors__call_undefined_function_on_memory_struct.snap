@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: No function `doesnt_exist` exists on type `Something`
-  ┌─ compile_errors/call_undefined_function_on_memory_struct.fe:7:12
+  ┌─ compile_errors/call_undefined_function_on_memory_struct.fe:8:16
   │
-7 │     thingy.doesnt_exist()
-  │            ^^^^^^^^^^^^ undefined function
+8 │         thingy.doesnt_exist()
+  │                ^^^^^^^^^^^^ undefined function
 
 

@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: cannot find value `block` in this scope
-  ┌─ compile_errors/call_builtin_object.fe:4:5
+  ┌─ compile_errors/call_builtin_object.fe:3:9
   │
-4 │     block.foo()
-  │     ^^^^^ undefined
+3 │         block.foo()
+  │         ^^^^^ undefined
 
 

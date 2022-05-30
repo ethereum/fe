@@ -1,10 +1,11 @@
-struct MyStruct:
+struct MyStruct {
     foo: u8
+}
 
-struct MyStruct:
+struct MyStruct {
     foo: u8
+}
 
-contract Foo:
-
-    pub fn bar():
-        pass
+contract Foo {
+    pub fn bar() {}
+}

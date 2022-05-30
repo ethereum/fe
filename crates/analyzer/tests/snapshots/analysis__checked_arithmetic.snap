@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ checked_arithmetic.fe:3:5
+  ┌─ checked_arithmetic.fe:2:5
   │  
-3 │ ╭     pub fn add_u256(left: u256, right: u256) -> u256:
-4 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 8877497213208027149
+2 │ ╭     pub fn add_u256(left: u256, right: u256) -> u256 {
+3 │ │         return left + right
+4 │ │     }
+  │ ╰─────^ attributes hash: 8877497213208027149
   │  
   = FunctionSignature {
         self_decl: None,
@@ -47,25 +48,26 @@ note:
     }
 
 note: 
-  ┌─ checked_arithmetic.fe:4:16
+  ┌─ checked_arithmetic.fe:3:16
   │
-4 │         return left + right
+3 │         return left + right
   │                ^^^^   ^^^^^ u256: Value
   │                │       
   │                u256: Value
 
 note: 
-  ┌─ checked_arithmetic.fe:4:16
+  ┌─ checked_arithmetic.fe:3:16
   │
-4 │         return left + right
+3 │         return left + right
   │                ^^^^^^^^^^^^ u256: Value
 
 note: 
   ┌─ checked_arithmetic.fe:6:5
   │  
-6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128:
+6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128 {
 7 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 11187416061572591496
+8 │ │     }
+  │ ╰─────^ attributes hash: 11187416061572591496
   │  
   = FunctionSignature {
         self_decl: None,
@@ -118,11 +120,12 @@ note:
   │                ^^^^^^^^^^^^ u128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:9:5
+   ┌─ checked_arithmetic.fe:10:5
    │  
- 9 │ ╭     pub fn add_u64(left: u64, right: u64) -> u64:
-10 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 9316585824156398552
+10 │ ╭     pub fn add_u64(left: u64, right: u64) -> u64 {
+11 │ │         return left + right
+12 │ │     }
+   │ ╰─────^ attributes hash: 9316585824156398552
    │  
    = FunctionSignature {
          self_decl: None,
@@ -161,25 +164,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:10:16
+   ┌─ checked_arithmetic.fe:11:16
    │
-10 │         return left + right
+11 │         return left + right
    │                ^^^^   ^^^^^ u64: Value
    │                │       
    │                u64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:10:16
+   ┌─ checked_arithmetic.fe:11:16
    │
-10 │         return left + right
+11 │         return left + right
    │                ^^^^^^^^^^^^ u64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:12:5
+   ┌─ checked_arithmetic.fe:14:5
    │  
-12 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32:
-13 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 6948562809403003686
+14 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32 {
+15 │ │         return left + right
+16 │ │     }
+   │ ╰─────^ attributes hash: 6948562809403003686
    │  
    = FunctionSignature {
          self_decl: None,
@@ -218,82 +222,84 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:13:16
+   ┌─ checked_arithmetic.fe:15:16
    │
-13 │         return left + right
+15 │         return left + right
    │                ^^^^   ^^^^^ u32: Value
    │                │       
    │                u32: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:13:16
+   ┌─ checked_arithmetic.fe:15:16
    │
-13 │         return left + right
+15 │         return left + right
    │                ^^^^^^^^^^^^ u32: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:15:5
-   │  
-15 │ ╭     pub fn add_u16(left: u16, right: u16) -> u16:
-16 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 4214429573900255413
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U16,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^   ^^^^^ u16: Value
-   │                │       
-   │                u16: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^^^^^^^^^ u16: Value
 
 note: 
    ┌─ checked_arithmetic.fe:18:5
    │  
-18 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8:
+18 │ ╭     pub fn add_u16(left: u16, right: u16) -> u16 {
 19 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 3749617961046563034
+20 │ │     }
+   │ ╰─────^ attributes hash: 4214429573900255413
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "left",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U16,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "right",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U16,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U16,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ checked_arithmetic.fe:19:16
+   │
+19 │         return left + right
+   │                ^^^^   ^^^^^ u16: Value
+   │                │       
+   │                u16: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:19:16
+   │
+19 │         return left + right
+   │                ^^^^^^^^^^^^ u16: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:22:5
+   │  
+22 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8 {
+23 │ │         return left + right
+24 │ │     }
+   │ ╰─────^ attributes hash: 3749617961046563034
    │  
    = FunctionSignature {
          self_decl: None,
@@ -332,25 +338,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:19:16
+   ┌─ checked_arithmetic.fe:23:16
    │
-19 │         return left + right
+23 │         return left + right
    │                ^^^^   ^^^^^ u8: Value
    │                │       
    │                u8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:19:16
+   ┌─ checked_arithmetic.fe:23:16
    │
-19 │         return left + right
+23 │         return left + right
    │                ^^^^^^^^^^^^ u8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:21:5
+   ┌─ checked_arithmetic.fe:26:5
    │  
-21 │ ╭     pub fn add_i256(left: i256, right: i256) -> i256:
-22 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 17908204859155721295
+26 │ ╭     pub fn add_i256(left: i256, right: i256) -> i256 {
+27 │ │         return left + right
+28 │ │     }
+   │ ╰─────^ attributes hash: 17908204859155721295
    │  
    = FunctionSignature {
          self_decl: None,
@@ -389,709 +396,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:22:16
+   ┌─ checked_arithmetic.fe:27:16
    │
-22 │         return left + right
+27 │         return left + right
    │                ^^^^   ^^^^^ i256: Value
    │                │       
    │                i256: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:22:16
+   ┌─ checked_arithmetic.fe:27:16
    │
-22 │         return left + right
+27 │         return left + right
    │                ^^^^^^^^^^^^ i256: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:24:5
-   │  
-24 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128:
-25 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1332431709112937827
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I128,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^   ^^^^^ i128: Value
-   │                │       
-   │                i128: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^^^^^^^^^ i128: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:27:5
-   │  
-27 │ ╭     pub fn add_i64(left: i64, right: i64) -> i64:
-28 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 3549113083347694903
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I64,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^   ^^^^^ i64: Value
-   │                │       
-   │                i64: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^^^^^^^^^ i64: Value
 
 note: 
    ┌─ checked_arithmetic.fe:30:5
    │  
-30 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32:
+30 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128 {
 31 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 15117649447142800500
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I32,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^   ^^^^^ i32: Value
-   │                │       
-   │                i32: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^^^^^^^^^ i32: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:33:5
-   │  
-33 │ ╭     pub fn add_i16(left: i16, right: i16) -> i16:
-34 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 16520261699954225452
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I16,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^   ^^^^^ i16: Value
-   │                │       
-   │                i16: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^^^^^^^^^ i16: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:36:5
-   │  
-36 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8:
-37 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 2984879578165475690
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I8,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^   ^^^^^ i8: Value
-   │                │       
-   │                i8: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^^^^^^^^^ i8: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:39:5
-   │  
-39 │ ╭     pub fn sub_u256(left: u256, right: u256) -> u256:
-40 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 8877497213208027149
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^   ^^^^^ u256: Value
-   │                │       
-   │                u256: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:42:5
-   │  
-42 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128:
-43 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 11187416061572591496
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U128,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^   ^^^^^ u128: Value
-   │                │       
-   │                u128: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^^^^^^^^^ u128: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:45:5
-   │  
-45 │ ╭     pub fn sub_u64(left: u64, right: u64) -> u64:
-46 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 9316585824156398552
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^   ^^^^^ u64: Value
-   │                │       
-   │                u64: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^^^^^^^^^ u64: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:48:5
-   │  
-48 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32:
-49 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 6948562809403003686
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U32,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^   ^^^^^ u32: Value
-   │                │       
-   │                u32: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^^^^^^^^^ u32: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:51:5
-   │  
-51 │ ╭     pub fn sub_u16(left: u16, right: u16) -> u16:
-52 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 4214429573900255413
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U16,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^   ^^^^^ u16: Value
-   │                │       
-   │                u16: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^^^^^^^^^ u16: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:54:5
-   │  
-54 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8:
-55 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 3749617961046563034
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^   ^^^^^ u8: Value
-   │                │       
-   │                u8: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^^^^^^^^^ u8: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:57:5
-   │  
-57 │ ╭     pub fn sub_i256(left: i256, right: i256) -> i256:
-58 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 17908204859155721295
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I256,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^   ^^^^^ i256: Value
-   │                │       
-   │                i256: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^^^^^^^^^ i256: Value
-
-note: 
-   ┌─ checked_arithmetic.fe:60:5
-   │  
-60 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128:
-61 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 1332431709112937827
+32 │ │     }
+   │ ╰─────^ attributes hash: 1332431709112937827
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1130,25 +454,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:61:16
+   ┌─ checked_arithmetic.fe:31:16
    │
-61 │         return left - right
+31 │         return left + right
    │                ^^^^   ^^^^^ i128: Value
    │                │       
    │                i128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:61:16
+   ┌─ checked_arithmetic.fe:31:16
    │
-61 │         return left - right
+31 │         return left + right
    │                ^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:63:5
+   ┌─ checked_arithmetic.fe:34:5
    │  
-63 │ ╭     pub fn sub_i64(left: i64, right: i64) -> i64:
-64 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 3549113083347694903
+34 │ ╭     pub fn add_i64(left: i64, right: i64) -> i64 {
+35 │ │         return left + right
+36 │ │     }
+   │ ╰─────^ attributes hash: 3549113083347694903
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1187,25 +512,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:64:16
+   ┌─ checked_arithmetic.fe:35:16
    │
-64 │         return left - right
+35 │         return left + right
    │                ^^^^   ^^^^^ i64: Value
    │                │       
    │                i64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:64:16
+   ┌─ checked_arithmetic.fe:35:16
    │
-64 │         return left - right
+35 │         return left + right
    │                ^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:66:5
+   ┌─ checked_arithmetic.fe:38:5
    │  
-66 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32:
-67 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 15117649447142800500
+38 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32 {
+39 │ │         return left + right
+40 │ │     }
+   │ ╰─────^ attributes hash: 15117649447142800500
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1244,25 +570,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:67:16
+   ┌─ checked_arithmetic.fe:39:16
    │
-67 │         return left - right
+39 │         return left + right
    │                ^^^^   ^^^^^ i32: Value
    │                │       
    │                i32: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:67:16
+   ┌─ checked_arithmetic.fe:39:16
    │
-67 │         return left - right
+39 │         return left + right
    │                ^^^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:69:5
+   ┌─ checked_arithmetic.fe:42:5
    │  
-69 │ ╭     pub fn sub_i16(left: i16, right: i16) -> i16:
-70 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 16520261699954225452
+42 │ ╭     pub fn add_i16(left: i16, right: i16) -> i16 {
+43 │ │         return left + right
+44 │ │     }
+   │ ╰─────^ attributes hash: 16520261699954225452
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1301,25 +628,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:70:16
+   ┌─ checked_arithmetic.fe:43:16
    │
-70 │         return left - right
+43 │         return left + right
    │                ^^^^   ^^^^^ i16: Value
    │                │       
    │                i16: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:70:16
+   ┌─ checked_arithmetic.fe:43:16
    │
-70 │         return left - right
+43 │         return left + right
    │                ^^^^^^^^^^^^ i16: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:72:5
+   ┌─ checked_arithmetic.fe:46:5
    │  
-72 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8:
-73 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 2984879578165475690
+46 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8 {
+47 │ │         return left + right
+48 │ │     }
+   │ ╰─────^ attributes hash: 2984879578165475690
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1358,25 +686,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:73:16
+   ┌─ checked_arithmetic.fe:47:16
    │
-73 │         return left - right
+47 │         return left + right
    │                ^^^^   ^^^^^ i8: Value
    │                │       
    │                i8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:73:16
+   ┌─ checked_arithmetic.fe:47:16
    │
-73 │         return left - right
+47 │         return left + right
    │                ^^^^^^^^^^^^ i8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:75:5
+   ┌─ checked_arithmetic.fe:50:5
    │  
-75 │ ╭     pub fn div_u256(left: u256, right: u256) -> u256:
-76 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 8877497213208027149
+50 │ ╭     pub fn sub_u256(left: u256, right: u256) -> u256 {
+51 │ │         return left - right
+52 │ │     }
+   │ ╰─────^ attributes hash: 8877497213208027149
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1415,25 +744,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:76:16
+   ┌─ checked_arithmetic.fe:51:16
    │
-76 │         return left / right
+51 │         return left - right
    │                ^^^^   ^^^^^ u256: Value
    │                │       
    │                u256: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:76:16
+   ┌─ checked_arithmetic.fe:51:16
    │
-76 │         return left / right
+51 │         return left - right
    │                ^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:78:5
+   ┌─ checked_arithmetic.fe:54:5
    │  
-78 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128:
-79 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 11187416061572591496
+54 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128 {
+55 │ │         return left - right
+56 │ │     }
+   │ ╰─────^ attributes hash: 11187416061572591496
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1472,25 +802,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:79:16
+   ┌─ checked_arithmetic.fe:55:16
    │
-79 │         return left / right
+55 │         return left - right
    │                ^^^^   ^^^^^ u128: Value
    │                │       
    │                u128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:79:16
+   ┌─ checked_arithmetic.fe:55:16
    │
-79 │         return left / right
+55 │         return left - right
    │                ^^^^^^^^^^^^ u128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:81:5
+   ┌─ checked_arithmetic.fe:58:5
    │  
-81 │ ╭     pub fn div_u64(left: u64, right: u64) -> u64:
-82 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 9316585824156398552
+58 │ ╭     pub fn sub_u64(left: u64, right: u64) -> u64 {
+59 │ │         return left - right
+60 │ │     }
+   │ ╰─────^ attributes hash: 9316585824156398552
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1529,25 +860,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:82:16
+   ┌─ checked_arithmetic.fe:59:16
    │
-82 │         return left / right
+59 │         return left - right
    │                ^^^^   ^^^^^ u64: Value
    │                │       
    │                u64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:82:16
+   ┌─ checked_arithmetic.fe:59:16
    │
-82 │         return left / right
+59 │         return left - right
    │                ^^^^^^^^^^^^ u64: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:84:5
+   ┌─ checked_arithmetic.fe:62:5
    │  
-84 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32:
-85 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 6948562809403003686
+62 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32 {
+63 │ │         return left - right
+64 │ │     }
+   │ ╰─────^ attributes hash: 6948562809403003686
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1586,25 +918,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:85:16
+   ┌─ checked_arithmetic.fe:63:16
    │
-85 │         return left / right
+63 │         return left - right
    │                ^^^^   ^^^^^ u32: Value
    │                │       
    │                u32: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:85:16
+   ┌─ checked_arithmetic.fe:63:16
    │
-85 │         return left / right
+63 │         return left - right
    │                ^^^^^^^^^^^^ u32: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:87:5
+   ┌─ checked_arithmetic.fe:66:5
    │  
-87 │ ╭     pub fn div_u16(left: u16, right: u16) -> u16:
-88 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 4214429573900255413
+66 │ ╭     pub fn sub_u16(left: u16, right: u16) -> u16 {
+67 │ │         return left - right
+68 │ │     }
+   │ ╰─────^ attributes hash: 4214429573900255413
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1643,25 +976,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:88:16
+   ┌─ checked_arithmetic.fe:67:16
    │
-88 │         return left / right
+67 │         return left - right
    │                ^^^^   ^^^^^ u16: Value
    │                │       
    │                u16: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:88:16
+   ┌─ checked_arithmetic.fe:67:16
    │
-88 │         return left / right
+67 │         return left - right
    │                ^^^^^^^^^^^^ u16: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:90:5
+   ┌─ checked_arithmetic.fe:70:5
    │  
-90 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8:
-91 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 3749617961046563034
+70 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8 {
+71 │ │         return left - right
+72 │ │     }
+   │ ╰─────^ attributes hash: 3749617961046563034
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1700,25 +1034,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:91:16
+   ┌─ checked_arithmetic.fe:71:16
    │
-91 │         return left / right
+71 │         return left - right
    │                ^^^^   ^^^^^ u8: Value
    │                │       
    │                u8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:91:16
+   ┌─ checked_arithmetic.fe:71:16
    │
-91 │         return left / right
+71 │         return left - right
    │                ^^^^^^^^^^^^ u8: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:93:5
+   ┌─ checked_arithmetic.fe:74:5
    │  
-93 │ ╭     pub fn div_i256(left: i256, right: i256) -> i256:
-94 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 17908204859155721295
+74 │ ╭     pub fn sub_i256(left: i256, right: i256) -> i256 {
+75 │ │         return left - right
+76 │ │     }
+   │ ╰─────^ attributes hash: 17908204859155721295
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1757,25 +1092,26 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:94:16
+   ┌─ checked_arithmetic.fe:75:16
    │
-94 │         return left / right
+75 │         return left - right
    │                ^^^^   ^^^^^ i256: Value
    │                │       
    │                i256: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:94:16
+   ┌─ checked_arithmetic.fe:75:16
    │
-94 │         return left / right
+75 │         return left - right
    │                ^^^^^^^^^^^^ i256: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:96:5
+   ┌─ checked_arithmetic.fe:78:5
    │  
-96 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128:
-97 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 1332431709112937827
+78 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128 {
+79 │ │         return left - right
+80 │ │     }
+   │ ╰─────^ attributes hash: 1332431709112937827
    │  
    = FunctionSignature {
          self_decl: None,
@@ -1814,253 +1150,258 @@ note:
      }
 
 note: 
-   ┌─ checked_arithmetic.fe:97:16
+   ┌─ checked_arithmetic.fe:79:16
    │
-97 │         return left / right
+79 │         return left - right
    │                ^^^^   ^^^^^ i128: Value
    │                │       
    │                i128: Value
 
 note: 
-   ┌─ checked_arithmetic.fe:97:16
+   ┌─ checked_arithmetic.fe:79:16
    │
-97 │         return left / right
+79 │         return left - right
    │                ^^^^^^^^^^^^ i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:99:5
+   ┌─ checked_arithmetic.fe:82:5
+   │  
+82 │ ╭     pub fn sub_i64(left: i64, right: i64) -> i64 {
+83 │ │         return left - right
+84 │ │     }
+   │ ╰─────^ attributes hash: 3549113083347694903
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "left",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I64,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "right",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I64,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I64,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ checked_arithmetic.fe:83:16
+   │
+83 │         return left - right
+   │                ^^^^   ^^^^^ i64: Value
+   │                │       
+   │                i64: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:83:16
+   │
+83 │         return left - right
+   │                ^^^^^^^^^^^^ i64: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:86:5
+   │  
+86 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32 {
+87 │ │         return left - right
+88 │ │     }
+   │ ╰─────^ attributes hash: 15117649447142800500
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "left",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "right",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I32,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ checked_arithmetic.fe:87:16
+   │
+87 │         return left - right
+   │                ^^^^   ^^^^^ i32: Value
+   │                │       
+   │                i32: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:87:16
+   │
+87 │         return left - right
+   │                ^^^^^^^^^^^^ i32: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:90:5
+   │  
+90 │ ╭     pub fn sub_i16(left: i16, right: i16) -> i16 {
+91 │ │         return left - right
+92 │ │     }
+   │ ╰─────^ attributes hash: 16520261699954225452
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "left",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I16,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "right",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I16,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I16,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ checked_arithmetic.fe:91:16
+   │
+91 │         return left - right
+   │                ^^^^   ^^^^^ i16: Value
+   │                │       
+   │                i16: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:91:16
+   │
+91 │         return left - right
+   │                ^^^^^^^^^^^^ i16: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:94:5
+   │  
+94 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8 {
+95 │ │         return left - right
+96 │ │     }
+   │ ╰─────^ attributes hash: 2984879578165475690
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "left",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I8,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "right",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             I8,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I8,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ checked_arithmetic.fe:95:16
+   │
+95 │         return left - right
+   │                ^^^^   ^^^^^ i8: Value
+   │                │       
+   │                i8: Value
+
+note: 
+   ┌─ checked_arithmetic.fe:95:16
+   │
+95 │         return left - right
+   │                ^^^^^^^^^^^^ i8: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:98:5
     │  
- 99 │ ╭     pub fn div_i64(left: i64, right: i64) -> i64:
-100 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 3549113083347694903
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I64,
-                  ),
-              ),
-          ),
-      }
-
-note: 
-    ┌─ checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^   ^^^^^ i64: Value
-    │                │       
-    │                i64: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^^^^^^^^^ i64: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:102:5
-    │  
-102 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32:
-103 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 15117649447142800500
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I32,
-                  ),
-              ),
-          ),
-      }
-
-note: 
-    ┌─ checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^   ^^^^^ i32: Value
-    │                │       
-    │                i32: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^^^^^^^^^ i32: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:105:5
-    │  
-105 │ ╭     pub fn div_i16(left: i16, right: i16) -> i16:
-106 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 16520261699954225452
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I16,
-                  ),
-              ),
-          ),
-      }
-
-note: 
-    ┌─ checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^   ^^^^^ i16: Value
-    │                │       
-    │                i16: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^^^^^^^^^ i16: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:108:5
-    │  
-108 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8:
-109 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 2984879578165475690
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I8,
-                  ),
-              ),
-          ),
-      }
-
-note: 
-    ┌─ checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^   ^^^^^ i8: Value
-    │                │       
-    │                i8: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^^^^^^^^^ i8: Value
-
-note: 
-    ┌─ checked_arithmetic.fe:111:5
-    │  
-111 │ ╭     pub fn mul_u256(left: u256, right: u256) -> u256:
-112 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 8877497213208027149
+ 98 │ ╭     pub fn div_u256(left: u256, right: u256) -> u256 {
+ 99 │ │         return left / right
+100 │ │     }
+    │ ╰─────^ attributes hash: 8877497213208027149
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2099,25 +1440,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^   ^^^^^ u256: Value
-    │                │       
-    │                u256: Value
+   ┌─ checked_arithmetic.fe:99:16
+   │
+99 │         return left / right
+   │                ^^^^   ^^^^^ u256: Value
+   │                │       
+   │                u256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^^^^^^^^^ u256: Value
+   ┌─ checked_arithmetic.fe:99:16
+   │
+99 │         return left / right
+   │                ^^^^^^^^^^^^ u256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:114:5
+    ┌─ checked_arithmetic.fe:102:5
     │  
-114 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128:
-115 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 11187416061572591496
+102 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128 {
+103 │ │         return left / right
+104 │ │     }
+    │ ╰─────^ attributes hash: 11187416061572591496
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2156,25 +1498,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:115:16
+    ┌─ checked_arithmetic.fe:103:16
     │
-115 │         return left * right
+103 │         return left / right
     │                ^^^^   ^^^^^ u128: Value
     │                │       
     │                u128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:115:16
+    ┌─ checked_arithmetic.fe:103:16
     │
-115 │         return left * right
+103 │         return left / right
     │                ^^^^^^^^^^^^ u128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:117:5
+    ┌─ checked_arithmetic.fe:106:5
     │  
-117 │ ╭     pub fn mul_u64(left: u64, right: u64) -> u64:
-118 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 9316585824156398552
+106 │ ╭     pub fn div_u64(left: u64, right: u64) -> u64 {
+107 │ │         return left / right
+108 │ │     }
+    │ ╰─────^ attributes hash: 9316585824156398552
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2213,25 +1556,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:118:16
+    ┌─ checked_arithmetic.fe:107:16
     │
-118 │         return left * right
+107 │         return left / right
     │                ^^^^   ^^^^^ u64: Value
     │                │       
     │                u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:118:16
+    ┌─ checked_arithmetic.fe:107:16
     │
-118 │         return left * right
+107 │         return left / right
     │                ^^^^^^^^^^^^ u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:120:5
+    ┌─ checked_arithmetic.fe:110:5
     │  
-120 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32:
-121 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 6948562809403003686
+110 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32 {
+111 │ │         return left / right
+112 │ │     }
+    │ ╰─────^ attributes hash: 6948562809403003686
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2270,25 +1614,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:121:16
+    ┌─ checked_arithmetic.fe:111:16
     │
-121 │         return left * right
+111 │         return left / right
     │                ^^^^   ^^^^^ u32: Value
     │                │       
     │                u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:121:16
+    ┌─ checked_arithmetic.fe:111:16
     │
-121 │         return left * right
+111 │         return left / right
     │                ^^^^^^^^^^^^ u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:123:5
+    ┌─ checked_arithmetic.fe:114:5
     │  
-123 │ ╭     pub fn mul_u16(left: u16, right: u16) -> u16:
-124 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 4214429573900255413
+114 │ ╭     pub fn div_u16(left: u16, right: u16) -> u16 {
+115 │ │         return left / right
+116 │ │     }
+    │ ╰─────^ attributes hash: 4214429573900255413
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2327,25 +1672,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:124:16
+    ┌─ checked_arithmetic.fe:115:16
     │
-124 │         return left * right
+115 │         return left / right
     │                ^^^^   ^^^^^ u16: Value
     │                │       
     │                u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:124:16
+    ┌─ checked_arithmetic.fe:115:16
     │
-124 │         return left * right
+115 │         return left / right
     │                ^^^^^^^^^^^^ u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:126:5
+    ┌─ checked_arithmetic.fe:118:5
     │  
-126 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8:
-127 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 3749617961046563034
+118 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8 {
+119 │ │         return left / right
+120 │ │     }
+    │ ╰─────^ attributes hash: 3749617961046563034
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2384,25 +1730,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:127:16
+    ┌─ checked_arithmetic.fe:119:16
     │
-127 │         return left * right
+119 │         return left / right
     │                ^^^^   ^^^^^ u8: Value
     │                │       
     │                u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:127:16
+    ┌─ checked_arithmetic.fe:119:16
     │
-127 │         return left * right
+119 │         return left / right
     │                ^^^^^^^^^^^^ u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:129:5
+    ┌─ checked_arithmetic.fe:122:5
     │  
-129 │ ╭     pub fn mul_i256(left: i256, right: i256) -> i256:
-130 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 17908204859155721295
+122 │ ╭     pub fn div_i256(left: i256, right: i256) -> i256 {
+123 │ │         return left / right
+124 │ │     }
+    │ ╰─────^ attributes hash: 17908204859155721295
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2441,25 +1788,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:130:16
+    ┌─ checked_arithmetic.fe:123:16
     │
-130 │         return left * right
+123 │         return left / right
     │                ^^^^   ^^^^^ i256: Value
     │                │       
     │                i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:130:16
+    ┌─ checked_arithmetic.fe:123:16
     │
-130 │         return left * right
+123 │         return left / right
     │                ^^^^^^^^^^^^ i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:132:5
+    ┌─ checked_arithmetic.fe:126:5
     │  
-132 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128:
-133 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 1332431709112937827
+126 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128 {
+127 │ │         return left / right
+128 │ │     }
+    │ ╰─────^ attributes hash: 1332431709112937827
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2498,25 +1846,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:133:16
+    ┌─ checked_arithmetic.fe:127:16
     │
-133 │         return left * right
+127 │         return left / right
     │                ^^^^   ^^^^^ i128: Value
     │                │       
     │                i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:133:16
+    ┌─ checked_arithmetic.fe:127:16
     │
-133 │         return left * right
+127 │         return left / right
     │                ^^^^^^^^^^^^ i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:135:5
+    ┌─ checked_arithmetic.fe:130:5
     │  
-135 │ ╭     pub fn mul_i64(left: i64, right: i64) -> i64:
-136 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 3549113083347694903
+130 │ ╭     pub fn div_i64(left: i64, right: i64) -> i64 {
+131 │ │         return left / right
+132 │ │     }
+    │ ╰─────^ attributes hash: 3549113083347694903
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2555,25 +1904,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:136:16
+    ┌─ checked_arithmetic.fe:131:16
     │
-136 │         return left * right
+131 │         return left / right
     │                ^^^^   ^^^^^ i64: Value
     │                │       
     │                i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:136:16
+    ┌─ checked_arithmetic.fe:131:16
     │
-136 │         return left * right
+131 │         return left / right
     │                ^^^^^^^^^^^^ i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:138:5
+    ┌─ checked_arithmetic.fe:134:5
     │  
-138 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32:
-139 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 15117649447142800500
+134 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32 {
+135 │ │         return left / right
+136 │ │     }
+    │ ╰─────^ attributes hash: 15117649447142800500
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2612,25 +1962,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:139:16
+    ┌─ checked_arithmetic.fe:135:16
     │
-139 │         return left * right
+135 │         return left / right
     │                ^^^^   ^^^^^ i32: Value
     │                │       
     │                i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:139:16
+    ┌─ checked_arithmetic.fe:135:16
     │
-139 │         return left * right
+135 │         return left / right
     │                ^^^^^^^^^^^^ i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:141:5
+    ┌─ checked_arithmetic.fe:138:5
     │  
-141 │ ╭     pub fn mul_i16(left: i16, right: i16) -> i16:
-142 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 16520261699954225452
+138 │ ╭     pub fn div_i16(left: i16, right: i16) -> i16 {
+139 │ │         return left / right
+140 │ │     }
+    │ ╰─────^ attributes hash: 16520261699954225452
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2669,25 +2020,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:142:16
+    ┌─ checked_arithmetic.fe:139:16
     │
-142 │         return left * right
+139 │         return left / right
     │                ^^^^   ^^^^^ i16: Value
     │                │       
     │                i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:142:16
+    ┌─ checked_arithmetic.fe:139:16
     │
-142 │         return left * right
+139 │         return left / right
     │                ^^^^^^^^^^^^ i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:144:5
+    ┌─ checked_arithmetic.fe:142:5
     │  
-144 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8:
-145 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 2984879578165475690
+142 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8 {
+143 │ │         return left / right
+144 │ │     }
+    │ ╰─────^ attributes hash: 2984879578165475690
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2726,25 +2078,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:145:16
+    ┌─ checked_arithmetic.fe:143:16
     │
-145 │         return left * right
+143 │         return left / right
     │                ^^^^   ^^^^^ i8: Value
     │                │       
     │                i8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:145:16
+    ┌─ checked_arithmetic.fe:143:16
     │
-145 │         return left * right
+143 │         return left / right
     │                ^^^^^^^^^^^^ i8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:147:5
+    ┌─ checked_arithmetic.fe:146:5
     │  
-147 │ ╭     pub fn mod_u256(left: u256, right: u256) -> u256:
-148 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 8877497213208027149
+146 │ ╭     pub fn mul_u256(left: u256, right: u256) -> u256 {
+147 │ │         return left * right
+148 │ │     }
+    │ ╰─────^ attributes hash: 8877497213208027149
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2783,25 +2136,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:148:16
+    ┌─ checked_arithmetic.fe:147:16
     │
-148 │         return left % right
+147 │         return left * right
     │                ^^^^   ^^^^^ u256: Value
     │                │       
     │                u256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:148:16
+    ┌─ checked_arithmetic.fe:147:16
     │
-148 │         return left % right
+147 │         return left * right
     │                ^^^^^^^^^^^^ u256: Value
 
 note: 
     ┌─ checked_arithmetic.fe:150:5
     │  
-150 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128:
-151 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 11187416061572591496
+150 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128 {
+151 │ │         return left * right
+152 │ │     }
+    │ ╰─────^ attributes hash: 11187416061572591496
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2842,7 +2196,7 @@ note:
 note: 
     ┌─ checked_arithmetic.fe:151:16
     │
-151 │         return left % right
+151 │         return left * right
     │                ^^^^   ^^^^^ u128: Value
     │                │       
     │                u128: Value
@@ -2850,15 +2204,16 @@ note:
 note: 
     ┌─ checked_arithmetic.fe:151:16
     │
-151 │         return left % right
+151 │         return left * right
     │                ^^^^^^^^^^^^ u128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:153:5
+    ┌─ checked_arithmetic.fe:154:5
     │  
-153 │ ╭     pub fn mod_u64(left: u64, right: u64) -> u64:
-154 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 9316585824156398552
+154 │ ╭     pub fn mul_u64(left: u64, right: u64) -> u64 {
+155 │ │         return left * right
+156 │ │     }
+    │ ╰─────^ attributes hash: 9316585824156398552
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2897,25 +2252,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:154:16
+    ┌─ checked_arithmetic.fe:155:16
     │
-154 │         return left % right
+155 │         return left * right
     │                ^^^^   ^^^^^ u64: Value
     │                │       
     │                u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:154:16
+    ┌─ checked_arithmetic.fe:155:16
     │
-154 │         return left % right
+155 │         return left * right
     │                ^^^^^^^^^^^^ u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:156:5
+    ┌─ checked_arithmetic.fe:158:5
     │  
-156 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32:
-157 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 6948562809403003686
+158 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32 {
+159 │ │         return left * right
+160 │ │     }
+    │ ╰─────^ attributes hash: 6948562809403003686
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2954,25 +2310,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:157:16
+    ┌─ checked_arithmetic.fe:159:16
     │
-157 │         return left % right
+159 │         return left * right
     │                ^^^^   ^^^^^ u32: Value
     │                │       
     │                u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:157:16
+    ┌─ checked_arithmetic.fe:159:16
     │
-157 │         return left % right
+159 │         return left * right
     │                ^^^^^^^^^^^^ u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:159:5
+    ┌─ checked_arithmetic.fe:162:5
     │  
-159 │ ╭     pub fn mod_u16(left: u16, right: u16) -> u16:
-160 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 4214429573900255413
+162 │ ╭     pub fn mul_u16(left: u16, right: u16) -> u16 {
+163 │ │         return left * right
+164 │ │     }
+    │ ╰─────^ attributes hash: 4214429573900255413
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3011,25 +2368,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:160:16
+    ┌─ checked_arithmetic.fe:163:16
     │
-160 │         return left % right
+163 │         return left * right
     │                ^^^^   ^^^^^ u16: Value
     │                │       
     │                u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:160:16
+    ┌─ checked_arithmetic.fe:163:16
     │
-160 │         return left % right
+163 │         return left * right
     │                ^^^^^^^^^^^^ u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:162:5
+    ┌─ checked_arithmetic.fe:166:5
     │  
-162 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8:
-163 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 3749617961046563034
+166 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8 {
+167 │ │         return left * right
+168 │ │     }
+    │ ╰─────^ attributes hash: 3749617961046563034
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3068,25 +2426,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:163:16
+    ┌─ checked_arithmetic.fe:167:16
     │
-163 │         return left % right
+167 │         return left * right
     │                ^^^^   ^^^^^ u8: Value
     │                │       
     │                u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:163:16
+    ┌─ checked_arithmetic.fe:167:16
     │
-163 │         return left % right
+167 │         return left * right
     │                ^^^^^^^^^^^^ u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:165:5
+    ┌─ checked_arithmetic.fe:170:5
     │  
-165 │ ╭     pub fn mod_i256(left: i256, right: i256) -> i256:
-166 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 17908204859155721295
+170 │ ╭     pub fn mul_i256(left: i256, right: i256) -> i256 {
+171 │ │         return left * right
+172 │ │     }
+    │ ╰─────^ attributes hash: 17908204859155721295
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3125,25 +2484,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:166:16
+    ┌─ checked_arithmetic.fe:171:16
     │
-166 │         return left % right
+171 │         return left * right
     │                ^^^^   ^^^^^ i256: Value
     │                │       
     │                i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:166:16
+    ┌─ checked_arithmetic.fe:171:16
     │
-166 │         return left % right
+171 │         return left * right
     │                ^^^^^^^^^^^^ i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:168:5
+    ┌─ checked_arithmetic.fe:174:5
     │  
-168 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128:
-169 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 1332431709112937827
+174 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128 {
+175 │ │         return left * right
+176 │ │     }
+    │ ╰─────^ attributes hash: 1332431709112937827
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3182,25 +2542,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:169:16
+    ┌─ checked_arithmetic.fe:175:16
     │
-169 │         return left % right
+175 │         return left * right
     │                ^^^^   ^^^^^ i128: Value
     │                │       
     │                i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:169:16
+    ┌─ checked_arithmetic.fe:175:16
     │
-169 │         return left % right
+175 │         return left * right
     │                ^^^^^^^^^^^^ i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:171:5
+    ┌─ checked_arithmetic.fe:178:5
     │  
-171 │ ╭     pub fn mod_i64(left: i64, right: i64) -> i64:
-172 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 3549113083347694903
+178 │ ╭     pub fn mul_i64(left: i64, right: i64) -> i64 {
+179 │ │         return left * right
+180 │ │     }
+    │ ╰─────^ attributes hash: 3549113083347694903
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3239,25 +2600,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:172:16
+    ┌─ checked_arithmetic.fe:179:16
     │
-172 │         return left % right
+179 │         return left * right
     │                ^^^^   ^^^^^ i64: Value
     │                │       
     │                i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:172:16
+    ┌─ checked_arithmetic.fe:179:16
     │
-172 │         return left % right
+179 │         return left * right
     │                ^^^^^^^^^^^^ i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:174:5
+    ┌─ checked_arithmetic.fe:182:5
     │  
-174 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32:
-175 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 15117649447142800500
+182 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32 {
+183 │ │         return left * right
+184 │ │     }
+    │ ╰─────^ attributes hash: 15117649447142800500
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3296,25 +2658,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:175:16
+    ┌─ checked_arithmetic.fe:183:16
     │
-175 │         return left % right
+183 │         return left * right
     │                ^^^^   ^^^^^ i32: Value
     │                │       
     │                i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:175:16
+    ┌─ checked_arithmetic.fe:183:16
     │
-175 │         return left % right
+183 │         return left * right
     │                ^^^^^^^^^^^^ i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:177:5
+    ┌─ checked_arithmetic.fe:186:5
     │  
-177 │ ╭     pub fn mod_i16(left: i16, right: i16) -> i16:
-178 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 16520261699954225452
+186 │ ╭     pub fn mul_i16(left: i16, right: i16) -> i16 {
+187 │ │         return left * right
+188 │ │     }
+    │ ╰─────^ attributes hash: 16520261699954225452
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3353,25 +2716,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:178:16
+    ┌─ checked_arithmetic.fe:187:16
     │
-178 │         return left % right
+187 │         return left * right
     │                ^^^^   ^^^^^ i16: Value
     │                │       
     │                i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:178:16
+    ┌─ checked_arithmetic.fe:187:16
     │
-178 │         return left % right
+187 │         return left * right
     │                ^^^^^^^^^^^^ i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:180:5
+    ┌─ checked_arithmetic.fe:190:5
     │  
-180 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8:
-181 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 2984879578165475690
+190 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8 {
+191 │ │         return left * right
+192 │ │     }
+    │ ╰─────^ attributes hash: 2984879578165475690
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3410,25 +2774,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:181:16
+    ┌─ checked_arithmetic.fe:191:16
     │
-181 │         return left % right
+191 │         return left * right
     │                ^^^^   ^^^^^ i8: Value
     │                │       
     │                i8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:181:16
+    ┌─ checked_arithmetic.fe:191:16
     │
-181 │         return left % right
+191 │         return left * right
     │                ^^^^^^^^^^^^ i8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:183:5
+    ┌─ checked_arithmetic.fe:194:5
     │  
-183 │ ╭     pub fn pow_u256(left: u256, right: u256) -> u256:
-184 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8877497213208027149
+194 │ ╭     pub fn mod_u256(left: u256, right: u256) -> u256 {
+195 │ │         return left % right
+196 │ │     }
+    │ ╰─────^ attributes hash: 8877497213208027149
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3467,25 +2832,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:184:16
+    ┌─ checked_arithmetic.fe:195:16
     │
-184 │         return left ** right
-    │                ^^^^    ^^^^^ u256: Value
-    │                │        
+195 │         return left % right
+    │                ^^^^   ^^^^^ u256: Value
+    │                │       
     │                u256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:184:16
+    ┌─ checked_arithmetic.fe:195:16
     │
-184 │         return left ** right
-    │                ^^^^^^^^^^^^^ u256: Value
+195 │         return left % right
+    │                ^^^^^^^^^^^^ u256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:186:5
+    ┌─ checked_arithmetic.fe:198:5
     │  
-186 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128:
-187 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 11187416061572591496
+198 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128 {
+199 │ │         return left % right
+200 │ │     }
+    │ ╰─────^ attributes hash: 11187416061572591496
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3524,25 +2890,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:187:16
+    ┌─ checked_arithmetic.fe:199:16
     │
-187 │         return left ** right
-    │                ^^^^    ^^^^^ u128: Value
-    │                │        
+199 │         return left % right
+    │                ^^^^   ^^^^^ u128: Value
+    │                │       
     │                u128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:187:16
+    ┌─ checked_arithmetic.fe:199:16
     │
-187 │         return left ** right
-    │                ^^^^^^^^^^^^^ u128: Value
+199 │         return left % right
+    │                ^^^^^^^^^^^^ u128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:189:5
+    ┌─ checked_arithmetic.fe:202:5
     │  
-189 │ ╭     pub fn pow_u64(left: u64, right: u64) -> u64:
-190 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 9316585824156398552
+202 │ ╭     pub fn mod_u64(left: u64, right: u64) -> u64 {
+203 │ │         return left % right
+204 │ │     }
+    │ ╰─────^ attributes hash: 9316585824156398552
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3581,25 +2948,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:190:16
+    ┌─ checked_arithmetic.fe:203:16
     │
-190 │         return left ** right
-    │                ^^^^    ^^^^^ u64: Value
-    │                │        
+203 │         return left % right
+    │                ^^^^   ^^^^^ u64: Value
+    │                │       
     │                u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:190:16
+    ┌─ checked_arithmetic.fe:203:16
     │
-190 │         return left ** right
-    │                ^^^^^^^^^^^^^ u64: Value
+203 │         return left % right
+    │                ^^^^^^^^^^^^ u64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:192:5
+    ┌─ checked_arithmetic.fe:206:5
     │  
-192 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32:
-193 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 6948562809403003686
+206 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32 {
+207 │ │         return left % right
+208 │ │     }
+    │ ╰─────^ attributes hash: 6948562809403003686
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3638,25 +3006,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:193:16
+    ┌─ checked_arithmetic.fe:207:16
     │
-193 │         return left ** right
-    │                ^^^^    ^^^^^ u32: Value
-    │                │        
+207 │         return left % right
+    │                ^^^^   ^^^^^ u32: Value
+    │                │       
     │                u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:193:16
+    ┌─ checked_arithmetic.fe:207:16
     │
-193 │         return left ** right
-    │                ^^^^^^^^^^^^^ u32: Value
+207 │         return left % right
+    │                ^^^^^^^^^^^^ u32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:195:5
+    ┌─ checked_arithmetic.fe:210:5
     │  
-195 │ ╭     pub fn pow_u16(left: u16, right: u16) -> u16:
-196 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 4214429573900255413
+210 │ ╭     pub fn mod_u16(left: u16, right: u16) -> u16 {
+211 │ │         return left % right
+212 │ │     }
+    │ ╰─────^ attributes hash: 4214429573900255413
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3695,25 +3064,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:196:16
+    ┌─ checked_arithmetic.fe:211:16
     │
-196 │         return left ** right
-    │                ^^^^    ^^^^^ u16: Value
-    │                │        
+211 │         return left % right
+    │                ^^^^   ^^^^^ u16: Value
+    │                │       
     │                u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:196:16
+    ┌─ checked_arithmetic.fe:211:16
     │
-196 │         return left ** right
-    │                ^^^^^^^^^^^^^ u16: Value
+211 │         return left % right
+    │                ^^^^^^^^^^^^ u16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:198:5
+    ┌─ checked_arithmetic.fe:214:5
     │  
-198 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8:
-199 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 3749617961046563034
+214 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8 {
+215 │ │         return left % right
+216 │ │     }
+    │ ╰─────^ attributes hash: 3749617961046563034
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3752,25 +3122,722 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:199:16
+    ┌─ checked_arithmetic.fe:215:16
     │
-199 │         return left ** right
+215 │         return left % right
+    │                ^^^^   ^^^^^ u8: Value
+    │                │       
+    │                u8: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:215:16
+    │
+215 │         return left % right
+    │                ^^^^^^^^^^^^ u8: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:218:5
+    │  
+218 │ ╭     pub fn mod_i256(left: i256, right: i256) -> i256 {
+219 │ │         return left % right
+220 │ │     }
+    │ ╰─────^ attributes hash: 17908204859155721295
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I256,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I256,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I256,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:219:16
+    │
+219 │         return left % right
+    │                ^^^^   ^^^^^ i256: Value
+    │                │       
+    │                i256: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:219:16
+    │
+219 │         return left % right
+    │                ^^^^^^^^^^^^ i256: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:222:5
+    │  
+222 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128 {
+223 │ │         return left % right
+224 │ │     }
+    │ ╰─────^ attributes hash: 1332431709112937827
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I128,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I128,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I128,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:223:16
+    │
+223 │         return left % right
+    │                ^^^^   ^^^^^ i128: Value
+    │                │       
+    │                i128: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:223:16
+    │
+223 │         return left % right
+    │                ^^^^^^^^^^^^ i128: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:226:5
+    │  
+226 │ ╭     pub fn mod_i64(left: i64, right: i64) -> i64 {
+227 │ │         return left % right
+228 │ │     }
+    │ ╰─────^ attributes hash: 3549113083347694903
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I64,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I64,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I64,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:227:16
+    │
+227 │         return left % right
+    │                ^^^^   ^^^^^ i64: Value
+    │                │       
+    │                i64: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:227:16
+    │
+227 │         return left % right
+    │                ^^^^^^^^^^^^ i64: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:230:5
+    │  
+230 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32 {
+231 │ │         return left % right
+232 │ │     }
+    │ ╰─────^ attributes hash: 15117649447142800500
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I32,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I32,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I32,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:231:16
+    │
+231 │         return left % right
+    │                ^^^^   ^^^^^ i32: Value
+    │                │       
+    │                i32: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:231:16
+    │
+231 │         return left % right
+    │                ^^^^^^^^^^^^ i32: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:234:5
+    │  
+234 │ ╭     pub fn mod_i16(left: i16, right: i16) -> i16 {
+235 │ │         return left % right
+236 │ │     }
+    │ ╰─────^ attributes hash: 16520261699954225452
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I16,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I16,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I16,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:235:16
+    │
+235 │         return left % right
+    │                ^^^^   ^^^^^ i16: Value
+    │                │       
+    │                i16: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:235:16
+    │
+235 │         return left % right
+    │                ^^^^^^^^^^^^ i16: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:238:5
+    │  
+238 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8 {
+239 │ │         return left % right
+240 │ │     }
+    │ ╰─────^ attributes hash: 2984879578165475690
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I8,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              I8,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      I8,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:239:16
+    │
+239 │         return left % right
+    │                ^^^^   ^^^^^ i8: Value
+    │                │       
+    │                i8: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:239:16
+    │
+239 │         return left % right
+    │                ^^^^^^^^^^^^ i8: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:242:5
+    │  
+242 │ ╭     pub fn pow_u256(left: u256, right: u256) -> u256 {
+243 │ │         return left ** right
+244 │ │     }
+    │ ╰─────^ attributes hash: 8877497213208027149
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U256,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:243:16
+    │
+243 │         return left ** right
+    │                ^^^^    ^^^^^ u256: Value
+    │                │        
+    │                u256: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:243:16
+    │
+243 │         return left ** right
+    │                ^^^^^^^^^^^^^ u256: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:246:5
+    │  
+246 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128 {
+247 │ │         return left ** right
+248 │ │     }
+    │ ╰─────^ attributes hash: 11187416061572591496
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U128,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U128,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U128,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:247:16
+    │
+247 │         return left ** right
+    │                ^^^^    ^^^^^ u128: Value
+    │                │        
+    │                u128: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:247:16
+    │
+247 │         return left ** right
+    │                ^^^^^^^^^^^^^ u128: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:250:5
+    │  
+250 │ ╭     pub fn pow_u64(left: u64, right: u64) -> u64 {
+251 │ │         return left ** right
+252 │ │     }
+    │ ╰─────^ attributes hash: 9316585824156398552
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U64,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U64,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U64,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:251:16
+    │
+251 │         return left ** right
+    │                ^^^^    ^^^^^ u64: Value
+    │                │        
+    │                u64: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:251:16
+    │
+251 │         return left ** right
+    │                ^^^^^^^^^^^^^ u64: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:254:5
+    │  
+254 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32 {
+255 │ │         return left ** right
+256 │ │     }
+    │ ╰─────^ attributes hash: 6948562809403003686
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U32,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U32,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U32,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:255:16
+    │
+255 │         return left ** right
+    │                ^^^^    ^^^^^ u32: Value
+    │                │        
+    │                u32: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:255:16
+    │
+255 │         return left ** right
+    │                ^^^^^^^^^^^^^ u32: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:258:5
+    │  
+258 │ ╭     pub fn pow_u16(left: u16, right: u16) -> u16 {
+259 │ │         return left ** right
+260 │ │     }
+    │ ╰─────^ attributes hash: 4214429573900255413
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U16,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U16,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U16,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:259:16
+    │
+259 │         return left ** right
+    │                ^^^^    ^^^^^ u16: Value
+    │                │        
+    │                u16: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:259:16
+    │
+259 │         return left ** right
+    │                ^^^^^^^^^^^^^ u16: Value
+
+note: 
+    ┌─ checked_arithmetic.fe:262:5
+    │  
+262 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8 {
+263 │ │         return left ** right
+264 │ │     }
+    │ ╰─────^ attributes hash: 3749617961046563034
+    │  
+    = FunctionSignature {
+          self_decl: None,
+          ctx_decl: None,
+          params: [
+              FunctionParam {
+                  label: None,
+                  name: "left",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U8,
+                          ),
+                      ),
+                  ),
+              },
+              FunctionParam {
+                  label: None,
+                  name: "right",
+                  typ: Ok(
+                      Base(
+                          Numeric(
+                              U8,
+                          ),
+                      ),
+                  ),
+              },
+          ],
+          return_type: Ok(
+              Base(
+                  Numeric(
+                      U8,
+                  ),
+              ),
+          ),
+      }
+
+note: 
+    ┌─ checked_arithmetic.fe:263:16
+    │
+263 │         return left ** right
     │                ^^^^    ^^^^^ u8: Value
     │                │        
     │                u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:199:16
+    ┌─ checked_arithmetic.fe:263:16
     │
-199 │         return left ** right
+263 │         return left ** right
     │                ^^^^^^^^^^^^^ u8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:201:5
+    ┌─ checked_arithmetic.fe:266:5
     │  
-201 │ ╭     pub fn pow_i256(left: i256, right: u256) -> i256:
-202 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 10218838230504849711
+266 │ ╭     pub fn pow_i256(left: i256, right: u256) -> i256 {
+267 │ │         return left ** right
+268 │ │     }
+    │ ╰─────^ attributes hash: 10218838230504849711
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3809,25 +3876,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:202:16
+    ┌─ checked_arithmetic.fe:267:16
     │
-202 │         return left ** right
+267 │         return left ** right
     │                ^^^^    ^^^^^ u256: Value
     │                │        
     │                i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:202:16
+    ┌─ checked_arithmetic.fe:267:16
     │
-202 │         return left ** right
+267 │         return left ** right
     │                ^^^^^^^^^^^^^ i256: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:204:5
+    ┌─ checked_arithmetic.fe:270:5
     │  
-204 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128:
-205 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8492300797170107874
+270 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128 {
+271 │ │         return left ** right
+272 │ │     }
+    │ ╰─────^ attributes hash: 8492300797170107874
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3866,25 +3934,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:205:16
+    ┌─ checked_arithmetic.fe:271:16
     │
-205 │         return left ** right
+271 │         return left ** right
     │                ^^^^    ^^^^^ u128: Value
     │                │        
     │                i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:205:16
+    ┌─ checked_arithmetic.fe:271:16
     │
-205 │         return left ** right
+271 │         return left ** right
     │                ^^^^^^^^^^^^^ i128: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:207:5
+    ┌─ checked_arithmetic.fe:274:5
     │  
-207 │ ╭     pub fn pow_i64(left: i64, right: u64) -> i64:
-208 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8175269888119534907
+274 │ ╭     pub fn pow_i64(left: i64, right: u64) -> i64 {
+275 │ │         return left ** right
+276 │ │     }
+    │ ╰─────^ attributes hash: 8175269888119534907
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3923,25 +3992,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:208:16
+    ┌─ checked_arithmetic.fe:275:16
     │
-208 │         return left ** right
+275 │         return left ** right
     │                ^^^^    ^^^^^ u64: Value
     │                │        
     │                i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:208:16
+    ┌─ checked_arithmetic.fe:275:16
     │
-208 │         return left ** right
+275 │         return left ** right
     │                ^^^^^^^^^^^^^ i64: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:210:5
+    ┌─ checked_arithmetic.fe:278:5
     │  
-210 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32:
-211 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 9388330002377862662
+278 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32 {
+279 │ │         return left ** right
+280 │ │     }
+    │ ╰─────^ attributes hash: 9388330002377862662
     │  
     = FunctionSignature {
           self_decl: None,
@@ -3980,25 +4050,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:211:16
+    ┌─ checked_arithmetic.fe:279:16
     │
-211 │         return left ** right
+279 │         return left ** right
     │                ^^^^    ^^^^^ u32: Value
     │                │        
     │                i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:211:16
+    ┌─ checked_arithmetic.fe:279:16
     │
-211 │         return left ** right
+279 │         return left ** right
     │                ^^^^^^^^^^^^^ i32: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:213:5
+    ┌─ checked_arithmetic.fe:282:5
     │  
-213 │ ╭     pub fn pow_i16(left: i16, right: u16) -> i16:
-214 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8172583117888506116
+282 │ ╭     pub fn pow_i16(left: i16, right: u16) -> i16 {
+283 │ │         return left ** right
+284 │ │     }
+    │ ╰─────^ attributes hash: 8172583117888506116
     │  
     = FunctionSignature {
           self_decl: None,
@@ -4037,25 +4108,26 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:214:16
+    ┌─ checked_arithmetic.fe:283:16
     │
-214 │         return left ** right
+283 │         return left ** right
     │                ^^^^    ^^^^^ u16: Value
     │                │        
     │                i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:214:16
+    ┌─ checked_arithmetic.fe:283:16
     │
-214 │         return left ** right
+283 │         return left ** right
     │                ^^^^^^^^^^^^^ i16: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:216:5
+    ┌─ checked_arithmetic.fe:286:5
     │  
-216 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8:
-217 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 783967907920544100
+286 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8 {
+287 │ │         return left ** right
+288 │ │     }
+    │ ╰─────^ attributes hash: 783967907920544100
     │  
     = FunctionSignature {
           self_decl: None,
@@ -4094,17 +4166,17 @@ note:
       }
 
 note: 
-    ┌─ checked_arithmetic.fe:217:16
+    ┌─ checked_arithmetic.fe:287:16
     │
-217 │         return left ** right
+287 │         return left ** right
     │                ^^^^    ^^^^^ u8: Value
     │                │        
     │                i8: Value
 
 note: 
-    ┌─ checked_arithmetic.fe:217:16
+    ┌─ checked_arithmetic.fe:287:16
     │
-217 │         return left ** right
+287 │         return left ** right
     │                ^^^^^^^^^^^^^ i8: Value
 
 

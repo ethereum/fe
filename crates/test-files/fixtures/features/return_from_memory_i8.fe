@@ -1,13 +1,7 @@
-
-
-contract Foo:
-
-    pub fn bar(self, val: i8) -> i8:
+contract Foo {
+    pub fn bar(self, val: i8) -> i8 {
         let in_memory: Array<i8, 2> = [val, val]
-        # We do this to prove that we have to adjust the numerics at the point where they
-        # are loaded on the stack and not e.g. at the point where they are returned. Adjusting
-        # them at the point of the return would work for a single value that is loaded from
-        # storage but will fail in cases like this where we sum two values together and then
-        # return the result.
         let result: i8 = in_memory[0] + in_memory[1]
         return result
+    }
+}

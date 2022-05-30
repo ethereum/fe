@@ -1,4 +1,5 @@
-contract Foo:
-
-  pub fn foo():
-    msg.foo
+contract Foo {
+    pub fn foo() {
+        msg.foo
+    }
+}

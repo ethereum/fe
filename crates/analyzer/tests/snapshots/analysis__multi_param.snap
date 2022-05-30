@@ -6,13 +6,14 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ multi_param.fe:2:5
   │  
-2 │ ╭     pub fn bar(x: u256, y: u256, z: u256) -> Array<u256, 3>:
+2 │ ╭     pub fn bar(x: u256, y: u256, z: u256) -> Array<u256, 3> {
 3 │ │         let my_array: Array<u256, 3>
 4 │ │         my_array[0] = x
 5 │ │         my_array[1] = y
 6 │ │         my_array[2] = z
 7 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 10778435134172267300
+8 │ │     }
+  │ ╰─────^ attributes hash: 10778435134172267300
   │  
   = FunctionSignature {
         self_decl: None,

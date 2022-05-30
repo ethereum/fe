@@ -1,4 +1,3 @@
 use std::context::Context
 
-pub fn foo(ctx: Context):
-    pass
+pub fn foo(ctx: Context) {}

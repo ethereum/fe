@@ -1,10 +1,13 @@
 use std::context::Context
 
-contract Bar:
-  event Foo:
-    idx x: address
-    y: u256
-    z: bool
+contract Bar {
+    event Foo {
+        idx x: address
+        y: u256
+        z: bool
+    }
 
-  pub fn test(ctx: Context):
-    emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+    pub fn test(ctx: Context) {
+        emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+    }
+}

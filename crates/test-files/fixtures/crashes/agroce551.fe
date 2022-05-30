@@ -1,3 +1,5 @@
-contract o:
- pub fn l(b:bool):
-  ""
+contract o {
+    pub fn l(b: bool) {
+        ""
+    }
+}

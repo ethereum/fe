@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `bar` expects 0 arguments, but 1 was provided
-   ┌─ compile_errors/ctx_passed_external_call.fe:13:36
+   ┌─ compile_errors/ctx_passed_external_call.fe:14:36
    │
-13 │         self.favorite_number = foo.bar(ctx)
+14 │         self.favorite_number = foo.bar(ctx)
    │                                    ^^^ --- supplied 1 argument
    │                                    │    
    │                                    expects 0 arguments

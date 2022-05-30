@@ -6,9 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ create_contract_from_init.fe:4:5
   │  
-4 │ ╭     pub fn get_my_num() -> u256:
+4 │ ╭     pub fn get_my_num() -> u256 {
 5 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 6115314201970082834
+6 │ │     }
+  │ ╰─────^ attributes hash: 6115314201970082834
   │  
   = FunctionSignature {
         self_decl: None,
@@ -30,17 +31,18 @@ note:
   │                ^^ u256: Value
 
 note: 
-  ┌─ create_contract_from_init.fe:8:5
-  │
-8 │     foo_addr: address
-  │     ^^^^^^^^^^^^^^^^^ address
+   ┌─ create_contract_from_init.fe:10:5
+   │
+10 │     foo_addr: address
+   │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ create_contract_from_init.fe:13:5
+   ┌─ create_contract_from_init.fe:16:5
    │  
-13 │ ╭     pub fn get_foo_addr(self) -> address:
-14 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 227275695522088782
+16 │ ╭     pub fn get_foo_addr(self) -> address {
+17 │ │         return self.foo_addr
+18 │ │     }
+   │ ╰─────^ attributes hash: 227275695522088782
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -56,15 +58,15 @@ note:
      }
 
 note: 
-   ┌─ create_contract_from_init.fe:14:16
+   ┌─ create_contract_from_init.fe:17:16
    │
-14 │         return self.foo_addr
+17 │         return self.foo_addr
    │                ^^^^ FooFactory: Value
 
 note: 
-   ┌─ create_contract_from_init.fe:14:16
+   ┌─ create_contract_from_init.fe:17:16
    │
-14 │         return self.foo_addr
+17 │         return self.foo_addr
    │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 

@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar() -> u8:
+contract Foo {
+    pub fn bar() -> u8 {
         return u8(0xfe)
+    }
+}

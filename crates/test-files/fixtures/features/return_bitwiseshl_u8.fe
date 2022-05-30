@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar(x: u8, y: u8) -> u8:
+contract Foo {
+    pub fn bar(x: u8, y: u8) -> u8 {
         return x << y
+    }
+}

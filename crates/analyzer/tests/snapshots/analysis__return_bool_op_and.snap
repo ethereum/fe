@@ -6,9 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ return_bool_op_and.fe:2:5
   │  
-2 │ ╭     pub fn bar(x: bool, y: bool) -> bool:
+2 │ ╭     pub fn bar(x: bool, y: bool) -> bool {
 3 │ │         return x and y
-  │ ╰──────────────────────^ attributes hash: 3532809531490166398
+4 │ │     }
+  │ ╰─────^ attributes hash: 3532809531490166398
   │  
   = FunctionSignature {
         self_decl: None,

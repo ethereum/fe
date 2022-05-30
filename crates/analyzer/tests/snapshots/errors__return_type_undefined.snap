@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: undefined type
-  ┌─ compile_errors/return_type_undefined.fe:2:17
+  ┌─ compile_errors/return_type_undefined.fe:2:19
   │
-2 │   pub fn f() -> Foo:
-  │                 ^^^ `Foo` has not been defined
+2 │     pub fn f() -> Foo {}
+  │                   ^^^ `Foo` has not been defined
 
 

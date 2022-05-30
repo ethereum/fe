@@ -1,8 +1,11 @@
-contract Foo:
+contract Foo {
     bar: Map<u32, u32>
 
-    pub fn read_bar(self, key: u32) -> u32:
+    pub fn read_bar(self, key: u32) -> u32 {
         return self.bar[key]
+    }
 
-    pub fn write_bar(self, key: u32, value: u32):
+    pub fn write_bar(self, key: u32, value: u32) {
         self.bar[key] = value
+    }
+}

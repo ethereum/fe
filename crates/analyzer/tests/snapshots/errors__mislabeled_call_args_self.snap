@@ -4,15 +4,15 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: argument label mismatch
-  ┌─ compile_errors/mislabeled_call_args_self.fe:4:18
+  ┌─ compile_errors/mislabeled_call_args_self.fe:3:18
   │
-4 │         self.bar(doesnt_exist: 1, me_neither: 2)
+3 │         self.bar(doesnt_exist: 1, me_neither: 2)
   │                  ^^^^^^^^^^^^ expected `val1`
 
 error: argument label mismatch
-  ┌─ compile_errors/mislabeled_call_args_self.fe:4:35
+  ┌─ compile_errors/mislabeled_call_args_self.fe:3:35
   │
-4 │         self.bar(doesnt_exist: 1, me_neither: 2)
+3 │         self.bar(doesnt_exist: 1, me_neither: 2)
   │                                   ^^^^^^^^^^ expected `val2`
 
 

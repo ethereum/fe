@@ -6,14 +6,14 @@ expression: "build_snapshot(&db, module)"
 note: 
    ┌─ const_generics.fe:2:5
    │  
- 2 │ ╭     pub fn bar():
+ 2 │ ╭     pub fn bar() {
  3 │ │         # const generics with literal.
  4 │ │         let array_lit: Array<i32, 8>
  5 │ │         let array_lit2: Array<i32, { 8 }>
    · │
-45 │ │ 
 46 │ │         let array_with_const: Array<i32, { DOUBLE_ARRAY_LENGTH / TWO }>
-   │ ╰───────────────────────────────────────────────────────────────────────^ attributes hash: 8319796915330632390
+47 │ │     }
+   │ ╰─────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
@@ -37,9 +37,9 @@ note:
  8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
    ·
-11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }>
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
-12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }>
    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 8>
    ·
 15 │         let array_add: Array<i32, { 5 + 3 }>
@@ -120,7 +120,7 @@ note:
  8 │         let array_ternary: Array<i32, { 3 if false else 8 }>
    │                                         ^^^^^^^^^^^^^^^^^ u256: Value
    ·
-11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }>
    │                                                  ^^^^    ^^^^^ bool: Value
    │                                                  │        
    │                                                  bool: Value
@@ -128,7 +128,7 @@ note:
 note: 
    ┌─ const_generics.fe:11:44
    │
-11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }>
    │                                            ^    ^^^^^^^^^^^^^^^      ^ u256: Value
    │                                            │    │                     
    │                                            │    bool: Value
@@ -137,9 +137,9 @@ note:
 note: 
    ┌─ const_generics.fe:11:44
    │
-11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }> 
+11 │         let array_logical_or: Array<i32, { 8 if (true or false) else 0 }>
    │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }>
    │                                                   ^^^^     ^^^^^ bool: Value
    │                                                   │         
    │                                                   bool: Value
@@ -147,7 +147,7 @@ note:
 note: 
    ┌─ const_generics.fe:12:45
    │
-12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }>
    │                                             ^    ^^^^^^^^^^^^^^^^      ^ u256: Value
    │                                             │    │                      
    │                                             │    bool: Value
@@ -156,7 +156,7 @@ note:
 note: 
    ┌─ const_generics.fe:12:45
    │
-12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }> 
+12 │         let array_logical_and: Array<i32, { 0 if (true and false) else 8 }>
    │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
    ·
 15 │         let array_add: Array<i32, { 5 + 3 }>

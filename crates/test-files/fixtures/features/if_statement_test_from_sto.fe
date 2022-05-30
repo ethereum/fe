@@ -1,20 +1,21 @@
-contract Foo:
+contract Foo {
     my_bool1: bool
     my_bool2: bool
     my_bool3: bool
 
-    pub fn bar(self) -> u256:
+    pub fn bar(self) -> u256 {
         self.my_bool1 = false
         self.my_bool2 = false
         self.my_bool3 = true
-
-        if self.my_bool1:
+        if self.my_bool1 {
             return 26
-
-        if self.my_bool2:
+        }
+        if self.my_bool2 {
             return 26
-
-        if self.my_bool3:
+        }
+        if self.my_bool3 {
             return 42
-
+        }
         return 26
+    }
+}

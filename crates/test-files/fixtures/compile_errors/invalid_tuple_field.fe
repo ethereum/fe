@@ -1,5 +1,7 @@
-contract Foo:
-  val: (u256, u8)
+contract Foo {
+    val: (u256, u8)
 
-  pub fn foo(self):
-    self.val.item5
+    pub fn foo(self) {
+        self.val.item5
+    }
+}

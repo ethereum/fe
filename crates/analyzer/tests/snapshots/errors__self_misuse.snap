@@ -4,38 +4,38 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `self` can't be used as a variable name
-  ┌─ compile_errors/self_misuse.fe:2:7
+  ┌─ compile_errors/self_misuse.fe:2:9
   │
-2 │   let self: u8 = 10
-  │       ^^^^ expected a name, found keyword `self`
+2 │     let self: u8 = 10
+  │         ^^^^ expected a name, found keyword `self`
 
 error: `self` can only be used in contract or struct functions
-  ┌─ compile_errors/self_misuse.fe:3:3
+  ┌─ compile_errors/self_misuse.fe:3:5
   │
-3 │   self = 5
-  │   ^^^^ not allowed in functions defined outside of a contract or struct
+3 │     self = 5
+  │     ^^^^ not allowed in functions defined outside of a contract or struct
 
 error: `self` is not callable
-   ┌─ compile_errors/self_misuse.fe:15:5
+   ┌─ compile_errors/self_misuse.fe:16:9
    │
-15 │     self()
-   │     ^^^^ can't be used as a function
+16 │         self()
+   │         ^^^^ can't be used as a function
 
 error: `g` must be called via `self`
-   ┌─ compile_errors/self_misuse.fe:26:6
+   ┌─ compile_errors/self_misuse.fe:31:8
    │
-26 │   fn g(self):
-   │      ^ `g` is defined here as a function that takes `self`
+31 │     fn g(self) {}
+   │        ^ `g` is defined here as a function that takes `self`
    ·
-30 │     g(self)
-   │     ^ `g` is called here as a standalone function
+34 │         g(self)
+   │         ^ `g` is called here as a standalone function
    │
    = Suggestion: use `self.g(...)` instead of `g(...)`
 
 error: invalid use of contract `self`
-   ┌─ compile_errors/self_misuse.fe:33:9
+   ┌─ compile_errors/self_misuse.fe:38:13
    │
-33 │     bar(self)
-   │         ^^^^ `self` can't be used here
+38 │         bar(self)
+   │             ^^^^ `self` can't be used here
 
 

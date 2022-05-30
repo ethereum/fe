@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: function return type must have a fixed size
-  ┌─ compile_errors/return_type_not_fixedsize.fe:2:17
+  ┌─ compile_errors/return_type_not_fixedsize.fe:2:19
   │
-2 │   pub fn f() -> Map<address, bool>:
-  │                 ^^^^^^^^^^^^^^^^^^ this can't be returned from a function
+2 │     pub fn f() -> Map<address, bool> {}
+  │                   ^^^^^^^^^^^^^^^^^^ this can't be returned from a function
 
 

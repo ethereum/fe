@@ -10,61 +10,61 @@ note:
   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<u256, String<32>>
 
 note: 
-  ┌─ type_aliases.fe:4:1
-  │
-4 │ type Scoreboard = Map<PostId, Score>
-  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<u256, u64>
-
-note: 
   ┌─ type_aliases.fe:5:1
   │
-5 │ type AuthorPosts = Map<Author, PostId>
-  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
+5 │ type Scoreboard = Map<PostId, Score>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<u256, u64>
 
 note: 
   ┌─ type_aliases.fe:7:1
   │
-7 │ type Author = address
-  │ ^^^^^^^^^^^^^^^^^^^^^ address
-
-note: 
-  ┌─ type_aliases.fe:8:1
-  │
-8 │ type Score = u64
-  │ ^^^^^^^^^^^^^^^^ u64
+7 │ type AuthorPosts = Map<Author, PostId>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 
 note: 
   ┌─ type_aliases.fe:9:1
   │
-9 │ type PostId = u256
-  │ ^^^^^^^^^^^^^^^^^^ u256
+9 │ type Author = address
+  │ ^^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ type_aliases.fe:10:1
+   ┌─ type_aliases.fe:11:1
    │
-10 │ type PostBody = String<32>
+11 │ type Score = u64
+   │ ^^^^^^^^^^^^^^^^ u64
+
+note: 
+   ┌─ type_aliases.fe:13:1
+   │
+13 │ type PostId = u256
+   │ ^^^^^^^^^^^^^^^^^^ u256
+
+note: 
+   ┌─ type_aliases.fe:15:1
+   │
+15 │ type PostBody = String<32>
    │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ String<32>
 
 note: 
-   ┌─ type_aliases.fe:13:5
+   ┌─ type_aliases.fe:18:5
    │
-13 │     posts: Posts
+18 │     posts: Posts
    │     ^^^^^^^^^^^^ Map<u256, String<32>>
-14 │     authors: AuthorPosts
+19 │     authors: AuthorPosts
    │     ^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
-15 │     scoreboard: Scoreboard
+20 │     scoreboard: Scoreboard
    │     ^^^^^^^^^^^^^^^^^^^^^^ Map<u256, u64>
 
 note: 
-   ┌─ type_aliases.fe:17:5
+   ┌─ type_aliases.fe:22:5
    │  
-17 │ ╭     pub fn post(self, ctx: Context, body: PostBody):
-18 │ │         # id: PostId = keccak256(body.abi_encode())
-19 │ │         let id: PostId = 0
-20 │ │         self.posts[id] = body
-21 │ │         self.authors[ctx.msg_sender()]
-22 │ │         self.scoreboard[id] = 0
-   │ ╰───────────────────────────────^ attributes hash: 4649056442968527631
+22 │ ╭     pub fn post(self, ctx: Context, body: PostBody) {
+23 │ │         let id: PostId = 0
+24 │ │         self.posts[id] = body
+25 │ │         self.authors[ctx.msg_sender()]
+26 │ │         self.scoreboard[id] = 0
+27 │ │     }
+   │ ╰─────^ attributes hash: 4649056442968527631
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -106,83 +106,84 @@ note:
      }
 
 note: 
-   ┌─ type_aliases.fe:19:17
+   ┌─ type_aliases.fe:23:17
    │
-19 │         let id: PostId = 0
+23 │         let id: PostId = 0
    │                 ^^^^^^ u256
 
 note: 
-   ┌─ type_aliases.fe:19:26
+   ┌─ type_aliases.fe:23:26
    │
-19 │         let id: PostId = 0
+23 │         let id: PostId = 0
    │                          ^ u256: Value
-20 │         self.posts[id] = body
+24 │         self.posts[id] = body
    │         ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:20:9
+   ┌─ type_aliases.fe:24:9
    │
-20 │         self.posts[id] = body
+24 │         self.posts[id] = body
    │         ^^^^^^^^^^ ^^ u256: Value
    │         │           
    │         Map<u256, String<32>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ type_aliases.fe:20:9
+   ┌─ type_aliases.fe:24:9
    │
-20 │         self.posts[id] = body
+24 │         self.posts[id] = body
    │         ^^^^^^^^^^^^^^   ^^^^ String<32>: Memory
    │         │                 
    │         String<32>: Storage { nonce: None }
-21 │         self.authors[ctx.msg_sender()]
+25 │         self.authors[ctx.msg_sender()]
    │         ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:21:9
+   ┌─ type_aliases.fe:25:9
    │
-21 │         self.authors[ctx.msg_sender()]
+25 │         self.authors[ctx.msg_sender()]
    │         ^^^^^^^^^^^^ ^^^ Context: Memory
    │         │             
    │         Map<address, u256>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ type_aliases.fe:21:22
+   ┌─ type_aliases.fe:25:22
    │
-21 │         self.authors[ctx.msg_sender()]
+25 │         self.authors[ctx.msg_sender()]
    │                      ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ type_aliases.fe:21:9
+   ┌─ type_aliases.fe:25:9
    │
-21 │         self.authors[ctx.msg_sender()]
+25 │         self.authors[ctx.msg_sender()]
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: None }
-22 │         self.scoreboard[id] = 0
+26 │         self.scoreboard[id] = 0
    │         ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:22:9
+   ┌─ type_aliases.fe:26:9
    │
-22 │         self.scoreboard[id] = 0
+26 │         self.scoreboard[id] = 0
    │         ^^^^^^^^^^^^^^^ ^^ u256: Value
    │         │                
    │         Map<u256, u64>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ type_aliases.fe:22:9
+   ┌─ type_aliases.fe:26:9
    │
-22 │         self.scoreboard[id] = 0
+26 │         self.scoreboard[id] = 0
    │         ^^^^^^^^^^^^^^^^^^^   ^ u64: Value
    │         │                      
    │         u64: Storage { nonce: None }
 
 note: 
-   ┌─ type_aliases.fe:24:5
+   ┌─ type_aliases.fe:29:5
    │  
-24 │ ╭     pub fn upvote(self, id: PostId) -> Score:
-25 │ │         let score: Score = self.scoreboard[id] + 1
-26 │ │         self.scoreboard[id] = score
-27 │ │         return score
-   │ ╰────────────────────^ attributes hash: 4383698668262923633
+29 │ ╭     pub fn upvote(self, id: PostId) -> Score {
+30 │ │         let score: Score = self.scoreboard[id] + 1
+31 │ │         self.scoreboard[id] = score
+32 │ │         return score
+33 │ │     }
+   │ ╰─────^ attributes hash: 4383698668262923633
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -212,65 +213,66 @@ note:
      }
 
 note: 
-   ┌─ type_aliases.fe:25:20
+   ┌─ type_aliases.fe:30:20
    │
-25 │         let score: Score = self.scoreboard[id] + 1
+30 │         let score: Score = self.scoreboard[id] + 1
    │                    ^^^^^ u64
 
 note: 
-   ┌─ type_aliases.fe:25:28
+   ┌─ type_aliases.fe:30:28
    │
-25 │         let score: Score = self.scoreboard[id] + 1
+30 │         let score: Score = self.scoreboard[id] + 1
    │                            ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:25:28
+   ┌─ type_aliases.fe:30:28
    │
-25 │         let score: Score = self.scoreboard[id] + 1
+30 │         let score: Score = self.scoreboard[id] + 1
    │                            ^^^^^^^^^^^^^^^ ^^ u256: Value
    │                            │                
    │                            Map<u256, u64>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ type_aliases.fe:25:28
+   ┌─ type_aliases.fe:30:28
    │
-25 │         let score: Score = self.scoreboard[id] + 1
+30 │         let score: Score = self.scoreboard[id] + 1
    │                            ^^^^^^^^^^^^^^^^^^^   ^ u64: Value
    │                            │                      
    │                            u64: Storage { nonce: None } => Value
 
 note: 
-   ┌─ type_aliases.fe:25:28
+   ┌─ type_aliases.fe:30:28
    │
-25 │         let score: Score = self.scoreboard[id] + 1
+30 │         let score: Score = self.scoreboard[id] + 1
    │                            ^^^^^^^^^^^^^^^^^^^^^^^ u64: Value
-26 │         self.scoreboard[id] = score
+31 │         self.scoreboard[id] = score
    │         ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:26:9
+   ┌─ type_aliases.fe:31:9
    │
-26 │         self.scoreboard[id] = score
+31 │         self.scoreboard[id] = score
    │         ^^^^^^^^^^^^^^^ ^^ u256: Value
    │         │                
    │         Map<u256, u64>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ type_aliases.fe:26:9
+   ┌─ type_aliases.fe:31:9
    │
-26 │         self.scoreboard[id] = score
+31 │         self.scoreboard[id] = score
    │         ^^^^^^^^^^^^^^^^^^^   ^^^^^ u64: Value
    │         │                      
    │         u64: Storage { nonce: None }
-27 │         return score
+32 │         return score
    │                ^^^^^ u64: Value
 
 note: 
-   ┌─ type_aliases.fe:29:5
+   ┌─ type_aliases.fe:35:5
    │  
-29 │ ╭     pub fn get_post(self, id: PostId) -> PostBody:
-30 │ │         return self.posts[id].to_mem()
-   │ ╰──────────────────────────────────────^ attributes hash: 6772945894090223199
+35 │ ╭     pub fn get_post(self, id: PostId) -> PostBody {
+36 │ │         return self.posts[id].to_mem()
+37 │ │     }
+   │ ╰─────^ attributes hash: 6772945894090223199
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -300,29 +302,29 @@ note:
      }
 
 note: 
-   ┌─ type_aliases.fe:30:16
+   ┌─ type_aliases.fe:36:16
    │
-30 │         return self.posts[id].to_mem()
+36 │         return self.posts[id].to_mem()
    │                ^^^^ Forum: Value
 
 note: 
-   ┌─ type_aliases.fe:30:16
+   ┌─ type_aliases.fe:36:16
    │
-30 │         return self.posts[id].to_mem()
+36 │         return self.posts[id].to_mem()
    │                ^^^^^^^^^^ ^^ u256: Value
    │                │           
    │                Map<u256, String<32>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ type_aliases.fe:30:16
+   ┌─ type_aliases.fe:36:16
    │
-30 │         return self.posts[id].to_mem()
+36 │         return self.posts[id].to_mem()
    │                ^^^^^^^^^^^^^^ String<32>: Storage { nonce: None }
 
 note: 
-   ┌─ type_aliases.fe:30:16
+   ┌─ type_aliases.fe:36:16
    │
-30 │         return self.posts[id].to_mem()
+36 │         return self.posts[id].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^ String<32>: Storage { nonce: None } => Memory
 
 

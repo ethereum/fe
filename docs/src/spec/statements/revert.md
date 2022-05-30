@@ -10,22 +10,40 @@ statement will cause to revert all state changes made by the call and return wit
 
 An example of a `revert` statement without revert data:
 
-```
-contract Foo:
-    fn transfer(self, to : address, value : u256):
-        if not self.in_whitelist(to):
+```fe
+contract Foo {
+    fn transfer(self, to: address, value: u256) {
+        if not self.in_whitelist(addr: to) {
             revert
+        }
         # more logic here
+    }
+
+    fn in_whitelist(self, addr: address) -> bool {
+        return false
+    }
+}
 ```
 
 An example of a `revert` statement with revert data:
 
-```
-contract Foo:
-    fn transfer(self, to : address, value : u256):
-        if not self.in_whitelist(to):
-            revert ApplicationError(code=5)
+```fe
+struct ApplicationError {
+    pub code: u8
+}
+
+contract Foo {
+    pub fn transfer(self, to: address, value: u256) {
+        if not self.in_whitelist(addr: to) {
+            revert ApplicationError(code: 5)
+        }
         # more logic here
+    }
+
+    fn in_whitelist(self, addr: address) -> bool {
+        return false
+    }
+}
 ```
 
 [_Expression_]: ../expressions/index.md

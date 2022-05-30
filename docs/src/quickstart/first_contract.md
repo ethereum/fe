@@ -1,6 +1,6 @@
 ## Write your first Fe contract
 
-Now that we have the compiler installed let's write our first contract. A contract contains the code that will be deployed to the Ethereum blockchain and resides at a specific address. 
+Now that we have the compiler installed let's write our first contract. A contract contains the code that will be deployed to the Ethereum blockchain and resides at a specific address.
 
 The code of the contract dictates how:
   - it manipulates its own state
@@ -15,37 +15,17 @@ To keep things simple we will just write a basic *guestbook* where people can le
 
 Fe code is written in files ending on the `.fe` file extension. Let's create a file `guest_book.fe` and put in the following content.
 
-```python
-contract GuestBook:
+```fe
+contract GuestBook {
+  messages: Map<address, String<100>>
+}
 ```
 
-Now, execute `./fe guest_book.fe` to compile the file.
-
-Oops, the compiler is telling us that it didn't expect our code to end here.
-
-```
-Unable to compile guest_book.fe.
-error: unexpected end of file
-  ┌─ guest_book.fe:1:20
-  │
-1 │ contract GuestBook:
-  │                    ^
-
-```
-
-Fe follows Pythonic block indentation rules and the compiler expects us to provide a block of indented code after `GuestBook:`.
-
-Let's expand the code by providing a [`map`](../spec/type_system/types/map.md) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](../spec/type_system/types/string.md) of a maximum length of `100` written as `string100`.
+Here we're using a [`map`](../spec/type_system/types/map.md) to associate messages with Ethereum addresses.
+The messages will simply be a [`string`](../spec/type_system/types/string.md) of a maximum length of `100` written as `String<100>`.
 The addresses are represented by the builtin [`address`](../spec/type_system/types/address.md) type.
 
-```
-contract GuestBook:
-  messages: Map<address, String<100>>
-```
-
-Execute `./fe guest_book.fe` again to recompile the file.
-
-This time, the compiler tells us that it compiled our contract and that it has put the artifacts into a subdirectory called `output`.
+Execute `./fe guest_book.fe` to compile the file. The compiler tells us that it compiled our contract and that it has put the artifacts into a subdirectory called `output`.
 
 ```
 Compiled guest_book.fe. Outputs in `output`
@@ -72,17 +52,19 @@ We don't need to do anything further yet with these files that the compiler prod
 
 Let's focus on the functionality of our world changing application and add a method to sign the guestbook.
 
-```python
+```fe
 use std::context::Context
 
-contract GuestBook:
+contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>):
+  pub fn sign(self, ctx: Context, book_msg: String<100>) {
       self.messages[ctx.msg_sender()] = book_msg
+  }
+}
 ```
 
-The code should look familiar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](../spec/items/visibility_and_privacy.md) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
+In Fe, every method that is defined without the [`pub`](../spec/items/visibility_and_privacy.md) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
 
 Let's recompile the contract again and see what happens.
 
@@ -118,17 +100,20 @@ Since our contract now has a public `sign` method the corresponding ABI has chan
 
 To make the guest book more useful we will also add a method `get_msg` to read entries from a given address.
 
-```python
+```fe,ignore
 use std::context::Context
 
-contract GuestBook:
+contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>):
+  pub fn sign(self, ctx: Context, book_msg: String<100>) {
       self.messages[ctx.msg_sender()] = book_msg
+  }
 
-  pub fn get_msg(self, addr: address) -> String<100>:
+  pub fn get_msg(self, addr: address) -> String<100> {
       return self.messages[addr]
+  }
+}
 ```
 
 However, we will hit another error as we try to recompile the current code.
@@ -136,7 +121,7 @@ However, we will hit another error as we try to recompile the current code.
 ```
 Unable to compile guest_book.fe.
 error: value must be copied to memory
-  ┌─ guest_book.fe:8:14
+  ┌─ guest_book.fe:10:14
   │
 8 │       return self.messages[addr]
   │              ^^^^^^^^^^^^^^^^^^^ this value is in storage
@@ -151,17 +136,20 @@ When we try to return a reference type such as an array from the storage of the 
 
 The code should compile fine when we change it accordingly.
 
-```python
+```fe
 use std::context::Context
 
-contract GuestBook:
+contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>):
+  pub fn sign(self, ctx: Context, book_msg: String<100>) {
       self.messages[ctx.msg_sender()] = book_msg
+  }
 
-  pub fn get_msg(self, addr: address) -> String<100>:
+  pub fn get_msg(self, addr: address) -> String<100> {
       return self.messages[addr].to_mem()
+  }
+}
 ```
 
 Congratulations! You finished your first little Fe project. 👏

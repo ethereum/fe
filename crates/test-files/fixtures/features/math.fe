@@ -1,17 +1,20 @@
-contract Math:
-
-    # https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/libraries/Math.sol#L11-L22
-    pub fn sqrt(val: u256) -> u256:
+contract Math {
+    pub fn sqrt(val: u256) -> u256 {
         let z: u256
-        if (val > 3):
+        if val > 3 {
             z = val
             let x: u256 = val / 2 + 1
-            while (x < z):
+            while x < z {
                 z = x
                 x = (val / x + x) / 2
-        elif (val != 0):
+            }
+        } else if val != 0 {
             z = 1
+        }
         return z
+    }
 
-    pub fn min(x: u256, y: u256) -> u256:
+    pub fn min(x: u256, y: u256) -> u256 {
         return x if x < y else y
+    }
+}

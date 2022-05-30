@@ -5,10 +5,9 @@
 > &nbsp;&nbsp; _FunctionQualifiers_ `fn` [IDENTIFIER]\
 > &nbsp;&nbsp; &nbsp;&nbsp; `(` _FunctionParameters_<sup>?</sup> `)`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionReturnType_<sup>?</sup>\
-> &nbsp;&nbsp; &nbsp;&nbsp; `:` [NEWLINE]\
-> &nbsp;&nbsp; &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; &nbsp;&nbsp; `{`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionStatements_<sup>*</sup>\
-> &nbsp;&nbsp; &nbsp;&nbsp; [DEDENT]\
+> &nbsp;&nbsp; &nbsp;&nbsp; `}`
 >
 > _FunctionQualifiers_ :\
 > &nbsp;&nbsp; `pub`<sup>?</sup>
@@ -23,7 +22,6 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_IfStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_AssertStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_EmitStatement_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; | [_PassStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_BreakStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_ContinueStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_RevertStatement_]\
@@ -57,9 +55,10 @@ A function header ends with a colon (`:`) after which the function body begins.
 
 For example, this is a simple function:
 
-```python
-fn add(x: u256, y: u256) -> u256:
+```fe
+fn add(x: u256, y: u256) -> u256 {
     return x + y
+}
 ```
 
 Functions can be defined inside of a contract, inside of a struct, or at the
@@ -67,21 +66,23 @@ Functions can be defined inside of a contract, inside of a struct, or at the
 
 Example:
 
-```python
-fn add(_ x: u256, _ y: u256) -> u256:
+```fe
+fn add(_ x: u256, _ y: u256) -> u256 {
     return x + y
+}
 
-contract CoolCoin:
+contract CoolCoin {
     balance: Map<address, u256>
 
-    fn transfer(self, from sender: address, to recipient: address, value: u256) -> bool:
-        if self.balance[sender] < value:
+    fn transfer(self, from sender: address, to recipient: address, value: u256) -> bool {
+        if self.balance[sender] < value {
             return false
+        }
         self.balance[sender] -= value
         self.balance[recipient] += value
         return true
-
-    pub fn demo(self):
+    }
+    pub fn demo(self) {
         let ann: address = address(0xaa)
         let bob: address = address(0xbb)
         self.balance[ann] = 100
@@ -89,6 +90,8 @@ contract CoolCoin:
         let bonus: u256 = 2
         let value: u256 = add(10, bonus)
         let ok: bool = self.transfer(from: ann, to: bob, value)
+    }
+}
 ```
 
 Function parameters have optional labels. When a function is called, the
@@ -98,12 +101,14 @@ function definition.
 The label of a parameter defaults to the parameter name; a different label
 can be specified by adding an explicit label prior to the parameter name.
 For example:
-```
-fn encrypt(msg cleartext: u256, key: u256) -> u256:
+```fe
+fn encrypt(msg cleartext: u256, key: u256) -> u256 {
     return cleartext ^ key
+}
 
-fn demo():
+fn demo() {
     let out: u256 = encrypt(msg: 0xdecafbad, key: 0xfefefefe)
+}
 ```
 
 Here, the first parameter of the `encrypt` function has the label `msg`,
@@ -114,7 +119,8 @@ modifying any function calls, as long as the label remains the same.
 
 When calling a function, a label can be omitted when the argument is
 a variable with a name that matches the parameter label. Example:
-```
+
+```fe,ignore
 let msg: u256 = 0xdecafbad
 let cyf: u256 = encrypt(msg, key: 0x1234)
 ```
@@ -122,23 +128,25 @@ let cyf: u256 = encrypt(msg, key: 0x1234)
 A parameter can also be specified to have no label, by using `_` in place of a
 label in the function definition. In this case, when calling the function, the
 corresponding argument must not be labeled. Example:
-```
-fn add(_ x: u256, _ y: u256) -> u256:
+```fe
+fn add(_ x: u256, _ y: u256) -> u256 {
     return x + y
-
-fn demo():
+}
+fn demo() {
     let sum: u256 = add(16, 32)
+}
 ```
 
 Functions defined inside of a contract or struct may take `self` as a
 parameter. This gives the function the ability to read and write contract
 storage or struct fields, respectively. If a function takes `self`
 as a parameter, the function must be called via `self`. For example:
-`let ok: bool = self.transfer(from, to, value)`
+
+```fe,ignore
+let ok: bool = self.transfer(from, to, value)
+```
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
-[INDENT]: ../lexical_structure/tokens.md#indent
-[DEDENT]: ../lexical_structure/tokens.md#dedent
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [_Types_]: ../type_system/types/index.md
 [_FunctionTypes_]: ../type_system/types/function.md
@@ -152,7 +160,6 @@ as a parameter, the function must be called via `self`. For example:
 [_IfStatement_]: ../statements/if.md
 [_AssertStatement_]: ../statements/assert.md
 [_EmitStatement_]: ../statements/emit.md
-[_PassStatement_]: ../statements/pass.md
 [_BreakStatement_]: ../statements/break.md
 [_ContinueStatement_]: ../statements/continue.md
 [_RevertStatement_]: ../statements/revert.md

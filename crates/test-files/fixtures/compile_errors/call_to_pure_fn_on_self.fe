@@ -1,6 +1,7 @@
-contract Foo:
-    fn pure():
-        pass
+contract Foo {
+    fn pure() {}
 
-    fn bar(self):
+    fn bar(self) {
         self.pure()
+    }
+}

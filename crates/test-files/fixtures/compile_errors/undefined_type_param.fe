@@ -1,18 +1,20 @@
 # https://github.com/ethereum/fe/issues/530
 
-struct BadField:
+struct BadField {
     pub x: MysteryType
+}
 
-contract Foo:
-    # case 1: using arg with undefined type within the fn body
-    pub fn a(_ val: DoesntExist):
+contract Foo {
+    pub fn a(_ val: DoesntExist) {
         val + 10
+    }
 
-    # case 2: calling a fn that has undefined-type arg
-    pub fn b():
+    pub fn b() {
         a(10)
+    }
 
-    # case 3: using a struct field that has an undefined type
-    pub fn c():
+    pub fn c() {
         let x: BadField
         x.x = 10
+    }
+}

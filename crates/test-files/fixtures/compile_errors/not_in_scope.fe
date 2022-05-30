@@ -1,8 +1,10 @@
-contract Foo:
-
-    pub fn bar() -> u256:
-        if true:
+contract Foo {
+    pub fn bar() -> u256 {
+        if true {
             let y: u256 = 1
-        else:
+        } else {
             let y: u256 = 1
+        }
         return y
+    }
+}

@@ -1,6 +1,7 @@
-contract Bar:
-    pass
+contract Bar {}
 
-contract Foo:
-    pub fn baz():
+contract Foo {
+    pub fn baz() {
         Bar.create2(0, 0)
+    }
+}

@@ -57,47 +57,47 @@ error: a type with the same name has already been imported
 2 │ use biz::bad::{Bur, Bud as Bar, Boo}
   │                            ^^^ `Bar` first defined here
   ·
-6 │ contract Bar:
+6 │ contract Bar {
   │          --- `Bar` redefined here
 
 error: function name conflicts with the ingot named "std"
-   ┌─ compile_errors/bad_ingot/src/main.fe:11:4
+   ┌─ compile_errors/bad_ingot/src/main.fe:12:4
    │
-11 │ fn std():
+12 │ fn std() {}
    │    ^^^ `std` is already defined
 
 error: the type `Foo` is private
-  ┌─ compile_errors/bad_ingot/src/main.fe:8:19
+  ┌─ compile_errors/bad_ingot/src/main.fe:7:19
   │
-8 │     pub fn a() -> foo::Foo:
+7 │     pub fn a() -> foo::Foo {
   │                   ^^^^^^^^ this type is not `pub`
   │
   ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
   │
-5 │ struct Foo:
+5 │ struct Foo {
   │        --- `Foo` is defined here
   │
   = `Foo` can only be used within `foo`
   = Hint: use `pub` to make `Foo` visible from outside of `foo`
 
 error: the type `Foo` is private
-  ┌─ compile_errors/bad_ingot/src/main.fe:9:16
+  ┌─ compile_errors/bad_ingot/src/main.fe:8:16
   │
-9 │         return foo::Foo(my_num: true)
+8 │         return foo::Foo(my_num: true)
   │                ^^^^^^^^ this type is not `pub`
   │
   ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
   │
-5 │ struct Foo:
+5 │ struct Foo {
   │        --- `Foo` is defined here
   │
   = `Foo` can only be used within `foo`
   = Hint: use `pub` to make `Foo` visible from outside of `foo`
 
 error: incorrect type for `Foo` argument `my_num`
-  ┌─ compile_errors/bad_ingot/src/main.fe:9:33
+  ┌─ compile_errors/bad_ingot/src/main.fe:8:33
   │
-9 │         return foo::Foo(my_num: true)
+8 │         return foo::Foo(my_num: true)
   │                                 ^^^^ this has type `bool`; expected type `u256`
 
 

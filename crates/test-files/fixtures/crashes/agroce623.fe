@@ -1,3 +1,5 @@
-contract r:
- pub fn t():
-  []
+contract r {
+    pub fn t() {
+        []
+    }
+}

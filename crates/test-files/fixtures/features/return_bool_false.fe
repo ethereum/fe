@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar() -> bool:
+contract Foo {
+    pub fn bar() -> bool {
         return false
+    }
+}

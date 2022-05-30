@@ -4,23 +4,23 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `u256` type is not callable
-  ┌─ compile_errors/not_callable.fe:7:5
+  ┌─ compile_errors/not_callable.fe:7:9
   │
-7 │     5()
-  │     ^ this has type `u256`
+7 │         5()
+  │         ^ this has type `u256`
 
 error: `MyEvent` is not callable
-   ┌─ compile_errors/not_callable.fe:10:5
+   ┌─ compile_errors/not_callable.fe:11:9
    │
-10 │     MyEvent(x: 10)
-   │     ^^^^^^^ `MyEvent` is an event, and can't be constructed in this context
+11 │         MyEvent(x: 10)
+   │         ^^^^^^^ `MyEvent` is an event, and can't be constructed in this context
    │
    = Hint: to emit an event, use `emit MyEvent(..)`
 
 error: `self` is not callable
-   ┌─ compile_errors/not_callable.fe:13:5
+   ┌─ compile_errors/not_callable.fe:15:9
    │
-13 │     self()
-   │     ^^^^ can't be used as a function
+15 │         self()
+   │         ^^^^ can't be used as a function
 
 

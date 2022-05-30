@@ -1,23 +1,30 @@
 use std::context::Context
 
-contract Foo:
+contract Foo {
     other: Bar
 
-    pub fn __init__(self, ctx: Context):
+    pub fn __init__(self, ctx: Context) {
         self.other = Bar.create(ctx, 0)
+    }
 
-    pub fn foo(self, ctx: Context) -> u256:
+    pub fn foo(self, ctx: Context) -> u256 {
         self.other.set_foo_addr(ctx.self_address())
         return self.other.answer()
+    }
 
-    pub fn add(_ x: u256, _ y: u256) -> u256:
+    pub fn add(_ x: u256, _ y: u256) -> u256 {
         return x + y
+    }
+}
 
-contract Bar:
+contract Bar {
     other: Foo
 
-    pub fn set_foo_addr(self, ctx: Context, _ addr: address):
+    pub fn set_foo_addr(self, ctx: Context, _ addr: address) {
         self.other = Foo(ctx, addr)
+    }
 
-    pub fn answer(self) -> u256:
+    pub fn answer(self) -> u256 {
         return self.other.add(20, 22)
+    }
+}

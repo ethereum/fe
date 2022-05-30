@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(guest_book), try_parse_module,\n    r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub fn sign(self, book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n\n    pub fn get_msg(self, addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
+expression: "ast_string(stringify!(guest_book), try_parse_module,\n           r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook {\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed {\n        idx book_msg: BookMsg\n    }\n\n    pub fn sign(self, book_msg: BookMsg) {\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n    }\n    pub fn get_msg(self, addr: address) -> BookMsg {\n        return self.guest_book[addr]\n    }\n}\"#)"
 
 ---
 Node(
@@ -78,8 +78,8 @@ Node(
                 name: Node(
                   kind: "guest_book",
                   span: Span(
-                    start: 63,
-                    end: 73,
+                    start: 64,
+                    end: 74,
                   ),
                 ),
                 typ: Node(
@@ -87,8 +87,8 @@ Node(
                     base: Node(
                       kind: "Map",
                       span: Span(
-                        start: 75,
-                        end: 78,
+                        start: 76,
+                        end: 79,
                       ),
                     ),
                     args: Node(
@@ -98,8 +98,8 @@ Node(
                             base: "address",
                           ),
                           span: Span(
-                            start: 79,
-                            end: 86,
+                            start: 80,
+                            end: 87,
                           ),
                         )),
                         TypeDesc(Node(
@@ -107,27 +107,27 @@ Node(
                             base: "BookMsg",
                           ),
                           span: Span(
-                            start: 88,
-                            end: 95,
+                            start: 89,
+                            end: 96,
                           ),
                         )),
                       ],
                       span: Span(
-                        start: 78,
-                        end: 96,
+                        start: 79,
+                        end: 97,
                       ),
                     ),
                   ),
                   span: Span(
-                    start: 75,
-                    end: 96,
+                    start: 76,
+                    end: 97,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 59,
-                end: 96,
+                start: 60,
+                end: 97,
               ),
             ),
           ],
@@ -137,8 +137,8 @@ Node(
                 name: Node(
                   kind: "Signed",
                   span: Span(
-                    start: 108,
-                    end: 114,
+                    start: 109,
+                    end: 115,
                   ),
                 ),
                 fields: [
@@ -148,8 +148,8 @@ Node(
                       name: Node(
                         kind: "book_msg",
                         span: Span(
-                          start: 128,
-                          end: 136,
+                          start: 130,
+                          end: 138,
                         ),
                       ),
                       typ: Node(
@@ -157,51 +157,51 @@ Node(
                           base: "BookMsg",
                         ),
                         span: Span(
-                          start: 138,
-                          end: 145,
+                          start: 140,
+                          end: 147,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 124,
-                      end: 145,
+                      start: 126,
+                      end: 147,
                     ),
                   ),
                 ],
                 pub_qual: None,
               ),
               span: Span(
-                start: 102,
-                end: 145,
+                start: 103,
+                end: 153,
               ),
             )),
             Function(Node(
               kind: Function(
                 pub_: Some(Span(
-                  start: 151,
-                  end: 154,
+                  start: 159,
+                  end: 162,
                 )),
                 unsafe_: None,
                 name: Node(
                   kind: "sign",
                   span: Span(
-                    start: 158,
-                    end: 162,
+                    start: 166,
+                    end: 170,
                   ),
                 ),
                 generic_params: Node(
                   kind: [],
                   span: Span(
-                    start: 158,
-                    end: 162,
+                    start: 166,
+                    end: 170,
                   ),
                 ),
                 args: [
                   Node(
                     kind: Self_,
                     span: Span(
-                      start: 163,
-                      end: 167,
+                      start: 171,
+                      end: 175,
                     ),
                   ),
                   Node(
@@ -210,8 +210,8 @@ Node(
                       name: Node(
                         kind: "book_msg",
                         span: Span(
-                          start: 169,
-                          end: 177,
+                          start: 177,
+                          end: 185,
                         ),
                       ),
                       typ: Node(
@@ -219,14 +219,14 @@ Node(
                           base: "BookMsg",
                         ),
                         span: Span(
-                          start: 179,
-                          end: 186,
+                          start: 187,
+                          end: 194,
                         ),
                       ),
                     )),
                     span: Span(
-                      start: 169,
-                      end: 186,
+                      start: 177,
+                      end: 194,
                     ),
                   ),
                 ],
@@ -241,21 +241,21 @@ Node(
                               value: Node(
                                 kind: Name("self"),
                                 span: Span(
-                                  start: 197,
-                                  end: 201,
+                                  start: 206,
+                                  end: 210,
                                 ),
                               ),
                               attr: Node(
                                 kind: "guest_book",
                                 span: Span(
-                                  start: 202,
-                                  end: 212,
+                                  start: 211,
+                                  end: 221,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 197,
-                              end: 212,
+                              start: 206,
+                              end: 221,
                             ),
                           ),
                           index: Node(
@@ -263,40 +263,40 @@ Node(
                               value: Node(
                                 kind: Name("msg"),
                                 span: Span(
-                                  start: 213,
-                                  end: 216,
+                                  start: 222,
+                                  end: 225,
                                 ),
                               ),
                               attr: Node(
                                 kind: "sender",
                                 span: Span(
-                                  start: 217,
-                                  end: 223,
+                                  start: 226,
+                                  end: 232,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 213,
-                              end: 223,
+                              start: 222,
+                              end: 232,
                             ),
                           ),
                         ),
                         span: Span(
-                          start: 197,
-                          end: 224,
+                          start: 206,
+                          end: 233,
                         ),
                       ),
                       value: Node(
                         kind: Name("book_msg"),
                         span: Span(
-                          start: 227,
-                          end: 235,
+                          start: 236,
+                          end: 244,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 197,
-                      end: 235,
+                      start: 206,
+                      end: 244,
                     ),
                   ),
                   Node(
@@ -304,8 +304,8 @@ Node(
                       name: Node(
                         kind: "Signed",
                         span: Span(
-                          start: 250,
-                          end: 256,
+                          start: 259,
+                          end: 265,
                         ),
                       ),
                       args: Node(
@@ -315,69 +315,69 @@ Node(
                               label: Some(Node(
                                 kind: "book_msg",
                                 span: Span(
-                                  start: 257,
-                                  end: 265,
+                                  start: 266,
+                                  end: 274,
                                 ),
                               )),
                               value: Node(
                                 kind: Name("book_msg"),
                                 span: Span(
-                                  start: 267,
-                                  end: 275,
+                                  start: 276,
+                                  end: 284,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 257,
-                              end: 275,
+                              start: 266,
+                              end: 284,
                             ),
                           ),
                         ],
                         span: Span(
-                          start: 256,
-                          end: 276,
+                          start: 265,
+                          end: 285,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 245,
-                      end: 276,
+                      start: 254,
+                      end: 285,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 151,
-                end: 276,
+                start: 159,
+                end: 291,
               ),
             )),
             Function(Node(
               kind: Function(
                 pub_: Some(Span(
-                  start: 282,
-                  end: 285,
+                  start: 296,
+                  end: 299,
                 )),
                 unsafe_: None,
                 name: Node(
                   kind: "get_msg",
                   span: Span(
-                    start: 289,
-                    end: 296,
+                    start: 303,
+                    end: 310,
                   ),
                 ),
                 generic_params: Node(
                   kind: [],
                   span: Span(
-                    start: 289,
-                    end: 296,
+                    start: 303,
+                    end: 310,
                   ),
                 ),
                 args: [
                   Node(
                     kind: Self_,
                     span: Span(
-                      start: 297,
-                      end: 301,
+                      start: 311,
+                      end: 315,
                     ),
                   ),
                   Node(
@@ -386,8 +386,8 @@ Node(
                       name: Node(
                         kind: "addr",
                         span: Span(
-                          start: 303,
-                          end: 307,
+                          start: 317,
+                          end: 321,
                         ),
                       ),
                       typ: Node(
@@ -395,14 +395,14 @@ Node(
                           base: "address",
                         ),
                         span: Span(
-                          start: 309,
-                          end: 316,
+                          start: 323,
+                          end: 330,
                         ),
                       ),
                     )),
                     span: Span(
-                      start: 303,
-                      end: 316,
+                      start: 317,
+                      end: 330,
                     ),
                   ),
                 ],
@@ -411,8 +411,8 @@ Node(
                     base: "BookMsg",
                   ),
                   span: Span(
-                    start: 321,
-                    end: 328,
+                    start: 335,
+                    end: 342,
                   ),
                 )),
                 body: [
@@ -425,47 +425,47 @@ Node(
                               value: Node(
                                 kind: Name("self"),
                                 span: Span(
-                                  start: 345,
-                                  end: 349,
+                                  start: 360,
+                                  end: 364,
                                 ),
                               ),
                               attr: Node(
                                 kind: "guest_book",
                                 span: Span(
-                                  start: 350,
-                                  end: 360,
+                                  start: 365,
+                                  end: 375,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 345,
-                              end: 360,
+                              start: 360,
+                              end: 375,
                             ),
                           ),
                           index: Node(
                             kind: Name("addr"),
                             span: Span(
-                              start: 361,
-                              end: 365,
+                              start: 376,
+                              end: 380,
                             ),
                           ),
                         ),
                         span: Span(
-                          start: 345,
-                          end: 366,
+                          start: 360,
+                          end: 381,
                         ),
                       )),
                     ),
                     span: Span(
-                      start: 338,
-                      end: 366,
+                      start: 353,
+                      end: 381,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 282,
-                end: 366,
+                start: 296,
+                end: 387,
               ),
             )),
           ],
@@ -473,13 +473,13 @@ Node(
         ),
         span: Span(
           start: 35,
-          end: 366,
+          end: 389,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 366,
+    end: 389,
   ),
 )

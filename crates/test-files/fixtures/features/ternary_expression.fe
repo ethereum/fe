@@ -1,4 +1,5 @@
-contract Foo:
-
-    pub fn bar(input: u256) -> u256:
+contract Foo {
+    pub fn bar(input: u256) -> u256 {
         return 1 if input > 5 else 0
+    }
+}

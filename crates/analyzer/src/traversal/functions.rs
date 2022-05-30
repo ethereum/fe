@@ -33,7 +33,6 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
         Unsafe { .. } => unsafe_block(scope, stmt),
         Assert { .. } => assert(scope, stmt),
         Expr { value } => expressions::expr(scope, value, None).map(|_| ()),
-        Pass => Ok(()),
         Revert { .. } => revert(scope, stmt),
         Break | Continue => {
             loop_flow_statement(scope, stmt);

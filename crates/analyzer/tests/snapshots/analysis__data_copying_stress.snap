@@ -1,45 +1,42 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
-   ┌─ data_copying_stress.fe:4:5
-   │
- 4 │     my_string: String<42>
-   │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
- 5 │     my_other_string: String<42>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
- 6 │ 
- 7 │     my_u256: u256
-   │     ^^^^^^^^^^^^^ u256
- 8 │     my_other_u256: u256
-   │     ^^^^^^^^^^^^^^^^^^^ u256
- 9 │ 
-10 │     my_nums: Array<u256, 5>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
-11 │ 
-12 │     my_addrs: Array<address, 3>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
+  ┌─ data_copying_stress.fe:4:5
+  │
+4 │     my_string: String<42>
+  │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
+5 │     my_other_string: String<42>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
+6 │     my_u256: u256
+  │     ^^^^^^^^^^^^^ u256
+7 │     my_other_u256: u256
+  │     ^^^^^^^^^^^^^^^^^^^ u256
+8 │     my_nums: Array<u256, 5>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
+9 │     my_addrs: Array<address, 3>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
 
 note: 
-   ┌─ data_copying_stress.fe:15:9
+   ┌─ data_copying_stress.fe:12:9
    │
-15 │         my_string: String<42>
+12 │         my_string: String<42>
    │         ^^^^^^^^^^^^^^^^^^^^^ String<42>
-16 │         my_u256: u256
+13 │         my_u256: u256
    │         ^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ data_copying_stress.fe:18:5
+   ┌─ data_copying_stress.fe:16:5
    │  
-18 │ ╭     pub fn set_my_vals(
-19 │ │         self,
-20 │ │         my_string: String<42>,
-21 │ │         my_other_string: String<42>,
-   · │
-27 │ │         self.my_u256 = my_u256
-28 │ │         self.my_other_u256 = my_other_u256
-   │ ╰──────────────────────────────────────────^ attributes hash: 8414520425977761339
+16 │ ╭     pub fn set_my_vals(self, my_string: String<42>, my_other_string: String<42>, my_u256: u256, my_other_u256: u256) {
+17 │ │         self.my_string = my_string
+18 │ │         self.my_other_string = my_other_string
+19 │ │         self.my_u256 = my_u256
+20 │ │         self.my_other_u256 = my_other_u256
+21 │ │     }
+   │ ╰─────^ attributes hash: 8414520425977761339
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -100,56 +97,57 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:25:9
+   ┌─ data_copying_stress.fe:17:9
    │
-25 │         self.my_string = my_string
+17 │         self.my_string = my_string
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:25:9
+   ┌─ data_copying_stress.fe:17:9
    │
-25 │         self.my_string = my_string
+17 │         self.my_string = my_string
    │         ^^^^^^^^^^^^^^   ^^^^^^^^^ String<42>: Memory
    │         │                 
    │         String<42>: Storage { nonce: Some(0) }
-26 │         self.my_other_string = my_other_string
+18 │         self.my_other_string = my_other_string
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:26:9
+   ┌─ data_copying_stress.fe:18:9
    │
-26 │         self.my_other_string = my_other_string
+18 │         self.my_other_string = my_other_string
    │         ^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ String<42>: Memory
    │         │                       
    │         String<42>: Storage { nonce: Some(1) }
-27 │         self.my_u256 = my_u256
+19 │         self.my_u256 = my_u256
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:27:9
+   ┌─ data_copying_stress.fe:19:9
    │
-27 │         self.my_u256 = my_u256
+19 │         self.my_u256 = my_u256
    │         ^^^^^^^^^^^^   ^^^^^^^ u256: Value
    │         │               
    │         u256: Storage { nonce: Some(2) }
-28 │         self.my_other_u256 = my_other_u256
+20 │         self.my_other_u256 = my_other_u256
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:28:9
+   ┌─ data_copying_stress.fe:20:9
    │
-28 │         self.my_other_u256 = my_other_u256
+20 │         self.my_other_u256 = my_other_u256
    │         ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^ u256: Value
    │         │                     
    │         u256: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ data_copying_stress.fe:30:5
+   ┌─ data_copying_stress.fe:23:5
    │  
-30 │ ╭     pub fn set_to_my_other_vals(self):
-31 │ │         self.my_string = self.my_other_string
-32 │ │         self.my_u256 = self.my_other_u256
-   │ ╰─────────────────────────────────────────^ attributes hash: 18235041182630809162
+23 │ ╭     pub fn set_to_my_other_vals(self) {
+24 │ │         self.my_string = self.my_other_string
+25 │ │         self.my_u256 = self.my_other_u256
+26 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -165,52 +163,52 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:31:9
+   ┌─ data_copying_stress.fe:24:9
    │
-31 │         self.my_string = self.my_other_string
+24 │         self.my_string = self.my_other_string
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:31:9
+   ┌─ data_copying_stress.fe:24:9
    │
-31 │         self.my_string = self.my_other_string
+24 │         self.my_string = self.my_other_string
    │         ^^^^^^^^^^^^^^   ^^^^ Foo: Value
    │         │                 
    │         String<42>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ data_copying_stress.fe:31:26
+   ┌─ data_copying_stress.fe:24:26
    │
-31 │         self.my_string = self.my_other_string
+24 │         self.my_string = self.my_other_string
    │                          ^^^^^^^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(1) }
-32 │         self.my_u256 = self.my_other_u256
+25 │         self.my_u256 = self.my_other_u256
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:32:9
+   ┌─ data_copying_stress.fe:25:9
    │
-32 │         self.my_u256 = self.my_other_u256
+25 │         self.my_u256 = self.my_other_u256
    │         ^^^^^^^^^^^^   ^^^^ Foo: Value
    │         │               
    │         u256: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ data_copying_stress.fe:32:24
+   ┌─ data_copying_stress.fe:25:24
    │
-32 │         self.my_u256 = self.my_other_u256
+25 │         self.my_u256 = self.my_other_u256
    │                        ^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ data_copying_stress.fe:34:5
+   ┌─ data_copying_stress.fe:28:5
    │  
-34 │ ╭     pub fn multiple_references_shared_memory(my_array: Array<u256, 10>):
-35 │ │         let my_2nd_array: Array<u256, 10> = my_array
-36 │ │         let my_3rd_array: Array<u256, 10> = my_2nd_array
-37 │ │ 
+28 │ ╭     pub fn multiple_references_shared_memory(my_array: Array<u256, 10>) {
+29 │ │         let my_2nd_array: Array<u256, 10> = my_array
+30 │ │         let my_3rd_array: Array<u256, 10> = my_2nd_array
+31 │ │         assert my_array[3] != 5
    · │
-46 │ │         assert my_2nd_array[3] == 50
-47 │ │         assert my_3rd_array[3] == 50
-   │ ╰────────────────────────────────────^ attributes hash: 16237067187800993503
+39 │ │         assert my_3rd_array[3] == 50
+40 │ │     }
+   │ ╰─────^ attributes hash: 16237067187800993503
    │  
    = FunctionSignature {
          self_decl: None,
@@ -239,180 +237,179 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:35:27
+   ┌─ data_copying_stress.fe:29:27
    │
-35 │         let my_2nd_array: Array<u256, 10> = my_array
+29 │         let my_2nd_array: Array<u256, 10> = my_array
    │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
-36 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
+30 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
    │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
-   ┌─ data_copying_stress.fe:35:45
+   ┌─ data_copying_stress.fe:29:45
    │
-35 │         let my_2nd_array: Array<u256, 10> = my_array
+29 │         let my_2nd_array: Array<u256, 10> = my_array
    │                                             ^^^^^^^^ Array<u256, 10>: Memory
-36 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
+30 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
    │                                             ^^^^^^^^^^^^ Array<u256, 10>: Memory
-37 │ 
-38 │         assert my_array[3] != 5
+31 │         assert my_array[3] != 5
    │                ^^^^^^^^ ^ u256: Value
    │                │         
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:38:16
+   ┌─ data_copying_stress.fe:31:16
    │
-38 │         assert my_array[3] != 5
+31 │         assert my_array[3] != 5
    │                ^^^^^^^^^^^    ^ u256: Value
    │                │               
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:38:16
+   ┌─ data_copying_stress.fe:31:16
    │
-38 │         assert my_array[3] != 5
+31 │         assert my_array[3] != 5
    │                ^^^^^^^^^^^^^^^^ bool: Value
-39 │         my_array[3] = 5
+32 │         my_array[3] = 5
    │         ^^^^^^^^ ^ u256: Value
    │         │         
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:39:9
+   ┌─ data_copying_stress.fe:32:9
    │
-39 │         my_array[3] = 5
+32 │         my_array[3] = 5
    │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
    │         u256: Memory
-40 │         assert my_array[3] == 5
+33 │         assert my_array[3] == 5
    │                ^^^^^^^^ ^ u256: Value
    │                │         
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:40:16
+   ┌─ data_copying_stress.fe:33:16
    │
-40 │         assert my_array[3] == 5
+33 │         assert my_array[3] == 5
    │                ^^^^^^^^^^^    ^ u256: Value
    │                │               
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:40:16
+   ┌─ data_copying_stress.fe:33:16
    │
-40 │         assert my_array[3] == 5
+33 │         assert my_array[3] == 5
    │                ^^^^^^^^^^^^^^^^ bool: Value
-41 │         assert my_2nd_array[3] == 5
+34 │         assert my_2nd_array[3] == 5
    │                ^^^^^^^^^^^^ ^ u256: Value
    │                │             
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:41:16
+   ┌─ data_copying_stress.fe:34:16
    │
-41 │         assert my_2nd_array[3] == 5
+34 │         assert my_2nd_array[3] == 5
    │                ^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                   
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:41:16
+   ┌─ data_copying_stress.fe:34:16
    │
-41 │         assert my_2nd_array[3] == 5
+34 │         assert my_2nd_array[3] == 5
    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-42 │         assert my_3rd_array[3] == 5
+35 │         assert my_3rd_array[3] == 5
    │                ^^^^^^^^^^^^ ^ u256: Value
    │                │             
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:42:16
+   ┌─ data_copying_stress.fe:35:16
    │
-42 │         assert my_3rd_array[3] == 5
+35 │         assert my_3rd_array[3] == 5
    │                ^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                   
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:42:16
+   ┌─ data_copying_stress.fe:35:16
    │
-42 │         assert my_3rd_array[3] == 5
+35 │         assert my_3rd_array[3] == 5
    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-43 │ 
-44 │         my_3rd_array[3] = 50
+36 │         my_3rd_array[3] = 50
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:44:9
+   ┌─ data_copying_stress.fe:36:9
    │
-44 │         my_3rd_array[3] = 50
+36 │         my_3rd_array[3] = 50
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
    │         │                  
    │         u256: Memory
-45 │         assert my_array[3] == 50
+37 │         assert my_array[3] == 50
    │                ^^^^^^^^ ^ u256: Value
    │                │         
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:45:16
+   ┌─ data_copying_stress.fe:37:16
    │
-45 │         assert my_array[3] == 50
+37 │         assert my_array[3] == 50
    │                ^^^^^^^^^^^    ^^ u256: Value
    │                │               
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:45:16
+   ┌─ data_copying_stress.fe:37:16
    │
-45 │         assert my_array[3] == 50
+37 │         assert my_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^ bool: Value
-46 │         assert my_2nd_array[3] == 50
+38 │         assert my_2nd_array[3] == 50
    │                ^^^^^^^^^^^^ ^ u256: Value
    │                │             
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:46:16
+   ┌─ data_copying_stress.fe:38:16
    │
-46 │         assert my_2nd_array[3] == 50
+38 │         assert my_2nd_array[3] == 50
    │                ^^^^^^^^^^^^^^^    ^^ u256: Value
    │                │                   
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:46:16
+   ┌─ data_copying_stress.fe:38:16
    │
-46 │         assert my_2nd_array[3] == 50
+38 │         assert my_2nd_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-47 │         assert my_3rd_array[3] == 50
+39 │         assert my_3rd_array[3] == 50
    │                ^^^^^^^^^^^^ ^ u256: Value
    │                │             
    │                Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:47:16
+   ┌─ data_copying_stress.fe:39:16
    │
-47 │         assert my_3rd_array[3] == 50
+39 │         assert my_3rd_array[3] == 50
    │                ^^^^^^^^^^^^^^^    ^^ u256: Value
    │                │                   
    │                u256: Memory => Value
 
 note: 
-   ┌─ data_copying_stress.fe:47:16
+   ┌─ data_copying_stress.fe:39:16
    │
-47 │         assert my_3rd_array[3] == 50
+39 │         assert my_3rd_array[3] == 50
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ data_copying_stress.fe:49:5
+   ┌─ data_copying_stress.fe:42:5
    │  
-49 │ ╭     pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
-50 │ │         my_array[3] = 5
-51 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 15461468619504661037
+42 │ ╭     pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
+43 │ │         my_array[3] = 5
+44 │ │         return my_array
+45 │ │     }
+   │ ╰─────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
@@ -446,29 +443,30 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:50:9
+   ┌─ data_copying_stress.fe:43:9
    │
-50 │         my_array[3] = 5
+43 │         my_array[3] = 5
    │         ^^^^^^^^ ^ u256: Value
    │         │         
    │         Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:50:9
+   ┌─ data_copying_stress.fe:43:9
    │
-50 │         my_array[3] = 5
+43 │         my_array[3] = 5
    │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
    │         u256: Memory
-51 │         return my_array
+44 │         return my_array
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:53:5
+   ┌─ data_copying_stress.fe:47:5
    │  
-53 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
-54 │ │         return my_array.clone()
-   │ ╰───────────────────────────────^ attributes hash: 15461468619504661037
+47 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
+48 │ │         return my_array.clone()
+49 │ │     }
+   │ ╰─────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
@@ -502,24 +500,25 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:54:16
+   ┌─ data_copying_stress.fe:48:16
    │
-54 │         return my_array.clone()
+48 │         return my_array.clone()
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:54:16
+   ┌─ data_copying_stress.fe:48:16
    │
-54 │         return my_array.clone()
+48 │         return my_array.clone()
    │                ^^^^^^^^^^^^^^^^ Array<u256, 10>: Memory => Memory
 
 note: 
-   ┌─ data_copying_stress.fe:56:5
+   ┌─ data_copying_stress.fe:51:5
    │  
-56 │ ╭     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10>:
-57 │ │         my_array.clone()[3] = 5
-58 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 15461468619504661037
+51 │ ╭     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
+52 │ │         my_array.clone()[3] = 5
+53 │ │         return my_array
+54 │ │     }
+   │ ╰─────^ attributes hash: 15461468619504661037
    │  
    = FunctionSignature {
          self_decl: None,
@@ -553,40 +552,40 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:57:9
+   ┌─ data_copying_stress.fe:52:9
    │
-57 │         my_array.clone()[3] = 5
+52 │         my_array.clone()[3] = 5
    │         ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:57:9
+   ┌─ data_copying_stress.fe:52:9
    │
-57 │         my_array.clone()[3] = 5
+52 │         my_array.clone()[3] = 5
    │         ^^^^^^^^^^^^^^^^ ^ u256: Value
    │         │                 
    │         Array<u256, 10>: Memory => Memory
 
 note: 
-   ┌─ data_copying_stress.fe:57:9
+   ┌─ data_copying_stress.fe:52:9
    │
-57 │         my_array.clone()[3] = 5
+52 │         my_array.clone()[3] = 5
    │         ^^^^^^^^^^^^^^^^^^^   ^ u256: Value
    │         │                      
    │         u256: Memory
-58 │         return my_array
+53 │         return my_array
    │                ^^^^^^^^ Array<u256, 10>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:60:5
+   ┌─ data_copying_stress.fe:56:5
    │  
-60 │ ╭     pub fn assign_my_nums_and_return(self) -> Array<u256, 5>:
-61 │ │         let my_nums_mem: Array<u256, 5>
-62 │ │         self.my_nums[0] = 42
-63 │ │         self.my_nums[1] = 26
+56 │ ╭     pub fn assign_my_nums_and_return(self) -> Array<u256, 5> {
+57 │ │         let my_nums_mem: Array<u256, 5>
+58 │ │         self.my_nums[0] = 42
+59 │ │         self.my_nums[1] = 26
    · │
-67 │ │         my_nums_mem = self.my_nums.to_mem()
-68 │ │         return my_nums_mem
-   │ ╰──────────────────────────^ attributes hash: 13146367689365512086
+64 │ │         return my_nums_mem
+65 │ │     }
+   │ ╰─────^ attributes hash: 13146367689365512086
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -607,133 +606,130 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:61:26
+   ┌─ data_copying_stress.fe:57:26
    │
-61 │         let my_nums_mem: Array<u256, 5>
+57 │         let my_nums_mem: Array<u256, 5>
    │                          ^^^^^^^^^^^^^^ Array<u256, 5>
 
 note: 
-   ┌─ data_copying_stress.fe:62:9
+   ┌─ data_copying_stress.fe:58:9
    │
-62 │         self.my_nums[0] = 42
+58 │         self.my_nums[0] = 42
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:62:9
+   ┌─ data_copying_stress.fe:58:9
    │
-62 │         self.my_nums[0] = 42
+58 │         self.my_nums[0] = 42
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:62:9
+   ┌─ data_copying_stress.fe:58:9
    │
-62 │         self.my_nums[0] = 42
+58 │         self.my_nums[0] = 42
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
    │         │                  
    │         u256: Storage { nonce: None }
-63 │         self.my_nums[1] = 26
+59 │         self.my_nums[1] = 26
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:63:9
+   ┌─ data_copying_stress.fe:59:9
    │
-63 │         self.my_nums[1] = 26
+59 │         self.my_nums[1] = 26
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:63:9
+   ┌─ data_copying_stress.fe:59:9
    │
-63 │         self.my_nums[1] = 26
+59 │         self.my_nums[1] = 26
    │         ^^^^^^^^^^^^^^^   ^^ u256: Value
    │         │                  
    │         u256: Storage { nonce: None }
-64 │         self.my_nums[2] = 0
+60 │         self.my_nums[2] = 0
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:64:9
+   ┌─ data_copying_stress.fe:60:9
    │
-64 │         self.my_nums[2] = 0
+60 │         self.my_nums[2] = 0
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:64:9
+   ┌─ data_copying_stress.fe:60:9
    │
-64 │         self.my_nums[2] = 0
+60 │         self.my_nums[2] = 0
    │         ^^^^^^^^^^^^^^^   ^ u256: Value
    │         │                  
    │         u256: Storage { nonce: None }
-65 │         self.my_nums[3] = 1
+61 │         self.my_nums[3] = 1
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:65:9
+   ┌─ data_copying_stress.fe:61:9
    │
-65 │         self.my_nums[3] = 1
+61 │         self.my_nums[3] = 1
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:65:9
+   ┌─ data_copying_stress.fe:61:9
    │
-65 │         self.my_nums[3] = 1
+61 │         self.my_nums[3] = 1
    │         ^^^^^^^^^^^^^^^   ^ u256: Value
    │         │                  
    │         u256: Storage { nonce: None }
-66 │         self.my_nums[4] = 255
+62 │         self.my_nums[4] = 255
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:66:9
+   ┌─ data_copying_stress.fe:62:9
    │
-66 │         self.my_nums[4] = 255
+62 │         self.my_nums[4] = 255
    │         ^^^^^^^^^^^^ ^ u256: Value
    │         │             
    │         Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:66:9
+   ┌─ data_copying_stress.fe:62:9
    │
-66 │         self.my_nums[4] = 255
+62 │         self.my_nums[4] = 255
    │         ^^^^^^^^^^^^^^^   ^^^ u256: Value
    │         │                  
    │         u256: Storage { nonce: None }
-67 │         my_nums_mem = self.my_nums.to_mem()
+63 │         my_nums_mem = self.my_nums.to_mem()
    │         ^^^^^^^^^^^   ^^^^ Foo: Value
    │         │              
    │         Array<u256, 5>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:67:23
+   ┌─ data_copying_stress.fe:63:23
    │
-67 │         my_nums_mem = self.my_nums.to_mem()
+63 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^ Array<u256, 5>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ data_copying_stress.fe:67:23
+   ┌─ data_copying_stress.fe:63:23
    │
-67 │         my_nums_mem = self.my_nums.to_mem()
+63 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>: Storage { nonce: Some(4) } => Memory
-68 │         return my_nums_mem
+64 │         return my_nums_mem
    │                ^^^^^^^^^^^ Array<u256, 5>: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:70:5
+   ┌─ data_copying_stress.fe:67:5
    │  
-70 │ ╭     pub fn emit_my_event(self, ctx: Context):
-71 │ │         emit_my_event_internal(
-72 │ │             ctx,
-73 │ │             self.my_string.to_mem(),
-74 │ │             self.my_u256
-75 │ │         )
-   │ ╰─────────^ attributes hash: 1731341862738941170
+67 │ ╭     pub fn emit_my_event(self, ctx: Context) {
+68 │ │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+69 │ │     }
+   │ ╰─────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -764,49 +760,46 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:72:13
+   ┌─ data_copying_stress.fe:68:32
    │
-72 │             ctx,
-   │             ^^^ Context: Memory
-73 │             self.my_string.to_mem(),
-   │             ^^^^ Foo: Value
+68 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+   │                                ^^^  ^^^^ Foo: Value
+   │                                │     
+   │                                Context: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:73:13
+   ┌─ data_copying_stress.fe:68:37
    │
-73 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) }
+68 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+   │                                     ^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ data_copying_stress.fe:73:13
+   ┌─ data_copying_stress.fe:68:37
    │
-73 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ String<42>: Storage { nonce: Some(0) } => Memory
-74 │             self.my_u256
-   │             ^^^^ Foo: Value
+68 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+   │                                     ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^ Foo: Value
+   │                                     │                         
+   │                                     String<42>: Storage { nonce: Some(0) } => Memory
 
 note: 
-   ┌─ data_copying_stress.fe:74:13
+   ┌─ data_copying_stress.fe:68:62
    │
-74 │             self.my_u256
-   │             ^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
+68 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+   │                                                              ^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
 
 note: 
-   ┌─ data_copying_stress.fe:71:9
+   ┌─ data_copying_stress.fe:68:9
+   │
+68 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+
+note: 
+   ┌─ data_copying_stress.fe:71:5
    │  
-71 │ ╭         emit_my_event_internal(
-72 │ │             ctx,
-73 │ │             self.my_string.to_mem(),
-74 │ │             self.my_u256
-75 │ │         )
-   │ ╰─────────^ (): Value
-
-note: 
-   ┌─ data_copying_stress.fe:77:5
-   │  
-77 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256):
-78 │ │         emit MyEvent(ctx, my_string, my_u256)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 15658342901286022244
+71 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
+72 │ │         emit MyEvent(ctx, my_string, my_u256)
+73 │ │     }
+   │ ╰─────^ attributes hash: 15658342901286022244
    │  
    = FunctionSignature {
          self_decl: None,
@@ -861,18 +854,18 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:78:22
+   ┌─ data_copying_stress.fe:72:22
    │
-78 │         emit MyEvent(ctx, my_string, my_u256)
+72 │         emit MyEvent(ctx, my_string, my_u256)
    │                      ^^^  ^^^^^^^^^  ^^^^^^^ u256: Value
    │                      │    │           
    │                      │    String<42>: Memory
    │                      Context: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:78:9
+   ┌─ data_copying_stress.fe:72:9
    │
-78 │         emit MyEvent(ctx, my_string, my_u256)
+72 │         emit MyEvent(ctx, my_string, my_u256)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
    │
    = Event {
@@ -904,11 +897,12 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:80:5
+   ┌─ data_copying_stress.fe:75:5
    │  
-80 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>):
-81 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 1347763946351267085
+75 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>) {
+76 │ │         self.my_addrs = my_addrs
+77 │ │     }
+   │ ╰─────^ attributes hash: 1347763946351267085
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -937,25 +931,26 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:81:9
+   ┌─ data_copying_stress.fe:76:9
    │
-81 │         self.my_addrs = my_addrs
+76 │         self.my_addrs = my_addrs
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:81:9
+   ┌─ data_copying_stress.fe:76:9
    │
-81 │         self.my_addrs = my_addrs
+76 │         self.my_addrs = my_addrs
    │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<address, 3>: Memory
    │         │                
    │         Array<address, 3>: Storage { nonce: Some(5) }
 
 note: 
-   ┌─ data_copying_stress.fe:83:5
+   ┌─ data_copying_stress.fe:79:5
    │  
-83 │ ╭     pub fn get_my_second_addr(self) -> address:
-84 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 227275695522088782
+79 │ ╭     pub fn get_my_second_addr(self) -> address {
+80 │ │         return self.my_addrs[1]
+81 │ │     }
+   │ ╰─────^ attributes hash: 227275695522088782
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -971,23 +966,23 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:84:16
+   ┌─ data_copying_stress.fe:80:16
    │
-84 │         return self.my_addrs[1]
+80 │         return self.my_addrs[1]
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ data_copying_stress.fe:84:16
+   ┌─ data_copying_stress.fe:80:16
    │
-84 │         return self.my_addrs[1]
+80 │         return self.my_addrs[1]
    │                ^^^^^^^^^^^^^ ^ u256: Value
    │                │              
    │                Array<address, 3>: Storage { nonce: Some(5) }
 
 note: 
-   ┌─ data_copying_stress.fe:84:16
+   ┌─ data_copying_stress.fe:80:16
    │
-84 │         return self.my_addrs[1]
+80 │         return self.my_addrs[1]
    │                ^^^^^^^^^^^^^^^^ address: Storage { nonce: None } => Value
 
 

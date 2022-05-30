@@ -6,14 +6,14 @@ expression: "build_snapshot(&db, module)"
 note: 
    ┌─ const_local.fe:2:5
    │  
- 2 │ ╭     pub fn bar() -> u256:
+ 2 │ ╭     pub fn bar() -> u256 {
  3 │ │         const C1: i64 = 1
  4 │ │         const C2: i64 = 2
  5 │ │         const C3: i64 = 10
    · │
-14 │ │         let _arr: Array<bool, { C10 }>
 15 │ │         return C10
-   │ ╰──────────────────^ attributes hash: 6115314201970082834
+16 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,

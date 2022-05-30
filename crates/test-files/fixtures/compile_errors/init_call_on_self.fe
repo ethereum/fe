@@ -1,6 +1,7 @@
-contract Foo:
-  pub fn __init__():
-    pass
+contract Foo {
+    pub fn __init__() {}
 
-  fn bar(self):
-    self.__init__()
+    fn bar(self) {
+        self.__init__()
+    }
+}

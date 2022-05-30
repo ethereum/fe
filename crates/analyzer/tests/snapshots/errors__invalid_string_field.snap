@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: No field `does_not_exist` exists on type String<0>
-  ┌─ compile_errors/invalid_string_field.fe:4:8
+  ┌─ compile_errors/invalid_string_field.fe:3:12
   │
-4 │     "".does_not_exist
-  │        ^^^^^^^^^^^^^^ unknown field
+3 │         "".does_not_exist
+  │            ^^^^^^^^^^^^^^ unknown field
 
 

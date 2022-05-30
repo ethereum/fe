@@ -12,17 +12,18 @@ note:
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ revert.fe:8:5
+  ┌─ revert.fe:9:5
   │
-8 │     my_other_error: OtherError
+9 │     my_other_error: OtherError
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
-   ┌─ revert.fe:10:5
+   ┌─ revert.fe:11:5
    │  
-10 │ ╭     pub fn bar() -> u256:
-11 │ │         revert
-   │ ╰──────────────^ attributes hash: 6115314201970082834
+11 │ ╭     pub fn bar() -> u256 {
+12 │ │         revert
+13 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
@@ -38,11 +39,12 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:13:5
+   ┌─ revert.fe:15:5
    │  
-13 │ ╭     pub fn revert_custom_error(ctx: Context):
-14 │ │         ctx.send_value(to: address(0), wei: 100)
-   │ ╰────────────────────────────────────────────────^ attributes hash: 5519676733853656531
+15 │ ╭     pub fn revert_custom_error(ctx: Context) {
+16 │ │         ctx.send_value(to: address(0), wei: 100)
+17 │ │     }
+   │ ╰─────^ attributes hash: 5519676733853656531
    │  
    = FunctionSignature {
          self_decl: None,
@@ -71,33 +73,34 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:14:9
+   ┌─ revert.fe:16:9
    │
-14 │         ctx.send_value(to: address(0), wei: 100)
+16 │         ctx.send_value(to: address(0), wei: 100)
    │         ^^^                        ^ u256: Value
    │         │                           
    │         Context: Memory
 
 note: 
-   ┌─ revert.fe:14:28
+   ┌─ revert.fe:16:28
    │
-14 │         ctx.send_value(to: address(0), wei: 100)
+16 │         ctx.send_value(to: address(0), wei: 100)
    │                            ^^^^^^^^^^       ^^^ u256: Value
    │                            │                 
    │                            address: Value
 
 note: 
-   ┌─ revert.fe:14:9
+   ┌─ revert.fe:16:9
    │
-14 │         ctx.send_value(to: address(0), wei: 100)
+16 │         ctx.send_value(to: address(0), wei: 100)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ revert.fe:16:5
+   ┌─ revert.fe:19:5
    │  
-16 │ ╭     pub fn revert_other_error():
-17 │ │         revert OtherError(msg: 1, val: true)
-   │ ╰────────────────────────────────────────────^ attributes hash: 8319796915330632390
+19 │ ╭     pub fn revert_other_error() {
+20 │ │         revert OtherError(msg: 1, val: true)
+21 │ │     }
+   │ ╰─────^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
@@ -111,26 +114,27 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:17:32
+   ┌─ revert.fe:20:32
    │
-17 │         revert OtherError(msg: 1, val: true)
+20 │         revert OtherError(msg: 1, val: true)
    │                                ^       ^^^^ bool: Value
    │                                │        
    │                                u256: Value
 
 note: 
-   ┌─ revert.fe:17:16
+   ┌─ revert.fe:20:16
    │
-17 │         revert OtherError(msg: 1, val: true)
+20 │         revert OtherError(msg: 1, val: true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 
 note: 
-   ┌─ revert.fe:19:5
+   ┌─ revert.fe:23:5
    │  
-19 │ ╭     pub fn revert_other_error_from_sto(self):
-20 │ │         self.my_other_error = OtherError(msg: 1, val: true)
-21 │ │         revert self.my_other_error.to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 18235041182630809162
+23 │ ╭     pub fn revert_other_error_from_sto(self) {
+24 │ │         self.my_other_error = OtherError(msg: 1, val: true)
+25 │ │         revert self.my_other_error.to_mem()
+26 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -146,38 +150,38 @@ note:
      }
 
 note: 
-   ┌─ revert.fe:20:9
+   ┌─ revert.fe:24:9
    │
-20 │         self.my_other_error = OtherError(msg: 1, val: true)
+24 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:20:9
+   ┌─ revert.fe:24:9
    │
-20 │         self.my_other_error = OtherError(msg: 1, val: true)
+24 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
    │         │                                     │        
    │         │                                     u256: Value
    │         OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:20:31
+   ┌─ revert.fe:24:31
    │
-20 │         self.my_other_error = OtherError(msg: 1, val: true)
+24 │         self.my_other_error = OtherError(msg: 1, val: true)
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
-21 │         revert self.my_other_error.to_mem()
+25 │         revert self.my_other_error.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:21:16
+   ┌─ revert.fe:25:16
    │
-21 │         revert self.my_other_error.to_mem()
+25 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:21:16
+   ┌─ revert.fe:25:16
    │
-21 │         revert self.my_other_error.to_mem()
+25 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
 
 

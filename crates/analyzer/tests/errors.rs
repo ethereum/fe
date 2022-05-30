@@ -81,28 +81,7 @@ macro_rules! test_stmt {
         #[wasm_bindgen_test]
         fn $name() {
             let src = format!(
-                "contract C:\n pub fn f(self):\n  {}",
-                $stmt.replace('\n', "\n  ")
-            );
-            if cfg!(target_arch = "wasm32") {
-                fe_common::assert_snapshot_wasm!(
-                    concat!("snapshots/errors__", stringify!($name), ".snap"),
-                    error_string("[snippet]", &src)
-                );
-            } else {
-                assert_snapshot!(error_string("[snippet]", &src));
-            }
-        }
-    };
-}
-
-macro_rules! test_stmt_unsafe {
-    ($name:ident, $stmt:expr) => {
-        #[test]
-        #[wasm_bindgen_test]
-        fn $name() {
-            let src = format!(
-                "contract C:\n pub fn f(self):\n  unsafe:\n    {}",
+                "contract C {{\n pub fn f(self) {{\n  {}\n }}\n}}",
                 $stmt.replace('\n', "\n  ")
             );
             if cfg!(target_arch = "wasm32") {
@@ -136,7 +115,7 @@ test_stmt! { binary_op_boolean_mismatch3, "1 or 2" }
 test_stmt! { bool_constructor, "bool(true)" }
 test_stmt! { bool_cast, "bool(0)" }
 test_stmt! { break_without_loop, "break" }
-test_stmt! { break_without_loop_2, "if true:\n  break" }
+test_stmt! { break_without_loop_2, "if true { break }" }
 test_stmt! { call_undefined_function_on_contract, "self.doesnt_exist()" }
 test_stmt! { call_address_with_wrong_type, "address(true)" }
 test_stmt! { call_keccak_without_parameter, "keccak256()" }
@@ -145,13 +124,13 @@ test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
 test_stmt! { cast_address_to_u64, "u64(address(0))" }
 
-test_stmt_unsafe! { call_balance_of_without_parameter, "std::evm::balance_of()" }
-test_stmt_unsafe! { call_balance_of_with_wrong_type, "std::evm::balance_of(true)" }
-test_stmt_unsafe! { call_balance_of_with_2_args, "std::evm::balance_of(address(0), 2)" }
-test_stmt_unsafe! { call_balance_with_arg, "std::evm::balance(address(0))" }
+test_stmt! { call_balance_of_without_parameter, "unsafe { std::evm::balance_of() }" }
+test_stmt! { call_balance_of_with_wrong_type, "unsafe { std::evm::balance_of(true) }" }
+test_stmt! { call_balance_of_with_2_args, "unsafe { std::evm::balance_of(address(0), 2) }" }
+test_stmt! { call_balance_with_arg, "unsafe { std::evm::balance(address(0)) }" }
 test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
-test_stmt! { continue_without_loop_2, "if true:\n  continue" }
+test_stmt! { continue_without_loop_2, "if true { continue }" }
 test_stmt! { emit_undefined_event, "emit MyEvent()" }
 test_stmt! { emit_type_name, "emit u8()" }
 test_stmt! { emit_variable, "let x: u8 = 10\nemit x()" }

@@ -4,29 +4,29 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ while_loop.fe:2:5
-  │  
-2 │ ╭     pub fn bar() -> u256:
-3 │ │         let val: u256 = 0
-4 │ │         while val < 2:
-5 │ │             val = val + 1
-6 │ │             if val == 2:
-7 │ │                 val = 3
-8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+   ┌─ while_loop.fe:2:5
+   │  
+ 2 │ ╭     pub fn bar() -> u256 {
+ 3 │ │         let val: u256 = 0
+ 4 │ │         while val < 2 {
+ 5 │ │             val = val + 1
+   · │
+10 │ │         return val
+11 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
 
 note: 
   ┌─ while_loop.fe:3:18
@@ -39,7 +39,7 @@ note:
   │
 3 │         let val: u256 = 0
   │                         ^ u256: Value
-4 │         while val < 2:
+4 │         while val < 2 {
   │               ^^^   ^ u256: Value
   │               │      
   │               u256: Value
@@ -47,7 +47,7 @@ note:
 note: 
   ┌─ while_loop.fe:4:15
   │
-4 │         while val < 2:
+4 │         while val < 2 {
   │               ^^^^^^^ bool: Value
 5 │             val = val + 1
   │             ^^^   ^^^   ^ u256: Value
@@ -60,21 +60,22 @@ note:
   │
 5 │             val = val + 1
   │                   ^^^^^^^ u256: Value
-6 │             if val == 2:
+6 │             if val == 2 {
   │                ^^^    ^ u256: Value
   │                │       
   │                u256: Value
 
 note: 
-  ┌─ while_loop.fe:6:16
-  │
-6 │             if val == 2:
-  │                ^^^^^^^^ bool: Value
-7 │                 val = 3
-  │                 ^^^   ^ u256: Value
-  │                 │      
-  │                 u256: Value
-8 │         return val
-  │                ^^^ u256: Value
+   ┌─ while_loop.fe:6:16
+   │
+ 6 │             if val == 2 {
+   │                ^^^^^^^^ bool: Value
+ 7 │                 val = 3
+   │                 ^^^   ^ u256: Value
+   │                 │      
+   │                 u256: Value
+   ·
+10 │         return val
+   │                ^^^ u256: Value
 
 

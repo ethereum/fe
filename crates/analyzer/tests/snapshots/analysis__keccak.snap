@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ keccak.fe:3:5
+  ┌─ keccak.fe:2:5
   │  
-3 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256:
-4 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 6936681782057010951
+2 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256 {
+3 │ │         return keccak256(val)
+4 │ │     }
+  │ ╰─────^ attributes hash: 6936681782057010951
   │  
   = FunctionSignature {
         self_decl: None,
@@ -39,23 +40,24 @@ note:
     }
 
 note: 
-  ┌─ keccak.fe:4:26
+  ┌─ keccak.fe:3:26
   │
-4 │         return keccak256(val)
+3 │         return keccak256(val)
   │                          ^^^ Array<u8, 1>: Memory
 
 note: 
-  ┌─ keccak.fe:4:16
+  ┌─ keccak.fe:3:16
   │
-4 │         return keccak256(val)
+3 │         return keccak256(val)
   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
   ┌─ keccak.fe:6:5
   │  
-6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256:
+6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256 {
 7 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 10874278598381710302
+8 │ │     }
+  │ ╰─────^ attributes hash: 10874278598381710302
   │  
   = FunctionSignature {
         self_decl: None,
@@ -98,11 +100,12 @@ note:
   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ keccak.fe:9:5
+   ┌─ keccak.fe:10:5
    │  
- 9 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256:
-10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 1385099984461119772
+10 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256 {
+11 │ │         return keccak256(val)
+12 │ │     }
+   │ ╰─────^ attributes hash: 1385099984461119772
    │  
    = FunctionSignature {
          self_decl: None,
@@ -133,15 +136,15 @@ note:
      }
 
 note: 
-   ┌─ keccak.fe:10:26
+   ┌─ keccak.fe:11:26
    │
-10 │         return keccak256(val)
+11 │         return keccak256(val)
    │                          ^^^ Array<u8, 32>: Memory
 
 note: 
-   ┌─ keccak.fe:10:16
+   ┌─ keccak.fe:11:16
    │
-10 │         return keccak256(val)
+11 │         return keccak256(val)
    │                ^^^^^^^^^^^^^^ u256: Value
 
 

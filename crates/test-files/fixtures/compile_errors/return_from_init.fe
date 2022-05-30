@@ -1,3 +1,5 @@
-contract C:
-    pub fn __init__() -> i32:
+contract C {
+    pub fn __init__() -> i32 {
         return 0
+    }
+}

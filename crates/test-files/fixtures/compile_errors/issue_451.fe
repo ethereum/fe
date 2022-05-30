@@ -1,5 +1,9 @@
-contract o:
-    pub fn bar(x:u256,y:u256)->bool:
-     return
-    pub fn bar():
-     s
+contract o {
+    pub fn bar(x: u256, y: u256) -> bool {
+        return
+    }
+
+    pub fn bar() {
+        s
+    }
+}

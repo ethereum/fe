@@ -1,5 +1,5 @@
-contract Foo:
-    fn bar() -> i256:
+contract Foo {
+    fn bar() -> i256 {
         let baz1: i256 = -(4 * (26 + 52))
         let baz2: bool = not ((true or false) and true)
         let baz3: bool = not (true or false) and true
@@ -18,3 +18,5 @@ contract Foo:
         let test: u256 = 3 ** 4 ** 5
         let test2: u256 = (3 ** 4) ** 5
         return -4 * (26 + 52)
+    }
+}

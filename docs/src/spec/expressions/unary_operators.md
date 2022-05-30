@@ -10,10 +10,12 @@ The unary operators are used to negate expressions. The unary `-` (minus) operat
 
 Example:
 
-```
-let x: bool = not true # false
-let y: i256 = -1  # -1
-let y: i256 = ~1  # -2
+```fe
+fn f() {
+  let x: bool = not true  # false
+  let y: i256 = -1
+  let z: i256 = i256(~1)  # -2
+}
 ```
 
 [_Expression_]: ../expressions/index.md

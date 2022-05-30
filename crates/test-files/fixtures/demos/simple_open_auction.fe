@@ -1,19 +1,15 @@
 use std::context::Context
 
-# errors 
-struct AuctionAlreadyEnded:
-    pass
+# errors
+struct AuctionAlreadyEnded {}
+struct AuctionNotYetEnded {}
+struct AuctionEndAlreadyCalled {}
 
-struct BidNotHighEnough:
+struct BidNotHighEnough {
     pub highest_bid: u256
+}
 
-struct AuctionNotYetEnded:
-    pass
-
-struct AuctionEndAlreadyCalled:
-    pass
-
-contract SimpleOpenAuction:
+contract SimpleOpenAuction {
     # states
     auction_end_time: u256
     beneficiary: address
@@ -23,56 +19,62 @@ contract SimpleOpenAuction:
 
     pending_returns: Map<address, u256>
 
-    ended: bool 
+    ended: bool
 
     # events
-    event HighestBidIncreased:
+    event HighestBidIncreased {
         idx bidder: address
         amount: u256
-    
-    event AuctionEnded:
+    }
+
+    event AuctionEnded {
         idx winner: address
         amount: u256
+    }
 
-    # constructor 
-    pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address): 
+    # constructor
+    pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address) {
         self.beneficiary = beneficiary_addr
         self.auction_end_time = ctx.block_timestamp() + bidding_time
-    
+    }
+
     #method
-    pub fn bid(self, ctx: Context):
-        if ctx.block_timestamp() > self.auction_end_time:
+    pub fn bid(self, ctx: Context) {
+        if ctx.block_timestamp() > self.auction_end_time {
             revert AuctionAlreadyEnded()
-
-        if ctx.msg_value() <= self.highest_bid:
+        }
+        if ctx.msg_value() <= self.highest_bid {
             revert BidNotHighEnough(highest_bid: self.highest_bid)
-
-        if self.highest_bid != 0:
+        }
+        if self.highest_bid != 0 {
             self.pending_returns[self.highest_bidder] += self.highest_bid
-
+        }
         self.highest_bidder = ctx.msg_sender()
         self.highest_bid = ctx.msg_value()
 
         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+    }
 
-    pub fn withdraw(self, ctx: Context) -> bool:
+    pub fn withdraw(self, ctx: Context) -> bool {
         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 
-        if amount > 0:
+        if amount > 0 {
             self.pending_returns[ctx.msg_sender()] = 0
             ctx.send_value(to: ctx.msg_sender(), wei: amount)
-
+        }
         return true
+    }
 
-    pub fn action_end(self, ctx: Context):
-        if ctx.block_timestamp() <= self.auction_end_time:
+    pub fn action_end(self, ctx: Context) {
+        if ctx.block_timestamp() <= self.auction_end_time {
             revert AuctionNotYetEnded()
-
-        if self.ended:
+        }
+        if self.ended {
             revert AuctionEndAlreadyCalled()
-    
+        }
         self.ended = true
         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
 
         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-        
+    }
+}

@@ -1,12 +1,12 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(fn_def_kw), contracts::parse_contract_def, true,\n           \"contract C:\\n pub def f(x: u8):\\n  return x\")"
+expression: "err_string(stringify!(fn_def_kw), module::parse_module,\n           \"contract C {\\n pub def f(x: u8){\\n  return x \\n}\\n}\")"
 
 ---
 error: failed to parse field definition
   ┌─ fn_def_kw:2:10
   │
-2 │  pub def f(x: u8):
+2 │  pub def f(x: u8){
   │          ^ expected symbol `:`, found a name
   │
   = Hint: use `fn` to define a function

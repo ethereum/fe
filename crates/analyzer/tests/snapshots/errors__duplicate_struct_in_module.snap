@@ -6,10 +6,10 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: a type named "MyStruct" has already been defined
   ┌─ compile_errors/duplicate_struct_in_module.fe:1:8
   │
-1 │ struct MyStruct:
+1 │ struct MyStruct {
   │        ^^^^^^^^ `MyStruct` first defined here
   ·
-4 │ struct MyStruct:
+5 │ struct MyStruct {
   │        -------- `MyStruct` redefined here
 
 

@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_u256_from_called_fn.fe:4:5
+  ┌─ return_u256_from_called_fn.fe:2:5
   │  
-4 │ ╭     pub fn bar(self) -> u256:
-5 │ │         return foo()
-  │ ╰────────────────────^ attributes hash: 11773348765973600208
+2 │ ╭     pub fn bar(self) -> u256 {
+3 │ │         return foo()
+4 │ │     }
+  │ ╰─────^ attributes hash: 11773348765973600208
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -26,17 +27,18 @@ note:
     }
 
 note: 
-  ┌─ return_u256_from_called_fn.fe:5:16
+  ┌─ return_u256_from_called_fn.fe:3:16
   │
-5 │         return foo()
+3 │         return foo()
   │                ^^^^^ u256: Value
 
 note: 
-  ┌─ return_u256_from_called_fn.fe:7:5
+  ┌─ return_u256_from_called_fn.fe:6:5
   │  
-7 │ ╭     pub fn foo() -> u256:
-8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 6115314201970082834
+6 │ ╭     pub fn foo() -> u256 {
+7 │ │         return 42
+8 │ │     }
+  │ ╰─────^ attributes hash: 6115314201970082834
   │  
   = FunctionSignature {
         self_decl: None,
@@ -52,9 +54,9 @@ note:
     }
 
 note: 
-  ┌─ return_u256_from_called_fn.fe:8:16
+  ┌─ return_u256_from_called_fn.fe:7:16
   │
-8 │         return 42
+7 │         return 42
   │                ^^ u256: Value
 
 

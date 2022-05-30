@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n    r#\"pub contract Foo:\n    pub fn foo() -> u8:\n      return 10\n\"#)"
+expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n           r#\"\npub contract Foo {\n    pub fn foo() -> u8 {\n      return 10\n    }\n}\"#)"
 
 ---
 Node(
@@ -11,8 +11,8 @@ Node(
           name: Node(
             kind: "Foo",
             span: Span(
-              start: 13,
-              end: 16,
+              start: 14,
+              end: 17,
             ),
           ),
           fields: [],
@@ -20,22 +20,22 @@ Node(
             Function(Node(
               kind: Function(
                 pub_: Some(Span(
-                  start: 22,
-                  end: 25,
+                  start: 24,
+                  end: 27,
                 )),
                 unsafe_: None,
                 name: Node(
                   kind: "foo",
                   span: Span(
-                    start: 29,
-                    end: 32,
+                    start: 31,
+                    end: 34,
                   ),
                 ),
                 generic_params: Node(
                   kind: [],
                   span: Span(
-                    start: 29,
-                    end: 32,
+                    start: 31,
+                    end: 34,
                   ),
                 ),
                 args: [],
@@ -44,8 +44,8 @@ Node(
                     base: "u8",
                   ),
                   span: Span(
-                    start: 38,
-                    end: 40,
+                    start: 40,
+                    end: 42,
                   ),
                 )),
                 body: [
@@ -54,38 +54,38 @@ Node(
                       value: Some(Node(
                         kind: Num("10"),
                         span: Span(
-                          start: 55,
-                          end: 57,
+                          start: 58,
+                          end: 60,
                         ),
                       )),
                     ),
                     span: Span(
-                      start: 48,
-                      end: 57,
+                      start: 51,
+                      end: 60,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 22,
-                end: 57,
+                start: 24,
+                end: 66,
               ),
             )),
           ],
           pub_qual: Some(Span(
-            start: 0,
-            end: 3,
+            start: 1,
+            end: 4,
           )),
         ),
         span: Span(
-          start: 0,
-          end: 57,
+          start: 5,
+          end: 68,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 57,
+    end: 68,
   ),
 )

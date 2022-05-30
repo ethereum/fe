@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: No field `bar` exists on this contract
-  ┌─ compile_errors/invalid_contract_field.fe:5:10
+  ┌─ compile_errors/invalid_contract_field.fe:5:14
   │
-5 │     self.bar
-  │          ^^^ undefined field
+5 │         self.bar
+  │              ^^^ undefined field
 
 

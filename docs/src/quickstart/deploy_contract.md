@@ -34,17 +34,20 @@ ethsign import --keystore ~/.ethereum/keystore/
 
 Let's recall that we finished our guest book in the previous chapter with the following code.
 
-```python
+```fe
 use std::context::Context
 
-contract GuestBook:
+contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>):
-      self.messages[ctx.msg_sender()] = book_msg
+  pub fn sign(self, ctx: Context, book_msg: String<100>) {
+    self.messages[ctx.msg_sender()] = book_msg
+  }
 
-  pub fn get_msg(self, addr: address) -> String<100>:
-      return self.messages[addr].to_mem()
+  pub fn get_msg(self, addr: address) -> String<100> {
+    return self.messages[addr].to_mem()
+  }
+}
 ```
 
 If you haven't already, run `./fe guest_book.fe --overwrite` to obtain the bytecode that we want to deploy.
@@ -116,5 +119,3 @@ We <3 Fe
 As we can see in the last line of the output the signature for address `0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293` is in fact *We <3 Fe*.
 
 Congratulations! You've deployed real Fe code to a live network 🤖
-
-

@@ -1,12 +1,12 @@
-unsafe fn f():
-  unsafe:
-    g()
+unsafe fn f() {
+    unsafe { g() }
+}
 
-fn g():
-  unsafe:
-    h()
-    unsafe:
-      h()
+fn g() {
+    unsafe {
+        h()
+        unsafe { h() }
+    }
+}
 
-fn h():
-  pass
+fn h() {}

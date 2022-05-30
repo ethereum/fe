@@ -14,11 +14,12 @@ note:
   │     ^^^^^^^^^^^ u256
 
 note: 
-   ┌─ module_level_events.fe:9:5
+   ┌─ module_level_events.fe:10:5
    │  
- 9 │ ╭     fn transfer(ctx: Context, to : address, value : u256):
-10 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 10847004199357482546
+10 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
+11 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+12 │ │     }
+   │ ╰─────^ attributes hash: 10847004199357482546
    │  
    = FunctionSignature {
          self_decl: None,
@@ -67,26 +68,26 @@ note:
      }
 
 note: 
-   ┌─ module_level_events.fe:10:23
+   ┌─ module_level_events.fe:11:23
    │
-10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
    │                       ^^^          ^^^ Context: Memory
    │                       │             
    │                       Context: Memory
 
 note: 
-   ┌─ module_level_events.fe:10:36
+   ┌─ module_level_events.fe:11:36
    │
-10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
    │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
    │                                    │                           │    
    │                                    │                           address: Value
    │                                    address: Value
 
 note: 
-   ┌─ module_level_events.fe:10:9
+   ┌─ module_level_events.fe:11:9
    │
-10 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
    │
    = Event {

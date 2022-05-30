@@ -1,4 +1,5 @@
-contract Foo:
-
-  pub fn foo():
-    "".does_not_exist
+contract Foo {
+    pub fn foo() {
+        "".does_not_exist
+    }
+}

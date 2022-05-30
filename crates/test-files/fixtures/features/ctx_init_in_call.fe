@@ -1,16 +1,17 @@
 use std::context::Context
 use std::evm
 
-contract Foo:
-
-    pub fn __call__():
-        unsafe:
+contract Foo {
+    pub fn __call__() {
+        unsafe {
             let ctx: Context = Context()
             let value: u256 = u256(bar(ctx))
-
-            # return `value`
             evm::mstore(offset: 0, value)
             evm::return_mem(offset: 0, len: 32)
+        }
+    }
 
-    fn bar(ctx: Context) -> address:
+    fn bar(ctx: Context) -> address {
         return ctx.self_address()
+    }
+}

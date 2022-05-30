@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(empty_contract_def), module::parse_module,\n           r#\"contract Foo:\n    pass\n\"#)"
+expression: "ast_string(stringify!(empty_contract_def), try_parse_module,\n           \"contract Foo {}\")"
 
 ---
 Node(
@@ -21,13 +21,13 @@ Node(
         ),
         span: Span(
           start: 0,
-          end: 12,
+          end: 15,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 12,
+    end: 15,
   ),
 )

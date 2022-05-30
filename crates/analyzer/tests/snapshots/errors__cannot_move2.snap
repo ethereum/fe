@@ -4,10 +4,10 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: can't move value onto stack
-  ┌─ compile_errors/cannot_move2.fe:6:30
+  ┌─ compile_errors/cannot_move2.fe:5:34
   │
-6 │     let c: Array<u256, 20> = x + y
-  │                              ^ Value to be moved
+5 │         let c: Array<u256, 20> = x + y
+  │                                  ^ Value to be moved
   │
   = Note: Can't move `Array<u256, 10>` types on the stack
 

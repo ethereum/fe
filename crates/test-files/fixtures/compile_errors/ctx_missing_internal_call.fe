@@ -1,10 +1,13 @@
 use std::context::Context
 
-contract Foo:
+contract Foo {
     favorite_number: u256
 
-    pub fn bar(ctx: Context) -> u256:
+    pub fn bar(ctx: Context) -> u256 {
         return ctx.block_number()
+    }
 
-    pub fn baz(self, ctx: Context):
+    pub fn baz(self, ctx: Context) {
         self.favorite_number = bar()
+    }
+}

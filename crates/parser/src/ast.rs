@@ -247,7 +247,6 @@ pub enum FuncStmt {
     Expr {
         value: Node<Expr>,
     },
-    Pass,
     Break,
     Continue,
     Revert {
@@ -447,7 +446,22 @@ impl Spanned for ContractStmt {
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", double_line_joined(&self.body))
+        let (uses, rest): (Vec<&ModuleStmt>, Vec<&ModuleStmt>) = self
+            .body
+            .iter()
+            .partition(|&stmt| matches!(stmt, ModuleStmt::Use(_) | ModuleStmt::Pragma(_)));
+        for stmt in &uses {
+            writeln!(f, "{}", stmt)?;
+        }
+        if !uses.is_empty() && !rest.is_empty() {
+            writeln!(f)?;
+        }
+        let mut delim = "";
+        for stmt in rest {
+            writeln!(f, "{}{}", delim, stmt)?;
+            delim = "\n";
+        }
+        Ok(())
     }
 }
 
@@ -477,6 +491,7 @@ impl fmt::Display for Pragma {
 
 impl fmt::Display for Use {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // TODO pub use
         write!(f, "use {}", self.tree.kind)
     }
 }
@@ -515,46 +530,86 @@ impl fmt::Display for Path {
 
 impl fmt::Display for ConstantDecl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "const {}: {} = {}",
-            self.name.kind, self.typ.kind, self.value.kind
-        )
+        let ConstantDecl {
+            name,
+            typ,
+            value,
+            pub_qual,
+        } = self;
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "const {}: {} = {}", name.kind, typ.kind, value.kind)
     }
 }
 
 impl fmt::Display for TypeAlias {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "type {} = {}", self.name.kind, self.typ.kind)
+        let TypeAlias {
+            name,
+            typ,
+            pub_qual,
+        } = self;
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "type {} = {}", name.kind, typ.kind)
     }
 }
 
 impl fmt::Display for Contract {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "contract {}:", self.name.kind)?;
-        if !self.fields.is_empty() {
-            write!(indented(f), "{}\n\n", node_line_joined(&self.fields))?;
-        }
-        if !self.body.is_empty() {
-            write!(indented(f), "{}", double_line_joined(&self.body))?;
-        }
+        let Contract {
+            name,
+            fields,
+            body,
+            pub_qual,
+        } = self;
 
-        Ok(())
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "contract {} {{", name.kind)?;
+
+        if !fields.is_empty() {
+            for field in fields {
+                writeln!(f)?;
+                write!(indented(f), "{}", field.kind)?;
+            }
+            writeln!(f)?;
+        }
+        if !body.is_empty() {
+            writeln!(f)?;
+            write!(indented(f), "{}", double_line_joined(body))?;
+            writeln!(f)?;
+        }
+        write!(f, "}}")
     }
 }
 
 impl fmt::Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "struct {}:", self.name.kind)?;
-        if self.fields.is_empty() && self.functions.is_empty() {
-            write!(indented(f), "pass")
-        } else {
-            write!(indented(f), "{}", node_line_joined(&self.fields))?;
-            if !self.fields.is_empty() && !self.functions.is_empty() {
-                write!(f, "\n\n")?;
-            }
-            write!(indented(f), "{}", double_line_joined(&self.functions))
+        let Struct {
+            name,
+            fields,
+            functions,
+            pub_qual,
+        } = self;
+
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
         }
+        write!(f, "struct {} ", name.kind)?;
+        write!(f, "{{")?;
+        write_nodes_line_wrapped(&mut indented(f), fields)?;
+
+        if !self.fields.is_empty() && !functions.is_empty() {
+            writeln!(f)?;
+        }
+        if !functions.is_empty() {
+            writeln!(indented(f), "{}", double_line_joined(functions))?;
+        }
+        write!(f, "}}")
     }
 }
 
@@ -564,10 +619,25 @@ impl fmt::Display for TypeDesc {
             TypeDesc::Unit => write!(f, "()"),
             TypeDesc::Base { base } => write!(f, "{}", base),
             TypeDesc::Path(path) => write!(f, "{}", path),
-            TypeDesc::Tuple { items } => write!(f, "({})", node_comma_joined(items)),
+            TypeDesc::Tuple { items } => {
+                if items.len() == 1 {
+                    write!(f, "({},)", items[0].kind)
+                } else {
+                    write!(f, "({})", node_comma_joined(items))
+                }
+            }
             TypeDesc::Generic { base, args } => {
                 write!(f, "{}<{}>", base.kind, comma_joined(&args.kind))
             }
+        }
+    }
+}
+
+impl fmt::Display for GenericParameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            GenericParameter::Unbounded(name) => write!(f, "{}", name.kind),
+            GenericParameter::Bounded { name, bound } => write!(f, "{}: {}", name.kind, bound.kind),
         }
     }
 }
@@ -577,7 +647,7 @@ impl fmt::Display for GenericArg {
         match self {
             GenericArg::TypeDesc(node) => write!(f, "{}", node.kind),
             GenericArg::Int(node) => write!(f, "{}", node.kind),
-            GenericArg::ConstExpr(node) => write!(f, "{}", node.kind),
+            GenericArg::ConstExpr(node) => write!(f, "{{ {} }}", node.kind),
         }
     }
 }
@@ -605,11 +675,13 @@ impl fmt::Display for ContractStmt {
 
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "event {}:", self.name.kind)?;
+        write!(f, "event {} ", self.name.kind)?;
         if self.fields.is_empty() {
-            write!(indented(f), "pass")
+            write!(f, "{{}}")
         } else {
-            write!(indented(f), "{}", node_line_joined(&self.fields))
+            writeln!(f, "{{")?;
+            writeln!(indented(f), "{}", node_line_joined(&self.fields))?;
+            write!(f, "}}")
         }
     }
 }
@@ -622,21 +694,34 @@ impl fmt::Display for Node<Function> {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_pub() {
+        let Function {
+            pub_,
+            unsafe_,
+            name,
+            generic_params,
+            args,
+            return_type,
+            body,
+        } = self;
+
+        if pub_.is_some() {
             write!(f, "pub ")?;
         }
-        write!(
-            f,
-            "fn {}({})",
-            self.name.kind,
-            node_comma_joined(&self.args)
-        )?;
-        if let Some(return_type) = self.return_type.as_ref() {
-            writeln!(f, " -> {}:", return_type.kind)?;
-        } else {
-            writeln!(f, ":")?;
+        if unsafe_.is_some() {
+            write!(f, "unsafe ")?;
         }
-        write!(indented(f), "{}", node_line_joined(&self.body))
+        write!(f, "fn {}", name.kind)?;
+        if !generic_params.kind.is_empty() {
+            write!(f, "<{}>", comma_joined(&generic_params.kind))?;
+        }
+        write!(f, "({})", node_comma_joined(args))?;
+
+        if let Some(return_type) = return_type.as_ref() {
+            write!(f, " -> {}", return_type.kind)?;
+        }
+        write!(f, " {{")?;
+        write_nodes_line_wrapped(&mut indented(f), body)?;
+        write!(f, "}}")
     }
 }
 
@@ -692,25 +777,44 @@ impl fmt::Display for FuncStmt {
                 write!(f, "{} {}= {}", target.kind, op.kind, value.kind)
             }
             FuncStmt::For { target, iter, body } => {
-                writeln!(f, "for {} in {}:", target.kind, iter.kind)?;
-                writeln!(indented(f), "{}", node_line_joined(body))
+                write!(f, "for {} in {} {{", target.kind, iter.kind)?;
+                write_nodes_line_wrapped(&mut indented(f), body)?;
+                write!(f, "}}")
             }
             FuncStmt::While { test, body } => {
-                writeln!(f, "while {}:", test.kind)?;
-                writeln!(indented(f), "{}", node_line_joined(body))
+                write!(f, "while {} {{", test.kind)?;
+                write_nodes_line_wrapped(&mut indented(f), body)?;
+                write!(f, "}}")
             }
             FuncStmt::If {
                 test,
                 body,
                 or_else,
             } => {
-                writeln!(f, "if {}:", test.kind)?;
-                writeln!(indented(f), "{}", node_line_joined(body))?;
+                write!(f, "if {} {{", test.kind)?;
+                write_nodes_line_wrapped(&mut indented(f), body)?;
+
                 if or_else.is_empty() {
-                    Ok(())
+                    write!(f, "}}")
                 } else {
-                    writeln!(f, "else:")?;
-                    writeln!(indented(f), "{}", node_line_joined(or_else))
+                    if body.is_empty() {
+                        writeln!(f)?;
+                    }
+
+                    if matches!(
+                        &or_else[..],
+                        &[Node {
+                            kind: FuncStmt::If { .. },
+                            ..
+                        }]
+                    ) {
+                        write!(f, "}} else ")?;
+                        write!(f, "{}", or_else[0].kind)
+                    } else {
+                        write!(f, "}} else {{")?;
+                        write_nodes_line_wrapped(&mut indented(f), or_else)?;
+                        write!(f, "}}")
+                    }
                 }
             }
             FuncStmt::Assert { test, msg } => {
@@ -724,7 +828,6 @@ impl fmt::Display for FuncStmt {
                 write!(f, "emit {}({})", name.kind, node_comma_joined(&args.kind))
             }
             FuncStmt::Expr { value } => write!(f, "{}", value.kind),
-            FuncStmt::Pass => write!(f, "pass"),
             FuncStmt::Break => write!(f, "break"),
             FuncStmt::Continue => write!(f, "continue"),
             FuncStmt::Revert { error } => {
@@ -735,8 +838,9 @@ impl fmt::Display for FuncStmt {
                 }
             }
             FuncStmt::Unsafe(body) => {
-                writeln!(f, "unsafe:")?;
-                writeln!(indented(f), "{}", node_line_joined(body))
+                write!(f, "unsafe {{")?;
+                write_nodes_line_wrapped(&mut indented(f), body)?;
+                write!(f, "}}")
             }
         }
     }
@@ -746,7 +850,13 @@ impl fmt::Display for VarDeclTarget {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             VarDeclTarget::Name(name) => write!(f, "{}", name),
-            VarDeclTarget::Tuple(elts) => write!(f, "{}", node_comma_joined(elts)),
+            VarDeclTarget::Tuple(elts) => {
+                if elts.len() == 1 {
+                    write!(f, "({},)", elts[0].kind)
+                } else {
+                    write!(f, "({})", node_comma_joined(elts))
+                }
+            }
         }
     }
 }
@@ -800,7 +910,13 @@ impl fmt::Display for Expr {
                 write!(f, "({})", node_comma_joined(&args.kind))
             }
             Expr::List { elts } => write!(f, "[{}]", node_comma_joined(elts)),
-            Expr::Tuple { elts } => write!(f, "({})", node_comma_joined(elts)),
+            Expr::Tuple { elts } => {
+                if elts.len() == 1 {
+                    write!(f, "({},)", elts[0].kind)
+                } else {
+                    write!(f, "({})", node_comma_joined(elts))
+                }
+            }
             Expr::Bool(bool) => write!(f, "{}", bool),
             Expr::Name(name) => write!(f, "{}", name),
             Expr::Path(path) => write!(f, "{}", path),
@@ -890,6 +1006,16 @@ fn comma_joined(items: &[impl fmt::Display]) -> String {
         .map(|item| format!("{}", item))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>]) -> fmt::Result {
+    if !nodes.is_empty() {
+        writeln!(f)?;
+    }
+    for n in nodes {
+        writeln!(f, "{}", n.kind)?;
+    }
+    Ok(())
 }
 
 fn node_line_joined(nodes: &[Node<impl fmt::Display>]) -> String {

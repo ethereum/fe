@@ -1,9 +1,12 @@
 use std::evm::{balance, balance_of}
 use std::context::Context
 
-contract Foo:
-    pub fn my_balance(self, ctx: Context) -> u256:
+contract Foo {
+    pub fn my_balance(self, ctx: Context) -> u256 {
         return ctx.self_balance()
+    }
 
-    pub fn other_balance(self, ctx: Context, someone: address) -> u256:
+    pub fn other_balance(self, ctx: Context, someone: address) -> u256 {
         return ctx.balance_of(someone)
+    }
+}

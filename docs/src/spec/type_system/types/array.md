@@ -11,14 +11,16 @@ Arrays are either stored in storage or memory but are never stored directly on t
 
 Examples:
 
-```Python
-contract Foo:
+```fe
+contract Foo {
   # An array in storage
   bar: Array<u8, 10>
 
-  fn do_something():
+  fn do_something() {
     # An array in memory
-    values: Array<u256, 3> = [10, 100, 100]
+    let values: Array<u256, 3> = [10, 100, 100]
+  }
+}
 ```
 
 All elements of arrays are always initialized, and access to an array is

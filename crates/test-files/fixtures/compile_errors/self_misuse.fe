@@ -1,33 +1,40 @@
-fn foo():
-  let self: u8 = 10
-  self = 5
+fn foo() {
+    let self: u8 = 10
+    self = 5
+}
 
-fn change_x(_ s: S):
-  s.x = 100
+fn change_x(_ s: S) {
+    s.x = 100
+}
 
-fn bar(_ c: C):
-  pass
+fn bar(_ c: C) {}
 
-struct S:
-  pub x: u8
+struct S {
+    pub x: u8
 
-  fn f(self):
-    self()
+    fn f(self) {
+        self()
+    }
 
-  fn g(self):
-    self = S(x: 10)
+    fn g(self) {
+        self = S(x: 10)
+    }
 
-  fn h(self):
-    change_x(self) # allowed
+    fn h(self) {
+        change_x(self)
+    }
+}
 
-contract C:
-  x: u8
+contract C {
+    x: u8
 
-  fn g(self):
-    pass
+    fn g(self) {}
 
-  fn h(self):
-    g(self)
+    fn h(self) {
+        g(self)
+    }
 
-  fn i(self):
-    bar(self)
+    fn i(self) {
+        bar(self)
+    }
+}

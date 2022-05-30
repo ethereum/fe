@@ -1,4 +1,5 @@
-contract Foo:
-
-    pub fn bar() -> address:
+contract Foo {
+    pub fn bar() -> address {
         return 1
+    }
+}

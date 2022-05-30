@@ -1,4 +1,5 @@
-
-contract Bar:
-  pub fn test():
-    block.foo()
+contract Bar {
+    pub fn test() {
+        block.foo()
+    }
+}

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(empty_event_def), module::parse_module,\n           \"event Foo:\\n  pass\")"
+expression: "ast_string(stringify!(empty_event_def), try_parse_module, \"event Foo {}\")"
 
 ---
 Node(
@@ -20,13 +20,13 @@ Node(
         ),
         span: Span(
           start: 0,
-          end: 9,
+          end: 12,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 9,
+    end: 12,
   ),
 )

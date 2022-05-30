@@ -1,5 +1,7 @@
 use std::context::Context
 
-contract Foo:
-    pub fn bar(ctx: Context) -> u256:
+contract Foo {
+    pub fn bar(ctx: Context) -> u256 {
         return ctx.msg_sig()
+    }
+}

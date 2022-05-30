@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: Can not access private field `id` on struct `Bar`
-  ┌─ compile_errors/private_struct_field.fe:8:14
+  ┌─ compile_errors/private_struct_field.fe:9:18
   │
-8 │     self.val.id
-  │              ^^ private field
+9 │         self.val.id
+  │                  ^^ private field
 
 

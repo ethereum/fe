@@ -13,9 +13,9 @@ error: `self` is not defined
   = Example: `fn pure_fn(self, foo: bool)`
 
 error: `self` is not defined
-   ┌─ compile_errors/missing_self.fe:12:16
+   ┌─ compile_errors/missing_self.fe:13:16
    │
-12 │         return self.x
+13 │         return self.x
    │                ^^^^ undefined value
    │
    = add `self` to the scope by including it in the function signature

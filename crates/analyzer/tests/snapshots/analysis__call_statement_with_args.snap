@@ -12,9 +12,10 @@ note:
 note: 
   ┌─ call_statement_with_args.fe:4:5
   │  
-4 │ ╭     fn assign(self, _ val: u256):
+4 │ ╭     fn assign(self, _ val: u256) {
 5 │ │         self.baz[0] = val
-  │ ╰─────────────────────────^ attributes hash: 15254234582808678866
+6 │ │     }
+  │ ╰─────^ attributes hash: 15254234582808678866
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -66,56 +67,57 @@ note:
   │         u256: Storage { nonce: None }
 
 note: 
-  ┌─ call_statement_with_args.fe:7:5
-  │  
-7 │ ╭     pub fn bar(self) -> u256:
-8 │ │         self.assign(100)
-9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 11773348765973600208
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+   ┌─ call_statement_with_args.fe:8:5
+   │  
+ 8 │ ╭     pub fn bar(self) -> u256 {
+ 9 │ │         self.assign(100)
+10 │ │         return self.baz[0]
+11 │ │     }
+   │ ╰─────^ attributes hash: 11773348765973600208
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
 
 note: 
-  ┌─ call_statement_with_args.fe:8:9
+  ┌─ call_statement_with_args.fe:9:9
   │
-8 │         self.assign(100)
+9 │         self.assign(100)
   │         ^^^^        ^^^ u256: Value
   │         │            
   │         Foo: Value
 
 note: 
-  ┌─ call_statement_with_args.fe:8:9
-  │
-8 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ (): Value
-9 │         return self.baz[0]
-  │                ^^^^ Foo: Value
+   ┌─ call_statement_with_args.fe:9:9
+   │
+ 9 │         self.assign(100)
+   │         ^^^^^^^^^^^^^^^^ (): Value
+10 │         return self.baz[0]
+   │                ^^^^ Foo: Value
 
 note: 
-  ┌─ call_statement_with_args.fe:9:16
-  │
-9 │         return self.baz[0]
-  │                ^^^^^^^^ ^ u256: Value
-  │                │         
-  │                Map<u256, u256>: Storage { nonce: Some(0) }
+   ┌─ call_statement_with_args.fe:10:16
+   │
+10 │         return self.baz[0]
+   │                ^^^^^^^^ ^ u256: Value
+   │                │         
+   │                Map<u256, u256>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ call_statement_with_args.fe:9:16
-  │
-9 │         return self.baz[0]
-  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+   ┌─ call_statement_with_args.fe:10:16
+   │
+10 │         return self.baz[0]
+   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 

@@ -8,11 +8,12 @@ Note that the value of `N` does not restrict the type to hold exactly that numbe
 
 Example:
 
-```python
-contract Foo:
+```fe
+contract Foo {
 
-  fn bar():
+  fn bar() {
     let single_byte_string: String<1> = "a"
-    # Casting is needed because the type inferred from "foo" is String<3>
-    let longer_string: String<100> = String<100>("foo")
+    let longer_string: String<100> = "foo"
+  }
+}
 ```

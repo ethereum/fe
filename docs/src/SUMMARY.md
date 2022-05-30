@@ -39,7 +39,6 @@
         * [`break` Statement](spec/statements/break.md)
         * [`continue` Statement](spec/statements/continue.md)
         * [`assert` Statement](spec/statements/assert.md)
-        * [`pass` Statement](spec/statements/pass.md)
     * [Expressions](spec/expressions/index.md)
         * [Call expressions](spec/expressions/call.md)
         * [Tuple expressions](spec/expressions/tuple.md)

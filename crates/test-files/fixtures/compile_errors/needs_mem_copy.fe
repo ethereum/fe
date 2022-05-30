@@ -1,8 +1,11 @@
-contract Foo:
+contract Foo {
     my_sto_array: Array<u256, 10>
 
-    pub fn bar(self, my_array: Array<u256, 10>):
+    pub fn bar(self, my_array: Array<u256, 10>) {
         my_array = self.my_sto_array
+    }
 
-    pub fn foo(self) -> Array<u256, 10>:
+    pub fn foo(self) -> Array<u256, 10> {
         return self.my_sto_array
+    }
+}

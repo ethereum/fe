@@ -5,10 +5,11 @@ assigned a nonce that is used to derive the location of keyed values during runt
 
 Example:
 
-``` python
-# contract scope
-bar: Map<address, u256> # bar is assigned a static nonce by the compiler
-baz: Map<address, Map<address, u256>> # baz is assigned a static nonce by the compiler
+```fe
+contract Foo {
+  bar: Map<address, u256> # bar is assigned a static nonce by the compiler
+  baz: Map<address, Map<address, u256>> # baz is assigned a static nonce by the compiler
+}
 ```
 
 The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value

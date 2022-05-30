@@ -5,9 +5,10 @@ reference them using pointers kept on the stack.
 
 Example:
 
-```python
-# function scope
-foo: Array<u256, 100> # foo is a pointer that references 100 * 256 bits in memory.
+```fe
+fn f() {
+    let foo: Array<u256, 100> # foo is a pointer that references 100 * 256 bits in memory.
+}
 ```
 
 To find an element inside of a sequence type, the relative location of the element is added to the

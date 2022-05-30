@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar(x: i64) -> i64:
+contract Foo {
+    pub fn bar(x: i64) -> i64 {
         return ~x
+    }
+}

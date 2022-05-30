@@ -1,6 +1,8 @@
-contract Foo:
-    pub fn bar() -> u32:
+contract Foo {
+    pub fn bar() -> u32 {
         let c: u32 = 30
         c = 300
         let d: (u128, u64, u32) = (100, 200, c)
         return d.item2
+    }
+}

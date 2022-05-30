@@ -6,9 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ self_address.fe:4:5
   │  
-4 │ ╭     pub fn my_address(ctx: Context) -> address:
+4 │ ╭     pub fn my_address(ctx: Context) -> address {
 5 │ │         return ctx.self_address()
-  │ ╰─────────────────────────────────^ attributes hash: 9364783648076633772
+6 │ │     }
+  │ ╰─────^ attributes hash: 9364783648076633772
   │  
   = FunctionSignature {
         self_decl: None,

@@ -1,10 +1,7 @@
-#![allow(unused_variables, dead_code, unused_imports)]
-
 pub use fe_common::diagnostics::Label;
 use fe_common::diagnostics::{Diagnostic, Severity};
 use fe_common::files::SourceFileId;
 
-use crate::ast::Module;
 use crate::lexer::{Lexer, Token, TokenKind};
 use crate::node::Span;
 use std::{error, fmt};
@@ -21,7 +18,7 @@ impl error::Error for ParseFailed {}
 pub type ParseResult<T> = Result<T, ParseFailed>;
 
 /// `Parser` maintains the parsing state, such as the token stream,
-/// indent stack, paren stack, diagnostics, etc.
+/// "enclosure" (paren, brace, ..) stack, diagnostics, etc.
 /// Syntax parsing logic is in the [`crate::grammar`] module.
 ///
 /// See [`BTParser`] if you need backtrackable parser.
@@ -34,9 +31,7 @@ pub struct Parser<'a> {
     /// generic type parameter list (eg. `Map<u256, Map<u256, address>>`).
     buffered: Vec<Token<'a>>,
 
-    enclosure_stack: Vec<Span>,
-    indent_stack: Vec<BlockIndent<'a>>,
-    indent_style: Option<char>,
+    enclosure_stack: Vec<Enclosure>,
 
     /// The diagnostics (errors and warnings) emitted during parsing.
     pub diagnostics: Vec<Diagnostic>,
@@ -50,13 +45,6 @@ impl<'a> Parser<'a> {
             lexer: Lexer::new(file_id, content),
             buffered: vec![],
             enclosure_stack: vec![],
-            indent_stack: vec![BlockIndent {
-                context_span: Span::zero(file_id),
-                context_name: "module".into(),
-                indent: "",
-                indent_span: Span::zero(file_id),
-            }],
-            indent_style: None,
             diagnostics: vec![],
         }
     }
@@ -69,33 +57,24 @@ impl<'a> Parser<'a> {
     /// Return the next token, or an error if we've reached the end of the file.
     #[allow(clippy::should_implement_trait)] // next() is a nice short name for a common task
     pub fn next(&mut self) -> ParseResult<Token<'a>> {
-        // TODO: allow newlines inside square brackets
-        // TODO: allow newlines inside angle brackets?
-        //   eg `fn f(x: map\n <\n u8\n, ...`
-        if !self.enclosure_stack.is_empty() {
-            self.eat_newlines();
-        }
+        self.eat_newlines_if_in_nonblock_enclosure();
         if let Some(tok) = self.next_raw() {
-            if [
-                TokenKind::ParenOpen,
-                TokenKind::BraceOpen,
-                TokenKind::BracketOpen,
-            ]
-            .contains(&tok.kind)
-            {
-                self.enclosure_stack.push(tok.span);
-            } else if [
-                TokenKind::ParenClose,
-                TokenKind::BraceClose,
-                TokenKind::BracketClose,
-            ]
-            .contains(&tok.kind)
-                && self.enclosure_stack.pop().is_none()
-            {
-                self.error(tok.span, "Unmatched right parenthesis");
-                if self.peek_raw() == Some(TokenKind::ParenClose) {
-                    // another unmatched closing paren; fail.
-                    return Err(ParseFailed);
+            if is_enclosure_open(tok.kind) {
+                self.enclosure_stack
+                    .push(Enclosure::non_block(tok.kind, tok.span));
+            } else if is_enclosure_close(tok.kind) {
+                if let Some(open) = self.enclosure_stack.pop() {
+                    if !enclosure_tokens_match(open.token_kind, tok.kind) {
+                        // TODO: we should search the enclosure_stack
+                        //  for the last matching enclosure open token.
+                        //  If any enclosures are unclosed, we should emit an
+                        //  error, and somehow close their respective ast nodes.
+                        //  We could synthesize the correct close token, or emit
+                        //  a special TokenKind::UnclosedEnclosure or whatever.
+                        todo!()
+                    }
+                } else {
+                    self.error(tok.span, format!("Unmatched `{}`", tok.text));
                 }
             }
             Ok(tok)
@@ -119,9 +98,7 @@ impl<'a> Parser<'a> {
     /// Take a peek at the next token kind without consuming it, or return an
     /// error if we've reached the end of the file.
     pub fn peek_or_err(&mut self) -> ParseResult<TokenKind> {
-        if !self.enclosure_stack.is_empty() {
-            self.eat_newlines();
-        }
+        self.eat_newlines_if_in_nonblock_enclosure();
         if let Some(tk) = self.peek_raw() {
             Ok(tk)
         } else {
@@ -137,9 +114,7 @@ impl<'a> Parser<'a> {
     /// Take a peek at the next token kind. Returns `None` if we've reached the
     /// end of the file.
     pub fn peek(&mut self) -> Option<TokenKind> {
-        if !self.enclosure_stack.is_empty() {
-            self.eat_newlines();
-        }
+        self.eat_newlines_if_in_nonblock_enclosure();
         self.peek_raw()
     }
 
@@ -165,6 +140,16 @@ impl<'a> Parser<'a> {
             }
         }
         Some(self.buffered.last().unwrap().kind)
+    }
+
+    fn eat_newlines_if_in_nonblock_enclosure(&mut self) {
+        // TODO: allow newlines inside angle brackets?
+        //   eg `fn f(x: map\n <\n u8\n, ...`
+        if let Some(enc) = self.enclosure_stack.last() {
+            if !enc.is_block {
+                self.eat_newlines();
+            }
+        }
     }
 
     /// Split the next token into two tokens, returning the first. Only supports
@@ -197,13 +182,7 @@ impl<'a> Parser<'a> {
         self.peek_raw() == None
     }
 
-    /// The leading whitespace string of the last-seen indented line.
-    /// This does not include lines inside of parentheses.
-    pub fn last_indent(&self) -> &'a str {
-        self.indent_stack.last().unwrap().indent
-    }
-
-    fn eat_newlines(&mut self) {
+    pub fn eat_newlines(&mut self) {
         while self.peek_raw() == Some(TokenKind::Newline) {
             self.next_raw();
         }
@@ -277,62 +256,32 @@ impl<'a> Parser<'a> {
     /// Emit an "unexpected token" error diagnostic with the given message.
     pub fn unexpected_token_error<S: Into<String>>(
         &mut self,
-        span: Span,
+        tok: &Token,
         message: S,
         notes: Vec<String>,
     ) {
         self.fancy_error(
             message,
-            vec![Label::primary(span, "unexpected token".to_string())],
+            vec![Label::primary(tok.span, "unexpected token")],
             notes,
         );
     }
 
-    /// Enter an indented block, which is expected to be non-empty. This checks
-    /// for and consumes the colon that precedes the block. If no colon is
-    /// found, it emits an error and keeps parsing. Any number of
-    /// newlines are allowed before the first non-empty indented line.
-    /// Returns an error if the block has no non-empty indented line.
-    ///
-    /// # Panics
-    /// Panics if called while the parser is inside a set of parentheses.
+    /// Enter a "block", which is a brace-enclosed list of statements,
+    /// separated by newlines and/or semicolons.
+    /// This checks for and consumes the `{` that precedes the block.
     pub fn enter_block(&mut self, context_span: Span, context_name: &str) -> ParseResult<()> {
-        assert!(self.enclosure_stack.is_empty());
-
-        let colon = if self.peek_raw() == Some(TokenKind::Colon) {
-            self.next_raw()
+        if self.peek_raw() == Some(TokenKind::BraceOpen) {
+            let tok = self.next_raw().unwrap();
+            self.enclosure_stack.push(Enclosure::block(tok.span));
+            self.eat_newlines();
+            Ok(())
         } else {
             self.fancy_error(
-                format!("missing colon in {}", context_name),
+                format!("{} must start with `{{`", context_name),
                 vec![Label::primary(
                     Span::new(self.file_id, context_span.end, context_span.end),
-                    "expected `:` here",
-                )],
-                vec![],
-            );
-            None
-        };
-
-        self.handle_newline_indent(context_name)?;
-
-        let indent = self.next()?;
-        if indent.kind == TokenKind::Indent {
-            self.indent_stack.push(BlockIndent {
-                context_span,
-                context_name: context_name.into(),
-                indent: indent.text,
-                indent_span: indent.span,
-            });
-            Ok(())
-        } else {
-            self.fancy_error(
-                format!("failed to parse {} body", context_name),
-                vec![Label::primary(
-                    context_span + colon.as_ref(),
-                    format!(
-                        "the body of this {} must be indented and non-empty",
-                        context_name,
-                    ),
+                    "expected `{` here",
                 )],
                 vec![],
             );
@@ -340,85 +289,32 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume one or more newlines, without returning them.
-    /// Returns an error if the next token isn't a newline or the end of the
-    /// file, or if the indent of the next non-empty line doesn't match the
-    /// current indentation.
-    ///
-    /// # Panics
-    /// Panics if called while the parser is inside a set of parentheses.
-    pub fn expect_newline(&mut self, context_name: &str) -> ParseResult<()> {
-        self.handle_newline_indent(context_name)?;
-        if self.peek() == Some(TokenKind::Indent) {
-            let indent = self.next()?;
-            self.fancy_error(
-                "unexpected indentation",
-                vec![Label::primary(
-                    indent.span,
-                    "this line indented further than other lines in the current block",
-                )],
-                vec![],
-            );
-            Err(ParseFailed)
-        } else {
-            Ok(())
+    /// Consumes newlines and semicolons. Returns Ok if one or more newlines or semicolons
+    /// are consumed, or if the next token is a `}`.
+    pub fn expect_stmt_end(&mut self, context_name: &str) -> ParseResult<()> {
+        let mut newline = false;
+        while matches!(self.peek_raw(), Some(TokenKind::Newline | TokenKind::Semi)) {
+            newline = true;
+            self.next_raw().unwrap();
         }
-    }
-
-    fn handle_newline_indent(&mut self, context_name: &str) -> ParseResult<()> {
-        assert!(
-            self.enclosure_stack.is_empty(),
-            "Parser::handle_newline_indent called within parens"
-        );
-
+        if newline {
+            return Ok(());
+        }
         match self.peek_raw() {
-            None => Ok(()), // eof is an acceptable newline
-            Some(TokenKind::Newline) => {
-                let mut last_nl = self.next_raw().unwrap();
-                while self.peek_raw() == Some(TokenKind::Newline) {
-                    last_nl = self.next_raw().unwrap();
-                }
-                if self.done() {
-                    return Ok(());
-                }
-
-                let (indent, indent_span) = indent_str(self.file_id, &last_nl);
-                self.check_indent_style(indent, indent_span)?;
-
-                if indent.len() > self.last_indent().len() {
-                    self.buffered.push(Token {
-                        kind: TokenKind::Indent,
-                        text: indent,
-                        span: indent_span,
-                    });
-                    return Ok(());
-                }
-                while indent.len() < self.last_indent().len() {
-                    self.buffered.push(Token {
-                        kind: TokenKind::Dedent,
-                        text: indent,
-                        span: indent_span,
-                    });
-                    self.indent_stack.pop();
-                }
-                if indent.len() != self.last_indent().len() {
-                    self.indentation_error(
-                        indent_span,
-                        "this indentation doesn't match other lines in the current block or an enclosing block"
-                    );
-                    return Err(ParseFailed);
-                }
-                Ok(())
-            }
+            Some(TokenKind::BraceClose) => Ok(()),
             Some(_) => {
                 let tok = self.next()?;
                 self.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     format!("unexpected token while parsing {}", context_name),
-                    vec!["expected a newline".into()],
+                    vec![format!(
+                        "expected a newline; found {} instead",
+                        tok.kind.describe()
+                    )],
                 );
                 Err(ParseFailed)
             }
+            None => Ok(()), // unexpect eof error will be generated be parent block
         }
     }
 
@@ -447,38 +343,6 @@ impl<'a> Parser<'a> {
             notes,
         })
     }
-
-    fn indentation_error<S: Into<String>>(&mut self, span: Span, message: S) {
-        self.fancy_error(
-            "inconsistent indentation",
-            vec![Label::primary(span, message.into())],
-            vec![],
-        );
-    }
-
-    fn check_indent_style(&mut self, indent: &str, span: Span) -> ParseResult<()> {
-        if indent.is_empty() {
-            Ok(())
-        } else if indent.find(' ').is_some() && indent.find('\t').is_some() {
-            self.indentation_error(span, "this indent contains both tabs and spaces");
-            Err(ParseFailed)
-        } else if self.indent_style.is_none() {
-            self.indent_style = Some(indent.chars().next().unwrap());
-            Ok(())
-        } else if indent.chars().next() == self.indent_style {
-            Ok(())
-        } else {
-            self.indentation_error(
-                span,
-                format!(
-                    "This line is indented with {}s, while prior lines are indented with {}s.",
-                    indent_char_name(indent.chars().next().unwrap()),
-                    indent_char_name(self.indent_style.unwrap())
-                ),
-            );
-            Err(ParseFailed)
-        }
-    }
 }
 
 /// A thin wrapper that makes [`Parser`] backtrackable.
@@ -494,8 +358,6 @@ impl<'a, 'b> BTParser<'a, 'b> {
             lexer: snapshot.lexer.clone(),
             buffered: snapshot.buffered.clone(),
             enclosure_stack: snapshot.enclosure_stack.clone(),
-            indent_stack: snapshot.indent_stack.clone(),
-            indent_style: snapshot.indent_style,
             diagnostics: Vec::new(),
         };
         Self { snapshot, parser }
@@ -505,8 +367,6 @@ impl<'a, 'b> BTParser<'a, 'b> {
         self.snapshot.lexer = self.parser.lexer;
         self.snapshot.buffered = self.parser.buffered;
         self.snapshot.enclosure_stack = self.parser.enclosure_stack;
-        self.snapshot.indent_stack = self.parser.indent_stack;
-        self.snapshot.indent_style = self.parser.indent_style;
         self.snapshot.diagnostics.extend(self.parser.diagnostics);
     }
 }
@@ -525,29 +385,57 @@ impl<'a, 'b> std::ops::DerefMut for BTParser<'a, 'b> {
     }
 }
 
-fn indent_char_name(c: char) -> &'static str {
-    match c {
-        ' ' => "space",
-        '\t' => "tab",
-        _ => panic!(),
+/// The start position of a chunk of code enclosed by (), [], or {}.
+/// (This has nothing to do with "closures".)
+///
+/// Note that <> isn't currently considered an enclosure, as `<` might be
+/// a less-than operator, while the rest are unambiguous.
+///
+/// A `{}` enclosure may or may not be a block. A block contains a list of
+/// statements, separated by newlines or semicolons (or both).
+/// Semicolons and newlines are consumed by `par.expect_stmt_end()`.
+///
+/// Non-block enclosures contains zero or more expressions, maybe separated by
+/// commas. When the top-most enclosure is a non-block, newlines are ignored
+/// (by `par.next()`), and semicolons are just normal tokens that'll be
+/// rejected by the parsing fns in grammar/.
+#[derive(Clone, Debug)]
+struct Enclosure {
+    token_kind: TokenKind,
+    _token_span: Span, // TODO: mark mismatched tokens
+    is_block: bool,
+}
+impl Enclosure {
+    pub fn block(token_span: Span) -> Self {
+        Self {
+            token_kind: TokenKind::BraceOpen,
+            _token_span: token_span,
+            is_block: true,
+        }
+    }
+    pub fn non_block(token_kind: TokenKind, token_span: Span) -> Self {
+        Self {
+            token_kind,
+            _token_span: token_span,
+            is_block: false,
+        }
     }
 }
 
-fn indent_str<'a>(file_id: SourceFileId, tok: &Token<'a>) -> (&'a str, Span) {
-    assert_eq!(tok.kind, TokenKind::Newline);
-    let text = tok.text.trim_start_matches(&['\r', '\n'][..]);
-    let span = Span::new(
-        file_id,
-        tok.span.start + (tok.text.len() - text.len()),
-        tok.span.end,
-    );
-    (text, span)
+fn is_enclosure_open(tk: TokenKind) -> bool {
+    use TokenKind::*;
+    matches!(tk, ParenOpen | BraceOpen | BracketOpen)
 }
 
-#[derive(Clone)]
-struct BlockIndent<'a> {
-    context_span: Span,
-    context_name: String,
-    indent: &'a str,
-    indent_span: Span,
+fn is_enclosure_close(tk: TokenKind) -> bool {
+    use TokenKind::*;
+    matches!(tk, ParenClose | BraceClose | BracketClose)
+}
+
+fn enclosure_tokens_match(open: TokenKind, close: TokenKind) -> bool {
+    use TokenKind::*;
+    matches!(
+        (open, close),
+        (ParenOpen, ParenClose) | (BraceOpen, BraceClose) | (BracketOpen, BracketClose)
+    )
 }

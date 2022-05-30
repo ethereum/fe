@@ -1,11 +1,13 @@
 use std::context::Context
 
-contract Foo:
-  val: u8
+contract Foo {
+    val: u8
 
-  pub fn baz(val1: u256, val2: u256):
-    pass
+    pub fn baz(val1: u256, val2: u256) {}
+}
 
-contract Bar:
-  pub fn test(ctx: Context):
-    Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
+contract Bar {
+    pub fn test(ctx: Context) {
+        Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
+    }
+}

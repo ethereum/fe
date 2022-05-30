@@ -14,11 +14,12 @@ note:
   │         ^^^^^^^^^^^^^^^^^^^^^ String<11>
 
 note: 
-   ┌─ external_contract.fe:9:5
+   ┌─ external_contract.fe:10:5
    │  
- 9 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
-10 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
-   │ ╰──────────────────────────────────────────────────────^ attributes hash: 14584319691445179306
+10 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+11 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
+12 │ │     }
+   │ ╰─────^ attributes hash: 14584319691445179306
    │  
    = FunctionSignature {
          self_decl: None,
@@ -81,9 +82,9 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:10:22
+   ┌─ external_contract.fe:11:22
    │
-10 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
+11 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
    │                      ^^^  ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
    │                      │    │       │          
    │                      │    │       Array<address, 5>: Memory
@@ -91,9 +92,9 @@ note:
    │                      Context: Memory
 
 note: 
-   ┌─ external_contract.fe:10:9
+   ┌─ external_contract.fe:11:9
    │
-10 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
+11 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3872046667435269452
    │
    = Event {
@@ -137,15 +138,16 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:12:5
+   ┌─ external_contract.fe:14:5
    │  
-12 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3>:
-13 │ │         let my_array: Array<u256, 3>
-14 │ │         my_array[0] = a
-15 │ │         my_array[1] = a * b
-16 │ │         my_array[2] = b
-17 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 14276910879408601208
+14 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3> {
+15 │ │         let my_array: Array<u256, 3>
+16 │ │         my_array[0] = a
+17 │ │         my_array[1] = a * b
+18 │ │         my_array[2] = b
+19 │ │         return my_array
+20 │ │     }
+   │ ╰─────^ attributes hash: 14276910879408601208
    │  
    = FunctionSignature {
          self_decl: None,
@@ -187,46 +189,15 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:13:23
+   ┌─ external_contract.fe:15:23
    │
-13 │         let my_array: Array<u256, 3>
+15 │         let my_array: Array<u256, 3>
    │                       ^^^^^^^^^^^^^^ Array<u256, 3>
 
 note: 
-   ┌─ external_contract.fe:14:9
+   ┌─ external_contract.fe:16:9
    │
-14 │         my_array[0] = a
-   │         ^^^^^^^^ ^ u256: Value
-   │         │         
-   │         Array<u256, 3>: Memory
-
-note: 
-   ┌─ external_contract.fe:14:9
-   │
-14 │         my_array[0] = a
-   │         ^^^^^^^^^^^   ^ u256: Value
-   │         │              
-   │         u256: Memory
-15 │         my_array[1] = a * b
-   │         ^^^^^^^^ ^ u256: Value
-   │         │         
-   │         Array<u256, 3>: Memory
-
-note: 
-   ┌─ external_contract.fe:15:9
-   │
-15 │         my_array[1] = a * b
-   │         ^^^^^^^^^^^   ^   ^ u256: Value
-   │         │             │    
-   │         │             u256: Value
-   │         u256: Memory
-
-note: 
-   ┌─ external_contract.fe:15:23
-   │
-15 │         my_array[1] = a * b
-   │                       ^^^^^ u256: Value
-16 │         my_array[2] = b
+16 │         my_array[0] = a
    │         ^^^^^^^^ ^ u256: Value
    │         │         
    │         Array<u256, 3>: Memory
@@ -234,24 +205,52 @@ note:
 note: 
    ┌─ external_contract.fe:16:9
    │
-16 │         my_array[2] = b
+16 │         my_array[0] = a
    │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
    │         u256: Memory
-17 │         return my_array
+17 │         my_array[1] = a * b
+   │         ^^^^^^^^ ^ u256: Value
+   │         │         
+   │         Array<u256, 3>: Memory
+
+note: 
+   ┌─ external_contract.fe:17:9
+   │
+17 │         my_array[1] = a * b
+   │         ^^^^^^^^^^^   ^   ^ u256: Value
+   │         │             │    
+   │         │             u256: Value
+   │         u256: Memory
+
+note: 
+   ┌─ external_contract.fe:17:23
+   │
+17 │         my_array[1] = a * b
+   │                       ^^^^^ u256: Value
+18 │         my_array[2] = b
+   │         ^^^^^^^^ ^ u256: Value
+   │         │         
+   │         Array<u256, 3>: Memory
+
+note: 
+   ┌─ external_contract.fe:18:9
+   │
+18 │         my_array[2] = b
+   │         ^^^^^^^^^^^   ^ u256: Value
+   │         │              
+   │         u256: Memory
+19 │         return my_array
    │                ^^^^^^^^ Array<u256, 3>: Memory
 
 note: 
-   ┌─ external_contract.fe:20:5
+   ┌─ external_contract.fe:24:5
    │  
-20 │ ╭     pub fn call_emit_event(
-21 │ │         ctx: Context,
-22 │ │         foo_address: address,
-23 │ │         my_num: u256,
-   · │
-27 │ │         let foo: Foo = Foo(ctx, foo_address)
-28 │ │         foo.emit_event(my_num, my_addrs, my_string)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 11744736773867210426
+24 │ ╭     pub fn call_emit_event(ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+25 │ │         let foo: Foo = Foo(ctx, foo_address)
+26 │ │         foo.emit_event(my_num, my_addrs, my_string)
+27 │ │     }
+   │ ╰─────^ attributes hash: 11744736773867210426
    │  
    = FunctionSignature {
          self_decl: None,
@@ -323,25 +322,25 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:27:18
+   ┌─ external_contract.fe:25:18
    │
-27 │         let foo: Foo = Foo(ctx, foo_address)
+25 │         let foo: Foo = Foo(ctx, foo_address)
    │                  ^^^ Foo
 
 note: 
-   ┌─ external_contract.fe:27:28
+   ┌─ external_contract.fe:25:28
    │
-27 │         let foo: Foo = Foo(ctx, foo_address)
+25 │         let foo: Foo = Foo(ctx, foo_address)
    │                            ^^^  ^^^^^^^^^^^ address: Value
    │                            │     
    │                            Context: Memory
 
 note: 
-   ┌─ external_contract.fe:27:24
+   ┌─ external_contract.fe:25:24
    │
-27 │         let foo: Foo = Foo(ctx, foo_address)
+25 │         let foo: Foo = Foo(ctx, foo_address)
    │                        ^^^^^^^^^^^^^^^^^^^^^ Foo: Value
-28 │         foo.emit_event(my_num, my_addrs, my_string)
+26 │         foo.emit_event(my_num, my_addrs, my_string)
    │         ^^^            ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
    │         │              │       │          
    │         │              │       Array<address, 5>: Memory
@@ -349,22 +348,19 @@ note:
    │         Foo: Value
 
 note: 
-   ┌─ external_contract.fe:28:9
+   ┌─ external_contract.fe:26:9
    │
-28 │         foo.emit_event(my_num, my_addrs, my_string)
+26 │         foo.emit_event(my_num, my_addrs, my_string)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ external_contract.fe:30:5
+   ┌─ external_contract.fe:29:5
    │  
-30 │ ╭     pub fn call_build_array(
-31 │ │         ctx: Context,
-32 │ │         foo_address: address,
-33 │ │         a: u256,
-   · │
-36 │ │         let foo: Foo = Foo(ctx, foo_address)
-37 │ │         return foo.build_array(a, b)
-   │ ╰────────────────────────────────────^ attributes hash: 14801245347360386258
+29 │ ╭     pub fn call_build_array(ctx: Context, foo_address: address, a: u256, b: u256) -> Array<u256, 3> {
+30 │ │         let foo: Foo = Foo(ctx, foo_address)
+31 │ │         return foo.build_array(a, b)
+32 │ │     }
+   │ ╰─────^ attributes hash: 14801245347360386258
    │  
    = FunctionSignature {
          self_decl: None,
@@ -429,34 +425,34 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:36:18
+   ┌─ external_contract.fe:30:18
    │
-36 │         let foo: Foo = Foo(ctx, foo_address)
+30 │         let foo: Foo = Foo(ctx, foo_address)
    │                  ^^^ Foo
 
 note: 
-   ┌─ external_contract.fe:36:28
+   ┌─ external_contract.fe:30:28
    │
-36 │         let foo: Foo = Foo(ctx, foo_address)
+30 │         let foo: Foo = Foo(ctx, foo_address)
    │                            ^^^  ^^^^^^^^^^^ address: Value
    │                            │     
    │                            Context: Memory
 
 note: 
-   ┌─ external_contract.fe:36:24
+   ┌─ external_contract.fe:30:24
    │
-36 │         let foo: Foo = Foo(ctx, foo_address)
+30 │         let foo: Foo = Foo(ctx, foo_address)
    │                        ^^^^^^^^^^^^^^^^^^^^^ Foo: Value
-37 │         return foo.build_array(a, b)
+31 │         return foo.build_array(a, b)
    │                ^^^             ^  ^ u256: Value
    │                │               │   
    │                │               u256: Value
    │                Foo: Value
 
 note: 
-   ┌─ external_contract.fe:37:16
+   ┌─ external_contract.fe:31:16
    │
-37 │         return foo.build_array(a, b)
+31 │         return foo.build_array(a, b)
    │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory
 
 

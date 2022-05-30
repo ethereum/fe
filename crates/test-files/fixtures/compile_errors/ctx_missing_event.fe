@@ -1,8 +1,11 @@
 use std::context::Context
 
-event HelloWorld:
+event HelloWorld {
     message: String<26>
+}
 
-contract Bar:
-    pub fn say_hello(ctx: Context):
+contract Bar {
+    pub fn say_hello(ctx: Context) {
         emit HelloWorld(message: "hello world")
+    }
+}

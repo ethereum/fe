@@ -1,11 +1,14 @@
 use std::context::Context
 
-contract Foo:
-    pub fn get_my_num() -> u256:
+contract Foo {
+    pub fn get_my_num() -> u256 {
         return 42
+    }
+}
 
-contract FooFactory:
-    pub fn create2_foo(ctx: Context) -> address:
-        # value and salt
+contract FooFactory {
+    pub fn create2_foo(ctx: Context) -> address {
         let foo: Foo = Foo.create2(ctx, 0, 52)
         return address(foo)
+    }
+}

@@ -1,7 +1,10 @@
-struct Something:
-  pub val: u8
+struct Something {
+    pub val: u8
+}
 
-contract Bar:
-  pub fn test():
-    let thingy: Something = Something(val: u8(1))
-    thingy.doesnt_exist()
+contract Bar {
+    pub fn test() {
+        let thingy: Something = Something(val: u8(1))
+        thingy.doesnt_exist()
+    }
+}

@@ -4,13 +4,14 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: the function `do_private_thingz` on `contract Foo` is private
-   ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:10:26
+   ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:13:30
    │  
- 5 │ ╭   fn do_private_thingz(self):
- 6 │ │      self.val = 100
-   │ ╰───────────────────' `do_private_thingz` is defined here
+ 6 │ ╭     fn do_private_thingz(self) {
+ 7 │ │         self.val = 100
+ 8 │ │     }
+   │ ╰─────' `do_private_thingz` is defined here
    · │
-10 │       Foo(ctx, address(0)).do_private_thingz()
-   │                            ^^^^^^^^^^^^^^^^^ this function is not `pub`
+13 │           Foo(ctx, address(0)).do_private_thingz()
+   │                                ^^^^^^^^^^^^^^^^^ this function is not `pub`
 
 

@@ -1,7 +1,7 @@
-contract Foo:
-
-    pub fn baz(self):
+contract Foo {
+    pub fn baz(self) {
         self.bar(doesnt_exist: 1, me_neither: 2)
+    }
 
-    pub fn bar(self, val1: u256, val2: u256):
-        pass
+    pub fn bar(self, val1: u256, val2: u256) {}
+}

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(contract_def), try_parse_module,\n    r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub fn foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
+expression: "ast_string(stringify!(contract_def), try_parse_module,\n           r#\"contract Foo {\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n\n  pub fn foo() -> u8 {\n    return 10\n  }\n  event Bar {\n    idx from: address\n  }\n}\n\"#)"
 
 ---
 Node(
@@ -23,8 +23,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 16,
-                    end: 17,
+                    start: 17,
+                    end: 18,
                   ),
                 ),
                 typ: Node(
@@ -32,15 +32,15 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 19,
-                    end: 26,
+                    start: 20,
+                    end: 27,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 16,
-                end: 26,
+                start: 17,
+                end: 27,
               ),
             ),
             Node(
@@ -50,8 +50,8 @@ Node(
                 name: Node(
                   kind: "y",
                   span: Span(
-                    start: 33,
-                    end: 34,
+                    start: 34,
+                    end: 35,
                   ),
                 ),
                 typ: Node(
@@ -59,15 +59,15 @@ Node(
                     base: "u8",
                   ),
                   span: Span(
-                    start: 36,
-                    end: 38,
+                    start: 37,
+                    end: 39,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 29,
-                end: 38,
+                start: 30,
+                end: 39,
               ),
             ),
             Node(
@@ -77,8 +77,8 @@ Node(
                 name: Node(
                   kind: "z",
                   span: Span(
-                    start: 51,
-                    end: 52,
+                    start: 52,
+                    end: 53,
                   ),
                 ),
                 typ: Node(
@@ -86,8 +86,8 @@ Node(
                     base: Node(
                       kind: "Map",
                       span: Span(
-                        start: 54,
-                        end: 57,
+                        start: 55,
+                        end: 58,
                       ),
                     ),
                     args: Node(
@@ -97,8 +97,8 @@ Node(
                             base: "u8",
                           ),
                           span: Span(
-                            start: 58,
-                            end: 60,
+                            start: 59,
+                            end: 61,
                           ),
                         )),
                         TypeDesc(Node(
@@ -106,27 +106,27 @@ Node(
                             base: "address",
                           ),
                           span: Span(
-                            start: 62,
-                            end: 69,
+                            start: 63,
+                            end: 70,
                           ),
                         )),
                       ],
                       span: Span(
-                        start: 57,
-                        end: 70,
+                        start: 58,
+                        end: 71,
                       ),
                     ),
                   ),
                   span: Span(
-                    start: 54,
-                    end: 70,
+                    start: 55,
+                    end: 71,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 41,
-                end: 70,
+                start: 42,
+                end: 71,
               ),
             ),
           ],
@@ -134,22 +134,22 @@ Node(
             Function(Node(
               kind: Function(
                 pub_: Some(Span(
-                  start: 73,
-                  end: 76,
+                  start: 75,
+                  end: 78,
                 )),
                 unsafe_: None,
                 name: Node(
                   kind: "foo",
                   span: Span(
-                    start: 80,
-                    end: 83,
+                    start: 82,
+                    end: 85,
                   ),
                 ),
                 generic_params: Node(
                   kind: [],
                   span: Span(
-                    start: 80,
-                    end: 83,
+                    start: 82,
+                    end: 85,
                   ),
                 ),
                 args: [],
@@ -158,8 +158,8 @@ Node(
                     base: "u8",
                   ),
                   span: Span(
-                    start: 89,
-                    end: 91,
+                    start: 91,
+                    end: 93,
                   ),
                 )),
                 body: [
@@ -168,21 +168,21 @@ Node(
                       value: Some(Node(
                         kind: Num("10"),
                         span: Span(
-                          start: 104,
-                          end: 106,
+                          start: 107,
+                          end: 109,
                         ),
                       )),
                     ),
                     span: Span(
-                      start: 97,
-                      end: 106,
+                      start: 100,
+                      end: 109,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 73,
-                end: 106,
+                start: 75,
+                end: 113,
               ),
             )),
             Event(Node(
@@ -190,8 +190,8 @@ Node(
                 name: Node(
                   kind: "Bar",
                   span: Span(
-                    start: 115,
-                    end: 118,
+                    start: 122,
+                    end: 125,
                   ),
                 ),
                 fields: [
@@ -201,8 +201,8 @@ Node(
                       name: Node(
                         kind: "from",
                         span: Span(
-                          start: 128,
-                          end: 132,
+                          start: 136,
+                          end: 140,
                         ),
                       ),
                       typ: Node(
@@ -210,22 +210,22 @@ Node(
                           base: "address",
                         ),
                         span: Span(
-                          start: 134,
-                          end: 141,
+                          start: 142,
+                          end: 149,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 124,
-                      end: 141,
+                      start: 132,
+                      end: 149,
                     ),
                   ),
                 ],
                 pub_qual: None,
               ),
               span: Span(
-                start: 109,
-                end: 141,
+                start: 116,
+                end: 153,
               ),
             )),
           ],
@@ -233,13 +233,13 @@ Node(
         ),
         span: Span(
           start: 0,
-          end: 141,
+          end: 155,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 141,
+    end: 155,
   ),
 )

@@ -1,8 +1,11 @@
 use foo::{get_42_backend, Precision, Bing}
 
-contract Foo:
-    pub fn get_addr() -> Bing:
+contract Foo {
+    pub fn get_addr() -> Bing {
         return Bing(my_address: address(24))
+    }
 
-    pub fn get_precision() -> Precision:
+    pub fn get_precision() -> Precision {
         return 18
+    }
+}

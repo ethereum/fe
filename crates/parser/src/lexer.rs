@@ -32,7 +32,6 @@ impl<'a> Iterator for Lexer<'a> {
         let kind = self.inner.next()?;
         let text = self.inner.slice();
         let span = self.inner.span();
-
         Some(Token {
             kind,
             text,

@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: feature not yet implemented: structs with complex fields can't be returned from public functions yet
-  ┌─ compile_errors/return_complex_struct.fe:5:17
+  ┌─ compile_errors/return_complex_struct.fe:6:19
   │
-5 │   pub fn f() -> Foo:
-  │                 ^^^ not yet implemented
+6 │     pub fn f() -> Foo {
+  │                   ^^^ not yet implemented
 
 

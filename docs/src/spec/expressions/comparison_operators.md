@@ -21,7 +21,7 @@
 
 Here are examples of the comparison operators being used.
 
-```
+```fe,ignore
 123 == 123
 23 != -12
 12 > 11

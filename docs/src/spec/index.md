@@ -33,7 +33,6 @@
     * [`break` Statement](statements/break.md)
     * [`continue` Statement](statements/continue.md)
     * [`assert` Statement](statements/assert.md)
-    * [`pass` Statement](statements/pass.md)
 * [Expressions](expressions/index.md)
     * [Call expressions](expressions/call.md)
     * [Tuple expressions](expressions/tuple.md)

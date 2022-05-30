@@ -1,12 +1,12 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(struct_bad_field_name), types::parse_struct_def, true,\n           \"struct f:\\n pub event\")"
+expression: "err_string(stringify!(struct_bad_field_name), module::parse_module,\n           \"struct f {\\n pub event }\")"
 
 ---
 error: failed to parse struct definition
   ┌─ struct_bad_field_name:2:6
   │
-2 │  pub event
+2 │  pub event }
   │      ^^^^^ unexpected token
 
 

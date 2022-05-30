@@ -1,14 +1,19 @@
 use std::context::Context
 
-contract Foo:
-    pub fn get_my_num() -> u256:
+contract Foo {
+    pub fn get_my_num() -> u256 {
         return 42
+    }
+}
 
-contract FooFactory:
+contract FooFactory {
     foo_addr: address
 
-    pub fn __init__(self, ctx: Context):
+    pub fn __init__(self, ctx: Context) {
         self.foo_addr = address(Foo.create(ctx, 0))
+    }
 
-    pub fn get_foo_addr(self) -> address:
+    pub fn get_foo_addr(self) -> address {
         return self.foo_addr
+    }
+}

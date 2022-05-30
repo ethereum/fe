@@ -1,9 +1,13 @@
-pub struct Foo:
+pub struct Foo {
     my_address: address
+}
 
-pub struct Bar:
+pub struct Bar {
     pub my_u256: u256
+}
 
-pub contract FooBar:
-   pub fn add(_ x: u256, _ y: u256) -> u256:
-       return x + y
+pub contract FooBar {
+    pub fn add(_ x: u256, _ y: u256) -> u256 {
+        return x + y
+    }
+}

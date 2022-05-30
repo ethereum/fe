@@ -8,8 +8,8 @@ error: `baz` must be called via `self`
   │
 3 │         baz()
   │         ^^^ `baz` is called here as a standalone function
-4 │ 
-5 │     fn baz(self):
+  ·
+6 │     fn baz(self) {}
   │        ^^^ `baz` is defined here as a function that takes `self`
   │
   = Suggestion: use `self.baz(...)` instead of `baz(...)`

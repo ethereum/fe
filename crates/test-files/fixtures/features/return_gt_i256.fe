@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar(x: i256, y: i256) -> bool:
+contract Foo {
+    pub fn bar(x: i256, y: i256) -> bool {
         return x > y
+    }
+}

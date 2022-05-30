@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ ternary_expression.fe:3:5
+  ┌─ ternary_expression.fe:2:5
   │  
-3 │ ╭     pub fn bar(input: u256) -> u256:
-4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 10660199954095577886
+2 │ ╭     pub fn bar(input: u256) -> u256 {
+3 │ │         return 1 if input > 5 else 0
+4 │ │     }
+  │ ╰─────^ attributes hash: 10660199954095577886
   │  
   = FunctionSignature {
         self_decl: None,
@@ -36,26 +37,26 @@ note:
     }
 
 note: 
-  ┌─ ternary_expression.fe:4:21
+  ┌─ ternary_expression.fe:3:21
   │
-4 │         return 1 if input > 5 else 0
+3 │         return 1 if input > 5 else 0
   │                     ^^^^^   ^ u256: Value
   │                     │        
   │                     u256: Value
 
 note: 
-  ┌─ ternary_expression.fe:4:16
+  ┌─ ternary_expression.fe:3:16
   │
-4 │         return 1 if input > 5 else 0
+3 │         return 1 if input > 5 else 0
   │                ^    ^^^^^^^^^      ^ u256: Value
   │                │    │               
   │                │    bool: Value
   │                u256: Value
 
 note: 
-  ┌─ ternary_expression.fe:4:16
+  ┌─ ternary_expression.fe:3:16
   │
-4 │         return 1 if input > 5 else 0
+3 │         return 1 if input > 5 else 0
   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

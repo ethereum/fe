@@ -10,33 +10,33 @@ error: expression is not a constant
   │                                 ^^^^^^ expression is required to be constant here
 
 error: feature not yet implemented: non numeric type const generics
-  ┌─ compile_errors/const_generics_param.fe:6:33
+  ┌─ compile_errors/const_generics_param.fe:7:33
   │
-6 │         let array: Array<i32, { "FOO" }>
+7 │         let array: Array<i32, { "FOO" }>
   │                                 ^^^^^ not yet implemented
 
 error: zero division error
-  ┌─ compile_errors/const_generics_param.fe:9:38
-  │
-9 │         let array: Array<i32, { 1 - (3 / 0) }>
-  │                                      ^^^^^ zero division occurred during constant evaluation
+   ┌─ compile_errors/const_generics_param.fe:11:38
+   │
+11 │         let array: Array<i32, { 1 - (3 / 0) }>
+   │                                      ^^^^^ zero division occurred during constant evaluation
 
 error: zero division error
-   ┌─ compile_errors/const_generics_param.fe:12:38
+   ┌─ compile_errors/const_generics_param.fe:15:38
    │
-12 │         let array: Array<i32, { 1 - (3 % 0) }>
+15 │         let array: Array<i32, { 1 - (3 % 0) }>
    │                                      ^^^^^ zero division occurred during constant evaluation
 
 error: overflow error
-   ┌─ compile_errors/const_generics_param.fe:15:33
+   ┌─ compile_errors/const_generics_param.fe:19:33
    │
-15 │         let array: Array<i32, { 1 << 256 }>
+19 │         let array: Array<i32, { 1 << 256 }>
    │                                 ^^^^^^^^ overflow occurred during constant evaluation
 
 error: overflow error
-   ┌─ compile_errors/const_generics_param.fe:18:33
+   ┌─ compile_errors/const_generics_param.fe:23:33
    │
-18 │         let array: Array<i32, { 0 - 1 }>
+23 │         let array: Array<i32, { 0 - 1 }>
    │                                 ^^^^^ overflow occurred during constant evaluation
 
 

@@ -1,10 +1,11 @@
-contract Foo:
+contract Foo {
     my_bool: bool
 
-    pub fn bar(self) -> u256:
+    pub fn bar(self) -> u256 {
         self.my_bool = false
+        while self.my_bool {
 
-        while self.my_bool:
-            pass
-
+        }
         return 42
+    }
+}

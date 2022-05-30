@@ -10,8 +10,9 @@ than or equal to 256 bits in size, we store them on the stack. Pointers to value
 
 Example:
 
-```python
-# function scope
-foo: u256 = 42 # foo is stored on the stack
-bar: Array<u256, 100> # bar is a memory pointer stored on the stack
+```fe
+fn f() {
+    let foo: u256 = 42 # foo is stored on the stack
+    let bar: Array<u256, 100> # bar is a memory pointer stored on the stack
+}
 ```

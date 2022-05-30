@@ -1,5 +1,5 @@
 use std::context::Context
 
-contract Foo:
-    pub fn bar(baz: u256, ctx: Context):
-        pass
+contract Foo {
+    pub fn bar(baz: u256, ctx: Context) {}
+}

@@ -15,10 +15,8 @@ pub fn parse_module(par: &mut Parser) -> Node<Module> {
     let mut body = vec![];
     loop {
         match par.peek() {
-            Some(TokenKind::Newline) => par.expect_newline("module").unwrap(),
-            Some(TokenKind::Dedent) => {
+            Some(TokenKind::Newline) => {
                 par.next().unwrap();
-                break;
             }
             None => break,
             Some(_) => {
@@ -66,7 +64,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                 _ => {
                     let tok = par.next()?;
                     par.unexpected_token_error(
-                        tok.span,
+                        &tok,
                         "failed to parse module",
                         vec!["Note: expected `fn`".into()],
                     );
@@ -78,7 +76,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
-                tok.span,
+                &tok,
                 "failed to parse module",
                 vec!["Note: expected import, contract, struct, type, const or event".into()],
             );
@@ -180,7 +178,7 @@ pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
                         }
                         _ => {
                             par.unexpected_token_error(
-                                tok.span,
+                                &tok,
                                 "failed to parse `use` tree",
                                 vec!["Note: expected a `,` or `}` token".to_string()],
                             );
@@ -204,7 +202,7 @@ pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "failed to parse `use` tree",
                     vec!["Note: expected a `*`, `{` or name token".to_string()],
                 );
