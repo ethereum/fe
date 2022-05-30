@@ -9,11 +9,11 @@ An assignment statement moves a value into a specified place. An assignment stat
 
 Example:
 
-```python
-contract Foo:
+```fe
+contract Foo {
   some_array: Array<u256, 10>
 
-  pub fn bar(self):
+  pub fn bar(self) {
     let val1: u256 = 10
     # Assignment of stack variable
     val1 = 10
@@ -24,6 +24,8 @@ contract Foo:
 
     # Assignment of storage array slot
     self.some_array[5] = 1000
+  }
+}
 ```
 
 [_Expression_]: ../expressions/index.md

@@ -10,19 +10,22 @@ Struct types are either stored in storage or memory but are never stored directl
 
 Examples:
 
-```Python
-struct Rectangle:
-  width: u256
-  length: u256
+```fe
+struct Rectangle {
+  pub width: u256
+  pub length: u256
+}
 
-contract Example:
+contract Example {
   # A Rectangle in storage
   area: Rectangle
 
-  fn do_something():
+  fn do_something() {
     let length: u256 = 20
     # A rectangle in memory
     let square: Rectangle = Rectangle(width: 10, length)
+  }
+}
 ```
 
 All fields of struct types are always initialized.

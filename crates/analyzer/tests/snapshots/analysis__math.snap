@@ -4,16 +4,16 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ math.fe:4:5
+   ┌─ math.fe:2:5
    │  
- 4 │ ╭     pub fn sqrt(val: u256) -> u256:
- 5 │ │         let z: u256
- 6 │ │         if (val > 3):
- 7 │ │             z = val
+ 2 │ ╭     pub fn sqrt(val: u256) -> u256 {
+ 3 │ │         let z: u256
+ 4 │ │         if val > 3 {
+ 5 │ │             z = val
    · │
-13 │ │             z = 1
 14 │ │         return z
-   │ ╰────────────────^ attributes hash: 12367727332255217641
+15 │ │     }
+   │ ╰─────^ attributes hash: 12367727332255217641
    │  
    = FunctionSignature {
          self_decl: None,
@@ -41,113 +41,116 @@ note:
      }
 
 note: 
-  ┌─ math.fe:5:16
+  ┌─ math.fe:3:16
   │
-5 │         let z: u256
+3 │         let z: u256
   │                ^^^^ u256
   ·
-8 │             let x: u256 = val / 2 + 1
+6 │             let x: u256 = val / 2 + 1
   │                    ^^^^ u256
 
 note: 
-  ┌─ math.fe:6:13
+  ┌─ math.fe:4:12
   │
-6 │         if (val > 3):
-  │             ^^^   ^ u256: Value
-  │             │      
-  │             u256: Value
+4 │         if val > 3 {
+  │            ^^^   ^ u256: Value
+  │            │      
+  │            u256: Value
 
 note: 
-  ┌─ math.fe:6:12
+  ┌─ math.fe:4:12
   │
-6 │         if (val > 3):
-  │            ^^^^^^^^^ bool: Value
-7 │             z = val
+4 │         if val > 3 {
+  │            ^^^^^^^ bool: Value
+5 │             z = val
   │             ^   ^^^ u256: Value
   │             │    
   │             u256: Value
-8 │             let x: u256 = val / 2 + 1
+6 │             let x: u256 = val / 2 + 1
   │                           ^^^   ^ u256: Value
   │                           │      
   │                           u256: Value
 
 note: 
-  ┌─ math.fe:8:27
+  ┌─ math.fe:6:27
   │
-8 │             let x: u256 = val / 2 + 1
+6 │             let x: u256 = val / 2 + 1
   │                           ^^^^^^^   ^ u256: Value
   │                           │          
   │                           u256: Value
 
 note: 
-  ┌─ math.fe:8:27
+  ┌─ math.fe:6:27
   │
-8 │             let x: u256 = val / 2 + 1
+6 │             let x: u256 = val / 2 + 1
   │                           ^^^^^^^^^^^ u256: Value
-9 │             while (x < z):
-  │                    ^   ^ u256: Value
-  │                    │    
-  │                    u256: Value
+7 │             while x < z {
+  │                   ^   ^ u256: Value
+  │                   │    
+  │                   u256: Value
 
 note: 
-   ┌─ math.fe:9:19
-   │
- 9 │             while (x < z):
-   │                   ^^^^^^^ bool: Value
-10 │                 z = x
-   │                 ^   ^ u256: Value
-   │                 │    
-   │                 u256: Value
-11 │                 x = (val / x + x) / 2
-   │                 ^    ^^^   ^ u256: Value
-   │                 │    │      
-   │                 │    u256: Value
-   │                 u256: Value
+  ┌─ math.fe:7:19
+  │
+7 │             while x < z {
+  │                   ^^^^^ bool: Value
+8 │                 z = x
+  │                 ^   ^ u256: Value
+  │                 │    
+  │                 u256: Value
+9 │                 x = (val / x + x) / 2
+  │                 ^    ^^^   ^ u256: Value
+  │                 │    │      
+  │                 │    u256: Value
+  │                 u256: Value
 
 note: 
-   ┌─ math.fe:11:22
-   │
-11 │                 x = (val / x + x) / 2
-   │                      ^^^^^^^   ^ u256: Value
-   │                      │          
-   │                      u256: Value
+  ┌─ math.fe:9:22
+  │
+9 │                 x = (val / x + x) / 2
+  │                      ^^^^^^^   ^ u256: Value
+  │                      │          
+  │                      u256: Value
 
 note: 
-   ┌─ math.fe:11:21
-   │
-11 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^   ^ u256: Value
-   │                     │                
-   │                     u256: Value
+  ┌─ math.fe:9:21
+  │
+9 │                 x = (val / x + x) / 2
+  │                     ^^^^^^^^^^^^^   ^ u256: Value
+  │                     │                
+  │                     u256: Value
 
 note: 
-   ┌─ math.fe:11:21
+   ┌─ math.fe:9:21
    │
-11 │                 x = (val / x + x) / 2
+ 9 │                 x = (val / x + x) / 2
    │                     ^^^^^^^^^^^^^^^^^ u256: Value
-12 │         elif (val != 0):
-   │               ^^^    ^ u256: Value
-   │               │       
-   │               u256: Value
+10 │             }
+11 │         } else if val != 0 {
+   │                   ^^^    ^ u256: Value
+   │                   │       
+   │                   u256: Value
 
 note: 
-   ┌─ math.fe:12:14
+   ┌─ math.fe:11:19
    │
-12 │         elif (val != 0):
-   │              ^^^^^^^^^^ bool: Value
-13 │             z = 1
+11 │         } else if val != 0 {
+   │                   ^^^^^^^^ bool: Value
+12 │             z = 1
    │             ^   ^ u256: Value
    │             │    
    │             u256: Value
+13 │         }
 14 │         return z
    │                ^ u256: Value
 
 note: 
-   ┌─ math.fe:16:5
+   ┌─ math.fe:17:5
    │  
-16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
-17 │ │         return x if x < y else y
-   │ ╰────────────────────────────────^ attributes hash: 6847926207878778580
+17 │ ╭     pub fn min(x: u256, y: u256) -> u256 {
+18 │ │         return x if x < y else y
+19 │ │     }
+   │ ╰─────^ attributes hash: 6847926207878778580
    │  
    = FunctionSignature {
          self_decl: None,
@@ -186,26 +189,26 @@ note:
      }
 
 note: 
-   ┌─ math.fe:17:21
+   ┌─ math.fe:18:21
    │
-17 │         return x if x < y else y
+18 │         return x if x < y else y
    │                     ^   ^ u256: Value
    │                     │    
    │                     u256: Value
 
 note: 
-   ┌─ math.fe:17:16
+   ┌─ math.fe:18:16
    │
-17 │         return x if x < y else y
+18 │         return x if x < y else y
    │                ^    ^^^^^      ^ u256: Value
    │                │    │           
    │                │    bool: Value
    │                u256: Value
 
 note: 
-   ┌─ math.fe:17:16
+   ┌─ math.fe:18:16
    │
-17 │         return x if x < y else y
+18 │         return x if x < y else y
    │                ^^^^^^^^^^^^^^^^^ u256: Value
 
 

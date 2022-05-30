@@ -1,6 +1,9 @@
-contract Foo:
-    event MyEvent:
+contract Foo {
+    event MyEvent {
         idx addr1: address
+    }
 
-    event MyEvent:
+    event MyEvent {
         idx addr1: address
+    }
+}

@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `break` outside of a loop
-  ┌─ [snippet]:4:5
+  ┌─ [snippet]:3:13
   │
-4 │     break
-  │     ^^^^^ `break` can only be used inside of a `for` or `while` loop
+3 │   if true { break }
+  │             ^^^^^ `break` can only be used inside of a `for` or `while` loop
 
 

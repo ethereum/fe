@@ -6,6 +6,7 @@ src = "src"
 title = "The Fe Guide"
 
 [output.html]
+additional-js = ["theme/custom-highlight.js"]
 additional-css = ["theme/reference.css"]
 
 [output.linkcheck]

@@ -1,4 +1,3 @@
 use std
 
-struct Bong:
-    pass
+struct Bong {}

@@ -6,7 +6,7 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: `__init__` function has incorrect return type
   ┌─ compile_errors/init_wrong_return_type.fe:2:26
   │
-2 │     pub fn __init__() -> u64:
+2 │     pub fn __init__() -> u64 {
   │                          ^^^ return type should be `()`
   │
   = Hint: Remove the return type specification.

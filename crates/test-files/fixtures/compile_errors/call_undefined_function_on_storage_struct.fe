@@ -1,8 +1,11 @@
-struct Something:
-  val: u8
+struct Something {
+    val: u8
+}
 
-contract Bar:
-  thingy: Something
+contract Bar {
+    thingy: Something
 
-  pub fn test(self):
-    self.thingy.doesnt_exist()
+    pub fn test(self) {
+        self.thingy.doesnt_exist()
+    }
+}

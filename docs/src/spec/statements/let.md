@@ -18,14 +18,16 @@ A `let` statement introduces a new set of variables. Any variables introduced by
 
 Example:
 
-```python
-contract Foo:
+```fe
+contract Foo {
 
-  pub fn bar():
+  pub fn bar() {
     let val1: u256 = 1
     let (val2):(u256) = (1,)
     let (val3, val4):(u256, bool) = (1, false)
     let (val5, val6, (val7, val8)):(u256, bool, (u256, u256)) = (1, false, (2, 4))
+  }
+}
 ```
 
 

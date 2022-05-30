@@ -1,14 +1,15 @@
 use std::context::Context
 
-contract Foo:
-  pub fn __init__():
-    pass
-  pub fn f():
-    pass
+contract Foo {
+    pub fn __init__() {}
 
+    pub fn f() {}
+}
 
-contract Bar:
-  fn b(ctx: Context):
-    let foo: Foo = Foo(ctx, address(0))
-    foo.f()
-    foo.__init__()
+contract Bar {
+    fn b(ctx: Context) {
+        let foo: Foo = Foo(ctx, address(0))
+        foo.f()
+        foo.__init__()
+    }
+}

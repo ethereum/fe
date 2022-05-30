@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_if2), functions::parse_stmt,\n           \"if a:\\n b \\nelif c:\\n d \\nelif e: \\n f \\nelse:\\n g\")"
+expression: "ast_string(stringify!(stmt_if2), functions::parse_stmt,\n           \"if a { b } else if c { d } else if e { \\n f } \\n else {\\n g }\")"
 
 ---
 Node(
@@ -35,8 +35,8 @@ Node(
           test: Node(
             kind: Name("c"),
             span: Span(
-              start: 15,
-              end: 16,
+              start: 19,
+              end: 20,
             ),
           ),
           body: [
@@ -45,14 +45,14 @@ Node(
                 value: Node(
                   kind: Name("d"),
                   span: Span(
-                    start: 19,
-                    end: 20,
+                    start: 23,
+                    end: 24,
                   ),
                 ),
               ),
               span: Span(
-                start: 19,
-                end: 20,
+                start: 23,
+                end: 24,
               ),
             ),
           ],
@@ -62,8 +62,8 @@ Node(
                 test: Node(
                   kind: Name("e"),
                   span: Span(
-                    start: 27,
-                    end: 28,
+                    start: 35,
+                    end: 36,
                   ),
                 ),
                 body: [
@@ -72,14 +72,14 @@ Node(
                       value: Node(
                         kind: Name("f"),
                         span: Span(
-                          start: 32,
-                          end: 33,
+                          start: 41,
+                          end: 42,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 32,
-                      end: 33,
+                      start: 41,
+                      end: 42,
                     ),
                   ),
                 ],
@@ -89,34 +89,34 @@ Node(
                       value: Node(
                         kind: Name("g"),
                         span: Span(
-                          start: 42,
-                          end: 43,
+                          start: 55,
+                          end: 56,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 42,
-                      end: 43,
+                      start: 55,
+                      end: 56,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 22,
-                end: 43,
+                start: 32,
+                end: 56,
               ),
             ),
           ],
         ),
         span: Span(
-          start: 10,
-          end: 43,
+          start: 16,
+          end: 56,
         ),
       ),
     ],
   ),
   span: Span(
     start: 0,
-    end: 43,
+    end: 56,
   ),
 )

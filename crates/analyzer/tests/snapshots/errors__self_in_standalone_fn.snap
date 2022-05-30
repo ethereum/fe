@@ -6,7 +6,7 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: `self` can only be used in contract or struct functions
   ┌─ compile_errors/self_in_standalone_fn.fe:1:12
   │
-1 │ fn pure_fn(self):
+1 │ fn pure_fn(self) {
   │            ^^^^ not allowed in functions defined outside of a contract or struct
 
 error: `self` can only be used in contract or struct functions
@@ -18,7 +18,7 @@ error: `self` can only be used in contract or struct functions
 error: `pure_fn` expects 0 arguments, but 1 was provided
   ┌─ compile_errors/self_in_standalone_fn.fe:1:4
   │
-1 │ fn pure_fn(self):
+1 │ fn pure_fn(self) {
   │    ^^^^^^^ expects 0 arguments
   ·
 7 │         pure_fn(self)

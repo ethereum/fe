@@ -14,4 +14,3 @@
 * [break Statement](./break.md)
 * [continue Statement](./continue.md)
 * [assert Statement](./assert.md)
-* [pass Statement](./pass.md)

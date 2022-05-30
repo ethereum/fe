@@ -10,33 +10,33 @@ error: expression is not a constant
   │                                 ^^^^^^ expression is required to be constant here
 
 error: expression is not a constant
-  ┌─ compile_errors/const_local.fe:7:25
+  ┌─ compile_errors/const_local.fe:8:26
   │
-7 │         const FOO:i32 = foo + 1
-  │                         ^^^ expression is required to be constant here
+8 │         const FOO: i32 = foo + 1
+  │                          ^^^ expression is required to be constant here
 
 error: overflow error
-   ┌─ compile_errors/const_local.fe:12:26
+   ┌─ compile_errors/const_local.fe:14:26
    │
-12 │         const FOO3: u8 = FOO1 + FOO2
+14 │         const FOO3: u8 = FOO1 + FOO2
    │                          ^^^^^^^^^^^ overflow occurred during constant evaluation
 
 error: cannot find value `BAR` in this scope
-   ┌─ compile_errors/const_local.fe:15:25
+   ┌─ compile_errors/const_local.fe:18:25
    │
-15 │         const FOO: u8 = BAR
+18 │         const FOO: u8 = BAR
    │                         ^^^ undefined
 
 error: expression is not a constant
-   ┌─ compile_errors/const_local.fe:15:25
+   ┌─ compile_errors/const_local.fe:18:25
    │
-15 │         const FOO: u8 = BAR
+18 │         const FOO: u8 = BAR
    │                         ^^^ expression is required to be constant here
 
 error: type mismatch
-   ┌─ compile_errors/const_local.fe:18:26
+   ┌─ compile_errors/const_local.fe:22:26
    │
-18 │         const FOO: i32 = "FOO"
+22 │         const FOO: i32 = "FOO"
    │                          ^^^^^ this has type `String<3>`; expected type `i32`
 
 

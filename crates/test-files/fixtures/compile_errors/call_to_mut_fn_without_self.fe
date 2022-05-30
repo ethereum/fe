@@ -1,6 +1,7 @@
-contract Foo:
-    fn bar(self):
+contract Foo {
+    fn bar(self) {
         baz()
+    }
 
-    fn baz(self):
-        pass
+    fn baz(self) {}
+}

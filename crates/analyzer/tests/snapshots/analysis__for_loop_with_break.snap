@@ -4,16 +4,16 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ for_loop_with_break.fe:3:5
+   ┌─ for_loop_with_break.fe:2:5
    │  
- 3 │ ╭     pub fn bar() -> u256:
- 4 │ │         let my_array: Array<u256, 3>
- 5 │ │         my_array[0] = 5
- 6 │ │         my_array[1] = 10
+ 2 │ ╭     pub fn bar() -> u256 {
+ 3 │ │         let my_array: Array<u256, 3>
+ 4 │ │         my_array[0] = 5
+ 5 │ │         my_array[1] = 10
    · │
-12 │ │                 break
-13 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 6115314201970082834
+14 │ │         return sum
+15 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
@@ -29,18 +29,30 @@ note:
      }
 
 note: 
-  ┌─ for_loop_with_break.fe:4:23
+  ┌─ for_loop_with_break.fe:3:23
   │
-4 │         let my_array: Array<u256, 3>
+3 │         let my_array: Array<u256, 3>
   │                       ^^^^^^^^^^^^^^ Array<u256, 3>
   ·
-8 │         let sum: u256 = 0
+7 │         let sum: u256 = 0
   │                  ^^^^ u256
 
 note: 
-  ┌─ for_loop_with_break.fe:5:9
+  ┌─ for_loop_with_break.fe:4:9
   │
-5 │         my_array[0] = 5
+4 │         my_array[0] = 5
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Array<u256, 3>: Memory
+
+note: 
+  ┌─ for_loop_with_break.fe:4:9
+  │
+4 │         my_array[0] = 5
+  │         ^^^^^^^^^^^   ^ u256: Value
+  │         │              
+  │         u256: Memory
+5 │         my_array[1] = 10
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 3>: Memory
@@ -48,11 +60,11 @@ note:
 note: 
   ┌─ for_loop_with_break.fe:5:9
   │
-5 │         my_array[0] = 5
-  │         ^^^^^^^^^^^   ^ u256: Value
+5 │         my_array[1] = 10
+  │         ^^^^^^^^^^^   ^^ u256: Value
   │         │              
   │         u256: Memory
-6 │         my_array[1] = 10
+6 │         my_array[2] = 15
   │         ^^^^^^^^ ^ u256: Value
   │         │         
   │         Array<u256, 3>: Memory
@@ -60,49 +72,37 @@ note:
 note: 
   ┌─ for_loop_with_break.fe:6:9
   │
-6 │         my_array[1] = 10
+6 │         my_array[2] = 15
   │         ^^^^^^^^^^^   ^^ u256: Value
   │         │              
   │         u256: Memory
-7 │         my_array[2] = 15
-  │         ^^^^^^^^ ^ u256: Value
-  │         │         
-  │         Array<u256, 3>: Memory
+7 │         let sum: u256 = 0
+  │                         ^ u256: Value
+8 │         for i in my_array {
+  │                  ^^^^^^^^ Array<u256, 3>: Memory
+9 │             sum = sum + i
+  │             ^^^   ^^^   ^ u256: Value
+  │             │     │      
+  │             │     u256: Value
+  │             u256: Value
 
 note: 
-   ┌─ for_loop_with_break.fe:7:9
+   ┌─ for_loop_with_break.fe:9:19
    │
- 7 │         my_array[2] = 15
-   │         ^^^^^^^^^^^   ^^ u256: Value
-   │         │              
-   │         u256: Memory
- 8 │         let sum: u256 = 0
-   │                         ^ u256: Value
- 9 │         for i in my_array:
-   │                  ^^^^^^^^ Array<u256, 3>: Memory
-10 │             sum = sum + i
-   │             ^^^   ^^^   ^ u256: Value
-   │             │     │      
-   │             │     u256: Value
-   │             u256: Value
-
-note: 
-   ┌─ for_loop_with_break.fe:10:19
-   │
-10 │             sum = sum + i
+ 9 │             sum = sum + i
    │                   ^^^^^^^ u256: Value
-11 │             if sum == 15:
+10 │             if sum == 15 {
    │                ^^^    ^^ u256: Value
    │                │       
    │                u256: Value
 
 note: 
-   ┌─ for_loop_with_break.fe:11:16
+   ┌─ for_loop_with_break.fe:10:16
    │
-11 │             if sum == 15:
+10 │             if sum == 15 {
    │                ^^^^^^^^^ bool: Value
-12 │                 break
-13 │         return sum
+   ·
+14 │         return sum
    │                ^^^ u256: Value
 
 

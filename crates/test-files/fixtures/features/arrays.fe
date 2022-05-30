@@ -1,9 +1,12 @@
-contract Foo:
+contract Foo {
     my_array: Array<u256, 10>
 
-    pub fn get_from_storage(self, index: u256) -> u256:
+    pub fn get_from_storage(self, index: u256) -> u256 {
         return self.my_array[index]
+    }
 
-    pub fn get_from_memory(index: u256) -> u256:
+    pub fn get_from_memory(index: u256) -> u256 {
         let my_array: Array<u256, 10> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         return my_array[index]
+    }
+}

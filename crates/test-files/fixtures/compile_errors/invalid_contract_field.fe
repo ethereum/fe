@@ -1,5 +1,7 @@
-contract Foo:
-  val: u256
+contract Foo {
+    val: u256
 
-  pub fn foo(self):
-    self.bar
+    pub fn foo(self) {
+        self.bar
+    }
+}

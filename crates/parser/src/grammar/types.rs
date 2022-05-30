@@ -1,6 +1,6 @@
 use crate::ast::{self, EventField, Field, GenericArg, Path, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
-use crate::grammar::functions::{parse_fn_def, parse_single_word_stmt};
+use crate::grammar::functions::parse_fn_def;
 use crate::node::{Node, Span};
 use crate::Token;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -21,13 +21,15 @@ pub fn parse_struct_def(
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
     })?;
 
+    let mut span = struct_tok.span + name.span;
     let mut fields = vec![];
     let mut functions = vec![];
-    par.enter_block(struct_tok.span + name.span, "struct definition")?;
+    par.enter_block(span, "struct body must start with `{`")?;
     loop {
+        par.eat_newlines();
         let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
-        match par.peek() {
-            Some(TokenKind::Name) => {
+        match par.peek_or_err()? {
+            TokenKind::Name => {
                 let field = parse_field(par, pub_qual, None)?;
                 if !functions.is_empty() {
                     par.error(
@@ -37,25 +39,20 @@ pub fn parse_struct_def(
                 }
                 fields.push(field);
             }
-            Some(TokenKind::Fn | TokenKind::Unsafe) => {
+            TokenKind::Fn | TokenKind::Unsafe => {
                 functions.push(parse_fn_def(par, pub_qual)?);
             }
-            Some(TokenKind::Dedent) => {
-                par.next()?;
+            TokenKind::BraceClose => {
+                span += par.next()?.span;
                 break;
             }
-            Some(TokenKind::Pass) => {
-                parse_single_word_stmt(par)?;
-            }
-            None => break,
-            Some(_) => {
+            _ => {
                 let tok = par.next()?;
-                par.unexpected_token_error(tok.span, "failed to parse struct definition", vec![]);
+                par.unexpected_token_error(&tok, "failed to parse struct definition", vec![]);
                 return Err(ParseFailed);
             }
         }
     }
-    let span = struct_tok.span + struct_pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Struct {
             name: name.into(),
@@ -100,30 +97,26 @@ pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
 
     let event_tok = par.assert(Event);
     let name = par.expect(Name, "failed to parse event definition")?;
-
-    let mut fields = vec![];
     par.enter_block(event_tok.span + name.span, "event definition")?;
+
+    let mut span = event_tok.span;
+    let mut fields = vec![];
     loop {
-        match par.peek() {
-            Some(Name | Idx) => {
+        match par.peek_or_err()? {
+            Name | Idx => {
                 fields.push(parse_event_field(par)?);
             }
-            Some(Pass) => {
-                parse_single_word_stmt(par)?;
-            }
-            Some(Dedent) => {
-                par.next()?;
+            BraceClose => {
+                span += par.next()?.span;
                 break;
             }
-            None => break,
-            Some(_) => {
+            _ => {
                 let tok = par.next()?;
-                par.unexpected_token_error(tok.span, "failed to parse event definition", vec![]);
+                par.unexpected_token_error(&tok, "failed to parse event definition", vec![]);
                 return Err(ParseFailed);
             }
         }
     }
-    let span = event_tok.span + pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Event {
             name: name.into(),
@@ -150,7 +143,7 @@ pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     })?;
 
     let typ = parse_type_desc(par)?;
-    par.expect_newline("event field")?;
+    par.expect_stmt_end("event field")?;
     let span = name.span + idx_qual + &typ;
     Ok(Node::new(
         EventField {
@@ -203,7 +196,7 @@ pub fn parse_field(
     } else {
         None
     };
-    par.expect_newline("field definition")?;
+    par.expect_stmt_end("field definition")?;
     let span = name.span + pub_qual + const_qual + &typ;
     Ok(Node::new(
         Field {
@@ -245,7 +238,7 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "Unexpected token while parsing generic arg list",
                     vec![],
                 );
@@ -314,7 +307,7 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "failed to parse generic type argument list",
                     vec![],
                 );
@@ -346,7 +339,6 @@ pub fn parse_path_tail<'a>(
 /// Parse a type description, e.g. `u8` or `Map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
-
     let mut typ = match par.peek_or_err()? {
         Name => {
             let name = par.next()?;
@@ -416,7 +408,7 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                     _ => {
                         let tok = par.next()?;
                         par.unexpected_token_error(
-                            tok.span,
+                            &tok,
                             "failed to parse type description",
                             vec![],
                         );
@@ -437,7 +429,7 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
         }
         _ => {
             let tok = par.next()?;
-            par.unexpected_token_error(tok.span, "failed to parse type description", vec![]);
+            par.unexpected_token_error(&tok, "failed to parse type description", vec![]);
             return Err(ParseFailed);
         }
     };

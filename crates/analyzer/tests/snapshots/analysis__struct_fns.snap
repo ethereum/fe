@@ -4,19 +4,20 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ struct_fns.fe:2:3
+  ┌─ struct_fns.fe:2:5
   │
-2 │   pub x: u64
-  │   ^^^^^^^^^^ u64
-3 │   pub y: u64
-  │   ^^^^^^^^^^ u64
+2 │     pub x: u64
+  │     ^^^^^^^^^^ u64
+3 │     pub y: u64
+  │     ^^^^^^^^^^ u64
 
 note: 
-  ┌─ struct_fns.fe:5:3
+  ┌─ struct_fns.fe:5:5
   │  
-5 │ ╭   pub fn new(x: u64, y: u64) -> Point:
-6 │ │     return Point(x, y)
-  │ ╰──────────────────────^ attributes hash: 16588628800633378656
+5 │ ╭     pub fn new(x: u64, y: u64) -> Point {
+6 │ │         return Point(x, y)
+7 │ │     }
+  │ ╰─────^ attributes hash: 16588628800633378656
   │  
   = FunctionSignature {
         self_decl: None,
@@ -56,60 +57,62 @@ note:
     }
 
 note: 
-  ┌─ struct_fns.fe:6:18
+  ┌─ struct_fns.fe:6:22
   │
-6 │     return Point(x, y)
-  │                  ^  ^ u64: Value
-  │                  │   
-  │                  u64: Value
+6 │         return Point(x, y)
+  │                      ^  ^ u64: Value
+  │                      │   
+  │                      u64: Value
 
 note: 
-  ┌─ struct_fns.fe:6:12
+  ┌─ struct_fns.fe:6:16
   │
-6 │     return Point(x, y)
-  │            ^^^^^^^^^^^ Point: Memory
+6 │         return Point(x, y)
+  │                ^^^^^^^^^^^ Point: Memory
 
 note: 
-  ┌─ struct_fns.fe:8:3
-  │  
-8 │ ╭   pub fn origin() -> Point:
-9 │ │     return Point(x: 0, y: 0)
-  │ ╰────────────────────────────^ attributes hash: 6013258294670043138
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Struct(
-                Struct {
-                    name: "Point",
-                    field_count: 2,
-                },
-            ),
-        ),
-    }
-
-note: 
-  ┌─ struct_fns.fe:9:21
-  │
-9 │     return Point(x: 0, y: 0)
-  │                     ^     ^ u64: Value
-  │                     │      
-  │                     u64: Value
-
-note: 
-  ┌─ struct_fns.fe:9:12
-  │
-9 │     return Point(x: 0, y: 0)
-  │            ^^^^^^^^^^^^^^^^^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:12:3
+   ┌─ struct_fns.fe:9:5
    │  
-12 │ ╭   pub fn x(self) -> u64:
-13 │ │     return self.x
-   │ ╰─────────────────^ attributes hash: 10117872852848404071
+ 9 │ ╭     pub fn origin() -> Point {
+10 │ │         return Point(x: 0, y: 0)
+11 │ │     }
+   │ ╰─────^ attributes hash: 6013258294670043138
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "Point",
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ struct_fns.fe:10:25
+   │
+10 │         return Point(x: 0, y: 0)
+   │                         ^     ^ u64: Value
+   │                         │      
+   │                         u64: Value
+
+note: 
+   ┌─ struct_fns.fe:10:16
+   │
+10 │         return Point(x: 0, y: 0)
+   │                ^^^^^^^^^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:13:5
+   │  
+13 │ ╭     pub fn x(self) -> u64 {
+14 │ │         return self.x
+15 │ │     }
+   │ ╰─────^ attributes hash: 10117872852848404071
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -127,25 +130,26 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:13:12
+   ┌─ struct_fns.fe:14:16
    │
-13 │     return self.x
-   │            ^^^^ Point: Memory
+14 │         return self.x
+   │                ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:13:12
+   ┌─ struct_fns.fe:14:16
    │
-13 │     return self.x
-   │            ^^^^^^ u64: Memory => Value
+14 │         return self.x
+   │                ^^^^^^ u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:15:3
+   ┌─ struct_fns.fe:17:5
    │  
-15 │ ╭   pub fn set_x(self, _ x: u64) -> u64:
-16 │ │     let old: u64 = self.x
-17 │ │     self.x = x
-18 │ │     return old
-   │ ╰──────────────^ attributes hash: 9776752757917359734
+17 │ ╭     pub fn set_x(self, _ x: u64) -> u64 {
+18 │ │         let old: u64 = self.x
+19 │ │         self.x = x
+20 │ │         return old
+21 │ │     }
+   │ ╰─────^ attributes hash: 9776752757917359734
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -177,45 +181,45 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:16:14
+   ┌─ struct_fns.fe:18:18
    │
-16 │     let old: u64 = self.x
-   │              ^^^ u64
+18 │         let old: u64 = self.x
+   │                  ^^^ u64
 
 note: 
-   ┌─ struct_fns.fe:16:20
+   ┌─ struct_fns.fe:18:24
    │
-16 │     let old: u64 = self.x
-   │                    ^^^^ Point: Memory
+18 │         let old: u64 = self.x
+   │                        ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:16:20
+   ┌─ struct_fns.fe:18:24
    │
-16 │     let old: u64 = self.x
-   │                    ^^^^^^ u64: Memory => Value
-17 │     self.x = x
-   │     ^^^^ Point: Memory
+18 │         let old: u64 = self.x
+   │                        ^^^^^^ u64: Memory => Value
+19 │         self.x = x
+   │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:17:5
+   ┌─ struct_fns.fe:19:9
    │
-17 │     self.x = x
-   │     ^^^^^^   ^ u64: Value
-   │     │         
-   │     u64: Memory
-18 │     return old
-   │            ^^^ u64: Value
+19 │         self.x = x
+   │         ^^^^^^   ^ u64: Value
+   │         │         
+   │         u64: Memory
+20 │         return old
+   │                ^^^ u64: Value
 
 note: 
-   ┌─ struct_fns.fe:20:3
+   ┌─ struct_fns.fe:23:5
    │  
-20 │ ╭   pub fn reflect(self):
-21 │ │     let x: u64 = self.x
-22 │ │     let y: u64 = self.y
-23 │ │     # self.x = self.y panics. see issue #590
-24 │ │     self.x = y
-25 │ │     self.y = x
-   │ ╰──────────────^ attributes hash: 18235041182630809162
+23 │ ╭     pub fn reflect(self) {
+24 │ │         let x: u64 = self.x
+25 │ │         let y: u64 = self.y
+26 │ │         self.x = y
+27 │ │         self.y = x
+28 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -231,61 +235,61 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:21:12
+   ┌─ struct_fns.fe:24:16
    │
-21 │     let x: u64 = self.x
-   │            ^^^ u64
-22 │     let y: u64 = self.y
-   │            ^^^ u64
+24 │         let x: u64 = self.x
+   │                ^^^ u64
+25 │         let y: u64 = self.y
+   │                ^^^ u64
 
 note: 
-   ┌─ struct_fns.fe:21:18
+   ┌─ struct_fns.fe:24:22
    │
-21 │     let x: u64 = self.x
-   │                  ^^^^ Point: Memory
+24 │         let x: u64 = self.x
+   │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:21:18
+   ┌─ struct_fns.fe:24:22
    │
-21 │     let x: u64 = self.x
-   │                  ^^^^^^ u64: Memory => Value
-22 │     let y: u64 = self.y
-   │                  ^^^^ Point: Memory
+24 │         let x: u64 = self.x
+   │                      ^^^^^^ u64: Memory => Value
+25 │         let y: u64 = self.y
+   │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:22:18
+   ┌─ struct_fns.fe:25:22
    │
-22 │     let y: u64 = self.y
-   │                  ^^^^^^ u64: Memory => Value
-23 │     # self.x = self.y panics. see issue #590
-24 │     self.x = y
-   │     ^^^^ Point: Memory
+25 │         let y: u64 = self.y
+   │                      ^^^^^^ u64: Memory => Value
+26 │         self.x = y
+   │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:24:5
+   ┌─ struct_fns.fe:26:9
    │
-24 │     self.x = y
-   │     ^^^^^^   ^ u64: Value
-   │     │         
-   │     u64: Memory
-25 │     self.y = x
-   │     ^^^^ Point: Memory
+26 │         self.x = y
+   │         ^^^^^^   ^ u64: Value
+   │         │         
+   │         u64: Memory
+27 │         self.y = x
+   │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:25:5
+   ┌─ struct_fns.fe:27:9
    │
-25 │     self.y = x
-   │     ^^^^^^   ^ u64: Value
-   │     │         
-   │     u64: Memory
+27 │         self.y = x
+   │         ^^^^^^   ^ u64: Value
+   │         │         
+   │         u64: Memory
 
 note: 
-   ┌─ struct_fns.fe:27:3
+   ┌─ struct_fns.fe:30:5
    │  
-27 │ ╭   pub fn translate(self, x: u64, y: u64):
-28 │ │     self.x += x
-29 │ │     self.y += y
-   │ ╰───────────────^ attributes hash: 7723021135770029200
+30 │ ╭     pub fn translate(self, x: u64, y: u64) {
+31 │ │         self.x += x
+32 │ │         self.y += y
+33 │ │     }
+   │ ╰─────^ attributes hash: 7723021135770029200
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -324,37 +328,38 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:28:5
+   ┌─ struct_fns.fe:31:9
    │
-28 │     self.x += x
-   │     ^^^^ Point: Memory
+31 │         self.x += x
+   │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:28:5
+   ┌─ struct_fns.fe:31:9
    │
-28 │     self.x += x
-   │     ^^^^^^    ^ u64: Value
-   │     │          
-   │     u64: Memory
-29 │     self.y += y
-   │     ^^^^ Point: Memory
+31 │         self.x += x
+   │         ^^^^^^    ^ u64: Value
+   │         │          
+   │         u64: Memory
+32 │         self.y += y
+   │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:29:5
+   ┌─ struct_fns.fe:32:9
    │
-29 │     self.y += y
-   │     ^^^^^^    ^ u64: Value
-   │     │          
-   │     u64: Memory
+32 │         self.y += y
+   │         ^^^^^^    ^ u64: Value
+   │         │          
+   │         u64: Memory
 
 note: 
-   ┌─ struct_fns.fe:31:3
+   ┌─ struct_fns.fe:35:5
    │  
-31 │ ╭   pub fn add(self, _ other: Point) -> Point:
-32 │ │     let x: u64 = self.x + other.x
-33 │ │     let y: u64 = self.y + other.y
-34 │ │     return Point(x, y)
-   │ ╰──────────────────────^ attributes hash: 13368777112318344367
+35 │ ╭     pub fn add(self, _ other: Point) -> Point {
+36 │ │         let x: u64 = self.x + other.x
+37 │ │         let y: u64 = self.y + other.y
+38 │ │         return Point(x, y)
+39 │ │     }
+   │ ╰─────^ attributes hash: 13368777112318344367
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -388,82 +393,82 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:32:12
+   ┌─ struct_fns.fe:36:16
    │
-32 │     let x: u64 = self.x + other.x
-   │            ^^^ u64
-33 │     let y: u64 = self.y + other.y
-   │            ^^^ u64
+36 │         let x: u64 = self.x + other.x
+   │                ^^^ u64
+37 │         let y: u64 = self.y + other.y
+   │                ^^^ u64
 
 note: 
-   ┌─ struct_fns.fe:32:18
+   ┌─ struct_fns.fe:36:22
    │
-32 │     let x: u64 = self.x + other.x
-   │                  ^^^^ Point: Memory
+36 │         let x: u64 = self.x + other.x
+   │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:32:18
+   ┌─ struct_fns.fe:36:22
    │
-32 │     let x: u64 = self.x + other.x
-   │                  ^^^^^^   ^^^^^ Point: Memory
-   │                  │         
-   │                  u64: Memory => Value
+36 │         let x: u64 = self.x + other.x
+   │                      ^^^^^^   ^^^^^ Point: Memory
+   │                      │         
+   │                      u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:32:27
+   ┌─ struct_fns.fe:36:31
    │
-32 │     let x: u64 = self.x + other.x
-   │                           ^^^^^^^ u64: Memory => Value
+36 │         let x: u64 = self.x + other.x
+   │                               ^^^^^^^ u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:32:18
+   ┌─ struct_fns.fe:36:22
    │
-32 │     let x: u64 = self.x + other.x
-   │                  ^^^^^^^^^^^^^^^^ u64: Value
-33 │     let y: u64 = self.y + other.y
-   │                  ^^^^ Point: Memory
+36 │         let x: u64 = self.x + other.x
+   │                      ^^^^^^^^^^^^^^^^ u64: Value
+37 │         let y: u64 = self.y + other.y
+   │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:33:18
+   ┌─ struct_fns.fe:37:22
    │
-33 │     let y: u64 = self.y + other.y
-   │                  ^^^^^^   ^^^^^ Point: Memory
-   │                  │         
-   │                  u64: Memory => Value
+37 │         let y: u64 = self.y + other.y
+   │                      ^^^^^^   ^^^^^ Point: Memory
+   │                      │         
+   │                      u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:33:27
+   ┌─ struct_fns.fe:37:31
    │
-33 │     let y: u64 = self.y + other.y
-   │                           ^^^^^^^ u64: Memory => Value
+37 │         let y: u64 = self.y + other.y
+   │                               ^^^^^^^ u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:33:18
+   ┌─ struct_fns.fe:37:22
    │
-33 │     let y: u64 = self.y + other.y
-   │                  ^^^^^^^^^^^^^^^^ u64: Value
-34 │     return Point(x, y)
-   │                  ^  ^ u64: Value
-   │                  │   
-   │                  u64: Value
+37 │         let y: u64 = self.y + other.y
+   │                      ^^^^^^^^^^^^^^^^ u64: Value
+38 │         return Point(x, y)
+   │                      ^  ^ u64: Value
+   │                      │   
+   │                      u64: Value
 
 note: 
-   ┌─ struct_fns.fe:34:12
+   ┌─ struct_fns.fe:38:16
    │
-34 │     return Point(x, y)
-   │            ^^^^^^^^^^^ Point: Memory
+38 │         return Point(x, y)
+   │                ^^^^^^^^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:36:1
+   ┌─ struct_fns.fe:42:1
    │  
-36 │ ╭ pub fn do_pointy_things():
-37 │ │   let p1: Point = Point::origin()
-38 │ │   p1.translate(x: 5, y: 10)
-39 │ │ 
-   · │
-42 │ │ 
-43 │ │   assert p3.x == 6 and p3.y == 12
-   │ ╰─────────────────────────────────^ attributes hash: 8319796915330632390
+42 │ ╭ pub fn do_pointy_things() {
+43 │ │     let p1: Point = Point::origin()
+44 │ │     p1.translate(x: 5, y: 10)
+45 │ │     let p2: Point = Point(x: 1, y: 2)
+46 │ │     let p3: Point = p1.add(p2)
+47 │ │     assert p3.x == 6 and p3.y == 12
+48 │ │ }
+   │ ╰─^ attributes hash: 8319796915330632390
    │  
    = FunctionSignature {
          self_decl: None,
@@ -477,104 +482,102 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:37:11
+   ┌─ struct_fns.fe:43:13
    │
-37 │   let p1: Point = Point::origin()
-   │           ^^^^^ Point
-   ·
-40 │   let p2: Point = Point(x: 1, y: 2)
-   │           ^^^^^ Point
-41 │   let p3: Point = p1.add(p2)
-   │           ^^^^^ Point
+43 │     let p1: Point = Point::origin()
+   │             ^^^^^ Point
+44 │     p1.translate(x: 5, y: 10)
+45 │     let p2: Point = Point(x: 1, y: 2)
+   │             ^^^^^ Point
+46 │     let p3: Point = p1.add(p2)
+   │             ^^^^^ Point
 
 note: 
-   ┌─ struct_fns.fe:37:19
+   ┌─ struct_fns.fe:43:21
    │
-37 │   let p1: Point = Point::origin()
-   │                   ^^^^^^^^^^^^^^^ Point: Memory
-38 │   p1.translate(x: 5, y: 10)
-   │   ^^              ^     ^^ u64: Value
-   │   │               │      
-   │   │               u64: Value
-   │   Point: Memory
+43 │     let p1: Point = Point::origin()
+   │                     ^^^^^^^^^^^^^^^ Point: Memory
+44 │     p1.translate(x: 5, y: 10)
+   │     ^^              ^     ^^ u64: Value
+   │     │               │      
+   │     │               u64: Value
+   │     Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:38:3
+   ┌─ struct_fns.fe:44:5
    │
-38 │   p1.translate(x: 5, y: 10)
-   │   ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-39 │ 
-40 │   let p2: Point = Point(x: 1, y: 2)
-   │                            ^     ^ u64: Value
-   │                            │      
-   │                            u64: Value
+44 │     p1.translate(x: 5, y: 10)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+45 │     let p2: Point = Point(x: 1, y: 2)
+   │                              ^     ^ u64: Value
+   │                              │      
+   │                              u64: Value
 
 note: 
-   ┌─ struct_fns.fe:40:19
+   ┌─ struct_fns.fe:45:21
    │
-40 │   let p2: Point = Point(x: 1, y: 2)
-   │                   ^^^^^^^^^^^^^^^^^ Point: Memory
-41 │   let p3: Point = p1.add(p2)
-   │                   ^^     ^^ Point: Memory
-   │                   │       
-   │                   Point: Memory
+45 │     let p2: Point = Point(x: 1, y: 2)
+   │                     ^^^^^^^^^^^^^^^^^ Point: Memory
+46 │     let p3: Point = p1.add(p2)
+   │                     ^^     ^^ Point: Memory
+   │                     │       
+   │                     Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:41:19
+   ┌─ struct_fns.fe:46:21
    │
-41 │   let p3: Point = p1.add(p2)
-   │                   ^^^^^^^^^^ Point: Memory
-42 │ 
-43 │   assert p3.x == 6 and p3.y == 12
-   │          ^^ Point: Memory
+46 │     let p3: Point = p1.add(p2)
+   │                     ^^^^^^^^^^ Point: Memory
+47 │     assert p3.x == 6 and p3.y == 12
+   │            ^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:43:10
+   ┌─ struct_fns.fe:47:12
    │
-43 │   assert p3.x == 6 and p3.y == 12
-   │          ^^^^    ^ u64: Value
-   │          │        
-   │          u64: Memory => Value
+47 │     assert p3.x == 6 and p3.y == 12
+   │            ^^^^    ^ u64: Value
+   │            │        
+   │            u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:43:10
+   ┌─ struct_fns.fe:47:12
    │
-43 │   assert p3.x == 6 and p3.y == 12
-   │          ^^^^^^^^^     ^^ Point: Memory
-   │          │              
-   │          bool: Value
+47 │     assert p3.x == 6 and p3.y == 12
+   │            ^^^^^^^^^     ^^ Point: Memory
+   │            │              
+   │            bool: Value
 
 note: 
-   ┌─ struct_fns.fe:43:24
+   ┌─ struct_fns.fe:47:26
    │
-43 │   assert p3.x == 6 and p3.y == 12
-   │                        ^^^^    ^^ u64: Value
-   │                        │        
-   │                        u64: Memory => Value
+47 │     assert p3.x == 6 and p3.y == 12
+   │                          ^^^^    ^^ u64: Value
+   │                          │        
+   │                          u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:43:24
+   ┌─ struct_fns.fe:47:26
    │
-43 │   assert p3.x == 6 and p3.y == 12
-   │                        ^^^^^^^^^^ bool: Value
+47 │     assert p3.x == 6 and p3.y == 12
+   │                          ^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:43:10
+   ┌─ struct_fns.fe:47:12
    │
-43 │   assert p3.x == 6 and p3.y == 12
-   │          ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+47 │     assert p3.x == 6 and p3.y == 12
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:48:3
+   ┌─ struct_fns.fe:51:5
    │  
-48 │ ╭   pub fn bar(x: u64, y: u64) -> u64:
-49 │ │     do_pointy_things()
-50 │ │ 
-51 │ │     let p: Point = Point::new(x, y)
+51 │ ╭     pub fn bar(x: u64, y: u64) -> u64 {
+52 │ │         do_pointy_things()
+53 │ │         let p: Point = Point::new(x, y)
+54 │ │         assert p.x == x and p.y == y
    · │
-55 │ │     assert p.x() == y and p.y == 100
-56 │ │     return p.y
-   │ ╰──────────────^ attributes hash: 14881144643149919691
+58 │ │         return p.y
+59 │ │     }
+   │ ╰─────^ attributes hash: 14881144643149919691
    │  
    = FunctionSignature {
          self_decl: None,
@@ -613,128 +616,127 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:51:12
+   ┌─ struct_fns.fe:53:16
    │
-51 │     let p: Point = Point::new(x, y)
-   │            ^^^^^ Point
+53 │         let p: Point = Point::new(x, y)
+   │                ^^^^^ Point
 
 note: 
-   ┌─ struct_fns.fe:49:5
+   ┌─ struct_fns.fe:52:9
    │
-49 │     do_pointy_things()
-   │     ^^^^^^^^^^^^^^^^^^ (): Value
-50 │ 
-51 │     let p: Point = Point::new(x, y)
-   │                               ^  ^ u64: Value
-   │                               │   
-   │                               u64: Value
+52 │         do_pointy_things()
+   │         ^^^^^^^^^^^^^^^^^^ (): Value
+53 │         let p: Point = Point::new(x, y)
+   │                                   ^  ^ u64: Value
+   │                                   │   
+   │                                   u64: Value
 
 note: 
-   ┌─ struct_fns.fe:51:20
+   ┌─ struct_fns.fe:53:24
    │
-51 │     let p: Point = Point::new(x, y)
-   │                    ^^^^^^^^^^^^^^^^ Point: Memory
-52 │     assert p.x == x and p.y == y
-   │            ^ Point: Memory
+53 │         let p: Point = Point::new(x, y)
+   │                        ^^^^^^^^^^^^^^^^ Point: Memory
+54 │         assert p.x == x and p.y == y
+   │                ^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:52:12
+   ┌─ struct_fns.fe:54:16
    │
-52 │     assert p.x == x and p.y == y
-   │            ^^^    ^ u64: Value
-   │            │       
-   │            u64: Memory => Value
+54 │         assert p.x == x and p.y == y
+   │                ^^^    ^ u64: Value
+   │                │       
+   │                u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:52:12
+   ┌─ struct_fns.fe:54:16
    │
-52 │     assert p.x == x and p.y == y
-   │            ^^^^^^^^     ^ Point: Memory
-   │            │             
-   │            bool: Value
+54 │         assert p.x == x and p.y == y
+   │                ^^^^^^^^     ^ Point: Memory
+   │                │             
+   │                bool: Value
 
 note: 
-   ┌─ struct_fns.fe:52:25
+   ┌─ struct_fns.fe:54:29
    │
-52 │     assert p.x == x and p.y == y
-   │                         ^^^    ^ u64: Value
-   │                         │       
-   │                         u64: Memory => Value
+54 │         assert p.x == x and p.y == y
+   │                             ^^^    ^ u64: Value
+   │                             │       
+   │                             u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:52:25
+   ┌─ struct_fns.fe:54:29
    │
-52 │     assert p.x == x and p.y == y
-   │                         ^^^^^^^^ bool: Value
+54 │         assert p.x == x and p.y == y
+   │                             ^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:52:12
+   ┌─ struct_fns.fe:54:16
    │
-52 │     assert p.x == x and p.y == y
-   │            ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-53 │     p.set_x(100)
-   │     ^       ^^^ u64: Value
-   │     │        
-   │     Point: Memory
+54 │         assert p.x == x and p.y == y
+   │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+55 │         p.set_x(100)
+   │         ^       ^^^ u64: Value
+   │         │        
+   │         Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:53:5
+   ┌─ struct_fns.fe:55:9
    │
-53 │     p.set_x(100)
-   │     ^^^^^^^^^^^^ u64: Value
-54 │     p.reflect()
-   │     ^ Point: Memory
+55 │         p.set_x(100)
+   │         ^^^^^^^^^^^^ u64: Value
+56 │         p.reflect()
+   │         ^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:54:5
+   ┌─ struct_fns.fe:56:9
    │
-54 │     p.reflect()
-   │     ^^^^^^^^^^^ (): Value
-55 │     assert p.x() == y and p.y == 100
-   │            ^ Point: Memory
+56 │         p.reflect()
+   │         ^^^^^^^^^^^ (): Value
+57 │         assert p.x() == y and p.y == 100
+   │                ^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:55:12
+   ┌─ struct_fns.fe:57:16
    │
-55 │     assert p.x() == y and p.y == 100
-   │            ^^^^^    ^ u64: Value
-   │            │         
-   │            u64: Value
+57 │         assert p.x() == y and p.y == 100
+   │                ^^^^^    ^ u64: Value
+   │                │         
+   │                u64: Value
 
 note: 
-   ┌─ struct_fns.fe:55:12
+   ┌─ struct_fns.fe:57:16
    │
-55 │     assert p.x() == y and p.y == 100
-   │            ^^^^^^^^^^     ^ Point: Memory
-   │            │               
-   │            bool: Value
+57 │         assert p.x() == y and p.y == 100
+   │                ^^^^^^^^^^     ^ Point: Memory
+   │                │               
+   │                bool: Value
 
 note: 
-   ┌─ struct_fns.fe:55:27
+   ┌─ struct_fns.fe:57:31
    │
-55 │     assert p.x() == y and p.y == 100
-   │                           ^^^    ^^^ u64: Value
-   │                           │       
-   │                           u64: Memory => Value
+57 │         assert p.x() == y and p.y == 100
+   │                               ^^^    ^^^ u64: Value
+   │                               │       
+   │                               u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:55:27
+   ┌─ struct_fns.fe:57:31
    │
-55 │     assert p.x() == y and p.y == 100
-   │                           ^^^^^^^^^^ bool: Value
+57 │         assert p.x() == y and p.y == 100
+   │                               ^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:55:12
+   ┌─ struct_fns.fe:57:16
    │
-55 │     assert p.x() == y and p.y == 100
-   │            ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-56 │     return p.y
-   │            ^ Point: Memory
+57 │         assert p.x() == y and p.y == 100
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+58 │         return p.y
+   │                ^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:56:12
+   ┌─ struct_fns.fe:58:16
    │
-56 │     return p.y
-   │            ^^^ u64: Memory => Value
+58 │         return p.y
+   │                ^^^ u64: Memory => Value
 
 

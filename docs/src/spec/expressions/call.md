@@ -22,16 +22,17 @@ A *call expression* calls a function. The syntax of a call expression is an [exp
 
 Example:
 
-```python
-contract Foo:
+```fe
+contract Foo {
 
-    pub fn demo(self):
+    pub fn demo(self) {
         let ann: address = address(0xaa)
         let bob: address = address(0xbb)
         self.transfer(from: ann, to: bob, 25)
+    }
 
-    pub fn transfer(self, from: address, to: address, _ val: u256):
-        pass
+    pub fn transfer(self, from: address, to: address, _ val: u256) {}
+}
 ```
 
 [_Expression_]: ./index.md

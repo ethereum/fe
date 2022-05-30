@@ -48,33 +48,28 @@ macro_rules! test_parse_err {
 
 test_parse_err! { contract_invalid_version_requirement, module::parse_module, r#"
 pragma 0.o
-contract C:
-  pass
-"#
+contract C {}"#
 }
 
 test_parse_err! { contract_missing_version_requirement, module::parse_module, r#"
 pragma
-contract C:
-  pass
+contract C {}
 "#
 }
 
-test_parse_err! { contract_bad_name, module::parse_module, "contract 1X:\n x: u8" }
-test_parse_err! { contract_empty_body, module::parse_module, "contract X:\n \n \ncontract Y:\n x: u8" }
+test_parse_err! { contract_bad_name, module::parse_module, "contract 1X {\n x: u8 \n}" }
 test_parse_err! { contract_field_after_def, module::parse_module, r#"
-contract C:
-  fn f():
-    pass
+contract C {
+  fn f() {}
   x: u8
-"#
+}"#
 }
 
 test_parse_err! { type_desc_path_number, module::parse_module, "type Foo = some::mod::Foo::5000" }
-test_parse_err! { module_pub_event, module::parse_module, "pub event E:\n  x: u8" }
-test_parse_err! { contract_pub_event, module::parse_module, "contract C:\n pub event E:\n  x: u8" }
-test_parse_err! { contract_const_pub, module::parse_module, "contract C:\n const pub x: u8" }
-test_parse_err! { contract_const_fn, module::parse_module, "contract C:\n const fn f():\n  pass" }
+test_parse_err! { module_pub_event, module::parse_module, "pub event E{\n  x: u8}" }
+test_parse_err! { contract_pub_event, module::parse_module, "contract C {\n pub event E{\n  x: u8 \n}}" }
+test_parse_err! { contract_const_pub, module::parse_module, "contract C {\n const pub x: u8\n}" }
+test_parse_err! { contract_const_fn, module::parse_module, "contract C {\n const fn f() {}\n}" }
 test_parse_err! { emit_no_args, functions::parse_stmt, "emit x" }
 test_parse_err! { emit_expr, functions::parse_stmt, "emit x + 1" }
 test_parse_err! { emit_bad_call, functions::parse_stmt, "emit MyEvent(1)()" }
@@ -84,15 +79,14 @@ test_parse_err! { expr_path_right, expressions::parse_expr, "foo::10::bar" }
 test_parse_err! { expr_dotted_number, expressions::parse_expr, "3.14" }
 test_parse_err! { expr_call_eq_label, expressions::parse_expr, "foo(bar=1, baz = 2)" }
 test_parse_err! { expr_assignment, expressions::parse_expr, "1 + (x = y)" }
-test_parse_err! { for_no_in, functions::parse_stmt, "for x:\n pass" }
-test_parse_err! { fn_no_args, module::parse_module, "fn f:\n  return 5" }
-test_parse_err! { fn_unsafe_pub, module::parse_module, "unsafe pub fn f():\n  return 5" }
-test_parse_err! { fn_def_kw, module::parse_module, "contract C:\n pub def f(x: u8):\n  return x" }
-test_parse_err! { if_no_body, functions::parse_stmt, "if x:\nelse:\n x" }
+test_parse_err! { for_no_in, functions::parse_stmt, "for x {}" }
+test_parse_err! { fn_no_args, module::parse_module, "fn f {\n  return 5\n}" }
+test_parse_err! { fn_unsafe_pub, module::parse_module, "unsafe pub fn f() {\n  return 5 }" }
+test_parse_err! { fn_def_kw, module::parse_module, "contract C {\n pub def f(x: u8){\n  return x \n}\n}" }
 test_parse_err! { use_bad_name, module::parse_use, "use x as 123" }
-test_parse_err! { module_bad_stmt, module::parse_module, "if x:\n y" }
+test_parse_err! { module_bad_stmt, module::parse_module, "if x { y }" }
 test_parse_err! { module_nonsense, module::parse_module, "))" }
-test_parse_err! { struct_bad_field_name, module::parse_module, "struct f:\n pub event" }
+test_parse_err! { struct_bad_field_name, module::parse_module, "struct f {\n pub event }" }
 test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, "(a, ()) : u256" }
@@ -106,9 +100,9 @@ test_parse_err! { number_end_with_underscore, functions::parse_stmt, "42_42_"}
 test_parse_err! { array_old_syntax, functions::parse_stmt, "let x: u8[10]" }
 test_parse_err! { array_old_syntax_invalid, functions::parse_stmt, "let x: u8[10" }
 test_parse_err! { self_const, module::parse_module, "const self: u8 = 10" }
-test_parse_err! { self_contract, module::parse_module, "contract self:\n pass" }
-test_parse_err! { self_struct, module::parse_module, "struct self:\n pass" }
-test_parse_err! { self_fn, module::parse_module, "pub fn self():\n pass" }
+test_parse_err! { self_contract, module::parse_module, "contract self {}" }
+test_parse_err! { self_struct, module::parse_module, "struct self {}" }
+test_parse_err! { self_fn, module::parse_module, "pub fn self() {}" }
 test_parse_err! { self_use1, module::parse_module, "use self as bar" }
 test_parse_err! { self_use2, module::parse_module, "use bar as self" }
 

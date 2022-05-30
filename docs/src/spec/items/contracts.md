@@ -2,10 +2,9 @@
 
 > **<sup>Syntax</sup>**\
 > _Contract_ :\
-> &nbsp;&nbsp; `contract` [IDENTIFIER] `:` [NEWLINE]\
-> &nbsp;&nbsp; [INDENT]\
-> &nbsp;&nbsp; _ContractMember_<sup>\*</sup>\
-> &nbsp;&nbsp; [DEDENT]\
+> &nbsp;&nbsp; `contract` [IDENTIFIER] `{`\
+> &nbsp;&nbsp;_ContractMember_<sup>\*</sup>\
+> &nbsp;&nbsp;_`}`
 >
 > _ContractMember_:\
 > &nbsp;&nbsp; [_Visibility_]<sup>?</sup>\
@@ -28,26 +27,28 @@
 
 An example of a `contract`:
 
-```python
+```fe
 use std::context::Context
 
-contract GuestBook:
+contract GuestBook {
     messages: Map<address, String<100>>
 
-    event Signed:
+    event Signed {
         book_msg: String<100>
+    }
 
-    pub fn sign(self, ctx: Context, book_msg: String<100>):
+    pub fn sign(self, ctx: Context, book_msg: String<100>) {
         self.messages[ctx.msg_sender()] = book_msg
         emit Signed(ctx, book_msg: book_msg)
+    }
 
-    pub fn get_msg(self, addr: address) -> String<100>:
+    pub fn get_msg(self, addr: address) -> String<100> {
         return self.messages[addr].to_mem()
+    }
+}
 ```
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
-[INDENT]: ../lexical_structure/tokens.md#indent
-[DEDENT]: ../lexical_structure/tokens.md#dedent
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [_Visibility_]: ./visibility_and_privacy.md
 [_Type_]: ../type_system/types/index.md

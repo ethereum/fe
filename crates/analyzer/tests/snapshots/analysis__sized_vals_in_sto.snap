@@ -24,11 +24,12 @@ note:
    │         ^^^^^^^^^^^^^^^ String<26>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:13:5
+   ┌─ sized_vals_in_sto.fe:14:5
    │  
-13 │ ╭     pub fn write_num(self, x: u256):
-14 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 4582507849783874218
+14 │ ╭     pub fn write_num(self, x: u256) {
+15 │ │         self.num = x
+16 │ │     }
+   │ ╰─────^ attributes hash: 4582507849783874218
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -56,25 +57,26 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:14:9
+   ┌─ sized_vals_in_sto.fe:15:9
    │
-14 │         self.num = x
+15 │         self.num = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:14:9
+   ┌─ sized_vals_in_sto.fe:15:9
    │
-14 │         self.num = x
+15 │         self.num = x
    │         ^^^^^^^^   ^ u256: Value
    │         │           
    │         u256: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:16:5
+   ┌─ sized_vals_in_sto.fe:18:5
    │  
-16 │ ╭     pub fn read_num(self) -> u256:
-17 │ │         return self.num
-   │ ╰───────────────────────^ attributes hash: 11773348765973600208
+18 │ ╭     pub fn read_num(self) -> u256 {
+19 │ │         return self.num
+20 │ │     }
+   │ ╰─────^ attributes hash: 11773348765973600208
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -92,23 +94,24 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:17:16
+   ┌─ sized_vals_in_sto.fe:19:16
    │
-17 │         return self.num
+19 │         return self.num
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:17:16
+   ┌─ sized_vals_in_sto.fe:19:16
    │
-17 │         return self.num
+19 │         return self.num
    │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:19:5
+   ┌─ sized_vals_in_sto.fe:22:5
    │  
-19 │ ╭     pub fn write_nums(self, x: Array<u256, 42>):
-20 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 15243923981938152137
+22 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
+23 │ │         self.nums = x
+24 │ │     }
+   │ ╰─────^ attributes hash: 15243923981938152137
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -139,25 +142,26 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:20:9
+   ┌─ sized_vals_in_sto.fe:23:9
    │
-20 │         self.nums = x
+23 │         self.nums = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:20:9
+   ┌─ sized_vals_in_sto.fe:23:9
    │
-20 │         self.nums = x
+23 │         self.nums = x
    │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
    │         │            
    │         Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:22:5
+   ┌─ sized_vals_in_sto.fe:26:5
    │  
-22 │ ╭     pub fn read_nums(self) -> Array<u256, 42>:
-23 │ │         return self.nums.to_mem()
-   │ ╰─────────────────────────────────^ attributes hash: 7235961322057554817
+26 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
+27 │ │         return self.nums.to_mem()
+28 │ │     }
+   │ ╰─────^ attributes hash: 7235961322057554817
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -178,29 +182,30 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:23:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
-23 │         return self.nums.to_mem()
+27 │         return self.nums.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:23:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
-23 │         return self.nums.to_mem()
+27 │         return self.nums.to_mem()
    │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:23:16
+   ┌─ sized_vals_in_sto.fe:27:16
    │
-23 │         return self.nums.to_mem()
+27 │         return self.nums.to_mem()
    │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:25:5
+   ┌─ sized_vals_in_sto.fe:30:5
    │  
-25 │ ╭     pub fn write_str(self, x: String<26>):
-26 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 3874088449945578306
+30 │ ╭     pub fn write_str(self, x: String<26>) {
+31 │ │         self.str = x
+32 │ │     }
+   │ ╰─────^ attributes hash: 3874088449945578306
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -228,25 +233,26 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:26:9
+   ┌─ sized_vals_in_sto.fe:31:9
    │
-26 │         self.str = x
+31 │         self.str = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:26:9
+   ┌─ sized_vals_in_sto.fe:31:9
    │
-26 │         self.str = x
+31 │         self.str = x
    │         ^^^^^^^^   ^ String<26>: Memory
    │         │           
    │         String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:28:5
+   ┌─ sized_vals_in_sto.fe:34:5
    │  
-28 │ ╭     pub fn read_str(self) -> String<26>:
-29 │ │         return self.str.to_mem()
-   │ ╰────────────────────────────────^ attributes hash: 3487383639176435631
+34 │ ╭     pub fn read_str(self) -> String<26> {
+35 │ │         return self.str.to_mem()
+36 │ │     }
+   │ ╰─────^ attributes hash: 3487383639176435631
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -264,34 +270,30 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:29:16
+   ┌─ sized_vals_in_sto.fe:35:16
    │
-29 │         return self.str.to_mem()
+35 │         return self.str.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:29:16
+   ┌─ sized_vals_in_sto.fe:35:16
    │
-29 │         return self.str.to_mem()
+35 │         return self.str.to_mem()
    │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:29:16
+   ┌─ sized_vals_in_sto.fe:35:16
    │
-29 │         return self.str.to_mem()
+35 │         return self.str.to_mem()
    │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:31:5
+   ┌─ sized_vals_in_sto.fe:38:5
    │  
-31 │ ╭     pub fn emit_event(self, ctx: Context):
-32 │ │         emit MyEvent(
-33 │ │             ctx,
-34 │ │             num: self.num,
-35 │ │             nums: self.nums.to_mem(),
-36 │ │             str: self.str.to_mem()
-37 │ │         )
-   │ ╰─────────^ attributes hash: 1731341862738941170
+38 │ ╭     pub fn emit_event(self, ctx: Context) {
+39 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+40 │ │     }
+   │ ╰─────^ attributes hash: 1731341862738941170
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -322,58 +324,53 @@ note:
      }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:33:13
+   ┌─ sized_vals_in_sto.fe:39:22
    │
-33 │             ctx,
-   │             ^^^ Context: Memory
-34 │             num: self.num,
-   │                  ^^^^ Foo: Value
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                      ^^^       ^^^^ Foo: Value
+   │                      │          
+   │                      Context: Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:34:18
+   ┌─ sized_vals_in_sto.fe:39:32
    │
-34 │             num: self.num,
-   │                  ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
-35 │             nums: self.nums.to_mem(),
-   │                   ^^^^ Foo: Value
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                                ^^^^^^^^        ^^^^ Foo: Value
+   │                                │                
+   │                                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:35:19
+   ┌─ sized_vals_in_sto.fe:39:48
    │
-35 │             nums: self.nums.to_mem(),
-   │                   ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                                                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:35:19
+   ┌─ sized_vals_in_sto.fe:39:48
    │
-35 │             nums: self.nums.to_mem(),
-   │                   ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
-36 │             str: self.str.to_mem()
-   │                  ^^^^ Foo: Value
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                                                ^^^^^^^^^^^^^^^^^^       ^^^^ Foo: Value
+   │                                                │                         
+   │                                                Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:36:18
+   ┌─ sized_vals_in_sto.fe:39:73
    │
-36 │             str: self.str.to_mem()
-   │                  ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                                                                         ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:36:18
+   ┌─ sized_vals_in_sto.fe:39:73
    │
-36 │             str: self.str.to_mem()
-   │                  ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │                                                                         ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:32:9
-   │  
-32 │ ╭         emit MyEvent(
-33 │ │             ctx,
-34 │ │             num: self.num,
-35 │ │             nums: self.nums.to_mem(),
-36 │ │             str: self.str.to_mem()
-37 │ │         )
-   │ ╰─────────^ attributes hash: 9998967556022527347
-   │  
+   ┌─ sized_vals_in_sto.fe:39:9
+   │
+39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9998967556022527347
+   │
    = Event {
          name: "MyEvent",
          fields: [

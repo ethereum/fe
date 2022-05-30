@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar() -> u128:
+contract Foo {
+    pub fn bar() -> u128 {
         return u128(42)
+    }
+}

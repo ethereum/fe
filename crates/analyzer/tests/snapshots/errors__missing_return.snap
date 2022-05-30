@@ -6,7 +6,7 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: function body is missing a return or revert statement
   ┌─ compile_errors/missing_return.fe:4:12
   │
-4 │     pub fn bar(self) -> u256:
+4 │     pub fn bar(self) -> u256 {
   │            ^^^          ---- expected function to return `u256`
   │            │             
   │            all paths of this function must `return` or `revert`

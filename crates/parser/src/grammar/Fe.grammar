@@ -24,21 +24,11 @@ type_def: 'type' NAME '=' type_desc NEWLINE
 
 ########################### contract_def #############################
 
-contract_def:
-    'contract' NAME ':' NEWLINE
-    INDENT
-    contract_stmt+
-    DEDENT
-
+contract_def: 'contract' NAME '{' contract_stmt* '}'
 contract_stmt: contract_field | event_def | func_def
-
 contract_field: [contract_field_qual] NAME ':' type_desc NEWLINE
 
-event_def:
-    'event' NAME ':' NEWLINE
-    INDENT
-    event_field+
-    DEDENT
+event_def: 'event' NAME '{' event_field* '}'
 event_field: [event_field_qual] NAME ':' type_desc NEWLINE
 
 func_def:
@@ -61,9 +51,9 @@ func_qual: 'pub'
 ########################### func_stmt ###############################
 
 func_stmt:  compound_stmt | simple_stmt
-simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
+simple_stmt: small_stmt (';' small_stmt)* [';']
 
-small_stmt: return_stmt | assert_stmt | emit_stmt | pass_stmt | break_stmt |
+small_stmt: return_stmt | assert_stmt | emit_stmt | break_stmt |
             continue_stmt | revert_stmt | vardecl_stmt | assign_stmt | augassign_stmt |
             exprs
 
@@ -71,7 +61,6 @@ return_stmt: 'return' [exprs]
 assert_stmt: 'assert' expr [',' expr]
 emit_stmt: 'emit' expr
 
-pass_stmt: 'pass'
 break_stmt: 'break'
 continue_stmt: 'continue'
 revert_stmt: 'revert'
@@ -85,17 +74,14 @@ augassign: '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^='
 
 compound_stmt: if_stmt | while_stmt | for_stmt
 
-if_stmt: 'if' expr ':' block elif_stmt |
-         'if' expr ':' block [else_block]
-elif_stmt: 'elif' expr ':' block elif_stmt |
-           'elif' expr ':' block [else_block]
-else_block: 'else' ':' block
+if_stmt: 'if' expr block [else_block]
+else_block: 'else'  block
 
-while_stmt: 'while' expr ':' block [else_block]
+while_stmt: 'while' expr block [else_block]
 
-for_stmt: 'for' targets 'in' exprs ':' block [else_block]
+for_stmt: 'for' targets 'in' exprs block [else_block]
 
-block: simple_stmt | NEWLINE INDENT func_stmt+ DEDENT
+block: '{' (simple_stmt | func_stmt+) '}'
 
 exprs: expr (',' expr)* [',']
 

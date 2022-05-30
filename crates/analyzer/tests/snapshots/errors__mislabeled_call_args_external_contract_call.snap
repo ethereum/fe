@@ -4,15 +4,15 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: argument label mismatch
-   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:11:30
+   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:11:34
    │
-11 │     Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
-   │                              ^^^^^^^^^^^^ expected `val1`
+11 │         Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
+   │                                  ^^^^^^^^^^^^ expected `val1`
 
 error: argument label mismatch
-   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:11:47
+   ┌─ compile_errors/mislabeled_call_args_external_contract_call.fe:11:51
    │
-11 │     Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
-   │                                               ^^^^^^^^^^ expected `val2`
+11 │         Foo(ctx, address(0)).baz(doesnt_exist: 1, me_neither: 4)
+   │                                                   ^^^^^^^^^^ expected `val2`
 
 

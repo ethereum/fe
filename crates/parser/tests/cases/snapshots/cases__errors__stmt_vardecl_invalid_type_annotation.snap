@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(stmt_vardecl_invalid_type_annotation),\n           functions::parse_stmt, true, \"let x: y + z\")"
+expression: "err_string(stringify!(stmt_vardecl_invalid_type_annotation),\n           functions::parse_stmt, \"let x: y + z\")"
 
 ---
 error: unexpected token while parsing variable declaration
@@ -9,6 +9,6 @@ error: unexpected token while parsing variable declaration
 1 │ let x: y + z
   │          ^ unexpected token
   │
-  = expected a newline
+  = expected a newline; found symbol `+` instead
 
 

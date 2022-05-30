@@ -1,7 +1,5 @@
-contract Foo:
+contract Foo {
+    pub fn bar() {}
 
-    pub fn bar():
-        pass
-
-    pub fn bar():
-        pass
+    pub fn bar() {}
+}

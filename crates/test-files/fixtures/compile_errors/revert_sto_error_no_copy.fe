@@ -1,8 +1,9 @@
-struct MyError:
-    pass
+struct MyError {}
 
-contract Foo:
+contract Foo {
     my_error: MyError
 
-    pub fn bar(self):
+    pub fn bar(self) {
         revert self.my_error
+    }
+}

@@ -12,31 +12,32 @@ note:
   │     ^^^^^^^^^^^ u256
 
 note: 
-  ┌─ structs.fe:6:5
-  │
-6 │     pub name: String<3>
-  │     ^^^^^^^^^^^^^^^^^^^ String<3>
-7 │     pub numbers: Array<u256, 2>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 2>
-8 │     pub point: Point
-  │     ^^^^^^^^^^^^^^^^ Point
-9 │     pub something: (u256, bool)
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool)
+   ┌─ structs.fe:7:5
+   │
+ 7 │     pub name: String<3>
+   │     ^^^^^^^^^^^^^^^^^^^ String<3>
+ 8 │     pub numbers: Array<u256, 2>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 2>
+ 9 │     pub point: Point
+   │     ^^^^^^^^^^^^^^^^ Point
+10 │     pub something: (u256, bool)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool)
 
 note: 
-   ┌─ structs.fe:12:5
+   ┌─ structs.fe:14:5
    │
-12 │     pub foo: u256
+14 │     pub foo: u256
    │     ^^^^^^^^^^^^^ u256
-13 │     bar: bool
+15 │     bar: bool
    │     ^^^^^^^^^ bool
 
 note: 
-   ┌─ structs.fe:15:5
+   ┌─ structs.fe:17:5
    │  
-15 │ ╭     pub fn new(val: u256) -> Mixed:
-16 │ │         return Mixed(foo: val, bar: false)
-   │ ╰──────────────────────────────────────────^ attributes hash: 2524938698704972422
+17 │ ╭     pub fn new(val: u256) -> Mixed {
+18 │ │         return Mixed(foo: val, bar: false)
+19 │ │     }
+   │ ╰─────^ attributes hash: 2524938698704972422
    │  
    = FunctionSignature {
          self_decl: None,
@@ -65,37 +66,38 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:16:27
+   ┌─ structs.fe:18:27
    │
-16 │         return Mixed(foo: val, bar: false)
+18 │         return Mixed(foo: val, bar: false)
    │                           ^^^       ^^^^^ bool: Value
    │                           │          
    │                           u256: Value
 
 note: 
-   ┌─ structs.fe:16:16
+   ┌─ structs.fe:18:16
    │
-16 │         return Mixed(foo: val, bar: false)
+18 │         return Mixed(foo: val, bar: false)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mixed: Memory
 
 note: 
-   ┌─ structs.fe:19:5
+   ┌─ structs.fe:23:5
    │
-19 │     pub price: u256
+23 │     pub price: u256
    │     ^^^^^^^^^^^^^^^ u256
-20 │     pub size: u256
+24 │     pub size: u256
    │     ^^^^^^^^^^^^^^ u256
-21 │     pub rooms: u8
+25 │     pub rooms: u8
    │     ^^^^^^^^^^^^^ u8
-22 │     pub vacant: bool
+26 │     pub vacant: bool
    │     ^^^^^^^^^^^^^^^^ bool
 
 note: 
-   ┌─ structs.fe:24:5
+   ┌─ structs.fe:28:5
    │  
-24 │ ╭     pub fn encode(self) -> Array<u8, 128>:
-25 │ │         return self.abi_encode()
-   │ ╰────────────────────────────────^ attributes hash: 2052929893622941907
+28 │ ╭     pub fn encode(self) -> Array<u8, 128> {
+29 │ │         return self.abi_encode()
+30 │ │     }
+   │ ╰─────^ attributes hash: 2052929893622941907
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -116,23 +118,24 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:25:16
+   ┌─ structs.fe:29:16
    │
-25 │         return self.abi_encode()
+29 │         return self.abi_encode()
    │                ^^^^ House: Memory
 
 note: 
-   ┌─ structs.fe:25:16
+   ┌─ structs.fe:29:16
    │
-25 │         return self.abi_encode()
+29 │         return self.abi_encode()
    │                ^^^^^^^^^^^^^^^^^ Array<u8, 128>: Memory
 
 note: 
-   ┌─ structs.fe:27:5
+   ┌─ structs.fe:32:5
    │  
-27 │ ╭     pub fn hash(self) -> u256:
-28 │ │         return keccak256(self.encode())
-   │ ╰───────────────────────────────────────^ attributes hash: 11773348765973600208
+32 │ ╭     pub fn hash(self) -> u256 {
+33 │ │         return keccak256(self.encode())
+34 │ │     }
+   │ ╰─────^ attributes hash: 11773348765973600208
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -150,29 +153,30 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:28:26
+   ┌─ structs.fe:33:26
    │
-28 │         return keccak256(self.encode())
+33 │         return keccak256(self.encode())
    │                          ^^^^ House: Memory
 
 note: 
-   ┌─ structs.fe:28:26
+   ┌─ structs.fe:33:26
    │
-28 │         return keccak256(self.encode())
+33 │         return keccak256(self.encode())
    │                          ^^^^^^^^^^^^^ Array<u8, 128>: Memory
 
 note: 
-   ┌─ structs.fe:28:16
+   ┌─ structs.fe:33:16
    │
-28 │         return keccak256(self.encode())
+33 │         return keccak256(self.encode())
    │                ^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ structs.fe:30:5
+   ┌─ structs.fe:36:5
    │  
-30 │ ╭     pub fn price_per_sqft(self) -> u256:
-31 │ │         return self.price / self.size
-   │ ╰─────────────────────────────────────^ attributes hash: 11773348765973600208
+36 │ ╭     pub fn price_per_sqft(self) -> u256 {
+37 │ │         return self.price / self.size
+38 │ │     }
+   │ ╰─────^ attributes hash: 11773348765973600208
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -190,38 +194,39 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:31:16
+   ┌─ structs.fe:37:16
    │
-31 │         return self.price / self.size
+37 │         return self.price / self.size
    │                ^^^^ House: Memory
 
 note: 
-   ┌─ structs.fe:31:16
+   ┌─ structs.fe:37:16
    │
-31 │         return self.price / self.size
+37 │         return self.price / self.size
    │                ^^^^^^^^^^   ^^^^ House: Memory
    │                │             
    │                u256: Memory => Value
 
 note: 
-   ┌─ structs.fe:31:29
+   ┌─ structs.fe:37:29
    │
-31 │         return self.price / self.size
+37 │         return self.price / self.size
    │                             ^^^^^^^^^ u256: Memory => Value
 
 note: 
-   ┌─ structs.fe:31:16
+   ┌─ structs.fe:37:16
    │
-31 │         return self.price / self.size
+37 │         return self.price / self.size
    │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ structs.fe:33:5
+   ┌─ structs.fe:40:5
    │  
-33 │ ╭     pub fn expand(self):
-34 │ │         self.rooms += 1
-35 │ │         self.size += 100
-   │ ╰────────────────────────^ attributes hash: 18235041182630809162
+40 │ ╭     pub fn expand(self) {
+41 │ │         self.rooms += 1
+42 │ │         self.size += 100
+43 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -237,48 +242,48 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:34:9
+   ┌─ structs.fe:41:9
    │
-34 │         self.rooms += 1
+41 │         self.rooms += 1
    │         ^^^^ House: Memory
 
 note: 
-   ┌─ structs.fe:34:9
+   ┌─ structs.fe:41:9
    │
-34 │         self.rooms += 1
+41 │         self.rooms += 1
    │         ^^^^^^^^^^    ^ u8: Value
    │         │              
    │         u8: Memory
-35 │         self.size += 100
+42 │         self.size += 100
    │         ^^^^ House: Memory
 
 note: 
-   ┌─ structs.fe:35:9
+   ┌─ structs.fe:42:9
    │
-35 │         self.size += 100
+42 │         self.size += 100
    │         ^^^^^^^^^    ^^^ u256: Value
    │         │             
    │         u256: Memory
 
 note: 
-   ┌─ structs.fe:38:5
+   ┌─ structs.fe:47:5
    │
-38 │     my_house: House
+47 │     my_house: House
    │     ^^^^^^^^^^^^^^^ House
-39 │     my_bar: Bar
+48 │     my_bar: Bar
    │     ^^^^^^^^^^^ Bar
 
 note: 
-   ┌─ structs.fe:41:5
+   ┌─ structs.fe:50:5
    │  
-41 │ ╭     pub fn complex_struct_in_storage(self) -> String<3>:
-42 │ │         self.my_bar = Bar(
-43 │ │             name: "foo",
-44 │ │             numbers: [1, 2],
+50 │ ╭     pub fn complex_struct_in_storage(self) -> String<3> {
+51 │ │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+52 │ │         assert self.my_bar.numbers[0] == 1
+53 │ │         assert self.my_bar.numbers[1] == 2
    · │
-86 │ │ 
-87 │ │         return self.my_bar.name.to_mem()
-   │ ╰────────────────────────────────────────^ attributes hash: 7100809906483982919
+79 │ │         return self.my_bar.name.to_mem()
+80 │ │     }
+   │ ╰─────^ attributes hash: 7100809906483982919
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -296,226 +301,214 @@ note:
      }
 
 note: 
-   ┌─ structs.fe:42:9
+   ┌─ structs.fe:51:9
    │
-42 │         self.my_bar = Bar(
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:42:9
+   ┌─ structs.fe:51:9
    │
-42 │         self.my_bar = Bar(
-   │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
-43 │             name: "foo",
-   │                   ^^^^^ String<3>: Memory
-44 │             numbers: [1, 2],
-   │                       ^  ^ u256: Value
-   │                       │   
-   │                       u256: Value
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │         ^^^^^^^^^^^             ^^^^^            ^  ^ u256: Value
+   │         │                       │                │   
+   │         │                       │                u256: Value
+   │         │                       String<3>: Memory
+   │         Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:44:22
+   ┌─ structs.fe:51:49
    │
-44 │             numbers: [1, 2],
-   │                      ^^^^^^ Array<u256, 2>: Memory
-45 │             point: Point(x: 100, y: 200),
-   │                             ^^^     ^^^ u256: Value
-   │                             │        
-   │                             u256: Value
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                 ^^^^^^                  ^^^     ^^^ u256: Value
+   │                                                 │                       │        
+   │                                                 │                       u256: Value
+   │                                                 Array<u256, 2>: Memory
 
 note: 
-   ┌─ structs.fe:45:20
+   ┌─ structs.fe:51:64
    │
-45 │             point: Point(x: 100, y: 200),
-   │                    ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
-46 │             something: (1, true),
-   │                         ^  ^^^^ bool: Value
-   │                         │   
-   │                         u256: Value
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool: Value
+   │                                                                │                                  │   
+   │                                                                │                                  u256: Value
+   │                                                                Point: Memory
 
 note: 
-   ┌─ structs.fe:46:24
+   ┌─ structs.fe:51:98
    │
-46 │             something: (1, true),
-   │                        ^^^^^^^^^ (u256, bool): Memory
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                                                  ^^^^^^^^^ (u256, bool): Memory
 
 note: 
-   ┌─ structs.fe:42:23
-   │  
-42 │           self.my_bar = Bar(
-   │ ╭───────────────────────^
-43 │ │             name: "foo",
-44 │ │             numbers: [1, 2],
-45 │ │             point: Point(x: 100, y: 200),
-46 │ │             something: (1, true),
-47 │ │         )
-   │ ╰─────────^ Bar: Memory
-   · │
-50 │           assert self.my_bar.numbers[0] == 1
-   │                  ^^^^ Foo: Value
+   ┌─ structs.fe:51:23
+   │
+51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar: Memory
+52 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:50:16
+   ┌─ structs.fe:52:16
    │
-50 │         assert self.my_bar.numbers[0] == 1
+52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:50:16
+   ┌─ structs.fe:52:16
    │
-50 │         assert self.my_bar.numbers[0] == 1
+52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256: Value
    │                │                    
    │                Array<u256, 2>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:50:16
+   ┌─ structs.fe:52:16
    │
-50 │         assert self.my_bar.numbers[0] == 1
+52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                          
    │                u256: Storage { nonce: None } => Value
 
 note: 
-   ┌─ structs.fe:50:16
+   ┌─ structs.fe:52:16
    │
-50 │         assert self.my_bar.numbers[0] == 1
+52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-51 │         assert self.my_bar.numbers[1] == 2
+53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:51:16
+   ┌─ structs.fe:53:16
    │
-51 │         assert self.my_bar.numbers[1] == 2
+53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:51:16
+   ┌─ structs.fe:53:16
    │
-51 │         assert self.my_bar.numbers[1] == 2
+53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256: Value
    │                │                    
    │                Array<u256, 2>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:51:16
+   ┌─ structs.fe:53:16
    │
-51 │         assert self.my_bar.numbers[1] == 2
+53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                          
    │                u256: Storage { nonce: None } => Value
 
 note: 
-   ┌─ structs.fe:51:16
+   ┌─ structs.fe:53:16
    │
-51 │         assert self.my_bar.numbers[1] == 2
+53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-52 │         assert self.my_bar.point.x == 100
-   │                ^^^^ Foo: Value
-
-note: 
-   ┌─ structs.fe:52:16
-   │
-52 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:52:16
-   │
-52 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:52:16
-   │
-52 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
-   │                │                       
-   │                u256: Storage { nonce: Some(1) } => Value
-
-note: 
-   ┌─ structs.fe:52:16
-   │
-52 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-53 │         assert self.my_bar.point.y == 200
-   │                ^^^^ Foo: Value
-
-note: 
-   ┌─ structs.fe:53:16
-   │
-53 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:53:16
-   │
-53 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:53:16
-   │
-53 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
-   │                │                       
-   │                u256: Storage { nonce: Some(1) } => Value
-
-note: 
-   ┌─ structs.fe:53:16
-   │
-53 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-54 │         assert self.my_bar.something.item0 == 1
+54 │         assert self.my_bar.point.x == 100
    │                ^^^^ Foo: Value
 
 note: 
    ┌─ structs.fe:54:16
    │
-54 │         assert self.my_bar.something.item0 == 1
+54 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
    ┌─ structs.fe:54:16
    │
-54 │         assert self.my_bar.something.item0 == 1
+54 │         assert self.my_bar.point.x == 100
+   │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:54:16
+   │
+54 │         assert self.my_bar.point.x == 100
+   │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
+   │                │                       
+   │                u256: Storage { nonce: Some(1) } => Value
+
+note: 
+   ┌─ structs.fe:54:16
+   │
+54 │         assert self.my_bar.point.x == 100
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+55 │         assert self.my_bar.point.y == 200
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ structs.fe:55:16
+   │
+55 │         assert self.my_bar.point.y == 200
+   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:55:16
+   │
+55 │         assert self.my_bar.point.y == 200
+   │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:55:16
+   │
+55 │         assert self.my_bar.point.y == 200
+   │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
+   │                │                       
+   │                u256: Storage { nonce: Some(1) } => Value
+
+note: 
+   ┌─ structs.fe:55:16
+   │
+55 │         assert self.my_bar.point.y == 200
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+56 │         assert self.my_bar.something.item0 == 1
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ structs.fe:56:16
+   │
+56 │         assert self.my_bar.something.item0 == 1
+   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:56:16
+   │
+56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:54:16
+   ┌─ structs.fe:56:16
    │
-54 │         assert self.my_bar.something.item0 == 1
+56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                               
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:54:16
+   ┌─ structs.fe:56:16
    │
-54 │         assert self.my_bar.something.item0 == 1
+56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-55 │         assert self.my_bar.something.item1
+57 │         assert self.my_bar.something.item1
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:55:16
+   ┌─ structs.fe:57:16
    │
-55 │         assert self.my_bar.something.item1
+57 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:55:16
+   ┌─ structs.fe:57:16
    │
-55 │         assert self.my_bar.something.item1
+57 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:55:16
+   ┌─ structs.fe:57:16
    │
-55 │         assert self.my_bar.something.item1
+57 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(1) } => Value
-   ·
 58 │         self.my_bar.numbers[0] = 10
    │         ^^^^ Foo: Value
 
@@ -624,43 +617,72 @@ note:
    │
 61 │         assert self.my_bar.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-62 │         # We can set the array itself
-63 │         self.my_bar.numbers = [1, 2]
+62 │         self.my_bar.numbers = [1, 2]
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:63:9
+   ┌─ structs.fe:62:9
    │
-63 │         self.my_bar.numbers = [1, 2]
+62 │         self.my_bar.numbers = [1, 2]
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:63:9
+   ┌─ structs.fe:62:9
    │
-63 │         self.my_bar.numbers = [1, 2]
+62 │         self.my_bar.numbers = [1, 2]
    │         ^^^^^^^^^^^^^^^^^^^    ^  ^ u256: Value
    │         │                      │   
    │         │                      u256: Value
    │         Array<u256, 2>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:63:31
+   ┌─ structs.fe:62:31
    │
-63 │         self.my_bar.numbers = [1, 2]
+62 │         self.my_bar.numbers = [1, 2]
    │                               ^^^^^^ Array<u256, 2>: Memory
-64 │         assert self.my_bar.numbers[0] == 1
+63 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ structs.fe:63:16
+   │
+63 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:63:16
+   │
+63 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^^^^^^^^^^^^^^^^ ^ u256: Value
+   │                │                    
+   │                Array<u256, 2>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ structs.fe:63:16
+   │
+63 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                          
+   │                u256: Storage { nonce: None } => Value
+
+note: 
+   ┌─ structs.fe:63:16
+   │
+63 │         assert self.my_bar.numbers[0] == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^ Foo: Value
 
 note: 
    ┌─ structs.fe:64:16
    │
-64 │         assert self.my_bar.numbers[0] == 1
+64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
    ┌─ structs.fe:64:16
    │
-64 │         assert self.my_bar.numbers[0] == 1
+64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256: Value
    │                │                    
    │                Array<u256, 2>: Storage { nonce: Some(1) }
@@ -668,7 +690,7 @@ note:
 note: 
    ┌─ structs.fe:64:16
    │
-64 │         assert self.my_bar.numbers[0] == 1
+64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                          
    │                u256: Storage { nonce: None } => Value
@@ -676,423 +698,388 @@ note:
 note: 
    ┌─ structs.fe:64:16
    │
-64 │         assert self.my_bar.numbers[0] == 1
+64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-65 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^ Foo: Value
-
-note: 
-   ┌─ structs.fe:65:16
-   │
-65 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:65:16
-   │
-65 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^^^^^^^^^ ^ u256: Value
-   │                │                    
-   │                Array<u256, 2>: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ structs.fe:65:16
-   │
-65 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
-   │                │                          
-   │                u256: Storage { nonce: None } => Value
-
-note: 
-   ┌─ structs.fe:65:16
-   │
-65 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-   ·
-68 │         self.my_bar.point.x = 1000
+65 │         self.my_bar.point.x = 1000
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:68:9
+   ┌─ structs.fe:65:9
    │
-68 │         self.my_bar.point.x = 1000
+65 │         self.my_bar.point.x = 1000
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:68:9
+   ┌─ structs.fe:65:9
    │
-68 │         self.my_bar.point.x = 1000
+65 │         self.my_bar.point.x = 1000
    │         ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:68:9
+   ┌─ structs.fe:65:9
    │
-68 │         self.my_bar.point.x = 1000
+65 │         self.my_bar.point.x = 1000
    │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256: Value
    │         │                      
    │         u256: Storage { nonce: Some(1) }
-69 │         self.my_bar.point.y = 2000
+66 │         self.my_bar.point.y = 2000
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:69:9
+   ┌─ structs.fe:66:9
    │
-69 │         self.my_bar.point.y = 2000
+66 │         self.my_bar.point.y = 2000
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:69:9
+   ┌─ structs.fe:66:9
    │
-69 │         self.my_bar.point.y = 2000
+66 │         self.my_bar.point.y = 2000
    │         ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:69:9
+   ┌─ structs.fe:66:9
    │
-69 │         self.my_bar.point.y = 2000
+66 │         self.my_bar.point.y = 2000
    │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256: Value
    │         │                      
    │         u256: Storage { nonce: Some(1) }
-70 │         assert self.my_bar.point.x == 1000
+67 │         assert self.my_bar.point.x == 1000
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:70:16
+   ┌─ structs.fe:67:16
    │
-70 │         assert self.my_bar.point.x == 1000
+67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:70:16
+   ┌─ structs.fe:67:16
    │
-70 │         assert self.my_bar.point.x == 1000
+67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:70:16
+   ┌─ structs.fe:67:16
    │
-70 │         assert self.my_bar.point.x == 1000
+67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256: Value
    │                │                       
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:70:16
+   ┌─ structs.fe:67:16
    │
-70 │         assert self.my_bar.point.x == 1000
+67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-71 │         assert self.my_bar.point.y == 2000
+68 │         assert self.my_bar.point.y == 2000
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:71:16
+   ┌─ structs.fe:68:16
    │
-71 │         assert self.my_bar.point.y == 2000
+68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:71:16
+   ┌─ structs.fe:68:16
    │
-71 │         assert self.my_bar.point.y == 2000
+68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:71:16
+   ┌─ structs.fe:68:16
    │
-71 │         assert self.my_bar.point.y == 2000
+68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256: Value
    │                │                       
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:71:16
+   ┌─ structs.fe:68:16
    │
-71 │         assert self.my_bar.point.y == 2000
+68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-72 │         # We can set the point itself
-73 │         self.my_bar.point = Point(x: 100, y: 200)
+69 │         self.my_bar.point = Point(x: 100, y: 200)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:73:9
+   ┌─ structs.fe:69:9
    │
-73 │         self.my_bar.point = Point(x: 100, y: 200)
+69 │         self.my_bar.point = Point(x: 100, y: 200)
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:73:9
+   ┌─ structs.fe:69:9
    │
-73 │         self.my_bar.point = Point(x: 100, y: 200)
+69 │         self.my_bar.point = Point(x: 100, y: 200)
    │         ^^^^^^^^^^^^^^^^^            ^^^     ^^^ u256: Value
    │         │                            │        
    │         │                            u256: Value
    │         Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:73:29
+   ┌─ structs.fe:69:29
    │
-73 │         self.my_bar.point = Point(x: 100, y: 200)
+69 │         self.my_bar.point = Point(x: 100, y: 200)
    │                             ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
-74 │         assert self.my_bar.point.x == 100
+70 │         assert self.my_bar.point.x == 100
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:74:16
+   ┌─ structs.fe:70:16
    │
-74 │         assert self.my_bar.point.x == 100
+70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:74:16
+   ┌─ structs.fe:70:16
    │
-74 │         assert self.my_bar.point.x == 100
+70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:74:16
+   ┌─ structs.fe:70:16
    │
-74 │         assert self.my_bar.point.x == 100
+70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
    │                │                       
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:74:16
+   ┌─ structs.fe:70:16
    │
-74 │         assert self.my_bar.point.x == 100
+70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-75 │         assert self.my_bar.point.y == 200
+71 │         assert self.my_bar.point.y == 200
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:75:16
+   ┌─ structs.fe:71:16
    │
-75 │         assert self.my_bar.point.y == 200
+71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:75:16
+   ┌─ structs.fe:71:16
    │
-75 │         assert self.my_bar.point.y == 200
+71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^ Point: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:75:16
+   ┌─ structs.fe:71:16
    │
-75 │         assert self.my_bar.point.y == 200
+71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256: Value
    │                │                       
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:75:16
+   ┌─ structs.fe:71:16
    │
-75 │         assert self.my_bar.point.y == 200
+71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-   ·
-78 │         self.my_bar.something.item0 = 10
+72 │         self.my_bar.something.item0 = 10
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:78:9
+   ┌─ structs.fe:72:9
    │
-78 │         self.my_bar.something.item0 = 10
+72 │         self.my_bar.something.item0 = 10
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:78:9
+   ┌─ structs.fe:72:9
    │
-78 │         self.my_bar.something.item0 = 10
+72 │         self.my_bar.something.item0 = 10
    │         ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:78:9
+   ┌─ structs.fe:72:9
    │
-78 │         self.my_bar.something.item0 = 10
+72 │         self.my_bar.something.item0 = 10
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^ u256: Value
    │         │                              
    │         u256: Storage { nonce: Some(1) }
-79 │         self.my_bar.something.item1 = false
+73 │         self.my_bar.something.item1 = false
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:79:9
+   ┌─ structs.fe:73:9
    │
-79 │         self.my_bar.something.item1 = false
+73 │         self.my_bar.something.item1 = false
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:79:9
+   ┌─ structs.fe:73:9
    │
-79 │         self.my_bar.something.item1 = false
+73 │         self.my_bar.something.item1 = false
    │         ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:79:9
+   ┌─ structs.fe:73:9
    │
-79 │         self.my_bar.something.item1 = false
+73 │         self.my_bar.something.item1 = false
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ bool: Value
    │         │                              
    │         bool: Storage { nonce: Some(1) }
-80 │         assert self.my_bar.something.item0 == 10
+74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:80:16
+   ┌─ structs.fe:74:16
    │
-80 │         assert self.my_bar.something.item0 == 10
+74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:80:16
+   ┌─ structs.fe:74:16
    │
-80 │         assert self.my_bar.something.item0 == 10
+74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:80:16
+   ┌─ structs.fe:74:16
    │
-80 │         assert self.my_bar.something.item0 == 10
+74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^ u256: Value
    │                │                               
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:80:16
+   ┌─ structs.fe:74:16
    │
-80 │         assert self.my_bar.something.item0 == 10
+74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-81 │         assert not self.my_bar.something.item1
+75 │         assert not self.my_bar.something.item1
    │                    ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:81:20
+   ┌─ structs.fe:75:20
    │
-81 │         assert not self.my_bar.something.item1
+75 │         assert not self.my_bar.something.item1
    │                    ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:81:20
+   ┌─ structs.fe:75:20
    │
-81 │         assert not self.my_bar.something.item1
+75 │         assert not self.my_bar.something.item1
    │                    ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:81:20
+   ┌─ structs.fe:75:20
    │
-81 │         assert not self.my_bar.something.item1
+75 │         assert not self.my_bar.something.item1
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:81:16
+   ┌─ structs.fe:75:16
    │
-81 │         assert not self.my_bar.something.item1
+75 │         assert not self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-82 │         # We can set the tuple itself
-83 │         self.my_bar.something = (1, true)
+76 │         self.my_bar.something = (1, true)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:83:9
+   ┌─ structs.fe:76:9
    │
-83 │         self.my_bar.something = (1, true)
+76 │         self.my_bar.something = (1, true)
    │         ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:83:9
+   ┌─ structs.fe:76:9
    │
-83 │         self.my_bar.something = (1, true)
+76 │         self.my_bar.something = (1, true)
    │         ^^^^^^^^^^^^^^^^^^^^^    ^  ^^^^ bool: Value
    │         │                        │   
    │         │                        u256: Value
    │         (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:83:33
+   ┌─ structs.fe:76:33
    │
-83 │         self.my_bar.something = (1, true)
+76 │         self.my_bar.something = (1, true)
    │                                 ^^^^^^^^^ (u256, bool): Memory
-84 │         assert self.my_bar.something.item0 == 1
+77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:84:16
+   ┌─ structs.fe:77:16
    │
-84 │         assert self.my_bar.something.item0 == 1
+77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:84:16
+   ┌─ structs.fe:77:16
    │
-84 │         assert self.my_bar.something.item0 == 1
+77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:84:16
+   ┌─ structs.fe:77:16
    │
-84 │         assert self.my_bar.something.item0 == 1
+77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
    │                │                               
    │                u256: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ structs.fe:84:16
+   ┌─ structs.fe:77:16
    │
-84 │         assert self.my_bar.something.item0 == 1
+77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-85 │         assert self.my_bar.something.item1
+78 │         assert self.my_bar.something.item1
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:85:16
+   ┌─ structs.fe:78:16
    │
-85 │         assert self.my_bar.something.item1
+78 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:85:16
+   ┌─ structs.fe:78:16
    │
-85 │         assert self.my_bar.something.item1
+78 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^ (u256, bool): Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:85:16
+   ┌─ structs.fe:78:16
    │
-85 │         assert self.my_bar.something.item1
+78 │         assert self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(1) } => Value
-86 │ 
-87 │         return self.my_bar.name.to_mem()
+79 │         return self.my_bar.name.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ structs.fe:87:16
+   ┌─ structs.fe:79:16
    │
-87 │         return self.my_bar.name.to_mem()
+79 │         return self.my_bar.name.to_mem()
    │                ^^^^^^^^^^^ Bar: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:87:16
+   ┌─ structs.fe:79:16
    │
-87 │         return self.my_bar.name.to_mem()
+79 │         return self.my_bar.name.to_mem()
    │                ^^^^^^^^^^^^^^^^ String<3>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ structs.fe:87:16
+   ┌─ structs.fe:79:16
    │
-87 │         return self.my_bar.name.to_mem()
+79 │         return self.my_bar.name.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ String<3>: Storage { nonce: Some(1) } => Memory
 
 note: 
-    ┌─ structs.fe:89:5
+    ┌─ structs.fe:82:5
     │  
- 89 │ ╭     pub fn complex_struct_in_memory(self) -> String<3>:
- 90 │ │         let val: Bar = Bar(
- 91 │ │             name: "foo",
- 92 │ │             numbers: [1, 2],
+ 82 │ ╭     pub fn complex_struct_in_memory(self) -> String<3> {
+ 83 │ │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+ 84 │ │         assert val.numbers[0] == 1
+ 85 │ │         assert val.numbers[1] == 2
     · │
-134 │ │ 
-135 │ │         return val.name
-    │ ╰───────────────────────^ attributes hash: 7100809906483982919
+111 │ │         return val.name
+112 │ │     }
+    │ ╰─────^ attributes hash: 7100809906483982919
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1110,623 +1097,607 @@ note:
       }
 
 note: 
-   ┌─ structs.fe:90:18
+   ┌─ structs.fe:83:18
    │
-90 │         let val: Bar = Bar(
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
    │                  ^^^ Bar
 
 note: 
-   ┌─ structs.fe:91:19
+   ┌─ structs.fe:83:34
    │
-91 │             name: "foo",
-   │                   ^^^^^ String<3>: Memory
-92 │             numbers: [1, 2],
-   │                       ^  ^ u256: Value
-   │                       │   
-   │                       u256: Value
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                  ^^^^^            ^  ^ u256: Value
+   │                                  │                │   
+   │                                  │                u256: Value
+   │                                  String<3>: Memory
 
 note: 
-   ┌─ structs.fe:92:22
+   ┌─ structs.fe:83:50
    │
-92 │             numbers: [1, 2],
-   │                      ^^^^^^ Array<u256, 2>: Memory
-93 │             point: Point(x: 100, y: 200),
-   │                             ^^^     ^^^ u256: Value
-   │                             │        
-   │                             u256: Value
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                  ^^^^^^                  ^^^     ^^^ u256: Value
+   │                                                  │                       │        
+   │                                                  │                       u256: Value
+   │                                                  Array<u256, 2>: Memory
 
 note: 
-   ┌─ structs.fe:93:20
+   ┌─ structs.fe:83:65
    │
-93 │             point: Point(x: 100, y: 200),
-   │                    ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
-94 │             something: (1, true),
-   │                         ^  ^^^^ bool: Value
-   │                         │   
-   │                         u256: Value
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                 ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool: Value
+   │                                                                 │                                  │   
+   │                                                                 │                                  u256: Value
+   │                                                                 Point: Memory
 
 note: 
-   ┌─ structs.fe:94:24
+   ┌─ structs.fe:83:99
    │
-94 │             something: (1, true),
-   │                        ^^^^^^^^^ (u256, bool): Memory
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                                                   ^^^^^^^^^ (u256, bool): Memory
 
 note: 
-   ┌─ structs.fe:90:24
-   │  
-90 │           let val: Bar = Bar(
-   │ ╭────────────────────────^
-91 │ │             name: "foo",
-92 │ │             numbers: [1, 2],
-93 │ │             point: Point(x: 100, y: 200),
-94 │ │             something: (1, true),
-95 │ │         )
-   │ ╰─────────^ Bar: Memory
-   · │
-98 │           assert val.numbers[0] == 1
-   │                  ^^^ Bar: Memory
+   ┌─ structs.fe:83:24
+   │
+83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar: Memory
+84 │         assert val.numbers[0] == 1
+   │                ^^^ Bar: Memory
 
 note: 
-   ┌─ structs.fe:98:16
+   ┌─ structs.fe:84:16
    │
-98 │         assert val.numbers[0] == 1
+84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^ ^ u256: Value
    │                │            
    │                Array<u256, 2>: Memory
 
 note: 
-   ┌─ structs.fe:98:16
+   ┌─ structs.fe:84:16
    │
-98 │         assert val.numbers[0] == 1
+84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^    ^ u256: Value
    │                │                  
    │                u256: Memory => Value
 
 note: 
-   ┌─ structs.fe:98:16
+   ┌─ structs.fe:84:16
    │
-98 │         assert val.numbers[0] == 1
+84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-99 │         assert val.numbers[1] == 2
+85 │         assert val.numbers[1] == 2
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:85:16
+   │
+85 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:85:16
+   │
+85 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                  
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:85:16
+   │
+85 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^^^^^^^^^ bool: Value
+86 │         assert val.point.x == 100
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:86:16
+   │
+86 │         assert val.point.x == 100
+   │                ^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ structs.fe:86:16
+   │
+86 │         assert val.point.x == 100
+   │                ^^^^^^^^^^^    ^^^ u256: Value
+   │                │               
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:86:16
+   │
+86 │         assert val.point.x == 100
+   │                ^^^^^^^^^^^^^^^^^^ bool: Value
+87 │         assert val.point.y == 200
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:87:16
+   │
+87 │         assert val.point.y == 200
+   │                ^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ structs.fe:87:16
+   │
+87 │         assert val.point.y == 200
+   │                ^^^^^^^^^^^    ^^^ u256: Value
+   │                │               
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:87:16
+   │
+87 │         assert val.point.y == 200
+   │                ^^^^^^^^^^^^^^^^^^ bool: Value
+88 │         assert val.something.item0 == 1
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:88:16
+   │
+88 │         assert val.something.item0 == 1
+   │                ^^^^^^^^^^^^^ (u256, bool): Memory
+
+note: 
+   ┌─ structs.fe:88:16
+   │
+88 │         assert val.something.item0 == 1
+   │                ^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                       
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:88:16
+   │
+88 │         assert val.something.item0 == 1
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+89 │         assert val.something.item1
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:89:16
+   │
+89 │         assert val.something.item1
+   │                ^^^^^^^^^^^^^ (u256, bool): Memory
+
+note: 
+   ┌─ structs.fe:89:16
+   │
+89 │         assert val.something.item1
+   │                ^^^^^^^^^^^^^^^^^^^ bool: Memory => Value
+90 │         val.numbers[0] = 10
+   │         ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:90:9
+   │
+90 │         val.numbers[0] = 10
+   │         ^^^^^^^^^^^ ^ u256: Value
+   │         │            
+   │         Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:90:9
+   │
+90 │         val.numbers[0] = 10
+   │         ^^^^^^^^^^^^^^   ^^ u256: Value
+   │         │                 
+   │         u256: Memory
+91 │         val.numbers[1] = 20
+   │         ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:91:9
+   │
+91 │         val.numbers[1] = 20
+   │         ^^^^^^^^^^^ ^ u256: Value
+   │         │            
+   │         Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:91:9
+   │
+91 │         val.numbers[1] = 20
+   │         ^^^^^^^^^^^^^^   ^^ u256: Value
+   │         │                 
+   │         u256: Memory
+92 │         assert val.numbers[0] == 10
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:92:16
+   │
+92 │         assert val.numbers[0] == 10
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:92:16
+   │
+92 │         assert val.numbers[0] == 10
+   │                ^^^^^^^^^^^^^^    ^^ u256: Value
+   │                │                  
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:92:16
+   │
+92 │         assert val.numbers[0] == 10
+   │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
+93 │         assert val.numbers[1] == 20
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:93:16
+   │
+93 │         assert val.numbers[1] == 20
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:93:16
+   │
+93 │         assert val.numbers[1] == 20
+   │                ^^^^^^^^^^^^^^    ^^ u256: Value
+   │                │                  
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:93:16
+   │
+93 │         assert val.numbers[1] == 20
+   │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
+94 │         val.numbers = [1, 2]
+   │         ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:94:9
+   │
+94 │         val.numbers = [1, 2]
+   │         ^^^^^^^^^^^    ^  ^ u256: Value
+   │         │              │   
+   │         │              u256: Value
+   │         Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:94:23
+   │
+94 │         val.numbers = [1, 2]
+   │                       ^^^^^^ Array<u256, 2>: Memory
+95 │         assert val.numbers[0] == 1
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:95:16
+   │
+95 │         assert val.numbers[0] == 1
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:95:16
+   │
+95 │         assert val.numbers[0] == 1
+   │                ^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                  
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:95:16
+   │
+95 │         assert val.numbers[0] == 1
+   │                ^^^^^^^^^^^^^^^^^^^ bool: Value
+96 │         assert val.numbers[1] == 2
+   │                ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:96:16
+   │
+96 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Array<u256, 2>: Memory
+
+note: 
+   ┌─ structs.fe:96:16
+   │
+96 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^^^^    ^ u256: Value
+   │                │                  
+   │                u256: Memory => Value
+
+note: 
+   ┌─ structs.fe:96:16
+   │
+96 │         assert val.numbers[1] == 2
+   │                ^^^^^^^^^^^^^^^^^^^ bool: Value
+97 │         val.point.x = 1000
+   │         ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:97:9
+   │
+97 │         val.point.x = 1000
+   │         ^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ structs.fe:97:9
+   │
+97 │         val.point.x = 1000
+   │         ^^^^^^^^^^^   ^^^^ u256: Value
+   │         │              
+   │         u256: Memory
+98 │         val.point.y = 2000
+   │         ^^^ Bar: Memory
+
+note: 
+   ┌─ structs.fe:98:9
+   │
+98 │         val.point.y = 2000
+   │         ^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ structs.fe:98:9
+   │
+98 │         val.point.y = 2000
+   │         ^^^^^^^^^^^   ^^^^ u256: Value
+   │         │              
+   │         u256: Memory
+99 │         assert val.point.x == 1000
    │                ^^^ Bar: Memory
 
 note: 
    ┌─ structs.fe:99:16
    │
-99 │         assert val.numbers[1] == 2
-   │                ^^^^^^^^^^^ ^ u256: Value
-   │                │            
-   │                Array<u256, 2>: Memory
+99 │         assert val.point.x == 1000
+   │                ^^^^^^^^^ Point: Memory
 
 note: 
    ┌─ structs.fe:99:16
    │
-99 │         assert val.numbers[1] == 2
-   │                ^^^^^^^^^^^^^^    ^ u256: Value
-   │                │                  
+99 │         assert val.point.x == 1000
+   │                ^^^^^^^^^^^    ^^^^ u256: Value
+   │                │               
    │                u256: Memory => Value
 
 note: 
     ┌─ structs.fe:99:16
     │
- 99 │         assert val.numbers[1] == 2
+ 99 │         assert val.point.x == 1000
     │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-100 │         assert val.point.x == 100
+100 │         assert val.point.y == 2000
     │                ^^^ Bar: Memory
 
 note: 
     ┌─ structs.fe:100:16
     │
-100 │         assert val.point.x == 100
+100 │         assert val.point.y == 2000
     │                ^^^^^^^^^ Point: Memory
 
 note: 
     ┌─ structs.fe:100:16
     │
-100 │         assert val.point.x == 100
-    │                ^^^^^^^^^^^    ^^^ u256: Value
-    │                │               
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:100:16
-    │
-100 │         assert val.point.x == 100
-    │                ^^^^^^^^^^^^^^^^^^ bool: Value
-101 │         assert val.point.y == 200
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:101:16
-    │
-101 │         assert val.point.y == 200
-    │                ^^^^^^^^^ Point: Memory
-
-note: 
-    ┌─ structs.fe:101:16
-    │
-101 │         assert val.point.y == 200
-    │                ^^^^^^^^^^^    ^^^ u256: Value
-    │                │               
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:101:16
-    │
-101 │         assert val.point.y == 200
-    │                ^^^^^^^^^^^^^^^^^^ bool: Value
-102 │         assert val.something.item0 == 1
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:102:16
-    │
-102 │         assert val.something.item0 == 1
-    │                ^^^^^^^^^^^^^ (u256, bool): Memory
-
-note: 
-    ┌─ structs.fe:102:16
-    │
-102 │         assert val.something.item0 == 1
-    │                ^^^^^^^^^^^^^^^^^^^    ^ u256: Value
-    │                │                       
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:102:16
-    │
-102 │         assert val.something.item0 == 1
-    │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-103 │         assert val.something.item1
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:103:16
-    │
-103 │         assert val.something.item1
-    │                ^^^^^^^^^^^^^ (u256, bool): Memory
-
-note: 
-    ┌─ structs.fe:103:16
-    │
-103 │         assert val.something.item1
-    │                ^^^^^^^^^^^^^^^^^^^ bool: Memory => Value
-    ·
-106 │         val.numbers[0] = 10
-    │         ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:106:9
-    │
-106 │         val.numbers[0] = 10
-    │         ^^^^^^^^^^^ ^ u256: Value
-    │         │            
-    │         Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:106:9
-    │
-106 │         val.numbers[0] = 10
-    │         ^^^^^^^^^^^^^^   ^^ u256: Value
-    │         │                 
-    │         u256: Memory
-107 │         val.numbers[1] = 20
-    │         ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:107:9
-    │
-107 │         val.numbers[1] = 20
-    │         ^^^^^^^^^^^ ^ u256: Value
-    │         │            
-    │         Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:107:9
-    │
-107 │         val.numbers[1] = 20
-    │         ^^^^^^^^^^^^^^   ^^ u256: Value
-    │         │                 
-    │         u256: Memory
-108 │         assert val.numbers[0] == 10
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:108:16
-    │
-108 │         assert val.numbers[0] == 10
-    │                ^^^^^^^^^^^ ^ u256: Value
-    │                │            
-    │                Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:108:16
-    │
-108 │         assert val.numbers[0] == 10
-    │                ^^^^^^^^^^^^^^    ^^ u256: Value
-    │                │                  
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:108:16
-    │
-108 │         assert val.numbers[0] == 10
-    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-109 │         assert val.numbers[1] == 20
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:109:16
-    │
-109 │         assert val.numbers[1] == 20
-    │                ^^^^^^^^^^^ ^ u256: Value
-    │                │            
-    │                Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:109:16
-    │
-109 │         assert val.numbers[1] == 20
-    │                ^^^^^^^^^^^^^^    ^^ u256: Value
-    │                │                  
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:109:16
-    │
-109 │         assert val.numbers[1] == 20
-    │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-110 │         # We can set the array itself
-111 │         val.numbers = [1, 2]
-    │         ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:111:9
-    │
-111 │         val.numbers = [1, 2]
-    │         ^^^^^^^^^^^    ^  ^ u256: Value
-    │         │              │   
-    │         │              u256: Value
-    │         Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:111:23
-    │
-111 │         val.numbers = [1, 2]
-    │                       ^^^^^^ Array<u256, 2>: Memory
-112 │         assert val.numbers[0] == 1
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:112:16
-    │
-112 │         assert val.numbers[0] == 1
-    │                ^^^^^^^^^^^ ^ u256: Value
-    │                │            
-    │                Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:112:16
-    │
-112 │         assert val.numbers[0] == 1
-    │                ^^^^^^^^^^^^^^    ^ u256: Value
-    │                │                  
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:112:16
-    │
-112 │         assert val.numbers[0] == 1
-    │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-113 │         assert val.numbers[1] == 2
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:113:16
-    │
-113 │         assert val.numbers[1] == 2
-    │                ^^^^^^^^^^^ ^ u256: Value
-    │                │            
-    │                Array<u256, 2>: Memory
-
-note: 
-    ┌─ structs.fe:113:16
-    │
-113 │         assert val.numbers[1] == 2
-    │                ^^^^^^^^^^^^^^    ^ u256: Value
-    │                │                  
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:113:16
-    │
-113 │         assert val.numbers[1] == 2
-    │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-    ·
-116 │         val.point.x = 1000
-    │         ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:116:9
-    │
-116 │         val.point.x = 1000
-    │         ^^^^^^^^^ Point: Memory
-
-note: 
-    ┌─ structs.fe:116:9
-    │
-116 │         val.point.x = 1000
-    │         ^^^^^^^^^^^   ^^^^ u256: Value
-    │         │              
-    │         u256: Memory
-117 │         val.point.y = 2000
-    │         ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:117:9
-    │
-117 │         val.point.y = 2000
-    │         ^^^^^^^^^ Point: Memory
-
-note: 
-    ┌─ structs.fe:117:9
-    │
-117 │         val.point.y = 2000
-    │         ^^^^^^^^^^^   ^^^^ u256: Value
-    │         │              
-    │         u256: Memory
-118 │         assert val.point.x == 1000
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:118:16
-    │
-118 │         assert val.point.x == 1000
-    │                ^^^^^^^^^ Point: Memory
-
-note: 
-    ┌─ structs.fe:118:16
-    │
-118 │         assert val.point.x == 1000
+100 │         assert val.point.y == 2000
     │                ^^^^^^^^^^^    ^^^^ u256: Value
     │                │               
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:118:16
+    ┌─ structs.fe:100:16
     │
-118 │         assert val.point.x == 1000
+100 │         assert val.point.y == 2000
     │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-119 │         assert val.point.y == 2000
-    │                ^^^ Bar: Memory
-
-note: 
-    ┌─ structs.fe:119:16
-    │
-119 │         assert val.point.y == 2000
-    │                ^^^^^^^^^ Point: Memory
-
-note: 
-    ┌─ structs.fe:119:16
-    │
-119 │         assert val.point.y == 2000
-    │                ^^^^^^^^^^^    ^^^^ u256: Value
-    │                │               
-    │                u256: Memory => Value
-
-note: 
-    ┌─ structs.fe:119:16
-    │
-119 │         assert val.point.y == 2000
-    │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-120 │         # We can set the point itself
-121 │         val.point = Point(x: 100, y: 200)
+101 │         val.point = Point(x: 100, y: 200)
     │         ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:121:9
+    ┌─ structs.fe:101:9
     │
-121 │         val.point = Point(x: 100, y: 200)
+101 │         val.point = Point(x: 100, y: 200)
     │         ^^^^^^^^^            ^^^     ^^^ u256: Value
     │         │                    │        
     │         │                    u256: Value
     │         Point: Memory
 
 note: 
-    ┌─ structs.fe:121:21
+    ┌─ structs.fe:101:21
     │
-121 │         val.point = Point(x: 100, y: 200)
+101 │         val.point = Point(x: 100, y: 200)
     │                     ^^^^^^^^^^^^^^^^^^^^^ Point: Memory
-122 │         assert val.point.x == 100
+102 │         assert val.point.x == 100
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:122:16
+    ┌─ structs.fe:102:16
     │
-122 │         assert val.point.x == 100
+102 │         assert val.point.x == 100
     │                ^^^^^^^^^ Point: Memory
 
 note: 
-    ┌─ structs.fe:122:16
+    ┌─ structs.fe:102:16
     │
-122 │         assert val.point.x == 100
+102 │         assert val.point.x == 100
     │                ^^^^^^^^^^^    ^^^ u256: Value
     │                │               
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:122:16
+    ┌─ structs.fe:102:16
     │
-122 │         assert val.point.x == 100
+102 │         assert val.point.x == 100
     │                ^^^^^^^^^^^^^^^^^^ bool: Value
-123 │         assert val.point.y == 200
+103 │         assert val.point.y == 200
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:123:16
+    ┌─ structs.fe:103:16
     │
-123 │         assert val.point.y == 200
+103 │         assert val.point.y == 200
     │                ^^^^^^^^^ Point: Memory
 
 note: 
-    ┌─ structs.fe:123:16
+    ┌─ structs.fe:103:16
     │
-123 │         assert val.point.y == 200
+103 │         assert val.point.y == 200
     │                ^^^^^^^^^^^    ^^^ u256: Value
     │                │               
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:123:16
+    ┌─ structs.fe:103:16
     │
-123 │         assert val.point.y == 200
+103 │         assert val.point.y == 200
     │                ^^^^^^^^^^^^^^^^^^ bool: Value
-    ·
-126 │         val.something.item0 = 10
+104 │         val.something.item0 = 10
     │         ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:126:9
+    ┌─ structs.fe:104:9
     │
-126 │         val.something.item0 = 10
+104 │         val.something.item0 = 10
     │         ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:126:9
+    ┌─ structs.fe:104:9
     │
-126 │         val.something.item0 = 10
+104 │         val.something.item0 = 10
     │         ^^^^^^^^^^^^^^^^^^^   ^^ u256: Value
     │         │                      
     │         u256: Memory
-127 │         val.something.item1 = false
+105 │         val.something.item1 = false
     │         ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:127:9
+    ┌─ structs.fe:105:9
     │
-127 │         val.something.item1 = false
+105 │         val.something.item1 = false
     │         ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:127:9
+    ┌─ structs.fe:105:9
     │
-127 │         val.something.item1 = false
+105 │         val.something.item1 = false
     │         ^^^^^^^^^^^^^^^^^^^   ^^^^^ bool: Value
     │         │                      
     │         bool: Memory
-128 │         assert val.something.item0 == 10
+106 │         assert val.something.item0 == 10
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:128:16
+    ┌─ structs.fe:106:16
     │
-128 │         assert val.something.item0 == 10
+106 │         assert val.something.item0 == 10
     │                ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:128:16
+    ┌─ structs.fe:106:16
     │
-128 │         assert val.something.item0 == 10
+106 │         assert val.something.item0 == 10
     │                ^^^^^^^^^^^^^^^^^^^    ^^ u256: Value
     │                │                       
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:128:16
+    ┌─ structs.fe:106:16
     │
-128 │         assert val.something.item0 == 10
+106 │         assert val.something.item0 == 10
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-129 │         assert not val.something.item1
+107 │         assert not val.something.item1
     │                    ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:129:20
+    ┌─ structs.fe:107:20
     │
-129 │         assert not val.something.item1
+107 │         assert not val.something.item1
     │                    ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:129:20
+    ┌─ structs.fe:107:20
     │
-129 │         assert not val.something.item1
+107 │         assert not val.something.item1
     │                    ^^^^^^^^^^^^^^^^^^^ bool: Memory => Value
 
 note: 
-    ┌─ structs.fe:129:16
+    ┌─ structs.fe:107:16
     │
-129 │         assert not val.something.item1
+107 │         assert not val.something.item1
     │                ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-130 │         # We can set the tuple itself
-131 │         val.something = (1, true)
+108 │         val.something = (1, true)
     │         ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:131:9
+    ┌─ structs.fe:108:9
     │
-131 │         val.something = (1, true)
+108 │         val.something = (1, true)
     │         ^^^^^^^^^^^^^    ^  ^^^^ bool: Value
     │         │                │   
     │         │                u256: Value
     │         (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:131:25
+    ┌─ structs.fe:108:25
     │
-131 │         val.something = (1, true)
+108 │         val.something = (1, true)
     │                         ^^^^^^^^^ (u256, bool): Memory
-132 │         assert val.something.item0 == 1
+109 │         assert val.something.item0 == 1
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:132:16
+    ┌─ structs.fe:109:16
     │
-132 │         assert val.something.item0 == 1
+109 │         assert val.something.item0 == 1
     │                ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:132:16
+    ┌─ structs.fe:109:16
     │
-132 │         assert val.something.item0 == 1
+109 │         assert val.something.item0 == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256: Value
     │                │                       
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:132:16
+    ┌─ structs.fe:109:16
     │
-132 │         assert val.something.item0 == 1
+109 │         assert val.something.item0 == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-133 │         assert val.something.item1
+110 │         assert val.something.item1
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:133:16
+    ┌─ structs.fe:110:16
     │
-133 │         assert val.something.item1
+110 │         assert val.something.item1
     │                ^^^^^^^^^^^^^ (u256, bool): Memory
 
 note: 
-    ┌─ structs.fe:133:16
+    ┌─ structs.fe:110:16
     │
-133 │         assert val.something.item1
+110 │         assert val.something.item1
     │                ^^^^^^^^^^^^^^^^^^^ bool: Memory => Value
-134 │ 
-135 │         return val.name
+111 │         return val.name
     │                ^^^ Bar: Memory
 
 note: 
-    ┌─ structs.fe:135:16
+    ┌─ structs.fe:111:16
     │
-135 │         return val.name
+111 │         return val.name
     │                ^^^^^^^^ String<3>: Memory
 
 note: 
-    ┌─ structs.fe:137:5
+    ┌─ structs.fe:114:5
     │  
-137 │ ╭     pub fn create_mixed(self) -> u256:
-138 │ │         let mixed: Mixed = Mixed::new(val:1)
-139 │ │         return mixed.foo
-    │ ╰────────────────────────^ attributes hash: 11773348765973600208
+114 │ ╭     pub fn create_mixed(self) -> u256 {
+115 │ │         let mixed: Mixed = Mixed::new(val: 1)
+116 │ │         return mixed.foo
+117 │ │     }
+    │ ╰─────^ attributes hash: 11773348765973600208
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1744,37 +1715,38 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:138:20
+    ┌─ structs.fe:115:20
     │
-138 │         let mixed: Mixed = Mixed::new(val:1)
+115 │         let mixed: Mixed = Mixed::new(val: 1)
     │                    ^^^^^ Mixed
 
 note: 
-    ┌─ structs.fe:138:43
+    ┌─ structs.fe:115:44
     │
-138 │         let mixed: Mixed = Mixed::new(val:1)
-    │                                           ^ u256: Value
+115 │         let mixed: Mixed = Mixed::new(val: 1)
+    │                                            ^ u256: Value
 
 note: 
-    ┌─ structs.fe:138:28
+    ┌─ structs.fe:115:28
     │
-138 │         let mixed: Mixed = Mixed::new(val:1)
-    │                            ^^^^^^^^^^^^^^^^^ Mixed: Memory
-139 │         return mixed.foo
+115 │         let mixed: Mixed = Mixed::new(val: 1)
+    │                            ^^^^^^^^^^^^^^^^^^ Mixed: Memory
+116 │         return mixed.foo
     │                ^^^^^ Mixed: Memory
 
 note: 
-    ┌─ structs.fe:139:16
+    ┌─ structs.fe:116:16
     │
-139 │         return mixed.foo
+116 │         return mixed.foo
     │                ^^^^^^^^^ u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:141:5
+    ┌─ structs.fe:119:5
     │  
-141 │ ╭     pub fn set_house(self, data: House):
-142 │ │         self.my_house = data
-    │ ╰────────────────────────────^ attributes hash: 571714015924720006
+119 │ ╭     pub fn set_house(self, data: House) {
+120 │ │         self.my_house = data
+121 │ │     }
+    │ ╰─────^ attributes hash: 571714015924720006
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1803,25 +1775,26 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:142:9
+    ┌─ structs.fe:120:9
     │
-142 │         self.my_house = data
+120 │         self.my_house = data
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:142:9
+    ┌─ structs.fe:120:9
     │
-142 │         self.my_house = data
+120 │         self.my_house = data
     │         ^^^^^^^^^^^^^   ^^^^ House: Memory
     │         │                
     │         House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:144:5
+    ┌─ structs.fe:123:5
     │  
-144 │ ╭     pub fn get_house(self) -> House:
-145 │ │         return self.my_house.to_mem()
-    │ ╰─────────────────────────────────────^ attributes hash: 18226871377775469920
+123 │ ╭     pub fn get_house(self) -> House {
+124 │ │         return self.my_house.to_mem()
+125 │ │     }
+    │ ╰─────^ attributes hash: 18226871377775469920
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1840,34 +1813,34 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:145:16
+    ┌─ structs.fe:124:16
     │
-145 │         return self.my_house.to_mem()
+124 │         return self.my_house.to_mem()
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:145:16
+    ┌─ structs.fe:124:16
     │
-145 │         return self.my_house.to_mem()
+124 │         return self.my_house.to_mem()
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:145:16
+    ┌─ structs.fe:124:16
     │
-145 │         return self.my_house.to_mem()
+124 │         return self.my_house.to_mem()
     │                ^^^^^^^^^^^^^^^^^^^^^^ House: Storage { nonce: Some(0) } => Memory
 
 note: 
-    ┌─ structs.fe:147:5
+    ┌─ structs.fe:127:5
     │  
-147 │ ╭     pub fn create_house(self):
-148 │ │         self.my_house = House(
-149 │ │             price: 1,
-150 │ │             size: 2,
+127 │ ╭     pub fn create_house(self) {
+128 │ │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
+129 │ │         assert self.my_house.price == 1
+130 │ │         assert self.my_house.size == 2
     · │
-178 │ │         assert self.my_house.rooms == u8(100)
-179 │ │         assert self.my_house.vacant
-    │ ╰───────────────────────────────────^ attributes hash: 18235041182630809162
+152 │ │         assert self.my_house.vacant
+153 │ │     }
+    │ ╰─────^ attributes hash: 18235041182630809162
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1883,580 +1856,570 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:148:9
+    ┌─ structs.fe:128:9
     │
-148 │         self.my_house = House(
+128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:148:9
+    ┌─ structs.fe:128:9
     │
-148 │         self.my_house = House(
-    │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
-149 │             price: 1,
-    │                    ^ u256: Value
-150 │             size: 2,
-    │                   ^ u256: Value
-151 │             rooms: u8(5),
-    │                       ^ u8: Value
+128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
+    │         ^^^^^^^^^^^^^                ^        ^            ^ u8: Value
+    │         │                            │        │             
+    │         │                            │        u256: Value
+    │         │                            u256: Value
+    │         House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:151:20
+    ┌─ structs.fe:128:57
     │
-151 │             rooms: u8(5),
-    │                    ^^^^^ u8: Value
-152 │             vacant: false,
-    │                     ^^^^^ bool: Value
+128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
+    │                                                         ^^^^^          ^^^^^ bool: Value
+    │                                                         │               
+    │                                                         u8: Value
 
 note: 
-    ┌─ structs.fe:148:25
-    │  
-148 │           self.my_house = House(
-    │ ╭─────────────────────────^
-149 │ │             price: 1,
-150 │ │             size: 2,
-151 │ │             rooms: u8(5),
-152 │ │             vacant: false,
-153 │ │         )
-    │ ╰─────────^ House: Memory
-154 │           assert self.my_house.price == 1
-    │                  ^^^^ Foo: Value
+    ┌─ structs.fe:128:25
+    │
+128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
+129 │         assert self.my_house.price == 1
+    │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:154:16
+    ┌─ structs.fe:129:16
     │
-154 │         assert self.my_house.price == 1
+129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:154:16
+    ┌─ structs.fe:129:16
     │
-154 │         assert self.my_house.price == 1
+129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256: Value
     │                │                       
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:154:16
+    ┌─ structs.fe:129:16
     │
-154 │         assert self.my_house.price == 1
+129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-155 │         assert self.my_house.size == 2
+130 │         assert self.my_house.size == 2
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:155:16
+    ┌─ structs.fe:130:16
     │
-155 │         assert self.my_house.size == 2
+130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:155:16
+    ┌─ structs.fe:130:16
     │
-155 │         assert self.my_house.size == 2
+130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^^^^^^    ^ u256: Value
     │                │                      
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:155:16
+    ┌─ structs.fe:130:16
     │
-155 │         assert self.my_house.size == 2
+130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-156 │         assert self.my_house.rooms == u8(5)
+131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:156:16
+    ┌─ structs.fe:131:16
     │
-156 │         assert self.my_house.rooms == u8(5)
+131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:156:16
+    ┌─ structs.fe:131:16
     │
-156 │         assert self.my_house.rooms == u8(5)
+131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8: Value
     │                │                          
     │                u8: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:156:39
+    ┌─ structs.fe:131:39
     │
-156 │         assert self.my_house.rooms == u8(5)
+131 │         assert self.my_house.rooms == u8(5)
     │                                       ^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:156:16
+    ┌─ structs.fe:131:16
     │
-156 │         assert self.my_house.rooms == u8(5)
+131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-157 │         assert self.my_house.vacant == false
+132 │         assert self.my_house.vacant == false
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:157:16
+    ┌─ structs.fe:132:16
     │
-157 │         assert self.my_house.vacant == false
+132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:157:16
+    ┌─ structs.fe:132:16
     │
-157 │         assert self.my_house.vacant == false
+132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool: Value
     │                │                        
     │                bool: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:157:16
+    ┌─ structs.fe:132:16
     │
-157 │         assert self.my_house.vacant == false
+132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-158 │         # We change only the size and check other fields are unchanged
-159 │         self.my_house.size = 50
+133 │         self.my_house.size = 50
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:159:9
+    ┌─ structs.fe:133:9
     │
-159 │         self.my_house.size = 50
+133 │         self.my_house.size = 50
     │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:159:9
+    ┌─ structs.fe:133:9
     │
-159 │         self.my_house.size = 50
+133 │         self.my_house.size = 50
     │         ^^^^^^^^^^^^^^^^^^   ^^ u256: Value
     │         │                     
     │         u256: Storage { nonce: Some(0) }
-160 │         assert self.my_house.size == 50
+134 │         assert self.my_house.size == 50
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:160:16
+    ┌─ structs.fe:134:16
     │
-160 │         assert self.my_house.size == 50
+134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:160:16
+    ┌─ structs.fe:134:16
     │
-160 │         assert self.my_house.size == 50
+134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256: Value
     │                │                      
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:160:16
+    ┌─ structs.fe:134:16
     │
-160 │         assert self.my_house.size == 50
+134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-161 │         assert self.my_house.price == 1
+135 │         assert self.my_house.price == 1
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:161:16
+    ┌─ structs.fe:135:16
     │
-161 │         assert self.my_house.price == 1
+135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:161:16
+    ┌─ structs.fe:135:16
     │
-161 │         assert self.my_house.price == 1
+135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256: Value
     │                │                       
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:161:16
+    ┌─ structs.fe:135:16
     │
-161 │         assert self.my_house.price == 1
+135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-162 │         assert self.my_house.rooms == u8(5)
+136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:162:16
+    ┌─ structs.fe:136:16
     │
-162 │         assert self.my_house.rooms == u8(5)
+136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:162:16
+    ┌─ structs.fe:136:16
     │
-162 │         assert self.my_house.rooms == u8(5)
+136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8: Value
     │                │                          
     │                u8: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:162:39
+    ┌─ structs.fe:136:39
     │
-162 │         assert self.my_house.rooms == u8(5)
+136 │         assert self.my_house.rooms == u8(5)
     │                                       ^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:162:16
+    ┌─ structs.fe:136:16
     │
-162 │         assert self.my_house.rooms == u8(5)
+136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-163 │         assert self.my_house.vacant == false
+137 │         assert self.my_house.vacant == false
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:163:16
+    ┌─ structs.fe:137:16
     │
-163 │         assert self.my_house.vacant == false
+137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:163:16
+    ┌─ structs.fe:137:16
     │
-163 │         assert self.my_house.vacant == false
+137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool: Value
     │                │                        
     │                bool: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:163:16
+    ┌─ structs.fe:137:16
     │
-163 │         assert self.my_house.vacant == false
+137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-164 │         # We change only the price and check other fields are unchanged
-165 │         self.my_house.price = 1000
+138 │         self.my_house.price = 1000
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:165:9
+    ┌─ structs.fe:138:9
     │
-165 │         self.my_house.price = 1000
+138 │         self.my_house.price = 1000
     │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:165:9
+    ┌─ structs.fe:138:9
     │
-165 │         self.my_house.price = 1000
+138 │         self.my_house.price = 1000
     │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256: Value
     │         │                      
     │         u256: Storage { nonce: Some(0) }
-166 │         assert self.my_house.size == 50
+139 │         assert self.my_house.size == 50
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:166:16
+    ┌─ structs.fe:139:16
     │
-166 │         assert self.my_house.size == 50
+139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:166:16
+    ┌─ structs.fe:139:16
     │
-166 │         assert self.my_house.size == 50
+139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256: Value
     │                │                      
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:166:16
+    ┌─ structs.fe:139:16
     │
-166 │         assert self.my_house.size == 50
+139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-167 │         assert self.my_house.price == 1000
+140 │         assert self.my_house.price == 1000
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:167:16
+    ┌─ structs.fe:140:16
     │
-167 │         assert self.my_house.price == 1000
+140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:167:16
+    ┌─ structs.fe:140:16
     │
-167 │         assert self.my_house.price == 1000
+140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256: Value
     │                │                       
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:167:16
+    ┌─ structs.fe:140:16
     │
-167 │         assert self.my_house.price == 1000
+140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-168 │         assert self.my_house.rooms == u8(5)
+141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:168:16
+    ┌─ structs.fe:141:16
     │
-168 │         assert self.my_house.rooms == u8(5)
+141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:168:16
+    ┌─ structs.fe:141:16
     │
-168 │         assert self.my_house.rooms == u8(5)
+141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8: Value
     │                │                          
     │                u8: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:168:39
+    ┌─ structs.fe:141:39
     │
-168 │         assert self.my_house.rooms == u8(5)
+141 │         assert self.my_house.rooms == u8(5)
     │                                       ^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:168:16
+    ┌─ structs.fe:141:16
     │
-168 │         assert self.my_house.rooms == u8(5)
+141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-169 │         assert self.my_house.vacant == false
+142 │         assert self.my_house.vacant == false
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:169:16
+    ┌─ structs.fe:142:16
     │
-169 │         assert self.my_house.vacant == false
+142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:169:16
+    ┌─ structs.fe:142:16
     │
-169 │         assert self.my_house.vacant == false
+142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool: Value
     │                │                        
     │                bool: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:169:16
+    ┌─ structs.fe:142:16
     │
-169 │         assert self.my_house.vacant == false
+142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-170 │         self.my_house.vacant = true
+143 │         self.my_house.vacant = true
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:170:9
+    ┌─ structs.fe:143:9
     │
-170 │         self.my_house.vacant = true
+143 │         self.my_house.vacant = true
     │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:170:9
+    ┌─ structs.fe:143:9
     │
-170 │         self.my_house.vacant = true
+143 │         self.my_house.vacant = true
     │         ^^^^^^^^^^^^^^^^^^^^   ^^^^ bool: Value
     │         │                       
     │         bool: Storage { nonce: Some(0) }
-171 │         assert self.my_house.size == 50
+144 │         assert self.my_house.size == 50
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:171:16
+    ┌─ structs.fe:144:16
     │
-171 │         assert self.my_house.size == 50
+144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:171:16
+    ┌─ structs.fe:144:16
     │
-171 │         assert self.my_house.size == 50
+144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256: Value
     │                │                      
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:171:16
+    ┌─ structs.fe:144:16
     │
-171 │         assert self.my_house.size == 50
+144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-172 │         assert self.my_house.price == 1000
+145 │         assert self.my_house.price == 1000
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:172:16
+    ┌─ structs.fe:145:16
     │
-172 │         assert self.my_house.price == 1000
+145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:172:16
+    ┌─ structs.fe:145:16
     │
-172 │         assert self.my_house.price == 1000
+145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256: Value
     │                │                       
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:172:16
+    ┌─ structs.fe:145:16
     │
-172 │         assert self.my_house.price == 1000
+145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-173 │         assert self.my_house.rooms == u8(5)
+146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:173:16
+    ┌─ structs.fe:146:16
     │
-173 │         assert self.my_house.rooms == u8(5)
+146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:173:16
+    ┌─ structs.fe:146:16
     │
-173 │         assert self.my_house.rooms == u8(5)
+146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8: Value
     │                │                          
     │                u8: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:173:39
+    ┌─ structs.fe:146:39
     │
-173 │         assert self.my_house.rooms == u8(5)
+146 │         assert self.my_house.rooms == u8(5)
     │                                       ^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:173:16
+    ┌─ structs.fe:146:16
     │
-173 │         assert self.my_house.rooms == u8(5)
+146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-174 │         assert self.my_house.vacant
+147 │         assert self.my_house.vacant
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:174:16
+    ┌─ structs.fe:147:16
     │
-174 │         assert self.my_house.vacant
+147 │         assert self.my_house.vacant
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:174:16
+    ┌─ structs.fe:147:16
     │
-174 │         assert self.my_house.vacant
+147 │         assert self.my_house.vacant
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
-175 │         self.my_house.rooms = u8(100)
+148 │         self.my_house.rooms = u8(100)
     │         ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:175:9
+    ┌─ structs.fe:148:9
     │
-175 │         self.my_house.rooms = u8(100)
+148 │         self.my_house.rooms = u8(100)
     │         ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:175:9
+    ┌─ structs.fe:148:9
     │
-175 │         self.my_house.rooms = u8(100)
+148 │         self.my_house.rooms = u8(100)
     │         ^^^^^^^^^^^^^^^^^^^      ^^^ u8: Value
     │         │                         
     │         u8: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:175:31
+    ┌─ structs.fe:148:31
     │
-175 │         self.my_house.rooms = u8(100)
+148 │         self.my_house.rooms = u8(100)
     │                               ^^^^^^^ u8: Value
-176 │         assert self.my_house.size == 50
+149 │         assert self.my_house.size == 50
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:176:16
+    ┌─ structs.fe:149:16
     │
-176 │         assert self.my_house.size == 50
+149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:176:16
+    ┌─ structs.fe:149:16
     │
-176 │         assert self.my_house.size == 50
+149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256: Value
     │                │                      
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:176:16
+    ┌─ structs.fe:149:16
     │
-176 │         assert self.my_house.size == 50
+149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-177 │         assert self.my_house.price == 1000
+150 │         assert self.my_house.price == 1000
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:177:16
+    ┌─ structs.fe:150:16
     │
-177 │         assert self.my_house.price == 1000
+150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:177:16
+    ┌─ structs.fe:150:16
     │
-177 │         assert self.my_house.price == 1000
+150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256: Value
     │                │                       
     │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:177:16
+    ┌─ structs.fe:150:16
     │
-177 │         assert self.my_house.price == 1000
+150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-178 │         assert self.my_house.rooms == u8(100)
+151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:178:16
+    ┌─ structs.fe:151:16
     │
-178 │         assert self.my_house.rooms == u8(100)
+151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:178:16
+    ┌─ structs.fe:151:16
     │
-178 │         assert self.my_house.rooms == u8(100)
+151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^^^^^^^       ^^^ u8: Value
     │                │                          
     │                u8: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:178:39
+    ┌─ structs.fe:151:39
     │
-178 │         assert self.my_house.rooms == u8(100)
+151 │         assert self.my_house.rooms == u8(100)
     │                                       ^^^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:178:16
+    ┌─ structs.fe:151:16
     │
-178 │         assert self.my_house.rooms == u8(100)
+151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-179 │         assert self.my_house.vacant
+152 │         assert self.my_house.vacant
     │                ^^^^ Foo: Value
 
 note: 
-    ┌─ structs.fe:179:16
+    ┌─ structs.fe:152:16
     │
-179 │         assert self.my_house.vacant
+152 │         assert self.my_house.vacant
     │                ^^^^^^^^^^^^^ House: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ structs.fe:179:16
+    ┌─ structs.fe:152:16
     │
-179 │         assert self.my_house.vacant
+152 │         assert self.my_house.vacant
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
 
 note: 
-    ┌─ structs.fe:181:5
+    ┌─ structs.fe:155:5
     │  
-181 │ ╭     pub fn bar() -> u256:
-182 │ │         let building: House = House(
-183 │ │             price: 300,
-184 │ │             size: 500,
+155 │ ╭     pub fn bar() -> u256 {
+156 │ │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+157 │ │         assert building.size == 500
+158 │ │         assert building.price == 300
     · │
-206 │ │ 
-207 │ │         return building.size
-    │ ╰────────────────────────────^ attributes hash: 6115314201970082834
+172 │ │         return building.size
+173 │ │     }
+    │ ╰─────^ attributes hash: 6115314201970082834
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2472,282 +2435,268 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:182:23
+    ┌─ structs.fe:156:23
     │
-182 │         let building: House = House(
+156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
     │                       ^^^^^ House
 
 note: 
-    ┌─ structs.fe:183:20
+    ┌─ structs.fe:156:44
     │
-183 │             price: 300,
-    │                    ^^^ u256: Value
-184 │             size: 500,
-    │                   ^^^ u256: Value
-185 │             rooms: u8(20),
-    │                       ^^ u8: Value
+156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                            ^^^        ^^^            ^^ u8: Value
+    │                                            │          │               
+    │                                            │          u256: Value
+    │                                            u256: Value
 
 note: 
-    ┌─ structs.fe:185:20
+    ┌─ structs.fe:156:67
     │
-185 │             rooms: u8(20),
-    │                    ^^^^^^ u8: Value
-186 │             vacant: true,
-    │                     ^^^^ bool: Value
+156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                                   ^^^^^^          ^^^^ bool: Value
+    │                                                                   │                
+    │                                                                   u8: Value
 
 note: 
-    ┌─ structs.fe:182:31
-    │  
-182 │           let building: House = House(
-    │ ╭───────────────────────────────^
-183 │ │             price: 300,
-184 │ │             size: 500,
-185 │ │             rooms: u8(20),
-186 │ │             vacant: true,
-187 │ │         )
-    │ ╰─────────^ House: Memory
-188 │           assert building.size == 500
-    │                  ^^^^^^^^ House: Memory
+    ┌─ structs.fe:156:31
+    │
+156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
+157 │         assert building.size == 500
+    │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:188:16
+    ┌─ structs.fe:157:16
     │
-188 │         assert building.size == 500
+157 │         assert building.size == 500
     │                ^^^^^^^^^^^^^    ^^^ u256: Value
     │                │                 
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:188:16
+    ┌─ structs.fe:157:16
     │
-188 │         assert building.size == 500
+157 │         assert building.size == 500
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-189 │         assert building.price == 300
+158 │         assert building.price == 300
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:189:16
+    ┌─ structs.fe:158:16
     │
-189 │         assert building.price == 300
+158 │         assert building.price == 300
     │                ^^^^^^^^^^^^^^    ^^^ u256: Value
     │                │                  
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:189:16
+    ┌─ structs.fe:158:16
     │
-189 │         assert building.price == 300
+158 │         assert building.price == 300
     │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-190 │         assert building.rooms == u8(20)
+159 │         assert building.rooms == u8(20)
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:190:16
+    ┌─ structs.fe:159:16
     │
-190 │         assert building.rooms == u8(20)
+159 │         assert building.rooms == u8(20)
     │                ^^^^^^^^^^^^^^       ^^ u8: Value
     │                │                     
     │                u8: Memory => Value
 
 note: 
-    ┌─ structs.fe:190:34
+    ┌─ structs.fe:159:34
     │
-190 │         assert building.rooms == u8(20)
+159 │         assert building.rooms == u8(20)
     │                                  ^^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:190:16
+    ┌─ structs.fe:159:16
     │
-190 │         assert building.rooms == u8(20)
+159 │         assert building.rooms == u8(20)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-191 │         assert building.vacant
+160 │         assert building.vacant
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:191:16
+    ┌─ structs.fe:160:16
     │
-191 │         assert building.vacant
+160 │         assert building.vacant
     │                ^^^^^^^^^^^^^^^ bool: Memory => Value
-192 │ 
-193 │         building.vacant = false
+161 │         building.vacant = false
     │         ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:193:9
+    ┌─ structs.fe:161:9
     │
-193 │         building.vacant = false
+161 │         building.vacant = false
     │         ^^^^^^^^^^^^^^^   ^^^^^ bool: Value
     │         │                  
     │         bool: Memory
-194 │         building.price = 1
+162 │         building.price = 1
     │         ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:194:9
+    ┌─ structs.fe:162:9
     │
-194 │         building.price = 1
+162 │         building.price = 1
     │         ^^^^^^^^^^^^^^   ^ u256: Value
     │         │                 
     │         u256: Memory
-195 │         building.size = 2
+163 │         building.size = 2
     │         ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:195:9
+    ┌─ structs.fe:163:9
     │
-195 │         building.size = 2
+163 │         building.size = 2
     │         ^^^^^^^^^^^^^   ^ u256: Value
     │         │                
     │         u256: Memory
-196 │         building.rooms = u8(10)
+164 │         building.rooms = u8(10)
     │         ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:196:9
+    ┌─ structs.fe:164:9
     │
-196 │         building.rooms = u8(10)
+164 │         building.rooms = u8(10)
     │         ^^^^^^^^^^^^^^      ^^ u8: Value
     │         │                    
     │         u8: Memory
 
 note: 
-    ┌─ structs.fe:196:26
+    ┌─ structs.fe:164:26
     │
-196 │         building.rooms = u8(10)
+164 │         building.rooms = u8(10)
     │                          ^^^^^^ u8: Value
-197 │ 
-198 │         assert building.vacant == false
+165 │         assert building.vacant == false
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:198:16
+    ┌─ structs.fe:165:16
     │
-198 │         assert building.vacant == false
+165 │         assert building.vacant == false
     │                ^^^^^^^^^^^^^^^    ^^^^^ bool: Value
     │                │                   
     │                bool: Memory => Value
 
 note: 
-    ┌─ structs.fe:198:16
+    ┌─ structs.fe:165:16
     │
-198 │         assert building.vacant == false
+165 │         assert building.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-199 │         assert building.price == 1
+166 │         assert building.price == 1
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:199:16
+    ┌─ structs.fe:166:16
     │
-199 │         assert building.price == 1
+166 │         assert building.price == 1
     │                ^^^^^^^^^^^^^^    ^ u256: Value
     │                │                  
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:199:16
+    ┌─ structs.fe:166:16
     │
-199 │         assert building.price == 1
+166 │         assert building.price == 1
     │                ^^^^^^^^^^^^^^^^^^^ bool: Value
-200 │         assert building.size == 2
+167 │         assert building.size == 2
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:200:16
+    ┌─ structs.fe:167:16
     │
-200 │         assert building.size == 2
+167 │         assert building.size == 2
     │                ^^^^^^^^^^^^^    ^ u256: Value
     │                │                 
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:200:16
+    ┌─ structs.fe:167:16
     │
-200 │         assert building.size == 2
+167 │         assert building.size == 2
     │                ^^^^^^^^^^^^^^^^^^ bool: Value
-201 │         assert building.rooms == u8(10)
+168 │         assert building.rooms == u8(10)
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:201:16
+    ┌─ structs.fe:168:16
     │
-201 │         assert building.rooms == u8(10)
+168 │         assert building.rooms == u8(10)
     │                ^^^^^^^^^^^^^^       ^^ u8: Value
     │                │                     
     │                u8: Memory => Value
 
 note: 
-    ┌─ structs.fe:201:34
+    ┌─ structs.fe:168:34
     │
-201 │         assert building.rooms == u8(10)
+168 │         assert building.rooms == u8(10)
     │                                  ^^^^^^ u8: Value
 
 note: 
-    ┌─ structs.fe:201:16
+    ┌─ structs.fe:168:16
     │
-201 │         assert building.rooms == u8(10)
+168 │         assert building.rooms == u8(10)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-202 │ 
-203 │         building.expand()
+169 │         building.expand()
     │         ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:203:9
+    ┌─ structs.fe:169:9
     │
-203 │         building.expand()
+169 │         building.expand()
     │         ^^^^^^^^^^^^^^^^^ (): Value
-204 │         assert building.size == 102
+170 │         assert building.size == 102
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:204:16
+    ┌─ structs.fe:170:16
     │
-204 │         assert building.size == 102
+170 │         assert building.size == 102
     │                ^^^^^^^^^^^^^    ^^^ u256: Value
     │                │                 
     │                u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:204:16
+    ┌─ structs.fe:170:16
     │
-204 │         assert building.size == 102
+170 │         assert building.size == 102
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-205 │         assert building.rooms == 11
+171 │         assert building.rooms == 11
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:205:16
+    ┌─ structs.fe:171:16
     │
-205 │         assert building.rooms == 11
+171 │         assert building.rooms == 11
     │                ^^^^^^^^^^^^^^    ^^ u8: Value
     │                │                  
     │                u8: Memory => Value
 
 note: 
-    ┌─ structs.fe:205:16
+    ┌─ structs.fe:171:16
     │
-205 │         assert building.rooms == 11
+171 │         assert building.rooms == 11
     │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
-206 │ 
-207 │         return building.size
+172 │         return building.size
     │                ^^^^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:207:16
+    ┌─ structs.fe:172:16
     │
-207 │         return building.size
+172 │         return building.size
     │                ^^^^^^^^^^^^^ u256: Memory => Value
 
 note: 
-    ┌─ structs.fe:209:5
+    ┌─ structs.fe:175:5
     │  
-209 │ ╭     pub fn encode_house() -> Array<u8, 128>:
-210 │ │         let house: House = House(
-211 │ │             price: 300,
-212 │ │             size: 500,
-    · │
-215 │ │         )
-216 │ │         return house.encode()
-    │ ╰─────────────────────────────^ attributes hash: 9174136327042912890
+175 │ ╭     pub fn encode_house() -> Array<u8, 128> {
+176 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+177 │ │         return house.encode()
+178 │ │     }
+    │ ╰─────^ attributes hash: 9174136327042912890
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2766,60 +2715,50 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:210:20
+    ┌─ structs.fe:176:20
     │
-210 │         let house: House = House(
+176 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
     │                    ^^^^^ House
 
 note: 
-    ┌─ structs.fe:211:20
+    ┌─ structs.fe:176:41
     │
-211 │             price: 300,
-    │                    ^^^ u256: Value
-212 │             size: 500,
-    │                   ^^^ u256: Value
-213 │             rooms: u8(20),
-    │                       ^^ u8: Value
+176 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                         ^^^        ^^^            ^^ u8: Value
+    │                                         │          │               
+    │                                         │          u256: Value
+    │                                         u256: Value
 
 note: 
-    ┌─ structs.fe:213:20
+    ┌─ structs.fe:176:64
     │
-213 │             rooms: u8(20),
-    │                    ^^^^^^ u8: Value
-214 │             vacant: true,
-    │                     ^^^^ bool: Value
+176 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                                ^^^^^^          ^^^^ bool: Value
+    │                                                                │                
+    │                                                                u8: Value
 
 note: 
-    ┌─ structs.fe:210:28
-    │  
-210 │           let house: House = House(
-    │ ╭────────────────────────────^
-211 │ │             price: 300,
-212 │ │             size: 500,
-213 │ │             rooms: u8(20),
-214 │ │             vacant: true,
-215 │ │         )
-    │ ╰─────────^ House: Memory
-216 │           return house.encode()
-    │                  ^^^^^ House: Memory
+    ┌─ structs.fe:176:28
+    │
+176 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
+177 │         return house.encode()
+    │                ^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:216:16
+    ┌─ structs.fe:177:16
     │
-216 │         return house.encode()
+177 │         return house.encode()
     │                ^^^^^^^^^^^^^^ Array<u8, 128>: Memory
 
 note: 
-    ┌─ structs.fe:218:5
+    ┌─ structs.fe:180:5
     │  
-218 │ ╭     pub fn hashed_house() -> u256:
-219 │ │         let house: House = House(
-220 │ │             price: 300,
-221 │ │             size: 500,
-    · │
-224 │ │         )
-225 │ │         return house.hash()
-    │ ╰───────────────────────────^ attributes hash: 6115314201970082834
+180 │ ╭     pub fn hashed_house() -> u256 {
+181 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+182 │ │         return house.hash()
+183 │ │     }
+    │ ╰─────^ attributes hash: 6115314201970082834
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2835,47 +2774,40 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:219:20
+    ┌─ structs.fe:181:20
     │
-219 │         let house: House = House(
+181 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
     │                    ^^^^^ House
 
 note: 
-    ┌─ structs.fe:220:20
+    ┌─ structs.fe:181:41
     │
-220 │             price: 300,
-    │                    ^^^ u256: Value
-221 │             size: 500,
-    │                   ^^^ u256: Value
-222 │             rooms: u8(20),
-    │                       ^^ u8: Value
+181 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                         ^^^        ^^^            ^^ u8: Value
+    │                                         │          │               
+    │                                         │          u256: Value
+    │                                         u256: Value
 
 note: 
-    ┌─ structs.fe:222:20
+    ┌─ structs.fe:181:64
     │
-222 │             rooms: u8(20),
-    │                    ^^^^^^ u8: Value
-223 │             vacant: true,
-    │                     ^^^^ bool: Value
+181 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                                ^^^^^^          ^^^^ bool: Value
+    │                                                                │                
+    │                                                                u8: Value
 
 note: 
-    ┌─ structs.fe:219:28
-    │  
-219 │           let house: House = House(
-    │ ╭────────────────────────────^
-220 │ │             price: 300,
-221 │ │             size: 500,
-222 │ │             rooms: u8(20),
-223 │ │             vacant: true,
-224 │ │         )
-    │ ╰─────────^ House: Memory
-225 │           return house.hash()
-    │                  ^^^^^ House: Memory
+    ┌─ structs.fe:181:28
+    │
+181 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
+182 │         return house.hash()
+    │                ^^^^^ House: Memory
 
 note: 
-    ┌─ structs.fe:225:16
+    ┌─ structs.fe:182:16
     │
-225 │         return house.hash()
+182 │         return house.hash()
     │                ^^^^^^^^^^^^ u256: Value
 
 

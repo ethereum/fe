@@ -2,7 +2,6 @@ use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
 use crate::ast::{Contract, ContractStmt};
-use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -20,33 +19,20 @@ pub fn parse_contract_def(
     contract_pub_qual: Option<Span>,
 ) -> ParseResult<Node<Contract>> {
     let contract_tok = par.assert(TokenKind::Contract);
-
-    // contract Foo:
-    //   x: Map<address, u256>
-    //   pub y: u8
-    //   const z: u256 = 10
-    //
-    //   event Sent:
-    //     idx sender: address
-    //     val: u256
-    //
-    //   pub fn foo() -> address:
-    //     return abc
-    //
-
     let contract_name = par.expect_with_notes(
         TokenKind::Name,
         "failed to parse contract definition",
         |_| vec!["Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
     )?;
 
-    let header_span = contract_tok.span + contract_name.span;
-    par.enter_block(header_span, "contract definition")?;
+    let mut span = contract_tok.span + contract_name.span;
+    par.enter_block(span, "contract definition")?;
 
     let mut fields = vec![];
     let mut defs = vec![];
 
     loop {
+        par.eat_newlines();
         let mut pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
         let const_qual = parse_opt_qualifier(par, TokenKind::Const);
         if pub_qual.is_none() && const_qual.is_some() && par.peek() == Some(TokenKind::Pub) {
@@ -57,15 +43,15 @@ pub fn parse_contract_def(
             );
         }
 
-        match par.peek() {
-            Some(TokenKind::Name) => {
+        match par.peek_or_err()? {
+            TokenKind::Name => {
                 let field = parse_field(par, pub_qual, const_qual)?;
                 if !defs.is_empty() {
                     par.error(field.span, "contract field definitions must come before any function or event definitions");
                 }
                 fields.push(field);
             }
-            Some(TokenKind::Fn | TokenKind::Unsafe) => {
+            TokenKind::Fn | TokenKind::Unsafe => {
                 if let Some(span) = const_qual {
                     par.error(
                         span,
@@ -74,7 +60,7 @@ pub fn parse_contract_def(
                 }
                 defs.push(ContractStmt::Function(parse_fn_def(par, pub_qual)?));
             }
-            Some(TokenKind::Event) => {
+            TokenKind::Event => {
                 if let Some(span) = pub_qual {
                     par.error(
                         span,
@@ -89,18 +75,14 @@ pub fn parse_contract_def(
                 }
                 defs.push(ContractStmt::Event(parse_event_def(par, None)?));
             }
-            Some(TokenKind::Pass) => {
-                parse_single_word_stmt(par)?;
-            }
-            Some(TokenKind::Dedent) => {
-                par.next()?;
+            TokenKind::BraceClose => {
+                span += par.next()?.span;
                 break;
             }
-            None => break,
-            Some(_) => {
+            _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "failed to parse contract definition body",
                     vec![],
                 );
@@ -109,7 +91,6 @@ pub fn parse_contract_def(
         };
     }
 
-    let span = header_span + contract_pub_qual + fields.last() + defs.last();
     Ok(Node::new(
         Contract {
             name: Node::new(contract_name.text.into(), contract_name.span),

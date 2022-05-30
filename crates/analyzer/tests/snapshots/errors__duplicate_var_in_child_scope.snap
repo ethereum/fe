@@ -8,7 +8,7 @@ error: duplicate definition of variable `sum`
   │
 4 │         let sum: u256 = 0
   │             ^^^ `sum` first defined here
-5 │         for i in my_array:
+5 │         for i in my_array {
 6 │             let sum: u64 = 0
   │                 --- `sum` redefined here
 

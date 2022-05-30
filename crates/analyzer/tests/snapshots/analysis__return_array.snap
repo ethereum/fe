@@ -6,11 +6,12 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ return_array.fe:2:5
   │  
-2 │ ╭     pub fn bar(x: u256) -> Array<u256,5>:
-3 │ │         let my_array: Array<u256,5>
+2 │ ╭     pub fn bar(x: u256) -> Array<u256, 5> {
+3 │ │         let my_array: Array<u256, 5>
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 5752237891839439208
+6 │ │     }
+  │ ╰─────^ attributes hash: 5752237891839439208
   │  
   = FunctionSignature {
         self_decl: None,
@@ -43,8 +44,8 @@ note:
 note: 
   ┌─ return_array.fe:3:23
   │
-3 │         let my_array: Array<u256,5>
-  │                       ^^^^^^^^^^^^^ Array<u256, 5>
+3 │         let my_array: Array<u256, 5>
+  │                       ^^^^^^^^^^^^^^ Array<u256, 5>
 
 note: 
   ┌─ return_array.fe:4:9

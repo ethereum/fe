@@ -1,13 +1,14 @@
 use std::context::Context
 
-contract Foo:
+contract Foo {
     is_true: bool
 
-    pub fn bar(self, ctx: Context) -> u256:
-        # do something with self
+    pub fn bar(self, ctx: Context) -> u256 {
         self.is_true = false
-
         return baz(ctx)
+    }
 
-    fn baz(ctx: Context) -> u256:
+    fn baz(ctx: Context) -> u256 {
         return ctx.block_number()
+    }
+}

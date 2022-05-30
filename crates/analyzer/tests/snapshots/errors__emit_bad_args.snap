@@ -4,40 +4,40 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `Foo` expects 4 arguments, but 5 were provided
-   ┌─ compile_errors/emit_bad_args.fe:10:10
+   ┌─ compile_errors/emit_bad_args.fe:11:14
    │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │          ^^^ ---  ------  -----  -------  ---- supplied 5 arguments
-   │          │                                 
-   │          expects 4 arguments
+11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │              ^^^ ---  ------  -----  -------  ---- supplied 5 arguments
+   │              │                                 
+   │              expects 4 arguments
 
 error: missing argument label
-   ┌─ compile_errors/emit_bad_args.fe:10:19
+   ┌─ compile_errors/emit_bad_args.fe:11:23
    │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                   ^ add `x:` here
+11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │                       ^ add `x:` here
    │
    = Note: this label is optional if the argument is a variable named `x`.
 
 error: incorrect type for `Foo` argument `x`
-   ┌─ compile_errors/emit_bad_args.fe:10:19
+   ┌─ compile_errors/emit_bad_args.fe:11:23
    │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                   ^^^^^^ this has type `(u256, u256)`; expected type `address`
+11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │                       ^^^^^^ this has type `(u256, u256)`; expected type `address`
 
 error: argument label mismatch
-   ┌─ compile_errors/emit_bad_args.fe:10:27
+   ┌─ compile_errors/emit_bad_args.fe:11:31
    │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                           ^ expected `y`
+11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │                               ^ expected `y`
    │
    = Note: arguments must be provided in order.
 
 error: argument label mismatch
-   ┌─ compile_errors/emit_bad_args.fe:10:34
+   ┌─ compile_errors/emit_bad_args.fe:11:38
    │
-10 │     emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                                  ^ expected `z`
+11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
+   │                                      ^ expected `z`
    │
    = Note: arguments must be provided in order.
 

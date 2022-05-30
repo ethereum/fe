@@ -4,29 +4,27 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `pub` not allowed if `__call__` is defined
-  ┌─ compile_errors/call_with_pub_fns.fe:8:12
-  │  
-2 │ ╭     pub fn __call__():
-3 │ │         pass
-  │ ╰────────────' `__call__` defined here
-  · │
-8 │       pub fn baz():
-  │              ^^^ `baz` can't be public
-  │  
+  ┌─ compile_errors/call_with_pub_fns.fe:6:12
+  │
+2 │     pub fn __call__() {}
+  │     -------------------- `__call__` defined here
+  ·
+6 │     pub fn baz() {}
+  │            ^^^ `baz` can't be public
+  │
   = The `__call__` function replaces the default function dispatcher, which makes `pub` modifiers obsolete.
   = Hint: Remove the `pub` modifier or `__call__` function.
 
 error: `pub` not allowed if `__call__` is defined
-   ┌─ compile_errors/call_with_pub_fns.fe:11:12
-   │  
- 2 │ ╭     pub fn __call__():
- 3 │ │         pass
-   │ ╰────────────' `__call__` defined here
-   · │
-11 │       pub fn bing():
-   │              ^^^^ `bing` can't be public
-   │  
-   = The `__call__` function replaces the default function dispatcher, which makes `pub` modifiers obsolete.
-   = Hint: Remove the `pub` modifier or `__call__` function.
+  ┌─ compile_errors/call_with_pub_fns.fe:8:12
+  │
+2 │     pub fn __call__() {}
+  │     -------------------- `__call__` defined here
+  ·
+8 │     pub fn bing() {}
+  │            ^^^^ `bing` can't be public
+  │
+  = The `__call__` function replaces the default function dispatcher, which makes `pub` modifiers obsolete.
+  = Hint: Remove the `pub` modifier or `__call__` function.
 
 

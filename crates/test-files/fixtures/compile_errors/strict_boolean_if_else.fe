@@ -1,6 +1,9 @@
-contract Foo:
-    pub fn bar(val: u256) -> u256:
-        if val:
+contract Foo {
+    pub fn bar(val: u256) -> u256 {
+        if val {
             return 5
-        else:
+        } else {
             return 1
+        }
+    }
+}

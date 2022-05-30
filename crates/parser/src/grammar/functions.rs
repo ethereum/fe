@@ -29,13 +29,13 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
     let fn_tok = par.expect(TokenKind::Fn, "failed to parse function definition")?;
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
 
+    let mut span = fn_tok.span + name.span + unsafe_qual + pub_qual;
+
     let generic_params = if par.peek() == Some(TokenKind::Lt) {
         parse_generic_params(par)?
     } else {
         Node::new(vec![], name.span)
     };
-
-    let mut span = fn_tok.span + unsafe_qual + pub_qual + name.span + generic_params.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => {
@@ -43,7 +43,7 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
             span += node.span;
             node.kind
         }
-        TokenKind::Colon | TokenKind::Arrow => {
+        TokenKind::BraceOpen | TokenKind::Arrow => {
             par.fancy_error(
                 "function definition requires a list of parameters",
                 vec![Label::primary(
@@ -65,7 +65,7 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
-                tok.span,
+                &tok,
                 "failed to parse function definition",
                 vec![
                     "function name must be followed by a list of parameters".into(),
@@ -77,17 +77,18 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
     };
     let return_type = if par.peek() == Some(TokenKind::Arrow) {
         par.next()?;
-        Some(parse_type_desc(par)?)
+        let typ = parse_type_desc(par)?;
+        span += typ.span;
+        Some(typ)
     } else {
         None
     };
-    span += return_type.as_ref();
 
     // TODO: allow multi-line return type? `fn f()\n ->\n u8`
-    // TODO: allow single-line fn defs?
     par.enter_block(span, "function definition")?;
     let body = parse_block_stmts(par)?;
-    span += body.last();
+    let rbrace = par.expect(TokenKind::BraceClose, "missing `}` in fn definition")?;
+
     Ok(Node::new(
         Function {
             pub_: pub_qual,
@@ -98,7 +99,7 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
             return_type,
             body,
         },
-        span,
+        span + rbrace.span,
     ))
 }
 
@@ -140,7 +141,7 @@ pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericPar
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "Unexpected token while parsing generic arg list",
                     vec!["Expected a `>` here".to_string()],
                 );
@@ -170,7 +171,7 @@ pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericPar
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "failed to parse list of generic function parameters",
                     vec!["Expected a generic parameter name such as `T` here".to_string()],
                 );
@@ -241,11 +242,7 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
             }
             _ => {
                 let tok = par.next()?;
-                par.unexpected_token_error(
-                    tok.span,
-                    "failed to parse function parameter list",
-                    vec![],
-                );
+                par.unexpected_token_error(&tok, "failed to parse function parameter list", vec![]);
                 return Err(ParseFailed);
             }
         }
@@ -253,17 +250,14 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
     Ok(Node::new(params, span))
 }
 
-/// Parse (function) statements until a block dedent or end-of-file is reached.
+/// Parse (function) statements until a `}` or end-of-file is reached.
 fn parse_block_stmts(par: &mut Parser) -> ParseResult<Vec<Node<FuncStmt>>> {
     let mut body = vec![];
     loop {
-        match par.peek() {
-            None => break,
-            Some(TokenKind::Dedent) => {
-                par.next()?;
-                break;
-            }
-            Some(_) => body.push(parse_stmt(par)?),
+        par.eat_newlines();
+        match par.peek_or_err()? {
+            TokenKind::BraceClose => break,
+            _ => body.push(parse_stmt(par)?),
         }
     }
     Ok(body)
@@ -296,11 +290,10 @@ fn aug_assign_op(tk: TokenKind) -> Option<BinOperator> {
 /// Panics if the next token isn't one of the above.
 pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let tok = par.next()?;
-    par.expect_newline(tok.kind.describe())?;
+    par.expect_stmt_end(tok.kind.describe())?;
     let stmt = match tok.kind {
         TokenKind::Continue => FuncStmt::Continue,
         TokenKind::Break => FuncStmt::Break,
-        TokenKind::Pass => FuncStmt::Pass,
         _ => panic!(),
     };
     Ok(Node::new(stmt, tok.span))
@@ -310,7 +303,7 @@ pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     use TokenKind::*;
 
-    // rule: stmt parsing fns eat the trailing separator (newline, semi, eof)
+    // rule: stmt parsing fns eat the trailing separator (newline, semi)
     match par.peek_or_err()? {
         For => parse_for_stmt(par),
         If => parse_if_stmt(par),
@@ -318,7 +311,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Return => parse_return_stmt(par),
         Assert => parse_assert_stmt(par),
         Revert => parse_revert_stmt(par),
-        Continue | Break | Pass => parse_single_word_stmt(par),
+        Continue | Break => parse_single_word_stmt(par),
         Emit => parse_emit_statement(par),
         Let => parse_var_decl(par),
         Const => parse_const_decl(par),
@@ -342,7 +335,7 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
                 None
             };
             let span = let_tkn.span + target.span + typ.span + value.as_ref();
-            par.expect_newline("variable declaration")?;
+            par.expect_stmt_end("variable declaration")?;
             Node::new(FuncStmt::VarDecl { target, typ, value }, span)
         }
         _ => {
@@ -390,7 +383,7 @@ fn parse_const_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     )?;
 
     let value = parse_expr(par)?;
-    par.expect_newline("variable declaration")?;
+    par.expect_stmt_end("variable declaration")?;
 
     let span = const_tok.span + value.span;
     Ok(Node::new(
@@ -409,7 +402,7 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     use TokenKind::*;
     let expr = parse_expr(par)?;
     let node = match par.peek() {
-        None | Some(Newline) => {
+        None | Some(Newline | Semi | BraceClose) => {
             let span = expr.span;
             Node::new(FuncStmt::Expr { value: expr }, span)
         }
@@ -448,12 +441,12 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
                     span,
                 )
             } else {
-                par.unexpected_token_error(tok.span, "invalid syntax in function body", vec![]);
+                par.unexpected_token_error(&tok, "invalid syntax in function body", vec![]);
                 return Err(ParseFailed);
             }
         }
     };
-    par.expect_newline("statement")?;
+    par.expect_stmt_end("statement")?;
     Ok(node)
 }
 
@@ -485,26 +478,29 @@ fn expr_to_vardecl_target(par: &mut Parser, expr: Node<Expr>) -> ParseResult<Nod
     }
 }
 
-/// Parse an `if` statement, or an `elif` block.
+/// Parse an `if` statement.
 ///
 /// # Panics
-/// Panics if the next token isn't `if` or `elif`.
+/// Panics if the next token isn't `if`.
 pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
-    let if_tok = par.next()?;
-    assert!(matches!(if_tok.kind, TokenKind::If | TokenKind::Elif));
-
+    let if_tok = par.assert(TokenKind::If);
     let test = parse_expr(par)?;
     par.enter_block(if_tok.span + test.span, "`if` statement")?;
     let body = parse_block_stmts(par)?;
+    par.expect(TokenKind::BraceClose, "`if` statement")?;
+    par.eat_newlines();
 
     let else_block = match par.peek() {
         Some(TokenKind::Else) => {
             let else_tok = par.next()?;
-            par.enter_block(else_tok.span, "`if` statement `else` branch")?;
-            parse_block_stmts(par)?
-        }
-        Some(TokenKind::Elif) => {
-            vec![parse_if_stmt(par)?]
+            if par.peek() == Some(TokenKind::If) {
+                vec![parse_if_stmt(par)?]
+            } else {
+                par.enter_block(else_tok.span, "`if` statement `else` branch")?;
+                let else_body = parse_block_stmts(par)?;
+                par.expect(TokenKind::BraceClose, "`if` statement")?;
+                else_body
+            }
         }
         _ => vec![],
     };
@@ -530,7 +526,8 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let test = parse_expr(par)?;
     par.enter_block(while_tok.span + test.span, "`while` statement")?;
     let body = parse_block_stmts(par)?;
-    let span = while_tok.span + test.span + body.last();
+    let end = par.expect(TokenKind::BraceClose, "`while` statement")?;
+    let span = while_tok.span + test.span + end.span;
 
     Ok(Node::new(FuncStmt::While { test, body }, span))
 }
@@ -549,7 +546,9 @@ pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let iter = parse_expr(par)?;
     par.enter_block(for_tok.span + iter.span, "`for` statement")?;
     let body = parse_block_stmts(par)?;
-    let span = for_tok.span + iter.span + body.last();
+    let end = par.expect(TokenKind::BraceClose, "`for` statement")?;
+    par.expect_stmt_end("`for` statement")?;
+    let span = for_tok.span + iter.span + end.span;
 
     Ok(Node::new(FuncStmt::For { target, iter, body }, span))
 }
@@ -564,7 +563,7 @@ pub fn parse_return_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         None | Some(TokenKind::Newline) => None,
         Some(_) => Some(parse_expr(par)?),
     };
-    par.expect_newline("return statement")?;
+    par.expect_stmt_end("return statement")?;
     let span = ret.span + value.as_ref();
     Ok(Node::new(FuncStmt::Return { value }, span))
 }
@@ -584,11 +583,11 @@ pub fn parse_assert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         }
         Some(_) => {
             let tok = par.next()?;
-            par.unexpected_token_error(tok.span, "failed to parse `assert` statement", vec![]);
+            par.unexpected_token_error(&tok, "failed to parse `assert` statement", vec![]);
             return Err(ParseFailed);
         }
     };
-    par.expect_newline("assert statement")?;
+    par.expect_stmt_end("assert statement")?;
     let span = assert_tok.span + test.span + msg.as_ref();
     Ok(Node::new(FuncStmt::Assert { test, msg }, span))
 }
@@ -603,7 +602,7 @@ pub fn parse_revert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         None | Some(TokenKind::Newline) => None,
         Some(_) => Some(parse_expr(par)?),
     };
-    par.expect_newline("revert statement")?;
+    par.expect_stmt_end("revert statement")?;
     let span = revert_tok.span + error.as_ref();
     Ok(Node::new(FuncStmt::Revert { error }, span))
 }
@@ -618,7 +617,7 @@ pub fn parse_emit_statement(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 
     if let Some(TokenKind::ParenOpen) = par.peek() {
         let args = parse_call_args(par)?;
-        par.expect_newline("emit statement")?;
+        par.expect_stmt_end("emit statement")?;
         let span = emit_tok.span + args.span;
         return Ok(Node::new(
             FuncStmt::Emit {
@@ -645,7 +644,8 @@ pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let kw_tok = par.assert(TokenKind::Unsafe);
     par.enter_block(kw_tok.span, "`unsafe` block")?;
     let body = parse_block_stmts(par)?;
-    let span = kw_tok.span + body.last();
+    let end = par.expect(TokenKind::BraceClose, "`unsafe` block")?;
+    let span = kw_tok.span + end.span;
 
     Ok(Node::new(FuncStmt::Unsafe(body), span))
 }

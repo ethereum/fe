@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ associated_fns.fe:3:3
+  ┌─ associated_fns.fe:2:5
   │  
-3 │ ╭   pub fn square(x: u256) -> u256:
-4 │ │     return x * x
-  │ ╰────────────────^ attributes hash: 6622018637299644818
+2 │ ╭     pub fn square(x: u256) -> u256 {
+3 │ │         return x * x
+4 │ │     }
+  │ ╰─────^ attributes hash: 6622018637299644818
   │  
   = FunctionSignature {
         self_decl: None,
@@ -36,83 +37,85 @@ note:
     }
 
 note: 
-  ┌─ associated_fns.fe:4:12
+  ┌─ associated_fns.fe:3:16
   │
-4 │     return x * x
-  │            ^   ^ u256: Value
-  │            │    
-  │            u256: Value
+3 │         return x * x
+  │                ^   ^ u256: Value
+  │                │    
+  │                u256: Value
 
 note: 
-  ┌─ associated_fns.fe:4:12
+  ┌─ associated_fns.fe:3:16
   │
-4 │     return x * x
-  │            ^^^^^ u256: Value
+3 │         return x * x
+  │                ^^^^^ u256: Value
 
 note: 
-  ┌─ associated_fns.fe:7:3
+  ┌─ associated_fns.fe:8:5
   │
-7 │   pub x: u256
-  │   ^^^^^^^^^^^ u256
+8 │     pub x: u256
+  │     ^^^^^^^^^^^ u256
 
 note: 
-  ┌─ associated_fns.fe:8:3
-  │  
-8 │ ╭   pub fn new(x: u256) -> MyStruct:
-9 │ │     return MyStruct(x)
-  │ ╰──────────────────────^ attributes hash: 2145703897684373991
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Struct(
-                Struct {
-                    name: "MyStruct",
-                    field_count: 1,
-                },
-            ),
-        ),
-    }
-
-note: 
-  ┌─ associated_fns.fe:9:21
-  │
-9 │     return MyStruct(x)
-  │                     ^ u256: Value
-
-note: 
-  ┌─ associated_fns.fe:9:12
-  │
-9 │     return MyStruct(x)
-  │            ^^^^^^^^^^^ MyStruct: Memory
-
-note: 
-   ┌─ associated_fns.fe:12:3
-   │
-12 │   my_struct: MyStruct
-   │   ^^^^^^^^^^^^^^^^^^^ MyStruct
-
-note: 
-   ┌─ associated_fns.fe:14:3
+   ┌─ associated_fns.fe:10:5
    │  
-14 │ ╭   pub fn bar(self, val: u256) -> u256:
-15 │ │     self.my_struct = MyStruct::new(x: val)
-16 │ │     return Lib::square(x: self.my_struct.x)
-   │ ╰───────────────────────────────────────────^ attributes hash: 2950430758151367369
+10 │ ╭     pub fn new(x: u256) -> MyStruct {
+11 │ │         return MyStruct(x)
+12 │ │     }
+   │ ╰─────^ attributes hash: 2145703897684373991
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "MyStruct",
+                     field_count: 1,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ associated_fns.fe:11:25
+   │
+11 │         return MyStruct(x)
+   │                         ^ u256: Value
+
+note: 
+   ┌─ associated_fns.fe:11:16
+   │
+11 │         return MyStruct(x)
+   │                ^^^^^^^^^^^ MyStruct: Memory
+
+note: 
+   ┌─ associated_fns.fe:16:5
+   │
+16 │     my_struct: MyStruct
+   │     ^^^^^^^^^^^^^^^^^^^ MyStruct
+
+note: 
+   ┌─ associated_fns.fe:18:5
+   │  
+18 │ ╭     pub fn bar(self, val: u256) -> u256 {
+19 │ │         self.my_struct = MyStruct::new(x: val)
+20 │ │         return Lib::square(x: self.my_struct.x)
+21 │ │     }
+   │ ╰─────^ attributes hash: 2950430758151367369
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -142,43 +145,43 @@ note:
      }
 
 note: 
-   ┌─ associated_fns.fe:15:5
+   ┌─ associated_fns.fe:19:9
    │
-15 │     self.my_struct = MyStruct::new(x: val)
-   │     ^^^^ Foo: Value
+19 │         self.my_struct = MyStruct::new(x: val)
+   │         ^^^^ Foo: Value
 
 note: 
-   ┌─ associated_fns.fe:15:5
+   ┌─ associated_fns.fe:19:9
    │
-15 │     self.my_struct = MyStruct::new(x: val)
-   │     ^^^^^^^^^^^^^^                    ^^^ u256: Value
-   │     │                                  
-   │     MyStruct: Storage { nonce: Some(0) }
+19 │         self.my_struct = MyStruct::new(x: val)
+   │         ^^^^^^^^^^^^^^                    ^^^ u256: Value
+   │         │                                  
+   │         MyStruct: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ associated_fns.fe:15:22
+   ┌─ associated_fns.fe:19:26
    │
-15 │     self.my_struct = MyStruct::new(x: val)
-   │                      ^^^^^^^^^^^^^^^^^^^^^ MyStruct: Memory
-16 │     return Lib::square(x: self.my_struct.x)
-   │                           ^^^^ Foo: Value
+19 │         self.my_struct = MyStruct::new(x: val)
+   │                          ^^^^^^^^^^^^^^^^^^^^^ MyStruct: Memory
+20 │         return Lib::square(x: self.my_struct.x)
+   │                               ^^^^ Foo: Value
 
 note: 
-   ┌─ associated_fns.fe:16:27
+   ┌─ associated_fns.fe:20:31
    │
-16 │     return Lib::square(x: self.my_struct.x)
-   │                           ^^^^^^^^^^^^^^ MyStruct: Storage { nonce: Some(0) }
+20 │         return Lib::square(x: self.my_struct.x)
+   │                               ^^^^^^^^^^^^^^ MyStruct: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ associated_fns.fe:16:27
+   ┌─ associated_fns.fe:20:31
    │
-16 │     return Lib::square(x: self.my_struct.x)
-   │                           ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+20 │         return Lib::square(x: self.my_struct.x)
+   │                               ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ associated_fns.fe:16:12
+   ┌─ associated_fns.fe:20:16
    │
-16 │     return Lib::square(x: self.my_struct.x)
-   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+20 │         return Lib::square(x: self.my_struct.x)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

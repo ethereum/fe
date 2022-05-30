@@ -4,9 +4,10 @@ Storage pointers for constant size values are determined at compile time.
 
 Example:
 
-```python
-# contract scope
-foo: u256 # foo is assigned a static pointer by the compiler
+```fe
+contract Cats {
+   population: u256 # assigned a static location by the compiler
+}
 ```
 
 The value of a base type in storage is found by simply loading the value from storage at the

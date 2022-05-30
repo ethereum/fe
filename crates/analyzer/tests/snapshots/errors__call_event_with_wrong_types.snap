@@ -4,15 +4,15 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: incorrect type for `MyEvent` argument `val_1`
-  ┌─ compile_errors/call_event_with_wrong_types.fe:9:34
-  │
-9 │         emit MyEvent(ctx, val_1: "foo bar", val_2: 1000)
-  │                                  ^^^^^^^^^ this has type `String<7>`; expected type `String<5>`
+   ┌─ compile_errors/call_event_with_wrong_types.fe:10:34
+   │
+10 │         emit MyEvent(ctx, val_1: "foo bar", val_2: 1000)
+   │                                  ^^^^^^^^^ this has type `String<7>`; expected type `String<5>`
 
 error: literal out of range for `u8`
-  ┌─ compile_errors/call_event_with_wrong_types.fe:9:52
-  │
-9 │         emit MyEvent(ctx, val_1: "foo bar", val_2: 1000)
-  │                                                    ^^^^ does not fit into type `u8`
+   ┌─ compile_errors/call_event_with_wrong_types.fe:10:52
+   │
+10 │         emit MyEvent(ctx, val_1: "foo bar", val_2: 1000)
+   │                                                    ^^^^ does not fit into type `u8`
 
 

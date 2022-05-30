@@ -121,13 +121,14 @@ test_parse! { stmt_return3, functions::parse_stmt, "return not x" }
 test_parse! { stmt_revert1, functions::parse_stmt, "revert" }
 test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
 
-test_parse! { stmt_if, functions::parse_stmt, "if a:\n b" }
-test_parse! { stmt_if2, functions::parse_stmt, "if a:\n b \nelif c:\n d \nelif e: \n f \nelse:\n g" }
-test_parse! { stmt_while, functions::parse_stmt, "while a > 5:\n a -= 1" }
-test_parse! { stmt_for, functions::parse_stmt, "for a in b[0]:\n pass" }
+test_parse! { stmt_if, functions::parse_stmt, "if a { \n b }" }
+test_parse! { stmt_if2, functions::parse_stmt, "if a { b } else if c { d } else if e { \n f } \n else {\n g }" }
+test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
+test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
+test_parse! { stmt_semicolons, functions::parse_stmt, "if a { b; c; d; for x in y {}; }" }
 test_parse! { type_def, try_parse_module, "type X = Map<address, u256>" }
 test_parse! { pub_type_def, try_parse_module, "pub type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
@@ -143,15 +144,15 @@ test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256
 test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8>)" }
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
-test_parse! { fn_def, try_parse_module, "fn transfer(from sender: address, to recip: address, _ val: u64) -> bool:\n false"}
+test_parse! { fn_def, try_parse_module, "fn transfer(from sender: address, to recip: address, _ val: u64) -> bool {\n false \n}"}
 
-test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, that: R, _ val: u64) -> bool:\n false"}
-test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
-test_parse! { empty_event_def, try_parse_module, "event Foo:\n  pass" }
-test_parse! { pub_event_def, try_parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, that: R, _ val: u64) -> bool { false }"}
+test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool { x }"}
+test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool {\n x\n}"}
+test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool{x}"}
+test_parse! { event_def, try_parse_module, "event Foo {\n  x: address\n  idx y: u8\n}" }
+test_parse! { empty_event_def, try_parse_module, "event Foo {}" }
+test_parse! { pub_event_def, try_parse_module, "pub event Foo {\nx: address\nidx y: u8\n}" }
 test_parse! { const_def, try_parse_module, "const FOO: i32 = 1" }
 test_parse! { pub_const_def, try_parse_module, "pub const FOO: i32 = 1" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
@@ -168,39 +169,41 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
     evm as mve
 }"#
 }
-test_parse! { struct_def, try_parse_module, r#"struct S:
+test_parse! { struct_def, try_parse_module, r#"struct S {
   x: address
   pub y: u8
   z: u8
   pub a: Map<u8, foo>
 
-  pub fn foo(self) -> u8:
+  pub fn foo(self) -> u8 {
     return self.z + self.y
-  unsafe fn bar():
-    pass
-"# }
-test_parse! { empty_struct_def, try_parse_module, r#"struct S:
-  pass
-"# }
+  }
+  unsafe fn bar() {}
+}"# }
+test_parse! { empty_struct_def, try_parse_module, "struct S {}" }
 
-test_parse! { contract_def, try_parse_module, r#"contract Foo:
+test_parse! { contract_def, try_parse_module, r#"contract Foo {
   x: address
   pub y: u8
   pub const z: Map<u8, address>
-  pub fn foo() -> u8:
+
+  pub fn foo() -> u8 {
     return 10
-  event Bar:
+  }
+  event Bar {
     idx from: address
+  }
+}
 "# }
 
-test_parse! { empty_contract_def, try_parse_module, r#"contract Foo:
-    pass
-"# }
+test_parse! { empty_contract_def, try_parse_module, "contract Foo {}" }
 
-test_parse! { pub_contract_def, try_parse_module, r#"pub contract Foo:
-    pub fn foo() -> u8:
+test_parse! { pub_contract_def, try_parse_module, r#"
+pub contract Foo {
+    pub fn foo() -> u8 {
       return 10
-"# }
+    }
+}"# }
 
 test_parse! { module_stmts, try_parse_module, r#"
 pragma 0.5.0
@@ -212,46 +215,51 @@ use foo::bar::{
 
 type X = Map<u8, u16>
 
-pub fn double(x: u8) -> u8:
+pub fn double(x: u8) -> u8 {
     return x * 2
+}
 
-fn secret() -> u8:
-    return 0xBEEF
+fn secret() -> u8 { return 0xBEEF }
 
-contract A:
+contract A {
     pub const x: u256 = 10
+}
 
-contract B:
+contract B {
     pub x: X
-"# }
+}"# }
 
 test_parse! { guest_book, try_parse_module, r#"
 type BookMsg = Array<bytes, 100>
 
-contract GuestBook:
+contract GuestBook {
     pub guest_book: Map<address, BookMsg>
 
-    event Signed:
+    event Signed {
         idx book_msg: BookMsg
+    }
 
-    pub fn sign(self, book_msg: BookMsg):
+    pub fn sign(self, book_msg: BookMsg) {
         self.guest_book[msg.sender] = book_msg
 
         emit Signed(book_msg: book_msg)
-
-    pub fn get_msg(self, addr: address) -> BookMsg:
+    }
+    pub fn get_msg(self, addr: address) -> BookMsg {
         return self.guest_book[addr]
-"# }
+    }
+}"# }
 
 test_parse! { module_level_events, try_parse_module, r#"
 use std::context::Context
 
-event Transfer:
+event Transfer {
     idx sender: address
     idx receiver: address
     value: u256
-
-contract Foo:
-    fn transfer(ctx: Context, to: address, value: u256):
+}
+contract Foo {
+    fn transfer(ctx: Context, to: address, value: u256) {
         emit Transfer(ctx, sender: msg.sender, receiver: to, value)
+    }
+}
 "# }

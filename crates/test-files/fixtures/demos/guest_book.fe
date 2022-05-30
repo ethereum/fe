@@ -1,23 +1,27 @@
 use std::context::Context
 
 # The `contract` keyword defines a new contract type
-contract GuestBook:
+contract GuestBook {
     # Strings are generic over a constant number
     # that restricts its maximum size
     messages: Map<address, String<100>>
 
     # Events can be defined on contract or module level
-    event Signed:
+    event Signed {
         book_msg: String<100>
+    }
 
-    pub fn sign(self, ctx: Context, book_msg: String<100>):
+    pub fn sign(self, ctx: Context, book_msg: String<100>) {
         # All storage access is explicit using `self.<some-key>`
         self.messages[ctx.msg_sender()] = book_msg
 
         # Emit the `Signed` event
         emit Signed(ctx, book_msg)
+    }
 
-    pub fn get_msg(self, addr: address) -> String<100>:
+    pub fn get_msg(self, addr: address) -> String<100> {
         # Copying data from storage to memory
         # has to be done explicitly via `to_mem()`
         return self.messages[addr].to_mem()
+    }
+}

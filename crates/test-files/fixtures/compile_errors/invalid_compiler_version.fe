@@ -1,4 +1,3 @@
 pragma <=0.1.0
 
-contract foo:
-    pass
+contract foo {}

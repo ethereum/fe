@@ -12,11 +12,11 @@ error: invalid assignment target
   = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
 
 error: cannot assign to constant variable
-  ┌─ compile_errors/const_assign.fe:9:9
-  │
-9 │         LOCAL = 1
-  │         ^^^^^
-  │
-  = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
+   ┌─ compile_errors/const_assign.fe:10:9
+   │
+10 │         LOCAL = 1
+   │         ^^^^^
+   │
+   = The left side of an assignment can be a variable name, attribute, subscript, or tuple.
 
 

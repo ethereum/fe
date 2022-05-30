@@ -1,12 +1,12 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_field_after_def), module::parse_module, false,\n           r#\"\ncontract C:\n  fn f():\n    pass\n  x: u8\n\"#)"
+expression: "err_string(stringify!(contract_field_after_def), module::parse_module,\n           r#\"\ncontract C {\n  fn f() {}\n  x: u8\n}\"#)"
 
 ---
 error: contract field definitions must come before any function or event definitions
-  ┌─ contract_field_after_def:5:3
+  ┌─ contract_field_after_def:4:3
   │
-5 │   x: u8
+4 │   x: u8
   │   ^^^^^
 
 

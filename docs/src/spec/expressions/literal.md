@@ -9,7 +9,7 @@
 A _literal expression_ consists of one of the [literal][LITERAL] forms described earlier.
 It directly describes a number, string or boolean value.
 
-```Python
+```fe,ignore
 "hello"   # string type
 5         # integer type
 true      # boolean type

@@ -4,9 +4,9 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ empty.fe:2:3
+  ┌─ empty.fe:2:5
   │
-2 │   lonely: u256
-  │   ^^^^^^^^^^^^ u256
+2 │     lonely: u256
+  │     ^^^^^^^^^^^^ u256
 
 

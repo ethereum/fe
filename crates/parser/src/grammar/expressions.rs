@@ -234,7 +234,7 @@ fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
-                tok.span,
+                &tok,
                 format!("Unexpected token while parsing expression: `{}`", tok.text),
                 vec![],
             );
@@ -336,7 +336,7 @@ fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
-                tok.span,
+                &tok,
                 "Unexpected token while parsing expression in parentheses",
                 vec![],
             );
@@ -370,7 +370,7 @@ fn parse_expr_list(
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
-                    tok.span,
+                    &tok,
                     "Unexpected token while parsing list of expressions",
                     vec![],
                 );

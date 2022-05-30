@@ -247,13 +247,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.lower_expr_to_value(value);
             }
 
-            ast::FuncStmt::Pass => {
-                // TODO: Generate appropriate error message.
-                self.builder.revert(None, stmt.into());
-                let next_block = self.builder.make_block();
-                self.builder.move_to_block(next_block);
-            }
-
             ast::FuncStmt::Break => {
                 let exit = self.scope().loop_exit(&self.scopes);
                 self.builder.jump(exit, stmt.into());

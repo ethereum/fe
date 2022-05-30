@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_event_def), module::parse_module,\n           \"event Foo:\\n  x: address\\n  idx y: u8\")"
+expression: "ast_string(stringify!(pub_event_def), try_parse_module,\n           \"pub event Foo {\\nx: address\\nidx y: u8\\n}\")"
 
 ---
 Node(
@@ -11,8 +11,8 @@ Node(
           name: Node(
             kind: "Foo",
             span: Span(
-              start: 6,
-              end: 9,
+              start: 10,
+              end: 13,
             ),
           ),
           fields: [
@@ -22,8 +22,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 13,
-                    end: 14,
+                    start: 16,
+                    end: 17,
                   ),
                 ),
                 typ: Node(
@@ -31,14 +31,14 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 16,
-                    end: 23,
+                    start: 19,
+                    end: 26,
                   ),
                 ),
               ),
               span: Span(
-                start: 13,
-                end: 23,
+                start: 16,
+                end: 26,
               ),
             ),
             Node(
@@ -47,8 +47,8 @@ Node(
                 name: Node(
                   kind: "y",
                   span: Span(
-                    start: 30,
-                    end: 31,
+                    start: 31,
+                    end: 32,
                   ),
                 ),
                 typ: Node(
@@ -56,28 +56,31 @@ Node(
                     base: "u8",
                   ),
                   span: Span(
-                    start: 33,
-                    end: 35,
+                    start: 34,
+                    end: 36,
                   ),
                 ),
               ),
               span: Span(
-                start: 26,
-                end: 35,
+                start: 27,
+                end: 36,
               ),
             ),
           ],
-          pub_qual: None,
+          pub_qual: Some(Span(
+            start: 0,
+            end: 3,
+          )),
         ),
         span: Span(
-          start: 0,
-          end: 35,
+          start: 4,
+          end: 38,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 35,
+    end: 38,
   ),
 )

@@ -37,10 +37,6 @@ pub enum TokenKind {
     #[regex(r"\n[ \t]*")]
     Newline,
 
-    /// Virtual tokens emitted by the parser
-    Indent,
-    Dedent,
-
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Name,
     #[regex("[0-9]+(?:_[0-9]+)*")]
@@ -73,8 +69,6 @@ pub enum TokenKind {
     Fn,
     #[token("const")]
     Const,
-    #[token("elif")]
-    Elif,
     #[token("else")]
     Else,
     #[token("emit")]
@@ -87,8 +81,6 @@ pub enum TokenKind {
     If,
     #[token("pragma")]
     Pragma,
-    #[token("pass")]
-    Pass,
     #[token("for")]
     For,
     #[token("pub")]
@@ -217,8 +209,6 @@ impl TokenKind {
         use TokenKind::*;
         match self {
             Newline => "a newline",
-            Dedent => "a dedent",
-            Indent => "an indentation",
             Name => "a name",
             Int => "a number",
             Hex => "a hexadecimal number",
@@ -235,14 +225,12 @@ impl TokenKind {
             Fn => "keyword `fn`",
             Const => "keyword `const`",
             Let => "keyword `let`",
-            Elif => "keyword `elif`",
             Else => "keyword `else`",
             Emit => "keyword `emit`",
             Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
             Pragma => "keyword `pragma`",
-            Pass => "keyword `pass`",
             For => "keyword `for`",
             Pub => "keyword `pub`",
             Return => "keyword `return`",
@@ -301,7 +289,7 @@ impl TokenKind {
             GtGtEq => "symbol `>>=`",
             Arrow => "symbol `->`",
 
-            Error => unreachable!(),
+            Error => unreachable!(), // TODO this is reachable
         }
     }
 }

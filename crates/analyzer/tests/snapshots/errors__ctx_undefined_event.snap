@@ -4,14 +4,14 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `Context` is not defined
-  ┌─ compile_errors/ctx_undefined_event.fe:6:9
+  ┌─ compile_errors/ctx_undefined_event.fe:7:9
   │
-5 │     pub fn bar():
+6 │     pub fn bar() {
   │            ---
   │            │
   │            Note: declare `ctx` in this function signature
   │            Example: `pub fn foo(ctx: Context, ...)`
-6 │         emit YouWin(amount: 42)
+7 │         emit YouWin(amount: 42)
   │         ^^^^^^^^^^^^^^^^^^^^^^^ `ctx` must be defined and passed into the event
   │
   = Note: import context with `use std::context::Context`

@@ -18,19 +18,23 @@ The current implementation of `assert` is under [active discussion](https://gith
 
 An example of a `assert` statement without the optional message:
 
-```python
-contract Foo:
-    fn bar(val: u256):
+```fe
+contract Foo {
+    fn bar(val: u256) {
         assert val > 5
+    }
+}
 ```
 
 An example of a `assert` statement with an error message:
 
-```python
-contract Foo:
+```fe
+contract Foo {
 
-    fn bar(val: u256):
+    fn bar(val: u256) {
         assert val > 5, "Must be greater than five"
+    }
+}
 ```
 
 [_Expression_]: ../expressions/index.md

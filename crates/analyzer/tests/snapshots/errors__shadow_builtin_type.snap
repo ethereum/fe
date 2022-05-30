@@ -10,39 +10,39 @@ error: type name conflicts with the type named "u256"
   │      ^^^^ `u256` is already defined
 
 error: type name conflicts with the type named "String"
-  ┌─ compile_errors/shadow_builtin_type.fe:2:6
+  ┌─ compile_errors/shadow_builtin_type.fe:3:6
   │
-2 │ type String = u256
+3 │ type String = u256
   │      ^^^^^^ `String` is already defined
 
 error: type name conflicts with the type named "Map"
-  ┌─ compile_errors/shadow_builtin_type.fe:3:6
+  ┌─ compile_errors/shadow_builtin_type.fe:5:6
   │
-3 │ type Map = u256
+5 │ type Map = u256
   │      ^^^ `Map` is already defined
 
 error: type name conflicts with the type named "bool"
-  ┌─ compile_errors/shadow_builtin_type.fe:4:6
+  ┌─ compile_errors/shadow_builtin_type.fe:7:6
   │
-4 │ type bool = u256
+7 │ type bool = u256
   │      ^^^^ `bool` is already defined
 
 error: type name conflicts with the function named "keccak256"
-  ┌─ compile_errors/shadow_builtin_type.fe:6:6
+  ┌─ compile_errors/shadow_builtin_type.fe:9:6
   │
-6 │ type keccak256 = u8
+9 │ type keccak256 = u8
   │      ^^^^^^^^^ `keccak256` is already defined
 
 error: function parameter name `u8` conflicts with built-in type
-   ┌─ compile_errors/shadow_builtin_type.fe:12:8
+   ┌─ compile_errors/shadow_builtin_type.fe:18:10
    │
-12 │   fn f(u8: u256):
-   │        ^^ `u8` is a built-in type
+18 │     fn f(u8: u256) {}
+   │          ^^ `u8` is a built-in type
 
 error: function parameter name `keccak256` conflicts with built-in function
-   ┌─ compile_errors/shadow_builtin_type.fe:15:8
+   ┌─ compile_errors/shadow_builtin_type.fe:20:10
    │
-15 │   fn g(keccak256: u8):
-   │        ^^^^^^^^^ `keccak256` is a built-in function
+20 │     fn g(keccak256: u8) {}
+   │          ^^^^^^^^^ `keccak256` is a built-in function
 
 

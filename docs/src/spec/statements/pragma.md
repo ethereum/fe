@@ -13,7 +13,7 @@ statement will cause the compiler to reject compilation if the version of the co
 
 An example of a `pragma` statement:
 
-```
+```fe,ignore
 pragma ^0.1.0
 ```
 

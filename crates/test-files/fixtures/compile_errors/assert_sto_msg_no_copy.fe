@@ -1,5 +1,7 @@
-contract Foo:
+contract Foo {
     my_string: String<42>
 
-    pub fn bar(self):
+    pub fn bar(self) {
         assert false, self.my_string
+    }
+}

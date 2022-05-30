@@ -37,11 +37,11 @@ primitive types.
 
 Here are examples of these operators being used.
 
-```
+```fe,ignore
 3 + 6 == 9
 6 - 3 == 3
 2 * 3 == 6
-6 / 3 == 2 TODO: Rest
+6 / 3 == 2
 5 % 4 == 1
 2 ** 4 == 16
 12 & 25 == 8

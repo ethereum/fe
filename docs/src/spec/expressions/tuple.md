@@ -32,18 +32,17 @@ A tuple field can be accessed via an [attribute expression].
 
 Example:
 
-```python
-contract Foo:
-
-    pub fn bar():
+```fe
+contract Foo {
+    pub fn bar() {
         # Creating a tuple via a tuple expression
         let some_tuple: (u256, bool) = (1, false)
 
         # Accessing the first tuple field via the `item0` field
         baz(input: some_tuple.item0)
-
-    pub fn baz(input: u256):
-        pass
+    }
+    pub fn baz(input: u256) {}
+}
 ```
 
 [_Expression_]: ./index.md

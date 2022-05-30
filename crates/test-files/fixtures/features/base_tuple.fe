@@ -1,3 +1,5 @@
-contract Foo:
-    pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+contract Foo {
+    pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool) {
         return (my_num, my_bool)
+    }
+}

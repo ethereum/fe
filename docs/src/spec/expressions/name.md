@@ -8,12 +8,13 @@ A *name expression* resolves to a local variable.
 
 Example:
 
-```python
-contract Foo:
-
-    pub fn baz(foo: u256):
+```fe
+contract Foo {
+    pub fn baz(foo: u256) {
         # name expression resolving to the value of `foo`
         foo
+    }
+}
 ```
 
 [IDENTIFIER]: ../lexical_structure/identifiers.md

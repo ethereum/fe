@@ -6,9 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ return_subtraction_i256.fe:2:5
   │  
-2 │ ╭     pub fn bar(x: i256, y: i256) -> i256:
+2 │ ╭     pub fn bar(x: i256, y: i256) -> i256 {
 3 │ │         return x - y
-  │ ╰────────────────────^ attributes hash: 6924216180113238234
+4 │ │     }
+  │ ╰─────^ attributes hash: 6924216180113238234
   │  
   = FunctionSignature {
         self_decl: None,

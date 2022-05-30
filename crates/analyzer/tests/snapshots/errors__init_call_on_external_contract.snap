@@ -4,10 +4,10 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `__init__()` is not directly callable
-   ┌─ compile_errors/init_call_on_external_contract.fe:14:9
+   ┌─ compile_errors/init_call_on_external_contract.fe:13:13
    │
-14 │     foo.__init__()
-   │         ^^^^^^^^
+13 │         foo.__init__()
+   │             ^^^^^^^^
    │
    = Note: `__init__` is the constructor function, and can't be called at runtime.
 

@@ -1,20 +1,8 @@
 # Tokens
 
-## Significant whitespace
-
-In Fe, whitespace is not just used to guide the human eye but it also carries meaning. The rules are essentially [borrowed from Python](https://docs.python.org/2.0/ref/indentation.html).
-
 ### `NEWLINE`
 
 A token that represents a new line.
-
-### `INDENT`
-
-A token that represents adding one level of indentation.
-
-### `DEDENT`
-
-A token that represents removing one level of indentation
 
 ## Literals
 
@@ -130,15 +118,10 @@ An _integer literal_ has one of four forms:
 
 Examples of integer literals of various forms:
 
-```python
-123;                               // type u256
-0xff;                              // type u256
-0o70;                              // type u256
-0b1111_1111_1001_0000;             // type u256
-0b1111_1111_1001_0000i64;          // type u256
+```fe,ignore
+123                      # type u256
+0xff                     # type u256
+0o70                     # type u256
+0b1111_1111_1001_0000    # type u256
+0b1111_1111_1001_0000i64 # type u256
 ```
-
-Note that the Fe syntax considers `-1` as an application of the [unary minus
-operator] to an integer literal `1`, rather than a single integer literal.
-
-[unary minus operator]: ../expressions/unary_operators.md

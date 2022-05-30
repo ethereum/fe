@@ -22,16 +22,19 @@ An array item can be accessed via an [index expression].
 
 Example:
 
-```python
-contract Foo:
+```fe
+contract Foo {
 
-    fn get_val3() -> u256:
+    fn get_val3() -> u256 {
         return 3
+    }
 
-    pub fn baz():
+    pub fn baz() {
         let val1: u256 = 2
         # A list expression
         let foo: Array<u256, 3> = [1, val1, get_val3()]
+    }
+}
 ```
 
 [_Expression_]: ./index.md

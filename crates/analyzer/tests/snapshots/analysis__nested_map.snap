@@ -14,9 +14,10 @@ note:
 note: 
   ┌─ nested_map.fe:5:5
   │  
-5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
+5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256 {
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 17216960098647945084
+7 │ │     }
+  │ ╰─────^ attributes hash: 17216960098647945084
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -81,91 +82,93 @@ note:
   │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
-  ┌─ nested_map.fe:8:5
-  │  
-8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
-9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 1717293224155577849
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "a",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "b",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "value",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^ Foo: Value
-
-note: 
-  ┌─ nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^ ^ address: Value
-  │         │         
-  │         Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
-
-note: 
-  ┌─ nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^ ^ address: Value
-  │         │            
-  │         Map<address, u256>: Storage { nonce: None }
-
-note: 
-  ┌─ nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^^^^   ^^^^^ u256: Value
-  │         │                 
-  │         u256: Storage { nonce: None }
-
-note: 
-   ┌─ nested_map.fe:11:5
+   ┌─ nested_map.fe:9:5
    │  
-11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
-12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 13548986453815092160
+ 9 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256) {
+10 │ │         self.bar[a][b] = value
+11 │ │     }
+   │ ╰─────^ attributes hash: 1717293224155577849
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "a",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "b",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "value",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ nested_map.fe:10:9
+   │
+10 │         self.bar[a][b] = value
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ nested_map.fe:10:9
+   │
+10 │         self.bar[a][b] = value
+   │         ^^^^^^^^ ^ address: Value
+   │         │         
+   │         Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ nested_map.fe:10:9
+   │
+10 │         self.bar[a][b] = value
+   │         ^^^^^^^^^^^ ^ address: Value
+   │         │            
+   │         Map<address, u256>: Storage { nonce: None }
+
+note: 
+   ┌─ nested_map.fe:10:9
+   │
+10 │         self.bar[a][b] = value
+   │         ^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │         │                 
+   │         u256: Storage { nonce: None }
+
+note: 
+   ┌─ nested_map.fe:13:5
+   │  
+13 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool {
+14 │ │         return self.baz[a][b]
+15 │ │     }
+   │ ╰─────^ attributes hash: 13548986453815092160
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -202,39 +205,40 @@ note:
      }
 
 note: 
-   ┌─ nested_map.fe:12:16
+   ┌─ nested_map.fe:14:16
    │
-12 │         return self.baz[a][b]
+14 │         return self.baz[a][b]
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ nested_map.fe:12:16
+   ┌─ nested_map.fe:14:16
    │
-12 │         return self.baz[a][b]
+14 │         return self.baz[a][b]
    │                ^^^^^^^^ ^ address: Value
    │                │         
    │                Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ nested_map.fe:12:16
+   ┌─ nested_map.fe:14:16
    │
-12 │         return self.baz[a][b]
+14 │         return self.baz[a][b]
    │                ^^^^^^^^^^^ ^ u256: Value
    │                │            
    │                Map<u256, bool>: Storage { nonce: None }
 
 note: 
-   ┌─ nested_map.fe:12:16
+   ┌─ nested_map.fe:14:16
    │
-12 │         return self.baz[a][b]
+14 │         return self.baz[a][b]
    │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Value
 
 note: 
-   ┌─ nested_map.fe:14:5
+   ┌─ nested_map.fe:17:5
    │  
-14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
-15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 6442389777288668179
+17 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool) {
+18 │ │         self.baz[a][b] = value
+19 │ │     }
+   │ ╰─────^ attributes hash: 6442389777288668179
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -280,31 +284,31 @@ note:
      }
 
 note: 
-   ┌─ nested_map.fe:15:9
+   ┌─ nested_map.fe:18:9
    │
-15 │         self.baz[a][b] = value
+18 │         self.baz[a][b] = value
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ nested_map.fe:15:9
+   ┌─ nested_map.fe:18:9
    │
-15 │         self.baz[a][b] = value
+18 │         self.baz[a][b] = value
    │         ^^^^^^^^ ^ address: Value
    │         │         
    │         Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ nested_map.fe:15:9
+   ┌─ nested_map.fe:18:9
    │
-15 │         self.baz[a][b] = value
+18 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^ ^ u256: Value
    │         │            
    │         Map<u256, bool>: Storage { nonce: None }
 
 note: 
-   ┌─ nested_map.fe:15:9
+   ┌─ nested_map.fe:18:9
    │
-15 │         self.baz[a][b] = value
+18 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^^^^   ^^^^^ bool: Value
    │         │                 
    │         bool: Storage { nonce: None }

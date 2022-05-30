@@ -1,29 +1,35 @@
-contract Foo:
-  pub fn explicit_return_a1():
-    return
-
-  pub fn explicit_return_a2():
-    return ()
-
-  pub fn explicit_return_b1() -> ():
-    return
-
-  pub fn explicit_return_b2() -> ():
-    return ()
-
-  pub fn implicit_a1():
-    pass
-
-  pub fn implicit_a2() -> ():
-    pass
-
-  pub fn if_elif_else() -> ():
-    if true:
-        return ()
-    elif false:
+contract Foo {
+    pub fn explicit_return_a1() {
         return
-    else:
-        pass
+    }
 
-  pub fn tuple_stmt():
-    ()
+    pub fn explicit_return_a2() {
+        return ()
+    }
+
+    pub fn explicit_return_b1() -> () {
+        return
+    }
+
+    pub fn explicit_return_b2() -> () {
+        return ()
+    }
+
+    pub fn implicit_a1() {}
+
+    pub fn implicit_a2() -> () {}
+
+    pub fn if_elif_else() -> () {
+        if true {
+            return ()
+        } else if false {
+            return
+        } else {
+
+        }
+    }
+
+    pub fn tuple_stmt() {
+        ()
+    }
+}

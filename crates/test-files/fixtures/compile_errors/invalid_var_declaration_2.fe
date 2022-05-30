@@ -1,3 +1,5 @@
-contract Foo:
-  pub fn bar():
-    let (x, y):(u256,)=(1,)
+contract Foo {
+    pub fn bar() {
+        let (x, y): (u256,) = (1,)
+    }
+}

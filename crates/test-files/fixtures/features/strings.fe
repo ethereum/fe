@@ -1,7 +1,7 @@
 use std::context::Context
 
-contract Foo:
-    event MyEvent:
+contract Foo {
+    event MyEvent {
         s2: String<26>
         u: u256
         s1: String<42>
@@ -9,24 +9,30 @@ contract Foo:
         a: address
         s4: String<18>
         s5: String<100>
+    }
 
-    pub fn __init__(ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+    pub fn __init__(ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>) {
         emit MyEvent(ctx, s2, u, s1, s3, a, s4: "static string", s5: String<100>("foo"))
+    }
 
-    pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
+    pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {
         return s2
+    }
 
-    pub fn return_static_string() -> String<43>:
+    pub fn return_static_string() -> String<43> {
         return "The quick brown fox jumps over the lazy dog"
+    }
 
-    pub fn return_casted_static_string() -> String<100>:
+    pub fn return_casted_static_string() -> String<100> {
         return String<100>("foo")
+    }
 
-    pub fn shorter_string_assign():
+    pub fn shorter_string_assign() {
         let s: String<18> = "fe"
+    }
 
-    pub fn return_special_chars() -> String<18>:
+    pub fn return_special_chars() -> String<18> {
         return "\n\"'\r\t
         foo\\"
-
-
+    }
+}

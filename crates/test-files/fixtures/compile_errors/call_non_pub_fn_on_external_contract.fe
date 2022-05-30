@@ -1,10 +1,15 @@
 use std::context::Context
 
-contract Foo:
-  val: u8
-  fn do_private_thingz(self):
-     self.val = 100
+contract Foo {
+    val: u8
 
-contract Bar:
-  fn test(ctx: Context):
-    Foo(ctx, address(0)).do_private_thingz()
+    fn do_private_thingz(self) {
+        self.val = 100
+    }
+}
+
+contract Bar {
+    fn test(ctx: Context) {
+        Foo(ctx, address(0)).do_private_thingz()
+    }
+}

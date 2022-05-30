@@ -1,17 +1,11 @@
-
-
-contract Foo:
-
+contract Foo {
     some_thing: i8
     some_other: i8
 
-    pub fn bar(self, val: i8) -> i8:
+    pub fn bar(self, val: i8) -> i8 {
         self.some_thing = val
         self.some_other = val
-        # We do this to prove that we have to adjust the numerics at the point where they
-        # are loaded on the stack and not e.g. at the point where they are returned. Adjusting
-        # them at the point of the return would work for a single value that is loaded from
-        # storage but will fail in cases like this where we sum two values together and then
-        # return the result.
-        let x:i8 = self.some_thing + self.some_other
+        let x: i8 = self.some_thing + self.some_other
         return x
+    }
+}

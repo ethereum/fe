@@ -1,12 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_empty_body), module::parse_module, true,\n           \"contract X:\\n \\n \\ncontract Y:\\n x: u8\")"
+expression: "err_string(stringify!(contract_empty_body), module::parse_module,\n           \"contract X {} \\ncontract Y {\\n  x: u8 \\n}\")"
 
 ---
-error: failed to parse contract definition body
-  ┌─ contract_empty_body:1:1
-  │
-1 │ contract X:
-  │ ^^^^^^^^^^^ the body of this contract definition must be indented and non-empty
-
 

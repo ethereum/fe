@@ -1,25 +1,31 @@
 use std::context::Context
 
-contract Ownable:
-  _owner: address
+contract Ownable {
+    _owner: address
 
-  event OwnershipTransferred:
-    idx previousOwner: address
-    idx newOwner: address
+    event OwnershipTransferred {
+        idx previousOwner: address
+        idx newOwner: address
+    }
 
-  pub fn __init__(self, ctx: Context):
-    self._owner = ctx.msg_sender()
+    pub fn __init__(self, ctx: Context) {
+        self._owner = ctx.msg_sender()
+    }
 
-  pub fn owner(self) -> address:
-    return self._owner
+    pub fn owner(self) -> address {
+        return self._owner
+    }
 
-  pub fn renounceOwnership(self, ctx: Context):
-    assert ctx.msg_sender() == self._owner
-    self._owner = address(0)
-    emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+    pub fn renounceOwnership(self, ctx: Context) {
+        assert ctx.msg_sender() == self._owner
+        self._owner = address(0)
+        emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+    }
 
-  pub fn transferOwnership(self, ctx: Context, newOwner: address):
-    assert ctx.msg_sender() == self._owner
-    assert newOwner != address(0)
-    self._owner = newOwner
-    emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
+    pub fn transferOwnership(self, ctx: Context, newOwner: address) {
+        assert ctx.msg_sender() == self._owner
+        assert newOwner != address(0)
+        self._owner = newOwner
+        emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
+    }
+}

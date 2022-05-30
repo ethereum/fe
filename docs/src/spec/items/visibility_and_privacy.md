@@ -10,9 +10,10 @@ Fe knows two different types of visibility for functions and state variables: `p
 
 For example, this is a function that can be called externally from a transaction:
 
-```python
-pub fn answer_to_life_the_universe_and_everything() -> u256:
+```fe
+pub fn answer_to_life_the_universe_and_everything() -> u256 {
     return 42
+}
 ```
 
 Top-level definitions in a Fe source file can also be specified as `pub` if the file exists within the context of an Ingot. Declaring a definition as `pub` enables other modules within an Ingot to `use` the definition.
@@ -29,24 +30,27 @@ example_ingot
 
 With `ding/dong.fe` having the following contents:
 
-```python
-pub struct Dyng:
-  my_address: address
-  my_u256: u256
-  my_i8: i8
+```fe
+pub struct Dang {
+    pub my_address: address
+    pub my_u256: u256
+    pub my_i8: i8
+}
 ```
 
 
-Then `main.fe` can use the `Dyng` struct since it is `pub`-qualified:
+Then `main.fe` can use the `Dang` struct since it is `pub`-qualified:
 
-```python
-use ding::{dong::Dyng}
+```fe,ignore
+use ding::dong::Dang
 
-contract Foo:
- pub fn get_my_dyng() -> Dyng:
-        return Dyng(
-            my_address=address(8),
-            my_u256=42,
-            my_i8=-1
+contract Foo {
+    pub fn hot_dang() -> Dang {
+        return Dang(
+            my_address: address(8),
+            my_u256: 42,
+            my_i8: -1
         )
+    }
+}
 ```

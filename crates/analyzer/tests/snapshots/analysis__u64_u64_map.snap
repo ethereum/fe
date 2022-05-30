@@ -12,9 +12,10 @@ note:
 note: 
   ┌─ u64_u64_map.fe:4:5
   │  
-4 │ ╭     pub fn read_bar(self, key: u64) -> u64:
+4 │ ╭     pub fn read_bar(self, key: u64) -> u64 {
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 5490397784598880129
+6 │ │     }
+  │ ╰─────^ attributes hash: 5490397784598880129
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -64,66 +65,67 @@ note:
   │                ^^^^^^^^^^^^^ u64: Storage { nonce: None } => Value
 
 note: 
-  ┌─ u64_u64_map.fe:7:5
-  │  
-7 │ ╭     pub fn write_bar(self, key: u64, value: u64):
-8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 2182326649216136625
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U64,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "value",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U64,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
+   ┌─ u64_u64_map.fe:8:5
+   │  
+ 8 │ ╭     pub fn write_bar(self, key: u64, value: u64) {
+ 9 │ │         self.bar[key] = value
+10 │ │     }
+   │ ╰─────^ attributes hash: 2182326649216136625
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "key",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 label: None,
+                 name: "value",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
 
 note: 
-  ┌─ u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:9:9
   │
-8 │         self.bar[key] = value
+9 │         self.bar[key] = value
   │         ^^^^ Foo: Value
 
 note: 
-  ┌─ u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:9:9
   │
-8 │         self.bar[key] = value
+9 │         self.bar[key] = value
   │         ^^^^^^^^ ^^^ u64: Value
   │         │         
   │         Map<u64, u64>: Storage { nonce: Some(0) }
 
 note: 
-  ┌─ u64_u64_map.fe:8:9
+  ┌─ u64_u64_map.fe:9:9
   │
-8 │         self.bar[key] = value
+9 │         self.bar[key] = value
   │         ^^^^^^^^^^^^^   ^^^^^ u64: Value
   │         │                
   │         u64: Storage { nonce: None }

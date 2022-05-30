@@ -1,5 +1,7 @@
 const FOO: u8 = 1
 
-contract C:
-  fn f():
-    FOO()
+contract C {
+    fn f() {
+        FOO()
+    }
+}

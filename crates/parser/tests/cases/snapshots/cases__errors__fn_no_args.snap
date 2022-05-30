@@ -1,12 +1,12 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(fn_no_args), |par| functions::parse_fn_def(par, None),\n           false, \"fn f:\\n  return 5\")"
+expression: "err_string(stringify!(fn_no_args), module::parse_module,\n           \"fn f {\\n  return 5\\n}\")"
 
 ---
 error: function definition requires a list of parameters
   ┌─ fn_no_args:1:4
   │
-1 │ fn f:
+1 │ fn f {
   │    ^ function name must be followed by `(`
   │
   = Note: if the function `f` takes no parameters, use an empty set of parentheses.

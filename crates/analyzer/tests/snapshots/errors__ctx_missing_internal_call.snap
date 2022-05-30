@@ -6,10 +6,10 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: `bar` expects 1 argument, but 0 were provided
    ┌─ compile_errors/ctx_missing_internal_call.fe:6:12
    │
- 6 │     pub fn bar(ctx: Context) -> u256:
+ 6 │     pub fn bar(ctx: Context) -> u256 {
    │            ^^^ expects 1 argument
    ·
-10 │         self.favorite_number = bar()
+11 │         self.favorite_number = bar()
    │                                   -- supplied 0 arguments
 
 

@@ -4,11 +4,12 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ numeric_sizes.fe:3:5
+  ┌─ numeric_sizes.fe:2:5
   │  
-3 │ ╭     pub fn get_u8_min() -> u8:
-4 │ │         return u8(0)
-  │ ╰────────────────────^ attributes hash: 18193502560299416939
+2 │ ╭     pub fn get_u8_min() -> u8 {
+3 │ │         return u8(0)
+4 │ │     }
+  │ ╰─────^ attributes hash: 18193502560299416939
   │  
   = FunctionSignature {
         self_decl: None,
@@ -24,23 +25,24 @@ note:
     }
 
 note: 
-  ┌─ numeric_sizes.fe:4:19
+  ┌─ numeric_sizes.fe:3:19
   │
-4 │         return u8(0)
+3 │         return u8(0)
   │                   ^ u8: Value
 
 note: 
-  ┌─ numeric_sizes.fe:4:16
+  ┌─ numeric_sizes.fe:3:16
   │
-4 │         return u8(0)
+3 │         return u8(0)
   │                ^^^^^ u8: Value
 
 note: 
   ┌─ numeric_sizes.fe:6:5
   │  
-6 │ ╭     pub fn get_u16_min() -> u16:
+6 │ ╭     pub fn get_u16_min() -> u16 {
 7 │ │         return u16(0)
-  │ ╰─────────────────────^ attributes hash: 3086088635989474166
+8 │ │     }
+  │ ╰─────^ attributes hash: 3086088635989474166
   │  
   = FunctionSignature {
         self_decl: None,
@@ -68,11 +70,12 @@ note:
   │                ^^^^^^ u16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:9:5
+   ┌─ numeric_sizes.fe:10:5
    │  
- 9 │ ╭     pub fn get_u32_min() -> u32:
-10 │ │         return u32(0)
-   │ ╰─────────────────────^ attributes hash: 1978352585063323439
+10 │ ╭     pub fn get_u32_min() -> u32 {
+11 │ │         return u32(0)
+12 │ │     }
+   │ ╰─────^ attributes hash: 1978352585063323439
    │  
    = FunctionSignature {
          self_decl: None,
@@ -88,23 +91,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:10:20
+   ┌─ numeric_sizes.fe:11:20
    │
-10 │         return u32(0)
+11 │         return u32(0)
    │                    ^ u32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:10:16
+   ┌─ numeric_sizes.fe:11:16
    │
-10 │         return u32(0)
+11 │         return u32(0)
    │                ^^^^^^ u32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:12:5
+   ┌─ numeric_sizes.fe:14:5
    │  
-12 │ ╭     pub fn get_u64_min() -> u64:
-13 │ │         return u64(0)
-   │ ╰─────────────────────^ attributes hash: 3966212821348382963
+14 │ ╭     pub fn get_u64_min() -> u64 {
+15 │ │         return u64(0)
+16 │ │     }
+   │ ╰─────^ attributes hash: 3966212821348382963
    │  
    = FunctionSignature {
          self_decl: None,
@@ -120,23 +124,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:13:20
+   ┌─ numeric_sizes.fe:15:20
    │
-13 │         return u64(0)
+15 │         return u64(0)
    │                    ^ u64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:13:16
+   ┌─ numeric_sizes.fe:15:16
    │
-13 │         return u64(0)
+15 │         return u64(0)
    │                ^^^^^^ u64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:15:5
+   ┌─ numeric_sizes.fe:18:5
    │  
-15 │ ╭     pub fn get_u128_min() -> u128:
-16 │ │         return u128(0)
-   │ ╰──────────────────────^ attributes hash: 104322826323649285
+18 │ ╭     pub fn get_u128_min() -> u128 {
+19 │ │         return u128(0)
+20 │ │     }
+   │ ╰─────^ attributes hash: 104322826323649285
    │  
    = FunctionSignature {
          self_decl: None,
@@ -152,23 +157,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:16:21
+   ┌─ numeric_sizes.fe:19:21
    │
-16 │         return u128(0)
+19 │         return u128(0)
    │                     ^ u128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:16:16
+   ┌─ numeric_sizes.fe:19:16
    │
-16 │         return u128(0)
+19 │         return u128(0)
    │                ^^^^^^^ u128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:18:5
+   ┌─ numeric_sizes.fe:22:5
    │  
-18 │ ╭     pub fn get_u256_min() -> u256:
-19 │ │         return u256(0)
-   │ ╰──────────────────────^ attributes hash: 6115314201970082834
+22 │ ╭     pub fn get_u256_min() -> u256 {
+23 │ │         return u256(0)
+24 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
@@ -184,23 +190,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:19:21
+   ┌─ numeric_sizes.fe:23:21
    │
-19 │         return u256(0)
+23 │         return u256(0)
    │                     ^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:19:16
+   ┌─ numeric_sizes.fe:23:16
    │
-19 │         return u256(0)
+23 │         return u256(0)
    │                ^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:21:5
+   ┌─ numeric_sizes.fe:26:5
    │  
-21 │ ╭     pub fn get_i8_min() -> i8:
-22 │ │         return i8(-128)
-   │ ╰───────────────────────^ attributes hash: 15762448841602984320
+26 │ ╭     pub fn get_i8_min() -> i8 {
+27 │ │         return i8(-128)
+28 │ │     }
+   │ ╰─────^ attributes hash: 15762448841602984320
    │  
    = FunctionSignature {
          self_decl: None,
@@ -216,29 +223,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:22:20
+   ┌─ numeric_sizes.fe:27:20
    │
-22 │         return i8(-128)
+27 │         return i8(-128)
    │                    ^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:22:19
+   ┌─ numeric_sizes.fe:27:19
    │
-22 │         return i8(-128)
+27 │         return i8(-128)
    │                   ^^^^ i8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:22:16
+   ┌─ numeric_sizes.fe:27:16
    │
-22 │         return i8(-128)
+27 │         return i8(-128)
    │                ^^^^^^^^ i8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:24:5
+   ┌─ numeric_sizes.fe:30:5
    │  
-24 │ ╭     pub fn get_i16_min() -> i16:
-25 │ │         return i16(-32768)
-   │ ╰──────────────────────────^ attributes hash: 1032717434757427850
+30 │ ╭     pub fn get_i16_min() -> i16 {
+31 │ │         return i16(-32768)
+32 │ │     }
+   │ ╰─────^ attributes hash: 1032717434757427850
    │  
    = FunctionSignature {
          self_decl: None,
@@ -254,29 +262,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:25:21
+   ┌─ numeric_sizes.fe:31:21
    │
-25 │         return i16(-32768)
+31 │         return i16(-32768)
    │                     ^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:25:20
+   ┌─ numeric_sizes.fe:31:20
    │
-25 │         return i16(-32768)
+31 │         return i16(-32768)
    │                    ^^^^^^ i16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:25:16
+   ┌─ numeric_sizes.fe:31:16
    │
-25 │         return i16(-32768)
+31 │         return i16(-32768)
    │                ^^^^^^^^^^^ i16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:27:5
+   ┌─ numeric_sizes.fe:34:5
    │  
-27 │ ╭     pub fn get_i32_min() -> i32:
-28 │ │         return i32(-2147483648)
-   │ ╰───────────────────────────────^ attributes hash: 18058099208132403133
+34 │ ╭     pub fn get_i32_min() -> i32 {
+35 │ │         return i32(-2147483648)
+36 │ │     }
+   │ ╰─────^ attributes hash: 18058099208132403133
    │  
    = FunctionSignature {
          self_decl: None,
@@ -292,29 +301,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:28:21
+   ┌─ numeric_sizes.fe:35:21
    │
-28 │         return i32(-2147483648)
+35 │         return i32(-2147483648)
    │                     ^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:28:20
+   ┌─ numeric_sizes.fe:35:20
    │
-28 │         return i32(-2147483648)
+35 │         return i32(-2147483648)
    │                    ^^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:28:16
+   ┌─ numeric_sizes.fe:35:16
    │
-28 │         return i32(-2147483648)
+35 │         return i32(-2147483648)
    │                ^^^^^^^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:30:5
+   ┌─ numeric_sizes.fe:38:5
    │  
-30 │ ╭     pub fn get_i64_min() -> i64:
-31 │ │         return i64(-9223372036854775808)
-   │ ╰────────────────────────────────────────^ attributes hash: 6774734901144681103
+38 │ ╭     pub fn get_i64_min() -> i64 {
+39 │ │         return i64(-9223372036854775808)
+40 │ │     }
+   │ ╰─────^ attributes hash: 6774734901144681103
    │  
    = FunctionSignature {
          self_decl: None,
@@ -330,29 +340,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:31:21
+   ┌─ numeric_sizes.fe:39:21
    │
-31 │         return i64(-9223372036854775808)
+39 │         return i64(-9223372036854775808)
    │                     ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:31:20
+   ┌─ numeric_sizes.fe:39:20
    │
-31 │         return i64(-9223372036854775808)
+39 │         return i64(-9223372036854775808)
    │                    ^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:31:16
+   ┌─ numeric_sizes.fe:39:16
    │
-31 │         return i64(-9223372036854775808)
+39 │         return i64(-9223372036854775808)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:33:5
+   ┌─ numeric_sizes.fe:42:5
    │  
-33 │ ╭     pub fn get_i128_min() -> i128:
-34 │ │         return i128(-170141183460469231731687303715884105728)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 155533728466856391
+42 │ ╭     pub fn get_i128_min() -> i128 {
+43 │ │         return i128(-170141183460469231731687303715884105728)
+44 │ │     }
+   │ ╰─────^ attributes hash: 155533728466856391
    │  
    = FunctionSignature {
          self_decl: None,
@@ -368,29 +379,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:34:22
+   ┌─ numeric_sizes.fe:43:22
    │
-34 │         return i128(-170141183460469231731687303715884105728)
+43 │         return i128(-170141183460469231731687303715884105728)
    │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:34:21
+   ┌─ numeric_sizes.fe:43:21
    │
-34 │         return i128(-170141183460469231731687303715884105728)
+43 │         return i128(-170141183460469231731687303715884105728)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:34:16
+   ┌─ numeric_sizes.fe:43:16
    │
-34 │         return i128(-170141183460469231731687303715884105728)
+43 │         return i128(-170141183460469231731687303715884105728)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:36:5
+   ┌─ numeric_sizes.fe:46:5
    │  
-36 │ ╭     pub fn get_i256_min() -> i256:
-37 │ │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8116994679119332188
+46 │ ╭     pub fn get_i256_min() -> i256 {
+47 │ │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+48 │ │     }
+   │ ╰─────^ attributes hash: 8116994679119332188
    │  
    = FunctionSignature {
          self_decl: None,
@@ -406,29 +418,30 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:37:22
+   ┌─ numeric_sizes.fe:47:22
    │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+47 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
    │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:37:21
+   ┌─ numeric_sizes.fe:47:21
    │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+47 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:37:16
+   ┌─ numeric_sizes.fe:47:16
    │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+47 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:39:5
+   ┌─ numeric_sizes.fe:50:5
    │  
-39 │ ╭     pub fn get_u8_max() -> u8:
-40 │ │         return u8(255)
-   │ ╰──────────────────────^ attributes hash: 18193502560299416939
+50 │ ╭     pub fn get_u8_max() -> u8 {
+51 │ │         return u8(255)
+52 │ │     }
+   │ ╰─────^ attributes hash: 18193502560299416939
    │  
    = FunctionSignature {
          self_decl: None,
@@ -444,23 +457,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:40:19
+   ┌─ numeric_sizes.fe:51:19
    │
-40 │         return u8(255)
+51 │         return u8(255)
    │                   ^^^ u8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:40:16
+   ┌─ numeric_sizes.fe:51:16
    │
-40 │         return u8(255)
+51 │         return u8(255)
    │                ^^^^^^^ u8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:42:5
+   ┌─ numeric_sizes.fe:54:5
    │  
-42 │ ╭     pub fn get_u16_max() -> u16:
-43 │ │         return u16(65535)
-   │ ╰─────────────────────────^ attributes hash: 3086088635989474166
+54 │ ╭     pub fn get_u16_max() -> u16 {
+55 │ │         return u16(65535)
+56 │ │     }
+   │ ╰─────^ attributes hash: 3086088635989474166
    │  
    = FunctionSignature {
          self_decl: None,
@@ -476,23 +490,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:43:20
+   ┌─ numeric_sizes.fe:55:20
    │
-43 │         return u16(65535)
+55 │         return u16(65535)
    │                    ^^^^^ u16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:43:16
+   ┌─ numeric_sizes.fe:55:16
    │
-43 │         return u16(65535)
+55 │         return u16(65535)
    │                ^^^^^^^^^^ u16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:45:5
+   ┌─ numeric_sizes.fe:58:5
    │  
-45 │ ╭     pub fn get_u32_max() -> u32:
-46 │ │         return u32(4294967295)
-   │ ╰──────────────────────────────^ attributes hash: 1978352585063323439
+58 │ ╭     pub fn get_u32_max() -> u32 {
+59 │ │         return u32(4294967295)
+60 │ │     }
+   │ ╰─────^ attributes hash: 1978352585063323439
    │  
    = FunctionSignature {
          self_decl: None,
@@ -508,23 +523,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:46:20
+   ┌─ numeric_sizes.fe:59:20
    │
-46 │         return u32(4294967295)
+59 │         return u32(4294967295)
    │                    ^^^^^^^^^^ u32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:46:16
+   ┌─ numeric_sizes.fe:59:16
    │
-46 │         return u32(4294967295)
+59 │         return u32(4294967295)
    │                ^^^^^^^^^^^^^^^ u32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:48:5
+   ┌─ numeric_sizes.fe:62:5
    │  
-48 │ ╭     pub fn get_u64_max() -> u64:
-49 │ │         return u64(18446744073709551615)
-   │ ╰────────────────────────────────────────^ attributes hash: 3966212821348382963
+62 │ ╭     pub fn get_u64_max() -> u64 {
+63 │ │         return u64(18446744073709551615)
+64 │ │     }
+   │ ╰─────^ attributes hash: 3966212821348382963
    │  
    = FunctionSignature {
          self_decl: None,
@@ -540,23 +556,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:49:20
+   ┌─ numeric_sizes.fe:63:20
    │
-49 │         return u64(18446744073709551615)
+63 │         return u64(18446744073709551615)
    │                    ^^^^^^^^^^^^^^^^^^^^ u64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:49:16
+   ┌─ numeric_sizes.fe:63:16
    │
-49 │         return u64(18446744073709551615)
+63 │         return u64(18446744073709551615)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:51:5
+   ┌─ numeric_sizes.fe:66:5
    │  
-51 │ ╭     pub fn get_u128_max() -> u128:
-52 │ │         return u128(340282366920938463463374607431768211455)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 104322826323649285
+66 │ ╭     pub fn get_u128_max() -> u128 {
+67 │ │         return u128(340282366920938463463374607431768211455)
+68 │ │     }
+   │ ╰─────^ attributes hash: 104322826323649285
    │  
    = FunctionSignature {
          self_decl: None,
@@ -572,23 +589,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:52:21
+   ┌─ numeric_sizes.fe:67:21
    │
-52 │         return u128(340282366920938463463374607431768211455)
+67 │         return u128(340282366920938463463374607431768211455)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:52:16
+   ┌─ numeric_sizes.fe:67:16
    │
-52 │         return u128(340282366920938463463374607431768211455)
+67 │         return u128(340282366920938463463374607431768211455)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:54:5
+   ┌─ numeric_sizes.fe:70:5
    │  
-54 │ ╭     pub fn get_u256_max() -> u256:
-55 │ │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 6115314201970082834
+70 │ ╭     pub fn get_u256_max() -> u256 {
+71 │ │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
+72 │ │     }
+   │ ╰─────^ attributes hash: 6115314201970082834
    │  
    = FunctionSignature {
          self_decl: None,
@@ -604,23 +622,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:55:21
+   ┌─ numeric_sizes.fe:71:21
    │
-55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
+71 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:55:16
+   ┌─ numeric_sizes.fe:71:16
    │
-55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
+71 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:57:5
+   ┌─ numeric_sizes.fe:74:5
    │  
-57 │ ╭     pub fn get_i8_max() -> i8:
-58 │ │         return i8(127)
-   │ ╰──────────────────────^ attributes hash: 15762448841602984320
+74 │ ╭     pub fn get_i8_max() -> i8 {
+75 │ │         return i8(127)
+76 │ │     }
+   │ ╰─────^ attributes hash: 15762448841602984320
    │  
    = FunctionSignature {
          self_decl: None,
@@ -636,23 +655,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:58:19
+   ┌─ numeric_sizes.fe:75:19
    │
-58 │         return i8(127)
+75 │         return i8(127)
    │                   ^^^ i8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:58:16
+   ┌─ numeric_sizes.fe:75:16
    │
-58 │         return i8(127)
+75 │         return i8(127)
    │                ^^^^^^^ i8: Value
 
 note: 
-   ┌─ numeric_sizes.fe:60:5
+   ┌─ numeric_sizes.fe:78:5
    │  
-60 │ ╭     pub fn get_i16_max() -> i16:
-61 │ │         return i16(32767)
-   │ ╰─────────────────────────^ attributes hash: 1032717434757427850
+78 │ ╭     pub fn get_i16_max() -> i16 {
+79 │ │         return i16(32767)
+80 │ │     }
+   │ ╰─────^ attributes hash: 1032717434757427850
    │  
    = FunctionSignature {
          self_decl: None,
@@ -668,23 +688,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:61:20
+   ┌─ numeric_sizes.fe:79:20
    │
-61 │         return i16(32767)
+79 │         return i16(32767)
    │                    ^^^^^ i16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:61:16
+   ┌─ numeric_sizes.fe:79:16
    │
-61 │         return i16(32767)
+79 │         return i16(32767)
    │                ^^^^^^^^^^ i16: Value
 
 note: 
-   ┌─ numeric_sizes.fe:63:5
+   ┌─ numeric_sizes.fe:82:5
    │  
-63 │ ╭     pub fn get_i32_max() -> i32:
-64 │ │         return i32(2147483647)
-   │ ╰──────────────────────────────^ attributes hash: 18058099208132403133
+82 │ ╭     pub fn get_i32_max() -> i32 {
+83 │ │         return i32(2147483647)
+84 │ │     }
+   │ ╰─────^ attributes hash: 18058099208132403133
    │  
    = FunctionSignature {
          self_decl: None,
@@ -700,23 +721,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:64:20
+   ┌─ numeric_sizes.fe:83:20
    │
-64 │         return i32(2147483647)
+83 │         return i32(2147483647)
    │                    ^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:64:16
+   ┌─ numeric_sizes.fe:83:16
    │
-64 │         return i32(2147483647)
+83 │         return i32(2147483647)
    │                ^^^^^^^^^^^^^^^ i32: Value
 
 note: 
-   ┌─ numeric_sizes.fe:66:5
+   ┌─ numeric_sizes.fe:86:5
    │  
-66 │ ╭     pub fn get_i64_max() -> i64:
-67 │ │         return i64(9223372036854775807)
-   │ ╰───────────────────────────────────────^ attributes hash: 6774734901144681103
+86 │ ╭     pub fn get_i64_max() -> i64 {
+87 │ │         return i64(9223372036854775807)
+88 │ │     }
+   │ ╰─────^ attributes hash: 6774734901144681103
    │  
    = FunctionSignature {
          self_decl: None,
@@ -732,23 +754,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:67:20
+   ┌─ numeric_sizes.fe:87:20
    │
-67 │         return i64(9223372036854775807)
+87 │         return i64(9223372036854775807)
    │                    ^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:67:16
+   ┌─ numeric_sizes.fe:87:16
    │
-67 │         return i64(9223372036854775807)
+87 │         return i64(9223372036854775807)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
-   ┌─ numeric_sizes.fe:69:5
+   ┌─ numeric_sizes.fe:90:5
    │  
-69 │ ╭     pub fn get_i128_max() -> i128:
-70 │ │         return i128(170141183460469231731687303715884105727)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 155533728466856391
+90 │ ╭     pub fn get_i128_max() -> i128 {
+91 │ │         return i128(170141183460469231731687303715884105727)
+92 │ │     }
+   │ ╰─────^ attributes hash: 155533728466856391
    │  
    = FunctionSignature {
          self_decl: None,
@@ -764,23 +787,24 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:70:21
+   ┌─ numeric_sizes.fe:91:21
    │
-70 │         return i128(170141183460469231731687303715884105727)
+91 │         return i128(170141183460469231731687303715884105727)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:70:16
+   ┌─ numeric_sizes.fe:91:16
    │
-70 │         return i128(170141183460469231731687303715884105727)
+91 │         return i128(170141183460469231731687303715884105727)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
-   ┌─ numeric_sizes.fe:72:5
+   ┌─ numeric_sizes.fe:94:5
    │  
-72 │ ╭     pub fn get_i256_max() -> i256:
-73 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8116994679119332188
+94 │ ╭     pub fn get_i256_max() -> i256 {
+95 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
+96 │ │     }
+   │ ╰─────^ attributes hash: 8116994679119332188
    │  
    = FunctionSignature {
          self_decl: None,
@@ -796,15 +820,15 @@ note:
      }
 
 note: 
-   ┌─ numeric_sizes.fe:73:21
+   ┌─ numeric_sizes.fe:95:21
    │
-73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
+95 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
-   ┌─ numeric_sizes.fe:73:16
+   ┌─ numeric_sizes.fe:95:16
    │
-73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
+95 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 

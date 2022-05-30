@@ -12,7 +12,7 @@ error: undefined type
 error: undefined type
   ┌─ compile_errors/undefined_type_param.fe:8:21
   │
-8 │     pub fn a(_ val: DoesntExist):
+8 │     pub fn a(_ val: DoesntExist) {
   │                     ^^^^^^^^^^^ `DoesntExist` has not been defined
 
 

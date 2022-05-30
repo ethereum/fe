@@ -1,6 +1,9 @@
-struct Foo:
-  pub bar: Array<u256,2>
+struct Foo {
+    pub bar: Array<u256, 2>
+}
 
-contract C:
-  pub fn f() -> Foo:
-    return Foo(bar: [1, 2])
+contract C {
+    pub fn f() -> Foo {
+        return Foo(bar: [1, 2])
+    }
+}

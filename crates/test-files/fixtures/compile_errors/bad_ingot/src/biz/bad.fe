@@ -1,5 +1,3 @@
-struct Bur:
-    pass
+struct Bur {}
 
-struct Bud:
-    pass
+struct Bud {}

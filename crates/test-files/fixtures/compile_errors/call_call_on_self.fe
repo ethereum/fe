@@ -1,6 +1,7 @@
-contract Foo:
-  pub fn __call__():
-    pass
+contract Foo {
+    pub fn __call__() {}
 
-  fn bar(self):
-    self.__call__()
+    fn bar(self) {
+        self.__call__()
+    }
+}

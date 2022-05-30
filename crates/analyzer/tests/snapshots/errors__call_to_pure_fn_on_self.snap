@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `pure` must be called without `self`
-  ┌─ compile_errors/call_to_pure_fn_on_self.fe:6:14
+  ┌─ compile_errors/call_to_pure_fn_on_self.fe:5:14
   │
-6 │         self.pure()
+5 │         self.pure()
   │              ^^^^ function does not take self
   │
   = Suggestion: try `pure(...)` instead of `self.pure(...)`

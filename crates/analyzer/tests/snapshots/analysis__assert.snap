@@ -14,9 +14,10 @@ note:
 note: 
   ┌─ assert.fe:5:5
   │  
-5 │ ╭     pub fn bar(baz: u256):
+5 │ ╭     pub fn bar(baz: u256) {
 6 │ │         assert baz > 5
-  │ ╰──────────────────────^ attributes hash: 2614610269237134179
+7 │ │     }
+  │ ╰─────^ attributes hash: 2614610269237134179
   │  
   = FunctionSignature {
         self_decl: None,
@@ -56,57 +57,59 @@ note:
   │                ^^^^^^^ bool: Value
 
 note: 
-  ┌─ assert.fe:8:5
-  │  
-8 │ ╭     pub fn revert_with_static_string(baz: u256):
-9 │ │         assert baz > 5, "Must be greater than five"
-  │ ╰───────────────────────────────────────────────────^ attributes hash: 2614610269237134179
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "baz",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ assert.fe:9:16
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                ^^^   ^ u256: Value
-  │                │      
-  │                u256: Value
-
-note: 
-  ┌─ assert.fe:9:16
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory
-  │                │         
-  │                bool: Value
-
-note: 
-   ┌─ assert.fe:11:5
+   ┌─ assert.fe:9:5
    │  
-11 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>):
-12 │ │         assert baz > 5, reason
-   │ ╰──────────────────────────────^ attributes hash: 10044481770469626577
+ 9 │ ╭     pub fn revert_with_static_string(baz: u256) {
+10 │ │         assert baz > 5, "Must be greater than five"
+11 │ │     }
+   │ ╰─────^ attributes hash: 2614610269237134179
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "baz",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ assert.fe:10:16
+   │
+10 │         assert baz > 5, "Must be greater than five"
+   │                ^^^   ^ u256: Value
+   │                │      
+   │                u256: Value
+
+note: 
+   ┌─ assert.fe:10:16
+   │
+10 │         assert baz > 5, "Must be greater than five"
+   │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory
+   │                │         
+   │                bool: Value
+
+note: 
+   ┌─ assert.fe:13:5
+   │  
+13 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>) {
+14 │ │         assert baz > 5, reason
+15 │ │     }
+   │ ╰─────^ attributes hash: 10044481770469626577
    │  
    = FunctionSignature {
          self_decl: None,
@@ -143,28 +146,29 @@ note:
      }
 
 note: 
-   ┌─ assert.fe:12:16
+   ┌─ assert.fe:14:16
    │
-12 │         assert baz > 5, reason
+14 │         assert baz > 5, reason
    │                ^^^   ^ u256: Value
    │                │      
    │                u256: Value
 
 note: 
-   ┌─ assert.fe:12:16
+   ┌─ assert.fe:14:16
    │
-12 │         assert baz > 5, reason
+14 │         assert baz > 5, reason
    │                ^^^^^^^  ^^^^^^ String<1000>: Memory
    │                │         
    │                bool: Value
 
 note: 
-   ┌─ assert.fe:14:5
+   ┌─ assert.fe:17:5
    │  
-14 │ ╭     pub fn assert_sto_bool(self):
-15 │ │         self.my_bool = false
-16 │ │         assert self.my_bool
-   │ ╰───────────────────────────^ attributes hash: 18235041182630809162
+17 │ ╭     pub fn assert_sto_bool(self) {
+18 │ │         self.my_bool = false
+19 │ │         assert self.my_bool
+20 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -180,34 +184,35 @@ note:
      }
 
 note: 
-   ┌─ assert.fe:15:9
+   ┌─ assert.fe:18:9
    │
-15 │         self.my_bool = false
+18 │         self.my_bool = false
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ assert.fe:15:9
+   ┌─ assert.fe:18:9
    │
-15 │         self.my_bool = false
+18 │         self.my_bool = false
    │         ^^^^^^^^^^^^   ^^^^^ bool: Value
    │         │               
    │         bool: Storage { nonce: Some(0) }
-16 │         assert self.my_bool
+19 │         assert self.my_bool
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ assert.fe:16:16
+   ┌─ assert.fe:19:16
    │
-16 │         assert self.my_bool
+19 │         assert self.my_bool
    │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ assert.fe:18:5
+   ┌─ assert.fe:22:5
    │  
-18 │ ╭     pub fn assert_sto_string_msg(self):
-19 │ │         self.my_string = "hello"
-20 │ │         assert false, self.my_string.to_mem()
-   │ ╰─────────────────────────────────────────────^ attributes hash: 18235041182630809162
+22 │ ╭     pub fn assert_sto_string_msg(self) {
+23 │ │         self.my_string = "hello"
+24 │ │         assert false, self.my_string.to_mem()
+25 │ │     }
+   │ ╰─────^ attributes hash: 18235041182630809162
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -223,33 +228,33 @@ note:
      }
 
 note: 
-   ┌─ assert.fe:19:9
+   ┌─ assert.fe:23:9
    │
-19 │         self.my_string = "hello"
+23 │         self.my_string = "hello"
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ assert.fe:19:9
+   ┌─ assert.fe:23:9
    │
-19 │         self.my_string = "hello"
+23 │         self.my_string = "hello"
    │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>: Memory
    │         │                 
    │         String<5>: Storage { nonce: Some(1) }
-20 │         assert false, self.my_string.to_mem()
+24 │         assert false, self.my_string.to_mem()
    │                ^^^^^  ^^^^ Foo: Value
    │                │       
    │                bool: Value
 
 note: 
-   ┌─ assert.fe:20:23
+   ┌─ assert.fe:24:23
    │
-20 │         assert false, self.my_string.to_mem()
+24 │         assert false, self.my_string.to_mem()
    │                       ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ assert.fe:20:23
+   ┌─ assert.fe:24:23
    │
-20 │         assert false, self.my_string.to_mem()
+24 │         assert false, self.my_string.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => Memory
 
 

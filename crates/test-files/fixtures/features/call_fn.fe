@@ -1,7 +1,11 @@
-contract Foo:
-    pub fn __call__(self):
-        unsafe:
-            if __calldataload(0) == 1:
+contract Foo {
+    pub fn __call__(self) {
+        unsafe {
+            if __calldataload(0) == 1 {
                 __revert(0, 0)
-            else:
+            } else {
                 __return(0, 0)
+            }
+        }
+    }
+}
