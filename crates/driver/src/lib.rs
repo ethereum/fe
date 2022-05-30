@@ -107,7 +107,7 @@ fn compile_module_id(
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
-    for &contract in module_id.all_contracts(db.upcast()).as_ref() {
+    for contract in module_id.all_contracts(db.upcast()) {
         let name = &contract.data(db.upcast()).name;
         let abi = db.codegen_abi_contract(contract);
         let yul_contract = compile_to_yul(db, contract);
@@ -144,7 +144,7 @@ fn compile_module_id(
     _optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
-    for &contract in module_id.all_contracts(db.upcast()).as_ref() {
+    for contract in module_id.all_contracts(db.upcast()) {
         let name = &contract.data(db.upcast()).name;
         let abi = db.codegen_abi_contract(contract);
         let yul_contract = compile_to_yul(db, contract);
