@@ -21,7 +21,6 @@ pub fn module_file_path(db: &dyn AnalyzerDb, module: ModuleId) -> SmolStr {
     let full_path = match &module.data(db).source {
         ModuleSource::File(file) => file.path(db.upcast()).as_str().into(),
         ModuleSource::Dir(path) => path.clone(),
-        ModuleSource::Lowered { original, .. } => return db.module_file_path(*original),
     };
 
     let src_prefix = &module.ingot(db).data(db).src_dir;
@@ -43,7 +42,6 @@ pub fn module_parse(db: &dyn AnalyzerDb, module: ModuleId) -> Analysis<Rc<ast::M
             // Directory with no corresponding source file. Return empty ast.
             Analysis::new(ast::Module { body: vec![] }.into(), vec![].into())
         }
-        ModuleSource::Lowered { .. } => panic!("module_parse called on lowered module"),
     }
 }
 

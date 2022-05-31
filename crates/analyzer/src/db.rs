@@ -6,7 +6,7 @@ use crate::namespace::items::{
 };
 use crate::namespace::types;
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
-use fe_common::Span;
+use fe_common::{SourceFileId, Span};
 use fe_parser::ast;
 use indexmap::map::IndexMap;
 use smol_str::SmolStr;
@@ -39,16 +39,15 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     // Ingot
 
     // These are inputs so that the (future) language server can add
-    // and remove files/dependencies. Set via eg `db.set_ingot_modules`.
+    // and remove files/dependencies. Set via eg `db.set_ingot_files`.
     // If an input is used before it's set, salsa will panic.
-    // Ideally, `ingot_files` would be the input instead, but in order to support analysis
-    // of the post-lowering-phase stuff, we need to be able to construct a new
-    // lowered ingot, and give it a set of lowered modules.
     #[salsa::input]
-    fn ingot_modules(&self, ingot: IngotId) -> Rc<[ModuleId]>;
+    fn ingot_files(&self, ingot: IngotId) -> Rc<[SourceFileId]>;
     #[salsa::input]
     fn ingot_external_ingots(&self, ingot: IngotId) -> Rc<IndexMap<SmolStr, IngotId>>;
 
+    #[salsa::invoke(queries::ingots::ingot_modules)]
+    fn ingot_modules(&self, ingot: IngotId) -> Rc<[ModuleId]>;
     #[salsa::invoke(queries::ingots::ingot_root_module)]
     fn ingot_root_module(&self, ingot: IngotId) -> Option<ModuleId>;
 

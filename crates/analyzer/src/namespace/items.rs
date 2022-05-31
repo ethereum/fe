@@ -11,7 +11,7 @@ use fe_common::files::{common_prefix, Utf8Path};
 use fe_common::{impl_intern_key, FileKind, SourceFileId};
 use fe_parser::node::{Node, Span};
 use fe_parser::{ast, node::NodeId};
-use indexmap::{indexmap, IndexMap, IndexSet};
+use indexmap::{indexmap, IndexMap};
 use smol_str::SmolStr;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -275,8 +275,6 @@ pub struct Ingot {
     pub name: SmolStr,
     // pub version: SmolStr,
     pub mode: IngotMode,
-    pub original: Option<IngotId>,
-
     pub src_dir: SmolStr,
 }
 
@@ -324,73 +322,23 @@ impl IngotId {
         let ingot = db.intern_ingot(Rc::new(Ingot {
             name: name.into(),
             mode,
-            original: None,
             src_dir: file_path_prefix.as_str().into(),
         }));
 
-        // Create a module for every .fe source file.
-        let file_mods = files
+        // Intern the source files
+        let file_ids = files
             .iter()
             .map(|(path, content)| {
-                let file = SourceFileId::new(
+                SourceFileId::new(
                     db.upcast_mut(),
                     file_kind,
                     path.as_ref(),
                     content.as_ref().into(),
-                );
-                ModuleId::new(
-                    db,
-                    Utf8Path::new(path).file_stem().unwrap(),
-                    ModuleSource::File(file),
-                    ingot,
                 )
             })
             .collect();
 
-        // We automatically build a module hierarchy that matches the directory
-        // structure. We don't (yet?) require a .fe file for each directory like
-        // rust does. (eg `a/b.fe` alongside `a/b/`), but we do allow it (the
-        // module's items will be everything inside the .fe file, and the
-        // submodules inside the dir.
-        //
-        // Collect the set of all directories in the file hierarchy
-        // (after stripping the common prefix from all paths).
-        // eg given ["src/lib.fe", "src/a/b/x.fe", "src/a/c/d/y.fe"],
-        // the dir set is {"a", "a/b", "a/c", "a/c/d"}.
-        let dirs = files
-            .iter()
-            .flat_map(|(path, _)| {
-                Utf8Path::new(path)
-                    .strip_prefix(&file_path_prefix)
-                    .unwrap_or_else(|_| Utf8Path::new(path))
-                    .ancestors()
-                    .skip(1) // first elem of .ancestors() is the path itself
-            })
-            .collect::<IndexSet<&Utf8Path>>();
-
-        let dir_mods = dirs
-            // Skip the dirs that have an associated fe file; eg skip "a/b" if "a/b.fe" exists.
-            .difference(
-                &files
-                    .iter()
-                    .map(|(path, _)| {
-                        Utf8Path::new(path)
-                            .strip_prefix(&file_path_prefix)
-                            .unwrap_or_else(|_| Utf8Path::new(path))
-                            .as_str()
-                            .trim_end_matches(".fe")
-                            .into()
-                    })
-                    .collect::<IndexSet<&Utf8Path>>(),
-            )
-            .filter_map(|dir| {
-                dir.file_name().map(|name| {
-                    ModuleId::new(db, name, ModuleSource::Dir(dir.as_str().into()), ingot)
-                })
-            })
-            .collect::<Vec<_>>();
-
-        db.set_ingot_modules(ingot, [file_mods, dir_mods].concat().into());
+        db.set_ingot_files(ingot, file_ids);
         db.set_ingot_external_ingots(ingot, Rc::new(deps));
         ingot
     }
@@ -464,32 +412,16 @@ pub enum ModuleSource {
     /// For directory modules without a corresponding source file
     /// (which will soon not be allowed, and this variant can go away).
     Dir(SmolStr),
-    Lowered {
-        original: ModuleId,
-        ast: Rc<ast::Module>,
-    },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Module {
     pub name: SmolStr,
     pub ingot: IngotId,
-
-    /// This differentiates between the original `Module` for a Fe source
-    /// file (which is parsed in the [`AnalyzerDb::module_parse`] query),
-    /// and the lowered `Module`, the ast of which is built in the lowering
-    /// phase, and is stored in the `ModulePhase::Lowered` variant.
-    // This leaks some knowledge about the existence of the lowering phase
-    // into the analyzer, but it seems to be the least bad way to move
-    // parsing into a db query instead of needing to parse at Module intern time.
-    // Someday we'll likely lower into some new IR, in which case we won't need
-    // to allow for lowered versions of `ModuleId`s.
     pub source: ModuleSource,
 }
 
 /// Id of a [`Module`], which corresponds to a single Fe source file.
-/// The lowering phase will create a separate `Module` & `ModuleId`
-/// for the lowered version of the Fe source code.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ModuleId(pub(crate) u32);
 impl_intern_key!(ModuleId);
@@ -534,10 +466,7 @@ impl ModuleId {
     }
 
     pub fn ast(&self, db: &dyn AnalyzerDb) -> Rc<ast::Module> {
-        match &self.data(db).source {
-            ModuleSource::File(_) | ModuleSource::Dir(_) => db.module_parse(*self).value,
-            ModuleSource::Lowered { ast, .. } => Rc::clone(ast),
-        }
+        db.module_parse(*self).value
     }
 
     pub fn ingot(&self, db: &dyn AnalyzerDb) -> IngotId {
