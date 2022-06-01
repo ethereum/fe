@@ -97,6 +97,7 @@ pub fn validate_named_args(
     params: &[impl LabeledParameter],
 ) -> Result<(), FatalError> {
     validate_arg_count(context, name, name_span, args, params.len(), "argument");
+    // TODO: if the first arg is missing, every other arg will get a label and type error
 
     for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
         let expected_label = param.label();

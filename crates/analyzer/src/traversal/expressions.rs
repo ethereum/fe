@@ -1147,15 +1147,9 @@ fn expr_call_type_constructor(
         _ => {}
     }
 
-    if matches!(typ, Type::Contract(_)) {
-        validate_arg_count(context, &format!("{}", typ), name_span, args, 2, "argument");
-        expect_no_label_on_arg(context, args, 0);
-        expect_no_label_on_arg(context, args, 1);
-    } else {
-        // These all expect 1 arg, for now.
-        validate_arg_count(context, &format!("{}", typ), name_span, args, 1, "argument");
-        expect_no_label_on_arg(context, args, 0);
-    }
+    // These all expect 1 arg, for now.
+    validate_arg_count(context, &format!("{}", typ), name_span, args, 1, "argument");
+    expect_no_label_on_arg(context, args, 0);
 
     let expr_attrs = match &typ {
         Type::String(string_type) => {
@@ -1166,50 +1160,10 @@ fn expr_call_type_constructor(
             ExpressionAttributes::new(typ.clone(), Location::Memory)
         }
         Type::Contract(_) => {
-            if let Some(first_arg) = &args.kind.get(0) {
-                let first_arg_attr = assignable_expr(context, &first_arg.kind.value, None)?;
-                if let Some(context_type) = context.get_context_type() {
-                    if first_arg_attr.typ != Type::Struct(context_type.clone()) {
-                        context.type_error(
-                            "type mismatch",
-                            first_arg.span,
-                            &context_type,
-                            &first_arg_attr.typ,
-                        );
-                    }
-                } else {
-                    context.fancy_error(
-                        "`Context` is not defined",
-                        vec![
-                            Label::primary(
-                                args.span,
-                                "`ctx` must be defined and passed into the contract constructor",
-                            ),
-                            Label::secondary(
-                                context.parent_function().name_span(context.db()),
-                                "Note: declare `ctx` in this function signature",
-                            ),
-                            Label::secondary(
-                                context.parent_function().name_span(context.db()),
-                                "Example: `pub fn foo(ctx: Context, ...)`",
-                            ),
-                        ],
-                        vec![
-                            "Note: import context with `use std::context::Context`".into(),
-                            "Example: MyContract(ctx, contract_address)".into(),
-                        ],
-                    );
-                }
-            }
-            if let Some(second_arg) = &args.kind.get(1) {
-                let second_arg_attr = assignable_expr(context, &second_arg.kind.value, None)?;
-                if second_arg_attr.typ != Type::Base(Base::Address) {
-                    context.type_error(
-                        "type mismatch",
-                        second_arg.span,
-                        &Base::Address,
-                        &second_arg_attr.typ,
-                    );
+            if let Some(arg) = &args.kind.get(0) {
+                let arg_attr = assignable_expr(context, &arg.kind.value, None)?;
+                if arg_attr.typ != Type::Base(Base::Address) {
+                    context.type_error("type mismatch", arg.span, &Base::Address, &arg_attr.typ);
                 }
             }
             ExpressionAttributes::new(typ.clone(), Location::Value)
@@ -1397,13 +1351,7 @@ fn expr_call_method(
             }
 
             let sig = method.signature(context.db());
-
-            let params = if is_self {
-                &sig.params
-            } else {
-                sig.external_params()
-            };
-            validate_named_args(context, &field.kind, field.span, args, params)?;
+            validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
 
             let calltype = match class {
                 Class::Contract(contract) => {

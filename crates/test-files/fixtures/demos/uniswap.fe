@@ -21,8 +21,8 @@ contract UniswapV2Pair {
     nonces: Map<address, u256>
 
     factory: address
-    token0: address
-    token1: address
+    token0: ERC20
+    token1: ERC20
 
     reserve0: u256
     reserve1: u256
@@ -80,11 +80,11 @@ contract UniswapV2Pair {
     }
 
     pub fn token0(self) -> address {
-        return self.token0
+        return address(self.token0)
     }
 
     pub fn token1(self) -> address {
-        return self.token1
+        return address(self.token1)
     }
 
     fn _mint(self, ctx: Context, to: address, value: u256) {
@@ -136,7 +136,7 @@ contract UniswapV2Pair {
     }
 
     # called once by the factory at time of deployment
-    pub fn initialize(self, ctx: Context, token0: address, token1: address) {
+    pub fn initialize(self, ctx: Context, token0: ERC20, token1: ERC20) {
         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
         self.token0 = token0
         self.token1 = token1
@@ -159,7 +159,7 @@ contract UniswapV2Pair {
     }
 
     fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
-        let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
+        let fee_to: address = UniswapV2Factory(self.factory).fee_to()
         let fee_on: bool = fee_to != address(0)
         let k_last: u256 = self.k_last
         if fee_on {
@@ -186,8 +186,8 @@ contract UniswapV2Pair {
         let MINIMUM_LIQUIDITY: u256 = 1000
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
-        let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-        let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
+        let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+        let balance1: u256 = self.token1.balanceOf(ctx.self_address())
         let amount0: u256 = balance0 - self.reserve0
         let amount1: u256 = balance1 - self.reserve1
         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
@@ -213,8 +213,8 @@ contract UniswapV2Pair {
     pub fn burn(self, ctx: Context, to: address) -> (u256, u256) {
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
-        let token0: ERC20 = ERC20(ctx, self.token0)
-        let token1: ERC20 = ERC20(ctx, self.token1)
+        let token0: ERC20 = self.token0
+        let token1: ERC20 = self.token1
         let balance0: u256 = token0.balanceOf(ctx.self_address())
         let balance1: u256 = token1.balanceOf(ctx.self_address())
         let liquidity: u256 = self.balances[ctx.self_address()]
@@ -246,8 +246,8 @@ contract UniswapV2Pair {
         let reserve1: u256 = self.reserve1
         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
 
-        let token0: ERC20 = ERC20(ctx, self.token0)
-        let token1: ERC20 = ERC20(ctx, self.token1)
+        let token0: ERC20 = self.token0
+        let token1: ERC20 = self.token1
 
         # TODO: we should be using `token0.address` (https://github.com/ethereum/fe/issues/287)
         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
@@ -281,16 +281,16 @@ contract UniswapV2Pair {
 
     # force balances to match reserves
     pub fn skim(self, ctx: Context, to: address) {
-        let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-        let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
+        let token0: ERC20 = self.token0 # gas savings
+        let token1: ERC20 = self.token1 # gas savings
         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     }
 
     # force reserves to match balances
     pub fn sync(self, ctx: Context) {
-        let token0: ERC20 = ERC20(ctx, self.token0)
-        let token1: ERC20 = ERC20(ctx, self.token1)
+        let token0: ERC20 = self.token0
+        let token1: ERC20 = self.token1
         self._update(ctx,
                      balance0: token0.balanceOf(ctx.self_address()),
                      balance1: token1.balanceOf(ctx.self_address()),
@@ -341,7 +341,7 @@ contract UniswapV2Factory {
 
         let salt: u256 = keccak256((token0, token1).abi_encode())
         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
-        pair.initialize(token0, token1)
+        pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
 
         self.pairs[token0][token1] = address(pair)
         self.pairs[token1][token0] = address(pair)

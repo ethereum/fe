@@ -3,18 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: `Foo` expects 2 arguments, but 1 was provided
-  ┌─ compile_errors/ctx_missing_load.fe:9:9
-  │
-9 │         Foo(0)
-  │         ^^^ - supplied 1 argument
-  │         │    
-  │         expects 2 arguments
-
 error: type mismatch
   ┌─ compile_errors/ctx_missing_load.fe:9:13
   │
 9 │         Foo(0)
-  │             ^ this has type `u256`; expected type `Context`
+  │             ^ this has type `u256`; expected type `address`
 
 

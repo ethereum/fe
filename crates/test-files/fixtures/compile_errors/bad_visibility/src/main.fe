@@ -24,7 +24,7 @@ contract Main {
     }
 
     pub fn priv_contract(ctx: Context, addr: address) {
-        let _: MyContract = MyContract(ctx, addr)
+        let _: MyContract = MyContract(addr)
         MyContract.create(ctx, 1)
     }
 }

@@ -15,8 +15,8 @@ contract Foo {
 
 contract Bar {
     pub fn call_baz(ctx: Context, foo_addr: address) -> u256 {
-        let foo: Foo = Foo(ctx, foo_addr)
-        return foo.baz()
+        let foo: Foo = Foo(foo_addr)
+        return foo.baz(ctx)
     }
 
     pub fn call_bing(ctx: Context) -> u256 {

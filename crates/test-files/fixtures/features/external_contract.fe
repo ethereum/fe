@@ -22,12 +22,12 @@ contract Foo {
 
 contract FooProxy {
     pub fn call_emit_event(ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
-        let foo: Foo = Foo(ctx, foo_address)
-        foo.emit_event(my_num, my_addrs, my_string)
+        let foo: Foo = Foo(foo_address)
+        foo.emit_event(ctx, my_num, my_addrs, my_string)
     }
 
-    pub fn call_build_array(ctx: Context, foo_address: address, a: u256, b: u256) -> Array<u256, 3> {
-        let foo: Foo = Foo(ctx, foo_address)
+    pub fn call_build_array(foo_address: address, a: u256, b: u256) -> Array<u256, 3> {
+        let foo: Foo = Foo(foo_address)
         return foo.build_array(a, b)
     }
 }

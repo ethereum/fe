@@ -8,6 +8,7 @@ import subprocess
 THIS_DIR = pathlib.Path(__file__).parent
 BOOK_SRC_DIR = THIS_DIR / 'src'
 TMP_SNIPPET_DIR = THIS_DIR / 'tmp_snippets'
+NEWS_DIR = THIS_DIR.parent / 'newsfragments'
 
 # use ```fe,ignore on snippets that shouldn't be tested
 CODE_SNIPPET_START_MARKER = '```fe'
@@ -29,6 +30,8 @@ class CodeSnippet(NamedTuple):
 
 def get_all_doc_files() -> Iterable[pathlib.Path]:
     for path in BOOK_SRC_DIR.rglob('*.md'):
+        yield path
+    for path in NEWS_DIR.rglob('*.md'):
         yield path
 
 def get_all_snippets_in_file(path: pathlib.Path) -> Iterable[CodeSnippet]:

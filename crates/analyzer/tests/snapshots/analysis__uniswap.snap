@@ -105,10 +105,10 @@ note:
 22 │ 
 23 │     factory: address
    │     ^^^^^^^^^^^^^^^^ address
-24 │     token0: address
-   │     ^^^^^^^^^^^^^^^ address
-25 │     token1: address
-   │     ^^^^^^^^^^^^^^^ address
+24 │     token0: ERC20
+   │     ^^^^^^^^^^^^^ ERC20
+25 │     token1: ERC20
+   │     ^^^^^^^^^^^^^ ERC20
 26 │ 
 27 │     reserve0: u256
    │     ^^^^^^^^^^^^^^ u256
@@ -227,7 +227,7 @@ note:
    ┌─ uniswap.fe:82:5
    │  
 82 │ ╭     pub fn token0(self) -> address {
-83 │ │         return self.token0
+83 │ │         return address(self.token0)
 84 │ │     }
    │ ╰─────^ attributes hash: 227275695522088782
    │  
@@ -245,22 +245,28 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:83:16
+   ┌─ uniswap.fe:83:24
    │
-83 │         return self.token0
-   │                ^^^^ UniswapV2Pair: Value
+83 │         return address(self.token0)
+   │                        ^^^^ UniswapV2Pair: Value
+
+note: 
+   ┌─ uniswap.fe:83:24
+   │
+83 │         return address(self.token0)
+   │                        ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
 
 note: 
    ┌─ uniswap.fe:83:16
    │
-83 │         return self.token0
-   │                ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
+83 │         return address(self.token0)
+   │                ^^^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ uniswap.fe:86:5
    │  
 86 │ ╭     pub fn token1(self) -> address {
-87 │ │         return self.token1
+87 │ │         return address(self.token1)
 88 │ │     }
    │ ╰─────^ attributes hash: 227275695522088782
    │  
@@ -278,16 +284,22 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:87:16
+   ┌─ uniswap.fe:87:24
    │
-87 │         return self.token1
-   │                ^^^^ UniswapV2Pair: Value
+87 │         return address(self.token1)
+   │                        ^^^^ UniswapV2Pair: Value
+
+note: 
+   ┌─ uniswap.fe:87:24
+   │
+87 │         return address(self.token1)
+   │                        ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
 
 note: 
    ┌─ uniswap.fe:87:16
    │
-87 │         return self.token1
-   │                ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+87 │         return address(self.token1)
+   │                ^^^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ uniswap.fe:90:5
@@ -1480,12 +1492,12 @@ note:
 note: 
     ┌─ uniswap.fe:139:5
     │  
-139 │ ╭     pub fn initialize(self, ctx: Context, token0: address, token1: address) {
+139 │ ╭     pub fn initialize(self, ctx: Context, token0: ERC20, token1: ERC20) {
 140 │ │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
 141 │ │         self.token0 = token0
 142 │ │         self.token1 = token1
 143 │ │     }
-    │ ╰─────^ attributes hash: 10460756106041683522
+    │ ╰─────^ attributes hash: 18170027042989505865
     │  
     = FunctionSignature {
           self_decl: Some(
@@ -1511,8 +1523,10 @@ note:
                   label: None,
                   name: "token0",
                   typ: Ok(
-                      Base(
-                          Address,
+                      Contract(
+                          Contract {
+                              name: "ERC20",
+                          },
                       ),
                   ),
               },
@@ -1520,8 +1534,10 @@ note:
                   label: None,
                   name: "token1",
                   typ: Ok(
-                      Base(
-                          Address,
+                      Contract(
+                          Contract {
+                              name: "ERC20",
+                          },
                       ),
                   ),
               },
@@ -1567,9 +1583,9 @@ note:
     ┌─ uniswap.fe:141:9
     │
 141 │         self.token0 = token0
-    │         ^^^^^^^^^^^   ^^^^^^ address: Value
+    │         ^^^^^^^^^^^   ^^^^^^ ERC20: Value
     │         │              
-    │         address: Storage { nonce: Some(5) }
+    │         ERC20: Storage { nonce: Some(5) }
 142 │         self.token1 = token1
     │         ^^^^ UniswapV2Pair: Value
 
@@ -1577,9 +1593,9 @@ note:
     ┌─ uniswap.fe:142:9
     │
 142 │         self.token1 = token1
-    │         ^^^^^^^^^^^   ^^^^^^ address: Value
+    │         ^^^^^^^^^^^   ^^^^^^ ERC20: Value
     │         │              
-    │         address: Storage { nonce: Some(6) }
+    │         ERC20: Storage { nonce: Some(6) }
 
 note: 
     ┌─ uniswap.fe:146:5
@@ -1921,7 +1937,7 @@ note:
     ┌─ uniswap.fe:161:5
     │  
 161 │ ╭     fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
-162 │ │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
+162 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
 163 │ │         let fee_on: bool = fee_to != address(0)
 164 │ │         let k_last: u256 = self.k_last
     · │
@@ -1982,7 +1998,7 @@ note:
 note: 
     ┌─ uniswap.fe:162:13
     │
-162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
+162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │             ^^^^^^ address
 163 │         let fee_on: bool = fee_to != address(0)
     │             ^^^^^^ bool
@@ -2004,28 +2020,26 @@ note:
 note: 
     ┌─ uniswap.fe:162:48
     │
-162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
-    │                                                ^^^  ^^^^ UniswapV2Pair: Value
-    │                                                │     
-    │                                                Context: Memory
+162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                                                ^^^^ UniswapV2Pair: Value
 
 note: 
-    ┌─ uniswap.fe:162:53
+    ┌─ uniswap.fe:162:48
     │
-162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
-    │                                                     ^^^^^^^^^^^^ address: Storage { nonce: Some(4) } => Value
-
-note: 
-    ┌─ uniswap.fe:162:31
-    │
-162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Factory: Value
+162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                                                ^^^^^^^^^^^^ address: Storage { nonce: Some(4) } => Value
 
 note: 
     ┌─ uniswap.fe:162:31
     │
-162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address: Value
+162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Factory: Value
+
+note: 
+    ┌─ uniswap.fe:162:31
+    │
+162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address: Value
 163 │         let fee_on: bool = fee_to != address(0)
     │                            ^^^^^^            ^ u256: Value
     │                            │                  
@@ -2255,9 +2269,9 @@ note:
     │             ^^^^^^^^ u256
 188 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
+189 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
+190 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
 191 │         let amount0: u256 = balance0 - self.reserve0
     │             ^^^^^^^ u256
@@ -2291,66 +2305,50 @@ note:
     │
 188 │         let reserve1: u256 = self.reserve1
     │                              ^^^^^^^^^^^^^ u256: Storage { nonce: Some(8) } => Value
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                                    ^^^  ^^^^ UniswapV2Pair: Value
-    │                                    │     
-    │                                    Context: Memory
-
-note: 
-    ┌─ uniswap.fe:189:41
-    │
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                                         ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
+189 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                              ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:189:30
     │
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^           ^^^ Context: Memory
-    │                              │                                  
-    │                              ERC20: Value
+189 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^           ^^^ Context: Memory
+    │                              │                      
+    │                              ERC20: Storage { nonce: Some(5) } => Value
 
 note: 
-    ┌─ uniswap.fe:189:64
+    ┌─ uniswap.fe:189:52
     │
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                                                                ^^^^^^^^^^^^^^^^^^ address: Value
+189 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                                                    ^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
     ┌─ uniswap.fe:189:30
     │
-189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                                    ^^^  ^^^^ UniswapV2Pair: Value
-    │                                    │     
-    │                                    Context: Memory
-
-note: 
-    ┌─ uniswap.fe:190:41
-    │
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                                         ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+189 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+190 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
+    │                              ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:190:30
     │
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^           ^^^ Context: Memory
-    │                              │                                  
-    │                              ERC20: Value
+190 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^           ^^^ Context: Memory
+    │                              │                      
+    │                              ERC20: Storage { nonce: Some(6) } => Value
 
 note: 
-    ┌─ uniswap.fe:190:64
+    ┌─ uniswap.fe:190:52
     │
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                                                                ^^^^^^^^^^^^^^^^^^ address: Value
+190 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
+    │                                                    ^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
     ┌─ uniswap.fe:190:30
     │
-190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+190 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 191 │         let amount0: u256 = balance0 - self.reserve0
     │                             ^^^^^^^^   ^^^^ UniswapV2Pair: Value
     │                             │           
@@ -2626,7 +2624,7 @@ note:
 213 │ ╭     pub fn burn(self, ctx: Context, to: address) -> (u256, u256) {
 214 │ │         let reserve0: u256 = self.reserve0
 215 │ │         let reserve1: u256 = self.reserve1
-216 │ │         let token0: ERC20 = ERC20(ctx, self.token0)
+216 │ │         let token0: ERC20 = self.token0
     · │
 237 │ │         return (amount0, amount1)
 238 │ │     }
@@ -2689,9 +2687,9 @@ note:
     │             ^^^^^^^^ u256
 215 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
-216 │         let token0: ERC20 = ERC20(ctx, self.token0)
+216 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-217 │         let token1: ERC20 = ERC20(ctx, self.token1)
+217 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
 218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
@@ -2728,38 +2726,22 @@ note:
     │
 215 │         let reserve1: u256 = self.reserve1
     │                              ^^^^^^^^^^^^^ u256: Storage { nonce: Some(8) } => Value
-216 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:216:40
-    │
-216 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
+216 │         let token0: ERC20 = self.token0
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:216:29
     │
-216 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
-217 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:217:40
-    │
-217 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+216 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
+217 │         let token1: ERC20 = self.token1
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:217:29
     │
-217 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
+217 │         let token1: ERC20 = self.token1
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
 218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
     │                              ^^^^^^           ^^^ Context: Memory
     │                              │                 
@@ -3163,9 +3145,9 @@ note:
 246 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
     ·
-249 │         let token0: ERC20 = ERC20(ctx, self.token0)
+249 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-250 │         let token1: ERC20 = ERC20(ctx, self.token1)
+250 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
     ·
 265 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
@@ -3257,38 +3239,22 @@ note:
     │                │                                                   
     │                bool: Value
 248 │ 
-249 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:249:40
-    │
-249 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
+249 │         let token0: ERC20 = self.token0
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:249:29
     │
-249 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
-250 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:250:40
-    │
-250 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+249 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
+250 │         let token1: ERC20 = self.token1
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:250:29
     │
-250 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
+250 │         let token1: ERC20 = self.token1
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
     ·
 253 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                ^^            ^^^^^^ ERC20: Value
@@ -3726,8 +3692,8 @@ note:
     ┌─ uniswap.fe:283:5
     │  
 283 │ ╭     pub fn skim(self, ctx: Context, to: address) {
-284 │ │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-285 │ │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
+284 │ │         let token0: ERC20 = self.token0 # gas savings
+285 │ │         let token1: ERC20 = self.token1 # gas savings
 286 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
 287 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
 288 │ │     }
@@ -3773,46 +3739,30 @@ note:
 note: 
     ┌─ uniswap.fe:284:13
     │
-284 │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
+284 │         let token0: ERC20 = self.token0 # gas savings
     │             ^^^^^^ ERC20
-285 │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
+285 │         let token1: ERC20 = self.token1 # gas savings
     │             ^^^^^^ ERC20
-
-note: 
-    ┌─ uniswap.fe:284:35
-    │
-284 │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:284:40
-    │
-284 │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
 
 note: 
     ┌─ uniswap.fe:284:29
     │
-284 │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
-285 │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
+284 │         let token0: ERC20 = self.token0 # gas savings
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
-    ┌─ uniswap.fe:285:40
+    ┌─ uniswap.fe:284:29
     │
-285 │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+284 │         let token0: ERC20 = self.token0 # gas savings
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
+285 │         let token1: ERC20 = self.token1 # gas savings
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:285:29
     │
-285 │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
+285 │         let token1: ERC20 = self.token1 # gas savings
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
 286 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
     │         ^^^^^^          ^^  ^^^^^^           ^^^ Context: Memory
     │         │               │   │                 
@@ -3894,8 +3844,8 @@ note:
     ┌─ uniswap.fe:291:5
     │  
 291 │ ╭     pub fn sync(self, ctx: Context) {
-292 │ │         let token0: ERC20 = ERC20(ctx, self.token0)
-293 │ │         let token1: ERC20 = ERC20(ctx, self.token1)
+292 │ │         let token0: ERC20 = self.token0
+293 │ │         let token1: ERC20 = self.token1
 294 │ │         self._update(ctx,
     · │
 298 │ │                      reserve1: self.reserve1)
@@ -3933,46 +3883,30 @@ note:
 note: 
     ┌─ uniswap.fe:292:13
     │
-292 │         let token0: ERC20 = ERC20(ctx, self.token0)
+292 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-293 │         let token1: ERC20 = ERC20(ctx, self.token1)
+293 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
-
-note: 
-    ┌─ uniswap.fe:292:35
-    │
-292 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
-
-note: 
-    ┌─ uniswap.fe:292:40
-    │
-292 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(5) } => Value
 
 note: 
     ┌─ uniswap.fe:292:29
     │
-292 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
-293 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                   ^^^  ^^^^ UniswapV2Pair: Value
-    │                                   │     
-    │                                   Context: Memory
+292 │         let token0: ERC20 = self.token0
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
-    ┌─ uniswap.fe:293:40
+    ┌─ uniswap.fe:292:29
     │
-293 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                                        ^^^^^^^^^^^ address: Storage { nonce: Some(6) } => Value
+292 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
+293 │         let token1: ERC20 = self.token1
+    │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:293:29
     │
-293 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^ ERC20: Value
+293 │         let token1: ERC20 = self.token1
+    │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
 294 │         self._update(ctx,
     │         ^^^^         ^^^ Context: Memory
     │         │             
@@ -4386,17 +4320,31 @@ note:
     │
 343 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
     │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Pair: Value
-344 │         pair.initialize(token0, token1)
-    │         ^^^^            ^^^^^^  ^^^^^^ address: Value
-    │         │               │        
-    │         │               address: Value
+344 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+    │         ^^^^            ^^^                ^^^^^^ address: Value
+    │         │               │                   
+    │         │               Context: Memory
     │         UniswapV2Pair: Value
+
+note: 
+    ┌─ uniswap.fe:344:38
+    │
+344 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+    │                                      ^^^^^^^^^^^^^                ^^^^^^ address: Value
+    │                                      │                             
+    │                                      ERC20: Value
+
+note: 
+    ┌─ uniswap.fe:344:61
+    │
+344 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+    │                                                             ^^^^^^^^^^^^^ ERC20: Value
 
 note: 
     ┌─ uniswap.fe:344:9
     │
-344 │         pair.initialize(token0, token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+344 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 345 │ 
 346 │         self.pairs[token0][token1] = address(pair)
     │         ^^^^ UniswapV2Factory: Value
