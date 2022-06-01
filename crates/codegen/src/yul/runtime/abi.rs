@@ -78,14 +78,60 @@ pub(super) fn make_abi_encode_static_array_type(
     RuntimeFunction::from_statement(func)
 }
 
-pub(super) fn make_abi_encode_static_aggregate_type(
+pub(super) fn make_abi_encode_dynamic_array_type(
     provider: &mut DefaultRuntimeProvider,
     db: &dyn CodegenDb,
     func_name: &str,
     legalized_ty: TypeId,
 ) -> RuntimeFunction {
-    let func_name = YulVariable::new(func_name);
     let is_dst_storage = legalized_ty.is_sptr(db.upcast());
+    let deref_ty = legalized_ty.deref(db.upcast());
+    let (elem_ty, len) = match &deref_ty.data(db.upcast()).kind {
+        ir::TypeKind::Array(def) => (def.elem_ty, def.len),
+        _ => unreachable!(),
+    };
+    let elem_header_size = 32;
+    let total_header_size = elem_header_size * len;
+    let elem_ptr_ty = make_ptr(db, elem_ty, false);
+    let elem_ty_size = deref_ty.array_elem_size(db.upcast(), SLOT_SIZE);
+    let header_ty = make_ptr(db, yul_primitive_type(db), is_dst_storage);
+
+    let func_name = YulVariable::new(func_name);
+    let src = YulVariable::new("src");
+    let dst = YulVariable::new("dst");
+    let header_ptr = YulVariable::new("header_ptr");
+    let data_ptr = YulVariable::new("data_ptr");
+    let enc_size = YulVariable::new("enc_size");
+    let iter_count = literal_expression! {(len)};
+
+    let func = function_definition! {
+         function [func_name.ident()]([src.ident()], [dst.ident()]) -> [enc_size.ident()] {
+             (let [header_ptr.ident()] := [dst.expr()])
+             (let [data_ptr.ident()] := add([dst.expr()], [literal_expression!{(total_header_size)}]))
+             ([enc_size.ident()] := [literal_expression!{(total_header_size)}])
+             (for {(let i := 0)} (lt(i, [iter_count])) {(i := (add(i, 1)))}
+             {
+
+                ([yul::Statement::Expression(provider.ptr_store(db, header_ptr.expr(), enc_size.expr(), header_ty))])
+                ([enc_size.ident()] := add([provider.abi_encode(db, src.expr(), data_ptr.expr(), elem_ptr_ty, is_dst_storage)], [enc_size.expr()]))
+                ([header_ptr.ident()] := add([header_ptr.expr()], [literal_expression!{(elem_header_size)}]))
+                ([data_ptr.ident()] := add([dst.expr()], [enc_size.expr()]))
+                 ([src.ident()] := add([src.expr()], [literal_expression!{(elem_ty_size)}]))
+             })
+         }
+    };
+
+    RuntimeFunction::from_statement(func)
+}
+
+pub(super) fn make_abi_encode_static_aggregate_type(
+    provider: &mut DefaultRuntimeProvider,
+    db: &dyn CodegenDb,
+    func_name: &str,
+    legalized_ty: TypeId,
+    is_dst_storage: bool,
+) -> RuntimeFunction {
+    let func_name = YulVariable::new(func_name);
     let deref_ty = legalized_ty.deref(db.upcast());
     let src = YulVariable::new("src");
     let dst = YulVariable::new("dst");
@@ -112,6 +158,67 @@ pub(super) fn make_abi_encode_static_aggregate_type(
         if idx < field_num - 1 {
             body.push(assignment! {[dst.ident()] :=  add([dst.expr()], [field_enc_size.expr()])});
         }
+    }
+
+    let func_def = yul::FunctionDefinition {
+        name: func_name.ident(),
+        parameters: vec![src.ident(), dst.ident()],
+        returns: vec![enc_size.ident()],
+        block: yul::Block { statements: body },
+    };
+
+    RuntimeFunction(func_def)
+}
+
+pub(super) fn make_abi_encode_dynamic_aggregate_type(
+    provider: &mut DefaultRuntimeProvider,
+    db: &dyn CodegenDb,
+    func_name: &str,
+    legalized_ty: TypeId,
+    is_dst_storage: bool,
+) -> RuntimeFunction {
+    let func_name = YulVariable::new(func_name);
+    let is_src_storage = legalized_ty.is_sptr(db.upcast());
+    let deref_ty = legalized_ty.deref(db.upcast());
+    let field_num = deref_ty.aggregate_field_num(db.upcast());
+    let abi_ty = db.codegen_abi_type(deref_ty);
+
+    let src = YulVariable::new("src");
+    let dst = YulVariable::new("dst");
+    let header_ptr = YulVariable::new("header_ptr");
+    let enc_size = YulVariable::new("enc_size");
+    let data_ptr = YulVariable::new("data_ptr");
+
+    let total_header_size = literal_expression! { (abi_ty.header_size()) };
+    let mut body = statements! {
+        (let [header_ptr.ident()] := [dst.expr()])
+        ([enc_size.ident()] := [total_header_size])
+        (let [data_ptr.ident()] := add([dst.expr()], [enc_size.expr()]))
+    };
+
+    for idx in 0..field_num {
+        let field_ty = deref_ty.projection_ty_imm(db.upcast(), idx);
+        let field_abi_ty = db.codegen_abi_type(field_ty);
+        let field_offset =
+            literal_expression! { (deref_ty.aggregate_elem_offset(db.upcast(), idx, SLOT_SIZE)) };
+        let field_ptr = expression! { add([src.expr()], [field_offset]) };
+        let field_ptr_ty = make_ptr(db, field_ty, is_src_storage);
+
+        let stmts = if field_abi_ty.is_static() {
+            statements! {
+                (pop([provider.abi_encode(db, field_ptr, header_ptr.expr(), field_ptr_ty, is_dst_storage)]))
+                ([header_ptr.ident()] := add([header_ptr.expr()], [literal_expression! {(field_abi_ty.header_size())}]))
+            }
+        } else {
+            let header_ty = make_ptr(db, yul_primitive_type(db), is_dst_storage);
+            statements! {
+               ([yul::Statement::Expression(provider.ptr_store(db, header_ptr.expr(), enc_size.expr(), header_ty))])
+               ([enc_size.ident()] := add([provider.abi_encode(db, field_ptr, data_ptr.expr(), field_ptr_ty, is_dst_storage)], [enc_size.expr()]))
+               ([header_ptr.ident()] := add([header_ptr.expr()], 32))
+               ([data_ptr.ident()] := add([dst.expr()], [enc_size.expr()]))
+            }
+        };
+        body.extend_from_slice(&stmts);
     }
 
     let func_def = yul::FunctionDefinition {
@@ -172,7 +279,7 @@ pub(super) fn make_abi_encode_bytes_type(
     RuntimeFunction::from_statement(func_def)
 }
 
-pub(super) fn make_abi_encode_value_seq(
+pub(super) fn make_abi_encode_seq(
     provider: &mut DefaultRuntimeProvider,
     db: &dyn CodegenDb,
     func_name: &str,
@@ -205,18 +312,17 @@ pub(super) fn make_abi_encode_value_seq(
         let ty = value_tys[i];
         let abi_ty = &abi_tys[i];
         let value = &values[i];
-        let header_size = literal_expression! { (abi_ty.header_size()) };
         let stmts = if abi_ty.is_static() {
             statements! {
                 (pop([provider.abi_encode(db, value.expr(), header_ptr.expr(), ty, is_dst_storage)]))
-                ([header_ptr.ident()] := add([header_ptr.expr()], [header_size]))
+                ([header_ptr.ident()] := add([header_ptr.expr()], [literal_expression!{ (abi_ty.header_size()) }]))
             }
         } else {
             let header_ty = make_ptr(db, yul_primitive_type(db), is_dst_storage);
             statements! {
                ([yul::Statement::Expression(provider.ptr_store(db, header_ptr.expr(), enc_size.expr(), header_ty))])
                ([enc_size.ident()] := add([provider.abi_encode(db, value.expr(), data_ptr.expr(), ty, is_dst_storage)], [enc_size.expr()]))
-               ([header_ptr.ident()] := add([header_ptr.expr()], [header_size]))
+               ([header_ptr.ident()] := add([header_ptr.expr()], 32))
                ([data_ptr.ident()] := add([dst.expr()], [enc_size.expr()]))
             }
         };

@@ -7,6 +7,7 @@ mod safe_math;
 
 use std::fmt::Write;
 
+use fe_abi::types::AbiType;
 use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{types::ArrayDef, FunctionId, TypeId, TypeKind};
 use fxhash::FxHashMap;
@@ -530,44 +531,78 @@ impl RuntimeProvider for DefaultRuntimeProvider {
 
         let deref_ty = legalized_ty.deref(db.upcast());
         let abi_ty = db.codegen_abi_type(deref_ty);
-        if abi_ty.is_primitive() {
-            let value = self.ptr_load(db, src, src_ty);
-            let extended_value = self.primitive_cast(db, value, deref_ty);
-            self.abi_encode(db, extended_value, dst, deref_ty, is_dst_storage)
-        } else if abi_ty.is_static() {
-            if deref_ty.is_array(db.upcast()) {
-                let name = format!(
-                    "$abi_encode_static_array_type_{}_to_{}",
-                    src_ty.0, func_name_postfix
-                );
+        match abi_ty {
+            AbiType::UInt(_) | AbiType::Int(_) | AbiType::Bool | AbiType::Address => {
+                let value = self.ptr_load(db, src, src_ty);
+                let extended_value = self.primitive_cast(db, value, deref_ty);
+                self.abi_encode(db, extended_value, dst, deref_ty, is_dst_storage)
+            }
+            AbiType::Array { elem_ty, .. } => {
+                if elem_ty.is_static() {
+                    let name = format!(
+                        "$abi_encode_static_array_type_{}_to_{}",
+                        src_ty.0, func_name_postfix
+                    );
+                    self.create_then_call(&name, args, |provider| {
+                        abi::make_abi_encode_static_array_type(provider, db, &name, legalized_ty)
+                    })
+                } else {
+                    let name = format! {
+                       "$abi_encode_dynamic_array_type{}_to_{}", src_ty.0, func_name_postfix
+                    };
+                    self.create_then_call(&name, args, |provider| {
+                        abi::make_abi_encode_dynamic_array_type(provider, db, &name, legalized_ty)
+                    })
+                }
+            }
+            AbiType::Tuple(_) => {
+                if abi_ty.is_static() {
+                    let name = format!(
+                        "$abi_encode_static_aggregate_type_{}_to_{}",
+                        src_ty.0, func_name_postfix
+                    );
+                    self.create_then_call(&name, args, |provider| {
+                        abi::make_abi_encode_static_aggregate_type(
+                            provider,
+                            db,
+                            &name,
+                            legalized_ty,
+                            is_dst_storage,
+                        )
+                    })
+                } else {
+                    let name = format!(
+                        "$abi_encode_dynamic_aggregate_type_{}_to_{}",
+                        src_ty.0, func_name_postfix
+                    );
+                    self.create_then_call(&name, args, |provider| {
+                        abi::make_abi_encode_dynamic_aggregate_type(
+                            provider,
+                            db,
+                            &name,
+                            legalized_ty,
+                            is_dst_storage,
+                        )
+                    })
+                }
+            }
+            AbiType::Bytes => {
+                let len = match &deref_ty.data(db.upcast()).kind {
+                    TypeKind::Array(ArrayDef { len, .. }) => *len,
+                    _ => unreachable!(),
+                };
+                let name = format! {"$abi_encode_bytes{}_type_to_{}", len, func_name_postfix};
                 self.create_then_call(&name, args, |provider| {
-                    abi::make_abi_encode_static_array_type(provider, db, &name, legalized_ty)
-                })
-            } else {
-                let name = format!(
-                    "$abi_encode_static_aggregate_type_{}_to_{}",
-                    src_ty.0, func_name_postfix
-                );
-                self.create_then_call(&name, args, |provider| {
-                    abi::make_abi_encode_static_aggregate_type(provider, db, &name, legalized_ty)
+                    abi::make_abi_encode_bytes_type(provider, db, &name, len, is_dst_storage)
                 })
             }
-        } else if abi_ty.is_string() {
-            let name = format! {"$abi_encode_string_type_to_{}", func_name_postfix};
-            self.create_then_call(&name, args, |provider| {
-                abi::make_abi_encode_string_type(provider, db, &name, is_dst_storage)
-            })
-        } else if abi_ty.is_bytes() {
-            let len = match &deref_ty.data(db.upcast()).kind {
-                TypeKind::Array(ArrayDef { len, .. }) => *len,
-                _ => unreachable!(),
-            };
-            let name = format! {"$abi_encode_bytes{}_type_to_{}", len, func_name_postfix};
-            self.create_then_call(&name, args, |provider| {
-                abi::make_abi_encode_bytes_type(provider, db, &name, len, is_dst_storage)
-            })
-        } else {
-            todo! {}
+            AbiType::String => {
+                let name = format! {"$abi_encode_string_type_to_{}", func_name_postfix};
+                self.create_then_call(&name, args, |provider| {
+                    abi::make_abi_encode_string_type(provider, db, &name, is_dst_storage)
+                })
+            }
+            AbiType::Function => unreachable!(),
         }
     }
 
@@ -587,7 +622,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         let mut args = vec![dst];
         args.extend(src.iter().cloned());
         self.create_then_call(&name, args, |provider| {
-            abi::make_abi_encode_value_seq(provider, db, &name, src_tys, is_dst_storage)
+            abi::make_abi_encode_seq(provider, db, &name, src_tys, is_dst_storage)
         })
     }
 
