@@ -611,9 +611,13 @@ impl ModuleId {
         db.module_parent_module(*self)
     }
 
-    /// All contracts, including duplicates
-    pub fn all_contracts(&self, db: &dyn AnalyzerDb) -> Rc<[ContractId]> {
-        db.module_contracts(*self)
+    /// All contracts, including from submodules and including duplicates
+    pub fn all_contracts(&self, db: &dyn AnalyzerDb) -> Vec<ContractId> {
+        self.submodules(db)
+            .iter()
+            .flat_map(|module| module.all_contracts(db))
+            .chain((*db.module_contracts(*self)).to_vec())
+            .collect::<Vec<_>>()
     }
 
     /// Returns the map of ingot deps, built-ins, and the ingot itself as
