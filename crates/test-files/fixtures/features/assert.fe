@@ -14,12 +14,12 @@ contract Foo {
         assert baz > 5, reason
     }
 
-    pub fn assert_sto_bool(self) {
+    pub fn assert_sto_bool(mut self) {
         self.my_bool = false
         assert self.my_bool
     }
 
-    pub fn assert_sto_string_msg(self) {
+    pub fn assert_sto_string_msg(mut self) {
         self.my_string = "hello"
         assert false, self.my_string.to_mem()
     }

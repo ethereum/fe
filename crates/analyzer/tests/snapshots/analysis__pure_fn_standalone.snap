@@ -9,13 +9,14 @@ note:
 1 │ ╭ fn add_bonus(_ x: u256) -> u256 {
 2 │ │     return x + 10
 3 │ │ }
-  │ ╰─^ attributes hash: 4402553917254279762
+  │ ╰─^ attributes hash: 12704631085410906379
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -63,22 +64,26 @@ note:
 note: 
    ┌─ pure_fn_standalone.fe:9:5
    │  
- 9 │ ╭     fn add_points(self, _ user: address, _ val: u256) {
+ 9 │ ╭     fn add_points(mut self, _ user: address, _ val: u256) {
 10 │ │         if self.cool_users[user] {
 11 │ │             self.points[user] += add_bonus(val)
 12 │ │         } else {
 13 │ │             self.points[user] += val
 14 │ │         }
 15 │ │     }
-   │ ╰─────^ attributes hash: 11016307003570025576
+   │ ╰─────^ attributes hash: 2170998116934609119
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 159..163,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -90,6 +95,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -176,22 +182,26 @@ note:
 note: 
    ┌─ pure_fn_standalone.fe:17:5
    │  
-17 │ ╭     pub fn bar(self, _ x: u256) -> u256 {
+17 │ ╭     pub fn bar(mut self, _ x: u256) -> u256 {
 18 │ │         let a: address = address(x)
 19 │ │         self.add_points(a, 100)
 20 │ │         self.cool_users[a] = true
 21 │ │         self.add_points(a, 100)
 22 │ │         return self.points[a]
 23 │ │     }
-   │ ╰─────^ attributes hash: 15237606768598971644
+   │ ╰─────^ attributes hash: 14207160563868819266
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 370..374,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),

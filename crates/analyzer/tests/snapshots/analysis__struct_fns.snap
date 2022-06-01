@@ -17,13 +17,14 @@ note:
 5 │ ╭     pub fn new(x: u64, y: u64) -> Point {
 6 │ │         return Point(x, y)
 7 │ │     }
-  │ ╰─────^ attributes hash: 16588628800633378656
+  │ ╰─────^ attributes hash: 12912049707195925750
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "x",
                 typ: Ok(
@@ -35,6 +36,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "y",
                 typ: Ok(
@@ -112,11 +114,14 @@ note:
 13 │ ╭     pub fn x(self) -> u64 {
 14 │ │         return self.x
 15 │ │     }
-   │ ╰─────^ attributes hash: 10117872852848404071
+   │ ╰─────^ attributes hash: 2132949142240906430
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 206..210,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -144,20 +149,24 @@ note:
 note: 
    ┌─ struct_fns.fe:17:5
    │  
-17 │ ╭     pub fn set_x(self, _ x: u64) -> u64 {
+17 │ ╭     pub fn set_x(mut self, _ x: u64) -> u64 {
 18 │ │         let old: u64 = self.x
 19 │ │         self.x = x
 20 │ │         return old
 21 │ │     }
-   │ ╰─────^ attributes hash: 9776752757917359734
+   │ ╰─────^ attributes hash: 13563361800320893228
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 271..275,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -213,17 +222,20 @@ note:
 note: 
    ┌─ struct_fns.fe:23:5
    │  
-23 │ ╭     pub fn reflect(self) {
+23 │ ╭     pub fn reflect(mut self) {
 24 │ │         let x: u64 = self.x
 25 │ │         let y: u64 = self.y
 26 │ │         self.x = y
 27 │ │         self.y = x
 28 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
+   │ ╰─────^ attributes hash: 10714264657207187376
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 394..398,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -285,19 +297,23 @@ note:
 note: 
    ┌─ struct_fns.fe:30:5
    │  
-30 │ ╭     pub fn translate(self, x: u64, y: u64) {
+30 │ ╭     pub fn translate(mut self, x: u64, y: u64) {
 31 │ │         self.x += x
 32 │ │         self.y += y
 33 │ │     }
-   │ ╰─────^ attributes hash: 7723021135770029200
+   │ ╰─────^ attributes hash: 14860535953510671722
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 528..532,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -309,6 +325,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "y",
                  typ: Ok(
@@ -359,15 +376,19 @@ note:
 37 │ │         let y: u64 = self.y + other.y
 38 │ │         return Point(x, y)
 39 │ │     }
-   │ ╰─────^ attributes hash: 13368777112318344367
+   │ ╰─────^ attributes hash: 17767028382730754195
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 614..618,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -463,7 +484,7 @@ note:
    │  
 42 │ ╭ pub fn do_pointy_things() {
 43 │ │     let p1: Point = Point::origin()
-44 │ │     p1.translate(x: 5, y: 10)
+44 │ │     p1.translate(x: 5, y: 10) # XXX require mut p1
 45 │ │     let p2: Point = Point(x: 1, y: 2)
 46 │ │     let p3: Point = p1.add(p2)
 47 │ │     assert p3.x == 6 and p3.y == 12
@@ -486,7 +507,7 @@ note:
    │
 43 │     let p1: Point = Point::origin()
    │         ^^ Point
-44 │     p1.translate(x: 5, y: 10)
+44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
 45 │     let p2: Point = Point(x: 1, y: 2)
    │         ^^ Point
 46 │     let p3: Point = p1.add(p2)
@@ -497,7 +518,7 @@ note:
    │
 43 │     let p1: Point = Point::origin()
    │                     ^^^^^^^^^^^^^^^ Point: Memory
-44 │     p1.translate(x: 5, y: 10)
+44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
    │     ^^              ^     ^^ u64: Value
    │     │               │      
    │     │               u64: Value
@@ -506,7 +527,7 @@ note:
 note: 
    ┌─ struct_fns.fe:44:5
    │
-44 │     p1.translate(x: 5, y: 10)
+44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 45 │     let p2: Point = Point(x: 1, y: 2)
    │                              ^     ^ u64: Value
@@ -577,13 +598,14 @@ note:
    · │
 58 │ │         return p.y
 59 │ │     }
-   │ ╰─────^ attributes hash: 14881144643149919691
+   │ ╰─────^ attributes hash: 5923520168119638877
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -595,6 +617,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "y",
                  typ: Ok(
@@ -674,7 +697,7 @@ note:
    │
 54 │         assert p.x == x and p.y == y
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-55 │         p.set_x(100)
+55 │         p.set_x(100) # XXX require mut
    │         ^       ^^^ u64: Value
    │         │        
    │         Point: Memory
@@ -682,7 +705,7 @@ note:
 note: 
    ┌─ struct_fns.fe:55:9
    │
-55 │         p.set_x(100)
+55 │         p.set_x(100) # XXX require mut
    │         ^^^^^^^^^^^^ u64: Value
 56 │         p.reflect()
    │         ^ Point: Memory

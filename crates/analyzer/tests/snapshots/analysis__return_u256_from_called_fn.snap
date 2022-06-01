@@ -9,11 +9,14 @@ note:
 2 │ ╭     pub fn bar(self) -> u256 {
 3 │ │         return foo()
 4 │ │     }
-  │ ╰─────^ attributes hash: 11773348765973600208
+  │ ╰─────^ attributes hash: 4631522600413788694
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: Ref,
+                span: 30..34,
+            },
         ),
         ctx_decl: None,
         params: [],

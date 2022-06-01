@@ -26,18 +26,22 @@ note:
 note: 
    ┌─ sized_vals_in_sto.fe:14:5
    │  
-14 │ ╭     pub fn write_num(self, x: u256) {
+14 │ ╭     pub fn write_num(mut self, x: u256) {
 15 │ │         self.num = x
 16 │ │     }
-   │ ╰─────^ attributes hash: 4582507849783874218
+   │ ╰─────^ attributes hash: 15247572977843500486
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 227..231,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -76,11 +80,14 @@ note:
 18 │ ╭     pub fn read_num(self) -> u256 {
 19 │ │         return self.num
 20 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 4028969848440039662
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 292..296,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -108,18 +115,22 @@ note:
 note: 
    ┌─ sized_vals_in_sto.fe:22:5
    │  
-22 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
+22 │ ╭     pub fn write_nums(mut self, x: Array<u256, 42>) {
 23 │ │         self.nums = x
 24 │ │     }
-   │ ╰─────^ attributes hash: 15243923981938152137
+   │ ╰─────^ attributes hash: 6335063743722828114
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 365..369,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -161,11 +172,14 @@ note:
 26 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
 27 │ │         return self.nums.to_mem()
 28 │ │     }
-   │ ╰─────^ attributes hash: 7235961322057554817
+   │ ╰─────^ attributes hash: 16300294072839282769
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 443..447,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -202,18 +216,22 @@ note:
 note: 
    ┌─ sized_vals_in_sto.fe:30:5
    │  
-30 │ ╭     pub fn write_str(self, x: String<26>) {
+30 │ ╭     pub fn write_str(mut self, x: String<26>) {
 31 │ │         self.str = x
 32 │ │     }
-   │ ╰─────^ attributes hash: 3874088449945578306
+   │ ╰─────^ attributes hash: 14153874093445404161
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 536..540,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -252,11 +270,14 @@ note:
 34 │ ╭     pub fn read_str(self) -> String<26> {
 35 │ │         return self.str.to_mem()
 36 │ │     }
-   │ ╰─────^ attributes hash: 3487383639176435631
+   │ ╰─────^ attributes hash: 4927645279819337519
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 607..611,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -290,20 +311,24 @@ note:
 note: 
    ┌─ sized_vals_in_sto.fe:38:5
    │  
-38 │ ╭     pub fn emit_event(self, ctx: Context) {
+38 │ ╭     pub fn emit_event(self, mut ctx: Context) {
 39 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
 40 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 3139632444988492662
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 691..695,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(

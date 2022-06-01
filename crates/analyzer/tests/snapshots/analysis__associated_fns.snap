@@ -9,13 +9,14 @@ note:
 2 │ ╭     pub fn square(x: u256) -> u256 {
 3 │ │         return x * x
 4 │ │     }
-  │ ╰─────^ attributes hash: 6622018637299644818
+  │ ╰─────^ attributes hash: 5693685615577339895
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "x",
                 typ: Ok(
@@ -62,13 +63,14 @@ note:
 10 │ ╭     pub fn new(x: u256) -> MyStruct {
 11 │ │         return MyStruct(x)
 12 │ │     }
-   │ ╰─────^ attributes hash: 2145703897684373991
+   │ ╰─────^ attributes hash: 9726859283430527185
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -111,19 +113,23 @@ note:
 note: 
    ┌─ associated_fns.fe:18:5
    │  
-18 │ ╭     pub fn bar(self, val: u256) -> u256 {
+18 │ ╭     pub fn bar(mut self, val: u256) -> u256 {
 19 │ │         self.my_struct = MyStruct::new(x: val)
 20 │ │         return Lib::square(x: self.my_struct.x)
 21 │ │     }
-   │ ╰─────^ attributes hash: 2950430758151367369
+   │ ╰─────^ attributes hash: 434215784894194389
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 248..252,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "val",
                  typ: Ok(

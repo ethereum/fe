@@ -181,7 +181,9 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: Self_,
+                    kind: Self_(
+                      mut_: None,
+                    ),
                     span: Span(
                       start: 80,
                       end: 84,

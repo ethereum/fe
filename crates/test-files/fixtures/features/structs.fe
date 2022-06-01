@@ -37,7 +37,7 @@ struct House {
         return self.price / self.size
     }
 
-    pub fn expand(self) {
+    pub fn expand(mut self) {
         self.rooms += 1
         self.size += 100
     }
@@ -47,7 +47,7 @@ contract Foo {
     my_house: House
     my_bar: Bar
 
-    pub fn complex_struct_in_storage(self) -> String<3> {
+    pub fn complex_struct_in_storage(mut self) -> String<3> {
         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
         assert self.my_bar.numbers[0] == 1
         assert self.my_bar.numbers[1] == 2
@@ -79,8 +79,8 @@ contract Foo {
         return self.my_bar.name.to_mem()
     }
 
-    pub fn complex_struct_in_memory(self) -> String<3> {
-        let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+    pub fn complex_struct_in_memory() -> String<3> {
+        let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
         assert val.numbers[0] == 1
         assert val.numbers[1] == 2
         assert val.point.x == 100
@@ -116,7 +116,7 @@ contract Foo {
         return mixed.foo
     }
 
-    pub fn set_house(self, data: House) {
+    pub fn set_house(mut self, data: House) {
         self.my_house = data
     }
 
@@ -124,7 +124,7 @@ contract Foo {
         return self.my_house.to_mem()
     }
 
-    pub fn create_house(self) {
+    pub fn create_house(mut self) {
         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
         assert self.my_house.price == 1
         assert self.my_house.size == 2
@@ -153,7 +153,7 @@ contract Foo {
     }
 
     pub fn bar() -> u256 {
-        let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+        let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
         assert building.size == 500
         assert building.price == 300
         assert building.rooms == u8(20)

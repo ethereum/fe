@@ -37,13 +37,14 @@ note:
 17 │ ╭     pub fn new(val: u256) -> Mixed {
 18 │ │         return Mixed(foo: val, bar: false)
 19 │ │     }
-   │ ╰─────^ attributes hash: 2524938698704972422
+   │ ╰─────^ attributes hash: 18265650288744660032
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "val",
                  typ: Ok(
@@ -97,11 +98,14 @@ note:
 28 │ ╭     pub fn encode(self) -> Array<u8, 128> {
 29 │ │         return self.abi_encode()
 30 │ │     }
-   │ ╰─────^ attributes hash: 2052929893622941907
+   │ ╰─────^ attributes hash: 3277581803880114358
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 424..428,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -135,11 +139,14 @@ note:
 32 │ ╭     pub fn hash(self) -> u256 {
 33 │ │         return keccak256(self.encode())
 34 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 3800231203158928125
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 506..510,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -176,11 +183,14 @@ note:
 36 │ ╭     pub fn price_per_sqft(self) -> u256 {
 37 │ │         return self.price / self.size
 38 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 7121155759541830230
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 595..599,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -222,15 +232,18 @@ note:
 note: 
    ┌─ structs.fe:40:5
    │  
-40 │ ╭     pub fn expand(self) {
+40 │ ╭     pub fn expand(mut self) {
 41 │ │         self.rooms += 1
 42 │ │         self.size += 100
 43 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
+   │ ╰─────^ attributes hash: 6056324316352758490
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 678..682,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -276,18 +289,21 @@ note:
 note: 
    ┌─ structs.fe:50:5
    │  
-50 │ ╭     pub fn complex_struct_in_storage(self) -> String<3> {
+50 │ ╭     pub fn complex_struct_in_storage(mut self) -> String<3> {
 51 │ │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
 52 │ │         assert self.my_bar.numbers[0] == 1
 53 │ │         assert self.my_bar.numbers[1] == 2
    · │
 79 │ │         return self.my_bar.name.to_mem()
 80 │ │     }
-   │ ╰─────^ attributes hash: 7100809906483982919
+   │ ╰─────^ attributes hash: 10302942579009622678
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 837..841,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -1072,19 +1088,17 @@ note:
 note: 
     ┌─ structs.fe:82:5
     │  
- 82 │ ╭     pub fn complex_struct_in_memory(self) -> String<3> {
- 83 │ │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+ 82 │ ╭     pub fn complex_struct_in_memory() -> String<3> {
+ 83 │ │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
  84 │ │         assert val.numbers[0] == 1
  85 │ │         assert val.numbers[1] == 2
     · │
 111 │ │         return val.name
 112 │ │     }
-    │ ╰─────^ attributes hash: 7100809906483982919
+    │ ╰─────^ attributes hash: 12941863115788397621
     │  
     = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
+          self_decl: None,
           ctx_decl: None,
           params: [],
           return_type: Ok(
@@ -1097,49 +1111,49 @@ note:
       }
 
 note: 
-   ┌─ structs.fe:83:13
+   ┌─ structs.fe:83:17
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │             ^^^ Bar
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                 ^^^ Bar
 
 note: 
-   ┌─ structs.fe:83:34
+   ┌─ structs.fe:83:38
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                  ^^^^^            ^  ^ u256: Value
-   │                                  │                │   
-   │                                  │                u256: Value
-   │                                  String<3>: Memory
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                      ^^^^^            ^  ^ u256: Value
+   │                                      │                │   
+   │                                      │                u256: Value
+   │                                      String<3>: Memory
 
 note: 
-   ┌─ structs.fe:83:50
+   ┌─ structs.fe:83:54
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                  ^^^^^^                  ^^^     ^^^ u256: Value
-   │                                                  │                       │        
-   │                                                  │                       u256: Value
-   │                                                  Array<u256, 2>: Memory
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                      ^^^^^^                  ^^^     ^^^ u256: Value
+   │                                                      │                       │        
+   │                                                      │                       u256: Value
+   │                                                      Array<u256, 2>: Memory
 
 note: 
-   ┌─ structs.fe:83:65
+   ┌─ structs.fe:83:69
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                                 ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool: Value
-   │                                                                 │                                  │   
-   │                                                                 │                                  u256: Value
-   │                                                                 Point: Memory
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool: Value
+   │                                                                     │                                  │   
+   │                                                                     │                                  u256: Value
+   │                                                                     Point: Memory
 
 note: 
-   ┌─ structs.fe:83:99
+   ┌─ structs.fe:83:103
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                                                                   ^^^^^^^^^ (u256, bool): Memory
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                                                       ^^^^^^^^^ (u256, bool): Memory
 
 note: 
-   ┌─ structs.fe:83:24
+   ┌─ structs.fe:83:28
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar: Memory
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar: Memory
 84 │         assert val.numbers[0] == 1
    │                ^^^ Bar: Memory
 
@@ -1697,11 +1711,14 @@ note:
 115 │ │         let mixed: Mixed = Mixed::new(val: 1)
 116 │ │         return mixed.foo
 117 │ │     }
-    │ ╰─────^ attributes hash: 11773348765973600208
+    │ ╰─────^ attributes hash: 1469673370516439530
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 3315..3319,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -1743,18 +1760,22 @@ note:
 note: 
     ┌─ structs.fe:119:5
     │  
-119 │ ╭     pub fn set_house(self, data: House) {
+119 │ ╭     pub fn set_house(mut self, data: House) {
 120 │ │         self.my_house = data
 121 │ │     }
-    │ ╰─────^ attributes hash: 571714015924720006
+    │ ╰─────^ attributes hash: 537227353021317844
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3434..3438,
+              },
           ),
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "data",
                   typ: Ok(
@@ -1794,11 +1815,14 @@ note:
 123 │ ╭     pub fn get_house(self) -> House {
 124 │ │         return self.my_house.to_mem()
 125 │ │     }
-    │ ╰─────^ attributes hash: 18226871377775469920
+    │ ╰─────^ attributes hash: 1919473522518021755
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 3512..3516,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -1833,18 +1857,21 @@ note:
 note: 
     ┌─ structs.fe:127:5
     │  
-127 │ ╭     pub fn create_house(self) {
+127 │ ╭     pub fn create_house(mut self) {
 128 │ │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
 129 │ │         assert self.my_house.price == 1
 130 │ │         assert self.my_house.size == 2
     · │
 152 │ │         assert self.my_house.vacant
 153 │ │     }
-    │ ╰─────^ attributes hash: 18235041182630809162
+    │ ╰─────^ attributes hash: 8667441894878710947
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3602..3606,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -2413,7 +2440,7 @@ note:
     ┌─ structs.fe:155:5
     │  
 155 │ ╭     pub fn bar() -> u256 {
-156 │ │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+156 │ │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 157 │ │         assert building.size == 500
 158 │ │         assert building.price == 300
     · │
@@ -2435,33 +2462,33 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:156:13
+    ┌─ structs.fe:156:17
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │             ^^^^^^^^ House
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                 ^^^^^^^^ House
 
 note: 
-    ┌─ structs.fe:156:44
+    ┌─ structs.fe:156:48
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                                            ^^^        ^^^            ^^ u8: Value
-    │                                            │          │               
-    │                                            │          u256: Value
-    │                                            u256: Value
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                ^^^        ^^^            ^^ u8: Value
+    │                                                │          │               
+    │                                                │          u256: Value
+    │                                                u256: Value
 
 note: 
-    ┌─ structs.fe:156:67
+    ┌─ structs.fe:156:71
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                                                                   ^^^^^^          ^^^^ bool: Value
-    │                                                                   │                
-    │                                                                   u8: Value
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                                       ^^^^^^          ^^^^ bool: Value
+    │                                                                       │                
+    │                                                                       u8: Value
 
 note: 
-    ┌─ structs.fe:156:31
+    ┌─ structs.fe:156:35
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House: Memory
 157 │         assert building.size == 500
     │                ^^^^^^^^ House: Memory
 

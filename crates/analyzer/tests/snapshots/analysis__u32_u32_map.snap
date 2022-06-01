@@ -15,15 +15,19 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u32) -> u32 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ attributes hash: 17684751964541454304
+  │ ╰─────^ attributes hash: 4583036915203748875
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: Ref,
+                span: 59..63,
+            },
         ),
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "key",
                 typ: Ok(
@@ -67,18 +71,22 @@ note:
 note: 
    ┌─ u32_u32_map.fe:8:5
    │  
- 8 │ ╭     pub fn write_bar(self, key: u32, value: u32) {
+ 8 │ ╭     pub fn write_bar(mut self, key: u32, value: u32) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 9068646997358780798
+   │ ╰─────^ attributes hash: 15280695020486233808
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 145..149,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "key",
                  typ: Ok(
@@ -90,6 +98,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(

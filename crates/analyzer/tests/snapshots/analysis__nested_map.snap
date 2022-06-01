@@ -17,15 +17,19 @@ note:
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256 {
 6 │ │         return self.bar[a][b]
 7 │ │     }
-  │ ╰─────^ attributes hash: 17216960098647945084
+  │ ╰─────^ attributes hash: 1724072650484837323
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: Ref,
+                span: 117..121,
+            },
         ),
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "a",
                 typ: Ok(
@@ -35,6 +39,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "b",
                 typ: Ok(
@@ -84,18 +89,22 @@ note:
 note: 
    ┌─ nested_map.fe:9:5
    │  
- 9 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256) {
+ 9 │ ╭     pub fn write_bar(mut self, a: address, b: address, value: u256) {
 10 │ │         self.bar[a][b] = value
 11 │ │     }
-   │ ╰─────^ attributes hash: 1717293224155577849
+   │ ╰─────^ attributes hash: 3790722063629028648
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 219..223,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "a",
                  typ: Ok(
@@ -105,6 +114,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "b",
                  typ: Ok(
@@ -114,6 +124,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -168,15 +179,19 @@ note:
 13 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool {
 14 │ │         return self.baz[a][b]
 15 │ │     }
-   │ ╰─────^ attributes hash: 13548986453815092160
+   │ ╰─────^ attributes hash: 17390224544797351577
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 322..326,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "a",
                  typ: Ok(
@@ -186,6 +201,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "b",
                  typ: Ok(
@@ -235,18 +251,22 @@ note:
 note: 
    ┌─ nested_map.fe:17:5
    │  
-17 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool) {
+17 │ ╭     pub fn write_baz(mut self, a: address, b: u256, value: bool) {
 18 │ │         self.baz[a][b] = value
 19 │ │     }
-   │ ╰─────^ attributes hash: 6442389777288668179
+   │ ╰─────^ attributes hash: 10332709125276705536
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 421..425,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "a",
                  typ: Ok(
@@ -256,6 +276,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "b",
                  typ: Ok(
@@ -267,6 +288,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(

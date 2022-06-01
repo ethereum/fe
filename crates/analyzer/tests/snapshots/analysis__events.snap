@@ -40,10 +40,10 @@ note:
 note: 
    ┌─ events.fe:25:5
    │  
-25 │ ╭     pub fn emit_nums(ctx: Context) {
+25 │ ╭     pub fn emit_nums(mut ctx: Context) {
 26 │ │         emit Nums(ctx, num1: 26, num2: 42)
 27 │ │     }
-   │ ╰─────^ attributes hash: 5519676733853656531
+   │ ╰─────^ attributes hash: 3107376239596606736
    │  
    = FunctionSignature {
          self_decl: None,
@@ -52,6 +52,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -117,10 +118,10 @@ note:
 note: 
    ┌─ events.fe:29:5
    │  
-29 │ ╭     pub fn emit_bases(ctx: Context, addr: address) {
+29 │ ╭     pub fn emit_bases(mut ctx: Context, addr: address) {
 30 │ │         emit Bases(ctx, num: 26, addr)
 31 │ │     }
-   │ ╰─────^ attributes hash: 15383426943610850221
+   │ ╰─────^ attributes hash: 10645192025445674186
    │  
    = FunctionSignature {
          self_decl: None,
@@ -129,6 +130,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -141,6 +143,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addr",
                  typ: Ok(
@@ -201,10 +204,10 @@ note:
 note: 
    ┌─ events.fe:33:5
    │  
-33 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
+33 │ ╭     pub fn emit_mix(mut ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
 34 │ │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
 35 │ │     }
-   │ ╰─────^ attributes hash: 9652612436637375041
+   │ ╰─────^ attributes hash: 14298327822992287135
    │  
    = FunctionSignature {
          self_decl: None,
@@ -213,6 +216,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -225,6 +229,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addr",
                  typ: Ok(
@@ -234,6 +239,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_bytes",
                  typ: Ok(
@@ -326,13 +332,13 @@ note:
 note: 
    ┌─ events.fe:37:5
    │  
-37 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
-38 │ │         let addrs: Array<address, 2>
+37 │ ╭     pub fn emit_addresses(mut ctx: Context, addr1: address, addr2: address) {
+38 │ │         let mut addrs: Array<address, 2>
 39 │ │         addrs[0] = addr1
 40 │ │         addrs[1] = addr2
 41 │ │         emit Addresses(ctx, addrs)
 42 │ │     }
-   │ ╰─────^ attributes hash: 18438233211486921531
+   │ ╰─────^ attributes hash: 12718344820069656177
    │  
    = FunctionSignature {
          self_decl: None,
@@ -341,6 +347,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -353,6 +360,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addr1",
                  typ: Ok(
@@ -362,6 +370,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addr2",
                  typ: Ok(
@@ -379,10 +388,10 @@ note:
      }
 
 note: 
-   ┌─ events.fe:38:13
+   ┌─ events.fe:38:17
    │
-38 │         let addrs: Array<address, 2>
-   │             ^^^^^ Array<address, 2>
+38 │         let mut addrs: Array<address, 2>
+   │                 ^^^^^ Array<address, 2>
 
 note: 
    ┌─ events.fe:39:9

@@ -45,11 +45,14 @@ note:
 30 │ ╭     pub fn name(self) -> String<100> {
 31 │ │         return self._name.to_mem()
 32 │ │     }
-   │ ╰─────^ attributes hash: 2936475649167061923
+   │ ╰─────^ attributes hash: 17500122020264694613
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 714..718,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -86,11 +89,14 @@ note:
 34 │ ╭     pub fn symbol(self) -> String<100> {
 35 │ │         return self._symbol.to_mem()
 36 │ │     }
-   │ ╰─────^ attributes hash: 2936475649167061923
+   │ ╰─────^ attributes hash: 17062809633595197186
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 797..801,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -127,11 +133,14 @@ note:
 38 │ ╭     pub fn decimals(self) -> u8 {
 39 │ │         return self._decimals
 40 │ │     }
-   │ ╰─────^ attributes hash: 11864308689780915279
+   │ ╰─────^ attributes hash: 8864080977058785482
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 884..888,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -162,11 +171,14 @@ note:
 42 │ ╭     pub fn totalSupply(self) -> u256 {
 43 │ │         return self._total_supply
 44 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 3680341463490813372
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 958..962,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -197,15 +209,19 @@ note:
 46 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 47 │ │         return self._balances[account]
 48 │ │     }
-   │ ╰─────^ attributes hash: 5993653573135321647
+   │ ╰─────^ attributes hash: 2521245700396309432
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1036..1040,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -249,21 +265,25 @@ note:
 note: 
    ┌─ erc20_token.fe:50:5
    │  
-50 │ ╭     pub fn transfer(self, ctx: Context, recipient: address, value: u256) -> bool {
+50 │ ╭     pub fn transfer(mut self, mut ctx: Context, recipient: address, value: u256) -> bool {
 51 │ │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
 52 │ │         return true
 53 │ │     }
-   │ ╰─────^ attributes hash: 9700541873563816287
+   │ ╰─────^ attributes hash: 4130482563254383978
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1142..1146,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -276,6 +296,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "recipient",
                  typ: Ok(
@@ -285,6 +306,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -335,15 +357,19 @@ note:
 55 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256 {
 56 │ │         return self._allowances[owner][spender]
 57 │ │     }
-   │ ╰─────^ attributes hash: 3316599995530573429
+   │ ╰─────^ attributes hash: 16719273380469184282
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1329..1333,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "owner",
                  typ: Ok(
@@ -353,6 +379,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "spender",
                  typ: Ok(
@@ -402,21 +429,25 @@ note:
 note: 
    ┌─ erc20_token.fe:59:5
    │  
-59 │ ╭     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
+59 │ ╭     pub fn approve(mut self, mut ctx: Context, spender: address, value: u256) -> bool {
 60 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 61 │ │         return true
 62 │ │     }
-   │ ╰─────^ attributes hash: 8309406699454253603
+   │ ╰─────^ attributes hash: 13165959594328713588
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1457..1461,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -429,6 +460,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "spender",
                  typ: Ok(
@@ -438,6 +470,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -485,23 +518,27 @@ note:
 note: 
    ┌─ erc20_token.fe:64:5
    │  
-64 │ ╭     pub fn transferFrom(self, ctx: Context, sender: address, recipient: address, value: u256) -> bool {
+64 │ ╭     pub fn transferFrom(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) -> bool {
 65 │ │         assert self._allowances[sender][ctx.msg_sender()] >= value
 66 │ │         self._transfer(ctx, sender, recipient, value)
 67 │ │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
 68 │ │         return true
 69 │ │     }
-   │ ╰─────^ attributes hash: 14464733394183378558
+   │ ╰─────^ attributes hash: 12957386633699042234
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1645..1649,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -514,6 +551,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "sender",
                  typ: Ok(
@@ -523,6 +561,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "recipient",
                  typ: Ok(
@@ -532,6 +571,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -666,21 +706,25 @@ note:
 note: 
    ┌─ erc20_token.fe:71:5
    │  
-71 │ ╭     pub fn increaseAllowance(self, ctx: Context, spender: address, addedValue: u256) -> bool {
+71 │ ╭     pub fn increaseAllowance(mut self, mut ctx: Context, spender: address, addedValue: u256) -> bool {
 72 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
 73 │ │         return true
 74 │ │     }
-   │ ╰─────^ attributes hash: 14606848714789380929
+   │ ╰─────^ attributes hash: 4136668192462742125
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 2038..2042,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -693,6 +737,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "spender",
                  typ: Ok(
@@ -702,6 +747,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addedValue",
                  typ: Ok(
@@ -785,21 +831,25 @@ note:
 note: 
    ┌─ erc20_token.fe:76:5
    │  
-76 │ ╭     pub fn decreaseAllowance(self, ctx: Context, spender: address, subtractedValue: u256) -> bool {
+76 │ ╭     pub fn decreaseAllowance(mut self, mut ctx: Context, spender: address, subtractedValue: u256) -> bool {
 77 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
 78 │ │         return true
 79 │ │     }
-   │ ╰─────^ attributes hash: 9154612140799800808
+   │ ╰─────^ attributes hash: 12521889084514602239
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 2294..2298,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -812,6 +862,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "spender",
                  typ: Ok(
@@ -821,6 +872,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "subtractedValue",
                  typ: Ok(
@@ -904,24 +956,28 @@ note:
 note: 
    ┌─ erc20_token.fe:81:5
    │  
-81 │ ╭     fn _transfer(self, ctx: Context, sender: address, recipient: address, value: u256) {
+81 │ ╭     fn _transfer(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) {
 82 │ │         assert sender != address(0)
 83 │ │         assert recipient != address(0)
 84 │ │         _before_token_transfer(from: sender, to: recipient, value)
    · │
 87 │ │         emit Transfer(ctx, from: sender, to: recipient, value)
 88 │ │     }
-   │ ╰─────^ attributes hash: 10648262769466339085
+   │ ╰─────^ attributes hash: 3540440218259749739
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 2548..2552,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -934,6 +990,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "sender",
                  typ: Ok(
@@ -943,6 +1000,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "recipient",
                  typ: Ok(
@@ -952,6 +1010,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -1147,24 +1206,28 @@ note:
 note: 
    ┌─ erc20_token.fe:90:5
    │  
-90 │ ╭     fn _mint(self, ctx: Context, account: address, value: u256) {
+90 │ ╭     fn _mint(mut self, mut ctx: Context, account: address, value: u256) {
 91 │ │         assert account != address(0)
 92 │ │         _before_token_transfer(from: address(0), to: account, value)
 93 │ │         self._total_supply = self._total_supply + value
 94 │ │         self._balances[account] = self._balances[account] + value
 95 │ │         emit Transfer(ctx, from: address(0), to: account, value)
 96 │ │     }
-   │ ╰─────^ attributes hash: 6502254374233415580
+   │ ╰─────^ attributes hash: 11341648139676614111
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 2987..2991,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -1177,6 +1240,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "account",
                  typ: Ok(
@@ -1186,6 +1250,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -1362,24 +1427,28 @@ note:
 note: 
     ┌─ erc20_token.fe:98:5
     │  
- 98 │ ╭     fn _burn(self, ctx: Context, account: address, value: u256) {
+ 98 │ ╭     fn _burn(mut self, mut ctx: Context, account: address, value: u256) {
  99 │ │         assert account != address(0)
 100 │ │         _before_token_transfer(from: account, to: address(0), value)
 101 │ │         self._balances[account] = self._balances[account] - value
 102 │ │         self._total_supply = self._total_supply - value
 103 │ │         emit Transfer(ctx, from: account, to: address(0), value)
 104 │ │     }
-    │ ╰─────^ attributes hash: 6502254374233415580
+    │ ╰─────^ attributes hash: 15264309683163609993
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3361..3365,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1392,6 +1461,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "account",
                   typ: Ok(
@@ -1401,6 +1471,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1578,23 +1649,27 @@ note:
 note: 
     ┌─ erc20_token.fe:106:5
     │  
-106 │ ╭     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
+106 │ ╭     fn _approve(mut self, mut ctx: Context, owner: address, spender: address, value: u256) {
 107 │ │         assert owner != address(0)
 108 │ │         assert spender != address(0)
 109 │ │         self._allowances[owner][spender] = value
 110 │ │         emit Approval(ctx, owner, spender, value)
 111 │ │     }
-    │ ╰─────^ attributes hash: 1630416716014819616
+    │ ╰─────^ attributes hash: 4292231801540365031
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3738..3742,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1607,6 +1682,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "owner",
                   typ: Ok(
@@ -1616,6 +1692,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "spender",
                   typ: Ok(
@@ -1625,6 +1702,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1755,18 +1833,22 @@ note:
 note: 
     ┌─ erc20_token.fe:113:5
     │  
-113 │ ╭     fn _setup_decimals(self, _ decimals_: u8) {
+113 │ ╭     fn _setup_decimals(mut self, _ decimals_: u8) {
 114 │ │         self._decimals = decimals_
 115 │ │     }
-    │ ╰─────^ attributes hash: 2241116105643912660
+    │ ╰─────^ attributes hash: 8007357574172001595
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 4016..4020,
+              },
           ),
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -1805,13 +1887,14 @@ note:
     ┌─ erc20_token.fe:117:5
     │
 117 │     fn _before_token_transfer(from: address, to: address, _ value: u256) {}
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10552855728897650120
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3567400584182650750
     │
     = FunctionSignature {
           self_decl: None,
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "from",
                   typ: Ok(
@@ -1821,6 +1904,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -1830,6 +1914,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),

@@ -47,24 +47,28 @@ note:
 note: 
    ┌─ simple_open_auction.fe:42:5
    │  
-42 │ ╭     pub fn bid(self, ctx: Context) {
+42 │ ╭     pub fn bid(mut self, mut ctx: Context) {
 43 │ │         if ctx.block_timestamp() > self.auction_end_time {
 44 │ │             revert AuctionAlreadyEnded()
 45 │ │         }
    · │
 55 │ │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
 56 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 1595133489687356319
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 833..837,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -283,24 +287,28 @@ note:
 note: 
    ┌─ simple_open_auction.fe:58:5
    │  
-58 │ ╭     pub fn withdraw(self, ctx: Context) -> bool {
+58 │ ╭     pub fn withdraw(mut self, ctx: Context) -> bool {
 59 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 60 │ │ 
 61 │ │         if amount > 0 {
    · │
 65 │ │         return true
 66 │ │     }
-   │ ╰─────^ attributes hash: 2616212654540170552
+   │ ╰─────^ attributes hash: 11935853243259623885
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1425..1429,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -411,24 +419,28 @@ note:
 note: 
    ┌─ simple_open_auction.fe:68:5
    │  
-68 │ ╭     pub fn action_end(self, ctx: Context) {
+68 │ ╭     pub fn action_end(mut self, mut ctx: Context) {
 69 │ │         if ctx.block_timestamp() <= self.auction_end_time {
 70 │ │             revert AuctionNotYetEnded()
 71 │ │         }
    · │
 78 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
 79 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 10290761832650275773
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1726..1730,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(

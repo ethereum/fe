@@ -1,5 +1,5 @@
 
-fn f():
+fn f() {
     # Mutate an immutable via aliasing...
 
     # ...at constuction time
@@ -11,9 +11,9 @@ fn f():
     let mut y1: Array<u8, 3>
     y1 = x
     y1[0] = 20
+}
 
-
-fn g():
+fn g() {
     # Put an immutable array into a mutable struct...
 
     # ...at construction time
@@ -34,14 +34,17 @@ fn g():
 
     # This should work.
     w2.set_array2([10, 10, 10])
+}
 
-struct ArrayWrapper:
+struct ArrayWrapper {
     pub array: Array<u8, 3>
 
-    pub fn set_array(mut self, _ array: Array<u8, 3>):
+    pub fn set_array(mut self, _ array: Array<u8, 3>) {
         self.array = array
         self.array[2] = 100
-
-    pub fn set_array2(mut self, mut _ array: Array<u8, 3>):
+    }
+    pub fn set_array2(mut self, mut _ array: Array<u8, 3>) {
         self.array = array
         self.array[2] = 100
+    }
+}

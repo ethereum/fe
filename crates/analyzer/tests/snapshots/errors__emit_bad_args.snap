@@ -11,13 +11,11 @@ error: `Foo` expects 4 arguments, but 5 were provided
    │              │                                 
    │              expects 4 arguments
 
-error: missing argument label
-   ┌─ compile_errors/emit_bad_args.fe:11:23
+error: expected mut arg
+   ┌─ compile_errors/emit_bad_args.fe:11:18
    │
 11 │         emit Foo(ctx, (1, 2), z: 10, y: true, x: 5)
-   │                       ^ add `x:` here
-   │
-   = Note: this label is optional if the argument is a variable named `x`.
+   │                  ^^^ this is not mutable
 
 error: incorrect type for `Foo` argument `x`
    ┌─ compile_errors/emit_bad_args.fe:11:23

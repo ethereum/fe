@@ -13,11 +13,11 @@ error: `bar` expects 1 argument, but 0 were provided
    │                                   -- supplied 0 arguments
 
 error: cannot modify `self`, as it is not mutable
-   ┌─ compile_errors/ctx_missing_internal_call.fe:10:9
+   ┌─ compile_errors/ctx_missing_internal_call.fe:11:9
    │
- 9 │     pub fn baz(self, ctx: Context):
+10 │     pub fn baz(self, ctx: Context) {
    │                ---- consider changing this to be mutable: `mut self`
-10 │         self.favorite_number = bar()
+11 │         self.favorite_number = bar()
    │         ^^^^ not mutable
 
 

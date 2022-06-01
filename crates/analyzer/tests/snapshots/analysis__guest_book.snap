@@ -18,24 +18,28 @@ note:
 note: 
    ┌─ guest_book.fe:14:5
    │  
-14 │ ╭     pub fn sign(self, ctx: Context, book_msg: String<100>) {
+14 │ ╭     pub fn sign(mut self, mut ctx: Context, book_msg: String<100>) {
 15 │ │         # All storage access is explicit using `self.<some-key>`
 16 │ │         self.messages[ctx.msg_sender()] = book_msg
 17 │ │ 
 18 │ │         # Emit the `Signed` event
 19 │ │         emit Signed(ctx, book_msg)
 20 │ │     }
-   │ ╰─────^ attributes hash: 12497999579229810685
+   │ ╰─────^ attributes hash: 14944303004151825907
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 361..365,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -48,6 +52,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "book_msg",
                  typ: Ok(
@@ -130,15 +135,19 @@ note:
 24 │ │         # has to be done explicitly via `to_mem()`
 25 │ │         return self.messages[addr].to_mem()
 26 │ │     }
-   │ ╰─────^ attributes hash: 3325224293767249368
+   │ ╰─────^ attributes hash: 5564385222313555802
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 622..626,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "addr",
                  typ: Ok(

@@ -1,32 +1,38 @@
-contract Foo:
+contract Foo {
     x: u8
 
-    fn foo(self):
+    fn foo(self) {
         self.set_things(x: 10)
         self.x = 100
-
-    fn set_things(mut self, x: u8):
+    }
+    fn set_things(mut self, x: u8) {
         self.x = x
-
-    fn test_struct():
+    }
+    fn test_struct() {
         let m: Person = Person(name: "Martha")
         m.set_name("May")
-
-    fn test_contract():
+    }
+    fn test_contract() {
         let b: Beef = Beef(address(0xbeef))
+    }
+}
 
-contract Beef:
+contract Beef {
     y: u8
 
-    pub fn set_y(mut self, y: u8):
+    pub fn set_y(mut self, y: u8) {
         self.y = y
+    }
+}
 
-struct Person:
+struct Person {
     pub name: String<100>
 
-    pub fn get_name(self) -> String<100>:
+    pub fn get_name(self) -> String<100> {
         self.name = "shouldnt work"
         return self.name
-
-    pub fn set_name(mut self, mut _ name: String<100>):
+    }
+    pub fn set_name(mut self, mut _ name: String<100>) {
         self.name = name
+    }
+}

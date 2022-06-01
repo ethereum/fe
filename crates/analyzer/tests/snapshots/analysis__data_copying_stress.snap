@@ -30,21 +30,25 @@ note:
 note: 
    ┌─ data_copying_stress.fe:16:5
    │  
-16 │ ╭     pub fn set_my_vals(self, my_string: String<42>, my_other_string: String<42>, my_u256: u256, my_other_u256: u256) {
+16 │ ╭     pub fn set_my_vals(mut self, my_string: String<42>, my_other_string: String<42>, my_u256: u256, my_other_u256: u256) {
 17 │ │         self.my_string = my_string
 18 │ │         self.my_other_string = my_other_string
 19 │ │         self.my_u256 = my_u256
 20 │ │         self.my_other_u256 = my_other_u256
 21 │ │     }
-   │ ╰─────^ attributes hash: 8414520425977761339
+   │ ╰─────^ attributes hash: 13119163414397333007
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 309..313,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_string",
                  typ: Ok(
@@ -56,6 +60,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_other_string",
                  typ: Ok(
@@ -67,6 +72,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_u256",
                  typ: Ok(
@@ -78,6 +84,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_other_u256",
                  typ: Ok(
@@ -143,15 +150,18 @@ note:
 note: 
    ┌─ data_copying_stress.fe:23:5
    │  
-23 │ ╭     pub fn set_to_my_other_vals(self) {
+23 │ ╭     pub fn set_to_my_other_vals(mut self) {
 24 │ │         self.my_string = self.my_other_string
 25 │ │         self.my_u256 = self.my_other_u256
 26 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
+   │ ╰─────^ attributes hash: 13976532559470675856
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 604..608,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -201,20 +211,21 @@ note:
 note: 
    ┌─ data_copying_stress.fe:28:5
    │  
-28 │ ╭     pub fn multiple_references_shared_memory(my_array: Array<u256, 10>) {
-29 │ │         let my_2nd_array: Array<u256, 10> = my_array
-30 │ │         let my_3rd_array: Array<u256, 10> = my_2nd_array
+28 │ ╭     pub fn multiple_references_shared_memory(mut my_array: Array<u256, 10>) {
+29 │ │         let mut my_2nd_array: Array<u256, 10> = my_array
+30 │ │         let mut my_3rd_array: Array<u256, 10> = my_2nd_array
 31 │ │         assert my_array[3] != 5
    · │
 39 │ │         assert my_3rd_array[3] == 50
 40 │ │     }
-   │ ╰─────^ attributes hash: 16237067187800993503
+   │ ╰─────^ attributes hash: 5546257418157211225
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "my_array",
                  typ: Ok(
@@ -237,20 +248,20 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:29:13
+   ┌─ data_copying_stress.fe:29:17
    │
-29 │         let my_2nd_array: Array<u256, 10> = my_array
-   │             ^^^^^^^^^^^^ Array<u256, 10>
-30 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
-   │             ^^^^^^^^^^^^ Array<u256, 10>
+29 │         let mut my_2nd_array: Array<u256, 10> = my_array
+   │                 ^^^^^^^^^^^^ Array<u256, 10>
+30 │         let mut my_3rd_array: Array<u256, 10> = my_2nd_array
+   │                 ^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
-   ┌─ data_copying_stress.fe:29:45
+   ┌─ data_copying_stress.fe:29:49
    │
-29 │         let my_2nd_array: Array<u256, 10> = my_array
-   │                                             ^^^^^^^^ Array<u256, 10>: Memory
-30 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
-   │                                             ^^^^^^^^^^^^ Array<u256, 10>: Memory
+29 │         let mut my_2nd_array: Array<u256, 10> = my_array
+   │                                                 ^^^^^^^^ Array<u256, 10>: Memory
+30 │         let mut my_3rd_array: Array<u256, 10> = my_2nd_array
+   │                                                 ^^^^^^^^^^^^ Array<u256, 10>: Memory
 31 │         assert my_array[3] != 5
    │                ^^^^^^^^ ^ u256: Value
    │                │         
@@ -405,17 +416,18 @@ note:
 note: 
    ┌─ data_copying_stress.fe:42:5
    │  
-42 │ ╭     pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
+42 │ ╭     pub fn mutate_and_return(mut my_array: Array<u256, 10>) -> Array<u256, 10> {
 43 │ │         my_array[3] = 5
 44 │ │         return my_array
 45 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 1975721721401490781
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "my_array",
                  typ: Ok(
@@ -466,13 +478,14 @@ note:
 47 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
 48 │ │         return my_array.clone()
 49 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 10787877182059102707
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_array",
                  typ: Ok(
@@ -518,13 +531,14 @@ note:
 52 │ │         my_array.clone()[3] = 5
 53 │ │         return my_array
 54 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 10787877182059102707
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_array",
                  typ: Ok(
@@ -578,18 +592,21 @@ note:
 note: 
    ┌─ data_copying_stress.fe:56:5
    │  
-56 │ ╭     pub fn assign_my_nums_and_return(self) -> Array<u256, 5> {
-57 │ │         let my_nums_mem: Array<u256, 5>
+56 │ ╭     pub fn assign_my_nums_and_return(mut self) -> Array<u256, 5> {
+57 │ │         let mut my_nums_mem: Array<u256, 5>
 58 │ │         self.my_nums[0] = 42
 59 │ │         self.my_nums[1] = 26
    · │
 64 │ │         return my_nums_mem
 65 │ │     }
-   │ ╰─────^ attributes hash: 13146367689365512086
+   │ ╰─────^ attributes hash: 18105779197536655976
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1644..1648,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -606,10 +623,10 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:57:13
+   ┌─ data_copying_stress.fe:57:17
    │
-57 │         let my_nums_mem: Array<u256, 5>
-   │             ^^^^^^^^^^^ Array<u256, 5>
+57 │         let mut my_nums_mem: Array<u256, 5>
+   │                 ^^^^^^^^^^^ Array<u256, 5>
 
 note: 
    ┌─ data_copying_stress.fe:58:9
@@ -726,20 +743,24 @@ note:
 note: 
    ┌─ data_copying_stress.fe:67:5
    │  
-67 │ ╭     pub fn emit_my_event(self, ctx: Context) {
+67 │ ╭     pub fn emit_my_event(self, mut ctx: Context) {
 68 │ │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
 69 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 7116838396799053469
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1961..1965,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -796,10 +817,10 @@ note:
 note: 
    ┌─ data_copying_stress.fe:71:5
    │  
-71 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
+71 │ ╭     fn emit_my_event_internal(mut ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
 72 │ │         emit MyEvent(ctx, my_string, my_u256)
 73 │ │     }
-   │ ╰─────^ attributes hash: 15658342901286022244
+   │ ╰─────^ attributes hash: 7009973305464434950
    │  
    = FunctionSignature {
          self_decl: None,
@@ -808,6 +829,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -820,6 +842,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -833,6 +856,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -899,18 +923,22 @@ note:
 note: 
    ┌─ data_copying_stress.fe:75:5
    │  
-75 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>) {
+75 │ ╭     pub fn set_my_addrs(mut self, my_addrs: Array<address, 3>) {
 76 │ │         self.my_addrs = my_addrs
 77 │ │     }
-   │ ╰─────^ attributes hash: 1347763946351267085
+   │ ╰─────^ attributes hash: 16854291332565717892
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 2242..2246,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_addrs",
                  typ: Ok(
@@ -950,11 +978,14 @@ note:
 79 │ ╭     pub fn get_my_second_addr(self) -> address {
 80 │ │         return self.my_addrs[1]
 81 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 5054122372842589159
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 2349..2353,
+             },
          ),
          ctx_decl: None,
          params: [],

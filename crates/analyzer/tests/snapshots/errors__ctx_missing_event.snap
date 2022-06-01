@@ -11,14 +11,6 @@ error: `HelloWorld` expects 2 arguments, but 1 was provided
   │              │           
   │              expects 2 arguments
 
-error: argument label mismatch
-  ┌─ compile_errors/ctx_missing_event.fe:9:25
-  │
-9 │         emit HelloWorld(message: "hello world")
-  │                         ^^^^^^^ expected `ctx`
-  │
-  = Note: arguments must be provided in order.
-
 error: incorrect type for `HelloWorld` argument `ctx`
   ┌─ compile_errors/ctx_missing_event.fe:9:34
   │

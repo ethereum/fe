@@ -34,9 +34,9 @@ error: expected mut arg
    │                   ^^^ this is not mutable
 
 error: sneaky mutation
-   ┌─ compile_errors/sneaky_mutation.fe:42:9
+   ┌─ compile_errors/sneaky_mutation.fe:43:9
    │
-42 │         self.array = array
+43 │         self.array = array
    │         ^^^^^^^^^^   ----- this is immutable
    │         │             
    │         this is mutable

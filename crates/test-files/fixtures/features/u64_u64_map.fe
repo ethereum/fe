@@ -5,7 +5,7 @@ contract Foo {
         return self.bar[key]
     }
 
-    pub fn write_bar(self, key: u64, value: u64) {
+    pub fn write_bar(mut self, key: u64, value: u64) {
         self.bar[key] = value
     }
 }

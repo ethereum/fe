@@ -20,7 +20,7 @@ contract UniswapV2Pair {
 
     nonces: Map<address, u256>
 
-    factory: address
+    factory: UniswapV2Factory
     token0: ERC20
     token1: ERC20
 
@@ -71,12 +71,12 @@ contract UniswapV2Pair {
         reserve1: u256
     }
 
-    pub fn __init__(self, ctx: Context) {
-        self.factory = ctx.msg_sender()
+    pub fn __init__(mut self, ctx: Context) {
+        self.factory = UniswapV2Factory(ctx.msg_sender())
     }
 
     pub fn factory(self) -> address {
-        return self.factory
+        return address(self.factory)
     }
 
     pub fn token0(self) -> address {
@@ -87,40 +87,40 @@ contract UniswapV2Pair {
         return address(self.token1)
     }
 
-    fn _mint(self, ctx: Context, to: address, value: u256) {
+    fn _mint(mut self, mut ctx: Context, to: address, value: u256) {
         self.total_supply = self.total_supply + value
         self.balances[to] = self.balances[to] + value
         emit Transfer(ctx, from: address(0), to, value)
     }
 
-    fn _burn(self, ctx: Context, from: address, value: u256) {
+    fn _burn(mut self, mut ctx: Context, from: address, value: u256) {
         self.balances[from] = self.balances[from] - value
         self.total_supply = self.total_supply - value
         emit Transfer(ctx, from, to: address(0), value)
     }
 
-    fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
+    fn _approve(mut self, mut ctx: Context, owner: address, spender: address, value: u256) {
         self.allowances[owner][spender] = value
         emit Approval(ctx, owner, spender, value)
     }
 
-    fn _transfer(self, ctx: Context, from: address, to: address, value: u256) {
+    fn _transfer(mut self, mut ctx: Context, from: address, to: address, value: u256) {
         self.balances[from] = self.balances[from] - value
         self.balances[to] = self.balances[to] + value
         emit Transfer(ctx, from, to, value)
     }
 
-    pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
+    pub fn approve(mut self, mut ctx: Context, spender: address, value: u256) -> bool {
         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
         return true
     }
 
-    pub fn transfer(self, ctx: Context, to: address, value: u256) -> bool {
+    pub fn transfer(mut self, mut ctx: Context, to: address, value: u256) -> bool {
         self._transfer(ctx, from: ctx.msg_sender(), to, value)
         return true
     }
 
-    pub fn transferFrom(self, ctx: Context, from: address, to: address, value: u256) -> bool {
+    pub fn transferFrom(mut self, mut ctx: Context, from: address, to: address, value: u256) -> bool {
         assert self.allowances[from][ctx.msg_sender()] >= value
         self.allowances[from][ctx.msg_sender()] = self.allowances[from][ctx.msg_sender()] - value
         self._transfer(ctx, from, to, value)
@@ -136,14 +136,14 @@ contract UniswapV2Pair {
     }
 
     # called once by the factory at time of deployment
-    pub fn initialize(self, ctx: Context, token0: ERC20, token1: ERC20) {
-        assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
+    pub fn initialize(mut self, ctx: Context, token0: ERC20, token1: ERC20) {
+        assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
         self.token0 = token0
         self.token1 = token1
     }
 
     # update reserves and, on the first call per block, price accumulators
-    fn _update(self, ctx: Context, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256) {
+    fn _update(mut self, mut ctx: Context, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256) {
         # changed from u32s
         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
         let block_timestamp: u256 = ctx.block_timestamp() % 2 ** 32
@@ -158,8 +158,8 @@ contract UniswapV2Pair {
         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
     }
 
-    fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
-        let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    fn _mint_fee(mut self, mut ctx: Context, reserve0: u256, reserve1: u256) -> bool {
+        let fee_to: address = self.factory.fee_to()
         let fee_on: bool = fee_to != address(0)
         let k_last: u256 = self.k_last
         if fee_on {
@@ -182,7 +182,7 @@ contract UniswapV2Pair {
     }
 
     # this low-level function should be called from a contract which performs important safety checks
-    pub fn mint(self, ctx: Context, to: address) -> u256 {
+    pub fn mint(mut self, mut ctx: Context, to: address) -> u256 {
         let MINIMUM_LIQUIDITY: u256 = 1000
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
@@ -192,7 +192,7 @@ contract UniswapV2Pair {
         let amount1: u256 = balance1 - self.reserve1
         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
-        let liquidity: u256 = 0
+        let mut liquidity: u256 = 0
         if total_supply == 0 {
             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
@@ -210,13 +210,13 @@ contract UniswapV2Pair {
     }
 
     # this low-level function should be called from a contract which performs important safety checks
-    pub fn burn(self, ctx: Context, to: address) -> (u256, u256) {
+    pub fn burn(mut self, mut ctx: Context, to: address) -> (u256, u256) {
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
         let token0: ERC20 = self.token0
         let token1: ERC20 = self.token1
-        let balance0: u256 = token0.balanceOf(ctx.self_address())
-        let balance1: u256 = token1.balanceOf(ctx.self_address())
+        let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+        let mut balance1: u256 = token1.balanceOf(ctx.self_address())
         let liquidity: u256 = self.balances[ctx.self_address()]
 
         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
@@ -240,7 +240,7 @@ contract UniswapV2Pair {
     # this low-level function should be called from a contract which performs important safety checks
     # TODO: add support for the bytes type (https://github.com/ethereum/fe/issues/280)
     # pub fn swap(amount0_out: u256, amount1_out: u256, to: address, data: bytes):
-    pub fn swap(self, ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
+    pub fn swap(mut self, mut ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
@@ -288,7 +288,7 @@ contract UniswapV2Pair {
     }
 
     # force reserves to match balances
-    pub fn sync(self, ctx: Context) {
+    pub fn sync(mut self, mut ctx: Context) {
         let token0: ERC20 = self.token0
         let token1: ERC20 = self.token1
         self._update(ctx,
@@ -315,7 +315,7 @@ contract UniswapV2Factory {
         index: u256
     }
 
-    pub fn __init__(self, _ fee_to_setter: address) {
+    pub fn __init__(mut self, _ fee_to_setter: address) {
         self.fee_to_setter = fee_to_setter
     }
 
@@ -331,7 +331,7 @@ contract UniswapV2Factory {
         return self.pair_counter
     }
 
-    pub fn create_pair(self, ctx: Context, _ token_a: address, _ token_b: address) -> address {
+    pub fn create_pair(mut self, mut ctx: Context, _ token_a: address, _ token_b: address) -> address {
         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 
         let token0: address = token_a if token_a < token_b else token_b
@@ -352,22 +352,22 @@ contract UniswapV2Factory {
         return address(pair)
     }
 
-    pub fn set_fee_to(self, ctx: Context, fee_to: address) {
+    pub fn set_fee_to(mut self, ctx: Context, fee_to: address) {
         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
         self.fee_to = fee_to
     }
 
-    pub fn set_fee_to_setter(self, ctx: Context, fee_to_setter: address) {
+    pub fn set_fee_to_setter(mut self, ctx: Context, fee_to_setter: address) {
         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
         self.fee_to_setter = fee_to_setter
     }
 }
 
 fn sqrt(_ val: u256) -> u256 {
-    let z: u256
+    let mut z: u256
     if val > 3 {
         z = val
-        let x: u256 = val / 2 + 1
+        let mut x: u256 = val / 2 + 1
         while x < z {
             z = x
             x = (val / x + x) / 2

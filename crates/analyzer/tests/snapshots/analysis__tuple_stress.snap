@@ -21,13 +21,14 @@ note:
 10 │ ╭     pub fn build_my_tuple(my_num: u256, my_bool: bool, my_address: address) -> (u256, bool, address) {
 11 │ │         return (my_num, my_bool, my_address)
 12 │ │     }
-   │ ╰─────^ attributes hash: 10223738621782129186
+   │ ╰─────^ attributes hash: 360724337181506789
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_num",
                  typ: Ok(
@@ -39,6 +40,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_bool",
                  typ: Ok(
@@ -48,6 +50,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_address",
                  typ: Ok(
@@ -99,13 +102,14 @@ note:
 14 │ ╭     pub fn read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256 {
 15 │ │         return my_tuple.item0
 16 │ │     }
-   │ ╰─────^ attributes hash: 1005385906871296536
+   │ ╰─────^ attributes hash: 15352344024579628422
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(
@@ -156,13 +160,14 @@ note:
 18 │ ╭     pub fn read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool {
 19 │ │         return my_tuple.item1
 20 │ │     }
-   │ ╰─────^ attributes hash: 5615774585289781220
+   │ ╰─────^ attributes hash: 8583403567405507409
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(
@@ -211,13 +216,14 @@ note:
 22 │ ╭     pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address {
 23 │ │         return my_tuple.item2
 24 │ │     }
-   │ ╰─────^ attributes hash: 13024428391414866682
+   │ ╰─────^ attributes hash: 12664160725472535777
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(
@@ -266,13 +272,14 @@ note:
 26 │ ╭     pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address {
 27 │ │         return my_tuple.item10
 28 │ │     }
-   │ ╰─────^ attributes hash: 11830390438544540912
+   │ ╰─────^ attributes hash: 3066397049255145296
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(
@@ -360,10 +367,10 @@ note:
 note: 
    ┌─ tuple_stress.fe:30:5
    │  
-30 │ ╭     pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)) {
+30 │ ╭     pub fn emit_my_event(mut ctx: Context, my_tuple: (u256, bool, address)) {
 31 │ │         emit MyEvent(ctx, my_tuple)
 32 │ │     }
-   │ ╰─────^ attributes hash: 10535390144430265813
+   │ ╰─────^ attributes hash: 11025609152955346579
    │  
    = FunctionSignature {
          self_decl: None,
@@ -372,6 +379,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -384,6 +392,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(
@@ -460,19 +469,23 @@ note:
 note: 
    ┌─ tuple_stress.fe:34:5
    │  
-34 │ ╭     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32) {
+34 │ ╭     pub fn set_my_sto_tuple(mut self, my_u256: u256, my_i32: i32) {
 35 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 36 │ │         self.my_sto_tuple = (my_u256, my_i32)
 37 │ │     }
-   │ ╰─────^ attributes hash: 14404502892103280650
+   │ ╰─────^ attributes hash: 18341452813968392070
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 948..952,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_u256",
                  typ: Ok(
@@ -484,6 +497,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_i32",
                  typ: Ok(
@@ -591,11 +605,14 @@ note:
 39 │ ╭     pub fn get_my_sto_tuple(self) -> (u256, i32) {
 40 │ │         return self.my_sto_tuple.to_mem()
 41 │ │     }
-   │ ╰─────^ attributes hash: 6833980121040096883
+   │ ╰─────^ attributes hash: 15633340648095965563
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1153..1157,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -640,22 +657,26 @@ note:
 note: 
    ┌─ tuple_stress.fe:43:5
    │  
-43 │ ╭     pub fn build_tuple_and_emit(self, ctx: Context) {
+43 │ ╭     pub fn build_tuple_and_emit(self, mut ctx: Context) {
 44 │ │         let my_num: u256 = self.my_sto_tuple.item0
 45 │ │         let my_tuple: (u256, bool, address) = (self.my_sto_tuple.item0, true and false, address(26))
 46 │ │         emit_my_event(ctx, my_tuple)
 47 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 14064258130730596935
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1257..1261,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -754,13 +775,14 @@ note:
 49 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96> {
 50 │ │         return my_tuple.abi_encode()
 51 │ │     }
-   │ ╰─────^ attributes hash: 3539305055628398466
+   │ ╰─────^ attributes hash: 8393962525368106551
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_tuple",
                  typ: Ok(

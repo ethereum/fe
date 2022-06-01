@@ -1,7 +1,7 @@
 contract Foo {
     my_sto_array: Array<u256, 10>
 
-    pub fn bar(self, my_array: Array<u256, 10>) {
+    pub fn bar(self, mut my_array: Array<u256, 10>) {
         my_array = self.my_sto_array
     }
 

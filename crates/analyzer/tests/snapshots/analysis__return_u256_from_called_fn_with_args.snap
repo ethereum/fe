@@ -15,13 +15,14 @@ note:
 4 │ ╭     pub fn foo(_ v1: u256, _ v2: u256, _ v3: u256, _ v4: u256, _ v5: u256) -> u256 {
 5 │ │         return v1 + v2 + v3 + v4 + v5
 6 │ │     }
-  │ ╰─────^ attributes hash: 1504347162142127509
+  │ ╰─────^ attributes hash: 9997518414697594592
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -35,6 +36,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -48,6 +50,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -61,6 +64,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -74,6 +78,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -164,15 +169,18 @@ note:
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:12:5
    │  
-12 │ ╭     pub fn bar(self) -> u256 {
+12 │ ╭     pub fn bar(mut self) -> u256 {
 13 │ │         self.baz[0] = 43
 14 │ │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
 15 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 17805881872798975162
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 243..247,
+             },
          ),
          ctx_decl: None,
          params: [],

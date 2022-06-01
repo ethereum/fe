@@ -250,7 +250,7 @@ note:
 37 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
 38 │ │         return bing_contract.add(40, 50)
 39 │ │     }
-   │ ╰─────^ attributes hash: 10526263819290319263
+   │ ╰─────^ attributes hash: 5670239331635616289
    │  
    = FunctionSignature {
          self_decl: None,
@@ -259,6 +259,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -385,13 +386,14 @@ note:
 12 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256 {
 13 │ │         return x + y
 14 │ │     }
-   │ ╰─────^ attributes hash: 4448606202021980030
+   │ ╰─────^ attributes hash: 15612950807422836908
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -405,6 +407,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -485,11 +488,14 @@ note:
 6 │ ╭     pub fn rums(self) -> u256 {
 7 │ │         return 1
 8 │ │     }
-  │ ╰─────^ attributes hash: 11773348765973600208
+  │ ╰─────^ attributes hash: 13982485923064363433
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: Ref,
+                span: 86..90,
+            },
         ),
         ctx_decl: None,
         params: [],

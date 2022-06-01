@@ -12,18 +12,22 @@ note:
 note: 
   ┌─ call_statement_with_args.fe:4:5
   │  
-4 │ ╭     fn assign(self, _ val: u256) {
+4 │ ╭     fn assign(mut self, _ val: u256) {
 5 │ │         self.baz[0] = val
 6 │ │     }
-  │ ╰─────^ attributes hash: 15254234582808678866
+  │ ╰─────^ attributes hash: 7343693722356781615
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: MutRef,
+                span: 59..63,
+            },
         ),
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -69,15 +73,18 @@ note:
 note: 
    ┌─ call_statement_with_args.fe:8:5
    │  
- 8 │ ╭     pub fn bar(self) -> u256 {
+ 8 │ ╭     pub fn bar(mut self) -> u256 {
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
 11 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 2372547157715064603
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 132..136,
+             },
          ),
          ctx_decl: None,
          params: [],

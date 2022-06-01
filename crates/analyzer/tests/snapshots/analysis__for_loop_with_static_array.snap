@@ -7,7 +7,7 @@ note:
    ┌─ for_loop_with_static_array.fe:2:5
    │  
  2 │ ╭     pub fn bar() -> u256 {
- 3 │ │         let my_array: Array<u256, 3>
+ 3 │ │         let mut my_array: Array<u256, 3>
  4 │ │         my_array[0] = 5
  5 │ │         my_array[1] = 10
    · │
@@ -29,13 +29,13 @@ note:
      }
 
 note: 
-  ┌─ for_loop_with_static_array.fe:3:13
+  ┌─ for_loop_with_static_array.fe:3:17
   │
-3 │         let my_array: Array<u256, 3>
-  │             ^^^^^^^^ Array<u256, 3>
+3 │         let mut my_array: Array<u256, 3>
+  │                 ^^^^^^^^ Array<u256, 3>
   ·
-7 │         let sum: u256 = 0
-  │             ^^^ u256
+7 │         let mut sum: u256 = 0
+  │                 ^^^ u256
 8 │         for i in my_array {
   │             ^ u256
 
@@ -78,8 +78,8 @@ note:
   │         ^^^^^^^^^^^   ^^ u256: Value
   │         │              
   │         u256: Memory
-7 │         let sum: u256 = 0
-  │                         ^ u256: Value
+7 │         let mut sum: u256 = 0
+  │                             ^ u256: Value
 8 │         for i in my_array {
   │                  ^^^^^^^^ Array<u256, 3>: Memory
 9 │             sum = sum + i

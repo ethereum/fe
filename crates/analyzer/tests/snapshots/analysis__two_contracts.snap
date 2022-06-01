@@ -12,21 +12,25 @@ note:
 note: 
    ┌─ two_contracts.fe:10:5
    │  
-10 │ ╭     pub fn foo(self, ctx: Context) -> u256 {
+10 │ ╭     pub fn foo(mut self, ctx: Context) -> u256 {
 11 │ │         self.other.set_foo_addr(ctx.self_address())
 12 │ │         return self.other.answer()
 13 │ │     }
-   │ ╰─────^ attributes hash: 3247318976601732237
+   │ ╰─────^ attributes hash: 17308523880210986290
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 170..174,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -94,13 +98,14 @@ note:
 15 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256 {
 16 │ │         return x + y
 17 │ │     }
-   │ ╰─────^ attributes hash: 4448606202021980030
+   │ ╰─────^ attributes hash: 15612950807422836908
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -114,6 +119,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -159,18 +165,22 @@ note:
 note: 
    ┌─ two_contracts.fe:23:5
    │  
-23 │ ╭     pub fn set_foo_addr(self, _ addr: address) {
+23 │ ╭     pub fn set_foo_addr(mut self, _ addr: address) {
 24 │ │         self.other = Foo(addr)
 25 │ │     }
-   │ ╰─────^ attributes hash: 3263176293298741376
+   │ ╰─────^ attributes hash: 16843431437153664683
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 430..434,
+             },
          ),
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -215,11 +225,14 @@ note:
 27 │ ╭     pub fn answer(self) -> u256 {
 28 │ │         return self.other.add(20, 22)
 29 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 12456261780698058596
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 511..515,
+             },
          ),
          ctx_decl: None,
          params: [],

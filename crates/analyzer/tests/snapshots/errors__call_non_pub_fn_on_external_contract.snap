@@ -6,7 +6,7 @@ expression: "error_string(&path, test_files::fixture(path))"
 error: the function `do_private_thingz` on `contract Foo` is private
    ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:13:25
    │  
- 6 │ ╭     fn do_private_thingz(self) {
+ 6 │ ╭     fn do_private_thingz(mut self) {
  7 │ │         self.val = 100
  8 │ │     }
    │ ╰─────' `do_private_thingz` is defined here

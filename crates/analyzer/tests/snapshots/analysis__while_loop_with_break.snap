@@ -7,7 +7,7 @@ note:
   ┌─ while_loop_with_break.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> u256 {
-3 │ │         let val: u256 = 0
+3 │ │         let mut val: u256 = 0
 4 │ │         while val < 2 {
 5 │ │             val = val + 1
   · │
@@ -29,16 +29,16 @@ note:
     }
 
 note: 
-  ┌─ while_loop_with_break.fe:3:13
+  ┌─ while_loop_with_break.fe:3:17
   │
-3 │         let val: u256 = 0
-  │             ^^^ u256
+3 │         let mut val: u256 = 0
+  │                 ^^^ u256
 
 note: 
-  ┌─ while_loop_with_break.fe:3:25
+  ┌─ while_loop_with_break.fe:3:29
   │
-3 │         let val: u256 = 0
-  │                         ^ u256: Value
+3 │         let mut val: u256 = 0
+  │                             ^ u256: Value
 4 │         while val < 2 {
   │               ^^^   ^ u256: Value
   │               │      

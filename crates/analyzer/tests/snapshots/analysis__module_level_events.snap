@@ -16,10 +16,10 @@ note:
 note: 
    ┌─ module_level_events.fe:10:5
    │  
-10 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
+10 │ ╭     fn transfer(mut ctx: Context, to: address, value: u256) {
 11 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
 12 │ │     }
-   │ ╰─────^ attributes hash: 10847004199357482546
+   │ ╰─────^ attributes hash: 4681643600085308816
    │  
    = FunctionSignature {
          self_decl: None,
@@ -28,6 +28,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -40,6 +41,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "to",
                  typ: Ok(
@@ -49,6 +51,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(

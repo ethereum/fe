@@ -3,11 +3,11 @@ use std::context::Context
 contract Foo {
     other: Bar
 
-    pub fn __init__(self, ctx: Context) {
+    pub fn __init__(mut self, ctx: Context) {
         self.other = Bar.create(ctx, 0)
     }
 
-    pub fn foo(self, ctx: Context) -> u256 {
+    pub fn foo(mut self, ctx: Context) -> u256 {
         self.other.set_foo_addr(ctx.self_address())
         return self.other.answer()
     }
@@ -20,7 +20,7 @@ contract Foo {
 contract Bar {
     other: Foo
 
-    pub fn set_foo_addr(self, _ addr: address) {
+    pub fn set_foo_addr(mut self, _ addr: address) {
         self.other = Foo(addr)
     }
 

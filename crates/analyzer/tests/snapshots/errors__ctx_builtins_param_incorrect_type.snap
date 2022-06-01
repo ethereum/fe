@@ -23,14 +23,6 @@ error: incorrect type for argument to `Barn.create`
 14 │         let created_barn: Barn = Barn.create(address(26), 0)
    │                                              ^^^^^^^^^^^ this has type `address`; expected `Context`
 
-error: missing argument label
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:15:27
-   │
-15 │         emit WorldMessage(42, message: "hello world")
-   │                           ^ add `ctx:` here
-   │
-   = Note: this label is optional if the argument is a variable named `ctx`.
-
 error: incorrect type for `WorldMessage` argument `ctx`
    ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:15:27
    │

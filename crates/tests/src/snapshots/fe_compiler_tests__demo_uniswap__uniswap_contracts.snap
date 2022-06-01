@@ -12,7 +12,7 @@ balanceOf([Address(0x0000000000000000000000000000000000000000)]) used 628 gas
 get_reserves([]) used 801 gas
 swap([Uint(1993), Uint(0), Address(0x0000000000000000000000000000000000000042)]) used 36368 gas
 get_reserves([]) used 801 gas
-transfer([Address(0xfe56bcfd2347f902e355bce7d8616526aa5c064c), Uint(141421356237309503880)]) used 5802 gas
+transfer([Address(0xc5992755e189b833002ff4dae0977fad561e1ae3), Uint(141421356237309503880)]) used 5802 gas
 burn([Address(0x1000000000000000000000000000000000000001)]) used 3650 gas
 get_reserves([]) used 801 gas
 

@@ -17,13 +17,14 @@ note:
 5 │ ╭     pub fn bar(baz: u256) {
 6 │ │         assert baz > 5
 7 │ │     }
-  │ ╰─────^ attributes hash: 2614610269237134179
+  │ ╰─────^ attributes hash: 11180987370333190690
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "baz",
                 typ: Ok(
@@ -62,13 +63,14 @@ note:
  9 │ ╭     pub fn revert_with_static_string(baz: u256) {
 10 │ │         assert baz > 5, "Must be greater than five"
 11 │ │     }
-   │ ╰─────^ attributes hash: 2614610269237134179
+   │ ╰─────^ attributes hash: 11180987370333190690
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "baz",
                  typ: Ok(
@@ -109,13 +111,14 @@ note:
 13 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>) {
 14 │ │         assert baz > 5, reason
 15 │ │     }
-   │ ╰─────^ attributes hash: 10044481770469626577
+   │ ╰─────^ attributes hash: 5856527761647113718
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "baz",
                  typ: Ok(
@@ -127,6 +130,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "reason",
                  typ: Ok(
@@ -164,15 +168,18 @@ note:
 note: 
    ┌─ assert.fe:17:5
    │  
-17 │ ╭     pub fn assert_sto_bool(self) {
+17 │ ╭     pub fn assert_sto_bool(mut self) {
 18 │ │         self.my_bool = false
 19 │ │         assert self.my_bool
 20 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
+   │ ╰─────^ attributes hash: 6172828757363943507
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 353..357,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -208,15 +215,18 @@ note:
 note: 
    ┌─ assert.fe:22:5
    │  
-22 │ ╭     pub fn assert_sto_string_msg(self) {
+22 │ ╭     pub fn assert_sto_string_msg(mut self) {
 23 │ │         self.my_string = "hello"
 24 │ │         assert false, self.my_string.to_mem()
 25 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
+   │ ╰─────^ attributes hash: 14412201928266294920
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 462..466,
+             },
          ),
          ctx_decl: None,
          params: [],

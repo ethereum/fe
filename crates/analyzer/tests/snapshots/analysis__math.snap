@@ -7,19 +7,20 @@ note:
    ┌─ math.fe:2:5
    │  
  2 │ ╭     pub fn sqrt(val: u256) -> u256 {
- 3 │ │         let z: u256
+ 3 │ │         let mut z: u256
  4 │ │         if val > 3 {
  5 │ │             z = val
    · │
 14 │ │         return z
 15 │ │     }
-   │ ╰─────^ attributes hash: 12367727332255217641
+   │ ╰─────^ attributes hash: 9591732929458065615
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "val",
                  typ: Ok(
@@ -41,13 +42,13 @@ note:
      }
 
 note: 
-  ┌─ math.fe:3:13
+  ┌─ math.fe:3:17
   │
-3 │         let z: u256
-  │             ^ u256
-  ·
-6 │             let x: u256 = val / 2 + 1
+3 │         let mut z: u256
   │                 ^ u256
+  ·
+6 │             let mut x: u256 = val / 2 + 1
+  │                     ^ u256
 
 note: 
   ┌─ math.fe:4:12
@@ -66,24 +67,24 @@ note:
   │             ^   ^^^ u256: Value
   │             │    
   │             u256: Value
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^   ^ u256: Value
-  │                           │      
-  │                           u256: Value
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^   ^ u256: Value
+  │                               │      
+  │                               u256: Value
 
 note: 
-  ┌─ math.fe:6:27
+  ┌─ math.fe:6:31
   │
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^   ^ u256: Value
-  │                           │          
-  │                           u256: Value
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^^^^^   ^ u256: Value
+  │                               │          
+  │                               u256: Value
 
 note: 
-  ┌─ math.fe:6:27
+  ┌─ math.fe:6:31
   │
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^^^^^ u256: Value
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^^^^^^^^^ u256: Value
 7 │             while x < z {
   │                   ^   ^ u256: Value
   │                   │    
@@ -150,13 +151,14 @@ note:
 17 │ ╭     pub fn min(x: u256, y: u256) -> u256 {
 18 │ │         return x if x < y else y
 19 │ │     }
-   │ ╰─────^ attributes hash: 6847926207878778580
+   │ ╰─────^ attributes hash: 17735345042517179818
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "x",
                  typ: Ok(
@@ -168,6 +170,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "y",
                  typ: Ok(

@@ -7,17 +7,18 @@ note:
   ┌─ return_array.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256) -> Array<u256, 5> {
-3 │ │         let my_array: Array<u256, 5>
+3 │ │         let mut my_array: Array<u256, 5>
 4 │ │         my_array[3] = x
 5 │ │         return my_array
 6 │ │     }
-  │ ╰─────^ attributes hash: 5752237891839439208
+  │ ╰─────^ attributes hash: 10359449677193810264
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "x",
                 typ: Ok(
@@ -42,10 +43,10 @@ note:
     }
 
 note: 
-  ┌─ return_array.fe:3:13
+  ┌─ return_array.fe:3:17
   │
-3 │         let my_array: Array<u256, 5>
-  │             ^^^^^^^^ Array<u256, 5>
+3 │         let mut my_array: Array<u256, 5>
+  │                 ^^^^^^^^ Array<u256, 5>
 
 note: 
   ┌─ return_array.fe:4:9

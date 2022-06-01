@@ -23,11 +23,14 @@ note:
 15 │ ╭     pub fn owner(self) -> address {
 16 │ │         return self._owner
 17 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 11261936337788107530
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 281..285,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -53,22 +56,26 @@ note:
 note: 
    ┌─ ownable.fe:19:5
    │  
-19 │ ╭     pub fn renounceOwnership(self, ctx: Context) {
+19 │ ╭     pub fn renounceOwnership(mut self, mut ctx: Context) {
 20 │ │         assert ctx.msg_sender() == self._owner
 21 │ │         self._owner = address(0)
 22 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
 23 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
+   │ ╰─────^ attributes hash: 5772252786598169948
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 367..371,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -181,23 +188,27 @@ note:
 note: 
    ┌─ ownable.fe:25:5
    │  
-25 │ ╭     pub fn transferOwnership(self, ctx: Context, newOwner: address) {
+25 │ ╭     pub fn transferOwnership(mut self, mut ctx: Context, newOwner: address) {
 26 │ │         assert ctx.msg_sender() == self._owner
 27 │ │         assert newOwner != address(0)
 28 │ │         self._owner = newOwner
 29 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
 30 │ │     }
-   │ ╰─────^ attributes hash: 5690910393288515862
+   │ ╰─────^ attributes hash: 2485595419646747986
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 607..611,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -210,6 +221,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "newOwner",
                  typ: Ok(

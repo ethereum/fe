@@ -7,7 +7,7 @@ event Transfer {
 }
 
 contract Foo {
-    fn transfer(ctx: Context, to: address, value: u256) {
+    fn transfer(mut ctx: Context, to: address, value: u256) {
         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
     }
 }

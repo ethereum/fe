@@ -16,10 +16,10 @@ note:
 note: 
    ┌─ external_contract.fe:10:5
    │  
-10 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+10 │ ╭     pub fn emit_event(mut ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 11 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
 12 │ │     }
-   │ ╰─────^ attributes hash: 14584319691445179306
+   │ ╰─────^ attributes hash: 16228661198190992587
    │  
    = FunctionSignature {
          self_decl: None,
@@ -28,6 +28,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -40,6 +41,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_num",
                  typ: Ok(
@@ -51,6 +53,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_addrs",
                  typ: Ok(
@@ -63,6 +66,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_string",
                  typ: Ok(
@@ -141,19 +145,20 @@ note:
    ┌─ external_contract.fe:14:5
    │  
 14 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3> {
-15 │ │         let my_array: Array<u256, 3>
+15 │ │         let mut my_array: Array<u256, 3>
 16 │ │         my_array[0] = a
 17 │ │         my_array[1] = a * b
 18 │ │         my_array[2] = b
 19 │ │         return my_array
 20 │ │     }
-   │ ╰─────^ attributes hash: 14276910879408601208
+   │ ╰─────^ attributes hash: 10662183460702627724
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "a",
                  typ: Ok(
@@ -165,6 +170,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "b",
                  typ: Ok(
@@ -189,10 +195,10 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:15:13
+   ┌─ external_contract.fe:15:17
    │
-15 │         let my_array: Array<u256, 3>
-   │             ^^^^^^^^ Array<u256, 3>
+15 │         let mut my_array: Array<u256, 3>
+   │                 ^^^^^^^^ Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:16:9
@@ -246,11 +252,11 @@ note:
 note: 
    ┌─ external_contract.fe:24:5
    │  
-24 │ ╭     pub fn call_emit_event(ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+24 │ ╭     pub fn call_emit_event(mut ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 25 │ │         let foo: Foo = Foo(foo_address)
 26 │ │         foo.emit_event(ctx, my_num, my_addrs, my_string)
 27 │ │     }
-   │ ╰─────^ attributes hash: 11744736773867210426
+   │ ╰─────^ attributes hash: 4061500227430759613
    │  
    = FunctionSignature {
          self_decl: None,
@@ -259,6 +265,7 @@ note:
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -271,6 +278,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "foo_address",
                  typ: Ok(
@@ -280,6 +288,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_num",
                  typ: Ok(
@@ -291,6 +300,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_addrs",
                  typ: Ok(
@@ -303,6 +313,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "my_string",
                  typ: Ok(
@@ -359,13 +370,14 @@ note:
 30 │ │         let foo: Foo = Foo(foo_address)
 31 │ │         return foo.build_array(a, b)
 32 │ │     }
-   │ ╰─────^ attributes hash: 4627171240003453976
+   │ ╰─────^ attributes hash: 10337064335796372437
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "foo_address",
                  typ: Ok(
@@ -375,6 +387,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "a",
                  typ: Ok(
@@ -386,6 +399,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "b",
                  typ: Ok(

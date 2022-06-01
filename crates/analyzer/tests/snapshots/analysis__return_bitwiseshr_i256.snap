@@ -9,13 +9,14 @@ note:
 2 │ ╭     pub fn bar(x: i256, y: u256) -> i256 {
 3 │ │         return x >> y
 4 │ │     }
-  │ ╰─────^ attributes hash: 12518870770702615859
+  │ ╰─────^ attributes hash: 17489076620501404074
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "x",
                 typ: Ok(
@@ -27,6 +28,7 @@ note:
                 ),
             },
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "y",
                 typ: Ok(

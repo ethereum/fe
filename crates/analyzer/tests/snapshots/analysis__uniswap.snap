@@ -9,13 +9,14 @@ note:
 4 │ ╭     pub fn balanceOf(_ account: address) -> u256 {
 5 │ │         return 0
 6 │ │     }
-  │ ╰─────^ attributes hash: 4709511530683498418
+  │ ╰─────^ attributes hash: 15536516206350149884
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: Some(
                     "_",
                 ),
@@ -48,13 +49,14 @@ note:
  8 │ ╭     pub fn transfer(to: address, _ amount: u256) -> bool {
  9 │ │         return false
 10 │ │     }
-   │ ╰─────^ attributes hash: 12261720285838819896
+   │ ╰─────^ attributes hash: 12085341657079846741
    │  
    = FunctionSignature {
          self_decl: None,
          ctx_decl: None,
          params: [
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "to",
                  typ: Ok(
@@ -64,6 +66,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: Some(
                      "_",
                  ),
@@ -103,8 +106,8 @@ note:
 21 │     nonces: Map<address, u256>
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 22 │ 
-23 │     factory: address
-   │     ^^^^^^^^^^^^^^^^ address
+23 │     factory: UniswapV2Factory
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Factory
 24 │     token0: ERC20
    │     ^^^^^^^^^^^^^ ERC20
 25 │     token1: ERC20
@@ -194,13 +197,16 @@ note:
    ┌─ uniswap.fe:78:5
    │  
 78 │ ╭     pub fn factory(self) -> address {
-79 │ │         return self.factory
+79 │ │         return address(self.factory)
 80 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 15278132372417349493
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1502..1506,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -212,16 +218,22 @@ note:
      }
 
 note: 
-   ┌─ uniswap.fe:79:16
+   ┌─ uniswap.fe:79:24
    │
-79 │         return self.factory
-   │                ^^^^ UniswapV2Pair: Value
+79 │         return address(self.factory)
+   │                        ^^^^ UniswapV2Pair: Value
+
+note: 
+   ┌─ uniswap.fe:79:24
+   │
+79 │         return address(self.factory)
+   │                        ^^^^^^^^^^^^ UniswapV2Factory: Storage { nonce: Some(4) } => Value
 
 note: 
    ┌─ uniswap.fe:79:16
    │
-79 │         return self.factory
-   │                ^^^^^^^^^^^^ address: Storage { nonce: Some(4) } => Value
+79 │         return address(self.factory)
+   │                ^^^^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ uniswap.fe:82:5
@@ -229,11 +241,14 @@ note:
 82 │ ╭     pub fn token0(self) -> address {
 83 │ │         return address(self.token0)
 84 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 14564309738631945387
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1583..1587,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -268,11 +283,14 @@ note:
 86 │ ╭     pub fn token1(self) -> address {
 87 │ │         return address(self.token1)
 88 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 14594191188684846156
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 1663..1667,
+             },
          ),
          ctx_decl: None,
          params: [],
@@ -304,22 +322,26 @@ note:
 note: 
    ┌─ uniswap.fe:90:5
    │  
-90 │ ╭     fn _mint(self, ctx: Context, to: address, value: u256) {
+90 │ ╭     fn _mint(mut self, mut ctx: Context, to: address, value: u256) {
 91 │ │         self.total_supply = self.total_supply + value
 92 │ │         self.balances[to] = self.balances[to] + value
 93 │ │         emit Transfer(ctx, from: address(0), to, value)
 94 │ │     }
-   │ ╰─────^ attributes hash: 12650409809079895726
+   │ ╰─────^ attributes hash: 13471972465529729631
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 1742..1746,
+             },
          ),
          ctx_decl: Some(
              Mutable,
          ),
          params: [
              FunctionParam {
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -332,6 +354,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "to",
                  typ: Ok(
@@ -341,6 +364,7 @@ note:
                  ),
              },
              FunctionParam {
+                 is_mut: false,
                  label: None,
                  name: "value",
                  typ: Ok(
@@ -484,22 +508,26 @@ note:
 note: 
     ┌─ uniswap.fe:96:5
     │  
- 96 │ ╭     fn _burn(self, ctx: Context, from: address, value: u256) {
+ 96 │ ╭     fn _burn(mut self, mut ctx: Context, from: address, value: u256) {
  97 │ │         self.balances[from] = self.balances[from] - value
  98 │ │         self.total_supply = self.total_supply - value
  99 │ │         emit Transfer(ctx, from, to: address(0), value)
 100 │ │     }
-    │ ╰─────^ attributes hash: 16245072311291560743
+    │ ╰─────^ attributes hash: 17370357368197929956
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 1982..1986,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -512,6 +540,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "from",
                   typ: Ok(
@@ -521,6 +550,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -664,21 +694,25 @@ note:
 note: 
     ┌─ uniswap.fe:102:5
     │  
-102 │ ╭     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
+102 │ ╭     fn _approve(mut self, mut ctx: Context, owner: address, spender: address, value: u256) {
 103 │ │         self.allowances[owner][spender] = value
 104 │ │         emit Approval(ctx, owner, spender, value)
 105 │ │     }
-    │ ╰─────^ attributes hash: 1630416716014819616
+    │ ╰─────^ attributes hash: 12629605514702101930
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 2231..2235,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -691,6 +725,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "owner",
                   typ: Ok(
@@ -700,6 +735,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "spender",
                   typ: Ok(
@@ -709,6 +745,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -807,22 +844,26 @@ note:
 note: 
     ┌─ uniswap.fe:107:5
     │  
-107 │ ╭     fn _transfer(self, ctx: Context, from: address, to: address, value: u256) {
+107 │ ╭     fn _transfer(mut self, mut ctx: Context, from: address, to: address, value: u256) {
 108 │ │         self.balances[from] = self.balances[from] - value
 109 │ │         self.balances[to] = self.balances[to] + value
 110 │ │         emit Transfer(ctx, from, to, value)
 111 │ │     }
-    │ ╰─────^ attributes hash: 1442617122763943794
+    │ ╰─────^ attributes hash: 4593216175197439456
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 2430..2434,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -835,6 +876,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "from",
                   typ: Ok(
@@ -844,6 +886,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -853,6 +896,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1005,21 +1049,25 @@ note:
 note: 
     ┌─ uniswap.fe:113:5
     │  
-113 │ ╭     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
+113 │ ╭     pub fn approve(mut self, mut ctx: Context, spender: address, value: u256) -> bool {
 114 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 115 │ │         return true
 116 │ │     }
-    │ ╰─────^ attributes hash: 8309406699454253603
+    │ ╰─────^ attributes hash: 6286628319890692535
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 2683..2687,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1032,6 +1080,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "spender",
                   typ: Ok(
@@ -1041,6 +1090,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1088,21 +1138,25 @@ note:
 note: 
     ┌─ uniswap.fe:118:5
     │  
-118 │ ╭     pub fn transfer(self, ctx: Context, to: address, value: u256) -> bool {
+118 │ ╭     pub fn transfer(mut self, mut ctx: Context, to: address, value: u256) -> bool {
 119 │ │         self._transfer(ctx, from: ctx.msg_sender(), to, value)
 120 │ │         return true
 121 │ │     }
-    │ ╰─────^ attributes hash: 14718526948940966913
+    │ ╰─────^ attributes hash: 13421772796169857129
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 2867..2871,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1115,6 +1169,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -1124,6 +1179,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1171,23 +1227,27 @@ note:
 note: 
     ┌─ uniswap.fe:123:5
     │  
-123 │ ╭     pub fn transferFrom(self, ctx: Context, from: address, to: address, value: u256) -> bool {
+123 │ ╭     pub fn transferFrom(mut self, mut ctx: Context, from: address, to: address, value: u256) -> bool {
 124 │ │         assert self.allowances[from][ctx.msg_sender()] >= value
 125 │ │         self.allowances[from][ctx.msg_sender()] = self.allowances[from][ctx.msg_sender()] - value
 126 │ │         self._transfer(ctx, from, to, value)
 127 │ │         return true
 128 │ │     }
-    │ ╰─────^ attributes hash: 3284161617958543499
+    │ ╰─────^ attributes hash: 1351974348243425310
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3045..3049,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1200,6 +1260,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "from",
                   typ: Ok(
@@ -1209,6 +1270,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -1218,6 +1280,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "value",
                   typ: Ok(
@@ -1367,15 +1430,19 @@ note:
 130 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 131 │ │         return self.balances[account]
 132 │ │     }
-    │ ╰─────^ attributes hash: 5993653573135321647
+    │ ╰─────^ attributes hash: 15194449064687040684
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 3375..3379,
+              },
           ),
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -1422,11 +1489,14 @@ note:
 134 │ ╭     pub fn get_reserves(self) -> (u256, u256, u256) {
 135 │ │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
 136 │ │     }
-    │ ╰─────^ attributes hash: 3743538709625240197
+    │ ╰─────^ attributes hash: 3926516177822859043
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 3480..3484,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -1492,22 +1562,26 @@ note:
 note: 
     ┌─ uniswap.fe:139:5
     │  
-139 │ ╭     pub fn initialize(self, ctx: Context, token0: ERC20, token1: ERC20) {
-140 │ │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
+139 │ ╭     pub fn initialize(mut self, ctx: Context, token0: ERC20, token1: ERC20) {
+140 │ │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
 141 │ │         self.token0 = token0
 142 │ │         self.token1 = token1
 143 │ │     }
-    │ ╰─────^ attributes hash: 18170027042989505865
+    │ ╰─────^ attributes hash: 15974397572347181954
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3671..3675,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1520,6 +1594,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "token0",
                   typ: Ok(
@@ -1531,6 +1606,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "token1",
                   typ: Ok(
@@ -1552,29 +1628,35 @@ note:
 note: 
     ┌─ uniswap.fe:140:16
     │
-140 │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
+140 │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
     │                ^^^ Context: Memory
 
 note: 
     ┌─ uniswap.fe:140:16
     │
-140 │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
-    │                ^^^^^^^^^^^^^^^^    ^^^^ UniswapV2Pair: Value
-    │                │                    
+140 │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
+    │                ^^^^^^^^^^^^^^^^            ^^^^ UniswapV2Pair: Value
+    │                │                            
     │                address: Value
+
+note: 
+    ┌─ uniswap.fe:140:44
+    │
+140 │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
+    │                                            ^^^^^^^^^^^^ UniswapV2Factory: Storage { nonce: Some(4) } => Value
 
 note: 
     ┌─ uniswap.fe:140:36
     │
-140 │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
-    │                                    ^^^^^^^^^^^^ address: Storage { nonce: Some(4) } => Value
+140 │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
+    │                                    ^^^^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
     ┌─ uniswap.fe:140:16
     │
-140 │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
-    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^ String<20>: Memory
-    │                │                                  
+140 │         assert ctx.msg_sender() == address(self.factory), "UniswapV2: FORBIDDEN"
+    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^ String<20>: Memory
+    │                │                                           
     │                bool: Value
 141 │         self.token0 = token0
     │         ^^^^ UniswapV2Pair: Value
@@ -1600,24 +1682,28 @@ note:
 note: 
     ┌─ uniswap.fe:146:5
     │  
-146 │ ╭     fn _update(self, ctx: Context, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256) {
+146 │ ╭     fn _update(mut self, mut ctx: Context, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256) {
 147 │ │         # changed from u32s
 148 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
 149 │ │         let block_timestamp: u256 = ctx.block_timestamp() % 2 ** 32
     · │
 158 │ │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
 159 │ │     }
-    │ ╰─────^ attributes hash: 14441581101409065213
+    │ ╰─────^ attributes hash: 8120571795129401038
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 3963..3967,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1630,6 +1716,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "balance0",
                   typ: Ok(
@@ -1641,6 +1728,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "balance1",
                   typ: Ok(
@@ -1652,6 +1740,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "reserve0",
                   typ: Ok(
@@ -1663,6 +1752,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "reserve1",
                   typ: Ok(
@@ -1936,24 +2026,28 @@ note:
 note: 
     ┌─ uniswap.fe:161:5
     │  
-161 │ ╭     fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
-162 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+161 │ ╭     fn _mint_fee(mut self, mut ctx: Context, reserve0: u256, reserve1: u256) -> bool {
+162 │ │         let fee_to: address = self.factory.fee_to()
 163 │ │         let fee_on: bool = fee_to != address(0)
 164 │ │         let k_last: u256 = self.k_last
     · │
 181 │ │         return fee_on
 182 │ │     }
-    │ ╰─────^ attributes hash: 12335666382859496931
+    │ ╰─────^ attributes hash: 16362661907044867957
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 4822..4826,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -1966,6 +2060,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "reserve0",
                   typ: Ok(
@@ -1977,6 +2072,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "reserve1",
                   typ: Ok(
@@ -1998,7 +2094,7 @@ note:
 note: 
     ┌─ uniswap.fe:162:13
     │
-162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+162 │         let fee_to: address = self.factory.fee_to()
     │             ^^^^^^ address
 163 │         let fee_on: bool = fee_to != address(0)
     │             ^^^^^^ bool
@@ -2018,28 +2114,22 @@ note:
     │                         ^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:162:48
+    ┌─ uniswap.fe:162:31
     │
-162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                                                ^^^^ UniswapV2Pair: Value
-
-note: 
-    ┌─ uniswap.fe:162:48
-    │
-162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                                                ^^^^^^^^^^^^ address: Storage { nonce: Some(4) } => Value
+162 │         let fee_to: address = self.factory.fee_to()
+    │                               ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:162:31
     │
-162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Factory: Value
+162 │         let fee_to: address = self.factory.fee_to()
+    │                               ^^^^^^^^^^^^ UniswapV2Factory: Storage { nonce: Some(4) } => Value
 
 note: 
     ┌─ uniswap.fe:162:31
     │
-162 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address: Value
+162 │         let fee_to: address = self.factory.fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^ address: Value
 163 │         let fee_on: bool = fee_to != address(0)
     │                            ^^^^^^            ^ u256: Value
     │                            │                  
@@ -2212,24 +2302,28 @@ note:
 note: 
     ┌─ uniswap.fe:185:5
     │  
-185 │ ╭     pub fn mint(self, ctx: Context, to: address) -> u256 {
+185 │ ╭     pub fn mint(mut self, mut ctx: Context, to: address) -> u256 {
 186 │ │         let MINIMUM_LIQUIDITY: u256 = 1000
 187 │ │         let reserve0: u256 = self.reserve0
 188 │ │         let reserve1: u256 = self.reserve1
     · │
 209 │ │         return liquidity
 210 │ │     }
-    │ ╰─────^ attributes hash: 11513995717553818344
+    │ ╰─────^ attributes hash: 1442720676710541957
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 5834..5838,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -2242,6 +2336,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -2281,8 +2376,8 @@ note:
     │             ^^^^^^ bool
 194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
     │             ^^^^^^^^^^^^ u256
-195 │         let liquidity: u256 = 0
-    │             ^^^^^^^^^ u256
+195 │         let mut liquidity: u256 = 0
+    │                 ^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:186:39
@@ -2401,8 +2496,8 @@ note:
     │
 194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
     │                                  ^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
-195 │         let liquidity: u256 = 0
-    │                               ^ u256: Value
+195 │         let mut liquidity: u256 = 0
+    │                                   ^ u256: Value
 196 │         if total_supply == 0 {
     │            ^^^^^^^^^^^^    ^ u256: Value
     │            │                
@@ -2621,24 +2716,28 @@ note:
 note: 
     ┌─ uniswap.fe:213:5
     │  
-213 │ ╭     pub fn burn(self, ctx: Context, to: address) -> (u256, u256) {
+213 │ ╭     pub fn burn(mut self, mut ctx: Context, to: address) -> (u256, u256) {
 214 │ │         let reserve0: u256 = self.reserve0
 215 │ │         let reserve1: u256 = self.reserve1
 216 │ │         let token0: ERC20 = self.token0
     · │
 237 │ │         return (amount0, amount1)
 238 │ │     }
-    │ ╰─────^ attributes hash: 4652297158603848356
+    │ ╰─────^ attributes hash: 13634551864155722811
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 7358..7362,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -2651,6 +2750,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -2691,10 +2791,10 @@ note:
     │             ^^^^^^ ERC20
 217 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
-218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │             ^^^^^^^^ u256
-219 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │             ^^^^^^^^ u256
+218 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                 ^^^^^^^^ u256
+219 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
+    │                 ^^^^^^^^ u256
 220 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │             ^^^^^^^^^ u256
 221 │ 
@@ -2742,38 +2842,38 @@ note:
     │
 217 │         let token1: ERC20 = self.token1
     │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
-218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │                              ^^^^^^           ^^^ Context: Memory
-    │                              │                 
-    │                              ERC20: Value
+218 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                  ^^^^^^           ^^^ Context: Memory
+    │                                  │                 
+    │                                  ERC20: Value
 
 note: 
-    ┌─ uniswap.fe:218:47
+    ┌─ uniswap.fe:218:51
     │
-218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │                                               ^^^^^^^^^^^^^^^^^^ address: Value
+218 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                                   ^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-    ┌─ uniswap.fe:218:30
+    ┌─ uniswap.fe:218:34
     │
-218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-219 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^           ^^^ Context: Memory
-    │                              │                 
-    │                              ERC20: Value
+218 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+219 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
+    │                                  ^^^^^^           ^^^ Context: Memory
+    │                                  │                 
+    │                                  ERC20: Value
 
 note: 
-    ┌─ uniswap.fe:219:47
+    ┌─ uniswap.fe:219:51
     │
-219 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                                               ^^^^^^^^^^^^^^^^^^ address: Value
+219 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
+    │                                                   ^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-    ┌─ uniswap.fe:219:30
+    ┌─ uniswap.fe:219:34
     │
-219 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+219 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
+    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 220 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │                               ^^^^ UniswapV2Pair: Value
 
@@ -3069,24 +3169,28 @@ note:
 note: 
     ┌─ uniswap.fe:243:5
     │  
-243 │ ╭     pub fn swap(self, ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
+243 │ ╭     pub fn swap(mut self, mut ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
 244 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
 245 │ │         let reserve0: u256 = self.reserve0
 246 │ │         let reserve1: u256 = self.reserve1
     · │
 279 │ │         emit Swap(ctx, sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to)
 280 │ │     }
-    │ ╰─────^ attributes hash: 18411078236281700131
+    │ ╰─────^ attributes hash: 9215307444703324201
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 9093..9097,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -3099,6 +3203,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "amount0_out",
                   typ: Ok(
@@ -3110,6 +3215,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "amount1_out",
                   typ: Ok(
@@ -3121,6 +3227,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -3697,17 +3804,21 @@ note:
 286 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
 287 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
 288 │ │     }
-    │ ╰─────^ attributes hash: 9469713119497359790
+    │ ╰─────^ attributes hash: 17008204640190366872
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 11026..11030,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -3720,6 +3831,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "to",
                   typ: Ok(
@@ -3843,24 +3955,28 @@ note:
 note: 
     ┌─ uniswap.fe:291:5
     │  
-291 │ ╭     pub fn sync(self, ctx: Context) {
+291 │ ╭     pub fn sync(mut self, mut ctx: Context) {
 292 │ │         let token0: ERC20 = self.token0
 293 │ │         let token1: ERC20 = self.token1
 294 │ │         self._update(ctx,
     · │
 298 │ │                      reserve1: self.reserve1)
 299 │ │     }
-    │ ╰─────^ attributes hash: 1731341862738941170
+    │ ╰─────^ attributes hash: 2541577077761793004
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 11399..11403,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -4004,11 +4120,14 @@ note:
 322 │ ╭     pub fn fee_to(self) -> address {
 323 │ │         return self.fee_to
 324 │ │     }
-    │ ╰─────^ attributes hash: 227275695522088782
+    │ ╰─────^ attributes hash: 8970242853773362099
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 12208..12212,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -4037,11 +4156,14 @@ note:
 326 │ ╭     pub fn fee_to_setter(self) -> address {
 327 │ │         return self.fee_to_setter
 328 │ │     }
-    │ ╰─────^ attributes hash: 227275695522088782
+    │ ╰─────^ attributes hash: 7413951841784457257
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 12286..12290,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -4070,11 +4192,14 @@ note:
 330 │ ╭     pub fn all_pairs_length(self) -> u256 {
 331 │ │         return self.pair_counter
 332 │ │     }
-    │ ╰─────^ attributes hash: 11773348765973600208
+    │ ╰─────^ attributes hash: 10067575508843998132
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: Ref,
+                  span: 12374..12378,
+              },
           ),
           ctx_decl: None,
           params: [],
@@ -4102,24 +4227,28 @@ note:
 note: 
     ┌─ uniswap.fe:334:5
     │  
-334 │ ╭     pub fn create_pair(self, ctx: Context, _ token_a: address, _ token_b: address) -> address {
+334 │ ╭     pub fn create_pair(mut self, mut ctx: Context, _ token_a: address, _ token_b: address) -> address {
 335 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 336 │ │ 
 337 │ │         let token0: address = token_a if token_a < token_b else token_b
     · │
 352 │ │         return address(pair)
 353 │ │     }
-    │ ╰─────^ attributes hash: 8455575078477255668
+    │ ╰─────^ attributes hash: 15917361863766220684
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 12457..12461,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: true,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -4132,6 +4261,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -4143,6 +4273,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -4547,21 +4678,25 @@ note:
 note: 
     ┌─ uniswap.fe:355:5
     │  
-355 │ ╭     pub fn set_fee_to(self, ctx: Context, fee_to: address) {
+355 │ ╭     pub fn set_fee_to(mut self, ctx: Context, fee_to: address) {
 356 │ │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 357 │ │         self.fee_to = fee_to
 358 │ │     }
-    │ ╰─────^ attributes hash: 9061125162615165722
+    │ ╰─────^ attributes hash: 10946147790633155374
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 13471..13475,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -4574,6 +4709,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "fee_to",
                   typ: Ok(
@@ -4631,21 +4767,25 @@ note:
 note: 
     ┌─ uniswap.fe:360:5
     │  
-360 │ ╭     pub fn set_fee_to_setter(self, ctx: Context, fee_to_setter: address) {
+360 │ ╭     pub fn set_fee_to_setter(mut self, ctx: Context, fee_to_setter: address) {
 361 │ │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
 362 │ │         self.fee_to_setter = fee_to_setter
 363 │ │     }
-    │ ╰─────^ attributes hash: 16865322734649050051
+    │ ╰─────^ attributes hash: 17437035610403751314
     │  
     = FunctionSignature {
           self_decl: Some(
-              Mutable,
+              SelfDecl {
+                  kind: MutRef,
+                  span: 13657..13661,
+              },
           ),
           ctx_decl: Some(
               Mutable,
           ),
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "ctx",
                   typ: Ok(
@@ -4658,6 +4798,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: None,
                   name: "fee_to_setter",
                   typ: Ok(
@@ -4710,19 +4851,20 @@ note:
     ┌─ uniswap.fe:366:1
     │  
 366 │ ╭ fn sqrt(_ val: u256) -> u256 {
-367 │ │     let z: u256
+367 │ │     let mut z: u256
 368 │ │     if val > 3 {
 369 │ │         z = val
     · │
 378 │ │     return z
 379 │ │ }
-    │ ╰─^ attributes hash: 4892692935064256824
+    │ ╰─^ attributes hash: 15366629843235519421
     │  
     = FunctionSignature {
           self_decl: None,
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -4746,13 +4888,13 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:367:9
+    ┌─ uniswap.fe:367:13
     │
-367 │     let z: u256
-    │         ^ u256
-    ·
-370 │         let x: u256 = val / 2 + 1
+367 │     let mut z: u256
     │             ^ u256
+    ·
+370 │         let mut x: u256 = val / 2 + 1
+    │                 ^ u256
 
 note: 
     ┌─ uniswap.fe:368:8
@@ -4771,24 +4913,24 @@ note:
     │         ^   ^^^ u256: Value
     │         │    
     │         u256: Value
-370 │         let x: u256 = val / 2 + 1
-    │                       ^^^   ^ u256: Value
-    │                       │      
-    │                       u256: Value
+370 │         let mut x: u256 = val / 2 + 1
+    │                           ^^^   ^ u256: Value
+    │                           │      
+    │                           u256: Value
 
 note: 
-    ┌─ uniswap.fe:370:23
+    ┌─ uniswap.fe:370:27
     │
-370 │         let x: u256 = val / 2 + 1
-    │                       ^^^^^^^   ^ u256: Value
-    │                       │          
-    │                       u256: Value
+370 │         let mut x: u256 = val / 2 + 1
+    │                           ^^^^^^^   ^ u256: Value
+    │                           │          
+    │                           u256: Value
 
 note: 
-    ┌─ uniswap.fe:370:23
+    ┌─ uniswap.fe:370:27
     │
-370 │         let x: u256 = val / 2 + 1
-    │                       ^^^^^^^^^^^ u256: Value
+370 │         let mut x: u256 = val / 2 + 1
+    │                           ^^^^^^^^^^^ u256: Value
 371 │         while x < z {
     │               ^   ^ u256: Value
     │               │    
@@ -4855,13 +4997,14 @@ note:
 381 │ ╭ fn min(_ x: u256, _ y: u256) -> u256 {
 382 │ │     return x if x < y else y
 383 │ │ }
-    │ ╰─^ attributes hash: 4448606202021980030
+    │ ╰─^ attributes hash: 15612950807422836908
     │  
     = FunctionSignature {
           self_decl: None,
           ctx_decl: None,
           params: [
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),
@@ -4875,6 +5018,7 @@ note:
                   ),
               },
               FunctionParam {
+                  is_mut: false,
                   label: Some(
                       "_",
                   ),

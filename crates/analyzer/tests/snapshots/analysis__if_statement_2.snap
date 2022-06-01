@@ -13,13 +13,14 @@ note:
   · │
 8 │ │         return 0
 9 │ │     }
-  │ ╰─────^ attributes hash: 12367727332255217641
+  │ ╰─────^ attributes hash: 9591732929458065615
   │  
   = FunctionSignature {
         self_decl: None,
         ctx_decl: None,
         params: [
             FunctionParam {
+                is_mut: false,
                 label: None,
                 name: "val",
                 typ: Ok(

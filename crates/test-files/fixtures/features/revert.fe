@@ -20,7 +20,7 @@ contract Foo {
         revert OtherError(msg: 1, val: true)
     }
 
-    pub fn revert_other_error_from_sto(self) {
+    pub fn revert_other_error_from_sto(mut self) {
         self.my_other_error = OtherError(msg: 1, val: true)
         revert self.my_other_error.to_mem()
     }

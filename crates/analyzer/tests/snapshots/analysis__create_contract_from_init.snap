@@ -42,11 +42,14 @@ note:
 16 │ ╭     pub fn get_foo_addr(self) -> address {
 17 │ │         return self.foo_addr
 18 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
+   │ ╰─────^ attributes hash: 11261936337788107530
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: Ref,
+                 span: 281..285,
+             },
          ),
          ctx_decl: None,
          params: [],

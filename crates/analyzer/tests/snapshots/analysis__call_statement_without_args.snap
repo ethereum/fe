@@ -12,14 +12,17 @@ note:
 note: 
   ┌─ call_statement_without_args.fe:4:5
   │  
-4 │ ╭     fn assign(self) {
+4 │ ╭     fn assign(mut self) {
 5 │ │         self.baz[0] = 100
 6 │ │     }
-  │ ╰─────^ attributes hash: 18235041182630809162
+  │ ╰─────^ attributes hash: 13111555417914425493
   │  
   = FunctionSignature {
         self_decl: Some(
-            Mutable,
+            SelfDecl {
+                kind: MutRef,
+                span: 59..63,
+            },
         ),
         ctx_decl: None,
         params: [],
@@ -55,15 +58,18 @@ note:
 note: 
    ┌─ call_statement_without_args.fe:8:5
    │  
- 8 │ ╭     pub fn bar(self) -> u256 {
+ 8 │ ╭     pub fn bar(mut self) -> u256 {
  9 │ │         self.assign()
 10 │ │         return self.baz[0]
 11 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
+   │ ╰─────^ attributes hash: 18416348318428808249
    │  
    = FunctionSignature {
          self_decl: Some(
-             Mutable,
+             SelfDecl {
+                 kind: MutRef,
+                 span: 119..123,
+             },
          ),
          ctx_decl: None,
          params: [],
