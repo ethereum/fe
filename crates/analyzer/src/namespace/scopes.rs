@@ -188,20 +188,6 @@ impl<'a> FunctionScope<'a> {
             .expect_none("emit statement attributes already exist");
     }
 
-    /// Attribute contextual information to a declaration node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_declaration(&self, node: &Node<ast::TypeDesc>, typ: Type) {
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .var_decl_types
-            .insert(node.id, typ)
-            .expect_none("declaration attributes already exist");
-    }
-
     pub fn map_variable_type<T>(&self, node: &Node<T>, typ: Type) {
         self.add_node(node);
         self.body

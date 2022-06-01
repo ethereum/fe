@@ -379,10 +379,10 @@ note:
      }
 
 note: 
-   ┌─ events.fe:38:20
+   ┌─ events.fe:38:13
    │
 38 │         let addrs: Array<address, 2>
-   │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
+   │             ^^^^^ Array<address, 2>
 
 note: 
    ┌─ events.fe:39:9

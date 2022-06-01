@@ -181,10 +181,10 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:18:18
+   ┌─ struct_fns.fe:18:13
    │
 18 │         let old: u64 = self.x
-   │                  ^^^ u64
+   │             ^^^ u64
 
 note: 
    ┌─ struct_fns.fe:18:24
@@ -235,12 +235,12 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:24:16
+   ┌─ struct_fns.fe:24:13
    │
 24 │         let x: u64 = self.x
-   │                ^^^ u64
+   │             ^ u64
 25 │         let y: u64 = self.y
-   │                ^^^ u64
+   │             ^ u64
 
 note: 
    ┌─ struct_fns.fe:24:22
@@ -393,12 +393,12 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:36:16
+   ┌─ struct_fns.fe:36:13
    │
 36 │         let x: u64 = self.x + other.x
-   │                ^^^ u64
+   │             ^ u64
 37 │         let y: u64 = self.y + other.y
-   │                ^^^ u64
+   │             ^ u64
 
 note: 
    ┌─ struct_fns.fe:36:22
@@ -482,15 +482,15 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:43:13
+   ┌─ struct_fns.fe:43:9
    │
 43 │     let p1: Point = Point::origin()
-   │             ^^^^^ Point
+   │         ^^ Point
 44 │     p1.translate(x: 5, y: 10)
 45 │     let p2: Point = Point(x: 1, y: 2)
-   │             ^^^^^ Point
+   │         ^^ Point
 46 │     let p3: Point = p1.add(p2)
-   │             ^^^^^ Point
+   │         ^^ Point
 
 note: 
    ┌─ struct_fns.fe:43:21
@@ -616,10 +616,10 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:53:16
+   ┌─ struct_fns.fe:53:13
    │
 53 │         let p: Point = Point::new(x, y)
-   │                ^^^^^ Point
+   │             ^ Point
 
 note: 
    ┌─ struct_fns.fe:52:9

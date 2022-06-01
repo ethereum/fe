@@ -41,13 +41,13 @@ note:
      }
 
 note: 
-  ┌─ math.fe:3:16
+  ┌─ math.fe:3:13
   │
 3 │         let z: u256
-  │                ^^^^ u256
+  │             ^ u256
   ·
 6 │             let x: u256 = val / 2 + 1
-  │                    ^^^^ u256
+  │                 ^ u256
 
 note: 
   ┌─ math.fe:4:12

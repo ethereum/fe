@@ -59,16 +59,16 @@ note:
      }
 
 note: 
-   ┌─ module_const.fe:10:28
+   ┌─ module_const.fe:10:15
    │
 10 │         const LOCAL_CONST: i32 = C3 * 2
-   │                            ^^^ i32
+   │               ^^^^^^^^^^^ i32
 11 │         let _arr1: Array<i32, { C2 }>
-   │                    ^^^^^^^^^^^^^^^^^^ Array<i32, 3>
+   │             ^^^^^ Array<i32, 3>
 12 │         let _arr2: Array<i32, { LOCAL_CONST }>
-   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 88>
+   │             ^^^^^ Array<i32, 88>
 13 │         let _my_array: MY_ARRAY
-   │                        ^^^^^^^^ Array<bool, 42>
+   │             ^^^^^^^^^ Array<bool, 42>
 
 note: 
    ┌─ module_const.fe:10:34

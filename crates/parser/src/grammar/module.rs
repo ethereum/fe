@@ -45,9 +45,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
         TokenKind::Const => ModuleStmt::Constant(parse_constant(par, None)?),
 
-        // Let these be parse errors for now:
         TokenKind::Event => ModuleStmt::Event(parse_event_def(par, None)?),
-        // TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Pub => {
             let pub_span = par.next()?.span;
             match par.peek_or_err()? {

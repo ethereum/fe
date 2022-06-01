@@ -281,10 +281,10 @@ note:
      }
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:37:28
+   ┌─ ingots/basic_ingot/src/main.fe:37:13
    │
 37 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-   │                            ^^^^^^^^^^^^ BingContract
+   │             ^^^^^^^^^^^^^ BingContract
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:37:63

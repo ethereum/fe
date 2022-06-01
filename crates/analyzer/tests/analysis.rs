@@ -416,7 +416,7 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
         // signature
         build_debug_diagnostics(&[(fun.data(db).ast.span, &fun.signature(db))]),
         // declarations
-        label_in_non_overlapping_groups(&lookup_spans(&body.var_decl_types, &body.spans)),
+        label_in_non_overlapping_groups(&lookup_spans(&body.var_types, &body.spans)),
         // expressions
         label_in_non_overlapping_groups(&lookup_spans(&body.expressions, &body.spans)),
         // emits

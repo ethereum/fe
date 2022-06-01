@@ -214,14 +214,6 @@ impl Item {
         }
     }
 
-    /// Downcast utility function
-    pub fn as_contract(&self) -> Option<ContractId> {
-        match self {
-            Item::Type(TypeDef::Contract(id)) => Some(*id),
-            _ => None,
-        }
-    }
-
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match self {
             Item::Type(id) => id.sink_diagnostics(db, sink),
@@ -641,11 +633,6 @@ impl ModuleId {
         items
     }
 
-    /// All structs, including duplicatecrates/analyzer/src/db.rss
-    pub fn all_structs(&self, db: &dyn AnalyzerDb) -> Rc<[StructId]> {
-        db.module_structs(*self)
-    }
-
     /// All module constants.
     pub fn all_constants(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleConstantId>> {
         db.module_constants(*self)
@@ -978,11 +965,6 @@ impl ContractId {
         db.contract_public_function_map(*self)
     }
 
-    /// Get a function that takes self by its name.
-    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.function(db, name).filter(|f| f.takes_self(db))
-    }
-
     /// Lookup an event by name.
     pub fn event(&self, db: &dyn AnalyzerDb, name: &str) -> Option<EventId> {
         self.events(db).get(name).copied()
@@ -1196,12 +1178,6 @@ impl Class {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum MemberFunction {
-    BuiltIn(builtins::ValueMethod),
-    Function(FunctionId),
-}
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Struct {
     pub ast: Node<ast::Struct>,
@@ -1256,10 +1232,6 @@ impl StructId {
         matches!(self.field_type(db, name), Some(Ok(types::Type::Base(_))))
     }
 
-    pub fn field_index(&self, db: &dyn AnalyzerDb, name: &str) -> Option<usize> {
-        self.fields(db).get_index_of(name)
-    }
-
     pub fn has_complex_fields(&self, db: &dyn AnalyzerDb) -> bool {
         self.fields(db)
             .iter()
@@ -1279,9 +1251,6 @@ impl StructId {
     }
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         self.functions(db).get(name).copied()
-    }
-    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.function(db, name).filter(|f| f.takes_self(db))
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)

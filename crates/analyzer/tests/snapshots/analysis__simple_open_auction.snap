@@ -321,10 +321,10 @@ note:
      }
 
 note: 
-   ┌─ simple_open_auction.fe:59:21
+   ┌─ simple_open_auction.fe:59:13
    │
 59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-   │                     ^^^^ u256
+   │             ^^^^^^ u256
 
 note: 
    ┌─ simple_open_auction.fe:59:28

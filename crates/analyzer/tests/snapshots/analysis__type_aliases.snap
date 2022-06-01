@@ -106,10 +106,10 @@ note:
      }
 
 note: 
-   ┌─ type_aliases.fe:23:17
+   ┌─ type_aliases.fe:23:13
    │
 23 │         let id: PostId = 0
-   │                 ^^^^^^ u256
+   │             ^^ u256
 
 note: 
    ┌─ type_aliases.fe:23:26
@@ -213,10 +213,10 @@ note:
      }
 
 note: 
-   ┌─ type_aliases.fe:30:20
+   ┌─ type_aliases.fe:30:13
    │
 30 │         let score: Score = self.scoreboard[id] + 1
-   │                    ^^^^^ u64
+   │             ^^^^^ u64
 
 note: 
    ┌─ type_aliases.fe:30:28

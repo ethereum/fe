@@ -237,12 +237,12 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:29:27
+   ┌─ data_copying_stress.fe:29:13
    │
 29 │         let my_2nd_array: Array<u256, 10> = my_array
-   │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
+   │             ^^^^^^^^^^^^ Array<u256, 10>
 30 │         let my_3rd_array: Array<u256, 10> = my_2nd_array
-   │                           ^^^^^^^^^^^^^^^ Array<u256, 10>
+   │             ^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:29:45
@@ -606,10 +606,10 @@ note:
      }
 
 note: 
-   ┌─ data_copying_stress.fe:57:26
+   ┌─ data_copying_stress.fe:57:13
    │
 57 │         let my_nums_mem: Array<u256, 5>
-   │                          ^^^^^^^^^^^^^^ Array<u256, 5>
+   │             ^^^^^^^^^^^ Array<u256, 5>
 
 note: 
    ┌─ data_copying_stress.fe:58:9

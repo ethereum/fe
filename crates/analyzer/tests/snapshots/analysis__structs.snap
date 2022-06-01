@@ -1097,10 +1097,10 @@ note:
       }
 
 note: 
-   ┌─ structs.fe:83:18
+   ┌─ structs.fe:83:13
    │
 83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                  ^^^ Bar
+   │             ^^^ Bar
 
 note: 
    ┌─ structs.fe:83:34
@@ -1715,10 +1715,10 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:115:20
+    ┌─ structs.fe:115:13
     │
 115 │         let mixed: Mixed = Mixed::new(val: 1)
-    │                    ^^^^^ Mixed
+    │             ^^^^^ Mixed
 
 note: 
     ┌─ structs.fe:115:44
@@ -2435,10 +2435,10 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:156:23
+    ┌─ structs.fe:156:13
     │
 156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                       ^^^^^ House
+    │             ^^^^^^^^ House
 
 note: 
     ┌─ structs.fe:156:44
@@ -2715,10 +2715,10 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:176:20
+    ┌─ structs.fe:176:13
     │
 176 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                    ^^^^^ House
+    │             ^^^^^ House
 
 note: 
     ┌─ structs.fe:176:41
@@ -2774,10 +2774,10 @@ note:
       }
 
 note: 
-    ┌─ structs.fe:181:20
+    ┌─ structs.fe:181:13
     │
 181 │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                    ^^^^^ House
+    │             ^^^^^ House
 
 note: 
     ┌─ structs.fe:181:41
