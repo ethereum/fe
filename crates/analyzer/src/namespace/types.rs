@@ -380,21 +380,6 @@ pub struct EventField {
 }
 
 impl FunctionSignature {
-    /// # Panics
-    /// Panics if any param type is an `Err`
-    pub fn param_types(&self) -> Vec<Type> {
-        self.params
-            .iter()
-            .map(|param| param.typ.clone().expect("fn param type error"))
-            .collect()
-    }
-
-    /// # Panics
-    /// Panics if the return type is an `Err`
-    pub fn expect_return_type(&self) -> Type {
-        self.return_type.clone().expect("fn return type error")
-    }
-
     /// Parameters without `ctx`, if it is a contract function that declares it.
     ///
     /// This is used when calling a contract method externally.
@@ -489,21 +474,6 @@ impl Type {
 
     pub fn int(int_type: Integer) -> Self {
         Type::Base(Base::Numeric(int_type))
-    }
-
-    pub fn generic_arg_type(&self, idx: usize) -> Option<Type> {
-        match self {
-            Type::Map(Map { key, value }) => match idx {
-                0 => Some(Type::Base(*key)),
-                1 => Some((**value).clone()),
-                _ => None,
-            },
-            Type::Array(array) => match idx {
-                0 => Some(Type::Base(array.inner)),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 
     pub fn has_fixed_size(&self) -> bool {

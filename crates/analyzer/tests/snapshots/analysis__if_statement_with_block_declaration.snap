@@ -29,13 +29,13 @@ note:
      }
 
 note: 
-  ┌─ if_statement_with_block_declaration.fe:4:20
+  ┌─ if_statement_with_block_declaration.fe:4:17
   │
 4 │             let y: u256 = 1
-  │                    ^^^^ u256
+  │                 ^ u256
   ·
 7 │             let y: u256 = 1
-  │                    ^^^^ u256
+  │                 ^ u256
 
 note: 
   ┌─ if_statement_with_block_declaration.fe:3:12

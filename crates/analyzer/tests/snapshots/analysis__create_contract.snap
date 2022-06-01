@@ -66,10 +66,10 @@ note:
      }
 
 note: 
-   ┌─ create_contract.fe:11:18
+   ┌─ create_contract.fe:11:13
    │
 11 │         let foo: Foo = Foo.create(ctx, 0)
-   │                  ^^^ Foo
+   │             ^^^ Foo
 
 note: 
    ┌─ create_contract.fe:11:35

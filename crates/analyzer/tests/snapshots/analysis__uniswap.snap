@@ -1666,12 +1666,12 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:149:30
+    ┌─ uniswap.fe:149:13
     │
 149 │         let block_timestamp: u256 = ctx.block_timestamp() % 2 ** 32
-    │                              ^^^^ u256
+    │             ^^^^^^^^^^^^^^^ u256
 150 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last
-    │                           ^^^^ u256
+    │             ^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:149:37
@@ -1980,26 +1980,26 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:162:21
+    ┌─ uniswap.fe:162:13
     │
 162 │         let fee_to: address = UniswapV2Factory(ctx, self.factory).fee_to()
-    │                     ^^^^^^^ address
+    │             ^^^^^^ address
 163 │         let fee_on: bool = fee_to != address(0)
-    │                     ^^^^ bool
+    │             ^^^^^^ bool
 164 │         let k_last: u256 = self.k_last
-    │                     ^^^^ u256
+    │             ^^^^^^ u256
     ·
 167 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
-    │                             ^^^^ u256
+    │                     ^^^^^^ u256
 168 │                 let root_k_last: u256 = sqrt(k_last)
-    │                                  ^^^^ u256
+    │                     ^^^^^^^^^^^ u256
 169 │                 if root_k > root_k_last {
 170 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                    ^^^^ u256
+    │                         ^^^^^^^^^ u256
 171 │                     let denominator: u256 = root_k * 5 + root_k_last
-    │                                      ^^^^ u256
+    │                         ^^^^^^^^^^^ u256
 172 │                     let liquidity: u256 = numerator / denominator
-    │                                    ^^^^ u256
+    │                         ^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:162:48
@@ -2247,28 +2247,28 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:186:32
+    ┌─ uniswap.fe:186:13
     │
 186 │         let MINIMUM_LIQUIDITY: u256 = 1000
-    │                                ^^^^ u256
+    │             ^^^^^^^^^^^^^^^^^ u256
 187 │         let reserve0: u256 = self.reserve0
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 188 │         let reserve1: u256 = self.reserve1
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 189 │         let balance0: u256 = ERC20(ctx, self.token0).balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 190 │         let balance1: u256 = ERC20(ctx, self.token1).balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 191 │         let amount0: u256 = balance0 - self.reserve0
-    │                      ^^^^ u256
+    │             ^^^^^^^ u256
 192 │         let amount1: u256 = balance1 - self.reserve1
-    │                      ^^^^ u256
+    │             ^^^^^^^ u256
 193 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
-    │                     ^^^^ bool
+    │             ^^^^^^ bool
 194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
-    │                           ^^^^ u256
+    │             ^^^^^^^^^^^^ u256
 195 │         let liquidity: u256 = 0
-    │                        ^^^^ u256
+    │             ^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:186:39
@@ -2683,31 +2683,31 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:214:23
+    ┌─ uniswap.fe:214:13
     │
 214 │         let reserve0: u256 = self.reserve0
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 215 │         let reserve1: u256 = self.reserve1
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 216 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 217 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 218 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 219 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 220 │         let liquidity: u256 = self.balances[ctx.self_address()]
-    │                        ^^^^ u256
+    │             ^^^^^^^^^ u256
 221 │ 
 222 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
-    │                     ^^^^ bool
+    │             ^^^^^^ bool
 223 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
-    │                           ^^^^ u256
+    │             ^^^^^^^^^^^^ u256
 224 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                      ^^^^ u256
+    │             ^^^^^^^ u256
 225 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                      ^^^^ u256
+    │             ^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:214:30
@@ -3156,32 +3156,32 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:245:23
+    ┌─ uniswap.fe:245:13
     │
 245 │         let reserve0: u256 = self.reserve0
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 246 │         let reserve1: u256 = self.reserve1
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
     ·
 249 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 250 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
     ·
 265 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 266 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                       ^^^^ u256
+    │             ^^^^^^^^ u256
 267 │ 
 268 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                         ^^^^ u256
+    │             ^^^^^^^^^^ u256
 269 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                         ^^^^ u256
+    │             ^^^^^^^^^^ u256
     ·
 273 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                ^^^^ u256
+    │             ^^^^^^^^^^^^^^^^^ u256
 274 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                ^^^^ u256
+    │             ^^^^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:244:16
@@ -3771,12 +3771,12 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:284:21
+    ┌─ uniswap.fe:284:13
     │
 284 │         let token0: ERC20 = ERC20(ctx, self.token0) # gas savings
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 285 │         let token1: ERC20 = ERC20(ctx, self.token1) # gas savings
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 
 note: 
     ┌─ uniswap.fe:284:35
@@ -3931,12 +3931,12 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:292:21
+    ┌─ uniswap.fe:292:13
     │
 292 │         let token0: ERC20 = ERC20(ctx, self.token0)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 293 │         let token1: ERC20 = ERC20(ctx, self.token1)
-    │                     ^^^^^ ERC20
+    │             ^^^^^^ ERC20
 
 note: 
     ┌─ uniswap.fe:292:35
@@ -4228,17 +4228,17 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:337:21
+    ┌─ uniswap.fe:337:13
     │
 337 │         let token0: address = token_a if token_a < token_b else token_b
-    │                     ^^^^^^^ address
+    │             ^^^^^^ address
 338 │         let token1: address = token_a if token_a > token_b else token_b
-    │                     ^^^^^^^ address
+    │             ^^^^^^ address
     ·
 342 │         let salt: u256 = keccak256((token0, token1).abi_encode())
-    │                   ^^^^ u256
+    │             ^^^^ u256
 343 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
-    │                   ^^^^^^^^^^^^^ UniswapV2Pair
+    │             ^^^^ UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:335:16
@@ -4798,13 +4798,13 @@ note:
       }
 
 note: 
-    ┌─ uniswap.fe:367:12
+    ┌─ uniswap.fe:367:9
     │
 367 │     let z: u256
-    │            ^^^^ u256
+    │         ^ u256
     ·
 370 │         let x: u256 = val / 2 + 1
-    │                ^^^^ u256
+    │             ^ u256
 
 note: 
     ┌─ uniswap.fe:368:8

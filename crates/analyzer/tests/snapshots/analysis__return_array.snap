@@ -42,10 +42,10 @@ note:
     }
 
 note: 
-  ┌─ return_array.fe:3:23
+  ┌─ return_array.fe:3:13
   │
 3 │         let my_array: Array<u256, 5>
-  │                       ^^^^^^^^^^^^^^ Array<u256, 5>
+  │             ^^^^^^^^ Array<u256, 5>
 
 note: 
   ┌─ return_array.fe:4:9

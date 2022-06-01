@@ -215,10 +215,10 @@ note:
      }
 
 note: 
-   ┌─ pure_fn_standalone.fe:18:16
+   ┌─ pure_fn_standalone.fe:18:13
    │
 18 │         let a: address = address(x)
-   │                ^^^^^^^ address
+   │             ^ address
 
 note: 
    ┌─ pure_fn_standalone.fe:18:34

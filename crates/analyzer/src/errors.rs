@@ -124,10 +124,6 @@ pub struct AlreadyDefined;
 #[derive(Debug)]
 pub struct CannotMove;
 
-/// Error indicating that a [`Type`] does not have a fixed size.
-#[derive(Debug)]
-pub struct NotFixedSize;
-
 /// Errors that can result from indexing
 #[derive(Debug, PartialEq)]
 pub enum IndexingError {
@@ -144,9 +140,6 @@ pub enum BinaryOperationError {
     RightIsSigned,
     NotEqualAndUnsigned,
 }
-
-#[derive(Debug)]
-pub struct AnalyzerError(pub Vec<Diagnostic>);
 
 impl From<TypeError> for FatalError {
     fn from(err: TypeError) -> Self {

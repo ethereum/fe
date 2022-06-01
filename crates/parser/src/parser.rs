@@ -118,19 +118,6 @@ impl<'a> Parser<'a> {
         self.peek_raw()
     }
 
-    /// Peek at the text of the next token, without consuming it. This is useful
-    /// for words that are keywords in some contexts, but not others. E.g.
-    /// `from` can be used as a variable or field name, but it's the leading
-    /// keyword of a `from x import y` statement.
-    ///
-    /// # Panics
-    /// This function must only be used in cases where the kind of the next
-    /// token has already been [`Parser::peek`]ed. If there is no next token, it
-    /// will panic.
-    pub fn peeked_text(&mut self) -> &'a str {
-        self.buffered.last().unwrap().text
-    }
-
     fn peek_raw(&mut self) -> Option<TokenKind> {
         if self.buffered.is_empty() {
             if let Some(tok) = self.lexer.next() {

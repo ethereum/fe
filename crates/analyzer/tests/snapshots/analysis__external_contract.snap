@@ -189,10 +189,10 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:15:23
+   ┌─ external_contract.fe:15:13
    │
 15 │         let my_array: Array<u256, 3>
-   │                       ^^^^^^^^^^^^^^ Array<u256, 3>
+   │             ^^^^^^^^ Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:16:9
@@ -322,10 +322,10 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:25:18
+   ┌─ external_contract.fe:25:13
    │
 25 │         let foo: Foo = Foo(ctx, foo_address)
-   │                  ^^^ Foo
+   │             ^^^ Foo
 
 note: 
    ┌─ external_contract.fe:25:28
@@ -425,10 +425,10 @@ note:
      }
 
 note: 
-   ┌─ external_contract.fe:30:18
+   ┌─ external_contract.fe:30:13
    │
 30 │         let foo: Foo = Foo(ctx, foo_address)
-   │                  ^^^ Foo
+   │             ^^^ Foo
 
 note: 
    ┌─ external_contract.fe:30:28

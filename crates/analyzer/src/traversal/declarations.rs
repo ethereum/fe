@@ -33,7 +33,6 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             }
         }
 
-        scope.root.add_declaration(typ, declared_type.clone());
         add_var(scope, target, declared_type)?;
         return Ok(());
     }
@@ -70,7 +69,6 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         // Perform constant evaluation.
         let const_value = const_expr::eval_expr(scope, value)?;
 
-        scope.root.add_declaration(typ, declared_type.clone());
         scope.root.map_variable_type(name, declared_type.clone());
         // this logs a message on err, so it's safe to ignore here.
         let _ = scope.add_var(name.kind.as_str(), declared_type, true, name.span);

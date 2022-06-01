@@ -382,15 +382,6 @@ impl Node<Field> {
     }
 }
 
-impl Function {
-    pub fn is_pub(&self) -> bool {
-        self.pub_.is_some()
-    }
-    pub fn is_unsafe(&self) -> bool {
-        self.unsafe_.is_some()
-    }
-}
-
 impl Node<Function> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind

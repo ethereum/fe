@@ -107,7 +107,7 @@ impl SourceFileId {
     }
 
     pub fn dummy_file() -> Self {
-        // Used by lowering::ZeroSpanNode, unit tests, and benchmarks
+        // Used by unit tests and benchmarks
         Self(u32::MAX)
     }
     pub fn is_dummy(self) -> bool {

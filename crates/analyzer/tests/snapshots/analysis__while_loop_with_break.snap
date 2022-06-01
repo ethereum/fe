@@ -29,10 +29,10 @@ note:
     }
 
 note: 
-  ┌─ while_loop_with_break.fe:3:18
+  ┌─ while_loop_with_break.fe:3:13
   │
 3 │         let val: u256 = 0
-  │                  ^^^^ u256
+  │             ^^^ u256
 
 note: 
   ┌─ while_loop_with_break.fe:3:25

@@ -742,10 +742,10 @@ note:
      }
 
 note: 
-   ┌─ aug_assign.fe:66:23
+   ┌─ aug_assign.fe:66:13
    │
 66 │         let my_array: Array<u256, 10>
-   │                       ^^^^^^^^^^^^^^^ Array<u256, 10>
+   │             ^^^^^^^^ Array<u256, 10>
 
 note: 
    ┌─ aug_assign.fe:67:9

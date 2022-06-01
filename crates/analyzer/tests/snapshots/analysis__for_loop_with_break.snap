@@ -29,13 +29,15 @@ note:
      }
 
 note: 
-  ┌─ for_loop_with_break.fe:3:23
+  ┌─ for_loop_with_break.fe:3:13
   │
 3 │         let my_array: Array<u256, 3>
-  │                       ^^^^^^^^^^^^^^ Array<u256, 3>
+  │             ^^^^^^^^ Array<u256, 3>
   ·
 7 │         let sum: u256 = 0
-  │                  ^^^^ u256
+  │             ^^^ u256
+8 │         for i in my_array {
+  │             ^ u256
 
 note: 
   ┌─ for_loop_with_break.fe:4:9
