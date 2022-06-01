@@ -164,10 +164,10 @@ pub fn function_signature(
                 }
                 Ok(Type::unit())
             } else {
-
                 match type_desc(&mut scope, type_node)? {
-                    Type::Struct(val) if val.id.has_complex_fields(db) && function.is_public(db) => {
-                        scope.not_yet_implemented("structs with complex fields can't be returned from public functions yet", type_node.span);
+                    Type::Struct(val)
+                        if val.id.has_complex_fields(db) && function.is_public(db) =>
+                    {
                         Ok(Type::Struct(val))
                     }
                     typ if typ.has_fixed_size() => Ok(typ),

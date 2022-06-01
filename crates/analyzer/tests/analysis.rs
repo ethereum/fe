@@ -235,6 +235,7 @@ test_analysis! { return_bool_op_and, "features/return_bool_op_and.fe"}
 test_analysis! { return_bool_op_or, "features/return_bool_op_or.fe"}
 test_analysis! { return_bool_true, "features/return_bool_true.fe"}
 test_analysis! { return_builtin_attributes, "features/return_builtin_attributes.fe"}
+test_analysis! { return_complex_struct, "features/return_complex_struct.fe"}
 test_analysis! { return_division_i256, "features/return_division_i256.fe"}
 test_analysis! { return_division_u256, "features/return_division_u256.fe"}
 test_analysis! { return_empty_tuple, "features/return_unit.fe"}
@@ -494,8 +495,8 @@ fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnosti
 }
 
 fn hash<T: Debug>(item: &T) -> u64 {
-    // Using the Hash trait on `item` here gives different hash values on wasm vs linux,
-    // so we hash the debug string instead.
+    // Using the Hash trait on `item` here gives different hash values on wasm vs
+    // linux, so we hash the debug string instead.
     let mut s = DefaultHasher::new();
     format!("{:?}", item).hash(&mut s);
     s.finish()

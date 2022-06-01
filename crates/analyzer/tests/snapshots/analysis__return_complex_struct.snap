@@ -1,0 +1,296 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&db, module)"
+---
+note: 
+  ┌─ return_complex_struct.fe:2:5
+  │
+2 │     pub inner_x: i32
+  │     ^^^^^^^^^^^^^^^^ i32
+3 │     pub inner_y: i32
+  │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+  ┌─ return_complex_struct.fe:7:5
+  │
+7 │     pub inner: StaticInner
+  │     ^^^^^^^^^^^^^^^^^^^^^^ StaticInner
+8 │     pub outer_x: i256
+  │     ^^^^^^^^^^^^^^^^^ i256
+
+note: 
+   ┌─ return_complex_struct.fe:12:5
+   │
+12 │     pub string: String<8>
+   │     ^^^^^^^^^^^^^^^^^^^^^ String<8>
+13 │     pub outer_x: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ return_complex_struct.fe:17:5
+   │
+17 │     pub bytes: Array<u8, 8>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 8>
+18 │     pub outer_x: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ return_complex_struct.fe:22:5
+   │
+22 │     pub bytes_complex: BytesComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex
+23 │     pub static_complex: StaticComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex
+24 │     pub string_complex: StringComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex
+
+note: 
+   ┌─ return_complex_struct.fe:29:5
+   │  
+29 │ ╭     pub fn static_complex(self) -> StaticComplex {
+30 │ │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
+31 │ │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
+32 │ │         return complex
+33 │ │     }
+   │ ╰─────^ attributes hash: 18333022875177944738
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "StaticComplex",
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_complex_struct.fe:30:13
+   │
+30 │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
+   │             ^^^^^ StaticInner
+31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
+   │             ^^^^^^^ StaticComplex
+
+note: 
+   ┌─ return_complex_struct.fe:30:55
+   │
+30 │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
+   │                                                       ^^           ^^ i32: Value
+   │                                                       │             
+   │                                                       i32: Value
+
+note: 
+   ┌─ return_complex_struct.fe:30:34
+   │
+30 │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
+   │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticInner: Memory
+31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
+   │                                                    ^^^^^           ^^ i256: Value
+   │                                                    │                
+   │                                                    StaticInner: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:31:38
+   │
+31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
+   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex: Memory
+32 │         return complex
+   │                ^^^^^^^ StaticComplex: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:36:5
+   │  
+36 │ ╭     pub fn string_complex(self) -> StringComplex {
+37 │ │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
+38 │ │         return complex
+39 │ │     }
+   │ ╰─────^ attributes hash: 4691780846415744236
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "StringComplex",
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_complex_struct.fe:37:13
+   │
+37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
+   │             ^^^^^^^ StringComplex
+
+note: 
+   ┌─ return_complex_struct.fe:37:60
+   │
+37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
+   │                                                            ^^^^^^^           ^^ i32: Value
+   │                                                            │                  
+   │                                                            String<8>: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:37:38
+   │
+37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
+   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex: Memory
+38 │         return complex
+   │                ^^^^^^^ StringComplex: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:41:5
+   │  
+41 │ ╭     pub fn bytes_complex(self) -> BytesComplex {
+42 │ │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
+43 │ │         return complex
+44 │ │     }
+   │ ╰─────^ attributes hash: 15110112579440786347
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "BytesComplex",
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_complex_struct.fe:42:13
+   │
+42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
+   │             ^^^^^^^ BytesComplex
+
+note: 
+   ┌─ return_complex_struct.fe:42:58
+   │
+42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
+   │                                                          ^  ^  ^  ^  ^  ^  ^  ^ u8: Value
+   │                                                          │  │  │  │  │  │  │   
+   │                                                          │  │  │  │  │  │  u8: Value
+   │                                                          │  │  │  │  │  u8: Value
+   │                                                          │  │  │  │  u8: Value
+   │                                                          │  │  │  u8: Value
+   │                                                          │  │  u8: Value
+   │                                                          │  u8: Value
+   │                                                          u8: Value
+
+note: 
+   ┌─ return_complex_struct.fe:42:57
+   │
+42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
+   │                                                         ^^^^^^^^^^^^^^^^^^^^^^^^           ^^ i32: Value
+   │                                                         │                                   
+   │                                                         Array<u8, 8>: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:42:37
+   │
+42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
+   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex: Memory
+43 │         return complex
+   │                ^^^^^^^ BytesComplex: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:46:5
+   │  
+46 │ ╭     pub fn nested_dynamic_complex(self) -> NestedDynamicComplex {
+47 │ │         let bytes_complex: BytesComplex = self.bytes_complex()
+48 │ │         let static_complex: StaticComplex = self.static_complex()
+49 │ │         let string_complex: StringComplex = self.string_complex()
+50 │ │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
+51 │ │         return complex
+52 │ │     }
+   │ ╰─────^ attributes hash: 7674472406353226070
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         ctx_decl: None,
+         params: [],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "NestedDynamicComplex",
+                     field_count: 3,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ return_complex_struct.fe:47:13
+   │
+47 │         let bytes_complex: BytesComplex = self.bytes_complex()
+   │             ^^^^^^^^^^^^^ BytesComplex
+48 │         let static_complex: StaticComplex = self.static_complex()
+   │             ^^^^^^^^^^^^^^ StaticComplex
+49 │         let string_complex: StringComplex = self.string_complex()
+   │             ^^^^^^^^^^^^^^ StringComplex
+50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
+   │             ^^^^^^^ NestedDynamicComplex
+
+note: 
+   ┌─ return_complex_struct.fe:47:43
+   │
+47 │         let bytes_complex: BytesComplex = self.bytes_complex()
+   │                                           ^^^^ Foo: Value
+
+note: 
+   ┌─ return_complex_struct.fe:47:43
+   │
+47 │         let bytes_complex: BytesComplex = self.bytes_complex()
+   │                                           ^^^^^^^^^^^^^^^^^^^^ BytesComplex: Memory
+48 │         let static_complex: StaticComplex = self.static_complex()
+   │                                             ^^^^ Foo: Value
+
+note: 
+   ┌─ return_complex_struct.fe:48:45
+   │
+48 │         let static_complex: StaticComplex = self.static_complex()
+   │                                             ^^^^^^^^^^^^^^^^^^^^^ StaticComplex: Memory
+49 │         let string_complex: StringComplex = self.string_complex()
+   │                                             ^^^^ Foo: Value
+
+note: 
+   ┌─ return_complex_struct.fe:49:45
+   │
+49 │         let string_complex: StringComplex = self.string_complex()
+   │                                             ^^^^^^^^^^^^^^^^^^^^^ StringComplex: Memory
+50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
+   │                                                                  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ StringComplex: Memory
+   │                                                                  │              │                
+   │                                                                  │              StaticComplex: Memory
+   │                                                                  BytesComplex: Memory
+
+note: 
+   ┌─ return_complex_struct.fe:50:45
+   │
+50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
+   │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NestedDynamicComplex: Memory
+51 │         return complex
+   │                ^^^^^^^ NestedDynamicComplex: Memory
+
+

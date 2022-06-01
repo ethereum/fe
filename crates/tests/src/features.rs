@@ -1276,6 +1276,35 @@ fn structs() {
 }
 
 #[test]
+fn return_complex_struct() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "return_complex_struct.fe", "Foo", &[]);
+
+        let static_inner = tuple_token(&[int_token(10), int_token(20)]);
+        let static_complex = tuple_token(&[static_inner, int_token(30)]);
+        harness.test_function(&mut executor, "static_complex", &[], Some(&static_complex));
+
+        let string = string_token("Hello");
+        let string_complex = tuple_token(&[string, int_token(30)]);
+        harness.test_function(&mut executor, "string_complex", &[], Some(&string_complex));
+
+        let bytes = ethabi::Token::Bytes(ethabi::Bytes::from([1, 2, 3, 4, 5, 6, 7, 8]));
+        let bytes_complex = tuple_token(&[bytes, int_token(30)]);
+        harness.test_function(&mut executor, "bytes_complex", &[], Some(&bytes_complex));
+
+        let nested_dynamic_complex = tuple_token(&[bytes_complex, static_complex, string_complex]);
+        harness.test_function(
+            &mut executor,
+            "nested_dynamic_complex",
+            &[],
+            Some(&nested_dynamic_complex),
+        );
+
+        assert_harness_gas_report!(harness);
+    });
+}
+
+#[test]
 fn keccak() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "keccak.fe", "Keccak", &[]);
