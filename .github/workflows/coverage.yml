@@ -1,0 +1,39 @@
+name: test-coverage
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - v*
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-all-dev
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: install cargo-tarpaulin
+        run: |
+          cargo install cargo-quickinstall
+          cargo quickinstall cargo-tarpaulin
+      - name: coverage with tarpaulin
+        run: |
+          make coverage
+          bash <(curl -s https://codecov.io/bash)
