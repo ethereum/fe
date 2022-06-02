@@ -84,6 +84,40 @@ pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
                 abi_type.header_size() + 32 + ceil_32(def.len)
             }
             ir::TypeKind::String(len) => abi_type.header_size() + 32 + ceil_32(*len),
+            _ if ty.is_aggregate(db.upcast()) => {
+                let mut maximum = 0;
+                for i in 0..ty.aggregate_field_num(db.upcast()) {
+                    let field_ty = ty.projection_ty_imm(db.upcast(), i);
+                    maximum += db.codegen_abi_type_maximum_size(field_ty)
+                }
+                maximum + 32
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
+    let abi_type = db.codegen_abi_type(ty);
+    if abi_type.is_static() {
+        abi_type.header_size()
+    } else {
+        match &ty.data(db.upcast()).kind {
+            ir::TypeKind::Array(def) => {
+                debug_assert! {matches!(def.elem_ty.data
+                    (db.upcast()).kind, ir::TypeKind::U8),
+                }
+                abi_type.header_size() + 32
+            }
+            ir::TypeKind::String(_) => abi_type.header_size() + 32,
+            _ if ty.is_aggregate(db.upcast()) => {
+                let mut minimum = 0;
+                for i in 0..ty.aggregate_field_num(db.upcast()) {
+                    let field_ty = ty.projection_ty_imm(db.upcast(), i);
+                    minimum += db.codegen_abi_type_minimum_size(field_ty)
+                }
+                minimum + 32
+            }
             _ => unreachable!(),
         }
     }

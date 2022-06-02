@@ -634,7 +634,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         types: &[TypeId],
         abi_loc: AbiSrcLocation,
     ) -> yul::Expression {
-        let mut name = "$abi_decode_seq".to_string();
+        let mut name = "$abi_decode".to_string();
         for ty in types {
             write!(name, "_{}", ty.0).unwrap();
         }
