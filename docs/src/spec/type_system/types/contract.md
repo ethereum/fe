@@ -19,7 +19,7 @@ contract Foo {
 }
 
 contract FooFactory {
-    pub fn create2_foo(ctx: Context) -> address {
+    pub fn create2_foo(mut ctx: Context) -> address {
         # `0` is the value being sent and `52` is the address salt
         let foo: Foo = Foo.create2(ctx, 0, 52)
         return address(foo)
