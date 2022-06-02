@@ -11,6 +11,12 @@ fn f() {
     let mut y1: Array<u8, 3>
     y1 = x
     y1[0] = 20
+
+    # primitive types are fine
+    let a: u8 = 10
+    let mut b: u8 = a
+    let mut c: u8 = 1
+    c = a
 }
 
 fn g() {

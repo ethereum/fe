@@ -32,7 +32,7 @@ contract Foo {
         num2: u256
         my_bytes: Array<u8, 100>
     }
-    pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
+    pub fn emit_mix(mut ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
     }
 }

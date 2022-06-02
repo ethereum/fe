@@ -33,7 +33,7 @@ contract Foo {
         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
     }
 
-    pub fn create_bing_contract(ctx: Context) -> u256 {
+    pub fn create_bing_contract(mut ctx: Context) -> u256 {
         let bing_contract: BingContract = BingContract.create(ctx, 0)
         return bing_contract.add(40, 50)
     }

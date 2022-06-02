@@ -8,4 +8,7 @@ contract Bar {
     pub fn create_foo(ctx: Context) {
         Foo.create(0)
     }
+    pub fn create_foo2(ctx: Context) {
+      Foo.create(ctx, 0)
+    }
 }

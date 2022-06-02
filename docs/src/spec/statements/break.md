@@ -15,7 +15,7 @@ An example of a `break` statement used within a [`while`] loop.
 contract Foo {
 
     pub fn bar() -> u256 {
-        let sum: u256
+        let mut sum: u256 = 0
         while sum < 10 {
             sum += 1
 
@@ -39,7 +39,7 @@ An example of a `break` statement used within a [`for`] loop.
 contract Foo {
 
     pub fn bar(values: Array<u256, 10>) -> u256 {
-        let sum: u256
+        let mut sum: u256 = 0
         for i in values {
             sum = sum + i
 

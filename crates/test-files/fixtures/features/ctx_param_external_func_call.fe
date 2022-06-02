@@ -19,7 +19,7 @@ contract Bar {
         return foo.baz(ctx)
     }
 
-    pub fn call_bing(ctx: Context) -> u256 {
+    pub fn call_bing(mut ctx: Context) -> u256 {
         let foo: Foo = Foo.create(ctx, 0)
         return foo.bing(42)
     }

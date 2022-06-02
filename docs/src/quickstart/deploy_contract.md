@@ -40,7 +40,7 @@ use std::context::Context
 contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>) {
+  pub fn sign(mut self, ctx: Context, book_msg: String<100>) {
     self.messages[ctx.msg_sender()] = book_msg
   }
 

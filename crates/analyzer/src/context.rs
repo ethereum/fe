@@ -214,7 +214,7 @@ pub enum NamedThing {
     Item(Item),
     SelfValue {
         /// Function `self` parameter.
-        decl: Option<SelfDecl>, // XXX is this used?
+        decl: Option<SelfDecl>,
 
         /// The function's parent, if any. If `None`, `self` has been
         /// used in a module-level function.
@@ -407,7 +407,6 @@ impl ExpressionAttributes {
         }
     }
 
-    // XXX
     pub fn immutable(typ: Type, location: Location) -> Self {
         Self {
             typ,

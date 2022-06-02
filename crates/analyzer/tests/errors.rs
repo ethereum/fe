@@ -104,6 +104,8 @@ test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
 test_stmt! { assign_type_mismatch, "let mut x: u256 = 10\nx = address(0)" }
+test_stmt! { assign_non_mut, "let x: u8 = 10; x = 11" }
+test_stmt! { augassign_non_mut, "let x: u8 = 10; x += 1" }
 test_stmt! { aug_assign_non_numeric, "let mut a: u256 = 1\nlet b: bool = true\na += b" }
 test_stmt! { binary_op_add_uints, "let a: u256 = 1\nlet b: u8 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "let a: bool = true\nlet b: i256\na << b" }
@@ -259,6 +261,7 @@ test_file! { invalid_tx_field }
 test_file! { invalid_var_declaration_1 }
 test_file! { invalid_var_declaration_2 }
 test_file! { issue_451 }
+test_file! { member_fns }
 test_file! { mislabeled_call_args }
 test_file! { mislabeled_call_args_self }
 test_file! { mislabeled_call_args_external_contract_call }

@@ -483,8 +483,8 @@ note:
    ┌─ struct_fns.fe:42:1
    │  
 42 │ ╭ pub fn do_pointy_things() {
-43 │ │     let p1: Point = Point::origin()
-44 │ │     p1.translate(x: 5, y: 10) # XXX require mut p1
+43 │ │     let mut p1: Point = Point::origin()
+44 │ │     p1.translate(x: 5, y: 10)
 45 │ │     let p2: Point = Point(x: 1, y: 2)
 46 │ │     let p3: Point = p1.add(p2)
 47 │ │     assert p3.x == 6 and p3.y == 12
@@ -503,22 +503,22 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:43:9
+   ┌─ struct_fns.fe:43:13
    │
-43 │     let p1: Point = Point::origin()
-   │         ^^ Point
-44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
+43 │     let mut p1: Point = Point::origin()
+   │             ^^ Point
+44 │     p1.translate(x: 5, y: 10)
 45 │     let p2: Point = Point(x: 1, y: 2)
    │         ^^ Point
 46 │     let p3: Point = p1.add(p2)
    │         ^^ Point
 
 note: 
-   ┌─ struct_fns.fe:43:21
+   ┌─ struct_fns.fe:43:25
    │
-43 │     let p1: Point = Point::origin()
-   │                     ^^^^^^^^^^^^^^^ Point: Memory
-44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
+43 │     let mut p1: Point = Point::origin()
+   │                         ^^^^^^^^^^^^^^^ Point: Memory
+44 │     p1.translate(x: 5, y: 10)
    │     ^^              ^     ^^ u64: Value
    │     │               │      
    │     │               u64: Value
@@ -527,7 +527,7 @@ note:
 note: 
    ┌─ struct_fns.fe:44:5
    │
-44 │     p1.translate(x: 5, y: 10) # XXX require mut p1
+44 │     p1.translate(x: 5, y: 10)
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 45 │     let p2: Point = Point(x: 1, y: 2)
    │                              ^     ^ u64: Value
@@ -593,7 +593,7 @@ note:
    │  
 51 │ ╭     pub fn bar(x: u64, y: u64) -> u64 {
 52 │ │         do_pointy_things()
-53 │ │         let p: Point = Point::new(x, y)
+53 │ │         let mut p: Point = Point::new(x, y)
 54 │ │         assert p.x == x and p.y == y
    · │
 58 │ │         return p.y
@@ -639,26 +639,26 @@ note:
      }
 
 note: 
-   ┌─ struct_fns.fe:53:13
+   ┌─ struct_fns.fe:53:17
    │
-53 │         let p: Point = Point::new(x, y)
-   │             ^ Point
+53 │         let mut p: Point = Point::new(x, y)
+   │                 ^ Point
 
 note: 
    ┌─ struct_fns.fe:52:9
    │
 52 │         do_pointy_things()
    │         ^^^^^^^^^^^^^^^^^^ (): Value
-53 │         let p: Point = Point::new(x, y)
-   │                                   ^  ^ u64: Value
-   │                                   │   
-   │                                   u64: Value
+53 │         let mut p: Point = Point::new(x, y)
+   │                                       ^  ^ u64: Value
+   │                                       │   
+   │                                       u64: Value
 
 note: 
-   ┌─ struct_fns.fe:53:24
+   ┌─ struct_fns.fe:53:28
    │
-53 │         let p: Point = Point::new(x, y)
-   │                        ^^^^^^^^^^^^^^^^ Point: Memory
+53 │         let mut p: Point = Point::new(x, y)
+   │                            ^^^^^^^^^^^^^^^^ Point: Memory
 54 │         assert p.x == x and p.y == y
    │                ^ Point: Memory
 
@@ -697,7 +697,7 @@ note:
    │
 54 │         assert p.x == x and p.y == y
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-55 │         p.set_x(100) # XXX require mut
+55 │         p.set_x(100)
    │         ^       ^^^ u64: Value
    │         │        
    │         Point: Memory
@@ -705,7 +705,7 @@ note:
 note: 
    ┌─ struct_fns.fe:55:9
    │
-55 │         p.set_x(100) # XXX require mut
+55 │         p.set_x(100)
    │         ^^^^^^^^^^^^ u64: Value
 56 │         p.reflect()
    │         ^ Point: Memory

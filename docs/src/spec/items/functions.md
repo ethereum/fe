@@ -74,7 +74,7 @@ fn add(_ x: u256, _ y: u256) -> u256 {
 contract CoolCoin {
     balance: Map<address, u256>
 
-    fn transfer(self, from sender: address, to recipient: address, value: u256) -> bool {
+    fn transfer(mut self, from sender: address, to recipient: address, value: u256) -> bool {
         if self.balance[sender] < value {
             return false
         }
@@ -82,7 +82,7 @@ contract CoolCoin {
         self.balance[recipient] += value
         return true
     }
-    pub fn demo(self) {
+    pub fn demo(mut self) {
         let ann: address = address(0xaa)
         let bob: address = address(0xbb)
         self.balance[ann] = 100

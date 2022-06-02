@@ -33,11 +33,11 @@ note:
 note: 
    ┌─ create2_contract.fe:10:5
    │  
-10 │ ╭     pub fn create2_foo(ctx: Context) -> address {
+10 │ ╭     pub fn create2_foo(mut ctx: Context) -> address {
 11 │ │         let foo: Foo = Foo.create2(ctx, 0, 52)
 12 │ │         return address(foo)
 13 │ │     }
-   │ ╰─────^ attributes hash: 724290952338722356
+   │ ╰─────^ attributes hash: 20371212933292798
    │  
    = FunctionSignature {
          self_decl: None,
@@ -46,7 +46,7 @@ note:
          ),
          params: [
              FunctionParam {
-                 is_mut: false,
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(

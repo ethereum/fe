@@ -38,7 +38,7 @@ impl LabeledParameter for EventField {
     }
 }
 
-// XXX wtf is this
+// This is used for struct fields; see `expr_call_struct_constructor`
 impl LabeledParameter for (SmolStr, Result<Type, TypeError>, bool) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
@@ -129,11 +129,22 @@ pub fn validate_named_args(
             // We only emit label and mutability errors if the types match.
             // If the types don't match, these errors can be confusing.
             if param.mutable() && !val_attrs.mutable {
+                let msg = if let Some(label) = param.label() {
+                    format!(
+                        "argument `{}` to function `{}` must be mutable",
+                        label, name
+                    )
+                } else if params.len() == 1 {
+                    format!("argument to function `{}` must be mutable", name)
+                } else {
+                    format!("argument {} to function `{}` must be mutable", index, name)
+                };
+
                 context.fancy_error(
-                    "expected mut arg", // XXX better error
+                    &msg,
                     vec![
                         Label::primary(arg_val.span, "this is not mutable"),
-                        // Label::secondary(param.span, "mutates arg"), XXX parameter span
+                        // Label::secondary(param.span, "mutates arg"), TODO: parameter span
                     ],
                     vec![],
                 );

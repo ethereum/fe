@@ -3,13 +3,13 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: function `set_things` requires `mut self`
+error: function `set_things` is only callable on a mutable value
   ┌─ compile_errors/self_mut_mismatch.fe:5:14
   │
 4 │     fn foo(self) {
   │            ---- consider changing this to be mutable: `mut self`
 5 │         self.set_things(x: 10)
-  │         ---- ^^^^^^^^^^ requires `mut self`
+  │         ---- ^^^^^^^^^^ defined to take `mut self`
   │         │     
   │         not mutable
 
@@ -21,6 +21,14 @@ error: cannot modify `self`, as it is not mutable
 5 │         self.set_things(x: 10)
 6 │         self.x = 100
   │         ^^^^ not mutable
+
+error: function `set_name` is only callable on a mutable value
+   ┌─ compile_errors/self_mut_mismatch.fe:13:11
+   │
+13 │         m.set_name("May")
+   │         - ^^^^^^^^ defined to take `mut self`
+   │         │  
+   │         not mutable
 
 error: cannot modify `self`, as it is not mutable
    ┌─ compile_errors/self_mut_mismatch.fe:32:9

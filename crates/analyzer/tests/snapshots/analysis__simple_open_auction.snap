@@ -287,14 +287,14 @@ note:
 note: 
    ┌─ simple_open_auction.fe:58:5
    │  
-58 │ ╭     pub fn withdraw(mut self, ctx: Context) -> bool {
+58 │ ╭     pub fn withdraw(mut self, mut ctx: Context) -> bool {
 59 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 60 │ │ 
 61 │ │         if amount > 0 {
    · │
 65 │ │         return true
 66 │ │     }
-   │ ╰─────^ attributes hash: 11935853243259623885
+   │ ╰─────^ attributes hash: 12287494632021921059
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -308,7 +308,7 @@ note:
          ),
          params: [
              FunctionParam {
-                 is_mut: false,
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -426,13 +426,13 @@ note:
    · │
 78 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
 79 │ │     }
-   │ ╰─────^ attributes hash: 10290761832650275773
+   │ ╰─────^ attributes hash: 11354958155348800027
    │  
    = FunctionSignature {
          self_decl: Some(
              SelfDecl {
                  kind: MutRef,
-                 span: 1726..1730,
+                 span: 1730..1734,
              },
          ),
          ctx_decl: Some(

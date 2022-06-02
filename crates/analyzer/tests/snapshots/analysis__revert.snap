@@ -41,10 +41,10 @@ note:
 note: 
    ┌─ revert.fe:15:5
    │  
-15 │ ╭     pub fn revert_custom_error(ctx: Context) {
+15 │ ╭     pub fn revert_custom_error(mut ctx: Context) {
 16 │ │         ctx.send_value(to: address(0), wei: 100)
 17 │ │     }
-   │ ╰─────^ attributes hash: 1359797249093753473
+   │ ╰─────^ attributes hash: 3107376239596606736
    │  
    = FunctionSignature {
          self_decl: None,
@@ -53,7 +53,7 @@ note:
          ),
          params: [
              FunctionParam {
-                 is_mut: false,
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(
@@ -135,13 +135,13 @@ note:
 24 │ │         self.my_other_error = OtherError(msg: 1, val: true)
 25 │ │         revert self.my_other_error.to_mem()
 26 │ │     }
-   │ ╰─────^ attributes hash: 13411050122270746593
+   │ ╰─────^ attributes hash: 390884508355709079
    │  
    = FunctionSignature {
          self_decl: Some(
              SelfDecl {
                  kind: MutRef,
-                 span: 414..418,
+                 span: 418..422,
              },
          ),
          ctx_decl: None,

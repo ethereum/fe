@@ -43,7 +43,7 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
         && !matches!(rhs_attr.location, Location::Storage { .. })
     {
         scope.fancy_error(
-            "sneaky mutation", // XXX better error
+            "can't create a mutable alias of an immutable value",
             vec![
                 Label::primary(target.span, "this is mutable"),
                 Label::secondary(rhs.span, "this is immutable"),
@@ -111,13 +111,14 @@ fn check_assign_target(scope: &mut BlockScope, target: &Node<fe::Expr>) -> Resul
             Some(NamedThing::SelfValue { .. })
                 | Some(NamedThing::Item(_))
                 | None => Err(invalid_assign_target(scope, target)),
-            Some(NamedThing::Variable { mutability, .. }) => match mutability {
+            Some(NamedThing::Variable { mutability, span: def_span, .. }) => match mutability {
                 BindingMutability::Mutable => Ok(()),
 
                 BindingMutability::Immutable => {
-                    scope.fancy_error(&format!("`{}` is not mutable", name), // XXX better error
-                                      vec![Label::primary(target.span, "")],
-                                      vec![]);
+                    scope.fancy_error(&format!("`{}` cannot be reassigned", name),
+                                      vec![Label::primary(target.span, ""),
+                                           Label::secondary(def_span, &format!("`{}` is not declared to be mutable", name))],
+                                      vec![format!("Hint: use `let mut {}` to allow reassignment", name)]);
                     Ok(())
                 }
                 BindingMutability::Const => {

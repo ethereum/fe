@@ -26,7 +26,7 @@ contract Foo {
         value: u256
     }
 
-    fn transfer(ctx: Context, to: address, value: u256) {
+    fn transfer(mut ctx: Context, to: address, value: u256) {
         # Heavy logic here
         # All done, log the event for listeners
         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)

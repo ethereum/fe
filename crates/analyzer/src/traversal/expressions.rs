@@ -1349,92 +1349,111 @@ fn expr_call_method(
         }
     }
 
-    let target_attributes = expr(context, target, None)?;
+    let target_attr = expr(context, target, None)?;
 
     // Check built-in methods.
     if let Ok(method) = ValueMethod::from_str(&field.kind) {
-        return expr_call_builtin_value_method(
-            context,
-            target_attributes,
-            target,
-            method,
-            field,
-            args,
-        );
+        return expr_call_builtin_value_method(context, target_attr, target, method, field, args);
     }
 
     // If the target is a "class" type (contract or struct), check for a member
     // function
-    if let Some(class) = target_attributes.typ.as_class() {
+    if let Some(class) = target_attr.typ.as_class() {
         if matches!(class, Class::Contract(_)) {
             check_for_call_to_special_fns(context, &field.kind, field.span)?;
         }
         if let Some(method) = class.function(context.db(), &field.kind) {
             let is_self = is_self_value(target);
+            let is_struct = matches!(class, Class::Struct { .. });
 
-            if is_self {
-                match method.self_decl(context.db()) {
-                    None => {
-                        // TODO: this should suggest (future) `Self::foo` syntax
+            match method.self_decl(context.db()) {
+                None => {
+                    // Weird language inconsistency:
+                    //   If the target is some other contract, this is fine.
+                    //   If the target is the self contract or a struct, error.
+                    if is_struct {
                         context.fancy_error(
-                            &format!("`{}` must be called without `self`", &field.kind),
-                            vec![Label::primary(field.span, "function does not take self")],
+                            &format!(
+                                "no method named `{}` for struct `{}`",
+                                &field.kind,
+                                target_attr.typ.name()
+                            ),
+                            vec![Label::primary(field.span, "this is an associated function")],
                             vec![format!(
-                                "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                                &field.kind, &field.kind
+                                "Suggestion: try `{}::{}(...)` instead",
+                                target_attr.typ.name(),
+                                &field.kind
+                            )],
+                        );
+                    } else if is_self {
+                        context.fancy_error(
+                            &format!(
+                                "function `{}` cannot be called on `{}`",
+                                &field.kind,
+                                target_attr.typ.name()
+                            ),
+                            vec![Label::primary(field.span, "this is an associated function")],
+                            vec![format!(
+                                "Suggestion: try `{}(...)` instead", // TODO: Self::{}(...) ?
+                                &field.kind
                             )],
                         );
                     }
-                    Some(SelfDecl {
-                        kind: SelfDeclKind::MutRef,
-                        ..
-                    }) => {
-                        if let Some(SelfDecl {
-                            kind: SelfDeclKind::Ref,
-                            span,
-                        }) = context.parent_function().self_decl(context.db())
-                        {
-                            context.fancy_error(
-                                &format!(
-                                    "function `{}` requires `mut self`",
-                                    method.name(context.db())
-                                ),
-                                vec![
-                                    Label::primary(field.span, "requires `mut self`"),
-                                    Label::secondary(target.span, "not mutable"),
-                                    Label::secondary(
-                                        span,
-                                        "consider changing this to be mutable: `mut self`",
-                                    ),
-                                ],
-                                vec![],
-                            );
+                }
+                Some(SelfDecl {
+                    kind: SelfDeclKind::MutRef,
+                    ..
+                }) => {
+                    // Weird language inconsistency:
+                    //   If the target is some other contract, this is fine.
+                    //   If the target is a struct or the self contract, error.
+                    if !target_attr.mutable && (is_self || is_struct) {
+                        let mut labels = vec![
+                            Label::primary(field.span, "defined to take `mut self`"),
+                            Label::secondary(target.span, "not mutable"),
+                        ];
+                        if is_self {
+                            if let Some(SelfDecl {
+                                span: self_arg_span,
+                                ..
+                            }) = context.parent_function().self_decl(context.db())
+                            {
+                                labels.push(Label::secondary(
+                                    self_arg_span,
+                                    "consider changing this to be mutable: `mut self`",
+                                ));
+                            }
                         }
-                    }
-                    _ => {}
-                }
-            } else {
-                if !method.is_public(context.db()) {
-                    context.fancy_error(
-                        &format!(
-                            "the function `{}` on `{} {}` is private",
-                            &field.kind,
-                            class.kind(),
-                            class.name(context.db())
-                        ),
-                        vec![
-                            Label::primary(field.span, "this function is not `pub`"),
-                            Label::secondary(
-                                method.data(context.db()).ast.span,
-                                format!("`{}` is defined here", &field.kind),
+                        context.fancy_error(
+                            &format!(
+                                "function `{}` is only callable on a mutable value",
+                                method.name(context.db())
                             ),
-                        ],
-                        vec![],
-                    );
+                            labels,
+                            vec![],
+                        );
+                    }
                 }
+                _ => {}
+            }
 
-                // if target_attributes.mutable == Mutable::No && method.self_decl
-                // XXX check expr mutability and method self decl
+            if !is_self && !method.is_public(context.db()) {
+                context.fancy_error(
+                    &format!(
+                        "the function `{}` on `{} {}` is private",
+                        &field.kind,
+                        class.kind(),
+                        class.name(context.db())
+                    ),
+                    vec![
+                        Label::primary(field.span, "this function is not `pub`"),
+                        Label::secondary(
+                            method.data(context.db()).ast.span,
+                            format!("`{}` is defined here", &field.kind),
+                        ),
+                    ],
+                    vec![],
+                );
             }
 
             let sig = method.signature(context.db());
@@ -1452,7 +1471,7 @@ fn expr_call_method(
                         // External contract address must be loaded onto the stack.
                         context.update_expression(
                             target,
-                            target_attributes
+                            target_attr
                                 .into_loaded()
                                 .expect("should be able to move contract type to stack"),
                         );
@@ -1464,7 +1483,7 @@ fn expr_call_method(
                     }
                 }
                 Class::Struct(_) => {
-                    if matches!(target_attributes.final_location(), Location::Storage { .. }) {
+                    if matches!(target_attr.final_location(), Location::Storage { .. }) {
                         context.fancy_error(
                             "struct functions can only be called on structs in memory",
                             vec![
@@ -1494,17 +1513,14 @@ fn expr_call_method(
             // (Contract non-mut self fns can only return a non-base-types if
             // they are copied to memory first.)
             // This should be improved when we add explicit references.
-            let self_decl = method.self_decl(context.db());
-            let mutable = !return_type.is_base()
-                && !(matches!(class, Class::Struct(_))
-                    && matches!(
-                        self_decl,
-                        Some(SelfDecl {
-                            kind: SelfDeclKind::Ref,
-                            ..
-                        })
-                    ));
-
+            let non_mut_self = matches!(
+                method.self_decl(context.db()),
+                Some(SelfDecl {
+                    kind: SelfDeclKind::Ref,
+                    ..
+                })
+            );
+            let mutable = !(return_type.is_base() || (is_struct && non_mut_self));
             return Ok((
                 ExpressionAttributes::new(return_type, location, mutable),
                 calltype,
@@ -1514,7 +1530,7 @@ fn expr_call_method(
     Err(FatalError::new(context.fancy_error(
         &format!(
             "No function `{}` exists on type `{}`",
-            &field.kind, &target_attributes.typ
+            &field.kind, &target_attr.typ
         ),
         vec![Label::primary(field.span, "undefined function")],
         vec![],
@@ -1730,6 +1746,18 @@ fn expr_call_type_attribute(
                                                 "this has type `{}`; expected `Context`",
                                                 &attrs.typ
                                             ),
+                                        )],
+                                        vec![],
+                                    );
+                                } else if !attrs.mutable {
+                                    context.fancy_error(
+                                        &format!(
+                                            "argument `ctx` to function `{}` must be mutable",
+                                            function.as_ref()
+                                        ),
+                                        vec![Label::primary(
+                                            args.kind[i].span,
+                                            "this is not mutable",
                                         )],
                                         vec![],
                                     );

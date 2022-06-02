@@ -6,10 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ send_value.fe:4:5
   │  
-4 │ ╭     pub fn send_them_wei(ctx: Context, to: address, wei: u256) {
+4 │ ╭     pub fn send_them_wei(mut ctx: Context, to: address, wei: u256) {
 5 │ │         ctx.send_value(to, wei)
 6 │ │     }
-  │ ╰─────^ attributes hash: 17669353741841696983
+  │ ╰─────^ attributes hash: 15719391524421743267
   │  
   = FunctionSignature {
         self_decl: None,
@@ -18,7 +18,7 @@ note:
         ),
         params: [
             FunctionParam {
-                is_mut: false,
+                is_mut: true,
                 label: None,
                 name: "ctx",
                 typ: Ok(

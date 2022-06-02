@@ -16,13 +16,13 @@ note:
 11 │ │         self.other.set_foo_addr(ctx.self_address())
 12 │ │         return self.other.answer()
 13 │ │     }
-   │ ╰─────^ attributes hash: 17308523880210986290
+   │ ╰─────^ attributes hash: 5699723879441461870
    │  
    = FunctionSignature {
          self_decl: Some(
              SelfDecl {
                  kind: MutRef,
-                 span: 170..174,
+                 span: 174..178,
              },
          ),
          ctx_decl: Some(
@@ -168,13 +168,13 @@ note:
 23 │ ╭     pub fn set_foo_addr(mut self, _ addr: address) {
 24 │ │         self.other = Foo(addr)
 25 │ │     }
-   │ ╰─────^ attributes hash: 16843431437153664683
+   │ ╰─────^ attributes hash: 13486906505540066664
    │  
    = FunctionSignature {
          self_decl: Some(
              SelfDecl {
                  kind: MutRef,
-                 span: 430..434,
+                 span: 434..438,
              },
          ),
          ctx_decl: None,
@@ -225,13 +225,13 @@ note:
 27 │ ╭     pub fn answer(self) -> u256 {
 28 │ │         return self.other.add(20, 22)
 29 │ │     }
-   │ ╰─────^ attributes hash: 12456261780698058596
+   │ ╰─────^ attributes hash: 8154084594973719049
    │  
    = FunctionSignature {
          self_decl: Some(
              SelfDecl {
                  kind: Ref,
-                 span: 511..515,
+                 span: 515..519,
              },
          ),
          ctx_decl: None,

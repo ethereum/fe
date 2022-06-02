@@ -11,7 +11,7 @@ error: mutability mismatch
   │             │                   
   │             this is defined to be mutable
 
-error: sneaky mutation
+error: can't create a mutable alias of an immutable value
    ┌─ compile_errors/sneaky_mutation.fe:12:5
    │
 12 │     y1 = x
@@ -19,24 +19,24 @@ error: sneaky mutation
    │     │     
    │     this is mutable
 
-error: sneaky mutation
-   ┌─ compile_errors/sneaky_mutation.fe:26:5
+error: can't create a mutable alias of an immutable value
+   ┌─ compile_errors/sneaky_mutation.fe:32:5
    │
-26 │     w1.array = imm
+32 │     w1.array = imm
    │     ^^^^^^^^   --- this is immutable
    │     │           
    │     this is mutable
 
-error: expected mut arg
-   ┌─ compile_errors/sneaky_mutation.fe:33:19
+error: argument to function `set_array2` must be mutable
+   ┌─ compile_errors/sneaky_mutation.fe:39:19
    │
-33 │     w2.set_array2(imm)
+39 │     w2.set_array2(imm)
    │                   ^^^ this is not mutable
 
-error: sneaky mutation
-   ┌─ compile_errors/sneaky_mutation.fe:43:9
+error: can't create a mutable alias of an immutable value
+   ┌─ compile_errors/sneaky_mutation.fe:49:9
    │
-43 │         self.array = array
+49 │         self.array = array
    │         ^^^^^^^^^^   ----- this is immutable
    │         │             
    │         this is mutable

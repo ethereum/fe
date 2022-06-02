@@ -17,4 +17,10 @@ error: incorrect type for argument to `Foo.create`
 9 │         Foo.create(0)
   │                    ^ this has type `u256`; expected `Context`
 
+error: argument `ctx` to function `create` must be mutable
+   ┌─ compile_errors/ctx_missing_create.fe:12:18
+   │
+12 │       Foo.create(ctx, 0)
+   │                  ^^^ this is not mutable
+
 

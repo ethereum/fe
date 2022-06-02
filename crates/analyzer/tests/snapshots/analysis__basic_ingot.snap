@@ -246,11 +246,11 @@ note:
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:5
    │  
-36 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256 {
+36 │ ╭     pub fn create_bing_contract(mut ctx: Context) -> u256 {
 37 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
 38 │ │         return bing_contract.add(40, 50)
 39 │ │     }
-   │ ╰─────^ attributes hash: 5670239331635616289
+   │ ╰─────^ attributes hash: 11836390048008280048
    │  
    = FunctionSignature {
          self_decl: None,
@@ -259,7 +259,7 @@ note:
          ),
          params: [
              FunctionParam {
-                 is_mut: false,
+                 is_mut: true,
                  label: None,
                  name: "ctx",
                  typ: Ok(

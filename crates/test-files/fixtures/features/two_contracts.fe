@@ -3,7 +3,7 @@ use std::context::Context
 contract Foo {
     other: Bar
 
-    pub fn __init__(mut self, ctx: Context) {
+    pub fn __init__(mut self, mut ctx: Context) {
         self.other = Bar.create(ctx, 0)
     }
 

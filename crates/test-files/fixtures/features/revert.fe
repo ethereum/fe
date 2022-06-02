@@ -12,7 +12,7 @@ contract Foo {
         revert
     }
 
-    pub fn revert_custom_error(ctx: Context) {
+    pub fn revert_custom_error(mut ctx: Context) {
         ctx.send_value(to: address(0), wei: 100)
     }
 
