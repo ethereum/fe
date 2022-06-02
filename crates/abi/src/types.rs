@@ -60,13 +60,15 @@ impl AbiType {
         match self {
             Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool | Self::Function => 32,
             Self::Array { elem_ty, len } => elem_ty.header_size() * len,
-            Self::Tuple(fields) => fields.iter().fold(0, |acc, field| {
-                if field.ty.is_static() {
-                    field.ty.header_size() + acc
+            Self::Tuple(fields) => {
+                if self.is_static() {
+                    fields
+                        .iter()
+                        .fold(0, |acc, field| field.ty.header_size() + acc)
                 } else {
-                    32 + acc
+                    32
                 }
-            }),
+            }
             Self::Bytes | Self::String => 32,
         }
     }

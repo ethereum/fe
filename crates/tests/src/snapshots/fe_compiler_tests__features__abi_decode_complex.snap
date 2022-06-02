@@ -1,0 +1,9 @@
+---
+source: crates/tests/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+decode_static_complex([Tuple([Tuple([Int(10), Int(20)]), Int(30)])]) used 756 gas
+decode_string_complex([Tuple([String("Hello"), Int(30)])]) used 1438 gas
+decode_bytes_complex([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)])]) used 1000 gas
+decode_nested_dynamic_complex([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])]) used 3539 gas
+

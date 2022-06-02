@@ -32,6 +32,8 @@ pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
     fn codegen_abi_contract(&self, contract: ContractId) -> AbiContract;
     #[salsa::invoke(queries::abi::abi_type_maximum_size)]
     fn codegen_abi_type_maximum_size(&self, ty: TypeId) -> usize;
+    #[salsa::invoke(queries::abi::abi_type_minimum_size)]
+    fn codegen_abi_type_minimum_size(&self, ty: TypeId) -> usize;
     #[salsa::invoke(queries::abi::abi_function_argument_maximum_size)]
     fn codegen_abi_function_argument_maximum_size(&self, contract: FunctionId) -> usize;
     #[salsa::invoke(queries::abi::abi_function_return_maximum_size)]

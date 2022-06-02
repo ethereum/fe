@@ -188,6 +188,7 @@ test_analysis! { guest_book, "demos/guest_book.fe"}
 test_analysis! { simple_open_auction, "demos/simple_open_auction.fe"}
 test_analysis! { uniswap, "demos/uniswap.fe"}
 test_analysis! { address_bytes10_map, "features/address_bytes10_map.fe"}
+test_analysis! { abi_decode_complex, "features/abi_decode_complex.fe"}
 test_analysis! { assert, "features/assert.fe"}
 test_analysis! { associated_fns, "features/associated_fns.fe"}
 test_analysis! { aug_assign, "features/aug_assign.fe"}

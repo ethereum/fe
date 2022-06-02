@@ -1,0 +1,211 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&db, module)"
+---
+note: 
+  ┌─ abi_decode_complex.fe:2:5
+  │  
+2 │ ╭     pub fn decode_static_complex(s: StaticComplex) -> StaticComplex {
+3 │ │         return s
+4 │ │     }
+  │ ╰─────^ attributes hash: 13546101684275548970
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        ctx_decl: None,
+        params: [
+            FunctionParam {
+                label: None,
+                name: "s",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "StaticComplex",
+                            field_count: 2,
+                        },
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Struct(
+                Struct {
+                    name: "StaticComplex",
+                    field_count: 2,
+                },
+            ),
+        ),
+    }
+
+note: 
+  ┌─ abi_decode_complex.fe:3:16
+  │
+3 │         return s
+  │                ^ StaticComplex: Memory
+
+note: 
+  ┌─ abi_decode_complex.fe:6:5
+  │  
+6 │ ╭     pub fn decode_string_complex(s: StringComplex) -> StringComplex {
+7 │ │         return s
+8 │ │     }
+  │ ╰─────^ attributes hash: 9213499526282989909
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        ctx_decl: None,
+        params: [
+            FunctionParam {
+                label: None,
+                name: "s",
+                typ: Ok(
+                    Struct(
+                        Struct {
+                            name: "StringComplex",
+                            field_count: 2,
+                        },
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Struct(
+                Struct {
+                    name: "StringComplex",
+                    field_count: 2,
+                },
+            ),
+        ),
+    }
+
+note: 
+  ┌─ abi_decode_complex.fe:7:16
+  │
+7 │         return s
+  │                ^ StringComplex: Memory
+
+note: 
+   ┌─ abi_decode_complex.fe:10:5
+   │  
+10 │ ╭     pub fn decode_bytes_complex(s: BytesComplex) -> BytesComplex {
+11 │ │         return s
+12 │ │     }
+   │ ╰─────^ attributes hash: 9262156959297131687
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "s",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "BytesComplex",
+                             field_count: 2,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "BytesComplex",
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ abi_decode_complex.fe:11:16
+   │
+11 │         return s
+   │                ^ BytesComplex: Memory
+
+note: 
+   ┌─ abi_decode_complex.fe:14:5
+   │  
+14 │ ╭     pub fn decode_nested_dynamic_complex(s: NestedDynamicComplex) -> NestedDynamicComplex {
+15 │ │         return s
+16 │ │     }
+   │ ╰─────^ attributes hash: 3503331736540589795
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "s",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "NestedDynamicComplex",
+                             field_count: 3,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "NestedDynamicComplex",
+                     field_count: 3,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ abi_decode_complex.fe:15:16
+   │
+15 │         return s
+   │                ^ NestedDynamicComplex: Memory
+
+note: 
+   ┌─ abi_decode_complex.fe:20:5
+   │
+20 │     pub inner_x: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+21 │     pub inner_y: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ abi_decode_complex.fe:25:5
+   │
+25 │     pub inner: StaticInner
+   │     ^^^^^^^^^^^^^^^^^^^^^^ StaticInner
+26 │     pub outer_x: i256
+   │     ^^^^^^^^^^^^^^^^^ i256
+
+note: 
+   ┌─ abi_decode_complex.fe:30:5
+   │
+30 │     pub string: String<8>
+   │     ^^^^^^^^^^^^^^^^^^^^^ String<8>
+31 │     pub outer_x: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ abi_decode_complex.fe:35:5
+   │
+35 │     pub bytes: Array<u8, 8>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 8>
+36 │     pub outer_x: i32
+   │     ^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ abi_decode_complex.fe:40:5
+   │
+40 │     pub bytes_complex: BytesComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex
+41 │     pub static_complex: StaticComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex
+42 │     pub string_complex: StringComplex
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex
+
+
