@@ -1,0 +1,17 @@
+use std::context::Context
+
+contract Foo {
+    pub fn add(_ x: u256, _ y: u256) -> u256 {
+        return x + y
+    }
+}
+
+contract FooFactory {
+    pub fn call_foo(ctx: Context) -> u256 {
+        let foo: Foo = Foo.create(ctx, 0)
+        let sum: u256 = foo.add(42, 26)
+        let my_array: Array<u8, 42>
+        assert my_array[0] == 0
+        return sum
+    }
+}

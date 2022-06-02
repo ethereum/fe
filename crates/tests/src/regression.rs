@@ -44,3 +44,14 @@ fn create_contract_mem() {
         assert_harness_gas_report!(factory_harness);
     })
 }
+
+#[test]
+fn call_contract_mem() {
+    with_executor(&|mut executor| {
+        let factory_harness =
+            deploy_contract(&mut executor, "call_contract_mem.fe", "FooFactory", &[]);
+        factory_harness.test_function(&mut executor, "call_foo", &[], Some(&uint_token(68)));
+
+        assert_harness_gas_report!(factory_harness);
+    })
+}
