@@ -74,10 +74,10 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
 fn find_name_def(scope: &BlockScope, expr: &Node<fe::Expr>) -> Option<(SmolStr, Span)> {
     match &expr.kind {
         fe::Expr::Attribute { value, .. } | fe::Expr::Subscript { value, .. } => {
-            find_name_def(scope, &value)
+            find_name_def(scope, value)
         }
         fe::Expr::Name(name) => {
-            let thing = scope.resolve_name(&name, expr.span).ok()??;
+            let thing = scope.resolve_name(name, expr.span).ok()??;
             thing.name_span(scope.db()).map(|span| (name.clone(), span))
         }
         _ => None,
@@ -89,7 +89,7 @@ fn check_assign_target(scope: &mut BlockScope, target: &Node<fe::Expr>) -> Resul
 
     match &target.kind {
         Attribute { value: container, .. } | Subscript { value: container, .. } => {
-            if !scope.expr_is_mutable(&container) {
+            if !scope.expr_is_mutable(container) {
                 let mut labels = vec![Label::primary(container.span, "not mutable")];
                 if let Some((name, span)) = find_name_def(scope, container) {
                     labels.push(Label::secondary(span, &format!("consider changing this to be mutable: `mut {}`", name)));

@@ -439,7 +439,7 @@ fn expr_named_thing(
             );
             match expected_type {
                 Some(typ) => {
-                    let location = Location::assign_location(&typ);
+                    let location = Location::assign_location(typ);
                     // I guess we'll say this is mutable, to minimize downstream errors.
                     let mutability = !typ.is_base();
                     Ok(ExpressionAttributes::new(typ.clone(), location, mutability))
@@ -1404,9 +1404,7 @@ fn expr_call_method(
                                     Label::secondary(target.span, "not mutable"),
                                     Label::secondary(
                                         span,
-                                        &format!(
-                                            "consider changing this to be mutable: `mut self`"
-                                        ),
+                                        "consider changing this to be mutable: `mut self`",
                                     ),
                                 ],
                                 vec![],
