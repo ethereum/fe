@@ -1,0 +1,32 @@
+
+contract C {
+  val: u8
+
+  pub fn add(_ x: u8, _ y: u8) -> u8 {
+    return x + y
+  }
+
+  pub fn update(mut self) {
+    self.val = add(self.val, 1)      # ok
+    self.val = self.add(self.val, 1) # error
+  }
+
+  pub fn inconsistency(self) {
+    let c: C = C(address(0))
+    c.add(1, 2)    # ok
+    self.add(1, 2) # error
+  }
+}
+
+struct S {
+  val: u8
+
+  pub fn add(_ x: u8, _ y: u8) -> u8 {
+    return x + y
+  }
+
+  pub fn update(mut self) {
+    self.val = S::add(self.val, 1)   # ok
+    self.val = self.add(self.val, 1) # error
+  }
+}

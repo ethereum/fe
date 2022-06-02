@@ -1,0 +1,16 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `x` cannot be reassigned
+  ┌─ [snippet]:3:19
+  │
+3 │   let x: u8 = 10; x = 11
+  │       -           ^
+  │       │            
+  │       `x` is not declared to be mutable
+  │
+  = Hint: use `let mut x` to allow reassignment
+
+

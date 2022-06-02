@@ -1,0 +1,30 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: function `add` cannot be called on `C`
+   ┌─ compile_errors/member_fns.fe:11:21
+   │
+11 │     self.val = self.add(self.val, 1) # error
+   │                     ^^^ this is an associated function
+   │
+   = Suggestion: try `add(...)` instead
+
+error: function `add` cannot be called on `C`
+   ┌─ compile_errors/member_fns.fe:17:10
+   │
+17 │     self.add(1, 2) # error
+   │          ^^^ this is an associated function
+   │
+   = Suggestion: try `add(...)` instead
+
+error: no method named `add` for struct `S`
+   ┌─ compile_errors/member_fns.fe:30:21
+   │
+30 │     self.val = self.add(self.val, 1) # error
+   │                     ^^^ this is an associated function
+   │
+   = Suggestion: try `S::add(...)` instead
+
+
