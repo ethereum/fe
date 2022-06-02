@@ -1,0 +1,7 @@
+---
+source: crates/tests/src/regression.rs
+expression: "format!(\"{}\", factory_harness.gas_reporter)"
+
+---
+create_foo([]) used 40599 gas
+

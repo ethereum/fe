@@ -1,0 +1,17 @@
+use std::context::Context
+
+contract Foo {
+    pub fn get_my_num() -> u256 {
+        return 42
+    }
+}
+
+contract FooFactory {
+    pub fn create_foo(ctx: Context) -> address {
+        # create was not allocating memory before copying code data
+        let foo: Foo = Foo.create(ctx, 0)
+        let my_array: Array<u8, 42>
+        assert my_array[0] == 0
+        return address(foo)
+    }
+}

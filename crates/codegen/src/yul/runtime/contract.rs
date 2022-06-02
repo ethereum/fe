@@ -26,7 +26,7 @@ pub(super) fn make_create(
     let func = function_definition! {
         function [func_name.ident()]([value.ident()]) -> addr {
             (let [size.ident()] := datasize([contract_symbol.clone()]))
-            (let mem_ptr := [provider.avail(db)])
+            (let mem_ptr := [provider.alloc(db, size.expr())])
             (let contract_ptr := dataoffset([contract_symbol]))
             (datacopy(mem_ptr, contract_ptr, [size.expr()]))
             (addr := create([value.expr()], mem_ptr, [size.expr()]))
@@ -52,7 +52,7 @@ pub(super) fn make_create2(
     let func = function_definition! {
         function [func_name.ident()]([value.ident()], salt) -> addr {
             (let [size.ident()] := datasize([contract_symbol.clone()]))
-            (let mem_ptr := [provider.avail(db)])
+            (let mem_ptr := [provider.alloc(db, size.expr())])
             (let contract_ptr := dataoffset([contract_symbol]))
             (datacopy(mem_ptr, contract_ptr, [size.expr()]))
             (addr := create2([value.expr()], mem_ptr, [size.expr()], salt))

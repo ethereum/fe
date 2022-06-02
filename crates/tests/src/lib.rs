@@ -15,6 +15,8 @@ mod features;
 #[cfg(test)]
 mod ingots;
 #[cfg(test)]
+mod regression;
+#[cfg(test)]
 mod solidity;
 #[cfg(test)]
 mod stress;
