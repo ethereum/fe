@@ -1,0 +1,15 @@
+# Marker trait that all numeric types implement
+pub trait IsNumeric {}
+
+impl IsNumeric for u8 {}
+impl IsNumeric for u16 {}
+impl IsNumeric for u32 {}
+impl IsNumeric for u64 {}
+impl IsNumeric for u128 {}
+impl IsNumeric for u256 {}
+impl IsNumeric for i8 {}
+impl IsNumeric for i16 {}
+impl IsNumeric for i32 {}
+impl IsNumeric for i64 {}
+impl IsNumeric for i128 {}
+impl IsNumeric for i256 {}

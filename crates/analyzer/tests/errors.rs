@@ -215,6 +215,7 @@ test_file! { bad_string }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
 test_file! { bad_tuple_attr3 }
+test_file! { call_generic_function_with_unsatisfied_bound}
 test_file! { call_builtin_object }
 test_file! { call_create_with_wrong_type }
 test_file! { call_create2_with_wrong_type }
@@ -246,11 +247,15 @@ test_file! { duplicate_var_in_for_loop }
 test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
+test_file! { contract_function_with_generic_params }
 test_file! { indexed_event }
 test_file! { invalid_compiler_version }
 test_file! { invalid_block_field }
 test_file! { invalid_chain_field }
 test_file! { invalid_contract_field }
+test_file! { invalid_generic_bound }
+test_file! { invalid_impl_type }
+test_file! { invalid_impl_location }
 test_file! { invalid_msg_field }
 test_file! { invalid_string_field }
 test_file! { invalid_struct_field }

@@ -508,7 +508,7 @@ impl CallType {
             // check that this is the `Context` struct defined in `std`
             // this should be deleted once associated functions are supported and we can
             // define unsafe constructors in Fe
-            struct_.name == "Context" && struct_.id.module(db).ingot(db).name(db) == "std"
+            struct_.name == "Context" && struct_.id.module(db).is_in_std(db)
         } else {
             self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
         }

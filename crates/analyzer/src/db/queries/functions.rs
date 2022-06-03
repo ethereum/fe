@@ -1,9 +1,11 @@
 use crate::context::{AnalyzerContext, CallType, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
-use crate::namespace::items::{DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef};
+use crate::namespace::items::{
+    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
+};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Contract, CtxDecl, SelfDecl, Struct, Type};
+use crate::namespace::types::{self, Contract, CtxDecl, Generic, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -30,6 +32,17 @@ pub fn function_signature(
     let mut names = HashMap::new();
     let mut labels = HashMap::new();
 
+    if let (Some(Class::Contract(_)), true) = (fn_parent, function.is_generic(db)) {
+        scope.fancy_error(
+            "generic function parameters aren't yet supported in contract functions",
+            vec![Label::primary(
+                function.data(db).ast.kind.generic_params.span,
+                "This can not appear here",
+            )],
+            vec!["Hint: Struct functions can have generic parameters".into()],
+        );
+    }
+
     let params = def
         .args
         .iter()
@@ -55,7 +68,7 @@ pub fn function_signature(
                 None
             }
             ast::FunctionArg::Regular(reg) => {
-                let typ = type_desc(&mut scope, &reg.typ).and_then(|typ| match typ {
+                let typ = resolve_function_param_type(db, function, &mut scope, &reg.typ).and_then(|typ| match typ {
                     typ if typ.has_fixed_size() => Ok(typ),
                     _ => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
@@ -190,6 +203,40 @@ pub fn function_signature(
         }),
         diagnostics: scope.diagnostics.take().into(),
     }
+}
+
+pub fn resolve_function_param_type(
+    db: &dyn AnalyzerDb,
+    function: FunctionId,
+    context: &mut dyn AnalyzerContext,
+    desc: &Node<ast::TypeDesc>,
+) -> Result<Type, TypeError> {
+    // First check if the param type is a local generic of the function. This won't hold when in the future
+    // generics can appear on the contract, struct or module level but it could be good enough for now.
+    if let ast::TypeDesc::Base { base } = &desc.kind {
+        if let Some(val) = function.generic_param(db, base) {
+            let bounds = match val {
+                ast::GenericParameter::Unbounded(_) => vec![],
+                ast::GenericParameter::Bounded { bound, .. } => match type_desc(context, &bound)? {
+                    Type::Trait(trait_ty) => vec![trait_ty.id],
+                    other => {
+                        context.error(
+                            &format!("expected trait, found type `{}`", other),
+                            bound.span,
+                            "not a trait",
+                        );
+                        vec![]
+                    }
+                },
+            };
+
+            return Ok(Type::Generic(Generic {
+                name: base.clone(),
+                bounds,
+            }));
+        }
+    }
+    type_desc(context, desc)
 }
 
 /// Gather context information for a function body and check for type errors.

@@ -1,0 +1,23 @@
+use std::traits::IsNumeric
+
+struct Bar {
+
+  pub fn bar<T: IsNumeric>(self, x: T, y: u256) -> bool {
+    return true
+  }
+
+  pub fn call_me_maybe(self) {
+    self.bar(x: 1, y: 1)
+    self.bar(x: i8(-1), y:1)
+  }
+}
+
+
+contract Foo {
+
+  pub fn call_me_maybe(self) {
+    let bar: Bar = Bar();
+    bar.bar(x: 1, y: 1)
+    bar.bar(x: i8(-1), y:1)
+  }
+}

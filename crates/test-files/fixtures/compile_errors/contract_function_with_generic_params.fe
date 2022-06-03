@@ -1,0 +1,5 @@
+use std::traits::IsNumeric
+
+contract Foo {
+    pub fn bar<T: IsNumeric>(val: T) {}
+}

@@ -3,7 +3,7 @@ use super::types::parse_type_desc;
 
 use crate::ast::{
     BinOperator, Expr, FuncStmt, Function, FunctionArg, GenericParameter, RegularFunctionArg,
-    VarDeclTarget,
+    TypeDesc, VarDeclTarget,
 };
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
@@ -115,7 +115,12 @@ pub fn parse_generic_param(par: &mut Parser) -> ParseResult<GenericParameter> {
             let bound = par.assert(Name);
             Ok(GenericParameter::Bounded {
                 name: Node::new(name.text.into(), name.span),
-                bound: Node::new(bound.text.into(), bound.span),
+                bound: Node::new(
+                    TypeDesc::Base {
+                        base: bound.text.into(),
+                    },
+                    bound.span,
+                ),
             })
         }
         None => Ok(GenericParameter::Unbounded(Node::new(

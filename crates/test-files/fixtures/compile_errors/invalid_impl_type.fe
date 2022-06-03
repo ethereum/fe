@@ -1,0 +1,3 @@
+trait SomeTrait {}
+
+impl SomeTrait for Map<u8, u8> {}

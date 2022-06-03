@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use fe_analyzer::namespace::items as analyzer_items;
+use fe_analyzer::namespace::types as analyzer_types;
 use smol_str::SmolStr;
 
 use crate::{
     db::MirDb,
     ir::{self, function::Linkage, FunctionSignature, TypeId},
-    lower::function::{lower_func_body, lower_func_signature},
+    lower::function::{lower_func_body, lower_func_signature, lower_monomorphized_func_signature},
 };
 
 pub fn mir_lowered_func_signature(
@@ -14,6 +15,14 @@ pub fn mir_lowered_func_signature(
     analyzer_func: analyzer_items::FunctionId,
 ) -> ir::FunctionId {
     lower_func_signature(db, analyzer_func)
+}
+
+pub fn mir_lowered_monomorphized_func_signature(
+    db: &dyn MirDb,
+    analyzer_func: analyzer_items::FunctionId,
+    concrete_args: Vec<analyzer_types::Type>,
+) -> ir::FunctionId {
+    lower_monomorphized_func_signature(db, analyzer_func, &concrete_args)
 }
 
 pub fn mir_lowered_func_body(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ir::FunctionBody> {
@@ -60,11 +69,20 @@ impl ir::FunctionId {
         let analyzer_func = self.analyzer_func(db);
         let func_name = analyzer_func.name(db.upcast());
 
+        // Construct a suffix for any monomorphized generic function parameters
+        let type_suffix = self
+            .signature(db)
+            .resolved_generics
+            .values()
+            .fold(String::new(), |acc, param| {
+                format!("{}_{}", acc, param.name())
+            });
+
         if let Some(class) = analyzer_func.class(db.upcast()) {
             let class_name = class.name(db.upcast());
-            format!("{}::{}", class_name, func_name).into()
+            format!("{}::{}{}", class_name, func_name, type_suffix).into()
         } else {
-            func_name
+            format!("{}{}", func_name, type_suffix).into()
         }
     }
 

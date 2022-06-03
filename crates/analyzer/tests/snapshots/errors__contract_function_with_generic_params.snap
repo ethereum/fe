@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: generic function parameters aren't yet supported in contract functions
+  ┌─ compile_errors/contract_function_with_generic_params.fe:4:15
+  │
+4 │     pub fn bar<T: IsNumeric>(val: T) {}
+  │               ^^^^^^^^^^^^^^ This can not appear here
+  │
+  = Hint: Struct functions can have generic parameters
+
+
