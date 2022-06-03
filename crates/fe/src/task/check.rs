@@ -1,22 +1,19 @@
 use std::path::Path;
 
-
 use clap::Args;
-use fe_common::{diagnostics::{print_diagnostics, Diagnostic}};
+use fe_common::diagnostics::{print_diagnostics, Diagnostic};
 use fe_driver::Db;
 
 use super::utils::load_files_from_dir;
 
-
 const DEFAULT_INGOT_NAME: &str = "main";
-
 
 #[derive(Args)]
 pub struct CheckArg {
     input_path: String,
 }
 
-fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic>{
+fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
     let content = match std::fs::read_to_string(&input_path) {
         Err(err) => {
             eprintln!("Failed to load file: `{}`. Error: {}", &input_path, err);
@@ -25,8 +22,7 @@ fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic>{
         Ok(content) => content,
     };
 
-    let diags = fe_driver::check_single_file(db, &input_path, &content);
-    diags
+    fe_driver::check_single_file(db, input_path, &content)
 }
 
 fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
@@ -47,8 +43,7 @@ fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
         }
     };
 
-    let diags = fe_driver::check_ingot(db, DEFAULT_INGOT_NAME, &files);
-    diags
+    fe_driver::check_ingot(db, DEFAULT_INGOT_NAME, &files)
 }
 
 pub fn check(args: CheckArg) {
@@ -61,7 +56,7 @@ pub fn check(args: CheckArg) {
     } else {
         check_ingot(&mut db, &input_path)
     };
-    
+
     if !diags.is_empty() {
         print_diagnostics(&db, &diags);
         std::process::exit(1);

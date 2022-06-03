@@ -60,9 +60,9 @@ pub fn compile_single_file(
 // Run analysis with ingot
 // Return vector error,waring...
 pub fn check_ingot(
-    db: &mut Db, 
+    db: &mut Db,
     name: &str,
-    files: &[(impl AsRef<str>, impl AsRef<str>)]
+    files: &[(impl AsRef<str>, impl AsRef<str>)],
 ) -> Vec<Diagnostic> {
     let std = IngotId::std_lib(db);
     let ingot = IngotId::from_files(
