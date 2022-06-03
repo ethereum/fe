@@ -2038,3 +2038,11 @@ fn ctx_init_in_call() {
         }
     });
 }
+
+#[test]
+fn generics() {
+    with_executor(&|mut executor| {
+        // This isn't testing much yet. It soon will when traits and impls are fully implemented
+        deploy_contract(&mut executor, "generic_functions.fe", "Foo", &[]);
+    });
+}

@@ -27,6 +27,10 @@ impl TypeId {
         db.lookup_mir_intern_type(self)
     }
 
+    pub fn analyzer_ty(self, db: &dyn MirDb) -> Option<analyzer_types::Type> {
+        self.data(db).analyzer_ty.clone()
+    }
+
     pub fn projection_ty(self, db: &dyn MirDb, access: &Value) -> TypeId {
         let ty = self.deref(db);
         match &ty.data(db).as_ref().kind {

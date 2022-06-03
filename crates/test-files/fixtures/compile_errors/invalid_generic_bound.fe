@@ -1,0 +1,3 @@
+struct Foo {
+    pub fn bar<T: bool>(val: T) {}
+}

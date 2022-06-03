@@ -1,0 +1,16 @@
+use std::traits::IsNumeric
+
+struct Foo {
+
+  pub fn bar<T: IsNumeric>(self, _ x: T) -> bool {
+    return true
+  }
+}
+
+contract Meh {
+
+  pub fn call_bar(self) {
+    let foo: Foo = Foo();
+    foo.bar(true)
+  }
+}

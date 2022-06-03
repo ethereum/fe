@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{FatalError, TypeError};
-use crate::namespace::types::{EventField, FunctionParam, Type};
+use crate::namespace::types::{EventField, FunctionParam, Generic, Type};
 use crate::traversal::expressions::assignable_expr;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
@@ -151,7 +151,7 @@ pub fn validate_named_args(
 
         let param_type = param.typ()?;
         let val_attrs = assignable_expr(context, &arg.kind.value, Some(&param_type.clone()))?;
-        if param_type != val_attrs.typ {
+        if !validate_arg_type(context, arg, &val_attrs.typ, &param_type) {
             let msg = if let Some(label) = param.label() {
                 format!("incorrect type for `{}` argument `{}`", name, label)
             } else {
@@ -164,4 +164,36 @@ pub fn validate_named_args(
         }
     }
     Ok(())
+}
+
+fn validate_arg_type(
+    context: &mut dyn AnalyzerContext,
+    arg: &Node<fe::CallArg>,
+    arg_type: &Type,
+    param_type: &Type,
+) -> bool {
+    if let Type::Generic(Generic { bounds, .. }) = param_type {
+        for bound in bounds {
+            if !bound.is_implemented_for(context.db(), arg_type) {
+                context.error(
+                    &format!(
+                        "the trait bound `{}: {}` is not satisfied",
+                        arg_type,
+                        bound.name(context.db())
+                    ),
+                    arg.span,
+                    &format!(
+                        "the trait `{}` is not implemented for `{}`",
+                        bound.name(context.db()),
+                        arg_type
+                    ),
+                );
+
+                return false;
+            }
+        }
+        true
+    } else {
+        arg_type == param_type
+    }
 }

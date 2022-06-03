@@ -2,7 +2,8 @@ use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
 use super::types::{
-    parse_event_def, parse_path_tail, parse_struct_def, parse_type_alias, parse_type_desc,
+    parse_event_def, parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def,
+    parse_type_alias, parse_type_desc,
 };
 use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
@@ -42,6 +43,8 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par, None)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
+        TokenKind::Trait => ModuleStmt::Trait(parse_trait_def(par, None)?),
+        TokenKind::Impl => ModuleStmt::Impl(parse_impl_def(par)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
         TokenKind::Const => ModuleStmt::Constant(parse_constant(par, None)?),
 
@@ -54,6 +57,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                     ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
                 }
                 TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
+                TokenKind::Trait => ModuleStmt::Trait(parse_trait_def(par, Some(pub_span))?),
                 TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?),
                 TokenKind::Const => ModuleStmt::Constant(parse_constant(par, Some(pub_span))?),
                 TokenKind::Contract => {

@@ -1,4 +1,5 @@
 use crate::context;
+use fe_common::diagnostics::Label;
 
 use crate::context::{Analysis, Constant};
 use crate::errors::{self, IncompleteItem, TypeError};
@@ -9,6 +10,7 @@ use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::{common_prefix, Utf8Path};
 use fe_common::{impl_intern_key, FileKind, SourceFileId};
+use fe_parser::ast::GenericParameter;
 use fe_parser::node::{Node, Span};
 use fe_parser::{ast, node::NodeId};
 use indexmap::{indexmap, IndexMap};
@@ -16,6 +18,8 @@ use smol_str::SmolStr;
 use std::ops::Deref;
 use std::rc::Rc;
 use strum::IntoEnumIterator;
+
+use super::types::Type;
 
 /// A named item. This does not include things inside of
 /// a function body.
@@ -469,9 +473,18 @@ impl ModuleId {
         db.module_is_incomplete(*self)
     }
 
+    pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {
+        self.ingot(db).name(db) == "std"
+    }
+
     /// Includes duplicate names
     pub fn all_items(&self, db: &dyn AnalyzerDb) -> Rc<[Item]> {
         db.module_all_items(*self)
+    }
+
+    /// Includes duplicate names
+    pub fn all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[Impl]> {
+        db.module_all_impls(*self)
     }
 
     /// Returns a map of the named items in the module
@@ -669,6 +682,10 @@ impl ModuleId {
         self.all_items(db)
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));
+
+        self.all_impls(db)
+            .iter()
+            .for_each(|val| val.sink_diagnostics(db, sink));
     }
 
     #[doc(hidden)]
@@ -747,6 +764,7 @@ impl ModuleConstantId {
 pub enum TypeDef {
     Alias(TypeAliasId),
     Struct(StructId),
+    Trait(TraitId),
     Contract(ContractId),
     Primitive(types::Base),
 }
@@ -778,6 +796,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.name(db),
             TypeDef::Struct(id) => id.name(db),
+            TypeDef::Trait(id) => id.name(db),
             TypeDef::Contract(id) => id.name(db),
             TypeDef::Primitive(typ) => typ.name(),
         }
@@ -787,6 +806,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.name_span(db)),
             TypeDef::Struct(id) => Some(id.name_span(db)),
+            TypeDef::Trait(id) => Some(id.name_span(db)),
             TypeDef::Contract(id) => Some(id.name_span(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -800,6 +820,10 @@ impl TypeDef {
                 name: id.name(db),
                 field_count: id.fields(db).len(), // for the EvmSized trait
             })),
+            TypeDef::Trait(id) => Ok(types::Type::Trait(types::Trait {
+                id: *id,
+                name: id.name(db),
+            })),
             TypeDef::Contract(id) => Ok(types::Type::Contract(types::Contract {
                 id: *id,
                 name: id.name(db),
@@ -812,6 +836,7 @@ impl TypeDef {
         match self {
             Self::Alias(id) => id.is_public(db),
             Self::Struct(id) => id.is_public(db),
+            Self::Trait(id) => id.is_public(db),
             Self::Contract(id) => id.is_public(db),
             Self::Primitive(_) => true,
         }
@@ -821,6 +846,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.parent(db)),
             TypeDef::Struct(id) => Some(id.parent(db)),
+            TypeDef::Trait(id) => Some(id.parent(db)),
             TypeDef::Contract(id) => Some(id.parent(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -830,6 +856,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.sink_diagnostics(db, sink),
             TypeDef::Struct(id) => id.sink_diagnostics(db, sink),
+            TypeDef::Trait(id) => id.sink_diagnostics(db, sink),
             TypeDef::Contract(id) => id.sink_diagnostics(db, sink),
             TypeDef::Primitive(_) => {}
         }
@@ -1097,6 +1124,7 @@ impl FunctionId {
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl.is_some()
     }
+
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         if self.takes_self(db) {
             self.data(db)
@@ -1108,6 +1136,25 @@ impl FunctionId {
         } else {
             None
         }
+    }
+
+    pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
+        !self.data(db).ast.kind.generic_params.kind.is_empty()
+    }
+
+    pub fn generic_params(&self, db: &dyn AnalyzerDb) -> Vec<GenericParameter> {
+        self.data(db).ast.kind.generic_params.kind.clone()
+    }
+
+    pub fn generic_param(&self, db: &dyn AnalyzerDb, param_name: &str) -> Option<GenericParameter> {
+        self.generic_params(db)
+            .iter()
+            .find(|param| match param {
+                GenericParameter::Unbounded(name) if name.kind == param_name => true,
+                GenericParameter::Bounded { name, .. } if name.kind == param_name => true,
+                _ => false,
+            })
+            .cloned()
     }
 
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
@@ -1322,6 +1369,116 @@ impl StructFieldId {
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.struct_field_type(*self).sink_diagnostics(sink)
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Impl {
+    pub trait_id: TraitId,
+    pub receiver: Type,
+    pub module: ModuleId,
+    pub ast: Node<ast::Impl>,
+}
+
+impl Impl {
+    fn validate_type_or_trait_is_in_ingot(
+        &self,
+        db: &dyn AnalyzerDb,
+        sink: &mut impl DiagnosticSink,
+        module: Option<ModuleId>,
+    ) {
+        let is_allowed = match module {
+            None => self.module == self.trait_id.module(db),
+            Some(type_module) => {
+                type_module == self.module || self.trait_id.module(db) == self.module
+            }
+        };
+
+        if !is_allowed {
+            sink.push(&errors::fancy_error(
+                "illegal `impl`. Either type or trait must be in the same ingot as the `impl`",
+                vec![Label::primary(
+                    self.ast.span,
+                    format!(
+                        "Neither `{}` nor `{}` are in the ingot of the `impl` block",
+                        self.receiver,
+                        self.trait_id.name(db)
+                    ),
+                )],
+                vec![],
+            ))
+        }
+    }
+
+    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        match &self.receiver {
+            Type::Contract(_)
+            | Type::Map(_)
+            | Type::SelfContract(_)
+            | Type::Trait(_)
+            | Type::Generic(_) => sink.push(&errors::fancy_error(
+                format!("`impl` blocks aren't allowed for {}", self.receiver),
+                vec![Label::primary(self.ast.span, "illegal `impl` block")],
+                vec![],
+            )),
+            Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
+                self.validate_type_or_trait_is_in_ingot(db, sink, None)
+            }
+            Type::Struct(val) => {
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(val.id.module(db)))
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Trait {
+    pub ast: Node<ast::Trait>,
+    pub module: ModuleId,
+}
+
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct TraitId(pub(crate) u32);
+impl_intern_key!(TraitId);
+impl TraitId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Trait> {
+        db.lookup_intern_trait(*self)
+    }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
+    }
+    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.kind.name.span
+    }
+
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
+    }
+
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: &Type) -> bool {
+        self.module(db)
+            .all_impls(db)
+            .iter()
+            .any(|val| &val.trait_id == self && &val.receiver == ty)
+    }
+
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Trait> {
+        db.trait_type(*self)
+    }
+    pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {
+        self.module(db).is_in_std(db)
+    }
+
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+    pub fn sink_diagnostics(&self, _db: &dyn AnalyzerDb, _sink: &mut impl DiagnosticSink) {}
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

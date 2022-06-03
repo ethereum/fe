@@ -1,4 +1,4 @@
-use crate::ast::{self, EventField, Field, GenericArg, Path, TypeAlias, TypeDesc};
+use crate::ast::{self, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::parse_fn_def;
 use crate::node::{Node, Span};
@@ -61,6 +61,101 @@ pub fn parse_struct_def(
             pub_qual: struct_pub_qual,
         },
         span,
+    ))
+}
+
+/// Parse a trait definition.
+/// # Panics
+/// Panics if the next token isn't `trait`.
+pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseResult<Node<Trait>> {
+    let trait_tok = par.assert(TokenKind::Trait);
+
+    // trait Event {}
+    let trait_name = par.expect_with_notes(
+        TokenKind::Name,
+        "failed to parse trait definition",
+        |_| vec!["Note: `trait` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
+    )?;
+
+    let header_span = trait_tok.span + trait_name.span;
+    par.enter_block(header_span, "trait definition")?;
+
+    loop {
+        match par.peek_or_err()? {
+            TokenKind::Fn => {
+                // TODO: parse trait functions
+            }
+            TokenKind::BraceClose => {
+                par.next()?;
+                break;
+            }
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(&tok, "failed to parse trait definition body", vec![]);
+                return Err(ParseFailed);
+            }
+        };
+    }
+
+    let span = header_span + trait_pub_qual;
+    Ok(Node::new(
+        Trait {
+            name: Node::new(trait_name.text.into(), trait_name.span),
+            pub_qual: trait_pub_qual,
+        },
+        span,
+    ))
+}
+
+/// Parse an impl block.
+/// # Panics
+/// Panics if the next token isn't `impl`.
+pub fn parse_impl_def(par: &mut Parser) -> ParseResult<Node<Impl>> {
+    let impl_tok = par.assert(TokenKind::Impl);
+
+    // impl SomeTrait for SomeType {}
+    let trait_name =
+        par.expect_with_notes(TokenKind::Name, "failed to parse `impl` definition", |_| {
+            vec!["Note: `impl` must be followed by the name of a trait".into()]
+        })?;
+
+    let for_tok =
+        par.expect_with_notes(TokenKind::For, "failed to parse `impl` definition", |_| {
+            vec![format!(
+                "Note: `impl {}` must be followed by the keyword `for`",
+                trait_name.text
+            )]
+        })?;
+
+    let receiver = parse_type_desc(par)?;
+
+    let header_span = impl_tok.span + trait_name.span + for_tok.span + receiver.span;
+
+    par.enter_block(header_span, "impl definition")?;
+
+    loop {
+        match par.peek_or_err()? {
+            TokenKind::Fn => {
+                // TODO: parse impl functions
+            }
+            TokenKind::BraceClose => {
+                par.next()?;
+                break;
+            }
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(&tok, "failed to parse `impl` definition body", vec![]);
+                return Err(ParseFailed);
+            }
+        };
+    }
+
+    Ok(Node::new(
+        Impl {
+            impl_trait: Node::new(trait_name.text.into(), trait_name.span),
+            receiver,
+        },
+        header_span,
     ))
 }
 

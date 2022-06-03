@@ -21,6 +21,8 @@ pub enum ModuleStmt {
     Contract(Node<Contract>),
     Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
+    Trait(Node<Trait>),
+    Impl(Node<Impl>),
     Function(Node<Function>),
     Event(Node<Event>),
     ParseError(Span),
@@ -88,6 +90,18 @@ pub struct Struct {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Trait {
+    pub name: Node<SmolStr>,
+    pub pub_qual: Option<Span>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Impl {
+    pub impl_trait: Node<SmolStr>,
+    pub receiver: Node<TypeDesc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeDesc {
     Unit,
     // TODO: replace with `Name(SmolStr)`, or eliminate in favor of `Path`?
@@ -128,7 +142,7 @@ pub enum GenericParameter {
     Unbounded(Node<SmolStr>),
     Bounded {
         name: Node<SmolStr>,
-        bound: Node<SmolStr>,
+        bound: Node<TypeDesc>,
     },
 }
 
@@ -370,6 +384,12 @@ impl Node<Struct> {
     }
 }
 
+impl Node<Trait> {
+    pub fn name(&self) -> &str {
+        &self.kind.name.kind
+    }
+}
+
 impl Node<Event> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
@@ -415,6 +435,8 @@ impl Spanned for ModuleStmt {
         match self {
             ModuleStmt::Pragma(inner) => inner.span,
             ModuleStmt::Use(inner) => inner.span,
+            ModuleStmt::Trait(inner) => inner.span,
+            ModuleStmt::Impl(inner) => inner.span,
             ModuleStmt::TypeAlias(inner) => inner.span,
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Constant(inner) => inner.span,
@@ -461,6 +483,8 @@ impl fmt::Display for ModuleStmt {
         match self {
             ModuleStmt::Pragma(node) => write!(f, "{}", node.kind),
             ModuleStmt::Use(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Trait(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Impl(node) => write!(f, "{}", node.kind),
             ModuleStmt::TypeAlias(node) => write!(f, "{}", node.kind),
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
@@ -531,6 +555,26 @@ impl fmt::Display for ConstantDecl {
             write!(f, "pub ")?;
         }
         write!(f, "const {}: {} = {}", name.kind, typ.kind, value.kind)
+    }
+}
+
+impl fmt::Display for Trait {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "trait {}:", self.name.kind)?;
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Impl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "impl {} for {}",
+            self.impl_trait.kind, self.receiver.kind
+        )?;
+
+        Ok(())
     }
 }
 

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(fn_def_generic), try_parse_module,\n           \"fn foo<T, R: Event>(this: T, that: R, _ val: u64) -> bool { false }\")"
+expression: "ast_string(stringify!(fn_def_generic), try_parse_module,\n    \"fn foo<T, R: Event>(this: T, that: R, _ val: u64) -> bool { false }\")"
 
 ---
 Node(
@@ -35,7 +35,9 @@ Node(
                   ),
                 ),
                 bound: Node(
-                  kind: "Event",
+                  kind: Base(
+                    base: "Event",
+                  ),
                   span: Span(
                     start: 13,
                     end: 18,

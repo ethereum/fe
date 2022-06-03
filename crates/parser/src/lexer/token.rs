@@ -79,6 +79,8 @@ pub enum TokenKind {
     Idx,
     #[token("if")]
     If,
+    #[token("impl")]
+    Impl,
     #[token("pragma")]
     Pragma,
     #[token("for")]
@@ -93,6 +95,8 @@ pub enum TokenKind {
     SelfValue,
     #[token("struct")]
     Struct,
+    #[token("trait")]
+    Trait,
     #[token("type")]
     Type,
     #[token("unsafe")]
@@ -230,6 +234,7 @@ impl TokenKind {
             Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
+            Impl => "keyword `impl`",
             Pragma => "keyword `pragma`",
             For => "keyword `for`",
             Pub => "keyword `pub`",
@@ -237,6 +242,7 @@ impl TokenKind {
             Revert => "keyword `revert`",
             SelfValue => "keyword `self`",
             Struct => "keyword `struct`",
+            Trait => "keyword `trait`",
             Type => "keyword `type`",
             Unsafe => "keyword `unsafe`",
             While => "keyword `while`",

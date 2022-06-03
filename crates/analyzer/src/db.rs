@@ -1,8 +1,8 @@
 use crate::context::{Analysis, Constant, FunctionBody};
 use crate::errors::{ConstEvalError, TypeError};
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, IngotId, Item,
-    ModuleConstantId, ModuleId, StructFieldId, StructId, TypeAliasId,
+    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, Impl, IngotId, Item,
+    ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId, TypeAliasId,
 };
 use crate::namespace::types;
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
@@ -23,6 +23,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn intern_module_const(&self, data: Rc<items::ModuleConstant>) -> ModuleConstantId;
     #[salsa::interned]
     fn intern_struct(&self, data: Rc<items::Struct>) -> StructId;
+    #[salsa::interned]
+    fn intern_trait(&self, data: Rc<items::Trait>) -> TraitId;
     #[salsa::interned]
     fn intern_struct_field(&self, data: Rc<items::StructField>) -> StructFieldId;
     #[salsa::interned]
@@ -60,6 +62,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn module_is_incomplete(&self, module: ModuleId) -> bool;
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<[Item]>;
+    #[salsa::invoke(queries::module::module_all_impls)]
+    fn module_all_impls(&self, module: ModuleId) -> Rc<[Impl]>;
     #[salsa::invoke(queries::module::module_item_map)]
     fn module_item_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<SmolStr, Item>>>;
     #[salsa::invoke(queries::module::module_contracts)]
@@ -153,6 +157,10 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::cycle(queries::structs::struct_cycle)]
     #[salsa::invoke(queries::structs::struct_dependency_graph)]
     fn struct_dependency_graph(&self, id: StructId) -> Analysis<DepGraphWrapper>;
+
+    // Trait
+    #[salsa::invoke(queries::traits::trait_type)]
+    fn trait_type(&self, id: TraitId) -> Rc<types::Trait>;
 
     // Event
     #[salsa::invoke(queries::events::event_type)]

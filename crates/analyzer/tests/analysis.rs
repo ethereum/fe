@@ -345,7 +345,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     .collect(),
             ]
             .concat(),
-
+            Item::Type(TypeDef::Trait(_)) => vec![], // TODO: fill in when traits are allowed to have functions
             Item::Function(id) => function_diagnostics(*id, db),
             Item::Constant(id) => vec![build_display_diagnostic(id.span(db), &id.typ(db).unwrap())],
             Item::Event(id) => event_diagnostics(*id, db),

@@ -1,9 +1,11 @@
 use fe_analyzer::namespace::items as analyzer_items;
+use fe_analyzer::namespace::types as analyzer_types;
 use fe_common::impl_intern_key;
 use fxhash::FxHashMap;
 use id_arena::Arena;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
+use std::collections::BTreeMap;
 
 use crate::db::MirDb;
 
@@ -20,6 +22,7 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
+    pub resolved_generics: BTreeMap<analyzer_types::Generic, analyzer_types::Type>,
     pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
     pub analyzer_func_id: analyzer_items::FunctionId,
