@@ -37,8 +37,7 @@ pub struct CompileError(pub Vec<Diagnostic>);
 
 pub fn check_single_file(db: &mut Db, path: &str, src: &str) -> Vec<Diagnostic> {
     let module = ModuleId::new_standalone(db, path, src);
-    let diags = module.diagnostics(db);
-    return diags;
+    module.diagnostics(db)
 }
 
 pub fn compile_single_file(
@@ -56,6 +55,28 @@ pub fn compile_single_file(
     } else {
         Err(CompileError(diags))
     }
+}
+
+// Run analysis with ingot
+// Return vector error,waring...
+pub fn check_ingot(
+    db: &mut Db, 
+    name: &str,
+    files: &[(impl AsRef<str>, impl AsRef<str>)]
+) -> Vec<Diagnostic> {
+    let std = IngotId::std_lib(db);
+    let ingot = IngotId::from_files(
+        db,
+        name,
+        IngotMode::Main,
+        FileKind::Local,
+        files,
+        indexmap! { "std".into() => std },
+    );
+
+    let mut diags = ingot.diagnostics(db);
+    ingot.sink_external_ingot_diagnostics(db, &mut diags);
+    diags
 }
 
 /// Compiles the main module of a project.

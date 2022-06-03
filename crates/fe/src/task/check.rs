@@ -1,14 +1,22 @@
+use std::path::Path;
+
+
 use clap::Args;
-use fe_common::diagnostics::print_diagnostics;
+use fe_common::{diagnostics::{print_diagnostics, Diagnostic}};
+use fe_driver::Db;
+
+use super::utils::load_files_from_dir;
+
+
+const DEFAULT_INGOT_NAME: &str = "main";
+
+
 #[derive(Args)]
 pub struct CheckArg {
     input_path: String,
 }
 
-pub fn check(check_arg: CheckArg) {
-    let mut db = fe_driver::Db::default();
-    let input_path = check_arg.input_path;
-
+fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic>{
     let content = match std::fs::read_to_string(&input_path) {
         Err(err) => {
             eprintln!("Failed to load file: `{}`. Error: {}", &input_path, err);
@@ -17,11 +25,47 @@ pub fn check(check_arg: CheckArg) {
         Ok(content) => content,
     };
 
-    let diags = fe_driver::check_single_file(&mut db, &input_path, &content);
+    let diags = fe_driver::check_single_file(db, &input_path, &content);
+    diags
+}
 
+fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
+    if !Path::new(input_path).exists() {
+        eprintln!("Input directory does not exist: `{}`.", input_path);
+        std::process::exit(1)
+    }
+
+    let files = match load_files_from_dir(input_path) {
+        Ok(files) if files.is_empty() => {
+            eprintln!("Input directory is not an ingot: `{}`", input_path);
+            std::process::exit(1)
+        }
+        Ok(files) => files,
+        Err(err) => {
+            eprintln!("Failed to load project files. Error: {}", err);
+            std::process::exit(1)
+        }
+    };
+
+    let diags = fe_driver::check_ingot(db, DEFAULT_INGOT_NAME, &files);
+    diags
+}
+
+pub fn check(args: CheckArg) {
+    let mut db = fe_driver::Db::default();
+    let input_path = args.input_path;
+
+    // check project
+    let diags = if Path::new(&input_path).is_file() {
+        check_single_file(&mut db, &input_path)
+    } else {
+        check_ingot(&mut db, &input_path)
+    };
+    
     if !diags.is_empty() {
-        print_diagnostics(&mut db, &diags);
+        print_diagnostics(&db, &diags);
         std::process::exit(1);
     }
+
     println!("No error!!!");
 }
