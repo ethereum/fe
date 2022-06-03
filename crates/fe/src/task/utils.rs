@@ -1,4 +1,11 @@
+use std::path::Path;
+
+
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::SourceFileId;
+use fe_driver::CompiledModule;
 use walkdir::WalkDir;
+
 
 pub fn load_files_from_dir(dir_path: &str) -> Result<Vec<(String, String)>, std::io::Error> {
     let entries = WalkDir::new(dir_path);
