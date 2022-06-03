@@ -1,39 +1,23 @@
-use clap::{Parser, Subcommand, Args};
+pub mod task;
+
+use clap::{Args, Parser, Subcommand};
 use fe_common::panic::install_panic_hook;
+
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct FelangCli {
     #[clap(subcommand)]
-    command:Commands
+    command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    Compile(CompileArg),
-    Check(CheckArg),
-    New(NewArg)
+    Compile(task::CompileArg),
+    Check(task::CheckArg),
+    New(task::InitArg),
 }
 
-#[derive(Args)]
-#[clap(args_conflicts_with_subcommands = true)]
-struct NewArg {
-    name: String
-}
-
-#[derive(Args)]
-#[clap(args_conflicts_with_subcommands = true)]
-struct CompileArg {
-    input: String,
-    #[clap(short, long, default_value = "output")]
-    output: String
-}
-
-#[derive(Args)]
-#[clap(args_conflicts_with_subcommands = true)]
-struct CheckArg {
-    input: String
-}
 
 
 fn main() {
@@ -43,14 +27,13 @@ fn main() {
 
     match cli.command {
         Commands::Compile(arg) => {
-            println!("{}", arg.input);
-            println!("{}", arg.output);
+            task::compile(arg);
         }
         Commands::Check(arg) => {
-            println!("{}", arg.input);
+            task::check(arg);
         }
         Commands::New(arg) => {
-            println!("{}", arg.name);
+            task::init(arg);
         }
     }
 }
