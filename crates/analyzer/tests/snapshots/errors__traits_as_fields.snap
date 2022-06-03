@@ -1,0 +1,18 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: struct field type must have a fixed size
+  ┌─ compile_errors/traits_as_fields.fe:4:5
+  │
+4 │     val: Foo
+  │     ^^^^^^^^ this can't be used as an struct field
+
+error: traits can not be used as contract fields
+  ┌─ compile_errors/traits_as_fields.fe:8:5
+  │
+8 │     val: Foo
+  │     ^^^^^^^^ trait `Foo` can not appear here
+
+

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(struct_def), try_parse_module,\n           r#\"struct S {\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8 {\n    return self.z + self.y\n  }\n  unsafe fn bar() {}\n}\"#)"
+expression: "ast_string(stringify!(struct_def), try_parse_module,\n    r#\"struct S {\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8 {\n    return self.z + self.y\n  }\n  unsafe fn bar() {}\n}\"#)"
 
 ---
 Node(
@@ -160,43 +160,51 @@ Node(
           functions: [
             Node(
               kind: Function(
-                pub_: Some(Span(
-                  start: 69,
-                  end: 72,
-                )),
-                unsafe_: None,
-                name: Node(
-                  kind: "foo",
-                  span: Span(
-                    start: 76,
-                    end: 79,
-                  ),
-                ),
-                generic_params: Node(
-                  kind: [],
-                  span: Span(
-                    start: 76,
-                    end: 79,
-                  ),
-                ),
-                args: [
-                  Node(
-                    kind: Self_,
-                    span: Span(
-                      start: 80,
-                      end: 84,
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: Some(Span(
+                      start: 69,
+                      end: 72,
+                    )),
+                    unsafe_: None,
+                    name: Node(
+                      kind: "foo",
+                      span: Span(
+                        start: 76,
+                        end: 79,
+                      ),
                     ),
-                  ),
-                ],
-                return_type: Some(Node(
-                  kind: Base(
-                    base: "u8",
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 76,
+                        end: 79,
+                      ),
+                    ),
+                    args: [
+                      Node(
+                        kind: Self_,
+                        span: Span(
+                          start: 80,
+                          end: 84,
+                        ),
+                      ),
+                    ],
+                    return_type: Some(Node(
+                      kind: Base(
+                        base: "u8",
+                      ),
+                      span: Span(
+                        start: 89,
+                        end: 91,
+                      ),
+                    )),
                   ),
                   span: Span(
-                    start: 89,
+                    start: 69,
                     end: 91,
                   ),
-                )),
+                ),
                 body: [
                   Node(
                     kind: Return(
@@ -274,27 +282,35 @@ Node(
             ),
             Node(
               kind: Function(
-                pub_: None,
-                unsafe_: Some(Span(
-                  start: 127,
-                  end: 133,
-                )),
-                name: Node(
-                  kind: "bar",
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: None,
+                    unsafe_: Some(Span(
+                      start: 127,
+                      end: 133,
+                    )),
+                    name: Node(
+                      kind: "bar",
+                      span: Span(
+                        start: 137,
+                        end: 140,
+                      ),
+                    ),
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 137,
+                        end: 140,
+                      ),
+                    ),
+                    args: [],
+                    return_type: None,
+                  ),
                   span: Span(
-                    start: 137,
-                    end: 140,
+                    start: 127,
+                    end: 142,
                   ),
                 ),
-                generic_params: Node(
-                  kind: [],
-                  span: Span(
-                    start: 137,
-                    end: 140,
-                  ),
-                ),
-                args: [],
-                return_type: None,
                 body: [],
               ),
               span: Span(

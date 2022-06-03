@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_stmts), try_parse_module,\n           r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8 {\n    return x * 2\n}\n\nfn secret() -> u8 { return 0xBEEF }\n\ncontract A {\n    pub const x: u256 = 10\n}\n\ncontract B {\n    pub x: X\n}\"#)"
+expression: "ast_string(stringify!(module_stmts), try_parse_module,\n    r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8 {\n    return x * 2\n}\n\nfn secret() -> u8 { return 0xBEEF }\n\ncontract A {\n    pub const x: u256 = 10\n}\n\ncontract B {\n    pub x: X\n}\"#)"
 
 ---
 Node(
@@ -161,61 +161,69 @@ Node(
       )),
       Function(Node(
         kind: Function(
-          pub_: Some(Span(
-            start: 87,
-            end: 90,
-          )),
-          unsafe_: None,
-          name: Node(
-            kind: "double",
-            span: Span(
-              start: 94,
-              end: 100,
-            ),
-          ),
-          generic_params: Node(
-            kind: [],
-            span: Span(
-              start: 94,
-              end: 100,
-            ),
-          ),
-          args: [
-            Node(
-              kind: Regular(RegularFunctionArg(
-                label: None,
-                name: Node(
-                  kind: "x",
+          sig: Node(
+            kind: FunctionSignature(
+              pub_: Some(Span(
+                start: 87,
+                end: 90,
+              )),
+              unsafe_: None,
+              name: Node(
+                kind: "double",
+                span: Span(
+                  start: 94,
+                  end: 100,
+                ),
+              ),
+              generic_params: Node(
+                kind: [],
+                span: Span(
+                  start: 94,
+                  end: 100,
+                ),
+              ),
+              args: [
+                Node(
+                  kind: Regular(RegularFunctionArg(
+                    label: None,
+                    name: Node(
+                      kind: "x",
+                      span: Span(
+                        start: 101,
+                        end: 102,
+                      ),
+                    ),
+                    typ: Node(
+                      kind: Base(
+                        base: "u8",
+                      ),
+                      span: Span(
+                        start: 104,
+                        end: 106,
+                      ),
+                    ),
+                  )),
                   span: Span(
                     start: 101,
-                    end: 102,
-                  ),
-                ),
-                typ: Node(
-                  kind: Base(
-                    base: "u8",
-                  ),
-                  span: Span(
-                    start: 104,
                     end: 106,
                   ),
                 ),
+              ],
+              return_type: Some(Node(
+                kind: Base(
+                  base: "u8",
+                ),
+                span: Span(
+                  start: 111,
+                  end: 113,
+                ),
               )),
-              span: Span(
-                start: 101,
-                end: 106,
-              ),
-            ),
-          ],
-          return_type: Some(Node(
-            kind: Base(
-              base: "u8",
             ),
             span: Span(
-              start: 111,
+              start: 87,
               end: 113,
             ),
-          )),
+          ),
           body: [
             Node(
               kind: Return(
@@ -263,32 +271,40 @@ Node(
       )),
       Function(Node(
         kind: Function(
-          pub_: None,
-          unsafe_: None,
-          name: Node(
-            kind: "secret",
-            span: Span(
-              start: 139,
-              end: 145,
+          sig: Node(
+            kind: FunctionSignature(
+              pub_: None,
+              unsafe_: None,
+              name: Node(
+                kind: "secret",
+                span: Span(
+                  start: 139,
+                  end: 145,
+                ),
+              ),
+              generic_params: Node(
+                kind: [],
+                span: Span(
+                  start: 139,
+                  end: 145,
+                ),
+              ),
+              args: [],
+              return_type: Some(Node(
+                kind: Base(
+                  base: "u8",
+                ),
+                span: Span(
+                  start: 151,
+                  end: 153,
+                ),
+              )),
             ),
-          ),
-          generic_params: Node(
-            kind: [],
             span: Span(
-              start: 139,
-              end: 145,
-            ),
-          ),
-          args: [],
-          return_type: Some(Node(
-            kind: Base(
-              base: "u8",
-            ),
-            span: Span(
-              start: 151,
+              start: 136,
               end: 153,
             ),
-          )),
+          ),
           body: [
             Node(
               kind: Return(

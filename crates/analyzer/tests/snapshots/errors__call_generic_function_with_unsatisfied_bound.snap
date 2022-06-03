@@ -3,16 +3,16 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: the trait bound `bool: IsNumeric` is not satisfied
-   ┌─ compile_errors/call_generic_function_with_unsatisfied_bound.fe:14:13
+error: the trait bound `Bar: Dummy` is not satisfied
+   ┌─ compile_errors/call_generic_function_with_unsatisfied_bound.fe:16:13
    │
-14 │     foo.bar(true)
-   │             ^^^^ the trait `IsNumeric` is not implemented for `bool`
+16 │     foo.bar(Bar())
+   │             ^^^^^ the trait `Dummy` is not implemented for `Bar`
 
 error: incorrect type for `bar` argument at position 0
-   ┌─ compile_errors/call_generic_function_with_unsatisfied_bound.fe:14:13
+   ┌─ compile_errors/call_generic_function_with_unsatisfied_bound.fe:16:13
    │
-14 │     foo.bar(true)
-   │             ^^^^ this has type `bool`; expected type `T`
+16 │     foo.bar(Bar())
+   │             ^^^^^ this has type `Bar`; expected type `T`
 
 

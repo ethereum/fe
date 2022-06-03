@@ -3,8 +3,8 @@ use crate::context::AnalyzerContext;
 use crate::db::Analysis;
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    self, DepGraph, DepGraphWrapper, DepLocality, Function, FunctionId, Item, StructField,
-    StructFieldId, StructId, TypeDef,
+    self, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, StructField, StructFieldId,
+    StructId, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Contract, Struct, Type};
@@ -121,11 +121,12 @@ pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[Funct
         .functions
         .iter()
         .map(|node| {
-            db.intern_function(Rc::new(Function {
-                ast: node.clone(),
-                module: struct_data.module,
-                parent: Some(items::Class::Struct(struct_)),
-            }))
+            db.intern_function(Rc::new(items::Function::new(
+                db,
+                node,
+                Some(items::Class::Struct(struct_)),
+                struct_data.module,
+            )))
         })
         .collect()
 }
@@ -150,7 +151,7 @@ pub fn struct_function_map(
                 def_name,
                 &named_item,
                 named_item.name_span(db),
-                def.kind.name.span,
+                func.name_span(db),
             );
             continue;
         }
@@ -161,7 +162,7 @@ pub fn struct_function_map(
                     "function name `{}` conflicts with built-in function",
                     def_name
                 ),
-                def.kind.name.span,
+                func.name_span(db),
                 &format!("`{}` is a built-in function", def_name),
             );
             continue;

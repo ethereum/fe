@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use fe_analyzer::namespace::items::Class;
 use fe_mir::ir::{FunctionBody, FunctionId, FunctionSignature};
 
 use crate::{db::CodegenDb, yul::legalize};
@@ -19,7 +20,29 @@ pub fn legalized_body(db: &dyn CodegenDb, function: FunctionId) -> Rc<FunctionBo
 pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
     let module = function.signature(db.upcast()).module_id;
     let module_name = module.name(db.upcast());
-    let func_name = function.name_with_class(db.upcast()).replace("::", "$");
+
+    let analyzer_func = function.analyzer_func(db.upcast());
+    let func_name = format!(
+        "{}{}",
+        analyzer_func.name(db.upcast()),
+        function.type_suffix(db.upcast())
+    );
+
+    let func_name = match analyzer_func.class(db.upcast()) {
+        Some(Class::Impl(id)) => {
+            let class_name = format!(
+                "{}${}",
+                id.trait_id(db.upcast()).name(db.upcast()),
+                id.receiver(db.upcast()).name()
+            );
+            format!("{}${}", class_name, func_name)
+        }
+        Some(class) => {
+            let class_name = class.name(db.upcast());
+            format!("{}${}", class_name, func_name)
+        }
+        _ => func_name,
+    };
 
     format!("{}${}", module_name, func_name).into()
 }

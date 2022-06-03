@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(guest_book), try_parse_module,\n           r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook {\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed {\n        idx book_msg: BookMsg\n    }\n\n    pub fn sign(self, book_msg: BookMsg) {\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n    }\n    pub fn get_msg(self, addr: address) -> BookMsg {\n        return self.guest_book[addr]\n    }\n}\"#)"
+expression: "ast_string(stringify!(guest_book), try_parse_module,\n    r#\"\ntype BookMsg = Array<bytes, 100>\n\ncontract GuestBook {\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed {\n        idx book_msg: BookMsg\n    }\n\n    pub fn sign(self, book_msg: BookMsg) {\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg: book_msg)\n    }\n    pub fn get_msg(self, addr: address) -> BookMsg {\n        return self.guest_book[addr]\n    }\n}\"#)"
 
 ---
 Node(
@@ -177,60 +177,68 @@ Node(
             )),
             Function(Node(
               kind: Function(
-                pub_: Some(Span(
-                  start: 159,
-                  end: 162,
-                )),
-                unsafe_: None,
-                name: Node(
-                  kind: "sign",
-                  span: Span(
-                    start: 166,
-                    end: 170,
-                  ),
-                ),
-                generic_params: Node(
-                  kind: [],
-                  span: Span(
-                    start: 166,
-                    end: 170,
-                  ),
-                ),
-                args: [
-                  Node(
-                    kind: Self_,
-                    span: Span(
-                      start: 171,
-                      end: 175,
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: Some(Span(
+                      start: 159,
+                      end: 162,
+                    )),
+                    unsafe_: None,
+                    name: Node(
+                      kind: "sign",
+                      span: Span(
+                        start: 166,
+                        end: 170,
+                      ),
                     ),
-                  ),
-                  Node(
-                    kind: Regular(RegularFunctionArg(
-                      label: None,
-                      name: Node(
-                        kind: "book_msg",
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 166,
+                        end: 170,
+                      ),
+                    ),
+                    args: [
+                      Node(
+                        kind: Self_,
                         span: Span(
-                          start: 177,
-                          end: 185,
+                          start: 171,
+                          end: 175,
                         ),
                       ),
-                      typ: Node(
-                        kind: Base(
-                          base: "BookMsg",
-                        ),
+                      Node(
+                        kind: Regular(RegularFunctionArg(
+                          label: None,
+                          name: Node(
+                            kind: "book_msg",
+                            span: Span(
+                              start: 177,
+                              end: 185,
+                            ),
+                          ),
+                          typ: Node(
+                            kind: Base(
+                              base: "BookMsg",
+                            ),
+                            span: Span(
+                              start: 187,
+                              end: 194,
+                            ),
+                          ),
+                        )),
                         span: Span(
-                          start: 187,
+                          start: 177,
                           end: 194,
                         ),
                       ),
-                    )),
-                    span: Span(
-                      start: 177,
-                      end: 194,
-                    ),
+                    ],
+                    return_type: None,
                   ),
-                ],
-                return_type: None,
+                  span: Span(
+                    start: 159,
+                    end: 195,
+                  ),
+                ),
                 body: [
                   Node(
                     kind: Assign(
@@ -353,68 +361,76 @@ Node(
             )),
             Function(Node(
               kind: Function(
-                pub_: Some(Span(
-                  start: 296,
-                  end: 299,
-                )),
-                unsafe_: None,
-                name: Node(
-                  kind: "get_msg",
-                  span: Span(
-                    start: 303,
-                    end: 310,
-                  ),
-                ),
-                generic_params: Node(
-                  kind: [],
-                  span: Span(
-                    start: 303,
-                    end: 310,
-                  ),
-                ),
-                args: [
-                  Node(
-                    kind: Self_,
-                    span: Span(
-                      start: 311,
-                      end: 315,
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: Some(Span(
+                      start: 296,
+                      end: 299,
+                    )),
+                    unsafe_: None,
+                    name: Node(
+                      kind: "get_msg",
+                      span: Span(
+                        start: 303,
+                        end: 310,
+                      ),
                     ),
-                  ),
-                  Node(
-                    kind: Regular(RegularFunctionArg(
-                      label: None,
-                      name: Node(
-                        kind: "addr",
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 303,
+                        end: 310,
+                      ),
+                    ),
+                    args: [
+                      Node(
+                        kind: Self_,
                         span: Span(
-                          start: 317,
-                          end: 321,
+                          start: 311,
+                          end: 315,
                         ),
                       ),
-                      typ: Node(
-                        kind: Base(
-                          base: "address",
-                        ),
+                      Node(
+                        kind: Regular(RegularFunctionArg(
+                          label: None,
+                          name: Node(
+                            kind: "addr",
+                            span: Span(
+                              start: 317,
+                              end: 321,
+                            ),
+                          ),
+                          typ: Node(
+                            kind: Base(
+                              base: "address",
+                            ),
+                            span: Span(
+                              start: 323,
+                              end: 330,
+                            ),
+                          ),
+                        )),
                         span: Span(
-                          start: 323,
+                          start: 317,
                           end: 330,
                         ),
                       ),
+                    ],
+                    return_type: Some(Node(
+                      kind: Base(
+                        base: "BookMsg",
+                      ),
+                      span: Span(
+                        start: 335,
+                        end: 342,
+                      ),
                     )),
-                    span: Span(
-                      start: 317,
-                      end: 330,
-                    ),
-                  ),
-                ],
-                return_type: Some(Node(
-                  kind: Base(
-                    base: "BookMsg",
                   ),
                   span: Span(
-                    start: 335,
+                    start: 296,
                     end: 342,
                   ),
-                )),
+                ),
                 body: [
                   Node(
                     kind: Return(

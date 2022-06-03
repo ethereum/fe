@@ -52,7 +52,7 @@ impl FunctionNode {
         let body = self.func.body(db);
 
         let sig_data = self.func.signature(db);
-        let mut sig = format!("fn {}(", self.func.name_with_class(db));
+        let mut sig = format!("fn {}(", self.func.debug_name(db));
 
         let params = &sig_data.params;
         let param_len = params.len();

@@ -92,6 +92,7 @@ pub struct Struct {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Trait {
     pub name: Node<SmolStr>,
+    pub functions: Vec<Node<FunctionSignature>>,
     pub pub_qual: Option<Span>,
 }
 
@@ -99,6 +100,7 @@ pub struct Trait {
 pub struct Impl {
     pub impl_trait: Node<SmolStr>,
     pub receiver: Node<TypeDesc>,
+    pub functions: Vec<Node<Function>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -146,6 +148,19 @@ pub enum GenericParameter {
     },
 }
 
+impl GenericParameter {
+    pub fn name(&self) -> SmolStr {
+        self.name_node().kind
+    }
+
+    pub fn name_node(&self) -> Node<SmolStr> {
+        match self {
+            GenericParameter::Unbounded(node) => node.clone(),
+            GenericParameter::Bounded { name, .. } => name.clone(),
+        }
+    }
+}
+
 impl Spanned for GenericParameter {
     fn span(&self) -> Span {
         match self {
@@ -180,7 +195,7 @@ pub struct Event {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Function {
+pub struct FunctionSignature {
     // qualifier order: `pub unsafe fn`
     pub pub_: Option<Span>,
     pub unsafe_: Option<Span>,
@@ -188,6 +203,11 @@ pub struct Function {
     pub generic_params: Node<Vec<GenericParameter>>,
     pub args: Vec<Node<FunctionArg>>,
     pub return_type: Option<Node<TypeDesc>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Function {
+    pub sig: Node<FunctionSignature>,
     pub body: Vec<Node<FuncStmt>>,
 }
 
@@ -404,7 +424,7 @@ impl Node<Field> {
 
 impl Node<Function> {
     pub fn name(&self) -> &str {
-        &self.kind.name.kind
+        &self.kind.sig.kind.name.kind
     }
 }
 
@@ -729,15 +749,14 @@ impl fmt::Display for Node<Function> {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let Function {
+        let FunctionSignature {
             pub_,
             unsafe_,
             name,
             generic_params,
             args,
             return_type,
-            body,
-        } = self;
+        } = &self.sig.kind;
 
         if pub_.is_some() {
             write!(f, "pub ")?;
@@ -755,7 +774,7 @@ impl fmt::Display for Function {
             write!(f, " -> {}", return_type.kind)?;
         }
         write!(f, " {{")?;
-        write_nodes_line_wrapped(&mut indented(f), body)?;
+        write_nodes_line_wrapped(&mut indented(f), &self.body)?;
         write!(f, "}}")
     }
 }

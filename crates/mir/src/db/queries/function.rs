@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use fe_analyzer::namespace::items as analyzer_items;
+use fe_analyzer::namespace::items::Class;
 use fe_analyzer::namespace::types as analyzer_types;
 use smol_str::SmolStr;
 
@@ -56,7 +57,21 @@ impl ir::FunctionId {
     }
 
     pub fn is_contract_init(self, db: &dyn MirDb) -> bool {
-        self.analyzer_func(db).is_constructor(db.upcast())
+        self.analyzer_func(db)
+            .data(db.upcast())
+            .sig
+            .is_constructor(db.upcast())
+    }
+
+    /// Returns a type suffix if a generic function was monomorphized
+    pub fn type_suffix(&self, db: &dyn MirDb) -> SmolStr {
+        self.signature(db)
+            .resolved_generics
+            .values()
+            .fold(String::new(), |acc, param| {
+                format!("{}_{}", acc, param.name())
+            })
+            .into()
     }
 
     pub fn name(&self, db: &dyn MirDb) -> SmolStr {
@@ -65,24 +80,28 @@ impl ir::FunctionId {
     }
 
     /// Returns `class_name::fn_name` if a function is a method else `fn_name`.
-    pub fn name_with_class(self, db: &dyn MirDb) -> SmolStr {
+    pub fn debug_name(self, db: &dyn MirDb) -> SmolStr {
         let analyzer_func = self.analyzer_func(db);
-        let func_name = analyzer_func.name(db.upcast());
+        let func_name = format!(
+            "{}{}",
+            analyzer_func.name(db.upcast()),
+            self.type_suffix(db)
+        );
 
-        // Construct a suffix for any monomorphized generic function parameters
-        let type_suffix = self
-            .signature(db)
-            .resolved_generics
-            .values()
-            .fold(String::new(), |acc, param| {
-                format!("{}_{}", acc, param.name())
-            });
-
-        if let Some(class) = analyzer_func.class(db.upcast()) {
-            let class_name = class.name(db.upcast());
-            format!("{}::{}{}", class_name, func_name, type_suffix).into()
-        } else {
-            format!("{}{}", func_name, type_suffix).into()
+        match analyzer_func.class(db.upcast()) {
+            Some(Class::Impl(id)) => {
+                let class_name = format!(
+                    "<{} as {}>",
+                    id.receiver(db.upcast()).name(),
+                    id.trait_id(db.upcast()).name(db.upcast())
+                );
+                format!("{}::{}", class_name, func_name).into()
+            }
+            Some(class) => {
+                let class_name = class.name(db.upcast());
+                format!("{}::{}", class_name, func_name).into()
+            }
+            _ => func_name.into(),
         }
     }
 

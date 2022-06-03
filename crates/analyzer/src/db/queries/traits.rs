@@ -1,4 +1,10 @@
-use crate::namespace::items::TraitId;
+use indexmap::map::Entry;
+use indexmap::IndexMap;
+use smol_str::SmolStr;
+
+use crate::context::{Analysis, AnalyzerContext};
+use crate::namespace::items::{FunctionSig, FunctionSigId, TraitId};
+use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
 use crate::AnalyzerDb;
 use std::rc::Rc;
@@ -8,4 +14,48 @@ pub fn trait_type(db: &dyn AnalyzerDb, trait_: TraitId) -> Rc<types::Trait> {
         name: trait_.name(db),
         id: trait_,
     })
+}
+
+pub fn trait_all_functions(db: &dyn AnalyzerDb, trait_: TraitId) -> Rc<[FunctionSigId]> {
+    let trait_data = trait_.data(db);
+    trait_data
+        .ast
+        .kind
+        .functions
+        .iter()
+        .map(|node| {
+            db.intern_function_sig(Rc::new(FunctionSig {
+                ast: node.clone(),
+                module: trait_.module(db),
+                parent: Some(trait_.as_class()),
+            }))
+        })
+        .collect()
+}
+
+pub fn trait_function_map(
+    db: &dyn AnalyzerDb,
+    trait_: TraitId,
+) -> Analysis<Rc<IndexMap<SmolStr, FunctionSigId>>> {
+    let scope = ItemScope::new(db, trait_.module(db));
+    let mut map = IndexMap::<SmolStr, FunctionSigId>::new();
+
+    for func in db.trait_all_functions(trait_).iter() {
+        let def_name = func.name(db);
+
+        match map.entry(def_name) {
+            Entry::Occupied(entry) => {
+                scope.duplicate_name_error(
+                    &format!("duplicate function names in `trait {}`", trait_.name(db)),
+                    entry.key(),
+                    entry.get().name_span(db),
+                    func.name_span(db),
+                );
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(*func);
+            }
+        }
+    }
+    Analysis::new(Rc::new(map), scope.diagnostics.take().into())
 }

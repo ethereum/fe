@@ -1,5 +1,7 @@
-use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
-use crate::namespace::types::{SelfDecl, Struct, Type};
+use crate::namespace::items::{
+    Class, ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
+};
+use crate::namespace::types::{Generic, SelfDecl, Struct, Type};
 use crate::AnalyzerDb;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
@@ -361,7 +363,12 @@ impl Location {
     pub fn assign_location(typ: &Type) -> Self {
         match typ {
             Type::Base(_) | Type::Contract(_) => Location::Value,
-            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
+            // For now assume that generics can only ever refer to structs
+            Type::Array(_)
+            | Type::Tuple(_)
+            | Type::String(_)
+            | Type::Struct(_)
+            | Type::Generic(_) => Location::Memory,
             other => panic!("Type {other} can not be assigned, returned or passed"),
         }
     }
@@ -458,10 +465,20 @@ pub enum CallType {
         class: Class,
         function: FunctionId,
     },
+    // some_struct_or_contract.foo()
     ValueMethod {
-        is_self: bool,
         class: Class,
         method: FunctionId,
+    },
+    // some_trait.foo()
+    // The reason this can not use `ValueMethod` is mainly because the trait might not have a function implementation
+    // and even if it had it might not be the one that ends up getting executed. An `impl` block will decide that.
+    TraitValueMethod {
+        trait_id: TraitId,
+        method: FunctionSigId,
+        // Traits can not directly be used as types but can act as bounds for generics. This is the generic type
+        // that the method is called on.
+        generic_type: Generic,
     },
     External {
         contract: ContractId,
@@ -479,6 +496,7 @@ impl CallType {
             | BuiltinValueMethod { .. }
             | TypeConstructor(_)
             | Intrinsic(_)
+            | TraitValueMethod { .. }
             | BuiltinAssociatedFunction { .. } => None,
             AssociatedFunction { function: id, .. }
             | ValueMethod { method: id, .. }
@@ -497,6 +515,7 @@ impl CallType {
             | CallType::ValueMethod { method: id, .. }
             | CallType::External { function: id, .. }
             | CallType::Pure(id) => id.name(db),
+            CallType::TraitValueMethod { method: id, .. } => id.name(db),
             CallType::TypeConstructor(typ) => typ.name(),
         }
     }

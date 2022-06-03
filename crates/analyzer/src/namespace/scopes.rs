@@ -309,6 +309,8 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                     .data(self.db)
                     .ast
                     .kind
+                    .sig
+                    .kind
                     .args
                     .iter()
                     .find_map(|param| (param.name() == name).then(|| param.name_span()))

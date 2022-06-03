@@ -1,0 +1,7 @@
+trait Foo {}
+
+struct Bar {
+}
+
+impl Foo for Bar {}
+impl Foo for Bar {}

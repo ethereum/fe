@@ -261,7 +261,7 @@ impl TokenKind {
             Colon => "symbol `:`",
             ColonColon => "symbol `::`",
             Comma => "symbol `,`",
-            Semi => "symbol ``",
+            Semi => "symbol `;`",
             Plus => "symbol `+`",
             Minus => "symbol `-`",
             Star => "symbol `*`",

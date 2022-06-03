@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n           r#\"\npub contract Foo {\n    pub fn foo() -> u8 {\n      return 10\n    }\n}\"#)"
+expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n    r#\"\npub contract Foo {\n    pub fn foo() -> u8 {\n      return 10\n    }\n}\"#)"
 
 ---
 Node(
@@ -19,35 +19,43 @@ Node(
           body: [
             Function(Node(
               kind: Function(
-                pub_: Some(Span(
-                  start: 24,
-                  end: 27,
-                )),
-                unsafe_: None,
-                name: Node(
-                  kind: "foo",
-                  span: Span(
-                    start: 31,
-                    end: 34,
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: Some(Span(
+                      start: 24,
+                      end: 27,
+                    )),
+                    unsafe_: None,
+                    name: Node(
+                      kind: "foo",
+                      span: Span(
+                        start: 31,
+                        end: 34,
+                      ),
+                    ),
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 31,
+                        end: 34,
+                      ),
+                    ),
+                    args: [],
+                    return_type: Some(Node(
+                      kind: Base(
+                        base: "u8",
+                      ),
+                      span: Span(
+                        start: 40,
+                        end: 42,
+                      ),
+                    )),
                   ),
-                ),
-                generic_params: Node(
-                  kind: [],
                   span: Span(
-                    start: 31,
-                    end: 34,
-                  ),
-                ),
-                args: [],
-                return_type: Some(Node(
-                  kind: Base(
-                    base: "u8",
-                  ),
-                  span: Span(
-                    start: 40,
+                    start: 24,
                     end: 42,
                   ),
-                )),
+                ),
                 body: [
                   Node(
                     kind: Return(

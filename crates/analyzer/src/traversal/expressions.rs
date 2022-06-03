@@ -3,6 +3,7 @@ use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, 
 use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{Class, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
+use crate::namespace::types::Trait;
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
@@ -311,6 +312,14 @@ fn expr_named_thing(
                 match class {
                     Class::Struct(id) => Ok(ExpressionAttributes::new(
                         Type::Struct(Struct::from_id(id, context.db())),
+                        Location::Memory,
+                    )),
+                    Class::Impl(id) => Ok(ExpressionAttributes::new(
+                        id.receiver(context.db()),
+                        Location::Memory,
+                    )),
+                    Class::Trait(id) => Ok(ExpressionAttributes::new(
+                        Type::Trait(Trait::from_id(id, context.db())),
                         Location::Memory,
                     )),
                     Class::Contract(id) => Ok(ExpressionAttributes::new(
@@ -1309,7 +1318,7 @@ fn expr_call_method(
         if matches!(class, Class::Contract(_)) {
             check_for_call_to_special_fns(context, &field.kind, field.span)?;
         }
-        if let Some(method) = class.function(context.db(), &field.kind) {
+        if let Some(method) = class.function_sig(context.db(), &field.kind) {
             let is_self = is_self_value(target);
 
             if is_self && !method.takes_self(context.db()) {
@@ -1345,12 +1354,11 @@ fn expr_call_method(
 
             let calltype = match class {
                 Class::Contract(contract) => {
+                    let method = contract
+                        .function(context.db(), &method.name(context.db()))
+                        .unwrap();
                     if is_self {
-                        CallType::ValueMethod {
-                            is_self,
-                            class,
-                            method,
-                        }
+                        CallType::ValueMethod { class, method }
                     } else {
                         // External contract address must be loaded onto the stack.
                         context.update_expression(
@@ -1366,7 +1374,10 @@ fn expr_call_method(
                         }
                     }
                 }
-                Class::Struct(_) => {
+                Class::Struct(val) => {
+                    let method = val
+                        .function(context.db(), &method.name(context.db()))
+                        .unwrap();
                     if matches!(target_attributes.final_location(), Location::Storage { .. }) {
                         context.fancy_error(
                             "struct functions can only be called on structs in memory",
@@ -1380,12 +1391,22 @@ fn expr_call_method(
                             vec![],
                         );
                     }
-                    CallType::ValueMethod {
-                        is_self,
-                        class,
-                        method,
-                    }
+                    CallType::ValueMethod { class, method }
                 }
+                Class::Impl(val) => {
+                    let method = val
+                        .function(context.db(), &method.name(context.db()))
+                        .unwrap();
+                    CallType::ValueMethod { class, method }
+                }
+                Class::Trait(trait_id) => CallType::TraitValueMethod {
+                    trait_id,
+                    method,
+                    generic_type: target_attributes
+                        .typ
+                        .as_generic()
+                        .expect("expected generic type"),
+                },
             };
 
             let return_type = sig.return_type.clone()?;

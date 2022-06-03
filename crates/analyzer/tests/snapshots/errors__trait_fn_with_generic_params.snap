@@ -4,10 +4,10 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: generic function parameters aren't yet supported outside of struct functions
-  ┌─ compile_errors/contract_function_with_generic_params.fe:4:15
+  ┌─ compile_errors/trait_fn_with_generic_params.fe:4:18
   │
-4 │     pub fn bar<T: Dummy>(val: T) {}
-  │               ^^^^^^^^^^ This can not appear here
+4 │     fn generic_fn<T: Bar>(self, val: T);
+  │                  ^^^^^^^^ This can not appear here
   │
   = Hint: Struct functions can have generic parameters
 
