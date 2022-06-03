@@ -3,11 +3,11 @@ const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 
 #[derive(Args)]
 pub struct CompileArg {
-    input: String,
+    input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
     output_dir: String,
 }
 
-pub fn compile(arg: CompileArg) {
-    println!("{}", arg.input);
+pub fn compile(compileArg: CompileArg) {
+    
 }

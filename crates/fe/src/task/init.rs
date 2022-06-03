@@ -7,5 +7,6 @@ pub struct InitArg {
 }
 
 pub fn init(arg: InitArg) {
-    println!("{}", arg.name);
+    println!("Init new project with name = {}", arg.name);
+    println!("Command not support yet!!!");
 }
