@@ -1,7 +1,5 @@
-use std::path::Path;
-
 use clap::Args;
-use fe_common::diagnostics::{print_diagnostics, Diagnostic};
+use fe_common::diagnostics::print_diagnostics;
 #[derive(Args)]
 pub struct CheckArg {
     input_path: String,

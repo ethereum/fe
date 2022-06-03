@@ -8,6 +8,6 @@ pub struct CompileArg {
     output_dir: String,
 }
 
-pub fn compile(compileArg: CompileArg) {
-    
+pub fn compile(compile_arg: CompileArg) {
+    println!("{}", compile_arg.input_path);
 }

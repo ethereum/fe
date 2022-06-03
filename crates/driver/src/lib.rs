@@ -35,11 +35,7 @@ pub struct CompiledContract {
 #[derive(Debug)]
 pub struct CompileError(pub Vec<Diagnostic>);
 
-pub fn check_single_file(
-    db: &mut Db, 
-    path: &str, 
-    src: &str 
-) -> Vec<Diagnostic>{
+pub fn check_single_file(db: &mut Db, path: &str, src: &str) -> Vec<Diagnostic> {
     let module = ModuleId::new_standalone(db, path, src);
     let diags = module.diagnostics(db);
     return diags;
@@ -54,7 +50,7 @@ pub fn compile_single_file(
 ) -> Result<CompiledModule, CompileError> {
     let module = ModuleId::new_standalone(db, path, src);
     let diags = module.diagnostics(db);
-    
+
     if diags.is_empty() {
         compile_module_id(db, module, with_bytecode, optimize)
     } else {
