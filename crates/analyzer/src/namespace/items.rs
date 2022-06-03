@@ -17,9 +17,10 @@ use indexmap::{indexmap, IndexMap};
 use smol_str::SmolStr;
 use std::ops::Deref;
 use std::rc::Rc;
+
 use strum::IntoEnumIterator;
 
-use super::types::Type;
+use super::types::{Type, TypeDowncast};
 
 /// A named item. This does not include things inside of
 /// a function body.
@@ -483,8 +484,12 @@ impl ModuleId {
     }
 
     /// Includes duplicate names
-    pub fn all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[Impl]> {
+    pub fn all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
         db.module_all_impls(*self)
+    }
+
+    pub fn impls(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<(TraitId, Type), ImplId>> {
+        db.module_impl_map(*self).value
     }
 
     /// Returns a map of the named items in the module
@@ -677,6 +682,9 @@ impl ModuleId {
 
         // duplicate item name errors
         sink.push_all(db.module_item_map(*self).diagnostics.iter());
+
+        // duplicate impl errors
+        sink.push_all(db.module_impl_map(*self).diagnostics.iter());
 
         // errors for each item
         self.all_items(db)
@@ -1072,33 +1080,30 @@ impl ContractFieldId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Function {
-    pub ast: Node<ast::Function>,
-    pub module: ModuleId,
+pub struct FunctionSig {
+    pub ast: Node<ast::FunctionSignature>,
     pub parent: Option<Class>,
+    pub module: ModuleId,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-pub struct FunctionId(pub(crate) u32);
-impl_intern_key!(FunctionId);
-impl FunctionId {
-    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Function> {
-        db.lookup_intern_function(*self)
-    }
-    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
-        self.data(db).ast.span
-    }
-    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
-        self.data(db).ast.name().into()
-    }
-    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
-        self.data(db).ast.kind.name.span
+pub struct FunctionSigId(pub(crate) u32);
+impl_intern_key!(FunctionSigId);
+
+impl FunctionSigId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<FunctionSig> {
+        db.lookup_intern_function_sig(*self)
     }
 
     // This should probably be scrapped in favor of `parent(`
     pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.data(db).parent
     }
+
+    pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
+        self.signature(db).self_decl.is_some()
+    }
+
     pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
         match self.parent(db) {
             Item::Type(TypeDef::Contract(cid)) => {
@@ -1110,21 +1115,6 @@ impl FunctionId {
             _ => None,
         }
     }
-    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
-        let data = self.data(db);
-        data.parent
-            .map(|class| class.as_item())
-            .unwrap_or(Item::Module(data.module))
-    }
-
-    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
-        self.data(db).module
-    }
-
-    pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
-        self.signature(db).self_decl.is_some()
-    }
-
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         if self.takes_self(db) {
             self.data(db)
@@ -1136,6 +1126,43 @@ impl FunctionId {
         } else {
             None
         }
+    }
+    pub fn signature(&self, db: &dyn AnalyzerDb) -> Rc<types::FunctionSignature> {
+        db.function_signature(*self).value
+    }
+
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.is_trait_fn(db) || self.is_impl_fn(db) || self.pub_span(db).is_some()
+    }
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.kind.name.kind.clone()
+    }
+    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.kind.name.span
+    }
+    pub fn unsafe_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        self.data(db).ast.kind.unsafe_
+    }
+    pub fn is_constructor(&self, db: &dyn AnalyzerDb) -> bool {
+        self.name(db) == "__init__"
+    }
+    pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        self.data(db).ast.kind.pub_
+    }
+
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        let data = self.data(db);
+        data.parent
+            .map(|class| class.as_item(db))
+            .unwrap_or(Item::Module(data.module))
+    }
+
+    pub fn is_trait_fn(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.parent(db), Item::Type(TypeDef::Trait(_)))
+    }
+
+    pub fn is_impl_fn(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.class(db), Some(Class::Impl(_)))
     }
 
     pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
@@ -1157,23 +1184,99 @@ impl FunctionId {
             .cloned()
     }
 
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
+        matches! {self.parent(db), Item::Type(TypeDef::Contract(_))}
+    }
+
+    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        sink.push_all(db.function_signature(*self).diagnostics.iter());
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Function {
+    pub ast: Node<ast::Function>,
+    pub sig: FunctionSigId,
+}
+
+impl Function {
+    pub fn new(
+        db: &dyn AnalyzerDb,
+        ast: &Node<ast::Function>,
+        parent: Option<Class>,
+        module: ModuleId,
+    ) -> Self {
+        let sig = db.intern_function_sig(Rc::new(FunctionSig {
+            ast: ast.kind.sig.clone(),
+            parent,
+            module,
+        }));
+        Function {
+            sig,
+            ast: ast.clone(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct FunctionId(pub(crate) u32);
+impl_intern_key!(FunctionId);
+impl FunctionId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Function> {
+        db.lookup_intern_function(*self)
+    }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.sig(db).name(db)
+    }
+    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.sig(db).name_span(db)
+    }
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.sig(db).module(db)
+    }
+    // This should probably be scrapped in favor of `parent(`
+    pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
+        self.sig(db).class(db)
+    }
+    pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
+        self.sig(db).self_typ(db)
+    }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        self.sig(db).parent(db)
+    }
+    pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
+        self.sig(db).takes_self(db)
+    }
+    pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        self.sig(db).self_span(db)
+    }
+    pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
+        self.sig(db).is_generic(db)
+    }
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
-        self.pub_span(db).is_some()
+        self.sig(db).is_public(db)
     }
     pub fn is_constructor(&self, db: &dyn AnalyzerDb) -> bool {
-        self.name(db) == "__init__"
-    }
-    pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
-        self.data(db).ast.kind.pub_
+        self.sig(db).is_constructor(db)
     }
     pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
         self.unsafe_span(db).is_some()
     }
     pub fn unsafe_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
-        self.data(db).ast.kind.unsafe_
+        self.sig(db).unsafe_span(db)
     }
     pub fn signature(&self, db: &dyn AnalyzerDb) -> Rc<types::FunctionSignature> {
-        db.function_signature(*self).value
+        db.function_signature(self.data(db).sig).value
+    }
+    pub fn sig(&self, db: &dyn AnalyzerDb) -> FunctionSigId {
+        self.data(db).sig
     }
     pub fn body(&self, db: &dyn AnalyzerDb) -> Rc<context::FunctionBody> {
         db.function_body(*self).value
@@ -1182,12 +1285,11 @@ impl FunctionId {
         db.function_dependency_graph(*self).0
     }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        sink.push_all(db.function_signature(*self).diagnostics.iter());
+        sink.push_all(db.function_signature(self.data(db).sig).diagnostics.iter());
         sink.push_all(db.function_body(*self).diagnostics.iter());
     }
-
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
-        matches! {self.parent(db), Item::Type(TypeDef::Contract(_))}
+        self.sig(db).is_contract_func(db)
     }
 }
 
@@ -1196,16 +1298,29 @@ impl FunctionId {
 pub enum Class {
     Contract(ContractId),
     Struct(StructId),
+    Trait(TraitId),
+    Impl(ImplId),
 }
 impl Class {
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         match self {
             Class::Contract(id) => id.function(db, name),
             Class::Struct(id) => id.function(db, name),
+            Class::Impl(id) => id.function(db, name),
+            // This would possibly change when in the future trait methods can provide a default implementation
+            Class::Trait(_) => None,
         }
     }
-    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        let fun = self.function(db, name)?;
+    pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
+        match self {
+            Class::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Class::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Class::Impl(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Class::Trait(id) => id.function(db, name),
+        }
+    }
+    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
+        let fun = self.function_sig(db, name)?;
         fun.takes_self(db).then(|| fun)
     }
 
@@ -1213,18 +1328,30 @@ impl Class {
         match self {
             Class::Contract(inner) => inner.name(db),
             Class::Struct(inner) => inner.name(db),
+            Class::Trait(inner) => inner.name(db),
+            Class::Impl(inner) => inner.name(db),
         }
     }
     pub fn kind(&self) -> &str {
         match self {
             Class::Contract(_) => "contract",
             Class::Struct(_) => "struct",
+            Class::Trait(_) => "trait",
+            Class::Impl(_) => "impl",
         }
     }
-    pub fn as_item(&self) -> Item {
+    pub fn as_item(&self, db: &dyn AnalyzerDb) -> Item {
         match self {
             Class::Contract(id) => Item::Type(TypeDef::Contract(*id)),
             Class::Struct(id) => Item::Type(TypeDef::Struct(*id)),
+            Class::Trait(id) => Item::Type(TypeDef::Trait(*id)),
+            // Coercing into an Item of the basis of the receiver doesn't seem ideal but can hopefully
+            // be addressed when we get rid of `Class`.
+            Class::Impl(id) => id
+                .receiver(db)
+                .as_struct()
+                .map(|val| Item::Type(TypeDef::Struct(val.id)))
+                .expect("missing receiver"),
         }
     }
 }
@@ -1258,6 +1385,13 @@ impl StructId {
 
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
+    }
+
+    pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
+        self.module(db)
+            .impls(db)
+            .get(&(trait_, Type::Struct((*self.typ(db)).clone())))
+            .cloned()
     }
 
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Struct> {
@@ -1379,29 +1513,76 @@ pub struct Impl {
     pub ast: Node<ast::Impl>,
 }
 
-impl Impl {
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct ImplId(pub(crate) u32);
+impl_intern_key!(ImplId);
+impl ImplId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Impl> {
+        db.lookup_intern_impl(*self)
+    }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.impl_all_functions(*self)
+    }
+
+    pub fn trait_id(&self, db: &dyn AnalyzerDb) -> TraitId {
+        self.data(db).trait_id
+    }
+
+    pub fn receiver(&self, db: &dyn AnalyzerDb) -> Type {
+        self.data(db).receiver.clone()
+    }
+
+    pub fn ast(&self, db: &dyn AnalyzerDb) -> Node<ast::Impl> {
+        self.data(db).ast.clone()
+    }
+
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
+        db.impl_function_map(*self).value
+    }
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.functions(db).get(name).copied()
+    }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        format!(
+            "{}_{}",
+            self.trait_id(db).name(db),
+            self.receiver(db).name()
+        )
+        .into()
+    }
+
     fn validate_type_or_trait_is_in_ingot(
         &self,
         db: &dyn AnalyzerDb,
         sink: &mut impl DiagnosticSink,
-        module: Option<ModuleId>,
+        type_module: Option<ModuleId>,
     ) {
-        let is_allowed = match module {
-            None => self.module == self.trait_id.module(db),
-            Some(type_module) => {
-                type_module == self.module || self.trait_id.module(db) == self.module
-            }
+        let impl_module = self.data(db).module;
+        let is_allowed = match type_module {
+            None => impl_module == self.data(db).trait_id.module(db),
+            Some(val) => val == impl_module || self.data(db).trait_id.module(db) == impl_module,
         };
 
         if !is_allowed {
             sink.push(&errors::fancy_error(
                 "illegal `impl`. Either type or trait must be in the same ingot as the `impl`",
                 vec![Label::primary(
-                    self.ast.span,
+                    self.data(db).ast.span,
                     format!(
                         "Neither `{}` nor `{}` are in the ingot of the `impl` block",
-                        self.receiver,
-                        self.trait_id.name(db)
+                        self.data(db).receiver,
+                        self.data(db).trait_id.name(db)
                     ),
                 )],
                 vec![],
@@ -1410,21 +1591,136 @@ impl Impl {
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        match &self.receiver {
+        match &self.data(db).receiver {
             Type::Contract(_)
             | Type::Map(_)
             | Type::SelfContract(_)
             | Type::Trait(_)
-            | Type::Generic(_) => sink.push(&errors::fancy_error(
-                format!("`impl` blocks aren't allowed for {}", self.receiver),
-                vec![Label::primary(self.ast.span, "illegal `impl` block")],
+            | Type::Generic(_)
+            // TODO: We should find a way to support these types. We only support implementing traits for structs
+            // so far because it simplifies things regarding the assign location of the underlying type.
+            | Type::Base(_)
+            | Type::Array(_)
+            | Type::Tuple(_)
+            | Type::String(_) => sink.push(&errors::fancy_error(
+                format!(
+                    "`impl` blocks aren't allowed for {}",
+                    self.data(db).receiver
+                ),
+                vec![Label::primary(
+                    self.data(db).ast.span,
+                    "illegal `impl` block",
+                )],
                 vec![],
             )),
-            Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, None)
-            }
             Type::Struct(val) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, Some(val.id.module(db)))
+            }
+        }
+
+        if !self.trait_id(db).is_public(db) && self.trait_id(db).module(db) != self.module(db) {
+            let trait_module_name = self.trait_id(db).module(db).name(db);
+            let trait_name = self.trait_id(db).name(db);
+            sink.push(&errors::fancy_error(
+                     &format!(
+                         "the trait `{}` is private",
+                         trait_name,
+                     ),
+                     vec![
+                         Label::primary(self.trait_id(db).data(db).ast.kind.name.span, "this trait is not `pub`"),
+                     ],
+                     vec![
+                         format!("`{}` can only be used within `{}`", trait_name, trait_module_name),
+                         format!("Hint: use `pub trait {trait_}` to make `{trait_}` visible from outside of `{module}`", trait_=trait_name, module=trait_module_name),
+                     ],
+                 ));
+        }
+
+        for impl_fn in self.all_functions(db).iter() {
+            impl_fn.sink_diagnostics(db, sink);
+
+            if let Some(trait_fn) = self.trait_id(db).function(db, &impl_fn.name(db)) {
+                if impl_fn.signature(db).params != trait_fn.signature(db).params {
+                    // TODO: This could be a nicer, more detailed report
+                    sink.push(&errors::fancy_error(
+                        format!(
+                            "method `{}` has incompatible parameters for `{}` of trait `{}`",
+                            impl_fn.name(db),
+                            trait_fn.name(db),
+                            self.trait_id(db).name(db)
+                        ),
+                        vec![
+                            Label::primary(
+                                impl_fn.data(db).ast.kind.sig.span,
+                                "signature of method in `impl` block",
+                            ),
+                            Label::primary(
+                                trait_fn.data(db).ast.span,
+                                format!(
+                                    "signature of method in trait `{}`",
+                                    self.trait_id(db).name(db)
+                                ),
+                            ),
+                        ],
+                        vec![],
+                    ));
+                }
+
+                if impl_fn.signature(db).return_type != trait_fn.signature(db).return_type {
+                    // TODO: This could be a nicer, more detailed report
+                    sink.push(&errors::fancy_error(
+                        format!(
+                            "method `{}` has an incompatible return type for `{}` of trait `{}`",
+                            impl_fn.name(db),
+                            trait_fn.name(db),
+                            self.trait_id(db).name(db)
+                        ),
+                        vec![
+                            Label::primary(
+                                impl_fn.data(db).ast.kind.sig.span,
+                                "signature of method in `impl` block",
+                            ),
+                            Label::primary(
+                                trait_fn.data(db).ast.span,
+                                format!(
+                                    "signature of method in trait `{}`",
+                                    self.trait_id(db).name(db)
+                                ),
+                            ),
+                        ],
+                        vec![],
+                    ));
+                }
+            } else {
+                sink.push(&errors::fancy_error(
+                    format!(
+                        "method `{}` is not a member of trait `{}`",
+                        impl_fn.name(db),
+                        self.trait_id(db).name(db)
+                    ),
+                    vec![Label::primary(
+                        impl_fn.data(db).ast.span,
+                        format!("not a member of trait `{}`", self.trait_id(db).name(db)),
+                    )],
+                    vec![],
+                ))
+            }
+        }
+
+        for trait_fn in self.trait_id(db).all_functions(db).iter() {
+            if self.function(db, &trait_fn.name(db)).is_none() {
+                sink.push(&errors::fancy_error(
+                    format!(
+                        "not all members of trait `{}` implemented, missing: `{}`",
+                        self.trait_id(db).name(db),
+                        trait_fn.name(db)
+                    ),
+                    vec![Label::primary(
+                        trait_fn.data(db).ast.span,
+                        "this trait function is missing in `impl` block",
+                    )],
+                    vec![],
+                ))
             }
         }
     }
@@ -1465,7 +1761,7 @@ impl TraitId {
         self.module(db)
             .all_impls(db)
             .iter()
-            .any(|val| &val.trait_id == self && &val.receiver == ty)
+            .any(|val| &val.trait_id(db) == self && &val.receiver(db) == ty)
     }
 
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Trait> {
@@ -1478,7 +1774,37 @@ impl TraitId {
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
     }
-    pub fn sink_diagnostics(&self, _db: &dyn AnalyzerDb, _sink: &mut impl DiagnosticSink) {}
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionSigId]> {
+        db.trait_all_functions(*self)
+    }
+
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionSigId>> {
+        db.trait_function_map(*self).value
+    }
+
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
+        self.functions(db).get(name).copied()
+    }
+
+    pub fn as_class(&self) -> Class {
+        Class::Trait(*self)
+    }
+
+    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        db.trait_all_functions(*self).iter().for_each(|id| {
+            if !id.takes_self(db) {
+                sink.push(&errors::fancy_error(
+                    "associated functions aren't yet supported in traits",
+                    vec![Label::primary(
+                        id.data(db).ast.span,
+                        "function doesn't take `self`",
+                    )],
+                    vec!["Hint: add a `self` param to this function".into()],
+                ));
+            }
+            id.sink_diagnostics(db, sink)
+        });
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

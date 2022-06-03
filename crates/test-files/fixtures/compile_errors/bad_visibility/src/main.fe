@@ -1,5 +1,8 @@
-use foo::{MyInt, MY_CONST, MyEvent, MyStruct, my_func, MyContract}
+use foo::{MyInt, MY_CONST, MyEvent, MyStruct, MyTrait, my_func, MyContract}
 use std::context::Context
+
+struct SomeThing {}
+impl MyTrait for SomeThing {}
 
 contract Main {
     pub fn priv_type_alias() -> MyInt {

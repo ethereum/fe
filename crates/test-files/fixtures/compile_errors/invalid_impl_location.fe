@@ -1,3 +1,4 @@
-use std::traits::IsNumeric
+use std::traits::Dummy
+use std::context::Context
 
-impl IsNumeric for u8 {}
+impl Dummy for Context {}

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_level_events), try_parse_module,\n           r#\"\nuse std::context::Context\n\nevent Transfer {\n    idx sender: address\n    idx receiver: address\n    value: u256\n}\ncontract Foo {\n    fn transfer(ctx: Context, to: address, value: u256) {\n        emit Transfer(ctx, sender: msg.sender, receiver: to, value)\n    }\n}\n\"#)"
+expression: "ast_string(stringify!(module_level_events), try_parse_module,\n    r#\"\nuse std::context::Context\n\nevent Transfer {\n    idx sender: address\n    idx receiver: address\n    value: u256\n}\ncontract Foo {\n    fn transfer(ctx: Context, to: address, value: u256) {\n        emit Transfer(ctx, sender: msg.sender, receiver: to, value)\n    }\n}\n\"#)"
 
 ---
 Node(
@@ -154,100 +154,108 @@ Node(
           body: [
             Function(Node(
               kind: Function(
-                pub_: None,
-                unsafe_: None,
-                name: Node(
-                  kind: "transfer",
-                  span: Span(
-                    start: 135,
-                    end: 143,
-                  ),
-                ),
-                generic_params: Node(
-                  kind: [],
-                  span: Span(
-                    start: 135,
-                    end: 143,
-                  ),
-                ),
-                args: [
-                  Node(
-                    kind: Regular(RegularFunctionArg(
-                      label: None,
-                      name: Node(
-                        kind: "ctx",
+                sig: Node(
+                  kind: FunctionSignature(
+                    pub_: None,
+                    unsafe_: None,
+                    name: Node(
+                      kind: "transfer",
+                      span: Span(
+                        start: 135,
+                        end: 143,
+                      ),
+                    ),
+                    generic_params: Node(
+                      kind: [],
+                      span: Span(
+                        start: 135,
+                        end: 143,
+                      ),
+                    ),
+                    args: [
+                      Node(
+                        kind: Regular(RegularFunctionArg(
+                          label: None,
+                          name: Node(
+                            kind: "ctx",
+                            span: Span(
+                              start: 144,
+                              end: 147,
+                            ),
+                          ),
+                          typ: Node(
+                            kind: Base(
+                              base: "Context",
+                            ),
+                            span: Span(
+                              start: 149,
+                              end: 156,
+                            ),
+                          ),
+                        )),
                         span: Span(
                           start: 144,
-                          end: 147,
-                        ),
-                      ),
-                      typ: Node(
-                        kind: Base(
-                          base: "Context",
-                        ),
-                        span: Span(
-                          start: 149,
                           end: 156,
                         ),
                       ),
-                    )),
-                    span: Span(
-                      start: 144,
-                      end: 156,
-                    ),
-                  ),
-                  Node(
-                    kind: Regular(RegularFunctionArg(
-                      label: None,
-                      name: Node(
-                        kind: "to",
+                      Node(
+                        kind: Regular(RegularFunctionArg(
+                          label: None,
+                          name: Node(
+                            kind: "to",
+                            span: Span(
+                              start: 158,
+                              end: 160,
+                            ),
+                          ),
+                          typ: Node(
+                            kind: Base(
+                              base: "address",
+                            ),
+                            span: Span(
+                              start: 162,
+                              end: 169,
+                            ),
+                          ),
+                        )),
                         span: Span(
                           start: 158,
-                          end: 160,
-                        ),
-                      ),
-                      typ: Node(
-                        kind: Base(
-                          base: "address",
-                        ),
-                        span: Span(
-                          start: 162,
                           end: 169,
                         ),
                       ),
-                    )),
-                    span: Span(
-                      start: 158,
-                      end: 169,
-                    ),
-                  ),
-                  Node(
-                    kind: Regular(RegularFunctionArg(
-                      label: None,
-                      name: Node(
-                        kind: "value",
+                      Node(
+                        kind: Regular(RegularFunctionArg(
+                          label: None,
+                          name: Node(
+                            kind: "value",
+                            span: Span(
+                              start: 171,
+                              end: 176,
+                            ),
+                          ),
+                          typ: Node(
+                            kind: Base(
+                              base: "u256",
+                            ),
+                            span: Span(
+                              start: 178,
+                              end: 182,
+                            ),
+                          ),
+                        )),
                         span: Span(
                           start: 171,
-                          end: 176,
-                        ),
-                      ),
-                      typ: Node(
-                        kind: Base(
-                          base: "u256",
-                        ),
-                        span: Span(
-                          start: 178,
                           end: 182,
                         ),
                       ),
-                    )),
-                    span: Span(
-                      start: 171,
-                      end: 182,
-                    ),
+                    ],
+                    return_type: None,
                   ),
-                ],
-                return_type: None,
+                  span: Span(
+                    start: 132,
+                    end: 183,
+                  ),
+                ),
                 body: [
                   Node(
                     kind: Emit(

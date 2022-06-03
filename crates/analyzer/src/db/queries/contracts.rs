@@ -22,13 +22,9 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[
     body.iter()
         .filter_map(|stmt| match stmt {
             ast::ContractStmt::Event(_) => None,
-            ast::ContractStmt::Function(node) => {
-                Some(db.intern_function(Rc::new(items::Function {
-                    ast: node.clone(),
-                    module,
-                    parent: Some(items::Class::Contract(contract)),
-                })))
-            }
+            ast::ContractStmt::Function(node) => Some(db.intern_function(Rc::new(
+                items::Function::new(db, node, Some(items::Class::Contract(contract)), module),
+            ))),
         })
         .collect()
 }
@@ -53,7 +49,7 @@ pub fn contract_function_map(
                 def_name,
                 &NamedThing::Item(Item::Event(event)),
                 Some(event.name_span(db)),
-                def.kind.name.span,
+                def.kind.sig.kind.name.span,
             );
             continue;
         }
@@ -64,7 +60,7 @@ pub fn contract_function_map(
                 def_name,
                 &named_item,
                 named_item.name_span(db),
-                def.kind.name.span,
+                def.kind.sig.kind.name.span,
             );
             continue;
         }
@@ -333,6 +329,14 @@ pub fn contract_field_type(
     let typ = type_desc(&mut scope, &field.data(db).ast.kind.typ);
 
     let node = &field.data(db).ast;
+
+    if let Ok(Type::Trait(ref val)) = typ {
+        scope.error(
+            "traits can not be used as contract fields",
+            node.span,
+            &format!("trait `{}` can not appear here", val.name),
+        );
+    }
 
     if node.kind.is_pub {
         scope.not_yet_implemented("contract `pub` fields", node.span);

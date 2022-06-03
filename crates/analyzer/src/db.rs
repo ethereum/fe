@@ -1,10 +1,10 @@
 use crate::context::{Analysis, Constant, FunctionBody};
 use crate::errors::{ConstEvalError, TypeError};
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, Impl, IngotId, Item,
-    ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId, TypeAliasId,
+    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, FunctionSigId, ImplId,
+    IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId, TypeAliasId,
 };
-use crate::namespace::types;
+use crate::namespace::types::{self, Type};
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_common::{SourceFileId, Span};
 use fe_parser::ast;
@@ -26,6 +26,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::interned]
     fn intern_trait(&self, data: Rc<items::Trait>) -> TraitId;
     #[salsa::interned]
+    fn intern_impl(&self, data: Rc<items::Impl>) -> ImplId;
+    #[salsa::interned]
     fn intern_struct_field(&self, data: Rc<items::StructField>) -> StructFieldId;
     #[salsa::interned]
     fn intern_type_alias(&self, data: Rc<items::TypeAlias>) -> TypeAliasId;
@@ -33,6 +35,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn intern_contract(&self, data: Rc<items::Contract>) -> ContractId;
     #[salsa::interned]
     fn intern_contract_field(&self, data: Rc<items::ContractField>) -> ContractFieldId;
+    #[salsa::interned]
+    fn intern_function_sig(&self, data: Rc<items::FunctionSig>) -> FunctionSigId;
     #[salsa::interned]
     fn intern_function(&self, data: Rc<items::Function>) -> FunctionId;
     #[salsa::interned]
@@ -63,9 +67,11 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<[Item]>;
     #[salsa::invoke(queries::module::module_all_impls)]
-    fn module_all_impls(&self, module: ModuleId) -> Rc<[Impl]>;
+    fn module_all_impls(&self, module: ModuleId) -> Rc<[ImplId]>;
     #[salsa::invoke(queries::module::module_item_map)]
     fn module_item_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<SmolStr, Item>>>;
+    #[salsa::invoke(queries::module::module_impl_map)]
+    fn module_impl_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<(TraitId, Type), ImplId>>>;
     #[salsa::invoke(queries::module::module_contracts)]
     fn module_contracts(&self, module: ModuleId) -> Rc<[ContractId]>;
     #[salsa::invoke(queries::module::module_structs)]
@@ -134,7 +140,7 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
 
     // Function
     #[salsa::invoke(queries::functions::function_signature)]
-    fn function_signature(&self, id: FunctionId) -> Analysis<Rc<types::FunctionSignature>>;
+    fn function_signature(&self, id: FunctionSigId) -> Analysis<Rc<types::FunctionSignature>>;
     #[salsa::invoke(queries::functions::function_body)]
     fn function_body(&self, id: FunctionId) -> Analysis<Rc<FunctionBody>>;
     #[salsa::cycle(queries::functions::function_dependency_graph_cycle)]
@@ -161,6 +167,16 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     // Trait
     #[salsa::invoke(queries::traits::trait_type)]
     fn trait_type(&self, id: TraitId) -> Rc<types::Trait>;
+    #[salsa::invoke(queries::traits::trait_all_functions)]
+    fn trait_all_functions(&self, id: TraitId) -> Rc<[FunctionSigId]>;
+    #[salsa::invoke(queries::traits::trait_function_map)]
+    fn trait_function_map(&self, id: TraitId) -> Analysis<Rc<IndexMap<SmolStr, FunctionSigId>>>;
+
+    // Impl
+    #[salsa::invoke(queries::impls::impl_all_functions)]
+    fn impl_all_functions(&self, id: ImplId) -> Rc<[FunctionId]>;
+    #[salsa::invoke(queries::impls::impl_function_map)]
+    fn impl_function_map(&self, id: ImplId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
 
     // Event
     #[salsa::invoke(queries::events::event_type)]

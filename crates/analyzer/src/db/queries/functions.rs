@@ -2,16 +2,17 @@ use crate::context::{AnalyzerContext, CallType, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
+    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, Contract, CtxDecl, Generic, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
-use fe_parser::ast;
+use fe_parser::ast::{self, GenericParameter};
 use fe_parser::node::Node;
 use if_chain::if_chain;
+use smol_str::SmolStr;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -19,10 +20,9 @@ use std::rc::Rc;
 /// errors. Does not inspect the function body.
 pub fn function_signature(
     db: &dyn AnalyzerDb,
-    function: FunctionId,
+    function: FunctionSigId,
 ) -> Analysis<Rc<types::FunctionSignature>> {
-    let node = &function.data(db).ast;
-    let def = &node.kind;
+    let def = &function.data(db).ast;
 
     let mut scope = ItemScope::new(db, function.module(db));
     let fn_parent = function.class(db);
@@ -32,9 +32,27 @@ pub fn function_signature(
     let mut names = HashMap::new();
     let mut labels = HashMap::new();
 
-    if let (Some(Class::Contract(_)), true) = (fn_parent, function.is_generic(db)) {
+    function.data(db).ast.kind.generic_params.kind.iter().fold(
+        HashMap::<SmolStr, Node<_>>::new(),
+        |mut accum, param| {
+            if let Some(previous) = accum.get(&param.name()) {
+                scope.duplicate_name_error(
+                    "duplicate generic parameter",
+                    &param.name(),
+                    previous.span,
+                    param.name_node().span,
+                );
+            } else {
+                accum.insert(param.name(), param.name_node());
+            };
+
+            accum
+        },
+    );
+
+    if !matches!(fn_parent, Some(Class::Struct(_))) && function.is_generic(db) {
         scope.fancy_error(
-            "generic function parameters aren't yet supported in contract functions",
+            "generic function parameters aren't yet supported outside of struct functions",
             vec![Label::primary(
                 function.data(db).ast.kind.generic_params.span,
                 "This can not appear here",
@@ -43,7 +61,26 @@ pub fn function_signature(
         );
     }
 
+    if function.is_generic(db) {
+        for param in function.data(db).ast.kind.generic_params.kind.iter() {
+            if let GenericParameter::Unbounded(val) = param {
+                scope.fancy_error(
+                    "unbounded generic parameters aren't yet supported",
+                    vec![Label::primary(
+                        val.span,
+                        format!("`{}` needs to be bound by some trait", val.kind),
+                    )],
+                    vec![format!(
+                        "Hint: Change `{}` to `{}: SomeTrait`",
+                        val.kind, val.kind
+                    )],
+                );
+            }
+        }
+    }
+
     let params = def
+        .kind
         .args
         .iter()
         .enumerate()
@@ -73,7 +110,7 @@ pub fn function_signature(
                     _ => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
                         reg.typ.span,
-                        "`Map` type can't be used as a function parameter",
+                        &format!("`{}` type can't be used as a function parameter", typ.name()),
                     ))),
                 });
 
@@ -114,9 +151,9 @@ pub fn function_signature(
                         if label.kind != "_";
                         if let Some(dup_idx) = labels.get(&label.kind);
                         then {
-                            let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
+                            let dup_arg: &Node<ast::FunctionArg> = &def.kind.args[*dup_idx];
                             scope.fancy_error(
-                                &format!("duplicate parameter labels in function `{}`", def.name.kind),
+                                &format!("duplicate parameter labels in function `{}`", def.kind.name.kind),
                                 vec![
                                     Label::primary(dup_arg.span, "the label `{}` was first used here"),
                                     Label::primary(label.span, "label `{}` used again here"),
@@ -138,9 +175,9 @@ pub fn function_signature(
                     );
                     None
                 } else if let Some(dup_idx) = names.get(&reg.name.kind) {
-                    let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
+                    let dup_arg: &Node<ast::FunctionArg> = &def.kind.args[*dup_idx];
                     scope.duplicate_name_error(
-                        &format!("duplicate parameter names in function `{}`", def.name.kind),
+                        &format!("duplicate parameter names in function `{}`", function.name(db)),
                         &reg.name.kind,
                         dup_arg.span,
                         arg.span,
@@ -159,10 +196,11 @@ pub fn function_signature(
         .collect();
 
     let return_type = def
+        .kind
         .return_type
         .as_ref()
         .map(|type_node| {
-            let fn_name = &def.name.kind;
+            let fn_name = &function.name(db);
             if fn_name == "__init__" || fn_name == "__call__" {
                 // `__init__` and `__call__` must not return any type other than `()`.
                 if type_node.kind != ast::TypeDesc::Unit {
@@ -207,7 +245,7 @@ pub fn function_signature(
 
 pub fn resolve_function_param_type(
     db: &dyn AnalyzerDb,
-    function: FunctionId,
+    function: FunctionSigId,
     context: &mut dyn AnalyzerContext,
     desc: &Node<ast::TypeDesc>,
 ) -> Result<Type, TypeError> {
@@ -254,11 +292,11 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
                 "function body is missing a return or revert statement",
                 vec![
                     Label::primary(
-                        def.name.span,
+                        function.name_span(db),
                         "all paths of this function must `return` or `revert`",
                     ),
                     Label::secondary(
-                        def.return_type.as_ref().unwrap().span,
+                        def.sig.kind.return_type.as_ref().unwrap().span,
                         format!("expected function to return `{}`", return_type),
                     ),
                 ],
@@ -346,7 +384,7 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
     // A function that takes `self` depends on the type of `self`, so that any
     // relevant struct getters/setters are included when compiling.
     if let Some(class) = function.class(db) {
-        directs.push((root, class.as_item(), DepLocality::Local));
+        directs.push((root, class.as_item(db), DepLocality::Local));
     }
 
     let body = function.body(db);
@@ -359,8 +397,15 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                 // Including the "class" type here is probably redundant; the type will
                 // also be part of the fn sig, or some type decl, or some create/create2 call,
                 // or...
-                directs.push((root, class.as_item(), DepLocality::Local));
+                directs.push((root, class.as_item(db), DepLocality::Local));
                 directs.push((root, Item::Function(*method), DepLocality::Local));
+            }
+            CallType::TraitValueMethod { trait_id, .. } => {
+                directs.push((
+                    root,
+                    Item::Type(TypeDef::Trait(*trait_id)),
+                    DepLocality::Local,
+                ));
             }
             CallType::External { contract, function } => {
                 directs.push((root, Item::Function(*function), DepLocality::External));

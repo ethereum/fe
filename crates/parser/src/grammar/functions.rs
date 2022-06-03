@@ -2,15 +2,18 @@ use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
 use crate::ast::{
-    BinOperator, Expr, FuncStmt, Function, FunctionArg, GenericParameter, RegularFunctionArg,
-    TypeDesc, VarDeclTarget,
+    BinOperator, Expr, FuncStmt, Function, FunctionArg, FunctionSignature, GenericParameter,
+    RegularFunctionArg, TypeDesc, VarDeclTarget,
 };
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
-/// Parse a function definition. The optional `pub` qualifier must be parsed by
+/// Parse a function definition without a body. The optional `pub` qualifier must be parsed by
 /// the caller, and passed in. Next token must be `unsafe` or `fn`.
-pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
+pub fn parse_fn_sig(
+    par: &mut Parser,
+    mut pub_qual: Option<Span>,
+) -> ParseResult<Node<FunctionSignature>> {
     let unsafe_qual = par.optional(TokenKind::Unsafe).map(|tok| tok.span);
     if let Some(pub_) = par.optional(TokenKind::Pub) {
         let unsafe_span =
@@ -84,22 +87,35 @@ pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult
         None
     };
 
-    // TODO: allow multi-line return type? `fn f()\n ->\n u8`
-    par.enter_block(span, "function definition")?;
-    let body = parse_block_stmts(par)?;
-    let rbrace = par.expect(TokenKind::BraceClose, "missing `}` in fn definition")?;
-
     Ok(Node::new(
-        Function {
+        FunctionSignature {
             pub_: pub_qual,
             unsafe_: unsafe_qual,
             name: name.into(),
             args,
             generic_params,
             return_type,
+        },
+        span,
+    ))
+}
+
+/// Parse a function definition. The optional `pub` qualifier must be parsed by
+/// the caller, and passed in. Next token must be `unsafe` or `fn`.
+pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
+    let sig = parse_fn_sig(par, pub_qual)?;
+
+    // TODO: allow multi-line return type? `fn f()\n ->\n u8`
+    par.enter_block(sig.span, "function definition")?;
+    let body = parse_block_stmts(par)?;
+    let rbrace = par.expect(TokenKind::BraceClose, "missing `}` in fn definition")?;
+
+    Ok(Node::new(
+        Function {
+            sig: sig.clone(),
             body,
         },
-        span + rbrace.span,
+        sig.span + rbrace.span,
     ))
 }
 

@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: associated functions aren't yet supported in traits
+  ┌─ compile_errors/trait_fn_without_self.fe:2:5
+  │
+2 │     fn this_has_no_self();
+  │     ^^^^^^^^^^^^^^^^^^^^^ function doesn't take `self`
+  │
+  = Hint: add a `self` param to this function
+
+

@@ -5,7 +5,7 @@ use fe_analyzer::{
     context::CallType as AnalyzerCallType,
     namespace::{
         items as analyzer_items,
-        types::{self as analyzer_types, Type},
+        types::{self as analyzer_types, Type, TypeDowncast},
     },
 };
 use fe_common::numeric::Literal;
@@ -42,6 +42,7 @@ pub fn lower_monomorphized_func_signature(
     let mut params = vec![];
     let mut concrete_args: &[Type] = concrete_args;
     let has_self = func.takes_self(db.upcast());
+
     if has_self {
         let self_ty = func.self_typ(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
@@ -914,7 +915,36 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder
                     .call(func_id, method_args, CallType::Internal, source)
             }
+            AnalyzerCallType::TraitValueMethod {
+                method,
+                trait_id,
+                generic_type,
+                ..
+            } => {
+                let mut method_args = vec![self.lower_method_receiver(func)];
+                method_args.append(&mut args);
 
+                let struct_type = self
+                    .func
+                    .signature(self.db)
+                    .resolved_generics
+                    .get(generic_type)
+                    .as_struct()
+                    .expect("unexpected implementer of trait");
+
+                let impl_ = struct_type
+                    .id
+                    .get_impl_for(self.db.upcast(), *trait_id)
+                    .expect("missing impl");
+
+                let function = impl_
+                    .function(self.db.upcast(), &method.name(self.db.upcast()))
+                    .expect("missing function");
+
+                let func_id = self.db.mir_lowered_func_signature(function);
+                self.builder
+                    .call(func_id, method_args, CallType::Internal, source)
+            }
             AnalyzerCallType::External { function, .. } => {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
@@ -1191,6 +1221,8 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
     func.data(db.upcast())
         .ast
         .kind
+        .sig
+        .kind
         .args
         .iter()
         .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_))
@@ -1201,6 +1233,8 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
 fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) -> SourceInfo {
     func.data(db.upcast())
         .ast
+        .kind
+        .sig
         .kind
         .args
         .iter()

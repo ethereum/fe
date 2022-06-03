@@ -99,7 +99,7 @@ impl PrettyPrint for InstId {
                 args,
                 call_type,
             } => {
-                let name = func.name_with_class(db);
+                let name = func.debug_name(db);
                 write!(w, "{}@{}(", name, call_type)?;
                 args.as_slice().pretty_print(db, store, w)?;
                 write!(w, ")")

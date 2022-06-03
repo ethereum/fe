@@ -244,6 +244,7 @@ test_file! { duplicate_typedef_in_module }
 test_file! { duplicate_var_in_child_scope }
 test_file! { duplicate_var_in_contract_method }
 test_file! { duplicate_var_in_for_loop }
+test_file! { duplicate_generic_params }
 test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
@@ -293,6 +294,12 @@ test_file! { struct_private_constructor }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { struct_recursive_cycles }
+test_file! { trait_impl_mismatch }
+test_file! { trait_fn_without_self }
+test_file! { trait_fn_with_generic_params }
+test_file! { traits_as_fields }
+test_file! { trait_conflicting_impls }
+test_file! { traits_with_wrong_bounds }
 test_file! { non_pub_init }
 test_file! { init_wrong_return_type }
 test_file! { init_duplicate_def }

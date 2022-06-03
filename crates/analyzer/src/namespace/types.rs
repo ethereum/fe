@@ -1,7 +1,6 @@
 use crate::context::AnalyzerContext;
 use crate::errors::TypeError;
-use crate::namespace::items::TraitId;
-use crate::namespace::items::{Class, ContractId, StructId};
+use crate::namespace::items::{Class, ContractId, StructId, TraitId};
 use crate::AnalyzerDb;
 
 use fe_common::Span;
@@ -496,6 +495,8 @@ pub trait TypeDowncast {
     fn as_int(&self) -> Option<Integer>;
     fn as_primitive(&self) -> Option<Base>;
     fn as_class(&self) -> Option<Class>;
+    fn as_generic(&self) -> Option<Generic>;
+    fn as_struct(&self) -> Option<Struct>;
 }
 
 impl TypeDowncast for Type {
@@ -539,6 +540,22 @@ impl TypeDowncast for Type {
         match self {
             Type::Struct(inner) => Some(Class::Struct(inner.id)),
             Type::Contract(inner) | Type::SelfContract(inner) => Some(Class::Contract(inner.id)),
+            Type::Generic(inner) if !inner.bounds.is_empty() => {
+                // FIXME: This won't hold when we support multiple bounds or traits can be implemented for non-struct types
+                inner.bounds.first().map(TraitId::as_class)
+            }
+            _ => None,
+        }
+    }
+    fn as_struct(&self) -> Option<Struct> {
+        match self {
+            Type::Struct(val) => Some(val.clone()),
+            _ => None,
+        }
+    }
+    fn as_generic(&self) -> Option<Generic> {
+        match self {
+            Type::Generic(generic) => Some(generic.clone()),
             _ => None,
         }
     }
@@ -565,6 +582,12 @@ impl TypeDowncast for Option<&Type> {
     }
     fn as_class(&self) -> Option<Class> {
         self.and_then(TypeDowncast::as_class)
+    }
+    fn as_struct(&self) -> Option<Struct> {
+        self.and_then(TypeDowncast::as_struct)
+    }
+    fn as_generic(&self) -> Option<Generic> {
+        self.and_then(TypeDowncast::as_generic)
     }
 }
 

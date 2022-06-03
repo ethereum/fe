@@ -1,0 +1,5 @@
+trait Bar {}
+
+trait Foo {
+    fn generic_fn<T: Bar>(self, val: T);
+}

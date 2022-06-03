@@ -2,8 +2,8 @@ use crate::context::{Analysis, AnalyzerContext, Constant};
 use crate::db::AnalyzerDb;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Event, Function, Impl, Item, ModuleConstant, ModuleConstantId, ModuleId,
-    ModuleSource, Struct, StructId, Trait, TypeAlias, TypeDef,
+    Contract, ContractId, Event, Function, Impl, ImplId, Item, ModuleConstant, ModuleConstantId,
+    ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
@@ -86,13 +86,9 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
                     module,
                 }),
             ))),
-            ast::ModuleStmt::Function(node) => {
-                Some(Item::Function(db.intern_function(Rc::new(Function {
-                    ast: node.clone(),
-                    module,
-                    parent: None,
-                }))))
-            }
+            ast::ModuleStmt::Function(node) => Some(Item::Function(
+                db.intern_function(Rc::new(Function::new(db, node, None, module))),
+            )),
             ast::ModuleStmt::Trait(node) => Some(Item::Type(TypeDef::Trait(db.intern_trait(
                 Rc::new(Trait {
                     ast: node.clone(),
@@ -110,7 +106,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
         .collect()
 }
 
-pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Impl]> {
+pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ImplId]> {
     let body = &module.ast(db).body;
     body.iter()
         .filter_map(|stmt| match stmt {
@@ -124,12 +120,12 @@ pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Impl]> {
                 let receiver_type = type_desc(&mut scope, &impl_node.kind.receiver).unwrap();
 
                 if let Some(Item::Type(TypeDef::Trait(val))) = treit {
-                    Some(Impl {
+                    Some(db.intern_impl(Rc::new(Impl {
                         trait_id: val,
                         receiver: receiver_type,
                         ast: impl_node.clone(),
                         module,
-                    })
+                    })))
                 } else {
                     None
                 }
@@ -235,6 +231,37 @@ pub fn module_item_map(
             .into(),
         diagnostics.into(),
     )
+}
+
+pub fn module_impl_map(
+    db: &dyn AnalyzerDb,
+    module: ModuleId,
+) -> Analysis<Rc<IndexMap<(TraitId, Type), ImplId>>> {
+    let scope = ItemScope::new(db, module);
+    let mut map = IndexMap::<(TraitId, Type), ImplId>::new();
+
+    for impl_ in db.module_all_impls(module).iter() {
+        let key = &(impl_.trait_id(db), impl_.receiver(db));
+
+        match map.entry(key.clone()) {
+            Entry::Occupied(entry) => {
+                scope.duplicate_name_error(
+                    &format!(
+                        "duplicate `impl` blocks for trait `{}` for type `{}`",
+                        key.0.name(db),
+                        key.1.name()
+                    ),
+                    "",
+                    entry.get().ast(db).span,
+                    impl_.ast(db).span,
+                );
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(*impl_);
+            }
+        }
+    }
+    Analysis::new(Rc::new(map), scope.diagnostics.take().into())
 }
 
 pub fn module_contracts(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ContractId]> {

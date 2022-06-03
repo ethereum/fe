@@ -1,6 +1,6 @@
 use crate::ast::{self, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
-use crate::grammar::functions::parse_fn_def;
+use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
 use crate::node::{Node, Span};
 use crate::Token;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -78,12 +78,20 @@ pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseR
     )?;
 
     let header_span = trait_tok.span + trait_name.span;
+    let mut functions = vec![];
     par.enter_block(header_span, "trait definition")?;
 
     loop {
         match par.peek_or_err()? {
             TokenKind::Fn => {
-                // TODO: parse trait functions
+                // TODO: Traits should also be allowed to have functions that do contain a body.
+                functions.push(parse_fn_sig(par, None)?);
+                par.expect_with_notes(
+                    TokenKind::Semi,
+                    "failed to parse trait definition",
+                    |_| vec!["Note: trait functions must appear without body and followed by a semicolon.".into()],
+                )?;
+                par.eat_newlines();
             }
             TokenKind::BraceClose => {
                 par.next()?;
@@ -101,6 +109,7 @@ pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseR
     Ok(Node::new(
         Trait {
             name: Node::new(trait_name.text.into(), trait_name.span),
+            functions,
             pub_qual: trait_pub_qual,
         },
         span,
@@ -128,15 +137,17 @@ pub fn parse_impl_def(par: &mut Parser) -> ParseResult<Node<Impl>> {
         })?;
 
     let receiver = parse_type_desc(par)?;
+    let mut functions = vec![];
 
     let header_span = impl_tok.span + trait_name.span + for_tok.span + receiver.span;
 
     par.enter_block(header_span, "impl definition")?;
 
     loop {
+        par.eat_newlines();
         match par.peek_or_err()? {
             TokenKind::Fn => {
-                // TODO: parse impl functions
+                functions.push(parse_fn_def(par, None)?);
             }
             TokenKind::BraceClose => {
                 par.next()?;
@@ -154,6 +165,7 @@ pub fn parse_impl_def(par: &mut Parser) -> ParseResult<Node<Impl>> {
         Impl {
             impl_trait: Node::new(trait_name.text.into(), trait_name.span),
             receiver,
+            functions,
         },
         header_span,
     ))
