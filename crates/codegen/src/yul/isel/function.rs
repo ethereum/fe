@@ -522,9 +522,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         rhs: ValueId,
         inst: InstId,
     ) -> yul::Expression {
-        let lhs = self.value_expr(lhs);
-        let rhs = self.value_expr(rhs);
-        let is_signed = self
+        let lhs_expr = self.value_expr(lhs);
+        let rhs_expr = self.value_expr(rhs);
+        let is_result_signed = self
             .body
             .store
             .inst_result(inst)
@@ -533,33 +533,53 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 ty.is_signed(self.db.upcast())
             })
             .unwrap_or(false);
+        let is_lhs_signed = self.body.store.value_ty(lhs).is_signed(self.db.upcast());
+
         let inst_result = self.body.store.inst_result(inst).unwrap();
         let inst_result_ty = self
             .assignable_value_ty(inst_result)
             .deref(self.db.upcast());
         match op {
-            BinOp::Add => self.ctx.runtime.safe_add(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Sub => self.ctx.runtime.safe_sub(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Mul => self.ctx.runtime.safe_mul(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Div => self.ctx.runtime.safe_div(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Mod => self.ctx.runtime.safe_mod(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Pow => self.ctx.runtime.safe_pow(self.db, lhs, rhs, inst_result_ty),
-            BinOp::Shl => expression! {shl([rhs], [lhs])},
-            BinOp::Shr if is_signed => expression! {sar([rhs], [lhs])},
-            BinOp::Shr => expression! {shr([rhs], [lhs])},
-            BinOp::BitOr | BinOp::LogicalOr => expression! {or([lhs], [rhs])},
-            BinOp::BitXor => expression! {xor([lhs], [rhs])},
-            BinOp::BitAnd | BinOp::LogicalAnd => expression! {and([lhs], [rhs])},
-            BinOp::Eq => expression! {eq([lhs], [rhs])},
-            BinOp::Ne => expression! {iszero((eq([lhs], [rhs])))},
-            BinOp::Ge if is_signed => expression! {iszero((slt([lhs], [rhs])))},
-            BinOp::Ge => expression! {iszero((lt([lhs], [rhs])))},
-            BinOp::Gt if is_signed => expression! {sgt([lhs], [rhs])},
-            BinOp::Gt => expression! {gt([lhs], [rhs])},
-            BinOp::Le if is_signed => expression! {iszero((sgt([lhs], [rhs])))},
-            BinOp::Le => expression! {iszero((gt([lhs], [rhs])))},
-            BinOp::Lt if is_signed => expression! {slt([lhs], [rhs])},
-            BinOp::Lt => expression! {lt([lhs], [rhs])},
+            BinOp::Add => self
+                .ctx
+                .runtime
+                .safe_add(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Sub => self
+                .ctx
+                .runtime
+                .safe_sub(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Mul => self
+                .ctx
+                .runtime
+                .safe_mul(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Div => self
+                .ctx
+                .runtime
+                .safe_div(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Mod => self
+                .ctx
+                .runtime
+                .safe_mod(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Pow => self
+                .ctx
+                .runtime
+                .safe_pow(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Shl => expression! {shl([rhs_expr], [lhs_expr])},
+            BinOp::Shr if is_result_signed => expression! {sar([rhs_expr], [lhs_expr])},
+            BinOp::Shr => expression! {shr([rhs_expr], [lhs_expr])},
+            BinOp::BitOr | BinOp::LogicalOr => expression! {or([lhs_expr], [rhs_expr])},
+            BinOp::BitXor => expression! {xor([lhs_expr], [rhs_expr])},
+            BinOp::BitAnd | BinOp::LogicalAnd => expression! {and([lhs_expr], [rhs_expr])},
+            BinOp::Eq => expression! {eq([lhs_expr], [rhs_expr])},
+            BinOp::Ne => expression! {iszero((eq([lhs_expr], [rhs_expr])))},
+            BinOp::Ge if is_lhs_signed => expression! {iszero((slt([lhs_expr], [rhs_expr])))},
+            BinOp::Ge => expression! {iszero((lt([lhs_expr], [rhs_expr])))},
+            BinOp::Gt if is_lhs_signed => expression! {sgt([lhs_expr], [rhs_expr])},
+            BinOp::Gt => expression! {gt([lhs_expr], [rhs_expr])},
+            BinOp::Le if is_lhs_signed => expression! {iszero((sgt([lhs_expr], [rhs_expr])))},
+            BinOp::Le => expression! {iszero((gt([lhs_expr], [rhs_expr])))},
+            BinOp::Lt if is_lhs_signed => expression! {slt([lhs_expr], [rhs_expr])},
+            BinOp::Lt => expression! {lt([lhs_expr], [rhs_expr])},
         }
     }
 

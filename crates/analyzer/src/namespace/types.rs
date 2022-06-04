@@ -95,7 +95,7 @@ pub const U256: Base = Base::Numeric(Integer::U256);
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Array {
     pub size: usize,
-    pub inner: Base,
+    pub inner: Box<Type>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -217,7 +217,7 @@ impl GenericType {
             GenericType::Array => vec![
                 GenericParam {
                     name: "element type".into(),
-                    kind: GenericParamKind::PrimitiveType,
+                    kind: GenericParamKind::AnyType,
                 },
                 GenericParam {
                     name: "size".into(),
@@ -246,7 +246,7 @@ impl GenericType {
             GenericType::Array => match args {
                 [GenericArg::Type(element), GenericArg::Int(size)] => Some(Type::Array(Array {
                     size: *size,
-                    inner: element.as_primitive()?,
+                    inner: Box::new(element.clone()),
                 })),
                 _ => None,
             },

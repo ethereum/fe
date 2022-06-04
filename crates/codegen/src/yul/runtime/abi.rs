@@ -117,7 +117,7 @@ pub(super) fn make_abi_encode_dynamic_array_type(
                 ([enc_size.ident()] := add([provider.abi_encode(db, src.expr(), data_ptr.expr(), elem_ptr_ty, is_dst_storage)], [enc_size.expr()]))
                 ([header_ptr.ident()] := add([header_ptr.expr()], [literal_expression!{(elem_header_size)}]))
                 ([data_ptr.ident()] := add([dst.expr()], [enc_size.expr()]))
-                 ([src.ident()] := add([src.expr()], [literal_expression!{(elem_ty_size)}]))
+                ([src.ident()] := add([src.expr()], [literal_expression!{(elem_ty_size)}]))
              })
          }
     };
@@ -449,7 +449,7 @@ impl DefaultRuntimeProvider {
         debug_assert!(abi_ty.is_static());
 
         let func_name_postfix = match abi_loc {
-            AbiSrcLocation::CallData => "call_data",
+            AbiSrcLocation::CallData => "calldata",
             AbiSrcLocation::Memory => "memory",
         };
 
@@ -485,7 +485,7 @@ impl DefaultRuntimeProvider {
         debug_assert!(!abi_ty.is_static());
 
         let func_name_postfix = match abi_loc {
-            AbiSrcLocation::CallData => "call_data",
+            AbiSrcLocation::CallData => "calldata",
             AbiSrcLocation::Memory => "memory",
         };
 
@@ -502,6 +502,7 @@ impl DefaultRuntimeProvider {
                     make_abi_decode_string_type(provider, db, &name, abi_loc)
                 })
             }
+
             AbiType::Bytes => {
                 let len = match &ty.data(db.upcast()).kind {
                     TypeKind::Array(ArrayDef { len, .. }) => *len,
@@ -513,8 +514,10 @@ impl DefaultRuntimeProvider {
                     make_abi_decode_bytes_type(provider, db, &name, abi_loc)
                 })
             }
+
             AbiType::Array { .. } => {
-                let name = format! {"$abi_decode_dynamic_array_from_{}", func_name_postfix};
+                let name =
+                    format! {"$abi_decode_dynamic_array_{}_from_{}", ty.0, func_name_postfix};
                 self.create_then_call(&name, args, |provider| {
                     make_abi_decode_dynamic_elem_array_type(provider, db, &name, ty, abi_loc)
                 })

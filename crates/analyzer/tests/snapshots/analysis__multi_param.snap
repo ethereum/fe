@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ multi_param.fe:2:5
@@ -13,7 +12,7 @@ note:
 6 │ │         my_array[2] = z
 7 │ │         return my_array
 8 │ │     }
-  │ ╰─────^ attributes hash: 10778435134172267300
+  │ ╰─────^ attributes hash: 10696147843982229344
   │  
   = FunctionSignature {
         self_decl: None,
@@ -57,8 +56,10 @@ note:
             Array(
                 Array {
                     size: 3,
-                    inner: Numeric(
-                        U256,
+                    inner: Base(
+                        Numeric(
+                            U256,
+                        ),
                     ),
                 },
             ),

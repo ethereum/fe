@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ external_contract.fe:5:9
@@ -19,7 +18,7 @@ note:
 10 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 11 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
 12 │ │     }
-   │ ╰─────^ attributes hash: 14584319691445179306
+   │ ╰─────^ attributes hash: 3754416609002139684
    │  
    = FunctionSignature {
          self_decl: None,
@@ -57,7 +56,9 @@ note:
                      Array(
                          Array {
                              size: 5,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),
@@ -95,7 +96,7 @@ note:
    ┌─ external_contract.fe:11:9
    │
 11 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3872046667435269452
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14493411523883858336
    │
    = Event {
          name: "MyEvent",
@@ -117,7 +118,9 @@ note:
                      Array(
                          Array {
                              size: 5,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),
@@ -147,7 +150,7 @@ note:
 18 │ │         my_array[2] = b
 19 │ │         return my_array
 20 │ │     }
-   │ ╰─────^ attributes hash: 14276910879408601208
+   │ ╰─────^ attributes hash: 8432779812067699525
    │  
    = FunctionSignature {
          self_decl: None,
@@ -180,8 +183,10 @@ note:
              Array(
                  Array {
                      size: 3,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -250,7 +255,7 @@ note:
 25 │ │         let foo: Foo = Foo(foo_address)
 26 │ │         foo.emit_event(ctx, my_num, my_addrs, my_string)
 27 │ │     }
-   │ ╰─────^ attributes hash: 11744736773867210426
+   │ ╰─────^ attributes hash: 14242721142940057862
    │  
    = FunctionSignature {
          self_decl: None,
@@ -297,7 +302,9 @@ note:
                      Array(
                          Array {
                              size: 5,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),
@@ -359,7 +366,7 @@ note:
 30 │ │         let foo: Foo = Foo(foo_address)
 31 │ │         return foo.build_array(a, b)
 32 │ │     }
-   │ ╰─────^ attributes hash: 4627171240003453976
+   │ ╰─────^ attributes hash: 6675851927406831661
    │  
    = FunctionSignature {
          self_decl: None,
@@ -401,8 +408,10 @@ note:
              Array(
                  Array {
                      size: 3,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),

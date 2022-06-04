@@ -14,6 +14,14 @@ contract Foo {
     pub fn decode_nested_dynamic_complex(s: NestedDynamicComplex) -> NestedDynamicComplex {
         return s
     }
+
+    pub fn decode_static_complex_elem_array(arr: Array<StaticComplex, 3>) -> Array<StaticComplex, 3> {
+        return arr
+    }
+
+    pub fn decode_dynamic_complex_elem_array(arr: Array<NestedDynamicComplex, 3>) -> Array<NestedDynamicComplex, 3> {
+        return arr
+    }
 }
 
 pub struct StaticInner {

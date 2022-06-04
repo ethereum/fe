@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ tuple_stress.fe:4:5
@@ -754,7 +753,7 @@ note:
 49 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96> {
 50 │ │         return my_tuple.abi_encode()
 51 │ │     }
-   │ ╰─────^ attributes hash: 3539305055628398466
+   │ ╰─────^ attributes hash: 10651188962262222621
    │  
    = FunctionSignature {
          self_decl: None,
@@ -788,8 +787,10 @@ note:
              Array(
                  Array {
                      size: 96,
-                     inner: Numeric(
-                         U8,
+                     inner: Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  },
              ),

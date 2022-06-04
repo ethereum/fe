@@ -47,7 +47,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
             // Make sure iter is in the function scope & it should be an array.
             let iter_type = expressions::assignable_expr(scope, iter, None)?.typ;
             let target_type = if let Type::Array(array) = iter_type {
-                Type::Base(array.inner)
+                array.inner
             } else {
                 return Err(FatalError::new(scope.type_error(
                     "invalid `for` loop iterator type",
@@ -57,11 +57,18 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                 )));
             };
 
-            scope.root.map_variable_type(target, target_type.clone());
+            scope
+                .root
+                .map_variable_type(target, target_type.as_ref().clone());
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
-            let _ = body_scope.add_var(&target.kind, target_type, false, target.span);
+            let _ = body_scope.add_var(
+                &target.kind,
+                target_type.as_ref().clone(),
+                false,
+                target.span,
+            );
 
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)

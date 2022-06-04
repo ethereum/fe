@@ -59,16 +59,15 @@ impl AbiType {
     pub fn header_size(&self) -> usize {
         match self {
             Self::UInt(_) | Self::Int(_) | Self::Address | Self::Bool | Self::Function => 32,
-            Self::Array { elem_ty, len } => elem_ty.header_size() * len,
-            Self::Tuple(fields) => {
-                if self.is_static() {
-                    fields
-                        .iter()
-                        .fold(0, |acc, field| field.ty.header_size() + acc)
-                } else {
-                    32
-                }
-            }
+
+            Self::Array { elem_ty, len } if elem_ty.is_static() => elem_ty.header_size() * len,
+            Self::Array { .. } => 32,
+
+            Self::Tuple(fields) if self.is_static() => fields
+                .iter()
+                .fold(0, |acc, field| field.ty.header_size() + acc),
+            Self::Tuple(_) => 32,
+
             Self::Bytes | Self::String => 32,
         }
     }

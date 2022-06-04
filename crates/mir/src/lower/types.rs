@@ -79,7 +79,7 @@ fn lower_base(base: &analyzer_types::Base) -> TypeKind {
 
 fn lower_array(db: &dyn MirDb, arr: &analyzer_types::Array) -> TypeKind {
     let len = arr.size;
-    let elem_ty = db.mir_lowered_type(arr.inner.into());
+    let elem_ty = db.mir_lowered_type(arr.inner.as_ref().clone());
 
     let def = ArrayDef { elem_ty, len };
     TypeKind::Array(def)

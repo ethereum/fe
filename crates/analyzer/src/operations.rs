@@ -24,7 +24,7 @@ fn index_array(array: Array, index: Type) -> Result<Type, IndexingError> {
         return Err(IndexingError::WrongIndexType);
     }
 
-    Ok(Type::Base(array.inner))
+    Ok(array.inner.as_ref().clone())
 }
 
 fn index_map(map: Map, index: Type) -> Result<Type, IndexingError> {
@@ -125,12 +125,15 @@ mod tests {
     use crate::operations;
     use rstest::rstest;
 
-    const U256_ARRAY_TYPE: Type = Type::Array(Array {
-        inner: U256,
-        size: 100,
-    });
     const U256_TYPE: Type = Type::Base(U256);
     const BOOL_TYPE: Type = Type::Base(Base::Bool);
+
+    fn u256_array_type() -> Type {
+        Type::Array(Array {
+            inner: Box::new(U256.into()),
+            size: 100,
+        })
+    }
 
     fn u256_bool_map() -> Type {
         Type::Map(Map {
@@ -143,7 +146,7 @@ mod tests {
         value,
         index,
         expected,
-        case(U256_ARRAY_TYPE, U256_TYPE, U256_TYPE),
+        case(u256_array_type(), U256_TYPE, U256_TYPE),
         case(u256_bool_map(), U256_TYPE, BOOL_TYPE)
     )]
     fn basic_index(value: Type, index: Type, expected: Type) {
@@ -154,9 +157,9 @@ mod tests {
     #[rstest(
         value,
         index,
-        case(U256_ARRAY_TYPE, BOOL_TYPE),
+        case(u256_array_type(), BOOL_TYPE),
         case(u256_bool_map(), BOOL_TYPE),
-        case(u256_bool_map(), U256_ARRAY_TYPE)
+        case(u256_bool_map(), u256_array_type())
     )]
     fn type_error_index(value: Type, index: Type) {
         let actual = operations::index(value, index).expect_err("didn't fail");

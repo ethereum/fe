@@ -96,7 +96,6 @@ macro_rules! test_stmt {
     };
 }
 
-test_stmt! { array_non_primitive, "let x: Array<(u8, u8), 10>" }
 test_stmt! { array_mixed_types, "let x: Array<u16, 3> = [1, address(0), \"hi\"]" }
 test_stmt! { array_size_mismatch, "let x: Array<u8, 3> = []\nlet y: Array<u8, 3> = [1, 2]" }
 test_stmt! { array_constructor_call, "u8[3]([1, 2, 3])" }

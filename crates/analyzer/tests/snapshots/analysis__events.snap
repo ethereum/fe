@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ events.fe:5:9
@@ -204,7 +203,7 @@ note:
 33 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
 34 │ │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
 35 │ │     }
-   │ ╰─────^ attributes hash: 9652612436637375041
+   │ ╰─────^ attributes hash: 17632983073889485939
    │  
    = FunctionSignature {
          self_decl: None,
@@ -240,8 +239,10 @@ note:
                      Array(
                          Array {
                              size: 100,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),
@@ -270,7 +271,7 @@ note:
    ┌─ events.fe:34:9
    │
 34 │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12006518826467385253
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14467559009864244124
    │
    = Event {
          name: "Mix",
@@ -312,8 +313,10 @@ note:
                      Array(
                          Array {
                              size: 100,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),
@@ -420,7 +423,7 @@ note:
    ┌─ events.fe:41:9
    │
 41 │         emit Addresses(ctx, addrs)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17766225573703958283
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13530689072905293596
    │
    = Event {
          name: "Addresses",
@@ -431,7 +434,9 @@ note:
                      Array(
                          Array {
                              size: 2,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),

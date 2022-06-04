@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ structs.fe:2:5
@@ -97,7 +96,7 @@ note:
 28 │ ╭     pub fn encode(self) -> Array<u8, 128> {
 29 │ │         return self.abi_encode()
 30 │ │     }
-   │ ╰─────^ attributes hash: 2052929893622941907
+   │ ╰─────^ attributes hash: 374785682862794405
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -109,8 +108,10 @@ note:
              Array(
                  Array {
                      size: 128,
-                     inner: Numeric(
-                         U8,
+                     inner: Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  },
              ),
@@ -2696,7 +2697,7 @@ note:
 176 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 177 │ │         return house.encode()
 178 │ │     }
-    │ ╰─────^ attributes hash: 9174136327042912890
+    │ ╰─────^ attributes hash: 7483658980613368648
     │  
     = FunctionSignature {
           self_decl: None,
@@ -2706,8 +2707,10 @@ note:
               Array(
                   Array {
                       size: 128,
-                      inner: Numeric(
-                          U8,
+                      inner: Base(
+                          Numeric(
+                              U8,
+                          ),
                       ),
                   },
               ),
