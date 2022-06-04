@@ -23,7 +23,7 @@ enum Emit {
 }
 
 #[derive(Args)]
-pub struct CompileArg {
+pub struct CompileArgs {
     input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
     output_dir: String,
@@ -43,7 +43,7 @@ pub struct CompileArg {
     optimize: bool,
 }
 
-fn compile_single_file(compile_arg: &CompileArg) -> (String, CompiledModule) {
+fn compile_single_file(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
@@ -75,7 +75,7 @@ fn compile_single_file(compile_arg: &CompileArg) -> (String, CompiledModule) {
     (content, compiled_module)
 }
 
-fn compile_ingot(compile_arg: &CompileArg) -> (String, CompiledModule) {
+fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
@@ -118,7 +118,7 @@ fn compile_ingot(compile_arg: &CompileArg) -> (String, CompiledModule) {
     ("".to_string(), compiled_module)
 }
 
-pub fn compile(compile_arg: CompileArg) {
+pub fn compile(compile_arg: CompileArgs) {
     install_panic_hook();
 
     let emit = &compile_arg.emit;

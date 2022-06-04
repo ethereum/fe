@@ -9,7 +9,7 @@ use super::utils::load_files_from_dir;
 const DEFAULT_INGOT_NAME: &str = "main";
 
 #[derive(Args)]
-pub struct CheckArg {
+pub struct CheckArgs {
     input_path: String,
 }
 
@@ -46,7 +46,7 @@ fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
     fe_driver::check_ingot(db, DEFAULT_INGOT_NAME, &files)
 }
 
-pub fn check(args: CheckArg) {
+pub fn check(args: CheckArgs) {
     let mut db = fe_driver::Db::default();
     let input_path = args.input_path;
 

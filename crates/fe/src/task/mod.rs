@@ -3,6 +3,6 @@ mod compile;
 mod init;
 mod utils;
 
-pub use check::{check, CheckArg};
-pub use compile::{compile, CompileArg};
-pub use init::{init, InitArg};
+pub use check::{check, CheckArgs};
+pub use compile::{compile, CompileArgs};
+pub use init::{init, InitArgs};

@@ -12,9 +12,9 @@ struct FelangCli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Compile(task::CompileArg),
-    Check(task::CheckArg),
-    Init(task::InitArg),
+    Compile(task::CompileArgs),
+    Check(task::CheckArgs),
+    Init(task::InitArgs),
 }
 
 fn main() {
