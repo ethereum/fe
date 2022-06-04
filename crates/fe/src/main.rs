@@ -1,7 +1,8 @@
 mod task;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser};
 use fe_common::panic::install_panic_hook;
+use task::Commands;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -10,12 +11,7 @@ struct FelangCli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    Compile(task::CompileArgs),
-    Check(task::CheckArgs),
-    Init(task::InitArgs),
-}
+
 
 fn main() {
     install_panic_hook();

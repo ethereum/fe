@@ -5,7 +5,6 @@ use std::path::Path;
 use clap::{ArgEnum, Args};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::SourceFileId;
-use fe_common::panic::install_panic_hook;
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -119,8 +118,6 @@ fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
 }
 
 pub fn compile(compile_arg: CompileArgs) {
-    install_panic_hook();
-
     let emit = &compile_arg.emit;
 
     let input_path = &compile_arg.input_path;

@@ -2,7 +2,7 @@ use clap::Args;
 use include_dir::{include_dir, Dir};
 use std::{fs, path::Path};
 
-const TEMPLATE: Dir = include_dir!("$CARGO_MANIFEST_DIR/src/template/src");
+const TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/src/template/src");
 
 #[derive(Args)]
 pub struct InitArgs {
@@ -10,7 +10,7 @@ pub struct InitArgs {
 }
 
 fn create_project(p: &Path) {
-    for file in TEMPLATE.entries() {
+    for file in TEMPLATE_DIR.entries() {
         let f = file.as_file().unwrap();
         fs::write(p.join(f.path()), f.contents()).unwrap();
     }
