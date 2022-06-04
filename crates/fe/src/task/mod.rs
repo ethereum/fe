@@ -3,8 +3,8 @@ mod compile;
 mod init;
 mod utils;
 
-use clap::{Subcommand};
 pub use check::{check, CheckArgs};
+use clap::Subcommand;
 pub use compile::{compile, CompileArgs};
 pub use init::{init, InitArgs};
 
