@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(fn_def), try_parse_module,\n           \"fn transfer(from sender: address, to recip: address, _ val: u64) -> bool {\\n false \\n}\")"
+expression: "ast_string(stringify!(fn_def), try_parse_module,\n    \"fn transfer(from sender: address, to recip: address, _ val: u64) -> bool {\\n false \\n}\")"
 
 ---
 Node(
@@ -53,7 +53,7 @@ Node(
                 ),
               ),
               span: Span(
-                start: 17,
+                start: 12,
                 end: 32,
               ),
             ),
@@ -85,7 +85,7 @@ Node(
                 ),
               ),
               span: Span(
-                start: 37,
+                start: 34,
                 end: 51,
               ),
             ),
@@ -117,7 +117,7 @@ Node(
                 ),
               ),
               span: Span(
-                start: 55,
+                start: 53,
                 end: 63,
               ),
             ),

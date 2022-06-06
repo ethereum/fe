@@ -1728,7 +1728,6 @@ fn expr_call_type_attribute(
                     "argument",
                 );
 
-                // XXX require mut ctx
                 for i in 0..arg_count {
                     if let Some(attrs) = arg_attributes.get(i) {
                         if i == 0 {

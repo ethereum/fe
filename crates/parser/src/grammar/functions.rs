@@ -184,61 +184,14 @@ pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericPar
 fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionArg>>>> {
     let mut span = par.assert(TokenKind::ParenOpen).span;
     let mut params = vec![];
-    let mut mut_ = None;
     loop {
         match par.peek_or_err()? {
-            TokenKind::Mut => {
-                if mut_.is_some() {
-                    todo!() // XXX
-                }
-                mut_ = Some(par.next()?.span);
-                continue;
-            }
             TokenKind::ParenClose => {
-                if mut_.is_some() {
-                    todo!() // XXX
-                }
                 span += par.next()?.span;
                 break;
             }
-            TokenKind::Name | TokenKind::SelfValue => {
-                let mut_ = mut_.take();
-                let ident = par.next()?;
-
-                if ident.kind == TokenKind::SelfValue {
-                    params.push(Node::new(FunctionArg::Self_ { mut_ }, ident.span));
-                } else {
-                    // Parameter can have an optional label specifier. Example:
-                    //     fn transfer(from sender: address, to recipient: address, _ val: u256)
-                    //     transfer(from: me, to: you, 100)
-
-                    let (label, name) = match par.optional(TokenKind::Name) {
-                        Some(name) => (Some(ident), name),
-                        None => (None, ident),
-                    };
-                    par.expect_with_notes(
-                        TokenKind::Colon,
-                        "failed to parse function parameter",
-                        |_| {
-                            vec![
-                                "Note: parameter name must be followed by a colon and a type description"
-                                    .into(),
-                                format!("Example: `{}: u256`", name.text),
-                            ]
-                        },
-                    )?;
-                    let typ = parse_type_desc(par)?;
-                    let param_span = name.span + typ.span;
-                    params.push(Node::new(
-                        FunctionArg::Regular {
-                            mut_,
-                            label: label.map(Node::from),
-                            name: name.into(),
-                            typ,
-                        },
-                        param_span,
-                    ));
-                }
+            TokenKind::Mut | TokenKind::Name | TokenKind::SelfValue => {
+                params.push(parse_fn_param(par)?);
 
                 if par.peek() == Some(TokenKind::Comma) {
                     par.next()?;
@@ -260,6 +213,53 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
         }
     }
     Ok(Node::new(params, span))
+}
+
+fn parse_fn_param(par: &mut Parser) -> ParseResult<Node<FunctionArg>> {
+    let mut_ = par.optional(TokenKind::Mut).map(|tok| tok.span);
+
+    match par.peek_or_err()? {
+        TokenKind::SelfValue => Ok(Node::new(FunctionArg::Self_ { mut_ }, par.next()?.span)),
+        TokenKind::Name => {
+            let ident = par.next()?;
+
+            // Parameter can have an optional label specifier. Example:
+            //     fn transfer(from sender: address, to recipient: address, _ val: u256)
+            //     transfer(from: me, to: you, 100)
+
+            let (label, name) = match par.optional(TokenKind::Name) {
+                Some(name) => (Some(ident), name),
+                None => (None, ident),
+            };
+            par.expect_with_notes(
+                TokenKind::Colon,
+                "failed to parse function parameter",
+                |_| {
+                    vec![
+                        "Note: parameter name must be followed by a colon and a type description"
+                            .into(),
+                        format!("Example: `{}: u256`", name.text),
+                    ]
+                },
+            )?;
+            let typ = parse_type_desc(par)?;
+            let param_span = name.span + typ.span + mut_ + label.as_ref();
+            Ok(Node::new(
+                FunctionArg::Regular {
+                    mut_,
+                    label: label.map(Node::from),
+                    name: name.into(),
+                    typ,
+                },
+                param_span,
+            ))
+        }
+        _ => {
+            let tok = par.next()?;
+            par.unexpected_token_error(&tok, "failed to parse function parameter list", vec![]);
+            Err(ParseFailed)
+        }
+    }
 }
 
 /// Parse (function) statements until a `}` or end-of-file is reached.
