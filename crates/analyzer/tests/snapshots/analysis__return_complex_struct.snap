@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ return_complex_struct.fe:2:5
@@ -52,23 +53,7 @@ note:
 31 │ │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
 32 │ │         return complex
 33 │ │     }
-   │ ╰─────^ attributes hash: 18333022875177944738
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "StaticComplex",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> StaticComplex
 
 note: 
    ┌─ return_complex_struct.fe:30:13
@@ -111,23 +96,7 @@ note:
 37 │ │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
 38 │ │         return complex
 39 │ │     }
-   │ ╰─────^ attributes hash: 4691780846415744236
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "StringComplex",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> StringComplex
 
 note: 
    ┌─ return_complex_struct.fe:37:13
@@ -158,23 +127,7 @@ note:
 42 │ │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
 43 │ │         return complex
 44 │ │     }
-   │ ╰─────^ attributes hash: 15110112579440786347
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "BytesComplex",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> BytesComplex
 
 note: 
    ┌─ return_complex_struct.fe:42:13
@@ -222,23 +175,7 @@ note:
 50 │ │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
 51 │ │         return complex
 52 │ │     }
-   │ ╰─────^ attributes hash: 7674472406353226070
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "NestedDynamicComplex",
-                     field_count: 3,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> NestedDynamicComplex
 
 note: 
    ┌─ return_complex_struct.fe:47:13

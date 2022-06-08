@@ -1,5 +1,6 @@
+use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::namespace::types::{Event, Type};
+use fe_analyzer::namespace::types::TypeId;
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::{FileKind, Utf8Path};
@@ -7,11 +8,8 @@ use fe_parser::node::{NodeId, Span};
 use indexmap::{indexmap, IndexMap};
 use insta::assert_snapshot;
 use smallvec::SmallVec;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, VecDeque};
-use std::fmt::{Debug, Display};
-use std::hash::{Hash, Hasher};
-use std::rc::Rc;
+use std::fmt::Display;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[test]
@@ -308,10 +306,11 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
         .flat_map(|item| match item {
             Item::Type(TypeDef::Alias(alias)) => vec![build_display_diagnostic(
                 alias.data(db).ast.span,
-                &alias.typ(db).unwrap(),
+                &alias.type_id(db).unwrap().display(db),
             )],
             Item::Type(TypeDef::Struct(struct_)) => [
                 label_in_non_overlapping_groups(
+                    db,
                     &struct_
                         .fields(db)
                         .values()
@@ -327,6 +326,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             .concat(),
             Item::Type(TypeDef::Contract(contract)) => [
                 label_in_non_overlapping_groups(
+                    db,
                     &contract
                         .fields(db)
                         .values()
@@ -348,12 +348,15 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
             Item::Trait(val) => val
                 .all_functions(db)
                 .iter()
-                .flat_map(|fun| {
-                    build_debug_diagnostics(&[(fun.data(db).ast.span, &fun.signature(db))])
+                .map(|fun| {
+                    build_display_diagnostic(fun.data(db).ast.span, &fun.signature(db).display(db))
                 })
                 .collect::<Vec<_>>(),
             Item::Function(id) => function_diagnostics(*id, db),
-            Item::Constant(id) => vec![build_display_diagnostic(id.span(db), &id.typ(db).unwrap())],
+            Item::Constant(id) => vec![build_display_diagnostic(
+                id.span(db),
+                &id.typ(db).unwrap().display(db),
+            )],
             Item::Event(id) => event_diagnostics(*id, db),
             // Built-in stuff
             Item::Type(TypeDef::Primitive(_))
@@ -377,7 +380,10 @@ fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
     }
 }
 
-fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagnostic> {
+fn label_in_non_overlapping_groups(
+    db: &dyn AnalyzerDb,
+    spans: &[(Span, impl Displayable)],
+) -> Vec<Diagnostic> {
     // Accumulate labels in a vec until we reach a span that overlaps
     // the labeled range, then emit a Diagnostic with the accumulated labels
     // and begin again. This assumes that all spans are within the same file.
@@ -404,7 +410,7 @@ fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagno
                     labels.clear();
                     *labeled = *span;
                 }
-                labels.push(Label::primary(*span, format!("{}", attr)));
+                labels.push(Label::primary(*span, attr.display(db).to_string()));
                 *labeled += *span;
 
                 // If this is the last thing to label, emit a diagnostic.
@@ -422,22 +428,22 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
     let body = fun.body(db);
     [
         // signature
-        build_debug_diagnostics(&[(fun.data(db).ast.span, &fun.signature(db))]),
+        vec![build_display_diagnostic(
+            fun.data(db).ast.span,
+            &fun.signature(db).display(db),
+        )],
         // declarations
-        label_in_non_overlapping_groups(&lookup_spans(&body.var_types, &body.spans)),
+        label_in_non_overlapping_groups(db, &lookup_spans(&body.var_types, &body.spans)),
         // expressions
-        label_in_non_overlapping_groups(&lookup_spans(&body.expressions, &body.spans)),
+        label_in_non_overlapping_groups(db, &lookup_spans(&body.expressions, &body.spans)),
         // emits
-        build_debug_diagnostics(
-            &lookup_spans(&body.emits, &body.spans)
-                .into_iter()
-                .map(|(span, eventid)| (span, eventid.typ(db)))
-                .collect::<Vec<(Span, Rc<Event>)>>(),
-        ),
+        // TODO: log fully qualified path to event type
+        //  eg foo::bar::MyEvent
+
         // CallType includes FunctionId,ContractId,StructId, so the debug output
         // may change when we add something to the std lib.
         // Disabling until we come up with a better label to use here.
-        // label_in_non_overlapping_groups(&lookup_spans(&body.calls, &body.spans)),
+        // label_in_non_overlapping_groups(db, &lookup_spans(&body.calls, &body.spans)),
     ]
     .concat()
 }
@@ -445,6 +451,7 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
 fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
     // Event field spans are a bit of a hassle right now
     label_in_non_overlapping_groups(
+        db,
         &event
             .data(db)
             .ast
@@ -459,7 +466,7 @@ fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnost
                     .iter()
                     .map(|field| field.typ.clone().unwrap()),
             )
-            .collect::<Vec<(Span, Type)>>(),
+            .collect::<Vec<(Span, TypeId)>>(),
     )
 }
 
@@ -473,24 +480,6 @@ fn lookup_spans<T: Clone>(
         .collect()
 }
 
-fn build_debug_diagnostics<T: Debug>(spanned_attributes: &[(Span, T)]) -> Vec<Diagnostic> {
-    spanned_attributes
-        .iter()
-        .map(|(span, attributes)| build_debug_diagnostic(*span, attributes))
-        .collect::<Vec<_>>()
-}
-
-fn build_debug_diagnostic<T: Debug>(span: Span, attributes: &T) -> Diagnostic {
-    // Hash the attributes and label the span with it.
-    let label = Label::primary(span, format!("attributes hash: {}", hash(attributes)));
-    Diagnostic {
-        severity: Severity::Note,
-        message: String::new(),
-        labels: vec![label],
-        notes: vec![format!("{:#?}", attributes)],
-    }
-}
-
 fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnostic {
     let label = Label::primary(span, format!("{}", attributes));
     Diagnostic {
@@ -499,12 +488,4 @@ fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnosti
         labels: vec![label],
         notes: vec![],
     }
-}
-
-fn hash<T: Debug>(item: &T) -> u64 {
-    // Using the Hash trait on `item` here gives different hash values on wasm vs
-    // linux, so we hash the debug string instead.
-    let mut s = DefaultHasher::new();
-    format!("{:?}", item).hash(&mut s);
-    s.finish()
 }

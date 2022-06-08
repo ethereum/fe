@@ -9,34 +9,7 @@ note:
 1 │ ╭ fn add_bonus(_ x: u256) -> u256 {
 2 │ │     return x + 10
 3 │ │ }
-  │ ╰─^ attributes hash: 4402553917254279762
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: Some(
-                    "_",
-                ),
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }] -> u256
 
 note: 
   ┌─ pure_fn_standalone.fe:2:12
@@ -70,45 +43,7 @@ note:
 13 │ │             self.points[user] += val
 14 │ │         }
 15 │ │     }
-   │ ╰─────^ attributes hash: 11016307003570025576
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "user",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "val",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: user, typ: address }, { label: Some("_"), name: val, typ: u256 }] -> ()
 
 note: 
    ┌─ pure_fn_standalone.fe:10:12
@@ -183,36 +118,7 @@ note:
 21 │ │         self.add_points(a, 100)
 22 │ │         return self.points[a]
 23 │ │     }
-   │ ╰─────^ attributes hash: 15237606768598971644
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }] -> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:18:13

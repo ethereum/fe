@@ -17,30 +17,7 @@ note:
 5 │ ╭     pub fn bar(baz: u256) {
 6 │ │         assert baz > 5
 7 │ │     }
-  │ ╰─────^ attributes hash: 2614610269237134179
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "baz",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }] -> ()
 
 note: 
   ┌─ assert.fe:6:16
@@ -62,30 +39,7 @@ note:
  9 │ ╭     pub fn revert_with_static_string(baz: u256) {
 10 │ │         assert baz > 5, "Must be greater than five"
 11 │ │     }
-   │ ╰─────^ attributes hash: 2614610269237134179
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "baz",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }] -> ()
 
 note: 
    ┌─ assert.fe:10:16
@@ -109,41 +63,7 @@ note:
 13 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>) {
 14 │ │         assert baz > 5, reason
 15 │ │     }
-   │ ╰─────^ attributes hash: 10044481770469626577
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "baz",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "reason",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 1000,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }, { label: None, name: reason, typ: String<1000> }] -> ()
 
 note: 
    ┌─ assert.fe:14:16
@@ -168,20 +88,7 @@ note:
 18 │ │         self.my_bool = false
 19 │ │         assert self.my_bool
 20 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ assert.fe:18:9
@@ -212,20 +119,7 @@ note:
 23 │ │         self.my_string = "hello"
 24 │ │         assert false, self.my_string.to_mem()
 25 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ assert.fe:23:9

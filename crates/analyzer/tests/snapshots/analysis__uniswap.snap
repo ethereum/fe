@@ -9,32 +9,7 @@ note:
 4 │ ╭     pub fn balanceOf(_ account: address) -> u256 {
 5 │ │         return 0
 6 │ │     }
-  │ ╰─────^ attributes hash: 4709511530683498418
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: Some(
-                    "_",
-                ),
-                name: "account",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
   ┌─ uniswap.fe:5:16
@@ -48,41 +23,7 @@ note:
  8 │ ╭     pub fn transfer(to: address, _ amount: u256) -> bool {
  9 │ │         return false
 10 │ │     }
-   │ ╰─────^ attributes hash: 12261720285838819896
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "amount",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: to, typ: address }, { label: Some("_"), name: amount, typ: u256 }] -> bool
 
 note: 
   ┌─ uniswap.fe:9:16
@@ -196,20 +137,7 @@ note:
 78 │ ╭     pub fn factory(self) -> address {
 79 │ │         return self.factory
 80 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
    ┌─ uniswap.fe:79:16
@@ -229,20 +157,7 @@ note:
 82 │ ╭     pub fn token0(self) -> address {
 83 │ │         return address(self.token0)
 84 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
    ┌─ uniswap.fe:83:24
@@ -268,20 +183,7 @@ note:
 86 │ ╭     pub fn token1(self) -> address {
 87 │ │         return address(self.token1)
 88 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
    ┌─ uniswap.fe:87:24
@@ -309,55 +211,7 @@ note:
 92 │ │         self.balances[to] = self.balances[to] + value
 93 │ │         emit Transfer(ctx, from: address(0), to, value)
 94 │ │     }
-   │ ╰─────^ attributes hash: 12650409809079895726
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ uniswap.fe:91:9
@@ -441,47 +295,6 @@ note:
    │                                  address: Value
 
 note: 
-   ┌─ uniswap.fe:93:9
-   │
-93 │         emit Transfer(ctx, from: address(0), to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-   │
-   = Event {
-         name: "Transfer",
-         fields: [
-             EventField {
-                 name: "from",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
     ┌─ uniswap.fe:96:5
     │  
  96 │ ╭     fn _burn(self, ctx: Context, from: address, value: u256) {
@@ -489,55 +302,7 @@ note:
  98 │ │         self.total_supply = self.total_supply - value
  99 │ │         emit Transfer(ctx, from, to: address(0), value)
 100 │ │     }
-    │ ╰─────^ attributes hash: 16245072311291560743
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: from, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ uniswap.fe:97:9
@@ -621,111 +386,13 @@ note:
    │                                      address: Value
 
 note: 
-   ┌─ uniswap.fe:99:9
-   │
-99 │         emit Transfer(ctx, from, to: address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-   │
-   = Event {
-         name: "Transfer",
-         fields: [
-             EventField {
-                 name: "from",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
     ┌─ uniswap.fe:102:5
     │  
 102 │ ╭     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
 103 │ │         self.allowances[owner][spender] = value
 104 │ │         emit Approval(ctx, owner, spender, value)
 105 │ │     }
-    │ ╰─────^ attributes hash: 1630416716014819616
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "owner",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "spender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
     ┌─ uniswap.fe:103:9
@@ -764,47 +431,6 @@ note:
     │                       Context: Memory
 
 note: 
-    ┌─ uniswap.fe:104:9
-    │
-104 │         emit Approval(ctx, owner, spender, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8893313742751514912
-    │
-    = Event {
-          name: "Approval",
-          fields: [
-              EventField {
-                  name: "owner",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "spender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:107:5
     │  
 107 │ ╭     fn _transfer(self, ctx: Context, from: address, to: address, value: u256) {
@@ -812,64 +438,7 @@ note:
 109 │ │         self.balances[to] = self.balances[to] + value
 110 │ │         emit Transfer(ctx, from, to, value)
 111 │ │     }
-    │ ╰─────^ attributes hash: 1442617122763943794
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: from, typ: address }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
     ┌─ uniswap.fe:108:9
@@ -962,102 +531,13 @@ note:
     │                       Context: Memory
 
 note: 
-    ┌─ uniswap.fe:110:9
-    │
-110 │         emit Transfer(ctx, from, to, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-    │
-    = Event {
-          name: "Transfer",
-          fields: [
-              EventField {
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:113:5
     │  
 113 │ ╭     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
 114 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 115 │ │         return true
 116 │ │     }
-    │ ╰─────^ attributes hash: 8309406699454253603
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "spender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Bool,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
     ┌─ uniswap.fe:114:9
@@ -1092,55 +572,7 @@ note:
 119 │ │         self._transfer(ctx, from: ctx.msg_sender(), to, value)
 120 │ │         return true
 121 │ │     }
-    │ ╰─────^ attributes hash: 14718526948940966913
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Bool,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
     ┌─ uniswap.fe:119:9
@@ -1177,64 +609,7 @@ note:
 126 │ │         self._transfer(ctx, from, to, value)
 127 │ │         return true
 128 │ │     }
-    │ ╰─────^ attributes hash: 3284161617958543499
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Bool,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: from, typ: address }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
     ┌─ uniswap.fe:124:16
@@ -1367,34 +742,7 @@ note:
 130 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 131 │ │         return self.balances[account]
 132 │ │     }
-    │ ╰─────^ attributes hash: 5993653573135321647
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "account",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
     ┌─ uniswap.fe:131:16
@@ -1422,38 +770,7 @@ note:
 134 │ ╭     pub fn get_reserves(self) -> (u256, u256, u256) {
 135 │ │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
 136 │ │     }
-    │ ╰─────^ attributes hash: 3743538709625240197
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Tuple(
-                  Tuple {
-                      items: [
-                          Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                          Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                          Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                      ],
-                  },
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> (u256, u256, u256)
 
 note: 
     ┌─ uniswap.fe:135:17
@@ -1497,57 +814,7 @@ note:
 141 │ │         self.token0 = token0
 142 │ │         self.token1 = token1
 143 │ │     }
-    │ ╰─────^ attributes hash: 18170027042989505865
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "token0",
-                  typ: Ok(
-                      Contract(
-                          Contract {
-                              name: "ERC20",
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "token1",
-                  typ: Ok(
-                      Contract(
-                          Contract {
-                              name: "ERC20",
-                          },
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: token0, typ: ERC20 }, { label: None, name: token1, typ: ERC20 }] -> ()
 
 note: 
     ┌─ uniswap.fe:140:16
@@ -1607,79 +874,7 @@ note:
     · │
 158 │ │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
 159 │ │     }
-    │ ╰─────^ attributes hash: 14441581101409065213
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "balance0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "balance1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "reserve0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "reserve1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: balance0, typ: u256 }, { label: None, name: balance1, typ: u256 }, { label: None, name: reserve0, typ: u256 }, { label: None, name: reserve1, typ: u256 }] -> ()
 
 note: 
     ┌─ uniswap.fe:149:13
@@ -1900,40 +1095,6 @@ note:
     │                                                           ^^^^^^^^^^^^^ u256: Storage { nonce: Some(8) } => Value
 
 note: 
-    ┌─ uniswap.fe:158:9
-    │
-158 │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11491202868117077488
-    │
-    = Event {
-          name: "Sync",
-          fields: [
-              EventField {
-                  name: "reserve0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "reserve1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:161:5
     │  
 161 │ ╭     fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
@@ -1943,57 +1104,7 @@ note:
     · │
 181 │ │         return fee_on
 182 │ │     }
-    │ ╰─────^ attributes hash: 12335666382859496931
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "reserve0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "reserve1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Bool,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: reserve0, typ: u256 }, { label: None, name: reserve1, typ: u256 }] -> bool
 
 note: 
     ┌─ uniswap.fe:162:13
@@ -2219,46 +1330,7 @@ note:
     · │
 209 │ │         return liquidity
 210 │ │     }
-    │ ╰─────^ attributes hash: 11513995717553818344
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }] -> u256
 
 note: 
     ┌─ uniswap.fe:186:13
@@ -2576,49 +1648,6 @@ note:
     │                ^^^^^^^^^ u256: Value
 
 note: 
-    ┌─ uniswap.fe:208:9
-    │
-208 │         emit Mint(ctx, sender: ctx.msg_sender(), amount0, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4243961805717991435
-    │
-    = Event {
-          name: "Mint",
-          fields: [
-              EventField {
-                  name: "sender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "amount0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "amount1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:213:5
     │  
 213 │ ╭     pub fn burn(self, ctx: Context, to: address) -> (u256, u256) {
@@ -2628,57 +1657,7 @@ note:
     · │
 237 │ │         return (amount0, amount1)
 238 │ │     }
-    │ ╰─────^ attributes hash: 4652297158603848356
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Tuple(
-                  Tuple {
-                      items: [
-                          Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                          Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                      ],
-                  },
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }] -> (u256, u256)
 
 note: 
     ┌─ uniswap.fe:214:13
@@ -3015,58 +1994,6 @@ note:
     │                ^^^^^^^^^^^^^^^^^^ (u256, u256): Memory
 
 note: 
-    ┌─ uniswap.fe:236:9
-    │
-236 │         emit Burn(ctx, sender: ctx.msg_sender(), amount0, amount1, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10738919684795162003
-    │
-    = Event {
-          name: "Burn",
-          fields: [
-              EventField {
-                  name: "sender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "amount0",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "amount1",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:243:5
     │  
 243 │ ╭     pub fn swap(self, ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
@@ -3076,66 +2003,7 @@ note:
     · │
 279 │ │         emit Swap(ctx, sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to)
 280 │ │     }
-    │ ╰─────^ attributes hash: 18411078236281700131
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "amount0_out",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "amount1_out",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: amount0_out, typ: u256 }, { label: None, name: amount1_out, typ: u256 }, { label: None, name: to, typ: address }] -> ()
 
 note: 
     ┌─ uniswap.fe:245:13
@@ -3615,80 +2483,6 @@ note:
     │                                address: Value
 
 note: 
-    ┌─ uniswap.fe:279:9
-    │
-279 │         emit Swap(ctx, sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16055667627771619025
-    │
-    = Event {
-          name: "Swap",
-          fields: [
-              EventField {
-                  name: "sender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "amount0_in",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "amount1_in",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "amount0_out",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "amount1_out",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:283:5
     │  
 283 │ ╭     pub fn skim(self, ctx: Context, to: address) {
@@ -3697,44 +2491,7 @@ note:
 286 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
 287 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
 288 │ │     }
-    │ ╰─────^ attributes hash: 9469713119497359790
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }] -> ()
 
 note: 
     ┌─ uniswap.fe:284:13
@@ -3850,35 +2607,7 @@ note:
     · │
 298 │ │                      reserve1: self.reserve1)
 299 │ │     }
-    │ ╰─────^ attributes hash: 1731341862738941170
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
     ┌─ uniswap.fe:292:13
@@ -4004,20 +2733,7 @@ note:
 322 │ ╭     pub fn fee_to(self) -> address {
 323 │ │         return self.fee_to
 324 │ │     }
-    │ ╰─────^ attributes hash: 227275695522088782
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Address,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
     ┌─ uniswap.fe:323:16
@@ -4037,20 +2753,7 @@ note:
 326 │ ╭     pub fn fee_to_setter(self) -> address {
 327 │ │         return self.fee_to_setter
 328 │ │     }
-    │ ╰─────^ attributes hash: 227275695522088782
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Address,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
     ┌─ uniswap.fe:327:16
@@ -4070,22 +2773,7 @@ note:
 330 │ ╭     pub fn all_pairs_length(self) -> u256 {
 331 │ │         return self.pair_counter
 332 │ │     }
-    │ ╰─────^ attributes hash: 11773348765973600208
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
     ┌─ uniswap.fe:331:16
@@ -4109,57 +2797,7 @@ note:
     · │
 352 │ │         return address(pair)
 353 │ │     }
-    │ ╰─────^ attributes hash: 8455575078477255668
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "token_a",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "token_b",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Address,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: Some("_"), name: token_a, typ: address }, { label: Some("_"), name: token_b, typ: address }] -> address
 
 note: 
     ┌─ uniswap.fe:337:13
@@ -4495,100 +3133,13 @@ note:
     │                ^^^^^^^^^^^^^ address: Value
 
 note: 
-    ┌─ uniswap.fe:351:9
-    │
-351 │         emit PairCreated(ctx, token0, token1, pair: address(pair), index: self.pair_counter)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13094055123344570742
-    │
-    = Event {
-          name: "PairCreated",
-          fields: [
-              EventField {
-                  name: "token0",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "token1",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "pair",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-              EventField {
-                  name: "index",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ uniswap.fe:355:5
     │  
 355 │ ╭     pub fn set_fee_to(self, ctx: Context, fee_to: address) {
 356 │ │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 357 │ │         self.fee_to = fee_to
 358 │ │     }
-    │ ╰─────^ attributes hash: 9061125162615165722
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "fee_to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: fee_to, typ: address }] -> ()
 
 note: 
     ┌─ uniswap.fe:356:16
@@ -4635,44 +3186,7 @@ note:
 361 │ │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
 362 │ │         self.fee_to_setter = fee_to_setter
 363 │ │     }
-    │ ╰─────^ attributes hash: 16865322734649050051
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "fee_to_setter",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: fee_to_setter, typ: address }] -> ()
 
 note: 
     ┌─ uniswap.fe:361:16
@@ -4716,34 +3230,7 @@ note:
     · │
 378 │ │     return z
 379 │ │ }
-    │ ╰─^ attributes hash: 4892692935064256824
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "val",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─^ self: None, params: [{ label: Some("_"), name: val, typ: u256 }] -> u256
 
 note: 
     ┌─ uniswap.fe:367:9
@@ -4855,47 +3342,7 @@ note:
 381 │ ╭ fn min(_ x: u256, _ y: u256) -> u256 {
 382 │ │     return x if x < y else y
 383 │ │ }
-    │ ╰─^ attributes hash: 4448606202021980030
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "x",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "y",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
     ┌─ uniswap.fe:382:17

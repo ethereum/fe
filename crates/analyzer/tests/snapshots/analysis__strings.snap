@@ -27,43 +27,7 @@ note:
 18 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {
 19 │ │         return s2
 20 │ │     }
-   │ ╰─────^ attributes hash: 4992726103398710247
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "s1",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "s2",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 100,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: s1, typ: String<100> }, { label: None, name: s2, typ: String<100> }] -> String<100>
 
 note: 
    ┌─ strings.fe:19:16
@@ -77,20 +41,7 @@ note:
 22 │ ╭     pub fn return_static_string() -> String<43> {
 23 │ │         return "The quick brown fox jumps over the lazy dog"
 24 │ │     }
-   │ ╰─────^ attributes hash: 16859220121746101219
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 43,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> String<43>
 
 note: 
    ┌─ strings.fe:23:16
@@ -104,20 +55,7 @@ note:
 26 │ ╭     pub fn return_casted_static_string() -> String<100> {
 27 │ │         return String<100>("foo")
 28 │ │     }
-   │ ╰─────^ attributes hash: 11555139189894875514
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 100,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> String<100>
 
 note: 
    ┌─ strings.fe:27:28
@@ -137,18 +75,7 @@ note:
 30 │ ╭     pub fn shorter_string_assign() {
 31 │ │         let s: String<18> = "fe"
 32 │ │     }
-   │ ╰─────^ attributes hash: 8319796915330632390
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> ()
 
 note: 
    ┌─ strings.fe:31:13
@@ -169,20 +96,7 @@ note:
 35 │ │         return "\n\"'\r\t
 36 │ │         foo\\"
 37 │ │     }
-   │ ╰─────^ attributes hash: 15142206137302311439
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 18,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> String<18>
 
 note: 
    ┌─ strings.fe:35:16

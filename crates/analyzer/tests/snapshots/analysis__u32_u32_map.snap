@@ -15,34 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u32) -> u32 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ attributes hash: 17684751964541454304
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U32,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U32,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u32 }] -> u32
 
 note: 
   ┌─ u32_u32_map.fe:5:16
@@ -70,43 +43,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: u32, value: u32) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 9068646997358780798
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "key",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u32 }, { label: None, name: value, typ: u32 }] -> ()
 
 note: 
   ┌─ u32_u32_map.fe:9:9

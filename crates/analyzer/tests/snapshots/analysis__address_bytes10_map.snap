@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ address_bytes10_map.fe:2:5
@@ -14,37 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10> {
 5 │ │         return self.bar[key].to_mem()
 6 │ │     }
-  │ ╰─────^ attributes hash: 14715984257538758536
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Array(
-                Array {
-                    size: 10,
-                    inner: Base(
-                        Numeric(
-                            U8,
-                        ),
-                    ),
-                },
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: address }] -> Array<u8, 10>
 
 note: 
   ┌─ address_bytes10_map.fe:5:16
@@ -78,46 +49,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 14916033339844523953
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "key",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 10,
-                             inner: Base(
-                                 Numeric(
-                                     U8,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: address }, { label: None, name: value, typ: Array<u8, 10> }] -> ()
 
 note: 
   ┌─ address_bytes10_map.fe:9:9

@@ -9,32 +9,7 @@ note:
 2 │ ╭     pub fn bar(input: u256) -> u256 {
 3 │ │         return 1 if input > 5 else 0
 4 │ │     }
-  │ ╰─────^ attributes hash: 10660199954095577886
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "input",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: input, typ: u256 }] -> u256
 
 note: 
   ┌─ ternary_expression.fe:3:21

@@ -9,20 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> i128 {
 3 │ │         return i128(-3)
 4 │ │     }
-  │ ╰─────^ attributes hash: 155533728466856391
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    I128,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> i128
 
 note: 
   ┌─ return_i128_cast.fe:3:22

@@ -15,22 +15,7 @@ note:
  8 │ ╭     pub fn read_bar(self) -> u256 {
  9 │ │         return self.bar[42]
 10 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
   ┌─ constructor.fe:9:16

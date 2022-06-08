@@ -13,32 +13,7 @@ note:
   · │
 8 │ │         return 0
 9 │ │     }
-  │ ╰─────^ attributes hash: 12367727332255217641
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "val",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> u256
 
 note: 
   ┌─ if_statement_2.fe:3:12

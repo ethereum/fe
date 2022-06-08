@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ data_copying_stress.fe:4:5
@@ -35,65 +36,7 @@ note:
 19 │ │         self.my_u256 = my_u256
 20 │ │         self.my_other_u256 = my_other_u256
 21 │ │     }
-   │ ╰─────^ attributes hash: 8414520425977761339
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_other_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_u256",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_other_u256",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_string, typ: String<42> }, { label: None, name: my_other_string, typ: String<42> }, { label: None, name: my_u256, typ: u256 }, { label: None, name: my_other_u256, typ: u256 }] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:17:9
@@ -146,20 +89,7 @@ note:
 24 │ │         self.my_string = self.my_other_string
 25 │ │         self.my_u256 = self.my_other_u256
 26 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:24:9
@@ -207,35 +137,7 @@ note:
    · │
 39 │ │         assert my_3rd_array[3] == 50
 40 │ │     }
-   │ ╰─────^ attributes hash: 17752007532841141815
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_array",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 10,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_array, typ: Array<u256, 10> }] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:29:13
@@ -410,42 +312,7 @@ note:
 43 │ │         my_array[3] = 5
 44 │ │         return my_array
 45 │ │     }
-   │ ╰─────^ attributes hash: 92188389337515101
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_array",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 10,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 10,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_array, typ: Array<u256, 10> }] -> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:43:9
@@ -471,42 +338,7 @@ note:
 47 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
 48 │ │         return my_array.clone()
 49 │ │     }
-   │ ╰─────^ attributes hash: 92188389337515101
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_array",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 10,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 10,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_array, typ: Array<u256, 10> }] -> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:48:16
@@ -527,42 +359,7 @@ note:
 52 │ │         my_array.clone()[3] = 5
 53 │ │         return my_array
 54 │ │     }
-   │ ╰─────^ attributes hash: 92188389337515101
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_array",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 10,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 10,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_array, typ: Array<u256, 10> }] -> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:52:9
@@ -598,27 +395,7 @@ note:
    · │
 64 │ │         return my_nums_mem
 65 │ │     }
-   │ ╰─────^ attributes hash: 14329847023405603454
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 5,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u256, 5>
 
 note: 
    ┌─ data_copying_stress.fe:57:13
@@ -744,35 +521,7 @@ note:
 67 │ ╭     pub fn emit_my_event(self, ctx: Context) {
 68 │ │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
 69 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:68:32
@@ -814,59 +563,7 @@ note:
 71 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
 72 │ │         emit MyEvent(ctx, my_string, my_u256)
 73 │ │     }
-   │ ╰─────^ attributes hash: 15658342901286022244
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "my_u256",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: Some("_"), name: my_string, typ: String<42> }, { label: Some("_"), name: my_u256, typ: u256 }] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:72:22
@@ -878,74 +575,12 @@ note:
    │                      Context: Memory
 
 note: 
-   ┌─ data_copying_stress.fe:72:9
-   │
-72 │         emit MyEvent(ctx, my_string, my_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 595206297963940250
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_u256",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ data_copying_stress.fe:75:5
    │  
 75 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>) {
 76 │ │         self.my_addrs = my_addrs
 77 │ │     }
-   │ ╰─────^ attributes hash: 6379907192890628947
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 3,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_addrs, typ: Array<address, 3> }] -> ()
 
 note: 
    ┌─ data_copying_stress.fe:76:9
@@ -967,20 +602,7 @@ note:
 79 │ ╭     pub fn get_my_second_addr(self) -> address {
 80 │ │         return self.my_addrs[1]
 81 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
    ┌─ data_copying_stress.fe:80:16

@@ -15,34 +15,7 @@ note:
 4 │ ╭     fn assign(self, _ val: u256) {
 5 │ │         self.baz[0] = val
 6 │ │     }
-  │ ╰─────^ attributes hash: 15254234582808678866
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: Some(
-                    "_",
-                ),
-                name: "val",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: val, typ: u256 }] -> ()
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
@@ -73,22 +46,7 @@ note:
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
 11 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
   ┌─ call_statement_with_args.fe:9:9

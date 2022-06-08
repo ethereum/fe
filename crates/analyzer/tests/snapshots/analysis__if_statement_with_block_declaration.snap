@@ -13,20 +13,7 @@ note:
    · │
  9 │ │         }
 10 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ if_statement_with_block_declaration.fe:4:17

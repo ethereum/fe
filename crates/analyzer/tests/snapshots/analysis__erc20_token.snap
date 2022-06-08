@@ -45,22 +45,7 @@ note:
 30 │ ╭     pub fn name(self) -> String<100> {
 31 │ │         return self._name.to_mem()
 32 │ │     }
-   │ ╰─────^ attributes hash: 2936475649167061923
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 100,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> String<100>
 
 note: 
    ┌─ erc20_token.fe:31:16
@@ -86,22 +71,7 @@ note:
 34 │ ╭     pub fn symbol(self) -> String<100> {
 35 │ │         return self._symbol.to_mem()
 36 │ │     }
-   │ ╰─────^ attributes hash: 2936475649167061923
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 100,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> String<100>
 
 note: 
    ┌─ erc20_token.fe:35:16
@@ -127,22 +97,7 @@ note:
 38 │ ╭     pub fn decimals(self) -> u8 {
 39 │ │         return self._decimals
 40 │ │     }
-   │ ╰─────^ attributes hash: 11864308689780915279
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u8
 
 note: 
    ┌─ erc20_token.fe:39:16
@@ -162,22 +117,7 @@ note:
 42 │ ╭     pub fn totalSupply(self) -> u256 {
 43 │ │         return self._total_supply
 44 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
    ┌─ erc20_token.fe:43:16
@@ -197,34 +137,7 @@ note:
 46 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 47 │ │         return self._balances[account]
 48 │ │     }
-   │ ╰─────^ attributes hash: 5993653573135321647
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "account",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
    ┌─ erc20_token.fe:47:16
@@ -253,55 +166,7 @@ note:
 51 │ │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
 52 │ │         return true
 53 │ │     }
-   │ ╰─────^ attributes hash: 9700541873563816287
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "recipient",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:51:9
@@ -335,41 +200,7 @@ note:
 55 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256 {
 56 │ │         return self._allowances[owner][spender]
 57 │ │     }
-   │ ╰─────^ attributes hash: 3316599995530573429
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "owner",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "spender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }] -> u256
 
 note: 
    ┌─ erc20_token.fe:56:16
@@ -406,55 +237,7 @@ note:
 60 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 61 │ │         return true
 62 │ │     }
-   │ ╰─────^ attributes hash: 8309406699454253603
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "spender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:60:9
@@ -491,64 +274,7 @@ note:
 67 │ │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
 68 │ │         return true
 69 │ │     }
-   │ ╰─────^ attributes hash: 14464733394183378558
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "sender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "recipient",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:65:16
@@ -670,55 +396,7 @@ note:
 72 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
 73 │ │         return true
 74 │ │     }
-   │ ╰─────^ attributes hash: 14606848714789380929
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "spender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "addedValue",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: addedValue, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:72:9
@@ -789,55 +467,7 @@ note:
 77 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
 78 │ │         return true
 79 │ │     }
-   │ ╰─────^ attributes hash: 9154612140799800808
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "spender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "subtractedValue",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: subtractedValue, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:77:9
@@ -911,64 +541,7 @@ note:
    · │
 87 │ │         emit Transfer(ctx, from: sender, to: recipient, value)
 88 │ │     }
-   │ ╰─────^ attributes hash: 10648262769466339085
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "sender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "recipient",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ erc20_token.fe:82:16
@@ -1104,47 +677,6 @@ note:
    │                       Context: Memory
 
 note: 
-   ┌─ erc20_token.fe:87:9
-   │
-87 │         emit Transfer(ctx, from: sender, to: recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-   │
-   = Event {
-         name: "Transfer",
-         fields: [
-             EventField {
-                 name: "from",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ erc20_token.fe:90:5
    │  
 90 │ ╭     fn _mint(self, ctx: Context, account: address, value: u256) {
@@ -1154,55 +686,7 @@ note:
 94 │ │         self._balances[account] = self._balances[account] + value
 95 │ │         emit Transfer(ctx, from: address(0), to: account, value)
 96 │ │     }
-   │ ╰─────^ attributes hash: 6502254374233415580
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "account",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ erc20_token.fe:91:16
@@ -1319,47 +803,6 @@ note:
    │                                  address: Value
 
 note: 
-   ┌─ erc20_token.fe:95:9
-   │
-95 │         emit Transfer(ctx, from: address(0), to: account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-   │
-   = Event {
-         name: "Transfer",
-         fields: [
-             EventField {
-                 name: "from",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
     ┌─ erc20_token.fe:98:5
     │  
  98 │ ╭     fn _burn(self, ctx: Context, account: address, value: u256) {
@@ -1369,55 +812,7 @@ note:
 102 │ │         self._total_supply = self._total_supply - value
 103 │ │         emit Transfer(ctx, from: account, to: address(0), value)
 104 │ │     }
-    │ ╰─────^ attributes hash: 6502254374233415580
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "account",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ erc20_token.fe:99:16
@@ -1535,47 +930,6 @@ note:
     │                                               address: Value
 
 note: 
-    ┌─ erc20_token.fe:103:9
-    │
-103 │         emit Transfer(ctx, from: account, to: address(0), value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5533489995250141934
-    │
-    = Event {
-          name: "Transfer",
-          fields: [
-              EventField {
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ erc20_token.fe:106:5
     │  
 106 │ ╭     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
@@ -1584,64 +938,7 @@ note:
 109 │ │         self._allowances[owner][spender] = value
 110 │ │         emit Approval(ctx, owner, spender, value)
 111 │ │     }
-    │ ╰─────^ attributes hash: 1630416716014819616
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: Some(
-              Mutable,
-          ),
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "ctx",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "Context",
-                              field_count: 0,
-                          },
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "owner",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "spender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
     ┌─ erc20_token.fe:107:16
@@ -1712,80 +1009,12 @@ note:
     │                       Context: Memory
 
 note: 
-    ┌─ erc20_token.fe:110:9
-    │
-110 │         emit Approval(ctx, owner, spender, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8893313742751514912
-    │
-    = Event {
-          name: "Approval",
-          fields: [
-              EventField {
-                  name: "owner",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "spender",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-                  is_indexed: true,
-              },
-              EventField {
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-                  is_indexed: false,
-              },
-          ],
-      }
-
-note: 
     ┌─ erc20_token.fe:113:5
     │  
 113 │ ╭     fn _setup_decimals(self, _ decimals_: u8) {
 114 │ │         self._decimals = decimals_
 115 │ │     }
-    │ ╰─────^ attributes hash: 2241116105643912660
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "decimals_",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: decimals_, typ: u8 }] -> ()
 
 note: 
     ┌─ erc20_token.fe:114:9
@@ -1805,49 +1034,6 @@ note:
     ┌─ erc20_token.fe:117:5
     │
 117 │     fn _before_token_transfer(from: address, to: address, _ value: u256) {}
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10552855728897650120
-    │
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "from",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "to",
-                  typ: Ok(
-                      Base(
-                          Address,
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: Some(
-                      "_",
-                  ),
-                  name: "value",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ self: None, params: [{ label: None, name: from, typ: address }, { label: None, name: to, typ: address }, { label: Some("_"), name: value, typ: u256 }] -> ()
 
 

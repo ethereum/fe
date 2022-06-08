@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items::Class;
 use fe_mir::ir::{FunctionBody, FunctionId, FunctionSignature};
 
@@ -33,7 +34,7 @@ pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
             let class_name = format!(
                 "{}${}",
                 id.trait_id(db.upcast()).name(db.upcast()),
-                id.receiver(db.upcast()).name()
+                id.receiver(db.upcast()).display(db.upcast())
             );
             format!("{}${}", class_name, func_name)
         }

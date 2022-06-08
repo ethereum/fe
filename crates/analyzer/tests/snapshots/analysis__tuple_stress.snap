@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ tuple_stress.fe:4:5
@@ -20,62 +21,7 @@ note:
 10 │ ╭     pub fn build_my_tuple(my_num: u256, my_bool: bool, my_address: address) -> (u256, bool, address) {
 11 │ │         return (my_num, my_bool, my_address)
 12 │ │     }
-   │ ╰─────^ attributes hash: 10223738621782129186
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_bool",
-                 typ: Ok(
-                     Base(
-                         Bool,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_address",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Tuple(
-                 Tuple {
-                     items: [
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                         Base(
-                             Bool,
-                         ),
-                         Base(
-                             Address,
-                         ),
-                     ],
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_num, typ: u256 }, { label: None, name: my_bool, typ: bool }, { label: None, name: my_address, typ: address }] -> (u256, bool, address)
 
 note: 
    ┌─ tuple_stress.fe:11:17
@@ -98,44 +44,7 @@ note:
 14 │ ╭     pub fn read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256 {
 15 │ │         return my_tuple.item0
 16 │ │     }
-   │ ╰─────^ attributes hash: 1005385906871296536
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_tuple, typ: (u256, bool, address) }] -> u256
 
 note: 
    ┌─ tuple_stress.fe:15:16
@@ -155,42 +64,7 @@ note:
 18 │ ╭     pub fn read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool {
 19 │ │         return my_tuple.item1
 20 │ │     }
-   │ ╰─────^ attributes hash: 5615774585289781220
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_tuple, typ: (u256, bool, address) }] -> bool
 
 note: 
    ┌─ tuple_stress.fe:19:16
@@ -210,42 +84,7 @@ note:
 22 │ ╭     pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address {
 23 │ │         return my_tuple.item2
 24 │ │     }
-   │ ╰─────^ attributes hash: 13024428391414866682
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_tuple, typ: (u256, bool, address) }] -> address
 
 note: 
    ┌─ tuple_stress.fe:23:16
@@ -265,84 +104,7 @@ note:
 26 │ ╭     pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address {
 27 │ │         return my_tuple.item10
 28 │ │     }
-   │ ╰─────^ attributes hash: 11830390438544540912
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_tuple, typ: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address) }] -> address
 
 note: 
    ┌─ tuple_stress.fe:27:16
@@ -362,56 +124,7 @@ note:
 30 │ ╭     pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)) {
 31 │ │         emit MyEvent(ctx, my_tuple)
 32 │ │     }
-   │ ╰─────^ attributes hash: 10535390144430265813
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: my_tuple, typ: (u256, bool, address) }] -> ()
 
 note: 
    ┌─ tuple_stress.fe:31:22
@@ -422,84 +135,13 @@ note:
    │                      Context: Memory
 
 note: 
-   ┌─ tuple_stress.fe:31:9
-   │
-31 │         emit MyEvent(ctx, my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12913536175581177750
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ tuple_stress.fe:34:5
    │  
 34 │ ╭     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32) {
 35 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 36 │ │         self.my_sto_tuple = (my_u256, my_i32)
 37 │ │     }
-   │ ╰─────^ attributes hash: 14404502892103280650
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_u256",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_i32",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_u256, typ: u256 }, { label: None, name: my_i32, typ: i32 }] -> ()
 
 note: 
    ┌─ tuple_stress.fe:35:16
@@ -590,33 +232,7 @@ note:
 39 │ ╭     pub fn get_my_sto_tuple(self) -> (u256, i32) {
 40 │ │         return self.my_sto_tuple.to_mem()
 41 │ │     }
-   │ ╰─────^ attributes hash: 6833980121040096883
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Tuple(
-                 Tuple {
-                     items: [
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                         Base(
-                             Numeric(
-                                 I32,
-                             ),
-                         ),
-                     ],
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> (u256, i32)
 
 note: 
    ┌─ tuple_stress.fe:40:16
@@ -644,35 +260,7 @@ note:
 45 │ │         let my_tuple: (u256, bool, address) = (self.my_sto_tuple.item0, true and false, address(26))
 46 │ │         emit_my_event(ctx, my_tuple)
 47 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ tuple_stress.fe:44:13
@@ -753,49 +341,7 @@ note:
 49 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96> {
 50 │ │         return my_tuple.abi_encode()
 51 │ │     }
-   │ ╰─────^ attributes hash: 10651188962262222621
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_tuple",
-                 typ: Ok(
-                     Tuple(
-                         Tuple {
-                             items: [
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                                 Base(
-                                     Bool,
-                                 ),
-                                 Base(
-                                     Address,
-                                 ),
-                             ],
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 96,
-                     inner: Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_tuple, typ: (u256, bool, address) }] -> Array<u8, 96>
 
 note: 
    ┌─ tuple_stress.fe:50:16

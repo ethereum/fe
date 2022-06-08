@@ -64,46 +64,7 @@ note:
 25 │ │         self.authors[ctx.msg_sender()]
 26 │ │         self.scoreboard[id] = 0
 27 │ │     }
-   │ ╰─────^ attributes hash: 4649056442968527631
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "body",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 32,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: body, typ: String<32> }] -> ()
 
 note: 
    ┌─ type_aliases.fe:23:13
@@ -183,34 +144,7 @@ note:
 31 │ │         self.scoreboard[id] = score
 32 │ │         return score
 33 │ │     }
-   │ ╰─────^ attributes hash: 4383698668262923633
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "id",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: id, typ: u256 }] -> u64
 
 note: 
    ┌─ type_aliases.fe:30:13
@@ -272,34 +206,7 @@ note:
 35 │ ╭     pub fn get_post(self, id: PostId) -> PostBody {
 36 │ │         return self.posts[id].to_mem()
 37 │ │     }
-   │ ╰─────^ attributes hash: 6772945894090223199
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "id",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 32,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: id, typ: u256 }] -> String<32>
 
 note: 
    ┌─ type_aliases.fe:36:16

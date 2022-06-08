@@ -1,13 +1,12 @@
-use crate::context;
-use fe_common::diagnostics::Label;
-
-use crate::context::{Analysis, Constant};
+use crate::context::{self, Analysis, Constant};
+use crate::display::Displayable;
 use crate::errors::{self, IncompleteItem, TypeError};
-use crate::namespace::types::{self, GenericType};
+use crate::namespace::types::{self, GenericType, Type, TypeDowncast, TypeId};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
+use fe_common::diagnostics::Label;
 use fe_common::files::{common_prefix, Utf8Path};
 use fe_common::{impl_intern_key, FileKind, SourceFileId};
 use fe_parser::ast::GenericParameter;
@@ -17,10 +16,7 @@ use indexmap::{indexmap, IndexMap};
 use smol_str::SmolStr;
 use std::ops::Deref;
 use std::rc::Rc;
-
 use strum::IntoEnumIterator;
-
-use super::types::{Type, TypeDowncast};
 
 /// A named item. This does not include things inside of
 /// a function body.
@@ -497,7 +493,7 @@ impl ModuleId {
         db.module_all_impls(*self)
     }
 
-    pub fn impls(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<(TraitId, Type), ImplId>> {
+    pub fn impls(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<(TraitId, TypeId), ImplId>> {
         db.module_impl_map(*self).value
     }
 
@@ -729,12 +725,8 @@ impl ModuleConstantId {
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.span
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::TypeId, TypeError> {
         db.module_constant_type(*self).value
-    }
-
-    pub fn is_base_type(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.typ(db), Ok(types::Type::Base(_)))
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -826,20 +818,17 @@ impl TypeDef {
         }
     }
 
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<Type, TypeError> {
         match self {
-            TypeDef::Alias(id) => id.typ(db),
-            TypeDef::Struct(id) => Ok(types::Type::Struct(types::Struct {
-                id: *id,
-                name: id.name(db),
-                field_count: id.fields(db).len(), // for the EvmSized trait
-            })),
-            TypeDef::Contract(id) => Ok(types::Type::Contract(types::Contract {
-                id: *id,
-                name: id.name(db),
-            })),
-            TypeDef::Primitive(base) => Ok(types::Type::Base(*base)),
+            TypeDef::Alias(id) => Ok(id.type_id(db)?.typ(db)),
+            TypeDef::Struct(id) => Ok(Type::Struct(*id)),
+            TypeDef::Contract(id) => Ok(Type::Contract(*id)),
+            TypeDef::Primitive(base) => Ok(Type::Base(*base)),
         }
+    }
+
+    pub fn type_id(&self, db: &dyn AnalyzerDb) -> Result<TypeId, TypeError> {
+        Ok(db.intern_type(self.typ(db)?))
     }
 
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
@@ -896,7 +885,7 @@ impl TypeAliasId {
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.pub_qual.is_some()
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+    pub fn type_id(&self, db: &dyn AnalyzerDb) -> Result<types::TypeId, TypeError> {
         db.type_alias_type(*self).value
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
@@ -933,9 +922,6 @@ impl ContractId {
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.pub_qual.is_some()
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> types::Type {
-        types::Type::Contract(types::Contract::from_id(*self, db))
-    }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
@@ -952,7 +938,7 @@ impl ContractId {
         &self,
         db: &dyn AnalyzerDb,
         name: &str,
-    ) -> Option<(Result<types::Type, TypeError>, usize)> {
+    ) -> Option<(Result<types::TypeId, TypeError>, usize)> {
         let fields = db.contract_field_map(*self).value;
         let (index, _, field) = fields.get_full(name)?;
         Some((field.typ(db), index))
@@ -1070,7 +1056,7 @@ impl ContractFieldId {
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<ContractField> {
         db.lookup_intern_contract_field(*self)
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::TypeId, TypeError> {
         db.contract_field_type(*self).value
     }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
@@ -1103,14 +1089,10 @@ impl FunctionSigId {
         self.signature(db).self_decl.is_some()
     }
 
-    pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
+    pub fn self_type(&self, db: &dyn AnalyzerDb) -> Option<types::TypeId> {
         match self.parent(db) {
-            Item::Type(TypeDef::Contract(cid)) => {
-                Some(types::Type::SelfContract(types::Contract::from_id(cid, db)))
-            }
-            Item::Type(TypeDef::Struct(sid)) => {
-                Some(types::Type::Struct(types::Struct::from_id(sid, db)))
-            }
+            Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
+            Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
             _ => None,
         }
     }
@@ -1244,8 +1226,8 @@ impl FunctionId {
     pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.sig(db).class(db)
     }
-    pub fn self_typ(&self, db: &dyn AnalyzerDb) -> Option<types::Type> {
-        self.sig(db).self_typ(db)
+    pub fn self_type(&self, db: &dyn AnalyzerDb) -> Option<types::TypeId> {
+        self.sig(db).self_type(db)
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         self.sig(db).parent(db)
@@ -1348,8 +1330,9 @@ impl Class {
             // be addressed when we get rid of `Class`.
             Class::Impl(id) => id
                 .receiver(db)
+                .typ(db)
                 .as_struct()
-                .map(|val| Item::Type(TypeDef::Struct(val.id)))
+                .map(|id| Item::Type(TypeDef::Struct(id)))
                 .expect("missing receiver"),
         }
     }
@@ -1386,40 +1369,23 @@ impl StructId {
         self.data(db).module
     }
 
+    pub fn as_type(&self, db: &dyn AnalyzerDb) -> TypeId {
+        db.intern_type(Type::Struct(*self))
+    }
+
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         self.module(db)
             .impls(db)
-            .get(&(trait_, Type::Struct((*self.typ(db)).clone())))
+            .get(&(trait_, db.intern_type(Type::Struct(*self))))
             .cloned()
     }
 
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Struct> {
-        db.struct_type(*self)
-    }
-
     pub fn has_private_field(&self, db: &dyn AnalyzerDb) -> bool {
-        self.private_fields(db).iter().count() > 0
+        self.fields(db).values().any(|field| !field.is_public(db))
     }
 
     pub fn field(&self, db: &dyn AnalyzerDb, name: &str) -> Option<StructFieldId> {
         self.fields(db).get(name).copied()
-    }
-    pub fn field_type(
-        &self,
-        db: &dyn AnalyzerDb,
-        name: &str,
-    ) -> Option<Result<types::Type, TypeError>> {
-        Some(self.field(db, name)?.typ(db))
-    }
-
-    pub fn is_base_type(&self, db: &dyn AnalyzerDb, name: &str) -> bool {
-        matches!(self.field_type(db, name), Some(Ok(types::Type::Base(_))))
-    }
-
-    pub fn has_complex_fields(&self, db: &dyn AnalyzerDb) -> bool {
-        self.fields(db)
-            .iter()
-            .any(|(name, _)| !self.is_base_type(db, name.as_str()))
     }
 
     pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
@@ -1438,20 +1404,6 @@ impl StructId {
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
-    }
-    pub fn private_fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
-        Rc::new(
-            self.fields(db)
-                .iter()
-                .filter_map(|(name, field)| {
-                    if field.is_public(db) {
-                        None
-                    } else {
-                        Some((name.clone(), *field))
-                    }
-                })
-                .collect(),
-        )
     }
     pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
         db.struct_dependency_graph(*self).value.0
@@ -1489,11 +1441,8 @@ impl StructFieldId {
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
     }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::TypeId, TypeError> {
         db.struct_field_type(*self).value
-    }
-    pub fn is_base_type(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.typ(db), Ok(types::Type::Base(_)))
     }
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.is_pub
@@ -1507,7 +1456,7 @@ impl StructFieldId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Impl {
     pub trait_id: TraitId,
-    pub receiver: Type,
+    pub receiver: TypeId,
     pub module: ModuleId,
     pub ast: Node<ast::Impl>,
 }
@@ -1535,8 +1484,8 @@ impl ImplId {
         self.data(db).trait_id
     }
 
-    pub fn receiver(&self, db: &dyn AnalyzerDb) -> Type {
-        self.data(db).receiver.clone()
+    pub fn receiver(&self, db: &dyn AnalyzerDb) -> TypeId {
+        self.data(db).receiver
     }
 
     pub fn ast(&self, db: &dyn AnalyzerDb) -> Node<ast::Impl> {
@@ -1556,7 +1505,7 @@ impl ImplId {
         format!(
             "{}_{}",
             self.trait_id(db).name(db),
-            self.receiver(db).name()
+            self.receiver(db).display(db)
         )
         .into()
     }
@@ -1580,7 +1529,7 @@ impl ImplId {
                     self.data(db).ast.span,
                     format!(
                         "Neither `{}` nor `{}` are in the ingot of the `impl` block",
-                        self.data(db).receiver,
+                        self.data(db).receiver.display(db),
                         self.data(db).trait_id.name(db)
                     ),
                 )],
@@ -1590,7 +1539,7 @@ impl ImplId {
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        match &self.data(db).receiver {
+        match &self.data(db).receiver.typ(db) {
             Type::Contract(_)
             | Type::Map(_)
             | Type::SelfContract(_)
@@ -1603,7 +1552,7 @@ impl ImplId {
             | Type::String(_) => sink.push(&errors::fancy_error(
                 format!(
                     "`impl` blocks aren't allowed for {}",
-                    self.data(db).receiver
+                    self.data(db).receiver.display(db)
                 ),
                 vec![Label::primary(
                     self.data(db).ast.span,
@@ -1611,8 +1560,8 @@ impl ImplId {
                 )],
                 vec![],
             )),
-            Type::Struct(val) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, Some(val.id.module(db)))
+            Type::Struct(id) => {
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
             }
         }
 
@@ -1755,16 +1704,13 @@ impl TraitId {
         self.data(db).module
     }
 
-    pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: &Type) -> bool {
+    pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: TypeId) -> bool {
         self.module(db)
             .all_impls(db)
             .iter()
-            .any(|val| &val.trait_id(db) == self && &val.receiver(db) == ty)
+            .any(|val| &val.trait_id(db) == self && val.receiver(db) == ty)
     }
 
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Trait> {
-        db.trait_type(*self)
-    }
     pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {
         self.module(db).is_in_std(db)
     }

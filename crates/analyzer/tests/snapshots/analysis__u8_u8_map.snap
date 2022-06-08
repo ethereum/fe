@@ -15,34 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u8) -> u8 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ attributes hash: 3828358868158950430
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U8,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U8,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u8 }] -> u8
 
 note: 
   ┌─ u8_u8_map.fe:5:16
@@ -70,43 +43,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: u8, value: u8) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 1989504953336313430
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "key",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u8 }, { label: None, name: value, typ: u8 }] -> ()
 
 note: 
   ┌─ u8_u8_map.fe:9:9

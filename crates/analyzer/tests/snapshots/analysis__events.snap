@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ events.fe:5:9
@@ -42,33 +43,7 @@ note:
 25 │ ╭     pub fn emit_nums(ctx: Context) {
 26 │ │         emit Nums(ctx, num1: 26, num2: 42)
 27 │ │     }
-   │ ╰─────^ attributes hash: 5519676733853656531
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ events.fe:26:19
@@ -80,81 +55,12 @@ note:
    │                   Context: Memory
 
 note: 
-   ┌─ events.fe:26:9
-   │
-26 │         emit Nums(ctx, num1: 26, num2: 42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
-   │
-   = Event {
-         name: "Nums",
-         fields: [
-             EventField {
-                 name: "num1",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "num2",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ events.fe:29:5
    │  
 29 │ ╭     pub fn emit_bases(ctx: Context, addr: address) {
 30 │ │         emit Bases(ctx, num: 26, addr)
 31 │ │     }
-   │ ╰─────^ attributes hash: 15383426943610850221
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }] -> ()
 
 note: 
    ┌─ events.fe:30:20
@@ -166,95 +72,12 @@ note:
    │                    Context: Memory
 
 note: 
-   ┌─ events.fe:30:9
-   │
-30 │         emit Bases(ctx, num: 26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
-   │
-   = Event {
-         name: "Bases",
-         fields: [
-             EventField {
-                 name: "num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ events.fe:33:5
    │  
 33 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
 34 │ │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
 35 │ │     }
-   │ ╰─────^ attributes hash: 17632983073889485939
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_bytes",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 100,
-                             inner: Base(
-                                 Numeric(
-                                     U8,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
 
 note: 
    ┌─ events.fe:34:18
@@ -268,65 +91,6 @@ note:
    │                  Context: Memory
 
 note: 
-   ┌─ events.fe:34:9
-   │
-34 │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14467559009864244124
-   │
-   = Event {
-         name: "Mix",
-         fields: [
-             EventField {
-                 name: "num1",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "num2",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_bytes",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 100,
-                             inner: Base(
-                                 Numeric(
-                                     U8,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ events.fe:37:5
    │  
 37 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
@@ -335,51 +99,7 @@ note:
 40 │ │         addrs[1] = addr2
 41 │ │         emit Addresses(ctx, addrs)
 42 │ │     }
-   │ ╰─────^ attributes hash: 18438233211486921531
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "addr1",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "addr2",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr1, typ: address }, { label: None, name: addr2, typ: address }] -> ()
 
 note: 
    ┌─ events.fe:38:13
@@ -418,31 +138,5 @@ note:
    │                        ^^^  ^^^^^ Array<address, 2>: Memory
    │                        │     
    │                        Context: Memory
-
-note: 
-   ┌─ events.fe:41:9
-   │
-41 │         emit Addresses(ctx, addrs)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13530689072905293596
-   │
-   = Event {
-         name: "Addresses",
-         fields: [
-             EventField {
-                 name: "addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 2,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 

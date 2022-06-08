@@ -13,18 +13,7 @@ note:
    · │
 46 │ │         let array_with_const: Array<i32, { DOUBLE_ARRAY_LENGTH / TWO }>
 47 │ │     }
-   │ ╰─────^ attributes hash: 8319796915330632390
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> ()
 
 note: 
    ┌─ const_generics.fe:4:13

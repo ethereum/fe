@@ -6,15 +6,12 @@ use smol_str::SmolStr;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Type {
     pub kind: TypeKind,
-    pub analyzer_ty: Option<analyzer_types::Type>,
+    pub analyzer_ty: Option<analyzer_types::TypeId>,
 }
 
 impl Type {
-    pub fn new(kind: TypeKind, analyzer_type: Option<analyzer_types::Type>) -> Self {
-        Self {
-            kind,
-            analyzer_ty: analyzer_type,
-        }
+    pub fn new(kind: TypeKind, analyzer_ty: Option<analyzer_types::TypeId>) -> Self {
+        Self { kind, analyzer_ty }
     }
 }
 

@@ -15,34 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u16) -> u16 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ attributes hash: 18312053447303862075
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U16,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U16,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u16 }] -> u16
 
 note: 
   ┌─ u16_u16_map.fe:5:16
@@ -70,43 +43,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: u16, value: u16) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 8088868709641766820
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "key",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u16 }, { label: None, name: value, typ: u16 }] -> ()
 
 note: 
   ┌─ u16_u16_map.fe:9:9

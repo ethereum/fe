@@ -9,20 +9,7 @@ note:
 4 │ ╭     pub fn get_my_num() -> u256 {
 5 │ │         return 42
 6 │ │     }
-  │ ╰─────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ create_contract_from_init.fe:5:16
@@ -42,20 +29,7 @@ note:
 16 │ ╭     pub fn get_foo_addr(self) -> address {
 17 │ │         return self.foo_addr
 18 │ │     }
-   │ ╰─────^ attributes hash: 227275695522088782
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
    ┌─ create_contract_from_init.fe:17:16

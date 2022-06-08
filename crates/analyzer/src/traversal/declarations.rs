@@ -1,7 +1,8 @@
 use crate::context::AnalyzerContext;
+use crate::display::Displayable;
 use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
-use crate::namespace::types::Type;
+use crate::namespace::types::{Type, TypeId};
 use crate::traversal::{const_expr, expressions, types};
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_parser::ast as fe;
@@ -11,7 +12,7 @@ use fe_parser::node::Node;
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let declared_type = types::type_desc(scope, typ)?;
-        if let Type::Map(_) = declared_type {
+        if let Type::Map(_) = declared_type.typ(scope.db()) {
             return Err(FatalError::new(scope.error(
                 "invalid variable type",
                 typ.span,
@@ -20,15 +21,14 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
         }
 
         if let Some(value) = value {
-            let value_attributes =
-                expressions::assignable_expr(scope, value, Some(&declared_type))?;
+            let value_attributes = expressions::assignable_expr(scope, value, Some(declared_type))?;
 
             if declared_type != value_attributes.typ {
                 scope.type_error(
                     "type mismatch",
                     value.span,
-                    &declared_type,
-                    &value_attributes.typ,
+                    declared_type,
+                    value_attributes.typ,
                 );
             }
         }
@@ -43,7 +43,7 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
 pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::ConstantDecl { name, typ, value } = &stmt.kind {
         let declared_type = match types::type_desc(scope, typ) {
-            Ok(typ) if typ.has_fixed_size() => typ,
+            Ok(typ) if typ.has_fixed_size(scope.db()) => typ,
             _ => {
                 // If this conversion fails, the type must be a map (for now at least)
                 return Err(FatalError::new(scope.error(
@@ -55,21 +55,21 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         };
 
         // Perform semantic analysis before const evaluation.
-        let value_attributes = expressions::assignable_expr(scope, value, Some(&declared_type))?;
+        let value_attributes = expressions::assignable_expr(scope, value, Some(declared_type))?;
 
         if declared_type != value_attributes.typ {
             scope.type_error(
                 "type mismatch",
                 value.span,
-                &declared_type,
-                &value_attributes.typ,
+                declared_type,
+                value_attributes.typ,
             );
         }
 
         // Perform constant evaluation.
         let const_value = const_expr::eval_expr(scope, value)?;
 
-        scope.root.map_variable_type(name, declared_type.clone());
+        scope.root.map_variable_type(name, declared_type);
         // this logs a message on err, so it's safe to ignore here.
         let _ = scope.add_var(name.kind.as_str(), declared_type, true, name.span);
         scope.add_constant(name, value, const_value);
@@ -83,20 +83,20 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
 fn add_var(
     scope: &mut BlockScope,
     target: &Node<fe::VarDeclTarget>,
-    typ: Type,
+    typ: TypeId,
 ) -> Result<(), FatalError> {
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
-            scope.root.map_variable_type(target, typ.clone());
+            scope.root.map_variable_type(target, typ);
             // this logs a message on err, so it's safe to ignore here.
             let _ = scope.add_var(name, typ, false, target.span);
             Ok(())
         }
         fe::VarDeclTarget::Tuple(items) => {
-            match typ {
+            match typ.typ(scope.db()) {
                 Type::Tuple(items_ty) => {
                     let items_ty = items_ty.items;
-                    let items_ty_len = items_ty.as_vec().len();
+                    let items_ty_len = items_ty.len();
                     if items.len() != items_ty_len {
                         return Err(FatalError::new(scope.fancy_error(
                             "invalid declaration",
@@ -110,14 +110,19 @@ fn add_var(
                             )],
                         )));
                     }
-                    for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
-                        add_var(scope, item, item_ty)?;
+                    for (item, item_ty) in items.iter().zip(items_ty.iter()) {
+                        add_var(scope, item, *item_ty)?;
                     }
                     Ok(())
                 }
-                _ => Err(FatalError::new(scope.fancy_error("invalid declaration",
-                                                           vec![Label::primary(target.span, "")],
-                                                           vec![format!("Tuple declaration targets need to be declared with the tuple type but here the type is {}", typ)])))
+                _ => Err(FatalError::new(scope.fancy_error(
+                    "invalid declaration",
+                    vec![Label::primary(target.span, "")],
+                    vec![format!(
+                        "Tuple declaration targets need to be declared with the tuple type but here the type is {}",
+                        typ.display(scope.db())
+                    )]
+                )))
             }
         }
     }

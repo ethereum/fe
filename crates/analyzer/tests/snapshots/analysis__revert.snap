@@ -23,20 +23,7 @@ note:
 11 │ ╭     pub fn bar() -> u256 {
 12 │ │         revert
 13 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
    ┌─ revert.fe:15:5
@@ -44,33 +31,7 @@ note:
 15 │ ╭     pub fn revert_custom_error(ctx: Context) {
 16 │ │         ctx.send_value(to: address(0), wei: 100)
 17 │ │     }
-   │ ╰─────^ attributes hash: 5519676733853656531
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ revert.fe:16:9
@@ -100,18 +61,7 @@ note:
 19 │ ╭     pub fn revert_other_error() {
 20 │ │         revert OtherError(msg: 1, val: true)
 21 │ │     }
-   │ ╰─────^ attributes hash: 8319796915330632390
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> ()
 
 note: 
    ┌─ revert.fe:20:32
@@ -134,20 +84,7 @@ note:
 24 │ │         self.my_other_error = OtherError(msg: 1, val: true)
 25 │ │         revert self.my_other_error.to_mem()
 26 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ revert.fe:24:9

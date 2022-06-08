@@ -43,20 +43,7 @@ note:
 13 │ │         let _my_array: MY_ARRAY
 14 │ │         return C4
 15 │ │     }
-   │ ╰─────^ attributes hash: 18058099208132403133
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> i32
 
 note: 
    ┌─ module_const.fe:10:15

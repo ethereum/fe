@@ -8,14 +8,15 @@ pub mod builtins;
 pub mod constants;
 pub mod context;
 pub mod db;
+pub mod display;
 pub mod errors;
 pub mod namespace;
 mod operations;
 mod traversal;
 
-use crate::namespace::items::{IngotId, ModuleId};
 pub use db::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::Diagnostic;
+use namespace::items::{IngotId, ModuleId};
 
 pub fn analyze_ingot(db: &dyn AnalyzerDb, ingot_id: IngotId) -> Result<(), Vec<Diagnostic>> {
     let diagnostics = ingot_id.diagnostics(db);
