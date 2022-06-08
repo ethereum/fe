@@ -9,43 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: i8, y: u8) -> i8 {
 3 │ │         return x ** y
 4 │ │     }
-  │ ╰─────^ attributes hash: 14588309679488297104
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            I8,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U8,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    I8,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i8 }, { label: None, name: y, typ: u8 }] -> i8
 
 note: 
   ┌─ return_pow_i256.fe:3:16

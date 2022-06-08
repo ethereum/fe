@@ -9,20 +9,7 @@ note:
 4 │ ╭     pub fn get_my_num() -> u256 {
 5 │ │         return 42
 6 │ │     }
-  │ ╰─────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ create2_contract.fe:5:16
@@ -37,33 +24,7 @@ note:
 11 │ │         let foo: Foo = Foo.create2(ctx, 0, 52)
 12 │ │         return address(foo)
 13 │ │     }
-   │ ╰─────^ attributes hash: 9364783648076633772
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Address,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
    ┌─ create2_contract.fe:11:13

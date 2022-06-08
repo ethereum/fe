@@ -19,53 +19,7 @@ note:
 10 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
 11 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
 12 │ │     }
-   │ ╰─────^ attributes hash: 10847004199357482546
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "to",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ module_level_events.fe:11:23
@@ -83,46 +37,5 @@ note:
    │                                    │                           │    
    │                                    │                           address: Value
    │                                    address: Value
-
-note: 
-   ┌─ module_level_events.fe:11:9
-   │
-11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17986960071624595337
-   │
-   = Event {
-         name: "Transfer",
-         fields: [
-             EventField {
-                 name: "sender",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "receiver",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 

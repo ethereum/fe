@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ structs.fe:2:5
@@ -36,33 +37,7 @@ note:
 17 │ ╭     pub fn new(val: u256) -> Mixed {
 18 │ │         return Mixed(foo: val, bar: false)
 19 │ │     }
-   │ ╰─────^ attributes hash: 2524938698704972422
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "val",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Mixed",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> Mixed
 
 note: 
    ┌─ structs.fe:18:27
@@ -96,27 +71,7 @@ note:
 28 │ ╭     pub fn encode(self) -> Array<u8, 128> {
 29 │ │         return self.abi_encode()
 30 │ │     }
-   │ ╰─────^ attributes hash: 374785682862794405
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 128,
-                     inner: Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u8, 128>
 
 note: 
    ┌─ structs.fe:29:16
@@ -136,22 +91,7 @@ note:
 32 │ ╭     pub fn hash(self) -> u256 {
 33 │ │         return keccak256(self.encode())
 34 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
    ┌─ structs.fe:33:26
@@ -177,22 +117,7 @@ note:
 36 │ ╭     pub fn price_per_sqft(self) -> u256 {
 37 │ │         return self.price / self.size
 38 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
    ┌─ structs.fe:37:16
@@ -227,20 +152,7 @@ note:
 41 │ │         self.rooms += 1
 42 │ │         self.size += 100
 43 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ structs.fe:41:9
@@ -284,22 +196,7 @@ note:
    · │
 79 │ │         return self.my_bar.name.to_mem()
 80 │ │     }
-   │ ╰─────^ attributes hash: 7100809906483982919
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 3,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> String<3>
 
 note: 
    ┌─ structs.fe:51:9
@@ -1080,22 +977,7 @@ note:
     · │
 111 │ │         return val.name
 112 │ │     }
-    │ ╰─────^ attributes hash: 7100809906483982919
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              String(
-                  FeString {
-                      max_size: 3,
-                  },
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> String<3>
 
 note: 
    ┌─ structs.fe:83:13
@@ -1698,22 +1580,7 @@ note:
 115 │ │         let mixed: Mixed = Mixed::new(val: 1)
 116 │ │         return mixed.foo
 117 │ │     }
-    │ ╰─────^ attributes hash: 11773348765973600208
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
     ┌─ structs.fe:115:13
@@ -1747,33 +1614,7 @@ note:
 119 │ ╭     pub fn set_house(self, data: House) {
 120 │ │         self.my_house = data
 121 │ │     }
-    │ ╰─────^ attributes hash: 571714015924720006
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "data",
-                  typ: Ok(
-                      Struct(
-                          Struct {
-                              name: "House",
-                              field_count: 4,
-                          },
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: data, typ: House }] -> ()
 
 note: 
     ┌─ structs.fe:120:9
@@ -1795,23 +1636,7 @@ note:
 123 │ ╭     pub fn get_house(self) -> House {
 124 │ │         return self.my_house.to_mem()
 125 │ │     }
-    │ ╰─────^ attributes hash: 18226871377775469920
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Struct(
-                  Struct {
-                      name: "House",
-                      field_count: 4,
-                  },
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> House
 
 note: 
     ┌─ structs.fe:124:16
@@ -1841,20 +1666,7 @@ note:
     · │
 152 │ │         assert self.my_house.vacant
 153 │ │     }
-    │ ╰─────^ attributes hash: 18235041182630809162
-    │  
-    = FunctionSignature {
-          self_decl: Some(
-              Mutable,
-          ),
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Unit,
-              ),
-          ),
-      }
+    │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
     ┌─ structs.fe:128:9
@@ -2420,20 +2232,7 @@ note:
     · │
 172 │ │         return building.size
 173 │ │     }
-    │ ╰─────^ attributes hash: 6115314201970082834
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [] -> u256
 
 note: 
     ┌─ structs.fe:156:13
@@ -2697,25 +2496,7 @@ note:
 176 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 177 │ │         return house.encode()
 178 │ │     }
-    │ ╰─────^ attributes hash: 7483658980613368648
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Array(
-                  Array {
-                      size: 128,
-                      inner: Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  },
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [] -> Array<u8, 128>
 
 note: 
     ┌─ structs.fe:176:13
@@ -2761,20 +2542,7 @@ note:
 181 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 182 │ │         return house.hash()
 183 │ │     }
-    │ ╰─────^ attributes hash: 6115314201970082834
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [] -> u256
 
 note: 
     ┌─ structs.fe:181:13

@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ sized_vals_in_sto.fe:4:5
@@ -28,32 +29,7 @@ note:
 14 │ ╭     pub fn write_num(self, x: u256) {
 15 │ │         self.num = x
 16 │ │     }
-   │ ╰─────^ attributes hash: 4582507849783874218
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u256 }] -> ()
 
 note: 
    ┌─ sized_vals_in_sto.fe:15:9
@@ -75,22 +51,7 @@ note:
 18 │ ╭     pub fn read_num(self) -> u256 {
 19 │ │         return self.num
 20 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:19:16
@@ -110,37 +71,7 @@ note:
 22 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
 23 │ │         self.nums = x
 24 │ │     }
-   │ ╰─────^ attributes hash: 3795910266468030735
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 42,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: Array<u256, 42> }] -> ()
 
 note: 
    ┌─ sized_vals_in_sto.fe:23:9
@@ -162,27 +93,7 @@ note:
 26 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
 27 │ │         return self.nums.to_mem()
 28 │ │     }
-   │ ╰─────^ attributes hash: 7198573459523579428
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 42,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:27:16
@@ -208,32 +119,7 @@ note:
 30 │ ╭     pub fn write_str(self, x: String<26>) {
 31 │ │         self.str = x
 32 │ │     }
-   │ ╰─────^ attributes hash: 3874088449945578306
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 26,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: String<26> }] -> ()
 
 note: 
    ┌─ sized_vals_in_sto.fe:31:9
@@ -255,22 +141,7 @@ note:
 34 │ ╭     pub fn read_str(self) -> String<26> {
 35 │ │         return self.str.to_mem()
 36 │ │     }
-   │ ╰─────^ attributes hash: 3487383639176435631
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 26,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:35:16
@@ -296,35 +167,7 @@ note:
 38 │ ╭     pub fn emit_event(self, ctx: Context) {
 39 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
 40 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ sized_vals_in_sto.fe:39:22
@@ -367,55 +210,5 @@ note:
    │
 39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                                                         ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
-
-note: 
-   ┌─ sized_vals_in_sto.fe:39:9
-   │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11879127803411427086
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "nums",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 42,
-                             inner: Base(
-                                 Numeric(
-                                     U256,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "str",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 26,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 

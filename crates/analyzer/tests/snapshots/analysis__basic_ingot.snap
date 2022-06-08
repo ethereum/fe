@@ -10,21 +10,7 @@ note:
 11 │ │         assert file_items_work()
 12 │ │         return Baz(my_bool: true, my_u256: 26)
 13 │ │     }
-   │ ╰─────^ attributes hash: 12617626076609670469
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Baz",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> Baz
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:11:16
@@ -48,21 +34,7 @@ note:
 15 │ ╭     pub fn get_my_bing() -> Bong {
 16 │ │         return Bong(my_address: address(42))
 17 │ │     }
-   │ ╰─────^ attributes hash: 10335209349982667488
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Bing",
-                     field_count: 1,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:16:41
@@ -88,20 +60,7 @@ note:
 19 │ ╭     pub fn get_42() -> u256 {
 20 │ │         return get_42_backend()
 21 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:20:16
@@ -115,20 +74,7 @@ note:
 23 │ ╭     pub fn get_26() -> u256 {
 24 │ │         return std::evm::add(13, 13)
 25 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:24:30
@@ -151,18 +97,7 @@ note:
 28 │ │         assert bar::mee::Mee::kawum() == 1
 29 │ │         assert bar::mee::Mee().rums() == 1
 30 │ │     }
-   │ ╰─────^ attributes hash: 8319796915330632390
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> ()
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:28:16
@@ -200,21 +135,7 @@ note:
 32 │ ╭     pub fn get_my_dyng() -> dong::Dyng {
 33 │ │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
 34 │ │     }
-   │ ╰─────^ attributes hash: 13186223862505072309
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Dyng",
-                     field_count: 3,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> Dyng
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:33:47
@@ -250,35 +171,7 @@ note:
 37 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
 38 │ │         return bing_contract.add(40, 50)
 39 │ │     }
-   │ ╰─────^ attributes hash: 10526263819290319263
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:37:13
@@ -318,18 +211,7 @@ note:
 1 │ ╭ pub fn file_items_work() -> bool {
 2 │ │     return true
 3 │ │ }
-  │ ╰─^ attributes hash: 5583437014632790429
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Bool,
-            ),
-        ),
-    }
+  │ ╰─^ self: None, params: [] -> bool
 
 note: 
   ┌─ ingots/basic_ingot/src/bar.fe:2:12
@@ -350,20 +232,7 @@ note:
 7 │ ╭ pub fn get_42_backend() -> u256 {
 8 │ │     return std::evm::add(21, 21)
 9 │ │ }
-  │ ╰─^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─^ self: None, params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bing.fe:8:26
@@ -385,47 +254,7 @@ note:
 12 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256 {
 13 │ │         return x + y
 14 │ │     }
-   │ ╰─────^ attributes hash: 4448606202021980030
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "y",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:13:16
@@ -458,20 +287,7 @@ note:
 2 │ ╭     pub fn kawum() -> u256 {
 3 │ │         return 1
 4 │ │     }
-  │ ╰─────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:3:16
@@ -485,22 +301,7 @@ note:
 6 │ ╭     pub fn rums(self) -> u256 {
 7 │ │         return 1
 8 │ │     }
-  │ ╰─────^ attributes hash: 11773348765973600208
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:7:16
@@ -532,21 +333,7 @@ note:
  9 │ ╭ fn get_bing() -> Bing {
 10 │ │     return Bing(my_address: address(0))
 11 │ │ }
-   │ ╰─^ attributes hash: 10335209349982667488
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Bing",
-                     field_count: 1,
-                 },
-             ),
-         ),
-     }
+   │ ╰─^ self: None, params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/ding/dong.fe:10:37

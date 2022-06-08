@@ -16,36 +16,7 @@ note:
 5 │ │         self.baz[0] = val
 6 │ │         return val
 7 │ │     }
-  │ ╰─────^ attributes hash: 11102768331449211201
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: Some(
-                    "_",
-                ),
-                name: "val",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: val, typ: u256 }] -> u256
 
 note: 
   ┌─ call_statement_with_args_2.fe:5:9
@@ -78,22 +49,7 @@ note:
 10 │ │         self.assign(100)
 11 │ │         return self.baz[0]
 12 │ │     }
-   │ ╰─────^ attributes hash: 11773348765973600208
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
    ┌─ call_statement_with_args_2.fe:10:9

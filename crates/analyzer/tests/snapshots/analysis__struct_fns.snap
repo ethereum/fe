@@ -17,44 +17,7 @@ note:
 5 │ ╭     pub fn new(x: u64, y: u64) -> Point {
 6 │ │         return Point(x, y)
 7 │ │     }
-  │ ╰─────^ attributes hash: 16588628800633378656
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U64,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U64,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Struct(
-                Struct {
-                    name: "Point",
-                    field_count: 2,
-                },
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> Point
 
 note: 
   ┌─ struct_fns.fe:6:22
@@ -76,21 +39,7 @@ note:
  9 │ ╭     pub fn origin() -> Point {
 10 │ │         return Point(x: 0, y: 0)
 11 │ │     }
-   │ ╰─────^ attributes hash: 6013258294670043138
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Point",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> Point
 
 note: 
    ┌─ struct_fns.fe:10:25
@@ -112,22 +61,7 @@ note:
 13 │ ╭     pub fn x(self) -> u64 {
 14 │ │         return self.x
 15 │ │     }
-   │ ╰─────^ attributes hash: 10117872852848404071
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u64
 
 note: 
    ┌─ struct_fns.fe:14:16
@@ -149,36 +83,7 @@ note:
 19 │ │         self.x = x
 20 │ │         return old
 21 │ │     }
-   │ ╰─────^ attributes hash: 9776752757917359734
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u64 }] -> u64
 
 note: 
    ┌─ struct_fns.fe:18:13
@@ -219,20 +124,7 @@ note:
 26 │ │         self.x = y
 27 │ │         self.y = x
 28 │ │     }
-   │ ╰─────^ attributes hash: 18235041182630809162
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
    ┌─ struct_fns.fe:24:13
@@ -289,43 +181,7 @@ note:
 31 │ │         self.x += x
 32 │ │         self.y += y
 33 │ │     }
-   │ ╰─────^ attributes hash: 7723021135770029200
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "y",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> ()
 
 note: 
    ┌─ struct_fns.fe:31:9
@@ -359,38 +215,7 @@ note:
 37 │ │         let y: u64 = self.y + other.y
 38 │ │         return Point(x, y)
 39 │ │     }
-   │ ╰─────^ attributes hash: 13368777112318344367
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: Some(
-                     "_",
-                 ),
-                 name: "other",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Point",
-                             field_count: 2,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "Point",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: other, typ: Point }] -> Point
 
 note: 
    ┌─ struct_fns.fe:36:13
@@ -468,18 +293,7 @@ note:
 46 │ │     let p3: Point = p1.add(p2)
 47 │ │     assert p3.x == 6 and p3.y == 12
 48 │ │ }
-   │ ╰─^ attributes hash: 8319796915330632390
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─^ self: None, params: [] -> ()
 
 note: 
    ┌─ struct_fns.fe:43:9
@@ -577,43 +391,7 @@ note:
    · │
 58 │ │         return p.y
 59 │ │     }
-   │ ╰─────^ attributes hash: 14881144643149919691
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "y",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> u64
 
 note: 
    ┌─ struct_fns.fe:53:13

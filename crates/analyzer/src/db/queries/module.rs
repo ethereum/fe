@@ -1,13 +1,14 @@
 use crate::context::{Analysis, AnalyzerContext, Constant};
-use crate::db::AnalyzerDb;
+use crate::display::Displayable;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
     Contract, ContractId, Event, Function, Impl, ImplId, Item, ModuleConstant, ModuleConstantId,
     ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, Type};
+use crate::namespace::types::{self, TypeId};
 use crate::traversal::{const_expr, expressions, types::type_desc};
+use crate::AnalyzerDb;
 use fe_common::diagnostics::Label;
 use fe_common::files::Utf8Path;
 use fe_common::Span;
@@ -234,20 +235,20 @@ pub fn module_item_map(
 pub fn module_impl_map(
     db: &dyn AnalyzerDb,
     module: ModuleId,
-) -> Analysis<Rc<IndexMap<(TraitId, Type), ImplId>>> {
+) -> Analysis<Rc<IndexMap<(TraitId, TypeId), ImplId>>> {
     let scope = ItemScope::new(db, module);
-    let mut map = IndexMap::<(TraitId, Type), ImplId>::new();
+    let mut map = IndexMap::<(TraitId, TypeId), ImplId>::new();
 
     for impl_ in db.module_all_impls(module).iter() {
         let key = &(impl_.trait_id(db), impl_.receiver(db));
 
-        match map.entry(key.clone()) {
+        match map.entry(*key) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!(
                         "duplicate `impl` blocks for trait `{}` for type `{}`",
                         key.0.name(db),
-                        key.1.name()
+                        key.1.display(db)
                     ),
                     "",
                     entry.get().ast(db).span,
@@ -307,29 +308,32 @@ pub fn module_constants(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ModuleC
 pub fn module_constant_type(
     db: &dyn AnalyzerDb,
     constant: ModuleConstantId,
-) -> Analysis<Result<types::Type, TypeError>> {
+) -> Analysis<Result<types::TypeId, TypeError>> {
     let constant_data = constant.data(db);
     let mut scope = ItemScope::new(db, constant.data(db).module);
     let typ = type_desc(&mut scope, &constant_data.ast.kind.typ);
 
     match &typ {
-        Ok(typ) if !matches!(typ, Type::Base(_)) => {
+        Ok(typ) if !typ.is_base(db) => {
             scope.error(
                 "Non-base types not yet supported for constants",
                 constant.data(db).ast.kind.typ.span,
-                &format!("this has type `{}`; expected a primitive type", typ),
+                &format!(
+                    "this has type `{}`; expected a primitive type",
+                    typ.display(db)
+                ),
             );
         }
         Ok(typ) => {
             if let Ok(expr_attr) =
-                expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(typ))
+                expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(*typ))
             {
                 if typ != &expr_attr.typ {
                     scope.type_error(
                         "type mismatch",
                         constant_data.ast.kind.value.span,
-                        &typ,
-                        &expr_attr.typ,
+                        *typ,
+                        expr_attr.typ,
                     );
                 }
             }
@@ -344,7 +348,7 @@ pub fn module_constant_type_cycle(
     db: &dyn AnalyzerDb,
     _cycle: &[String],
     constant: &ModuleConstantId,
-) -> Analysis<Result<Type, TypeError>> {
+) -> Analysis<Result<TypeId, TypeError>> {
     let mut context = ItemScope::new(db, constant.data(db).module);
     let err = Err(TypeError::new(context.error(
         "recursive constant value definition",
@@ -381,7 +385,7 @@ pub fn module_constant_value(
     };
 
     if let Err(err) =
-        expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(&typ))
+        expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(typ))
     {
         // No need to emit diagnostics, it's already emitted in `module_constant_type`.
         return Analysis {

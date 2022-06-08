@@ -13,20 +13,7 @@ note:
    · │
 11 │ │         return sum
 12 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ for_loop_with_static_array.fe:3:13

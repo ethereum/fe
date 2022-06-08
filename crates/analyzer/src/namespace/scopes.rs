@@ -6,7 +6,7 @@ use crate::context::{
 use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
-use crate::namespace::types::{Struct, Type};
+use crate::namespace::types::{Type, TypeId};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -15,7 +15,6 @@ use fe_parser::{ast::Expr, node::Node};
 use indexmap::IndexMap;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::ops::Deref;
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
@@ -54,7 +53,12 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
-        self.expressions.borrow().get(&expr.id).unwrap().typ.clone()
+        self.expressions
+            .borrow()
+            .get(&expr.id)
+            .unwrap()
+            .typ
+            .typ(self.db())
     }
 
     fn add_constant(
@@ -97,10 +101,6 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         unreachable!("Can't call function outside of function")
     }
 
-    fn add_string(&self, _str_lit: ast::SmolStr) {
-        unreachable!("Can't store string in the item scope")
-    }
-
     fn is_in_function(&self) -> bool {
         false
     }
@@ -138,14 +138,14 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     /// Gets `std::context::Context` if it exists
-    fn get_context_type(&self) -> Option<Struct> {
+    fn get_context_type(&self) -> Option<TypeId> {
         if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
             // `Context` is guaranteed to be public, so we can use `Span::dummy()` .
             self.resolve_name("Context", Span::dummy())
         {
             // we just assume that there is only one `Context` defined in `std`
             if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
-                return Some(id.typ(self.db()).deref().clone());
+                return Some(self.db().intern_type(Type::Struct(id)));
             }
         }
 
@@ -170,7 +170,7 @@ impl<'a> FunctionScope<'a> {
         }
     }
 
-    pub fn function_return_type(&self) -> Result<Type, TypeError> {
+    pub fn function_return_type(&self) -> Result<TypeId, TypeError> {
         self.function.signature(self.db).return_type.clone()
     }
 
@@ -188,7 +188,7 @@ impl<'a> FunctionScope<'a> {
             .expect_none("emit statement attributes already exist");
     }
 
-    pub fn map_variable_type<T>(&self, node: &Node<T>, typ: Type) {
+    pub fn map_variable_type<T>(&self, node: &Node<T>, typ: TypeId) {
         self.add_node(node);
         self.body
             .borrow_mut()
@@ -235,7 +235,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .get(&expr.id)
             .unwrap()
             .typ
-            .clone()
+            .typ(self.db())
     }
 
     fn add_constant(&self, _name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
@@ -276,10 +276,6 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .calls
             .insert(node.id, call_type)
             .expect_none("call attributes already exist");
-    }
-
-    fn add_string(&self, s: ast::SmolStr) {
-        self.body.borrow_mut().string_literals.insert(s);
     }
 
     fn is_in_function(&self) -> bool {
@@ -359,12 +355,12 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         item.value.map(NamedThing::Item)
     }
 
-    fn get_context_type(&self) -> Option<Struct> {
+    fn get_context_type(&self) -> Option<TypeId> {
         if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
             self.resolve_name("Context", Span::dummy())
         {
             if id.module(self.db()).ingot(self.db()).name(self.db()) == "std" {
-                return Some(id.typ(self.db()).deref().clone());
+                return Some(self.db().intern_type(Type::Struct(id)));
             }
         }
 
@@ -376,7 +372,7 @@ pub struct BlockScope<'a, 'b> {
     pub root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
     /// Maps Name -> (Type, is_const, span)
-    pub variable_defs: BTreeMap<String, (Type, bool, Span)>,
+    pub variable_defs: BTreeMap<String, (TypeId, bool, Span)>,
     pub constant_defs: RefCell<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
@@ -400,7 +396,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
                 .get(name)
                 .map(|(typ, is_const, span)| NamedThing::Variable {
                     name: name.to_string(),
-                    typ: Ok(typ.clone()),
+                    typ: Ok(*typ),
                     is_const: *is_const,
                     span: *span,
                 })
@@ -469,10 +465,6 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.add_call(node, call_type)
     }
 
-    fn add_string(&self, str_lit: ast::SmolStr) {
-        self.root.add_string(str_lit)
-    }
-
     fn is_in_function(&self) -> bool {
         true
     }
@@ -489,7 +481,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.diagnostics.borrow_mut().push(diag)
     }
 
-    fn get_context_type(&self) -> Option<Struct> {
+    fn get_context_type(&self) -> Option<TypeId> {
         self.root.get_context_type()
     }
 }
@@ -519,7 +511,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     pub fn add_var(
         &mut self,
         name: &str,
-        typ: Type,
+        typ: TypeId,
         is_const: bool,
         span: Span,
     ) -> Result<(), AlreadyDefined> {

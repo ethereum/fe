@@ -16,43 +16,7 @@ note:
 5 │ │         a += b
 6 │ │         return a
 7 │ │     }
-  │ ╰─────^ attributes hash: 14373109651426912995
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "a",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "b",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
   ┌─ aug_assign.fe:5:9
@@ -71,43 +35,7 @@ note:
 10 │ │         a -= b
 11 │ │         return a
 12 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:10:9
@@ -126,43 +54,7 @@ note:
 15 │ │         a *= b
 16 │ │         return a
 17 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:15:9
@@ -181,43 +73,7 @@ note:
 20 │ │         a /= b
 21 │ │         return a
 22 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:20:9
@@ -236,43 +92,7 @@ note:
 25 │ │         a %= b
 26 │ │         return a
 27 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:25:9
@@ -291,43 +111,7 @@ note:
 30 │ │         a **= b
 31 │ │         return a
 32 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:30:9
@@ -346,43 +130,7 @@ note:
 35 │ │         a <<= b
 36 │ │         return a
 37 │ │     }
-   │ ╰─────^ attributes hash: 3365128954177167387
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
 
 note: 
    ┌─ aug_assign.fe:35:9
@@ -401,43 +149,7 @@ note:
 40 │ │         a >>= b
 41 │ │         return a
 42 │ │     }
-   │ ╰─────^ attributes hash: 3365128954177167387
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
 
 note: 
    ┌─ aug_assign.fe:40:9
@@ -456,43 +168,7 @@ note:
 45 │ │         a |= b
 46 │ │         return a
 47 │ │     }
-   │ ╰─────^ attributes hash: 3365128954177167387
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
 
 note: 
    ┌─ aug_assign.fe:45:9
@@ -511,43 +187,7 @@ note:
 50 │ │         a ^= b
 51 │ │         return a
 52 │ │     }
-   │ ╰─────^ attributes hash: 3365128954177167387
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
 
 note: 
    ┌─ aug_assign.fe:50:9
@@ -566,43 +206,7 @@ note:
 55 │ │         a &= b
 56 │ │         return a
 57 │ │     }
-   │ ╰─────^ attributes hash: 3365128954177167387
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
 
 note: 
    ┌─ aug_assign.fe:55:9
@@ -622,45 +226,7 @@ note:
 61 │ │         self.my_num += b
 62 │ │         return self.my_num
 63 │ │     }
-   │ ╰─────^ attributes hash: 3506345928150766050
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:60:9
@@ -703,43 +269,7 @@ note:
 68 │ │         my_array[7] += b
 69 │ │         return my_array[7]
 70 │ │     }
-   │ ╰─────^ attributes hash: 14373109651426912995
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
    ┌─ aug_assign.fe:66:13

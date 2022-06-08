@@ -17,41 +17,7 @@ note:
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256 {
 6 │ │         return self.bar[a][b]
 7 │ │     }
-  │ ╰─────^ attributes hash: 17216960098647945084
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "a",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "b",
-                typ: Ok(
-                    Base(
-                        Address,
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: address }] -> u256
 
 note: 
   ┌─ nested_map.fe:6:16
@@ -87,50 +53,7 @@ note:
  9 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256) {
 10 │ │         self.bar[a][b] = value
 11 │ │     }
-   │ ╰─────^ attributes hash: 1717293224155577849
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ nested_map.fe:10:9
@@ -168,41 +91,7 @@ note:
 13 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool {
 14 │ │         return self.baz[a][b]
 15 │ │     }
-   │ ╰─────^ attributes hash: 13548986453815092160
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }] -> bool
 
 note: 
    ┌─ nested_map.fe:14:16
@@ -238,50 +127,7 @@ note:
 17 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool) {
 18 │ │         self.baz[a][b] = value
 19 │ │     }
-   │ ╰─────^ attributes hash: 6442389777288668179
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Bool,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }, { label: None, name: value, typ: bool }] -> ()
 
 note: 
    ┌─ nested_map.fe:18:9

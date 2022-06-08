@@ -7,7 +7,7 @@ use crate::namespace::items::{
     StructId, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, Contract, Struct, Type};
+use crate::namespace::types::{Type, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 use fe_parser::ast;
@@ -15,14 +15,6 @@ use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
 use std::rc::Rc;
 use std::str::FromStr;
-
-pub fn struct_type(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<types::Struct> {
-    Rc::new(types::Struct {
-        name: struct_.name(db),
-        id: struct_,
-        field_count: struct_.fields(db).len(),
-    })
-}
 
 pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[StructFieldId]> {
     struct_
@@ -72,7 +64,7 @@ pub fn struct_field_map(
 pub fn struct_field_type(
     db: &dyn AnalyzerDb,
     field: StructFieldId,
-) -> Analysis<Result<Type, TypeError>> {
+) -> Analysis<Result<TypeId, TypeError>> {
     let field_data = field.data(db);
 
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
@@ -92,15 +84,15 @@ pub fn struct_field_type(
         scope.not_yet_implemented("struct field initial value assignment", field_data.ast.span);
     }
     let typ = match type_desc(&mut scope, typ) {
-        Ok(typ) => match typ {
-            Type::Contract(contract) => {
+        Ok(typ) => match typ.typ(db) {
+            Type::Contract(_) => {
                 scope.not_yet_implemented(
                     "contract types aren't yet supported as struct fields",
                     field_data.ast.span,
                 );
-                Ok(Type::Contract(contract))
+                Ok(typ)
             }
-            typ if typ.has_fixed_size() => Ok(typ),
+            t if t.has_fixed_size() => Ok(typ),
             _ => Err(TypeError::new(scope.error(
                 "struct field type must have a fixed size",
                 field_data.ast.span,
@@ -199,16 +191,14 @@ pub fn struct_dependency_graph(
     let fields = struct_
         .fields(db)
         .values()
-        .filter_map(|field| match field.typ(db).ok()? {
-            Type::Contract(Contract { id, .. }) => Some((
+        .filter_map(|field| match field.typ(db).ok()?.typ(db) {
+            Type::Contract(id) => Some((
                 root,
                 Item::Type(TypeDef::Contract(id)),
                 DepLocality::External,
             )),
             // Not possible yet, but it will be soon
-            Type::Struct(Struct { id, .. }) => {
-                Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local))
-            }
+            Type::Struct(id) => Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local)),
             _ => None,
         })
         .collect::<Vec<_>>();

@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ abi_decode_complex.fe:2:5
@@ -8,34 +9,7 @@ note:
 2 │ ╭     pub fn decode_static_complex(s: StaticComplex) -> StaticComplex {
 3 │ │         return s
 4 │ │     }
-  │ ╰─────^ attributes hash: 13546101684275548970
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "s",
-                typ: Ok(
-                    Struct(
-                        Struct {
-                            name: "StaticComplex",
-                            field_count: 2,
-                        },
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Struct(
-                Struct {
-                    name: "StaticComplex",
-                    field_count: 2,
-                },
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StaticComplex }] -> StaticComplex
 
 note: 
   ┌─ abi_decode_complex.fe:3:16
@@ -49,34 +23,7 @@ note:
 6 │ ╭     pub fn decode_string_complex(s: StringComplex) -> StringComplex {
 7 │ │         return s
 8 │ │     }
-  │ ╰─────^ attributes hash: 9213499526282989909
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "s",
-                typ: Ok(
-                    Struct(
-                        Struct {
-                            name: "StringComplex",
-                            field_count: 2,
-                        },
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Struct(
-                Struct {
-                    name: "StringComplex",
-                    field_count: 2,
-                },
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StringComplex }] -> StringComplex
 
 note: 
   ┌─ abi_decode_complex.fe:7:16
@@ -90,34 +37,7 @@ note:
 10 │ ╭     pub fn decode_bytes_complex(s: BytesComplex) -> BytesComplex {
 11 │ │         return s
 12 │ │     }
-   │ ╰─────^ attributes hash: 9262156959297131687
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "s",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "BytesComplex",
-                             field_count: 2,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "BytesComplex",
-                     field_count: 2,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: BytesComplex }] -> BytesComplex
 
 note: 
    ┌─ abi_decode_complex.fe:11:16
@@ -131,34 +51,7 @@ note:
 14 │ ╭     pub fn decode_nested_dynamic_complex(s: NestedDynamicComplex) -> NestedDynamicComplex {
 15 │ │         return s
 16 │ │     }
-   │ ╰─────^ attributes hash: 3503331736540589795
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "s",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "NestedDynamicComplex",
-                             field_count: 3,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "NestedDynamicComplex",
-                     field_count: 3,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: NestedDynamicComplex }] -> NestedDynamicComplex
 
 note: 
    ┌─ abi_decode_complex.fe:15:16
@@ -172,44 +65,7 @@ note:
 18 │ ╭     pub fn decode_static_complex_elem_array(arr: Array<StaticComplex, 3>) -> Array<StaticComplex, 3> {
 19 │ │         return arr
 20 │ │     }
-   │ ╰─────^ attributes hash: 14814063204670221852
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "arr",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 3,
-                             inner: Struct(
-                                 Struct {
-                                     name: "StaticComplex",
-                                     field_count: 2,
-                                 },
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 3,
-                     inner: Struct(
-                         Struct {
-                             name: "StaticComplex",
-                             field_count: 2,
-                         },
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<StaticComplex, 3> }] -> Array<StaticComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:19:16
@@ -223,44 +79,7 @@ note:
 22 │ ╭     pub fn decode_dynamic_complex_elem_array(arr: Array<NestedDynamicComplex, 3>) -> Array<NestedDynamicComplex, 3> {
 23 │ │         return arr
 24 │ │     }
-   │ ╰─────^ attributes hash: 26751994078138639
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "arr",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 3,
-                             inner: Struct(
-                                 Struct {
-                                     name: "NestedDynamicComplex",
-                                     field_count: 3,
-                                 },
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 3,
-                     inner: Struct(
-                         Struct {
-                             name: "NestedDynamicComplex",
-                             field_count: 3,
-                         },
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<NestedDynamicComplex, 3> }] -> Array<NestedDynamicComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:23:16

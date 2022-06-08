@@ -9,41 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: i256, y: i256) -> bool {
 3 │ │         return x > y
 4 │ │     }
-  │ ╰─────^ attributes hash: 7978284628773169348
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            I256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            I256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Bool,
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i256 }, { label: None, name: y, typ: i256 }] -> bool
 
 note: 
   ┌─ return_gt_i256.fe:3:16

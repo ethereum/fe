@@ -14,7 +14,7 @@ use crate::{
     lower::types::{lower_event_type, lower_type},
 };
 
-pub fn mir_lowered_type(db: &dyn MirDb, analyzer_type: analyzer_types::Type) -> TypeId {
+pub fn mir_lowered_type(db: &dyn MirDb, analyzer_type: analyzer_types::TypeId) -> TypeId {
     lower_type(db, &analyzer_type)
 }
 
@@ -27,8 +27,8 @@ impl TypeId {
         db.lookup_mir_intern_type(self)
     }
 
-    pub fn analyzer_ty(self, db: &dyn MirDb) -> Option<analyzer_types::Type> {
-        self.data(db).analyzer_ty.clone()
+    pub fn analyzer_ty(self, db: &dyn MirDb) -> Option<analyzer_types::TypeId> {
+        self.data(db).analyzer_ty
     }
 
     pub fn projection_ty(self, db: &dyn MirDb, access: &Value) -> TypeId {
@@ -168,13 +168,6 @@ impl TypeId {
                 | TypeKind::I64
                 | TypeKind::I128
                 | TypeKind::I256
-        )
-    }
-
-    pub fn is_fe_string(self, db: &dyn MirDb) -> bool {
-        matches!(
-            &self.data(db).analyzer_ty,
-            Some(analyzer_types::Type::String(_))
         )
     }
 

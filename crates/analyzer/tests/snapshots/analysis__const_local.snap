@@ -13,20 +13,7 @@ note:
    · │
 15 │ │         return C10
 16 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
    ┌─ const_local.fe:3:15

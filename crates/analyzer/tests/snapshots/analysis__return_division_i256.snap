@@ -9,43 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: i256, y: i256) -> i256 {
 3 │ │         return x / y
 4 │ │     }
-  │ ╰─────^ attributes hash: 6924216180113238234
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            I256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            I256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    I256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i256 }, { label: None, name: y, typ: i256 }] -> i256
 
 note: 
   ┌─ return_division_i256.fe:3:16

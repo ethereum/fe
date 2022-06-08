@@ -13,32 +13,7 @@ note:
    · │
 14 │ │         return z
 15 │ │     }
-   │ ╰─────^ attributes hash: 12367727332255217641
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "val",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> u256
 
 note: 
   ┌─ math.fe:3:13
@@ -150,43 +125,7 @@ note:
 17 │ ╭     pub fn min(x: u256, y: u256) -> u256 {
 18 │ │         return x if x < y else y
 19 │ │     }
-   │ ╰─────^ attributes hash: 6847926207878778580
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "y",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ math.fe:18:21

@@ -9,20 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> u128 {
 3 │ │         return u128(42)
 4 │ │     }
-  │ ╰─────^ attributes hash: 104322826323649285
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U128,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> u128
 
 note: 
   ┌─ return_u128_cast.fe:3:21

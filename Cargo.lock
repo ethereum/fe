@@ -624,7 +624,6 @@ dependencies = [
  "smallvec",
  "smol_str",
  "strum",
- "vec1",
  "wasm-bindgen-test",
 ]
 

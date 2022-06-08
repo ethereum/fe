@@ -15,34 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u128) -> u128 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ attributes hash: 1939765458140608268
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "key",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U128,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U128,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u128 }] -> u128
 
 note: 
   ┌─ u128_u128_map.fe:5:16
@@ -70,43 +43,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: u128, value: u128) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 9126735252114279653
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "key",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "value",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u128 }, { label: None, name: value, typ: u128 }] -> ()
 
 note: 
   ┌─ u128_u128_map.fe:9:9

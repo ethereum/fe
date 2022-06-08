@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ abi_encoding_stress.fe:4:5
@@ -52,35 +53,7 @@ note:
 27 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 5>) {
 28 │ │         self.my_addrs = my_addrs
 29 │ │     }
-   │ ╰─────^ attributes hash: 6651617854478011991
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 5,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_addrs, typ: Array<address, 5> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:28:9
@@ -102,25 +75,7 @@ note:
 31 │ ╭     pub fn get_my_addrs(self) -> Array<address, 5> {
 32 │ │         return self.my_addrs.to_mem()
 33 │ │     }
-   │ ╰─────^ attributes hash: 3503941160400696207
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 5,
-                     inner: Base(
-                         Address,
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<address, 5>
 
 note: 
    ┌─ abi_encoding_stress.fe:32:16
@@ -146,32 +101,7 @@ note:
 35 │ ╭     pub fn set_my_u128(self, my_u128: u128) {
 36 │ │         self.my_u128 = my_u128
 37 │ │     }
-   │ ╰─────^ attributes hash: 15199964699853061770
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_u128",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_u128, typ: u128 }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:36:9
@@ -193,22 +123,7 @@ note:
 39 │ ╭     pub fn get_my_u128(self) -> u128 {
 40 │ │         return self.my_u128
 41 │ │     }
-   │ ╰─────^ attributes hash: 15343208064821852867
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U128,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:40:16
@@ -228,32 +143,7 @@ note:
 43 │ ╭     pub fn set_my_string(self, my_string: String<10>) {
 44 │ │         self.my_string = my_string
 45 │ │     }
-   │ ╰─────^ attributes hash: 241116312146617781
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 10,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_string, typ: String<10> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:44:9
@@ -275,22 +165,7 @@ note:
 47 │ ╭     pub fn get_my_string(self) -> String<10> {
 48 │ │         return self.my_string.to_mem()
 49 │ │     }
-   │ ╰─────^ attributes hash: 1556448784000816371
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 10,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> String<10>
 
 note: 
    ┌─ abi_encoding_stress.fe:48:16
@@ -316,37 +191,7 @@ note:
 51 │ ╭     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>) {
 52 │ │         self.my_u16s = my_u16s
 53 │ │     }
-   │ ╰─────^ attributes hash: 15373408821262001670
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_u16s",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 255,
-                             inner: Base(
-                                 Numeric(
-                                     U16,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_u16s, typ: Array<u16, 255> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:52:9
@@ -368,27 +213,7 @@ note:
 55 │ ╭     pub fn get_my_u16s(self) -> Array<u16, 255> {
 56 │ │         return self.my_u16s.to_mem()
 57 │ │     }
-   │ ╰─────^ attributes hash: 7191948642218091354
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 255,
-                     inner: Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u16, 255>
 
 note: 
    ┌─ abi_encoding_stress.fe:56:16
@@ -414,30 +239,7 @@ note:
 59 │ ╭     pub fn set_my_bool(self, my_bool: bool) {
 60 │ │         self.my_bool = my_bool
 61 │ │     }
-   │ ╰─────^ attributes hash: 3845928701529339179
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_bool",
-                 typ: Ok(
-                     Base(
-                         Bool,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_bool, typ: bool }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:60:9
@@ -459,20 +261,7 @@ note:
 63 │ ╭     pub fn get_my_bool(self) -> bool {
 64 │ │         return self.my_bool
 65 │ │     }
-   │ ╰─────^ attributes hash: 2163156009319630199
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:64:16
@@ -492,37 +281,7 @@ note:
 67 │ ╭     pub fn set_my_bytes(self, my_bytes: Array<u8, 100>) {
 68 │ │         self.my_bytes = my_bytes
 69 │ │     }
-   │ ╰─────^ attributes hash: 12615116636431196289
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_bytes",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 100,
-                             inner: Base(
-                                 Numeric(
-                                     U8,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:68:9
@@ -544,27 +303,7 @@ note:
 71 │ ╭     pub fn get_my_bytes(self) -> Array<u8, 100> {
 72 │ │         return self.my_bytes.to_mem()
 73 │ │     }
-   │ ╰─────^ attributes hash: 1930284060814414607
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 100,
-                     inner: Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:72:16
@@ -590,21 +329,7 @@ note:
 75 │ ╭     pub fn get_my_struct() -> MyStruct {
 76 │ │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
 77 │ │     }
-   │ ╰─────^ attributes hash: 16166951200114277325
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "MyStruct",
-                     field_count: 4,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:76:33
@@ -645,34 +370,7 @@ note:
 83 │ │         my_struct.my_addr = address(9999)
 84 │ │         return my_struct
 85 │ │     }
-   │ ╰─────^ attributes hash: 11747697140833990696
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "my_struct",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "MyStruct",
-                             field_count: 4,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "MyStruct",
-                     field_count: 4,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: my_struct, typ: MyStruct }] -> MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:80:9
@@ -738,35 +436,7 @@ note:
 87 │ ╭     pub fn emit_my_event(self, ctx: Context) {
 88 │ │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
 89 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:88:22
@@ -845,94 +515,5 @@ note:
    │
 88 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
    │                                                                                                                                                                                         ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
-
-note: 
-   ┌─ abi_encoding_stress.fe:88:9
-   │
-88 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6413258942580560070
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 5,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_u128",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 10,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_u16s",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 255,
-                             inner: Base(
-                                 Numeric(
-                                     U16,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_bool",
-                 typ: Ok(
-                     Base(
-                         Bool,
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_bytes",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 100,
-                             inner: Base(
-                                 Numeric(
-                                     U8,
-                                 ),
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 

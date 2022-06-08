@@ -9,22 +9,7 @@ note:
 2 │ ╭     pub fn bar(self) -> u256 {
 3 │ │         return foo()
 4 │ │     }
-  │ ╰─────^ attributes hash: 11773348765973600208
-  │  
-  = FunctionSignature {
-        self_decl: Some(
-            Mutable,
-        ),
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn.fe:3:16
@@ -38,20 +23,7 @@ note:
 6 │ ╭     pub fn foo() -> u256 {
 7 │ │         return 42
 8 │ │     }
-  │ ╰─────^ attributes hash: 6115314201970082834
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn.fe:7:16

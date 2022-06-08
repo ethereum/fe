@@ -9,32 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: u16) -> u16 {
 3 │ │         return x
 4 │ │     }
-  │ ╰─────^ attributes hash: 12880247899747575992
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U16,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U16,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u16 }] -> u16
 
 note: 
   ┌─ return_identity_u16.fe:3:16

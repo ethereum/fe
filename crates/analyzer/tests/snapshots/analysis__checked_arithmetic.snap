@@ -9,43 +9,7 @@ note:
 2 │ ╭     pub fn add_u256(left: u256, right: u256) -> u256 {
 3 │ │         return left + right
 4 │ │     }
-  │ ╰─────^ attributes hash: 8877497213208027149
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "left",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "right",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
   ┌─ checked_arithmetic.fe:3:16
@@ -67,43 +31,7 @@ note:
 6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128 {
 7 │ │         return left + right
 8 │ │     }
-  │ ╰─────^ attributes hash: 11187416061572591496
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "left",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U128,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "right",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U128,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U128,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
   ┌─ checked_arithmetic.fe:7:16
@@ -125,43 +53,7 @@ note:
 10 │ ╭     pub fn add_u64(left: u64, right: u64) -> u64 {
 11 │ │         return left + right
 12 │ │     }
-   │ ╰─────^ attributes hash: 9316585824156398552
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
    ┌─ checked_arithmetic.fe:11:16
@@ -183,43 +75,7 @@ note:
 14 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32 {
 15 │ │         return left + right
 16 │ │     }
-   │ ╰─────^ attributes hash: 6948562809403003686
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
    ┌─ checked_arithmetic.fe:15:16
@@ -241,43 +97,7 @@ note:
 18 │ ╭     pub fn add_u16(left: u16, right: u16) -> u16 {
 19 │ │         return left + right
 20 │ │     }
-   │ ╰─────^ attributes hash: 4214429573900255413
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U16,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
    ┌─ checked_arithmetic.fe:19:16
@@ -299,43 +119,7 @@ note:
 22 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8 {
 23 │ │         return left + right
 24 │ │     }
-   │ ╰─────^ attributes hash: 3749617961046563034
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
    ┌─ checked_arithmetic.fe:23:16
@@ -357,43 +141,7 @@ note:
 26 │ ╭     pub fn add_i256(left: i256, right: i256) -> i256 {
 27 │ │         return left + right
 28 │ │     }
-   │ ╰─────^ attributes hash: 17908204859155721295
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: i256 }] -> i256
 
 note: 
    ┌─ checked_arithmetic.fe:27:16
@@ -415,43 +163,7 @@ note:
 30 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128 {
 31 │ │         return left + right
 32 │ │     }
-   │ ╰─────^ attributes hash: 1332431709112937827
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I128,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: i128 }] -> i128
 
 note: 
    ┌─ checked_arithmetic.fe:31:16
@@ -473,43 +185,7 @@ note:
 34 │ ╭     pub fn add_i64(left: i64, right: i64) -> i64 {
 35 │ │         return left + right
 36 │ │     }
-   │ ╰─────^ attributes hash: 3549113083347694903
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: i64 }] -> i64
 
 note: 
    ┌─ checked_arithmetic.fe:35:16
@@ -531,43 +207,7 @@ note:
 38 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32 {
 39 │ │         return left + right
 40 │ │     }
-   │ ╰─────^ attributes hash: 15117649447142800500
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: i32 }] -> i32
 
 note: 
    ┌─ checked_arithmetic.fe:39:16
@@ -589,43 +229,7 @@ note:
 42 │ ╭     pub fn add_i16(left: i16, right: i16) -> i16 {
 43 │ │         return left + right
 44 │ │     }
-   │ ╰─────^ attributes hash: 16520261699954225452
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I16,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: i16 }] -> i16
 
 note: 
    ┌─ checked_arithmetic.fe:43:16
@@ -647,43 +251,7 @@ note:
 46 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8 {
 47 │ │         return left + right
 48 │ │     }
-   │ ╰─────^ attributes hash: 2984879578165475690
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: i8 }] -> i8
 
 note: 
    ┌─ checked_arithmetic.fe:47:16
@@ -705,43 +273,7 @@ note:
 50 │ ╭     pub fn sub_u256(left: u256, right: u256) -> u256 {
 51 │ │         return left - right
 52 │ │     }
-   │ ╰─────^ attributes hash: 8877497213208027149
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
    ┌─ checked_arithmetic.fe:51:16
@@ -763,43 +295,7 @@ note:
 54 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128 {
 55 │ │         return left - right
 56 │ │     }
-   │ ╰─────^ attributes hash: 11187416061572591496
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U128,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
    ┌─ checked_arithmetic.fe:55:16
@@ -821,43 +317,7 @@ note:
 58 │ ╭     pub fn sub_u64(left: u64, right: u64) -> u64 {
 59 │ │         return left - right
 60 │ │     }
-   │ ╰─────^ attributes hash: 9316585824156398552
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
    ┌─ checked_arithmetic.fe:59:16
@@ -879,43 +339,7 @@ note:
 62 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32 {
 63 │ │         return left - right
 64 │ │     }
-   │ ╰─────^ attributes hash: 6948562809403003686
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
    ┌─ checked_arithmetic.fe:63:16
@@ -937,43 +361,7 @@ note:
 66 │ ╭     pub fn sub_u16(left: u16, right: u16) -> u16 {
 67 │ │         return left - right
 68 │ │     }
-   │ ╰─────^ attributes hash: 4214429573900255413
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U16,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
    ┌─ checked_arithmetic.fe:67:16
@@ -995,43 +383,7 @@ note:
 70 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8 {
 71 │ │         return left - right
 72 │ │     }
-   │ ╰─────^ attributes hash: 3749617961046563034
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
    ┌─ checked_arithmetic.fe:71:16
@@ -1053,43 +405,7 @@ note:
 74 │ ╭     pub fn sub_i256(left: i256, right: i256) -> i256 {
 75 │ │         return left - right
 76 │ │     }
-   │ ╰─────^ attributes hash: 17908204859155721295
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: i256 }] -> i256
 
 note: 
    ┌─ checked_arithmetic.fe:75:16
@@ -1111,43 +427,7 @@ note:
 78 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128 {
 79 │ │         return left - right
 80 │ │     }
-   │ ╰─────^ attributes hash: 1332431709112937827
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I128,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I128,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: i128 }] -> i128
 
 note: 
    ┌─ checked_arithmetic.fe:79:16
@@ -1169,43 +449,7 @@ note:
 82 │ ╭     pub fn sub_i64(left: i64, right: i64) -> i64 {
 83 │ │         return left - right
 84 │ │     }
-   │ ╰─────^ attributes hash: 3549113083347694903
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I64,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I64,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: i64 }] -> i64
 
 note: 
    ┌─ checked_arithmetic.fe:83:16
@@ -1227,43 +471,7 @@ note:
 86 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32 {
 87 │ │         return left - right
 88 │ │     }
-   │ ╰─────^ attributes hash: 15117649447142800500
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: i32 }] -> i32
 
 note: 
    ┌─ checked_arithmetic.fe:87:16
@@ -1285,43 +493,7 @@ note:
 90 │ ╭     pub fn sub_i16(left: i16, right: i16) -> i16 {
 91 │ │         return left - right
 92 │ │     }
-   │ ╰─────^ attributes hash: 16520261699954225452
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I16,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I16,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: i16 }] -> i16
 
 note: 
    ┌─ checked_arithmetic.fe:91:16
@@ -1343,43 +515,7 @@ note:
 94 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8 {
 95 │ │         return left - right
 96 │ │     }
-   │ ╰─────^ attributes hash: 2984879578165475690
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "left",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "right",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             I8,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I8,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: i8 }] -> i8
 
 note: 
    ┌─ checked_arithmetic.fe:95:16
@@ -1401,43 +537,7 @@ note:
  98 │ ╭     pub fn div_u256(left: u256, right: u256) -> u256 {
  99 │ │         return left / right
 100 │ │     }
-    │ ╰─────^ attributes hash: 8877497213208027149
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
    ┌─ checked_arithmetic.fe:99:16
@@ -1459,43 +559,7 @@ note:
 102 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128 {
 103 │ │         return left / right
 104 │ │     }
-    │ ╰─────^ attributes hash: 11187416061572591496
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
     ┌─ checked_arithmetic.fe:103:16
@@ -1517,43 +581,7 @@ note:
 106 │ ╭     pub fn div_u64(left: u64, right: u64) -> u64 {
 107 │ │         return left / right
 108 │ │     }
-    │ ╰─────^ attributes hash: 9316585824156398552
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
     ┌─ checked_arithmetic.fe:107:16
@@ -1575,43 +603,7 @@ note:
 110 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32 {
 111 │ │         return left / right
 112 │ │     }
-    │ ╰─────^ attributes hash: 6948562809403003686
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
     ┌─ checked_arithmetic.fe:111:16
@@ -1633,43 +625,7 @@ note:
 114 │ ╭     pub fn div_u16(left: u16, right: u16) -> u16 {
 115 │ │         return left / right
 116 │ │     }
-    │ ╰─────^ attributes hash: 4214429573900255413
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
     ┌─ checked_arithmetic.fe:115:16
@@ -1691,43 +647,7 @@ note:
 118 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8 {
 119 │ │         return left / right
 120 │ │     }
-    │ ╰─────^ attributes hash: 3749617961046563034
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
     ┌─ checked_arithmetic.fe:119:16
@@ -1749,43 +669,7 @@ note:
 122 │ ╭     pub fn div_i256(left: i256, right: i256) -> i256 {
 123 │ │         return left / right
 124 │ │     }
-    │ ╰─────^ attributes hash: 17908204859155721295
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: i256 }] -> i256
 
 note: 
     ┌─ checked_arithmetic.fe:123:16
@@ -1807,43 +691,7 @@ note:
 126 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128 {
 127 │ │         return left / right
 128 │ │     }
-    │ ╰─────^ attributes hash: 1332431709112937827
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: i128 }] -> i128
 
 note: 
     ┌─ checked_arithmetic.fe:127:16
@@ -1865,43 +713,7 @@ note:
 130 │ ╭     pub fn div_i64(left: i64, right: i64) -> i64 {
 131 │ │         return left / right
 132 │ │     }
-    │ ╰─────^ attributes hash: 3549113083347694903
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: i64 }] -> i64
 
 note: 
     ┌─ checked_arithmetic.fe:131:16
@@ -1923,43 +735,7 @@ note:
 134 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32 {
 135 │ │         return left / right
 136 │ │     }
-    │ ╰─────^ attributes hash: 15117649447142800500
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: i32 }] -> i32
 
 note: 
     ┌─ checked_arithmetic.fe:135:16
@@ -1981,43 +757,7 @@ note:
 138 │ ╭     pub fn div_i16(left: i16, right: i16) -> i16 {
 139 │ │         return left / right
 140 │ │     }
-    │ ╰─────^ attributes hash: 16520261699954225452
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: i16 }] -> i16
 
 note: 
     ┌─ checked_arithmetic.fe:139:16
@@ -2039,43 +779,7 @@ note:
 142 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8 {
 143 │ │         return left / right
 144 │ │     }
-    │ ╰─────^ attributes hash: 2984879578165475690
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: i8 }] -> i8
 
 note: 
     ┌─ checked_arithmetic.fe:143:16
@@ -2097,43 +801,7 @@ note:
 146 │ ╭     pub fn mul_u256(left: u256, right: u256) -> u256 {
 147 │ │         return left * right
 148 │ │     }
-    │ ╰─────^ attributes hash: 8877497213208027149
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
     ┌─ checked_arithmetic.fe:147:16
@@ -2155,43 +823,7 @@ note:
 150 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128 {
 151 │ │         return left * right
 152 │ │     }
-    │ ╰─────^ attributes hash: 11187416061572591496
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
     ┌─ checked_arithmetic.fe:151:16
@@ -2213,43 +845,7 @@ note:
 154 │ ╭     pub fn mul_u64(left: u64, right: u64) -> u64 {
 155 │ │         return left * right
 156 │ │     }
-    │ ╰─────^ attributes hash: 9316585824156398552
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
     ┌─ checked_arithmetic.fe:155:16
@@ -2271,43 +867,7 @@ note:
 158 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32 {
 159 │ │         return left * right
 160 │ │     }
-    │ ╰─────^ attributes hash: 6948562809403003686
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
     ┌─ checked_arithmetic.fe:159:16
@@ -2329,43 +889,7 @@ note:
 162 │ ╭     pub fn mul_u16(left: u16, right: u16) -> u16 {
 163 │ │         return left * right
 164 │ │     }
-    │ ╰─────^ attributes hash: 4214429573900255413
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
     ┌─ checked_arithmetic.fe:163:16
@@ -2387,43 +911,7 @@ note:
 166 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8 {
 167 │ │         return left * right
 168 │ │     }
-    │ ╰─────^ attributes hash: 3749617961046563034
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
     ┌─ checked_arithmetic.fe:167:16
@@ -2445,43 +933,7 @@ note:
 170 │ ╭     pub fn mul_i256(left: i256, right: i256) -> i256 {
 171 │ │         return left * right
 172 │ │     }
-    │ ╰─────^ attributes hash: 17908204859155721295
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: i256 }] -> i256
 
 note: 
     ┌─ checked_arithmetic.fe:171:16
@@ -2503,43 +955,7 @@ note:
 174 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128 {
 175 │ │         return left * right
 176 │ │     }
-    │ ╰─────^ attributes hash: 1332431709112937827
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: i128 }] -> i128
 
 note: 
     ┌─ checked_arithmetic.fe:175:16
@@ -2561,43 +977,7 @@ note:
 178 │ ╭     pub fn mul_i64(left: i64, right: i64) -> i64 {
 179 │ │         return left * right
 180 │ │     }
-    │ ╰─────^ attributes hash: 3549113083347694903
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: i64 }] -> i64
 
 note: 
     ┌─ checked_arithmetic.fe:179:16
@@ -2619,43 +999,7 @@ note:
 182 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32 {
 183 │ │         return left * right
 184 │ │     }
-    │ ╰─────^ attributes hash: 15117649447142800500
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: i32 }] -> i32
 
 note: 
     ┌─ checked_arithmetic.fe:183:16
@@ -2677,43 +1021,7 @@ note:
 186 │ ╭     pub fn mul_i16(left: i16, right: i16) -> i16 {
 187 │ │         return left * right
 188 │ │     }
-    │ ╰─────^ attributes hash: 16520261699954225452
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: i16 }] -> i16
 
 note: 
     ┌─ checked_arithmetic.fe:187:16
@@ -2735,43 +1043,7 @@ note:
 190 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8 {
 191 │ │         return left * right
 192 │ │     }
-    │ ╰─────^ attributes hash: 2984879578165475690
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: i8 }] -> i8
 
 note: 
     ┌─ checked_arithmetic.fe:191:16
@@ -2793,43 +1065,7 @@ note:
 194 │ ╭     pub fn mod_u256(left: u256, right: u256) -> u256 {
 195 │ │         return left % right
 196 │ │     }
-    │ ╰─────^ attributes hash: 8877497213208027149
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
     ┌─ checked_arithmetic.fe:195:16
@@ -2851,43 +1087,7 @@ note:
 198 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128 {
 199 │ │         return left % right
 200 │ │     }
-    │ ╰─────^ attributes hash: 11187416061572591496
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
     ┌─ checked_arithmetic.fe:199:16
@@ -2909,43 +1109,7 @@ note:
 202 │ ╭     pub fn mod_u64(left: u64, right: u64) -> u64 {
 203 │ │         return left % right
 204 │ │     }
-    │ ╰─────^ attributes hash: 9316585824156398552
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
     ┌─ checked_arithmetic.fe:203:16
@@ -2967,43 +1131,7 @@ note:
 206 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32 {
 207 │ │         return left % right
 208 │ │     }
-    │ ╰─────^ attributes hash: 6948562809403003686
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
     ┌─ checked_arithmetic.fe:207:16
@@ -3025,43 +1153,7 @@ note:
 210 │ ╭     pub fn mod_u16(left: u16, right: u16) -> u16 {
 211 │ │         return left % right
 212 │ │     }
-    │ ╰─────^ attributes hash: 4214429573900255413
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
     ┌─ checked_arithmetic.fe:211:16
@@ -3083,43 +1175,7 @@ note:
 214 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8 {
 215 │ │         return left % right
 216 │ │     }
-    │ ╰─────^ attributes hash: 3749617961046563034
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
     ┌─ checked_arithmetic.fe:215:16
@@ -3141,43 +1197,7 @@ note:
 218 │ ╭     pub fn mod_i256(left: i256, right: i256) -> i256 {
 219 │ │         return left % right
 220 │ │     }
-    │ ╰─────^ attributes hash: 17908204859155721295
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: i256 }] -> i256
 
 note: 
     ┌─ checked_arithmetic.fe:219:16
@@ -3199,43 +1219,7 @@ note:
 222 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128 {
 223 │ │         return left % right
 224 │ │     }
-    │ ╰─────^ attributes hash: 1332431709112937827
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: i128 }] -> i128
 
 note: 
     ┌─ checked_arithmetic.fe:223:16
@@ -3257,43 +1241,7 @@ note:
 226 │ ╭     pub fn mod_i64(left: i64, right: i64) -> i64 {
 227 │ │         return left % right
 228 │ │     }
-    │ ╰─────^ attributes hash: 3549113083347694903
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: i64 }] -> i64
 
 note: 
     ┌─ checked_arithmetic.fe:227:16
@@ -3315,43 +1263,7 @@ note:
 230 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32 {
 231 │ │         return left % right
 232 │ │     }
-    │ ╰─────^ attributes hash: 15117649447142800500
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: i32 }] -> i32
 
 note: 
     ┌─ checked_arithmetic.fe:231:16
@@ -3373,43 +1285,7 @@ note:
 234 │ ╭     pub fn mod_i16(left: i16, right: i16) -> i16 {
 235 │ │         return left % right
 236 │ │     }
-    │ ╰─────^ attributes hash: 16520261699954225452
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: i16 }] -> i16
 
 note: 
     ┌─ checked_arithmetic.fe:235:16
@@ -3431,43 +1307,7 @@ note:
 238 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8 {
 239 │ │         return left % right
 240 │ │     }
-    │ ╰─────^ attributes hash: 2984879578165475690
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: i8 }] -> i8
 
 note: 
     ┌─ checked_arithmetic.fe:239:16
@@ -3489,43 +1329,7 @@ note:
 242 │ ╭     pub fn pow_u256(left: u256, right: u256) -> u256 {
 243 │ │         return left ** right
 244 │ │     }
-    │ ╰─────^ attributes hash: 8877497213208027149
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u256 }, { label: None, name: right, typ: u256 }] -> u256
 
 note: 
     ┌─ checked_arithmetic.fe:243:16
@@ -3547,43 +1351,7 @@ note:
 246 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128 {
 247 │ │         return left ** right
 248 │ │     }
-    │ ╰─────^ attributes hash: 11187416061572591496
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u128 }, { label: None, name: right, typ: u128 }] -> u128
 
 note: 
     ┌─ checked_arithmetic.fe:247:16
@@ -3605,43 +1373,7 @@ note:
 250 │ ╭     pub fn pow_u64(left: u64, right: u64) -> u64 {
 251 │ │         return left ** right
 252 │ │     }
-    │ ╰─────^ attributes hash: 9316585824156398552
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u64 }, { label: None, name: right, typ: u64 }] -> u64
 
 note: 
     ┌─ checked_arithmetic.fe:251:16
@@ -3663,43 +1395,7 @@ note:
 254 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32 {
 255 │ │         return left ** right
 256 │ │     }
-    │ ╰─────^ attributes hash: 6948562809403003686
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u32 }, { label: None, name: right, typ: u32 }] -> u32
 
 note: 
     ┌─ checked_arithmetic.fe:255:16
@@ -3721,43 +1417,7 @@ note:
 258 │ ╭     pub fn pow_u16(left: u16, right: u16) -> u16 {
 259 │ │         return left ** right
 260 │ │     }
-    │ ╰─────^ attributes hash: 4214429573900255413
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u16 }, { label: None, name: right, typ: u16 }] -> u16
 
 note: 
     ┌─ checked_arithmetic.fe:259:16
@@ -3779,43 +1439,7 @@ note:
 262 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8 {
 263 │ │         return left ** right
 264 │ │     }
-    │ ╰─────^ attributes hash: 3749617961046563034
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      U8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: u8 }, { label: None, name: right, typ: u8 }] -> u8
 
 note: 
     ┌─ checked_arithmetic.fe:263:16
@@ -3837,43 +1461,7 @@ note:
 266 │ ╭     pub fn pow_i256(left: i256, right: u256) -> i256 {
 267 │ │         return left ** right
 268 │ │     }
-    │ ╰─────^ attributes hash: 10218838230504849711
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I256,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I256,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i256 }, { label: None, name: right, typ: u256 }] -> i256
 
 note: 
     ┌─ checked_arithmetic.fe:267:16
@@ -3895,43 +1483,7 @@ note:
 270 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128 {
 271 │ │         return left ** right
 272 │ │     }
-    │ ╰─────^ attributes hash: 8492300797170107874
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I128,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U128,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I128,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i128 }, { label: None, name: right, typ: u128 }] -> i128
 
 note: 
     ┌─ checked_arithmetic.fe:271:16
@@ -3953,43 +1505,7 @@ note:
 274 │ ╭     pub fn pow_i64(left: i64, right: u64) -> i64 {
 275 │ │         return left ** right
 276 │ │     }
-    │ ╰─────^ attributes hash: 8175269888119534907
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I64,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U64,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I64,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i64 }, { label: None, name: right, typ: u64 }] -> i64
 
 note: 
     ┌─ checked_arithmetic.fe:275:16
@@ -4011,43 +1527,7 @@ note:
 278 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32 {
 279 │ │         return left ** right
 280 │ │     }
-    │ ╰─────^ attributes hash: 9388330002377862662
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I32,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U32,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I32,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i32 }, { label: None, name: right, typ: u32 }] -> i32
 
 note: 
     ┌─ checked_arithmetic.fe:279:16
@@ -4069,43 +1549,7 @@ note:
 282 │ ╭     pub fn pow_i16(left: i16, right: u16) -> i16 {
 283 │ │         return left ** right
 284 │ │     }
-    │ ╰─────^ attributes hash: 8172583117888506116
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I16,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U16,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I16,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i16 }, { label: None, name: right, typ: u16 }] -> i16
 
 note: 
     ┌─ checked_arithmetic.fe:283:16
@@ -4127,43 +1571,7 @@ note:
 286 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8 {
 287 │ │         return left ** right
 288 │ │     }
-    │ ╰─────^ attributes hash: 783967907920544100
-    │  
-    = FunctionSignature {
-          self_decl: None,
-          ctx_decl: None,
-          params: [
-              FunctionParam {
-                  label: None,
-                  name: "left",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              I8,
-                          ),
-                      ),
-                  ),
-              },
-              FunctionParam {
-                  label: None,
-                  name: "right",
-                  typ: Ok(
-                      Base(
-                          Numeric(
-                              U8,
-                          ),
-                      ),
-                  ),
-              },
-          ],
-          return_type: Ok(
-              Base(
-                  Numeric(
-                      I8,
-                  ),
-              ),
-          ),
-      }
+    │ ╰─────^ self: None, params: [{ label: None, name: left, typ: i8 }, { label: None, name: right, typ: u8 }] -> i8
 
 note: 
     ┌─ checked_arithmetic.fe:287:16

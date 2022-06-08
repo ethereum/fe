@@ -54,35 +54,7 @@ note:
    · │
 55 │ │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
 56 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ simple_open_auction.fe:43:12
@@ -249,38 +221,6 @@ note:
    │                                                                         ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:55:9
-   │
-55 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4299305322532183383
-   │
-   = Event {
-         name: "HighestBidIncreased",
-         fields: [
-             EventField {
-                 name: "bidder",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "amount",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ simple_open_auction.fe:58:5
    │  
 58 │ ╭     pub fn withdraw(self, ctx: Context) -> bool {
@@ -290,35 +230,7 @@ note:
    · │
 65 │ │         return true
 66 │ │     }
-   │ ╰─────^ attributes hash: 2616212654540170552
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Bool,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> bool
 
 note: 
    ┌─ simple_open_auction.fe:59:13
@@ -418,35 +330,7 @@ note:
    · │
 78 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
 79 │ │     }
-   │ ╰─────^ attributes hash: 1731341862738941170
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ simple_open_auction.fe:69:12
@@ -540,37 +424,5 @@ note:
    │
 78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-
-note: 
-   ┌─ simple_open_auction.fe:76:9
-   │
-76 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10704971219741987245
-   │
-   = Event {
-         name: "AuctionEnded",
-         fields: [
-             EventField {
-                 name: "winner",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "amount",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 
