@@ -9,6 +9,7 @@ use super::utils::load_files_from_dir;
 const DEFAULT_INGOT_NAME: &str = "main";
 
 #[derive(Args)]
+#[clap(about = "Check/Analytic single file or fe project")]
 pub struct CheckArgs {
     input_path: String,
 }

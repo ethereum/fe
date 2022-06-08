@@ -5,6 +5,7 @@ use std::{fs, path::Path};
 const TEMPLATE_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/src/template/src");
 
 #[derive(Args)]
+#[clap(about = "Init fe project")]
 pub struct InitArgs {
     name: String,
 }

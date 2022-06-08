@@ -23,6 +23,7 @@ enum Emit {
 }
 
 #[derive(Args)]
+#[clap(about = "Compile fe project or single file")]
 pub struct CompileArgs {
     input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
@@ -79,7 +80,7 @@ fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
-    let optimize= compile_arg.optimize.unwrap_or(true);
+    let optimize = compile_arg.optimize.unwrap_or(true);
 
     if !Path::new(input_path).exists() {
         eprintln!("Input directory does not exist: `{}`.", input_path);
