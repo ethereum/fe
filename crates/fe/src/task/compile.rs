@@ -8,6 +8,7 @@ use fe_common::files::SourceFileId;
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
+const DEFAULT_INGOT: &str = "main";
 
 use super::utils::load_files_from_dir;
 
@@ -38,15 +39,15 @@ pub struct CompileArgs {
     mir: bool,
     #[clap(long)]
     overwrite: bool,
-    #[clap(long)]
-    optimize: bool,
+    #[clap(long, takes_value(true))]
+    optimize: Option<bool>,
 }
 
 fn compile_single_file(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
-    let optimize = compile_arg.optimize;
+    let optimize = compile_arg.optimize.unwrap_or(true);
 
     let mut db = fe_driver::Db::default();
     let content = match std::fs::read_to_string(input_path) {
@@ -78,7 +79,7 @@ fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
-    let optimize = compile_arg.optimize;
+    let optimize= compile_arg.optimize.unwrap_or(true);
 
     if !Path::new(input_path).exists() {
         eprintln!("Input directory does not exist: `{}`.", input_path);
@@ -100,7 +101,7 @@ fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     let mut db = fe_driver::Db::default();
     let compiled_module = match fe_driver::compile_ingot(
         &mut db,
-        "main", // TODO: real ingot name
+        DEFAULT_INGOT, // TODO: real ingot name
         &files,
         with_bytecode,
         optimize,
