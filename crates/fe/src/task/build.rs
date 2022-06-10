@@ -23,8 +23,8 @@ enum Emit {
 }
 
 #[derive(Args)]
-#[clap(about = "Compile fe project or single file")]
-pub struct CompileArgs {
+#[clap(about = "Build the current project")]
+pub struct BuildArgs {
     input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
     output_dir: String,
@@ -44,7 +44,7 @@ pub struct CompileArgs {
     optimize: Option<bool>,
 }
 
-fn compile_single_file(compile_arg: &CompileArgs) -> (String, CompiledModule) {
+fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
@@ -76,7 +76,7 @@ fn compile_single_file(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     (content, compiled_module)
 }
 
-fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
+fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
@@ -119,7 +119,7 @@ fn compile_ingot(compile_arg: &CompileArgs) -> (String, CompiledModule) {
     ("".to_string(), compiled_module)
 }
 
-pub fn compile(compile_arg: CompileArgs) {
+pub fn build(compile_arg: BuildArgs) {
     let emit = &compile_arg.emit;
 
     let input_path = &compile_arg.input_path;
@@ -135,15 +135,15 @@ pub fn compile(compile_arg: CompileArgs) {
     }
 
     let (content, compiled_module) = if Path::new(input_path).is_file() {
-        compile_single_file(&compile_arg)
+        build_single_file(&compile_arg)
     } else {
-        compile_ingot(&compile_arg)
+        build_ingot(&compile_arg)
     };
 
     let output_dir = &compile_arg.output_dir;
     let overwrite = compile_arg.overwrite;
     match write_compiled_module(compiled_module, &content, emit, output_dir, overwrite) {
-        Ok(_) => println!("Compiled {}. Outputs in `{}`", input_path, output_dir),
+        Ok(_) => eprintln!("Compiled {}. Outputs in `{}`", input_path, output_dir),
         Err(err) => {
             eprintln!(
                 "Failed to write output to directory: `{}`. Error: {}",

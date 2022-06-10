@@ -9,7 +9,7 @@ use super::utils::load_files_from_dir;
 const DEFAULT_INGOT_NAME: &str = "main";
 
 #[derive(Args)]
-#[clap(about = "Check/Analytic single file or fe project")]
+#[clap(about = "Analyze the current project and report errors, but don't build artifacts")]
 pub struct CheckArgs {
     input_path: String,
 }
@@ -63,5 +63,5 @@ pub fn check(args: CheckArgs) {
         std::process::exit(1);
     }
 
-    println!("No error!!!");
+    eprintln!("Finished");
 }

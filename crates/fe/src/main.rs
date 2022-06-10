@@ -17,14 +17,14 @@ fn main() {
     let cli = FelangCli::parse();
 
     match cli.command {
-        Commands::Compile(arg) => {
-            task::compile(arg);
+        Commands::Build(arg) => {
+            task::build(arg);
         }
         Commands::Check(arg) => {
             task::check(arg);
         }
-        Commands::Init(arg) => {
-            task::init(arg);
+        Commands::New(arg) => {
+            task::create_new_project(arg);
         }
     }
 }

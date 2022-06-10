@@ -1,16 +1,16 @@
+mod build;
 mod check;
-mod compile;
-mod init;
+mod new;
 mod utils;
 
+pub use build::{build, BuildArgs};
 pub use check::{check, CheckArgs};
 use clap::Subcommand;
-pub use compile::{compile, CompileArgs};
-pub use init::{init, InitArgs};
+pub use new::{create_new_project, NewProjectArgs};
 
 #[derive(Subcommand)]
 pub enum Commands {
-    Compile(CompileArgs),
+    Build(BuildArgs),
     Check(CheckArgs),
-    Init(InitArgs),
+    New(NewProjectArgs),
 }
