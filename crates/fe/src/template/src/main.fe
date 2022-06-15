@@ -1,0 +1,7 @@
+use logic::get_42
+
+contract Main {
+    pub fn get_42_from_logic() -> u256 {
+        return get_42()
+    }
+}

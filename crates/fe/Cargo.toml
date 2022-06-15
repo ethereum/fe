@@ -14,9 +14,11 @@ version = "0.18.0-alpha"
 solc-backend = ["fe-driver/solc-backend"]
 
 [dependencies]
-clap = "2.33.3"
+clap = {version="3.1.18", features = ["derive"]}
+fs_extra = "1.2.0"
 walkdir = "2"
 indexmap = "1.6.2"
+include_dir = "0.7.2"
 
 fe-common = {path = "../common", version = "^0.18.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.18.0-alpha"}
