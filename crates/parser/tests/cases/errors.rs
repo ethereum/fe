@@ -83,6 +83,8 @@ test_parse_err! { for_no_in, functions::parse_stmt, "for x {}" }
 test_parse_err! { fn_no_args, module::parse_module, "fn f {\n  return 5\n}" }
 test_parse_err! { fn_unsafe_pub, module::parse_module, "unsafe pub fn f() {\n  return 5 }" }
 test_parse_err! { fn_def_kw, module::parse_module, "contract C {\n pub def f(x: u8){\n  return x \n}\n}" }
+
+test_parse_err! { fn_invalid_bound, module::parse_module, "pub fn f<T:(u8, u8)>() {}" }
 test_parse_err! { use_bad_name, module::parse_use, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, "if x { y }" }
 test_parse_err! { module_nonsense, module::parse_module, "))" }

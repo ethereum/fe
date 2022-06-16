@@ -3,7 +3,6 @@ use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, 
 use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{Class, FunctionId, Item, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
-use crate::namespace::types::Trait;
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
@@ -179,7 +178,7 @@ pub fn assignable_expr(
                 attributes.move_location = Some(Location::Value);
             }
         }
-        Array(_) | Tuple(_) | String(_) | Struct(_) | Trait(_) | Generic(_) => {
+        Array(_) | Tuple(_) | String(_) | Struct(_) | Generic(_) => {
             if attributes.final_location() != Location::Memory {
                 context.fancy_error(
                     "value must be copied to memory",
@@ -318,10 +317,24 @@ fn expr_named_thing(
                         id.receiver(context.db()),
                         Location::Memory,
                     )),
-                    Class::Trait(id) => Ok(ExpressionAttributes::new(
-                        Type::Trait(Trait::from_id(id, context.db())),
-                        Location::Memory,
-                    )),
+                    // This can only happen when trait methods can implement a default body
+                    Class::Trait(id) => Err(FatalError::new(context.fancy_error(
+                        &format!(
+                            "`{}` is a trait, and can't be used as an expression",
+                            exp.kind
+                        ),
+                        vec![
+                            Label::primary(
+                                id.name_span(context.db()),
+                                &format!("`{}` is defined here as a trait", exp.kind),
+                            ),
+                            Label::primary(
+                                exp.span,
+                                &format!("`{}` is used here as a value", exp.kind),
+                            ),
+                        ],
+                        vec![],
+                    ))),
                     Class::Contract(id) => Ok(ExpressionAttributes::new(
                         Type::SelfContract(Contract::from_id(id, context.db())),
                         Location::Value,
@@ -974,6 +987,14 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 func.kind
             )],
         ))),
+        NamedThing::Item(Item::Trait(_)) => Err(FatalError::new(context.error(
+            &format!("`{}` is not callable", func.kind),
+            func.span,
+            &format!(
+                "`{}` is a trait, and can't be used as a function",
+                func.kind
+            ),
+        ))),
         NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,
@@ -1129,11 +1150,7 @@ fn expr_call_type_constructor(
         Type::Struct(struct_type) => {
             return expr_call_struct_constructor(context, name_span, struct_type, args)
         }
-        Type::Base(Base::Bool)
-        | Type::Array(_)
-        | Type::Map(_)
-        | Type::Generic(_)
-        | Type::Trait(_) => {
+        Type::Base(Base::Bool) | Type::Array(_) | Type::Map(_) | Type::Generic(_) => {
             return Err(FatalError::new(context.error(
                 &format!("`{}` type is not callable", typ.name()),
                 name_span,
@@ -1220,7 +1237,6 @@ fn expr_call_type_constructor(
         Type::Struct(_) => unreachable!(),        // handled above
         Type::Map(_) => unreachable!(),           // handled above
         Type::Array(_) => unreachable!(),         // handled above
-        Type::Trait(_) => unreachable!(),         // handled above
         Type::Generic(_) => unreachable!(),       // handled above
         Type::SelfContract(_) => unreachable!(),  /* unnameable; contract names all become
                                                     * Type::Contract */

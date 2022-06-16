@@ -128,7 +128,7 @@ pub fn parse_generic_param(par: &mut Parser) -> ParseResult<GenericParameter> {
     let name = par.assert(Name);
     match par.optional(Colon) {
         Some(_) => {
-            let bound = par.assert(Name);
+            let bound = par.expect(TokenKind::Name, "failed to parse generic bound")?;
             Ok(GenericParameter::Bounded {
                 name: Node::new(name.text.into(), name.span),
                 bound: Node::new(
