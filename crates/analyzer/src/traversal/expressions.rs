@@ -63,7 +63,7 @@ pub fn expr_list(
         return Ok(ExpressionAttributes {
             typ: Type::Array(Array {
                 size: 0,
-                inner: expected_type.map_or(Base::Unit, |arr| arr.inner),
+                inner: expected_type.map_or(Box::new(Base::Unit.into()), |arr| arr.inner.clone()),
             }),
             location: Location::Memory,
             move_location: None,
@@ -73,9 +73,8 @@ pub fn expr_list(
 
     let inner_type = if let Some(expected) = expected_type {
         for elt in elts {
-            let element_attributes =
-                assignable_expr(context, elt, Some(&Type::Base(expected.inner)))?;
-            if element_attributes.typ != Type::Base(expected.inner) {
+            let element_attributes = assignable_expr(context, elt, Some(&expected.inner))?;
+            if &element_attributes.typ != expected.inner.as_ref() {
                 context.type_error(
                     "type mismatch",
                     elt.span,
@@ -84,11 +83,11 @@ pub fn expr_list(
                 );
             }
         }
-        expected.inner
+        expected.inner.clone()
     } else {
         let first_attr = assignable_expr(context, &elts[0], None)?;
         let inner = match first_attr.typ {
-            Type::Base(base) => base,
+            Type::Base(base) => base.into(),
             _ => {
                 return Err(FatalError::new(context.error(
                     "arrays can only hold primitive types",
@@ -119,7 +118,7 @@ pub fn expr_list(
                 );
             }
         }
-        inner
+        Box::new(inner)
     };
 
     // TODO: Right now we are only supporting Base type arrays
@@ -1011,25 +1010,23 @@ fn expr_call_builtin_function(
             expect_no_label_on_arg(context, args, 0);
 
             if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
-                if !matches!(
-                    arg_typ,
-                    Type::Array(Array {
-                        inner: Base::Numeric(Integer::U8),
-                        ..
-                    })
-                ) {
-                    context.fancy_error(
-                        &format!(
-                            "`{}` can not be used as an argument to `{}`",
-                            arg_typ,
-                            function.as_ref(),
-                        ),
-                        vec![Label::primary(args.span, "wrong type")],
-                        vec![format!(
-                            "Note: `{}` expects a byte array argument",
-                            function.as_ref()
-                        )],
-                    );
+                match arg_typ {
+                    Type::Array(Array { inner, .. })
+                        if inner.as_ref() == &Type::Base(Base::Numeric(Integer::U8)) => {}
+                    _ => {
+                        context.fancy_error(
+                            &format!(
+                                "`{}` can not be used as an argument to `{}`",
+                                arg_typ,
+                                function.as_ref(),
+                            ),
+                            vec![Label::primary(args.span, "wrong type")],
+                            vec![format!(
+                                "Note: `{}` expects a byte array argument",
+                                function.as_ref()
+                            )],
+                        );
+                    }
                 }
             };
             ExpressionAttributes::new(Type::Base(U256), Location::Value)
@@ -1509,7 +1506,7 @@ fn expr_call_builtin_value_method(
                 Ok((
                     ExpressionAttributes::new(
                         Type::Array(Array {
-                            inner: Base::Numeric(Integer::U8),
+                            inner: Box::new(Base::Numeric(Integer::U8).into()),
                             size: struct_.id.fields(context.db()).len() * 32,
                         }),
                         Location::Memory,
@@ -1531,7 +1528,7 @@ fn expr_call_builtin_value_method(
                 Ok((
                     ExpressionAttributes::new(
                         Type::Array(Array {
-                            inner: Base::Numeric(Integer::U8),
+                            inner: Box::new(Base::Numeric(Integer::U8).into()),
                             size: tuple.items.len() * 32,
                         }),
                         Location::Memory,

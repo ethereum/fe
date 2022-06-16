@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ address_bytes10_map.fe:2:5
@@ -15,7 +14,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10> {
 5 │ │         return self.bar[key].to_mem()
 6 │ │     }
-  │ ╰─────^ attributes hash: 7365261960972751402
+  │ ╰─────^ attributes hash: 14715984257538758536
   │  
   = FunctionSignature {
         self_decl: Some(
@@ -37,8 +36,10 @@ note:
             Array(
                 Array {
                     size: 10,
-                    inner: Numeric(
-                        U8,
+                    inner: Base(
+                        Numeric(
+                            U8,
+                        ),
                     ),
                 },
             ),
@@ -77,7 +78,7 @@ note:
  8 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ attributes hash: 10331226497424577374
+   │ ╰─────^ attributes hash: 14916033339844523953
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -101,8 +102,10 @@ note:
                      Array(
                          Array {
                              size: 10,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),

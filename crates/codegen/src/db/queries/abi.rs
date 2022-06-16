@@ -77,12 +77,15 @@ pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
         abi_type.header_size()
     } else {
         match &ty.data(db.upcast()).kind {
-            ir::TypeKind::Array(def) => {
-                debug_assert! {matches!(def.elem_ty.data
-                    (db.upcast()).kind, ir::TypeKind::U8),
-                }
-                abi_type.header_size() + 32 + ceil_32(def.len)
+            ir::TypeKind::Array(def) if def.elem_ty.data(db.upcast()).kind == ir::TypeKind::U8 => {
+                debug_assert_eq!(abi_type, AbiType::Bytes);
+                64 + ceil_32(def.len)
             }
+
+            ir::TypeKind::Array(def) => {
+                db.codegen_abi_type_maximum_size(def.elem_ty) * def.len + 32
+            }
+
             ir::TypeKind::String(len) => abi_type.header_size() + 32 + ceil_32(*len),
             _ if ty.is_aggregate(db.upcast()) => {
                 let mut maximum = 0;
@@ -92,6 +95,7 @@ pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
                 }
                 maximum + 32
             }
+
             _ => unreachable!(),
         }
     }
@@ -103,13 +107,16 @@ pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
         abi_type.header_size()
     } else {
         match &ty.data(db.upcast()).kind {
-            ir::TypeKind::Array(def) => {
-                debug_assert! {matches!(def.elem_ty.data
-                    (db.upcast()).kind, ir::TypeKind::U8),
-                }
-                abi_type.header_size() + 32
+            ir::TypeKind::Array(def) if def.elem_ty.data(db.upcast()).kind == ir::TypeKind::U8 => {
+                debug_assert_eq!(abi_type, AbiType::Bytes);
+                64
             }
+            ir::TypeKind::Array(def) => {
+                db.codegen_abi_type_minimum_size(def.elem_ty) * def.len + 32
+            }
+
             ir::TypeKind::String(_) => abi_type.header_size() + 32,
+
             _ if ty.is_aggregate(db.upcast()) => {
                 let mut minimum = 0;
                 for i in 0..ty.aggregate_field_num(db.upcast()) {
@@ -118,6 +125,7 @@ pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
                 }
                 minimum + 32
             }
+
             _ => unreachable!(),
         }
     }

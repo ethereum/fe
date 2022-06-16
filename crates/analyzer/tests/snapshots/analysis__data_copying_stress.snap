@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ data_copying_stress.fe:4:5
@@ -208,7 +207,7 @@ note:
    · │
 39 │ │         assert my_3rd_array[3] == 50
 40 │ │     }
-   │ ╰─────^ attributes hash: 16237067187800993503
+   │ ╰─────^ attributes hash: 17752007532841141815
    │  
    = FunctionSignature {
          self_decl: None,
@@ -221,8 +220,10 @@ note:
                      Array(
                          Array {
                              size: 10,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
@@ -409,7 +410,7 @@ note:
 43 │ │         my_array[3] = 5
 44 │ │         return my_array
 45 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 92188389337515101
    │  
    = FunctionSignature {
          self_decl: None,
@@ -422,8 +423,10 @@ note:
                      Array(
                          Array {
                              size: 10,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
@@ -434,8 +437,10 @@ note:
              Array(
                  Array {
                      size: 10,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -466,7 +471,7 @@ note:
 47 │ ╭     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
 48 │ │         return my_array.clone()
 49 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 92188389337515101
    │  
    = FunctionSignature {
          self_decl: None,
@@ -479,8 +484,10 @@ note:
                      Array(
                          Array {
                              size: 10,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
@@ -491,8 +498,10 @@ note:
              Array(
                  Array {
                      size: 10,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -518,7 +527,7 @@ note:
 52 │ │         my_array.clone()[3] = 5
 53 │ │         return my_array
 54 │ │     }
-   │ ╰─────^ attributes hash: 15461468619504661037
+   │ ╰─────^ attributes hash: 92188389337515101
    │  
    = FunctionSignature {
          self_decl: None,
@@ -531,8 +540,10 @@ note:
                      Array(
                          Array {
                              size: 10,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
@@ -543,8 +554,10 @@ note:
              Array(
                  Array {
                      size: 10,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -585,7 +598,7 @@ note:
    · │
 64 │ │         return my_nums_mem
 65 │ │     }
-   │ ╰─────^ attributes hash: 13146367689365512086
+   │ ╰─────^ attributes hash: 14329847023405603454
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -597,8 +610,10 @@ note:
              Array(
                  Array {
                      size: 5,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -902,7 +917,7 @@ note:
 75 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 3>) {
 76 │ │         self.my_addrs = my_addrs
 77 │ │     }
-   │ ╰─────^ attributes hash: 1347763946351267085
+   │ ╰─────^ attributes hash: 6379907192890628947
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -917,7 +932,9 @@ note:
                      Array(
                          Array {
                              size: 3,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),

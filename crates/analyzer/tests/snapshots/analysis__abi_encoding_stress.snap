@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ abi_encoding_stress.fe:4:5
@@ -53,7 +52,7 @@ note:
 27 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 5>) {
 28 │ │         self.my_addrs = my_addrs
 29 │ │     }
-   │ ╰─────^ attributes hash: 8893819222299525150
+   │ ╰─────^ attributes hash: 6651617854478011991
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -68,7 +67,9 @@ note:
                      Array(
                          Array {
                              size: 5,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),
@@ -101,7 +102,7 @@ note:
 31 │ ╭     pub fn get_my_addrs(self) -> Array<address, 5> {
 32 │ │         return self.my_addrs.to_mem()
 33 │ │     }
-   │ ╰─────^ attributes hash: 1736881624347502724
+   │ ╰─────^ attributes hash: 3503941160400696207
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -113,7 +114,9 @@ note:
              Array(
                  Array {
                      size: 5,
-                     inner: Address,
+                     inner: Base(
+                         Address,
+                     ),
                  },
              ),
          ),
@@ -313,7 +316,7 @@ note:
 51 │ ╭     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>) {
 52 │ │         self.my_u16s = my_u16s
 53 │ │     }
-   │ ╰─────^ attributes hash: 15015381430419725173
+   │ ╰─────^ attributes hash: 15373408821262001670
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -328,8 +331,10 @@ note:
                      Array(
                          Array {
                              size: 255,
-                             inner: Numeric(
-                                 U16,
+                             inner: Base(
+                                 Numeric(
+                                     U16,
+                                 ),
                              ),
                          },
                      ),
@@ -363,7 +368,7 @@ note:
 55 │ ╭     pub fn get_my_u16s(self) -> Array<u16, 255> {
 56 │ │         return self.my_u16s.to_mem()
 57 │ │     }
-   │ ╰─────^ attributes hash: 14119474618304681318
+   │ ╰─────^ attributes hash: 7191948642218091354
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -375,8 +380,10 @@ note:
              Array(
                  Array {
                      size: 255,
-                     inner: Numeric(
-                         U16,
+                     inner: Base(
+                         Numeric(
+                             U16,
+                         ),
                      ),
                  },
              ),
@@ -485,7 +492,7 @@ note:
 67 │ ╭     pub fn set_my_bytes(self, my_bytes: Array<u8, 100>) {
 68 │ │         self.my_bytes = my_bytes
 69 │ │     }
-   │ ╰─────^ attributes hash: 11573101353594183790
+   │ ╰─────^ attributes hash: 12615116636431196289
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -500,8 +507,10 @@ note:
                      Array(
                          Array {
                              size: 100,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),
@@ -535,7 +544,7 @@ note:
 71 │ ╭     pub fn get_my_bytes(self) -> Array<u8, 100> {
 72 │ │         return self.my_bytes.to_mem()
 73 │ │     }
-   │ ╰─────^ attributes hash: 157798734366762321
+   │ ╰─────^ attributes hash: 1930284060814414607
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -547,8 +556,10 @@ note:
              Array(
                  Array {
                      size: 100,
-                     inner: Numeric(
-                         U8,
+                     inner: Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  },
              ),
@@ -839,7 +850,7 @@ note:
    ┌─ abi_encoding_stress.fe:88:9
    │
 88 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2185685122923697263
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6413258942580560070
    │
    = Event {
          name: "MyEvent",
@@ -850,7 +861,9 @@ note:
                      Array(
                          Array {
                              size: 5,
-                             inner: Address,
+                             inner: Base(
+                                 Address,
+                             ),
                          },
                      ),
                  ),
@@ -884,8 +897,10 @@ note:
                      Array(
                          Array {
                              size: 255,
-                             inner: Numeric(
-                                 U16,
+                             inner: Base(
+                                 Numeric(
+                                     U16,
+                                 ),
                              ),
                          },
                      ),
@@ -907,8 +922,10 @@ note:
                      Array(
                          Array {
                              size: 100,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),

@@ -167,45 +167,147 @@ note:
    │                ^ NestedDynamicComplex: Memory
 
 note: 
-   ┌─ abi_decode_complex.fe:20:5
+   ┌─ abi_decode_complex.fe:18:5
+   │  
+18 │ ╭     pub fn decode_static_complex_elem_array(arr: Array<StaticComplex, 3>) -> Array<StaticComplex, 3> {
+19 │ │         return arr
+20 │ │     }
+   │ ╰─────^ attributes hash: 14814063204670221852
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "arr",
+                 typ: Ok(
+                     Array(
+                         Array {
+                             size: 3,
+                             inner: Struct(
+                                 Struct {
+                                     name: "StaticComplex",
+                                     field_count: 2,
+                                 },
+                             ),
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Array(
+                 Array {
+                     size: 3,
+                     inner: Struct(
+                         Struct {
+                             name: "StaticComplex",
+                             field_count: 2,
+                         },
+                     ),
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ abi_decode_complex.fe:19:16
    │
-20 │     pub inner_x: i32
+19 │         return arr
+   │                ^^^ Array<StaticComplex, 3>: Memory
+
+note: 
+   ┌─ abi_decode_complex.fe:22:5
+   │  
+22 │ ╭     pub fn decode_dynamic_complex_elem_array(arr: Array<NestedDynamicComplex, 3>) -> Array<NestedDynamicComplex, 3> {
+23 │ │         return arr
+24 │ │     }
+   │ ╰─────^ attributes hash: 26751994078138639
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         ctx_decl: None,
+         params: [
+             FunctionParam {
+                 label: None,
+                 name: "arr",
+                 typ: Ok(
+                     Array(
+                         Array {
+                             size: 3,
+                             inner: Struct(
+                                 Struct {
+                                     name: "NestedDynamicComplex",
+                                     field_count: 3,
+                                 },
+                             ),
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Array(
+                 Array {
+                     size: 3,
+                     inner: Struct(
+                         Struct {
+                             name: "NestedDynamicComplex",
+                             field_count: 3,
+                         },
+                     ),
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ abi_decode_complex.fe:23:16
+   │
+23 │         return arr
+   │                ^^^ Array<NestedDynamicComplex, 3>: Memory
+
+note: 
+   ┌─ abi_decode_complex.fe:28:5
+   │
+28 │     pub inner_x: i32
    │     ^^^^^^^^^^^^^^^^ i32
-21 │     pub inner_y: i32
+29 │     pub inner_y: i32
    │     ^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ abi_decode_complex.fe:25:5
+   ┌─ abi_decode_complex.fe:33:5
    │
-25 │     pub inner: StaticInner
+33 │     pub inner: StaticInner
    │     ^^^^^^^^^^^^^^^^^^^^^^ StaticInner
-26 │     pub outer_x: i256
+34 │     pub outer_x: i256
    │     ^^^^^^^^^^^^^^^^^ i256
 
 note: 
-   ┌─ abi_decode_complex.fe:30:5
+   ┌─ abi_decode_complex.fe:38:5
    │
-30 │     pub string: String<8>
+38 │     pub string: String<8>
    │     ^^^^^^^^^^^^^^^^^^^^^ String<8>
-31 │     pub outer_x: i32
+39 │     pub outer_x: i32
    │     ^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ abi_decode_complex.fe:35:5
+   ┌─ abi_decode_complex.fe:43:5
    │
-35 │     pub bytes: Array<u8, 8>
+43 │     pub bytes: Array<u8, 8>
    │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 8>
-36 │     pub outer_x: i32
+44 │     pub outer_x: i32
    │     ^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ abi_decode_complex.fe:40:5
+   ┌─ abi_decode_complex.fe:48:5
    │
-40 │     pub bytes_complex: BytesComplex
+48 │     pub bytes_complex: BytesComplex
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex
-41 │     pub static_complex: StaticComplex
+49 │     pub static_complex: StaticComplex
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex
-42 │     pub string_complex: StringComplex
+50 │     pub string_complex: StringComplex
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex
 
 

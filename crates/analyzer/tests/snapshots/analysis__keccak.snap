@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ keccak.fe:2:5
@@ -9,7 +8,7 @@ note:
 2 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256 {
 3 │ │         return keccak256(val)
 4 │ │     }
-  │ ╰─────^ attributes hash: 6936681782057010951
+  │ ╰─────^ attributes hash: 13665051569980032928
   │  
   = FunctionSignature {
         self_decl: None,
@@ -22,8 +21,10 @@ note:
                     Array(
                         Array {
                             size: 1,
-                            inner: Numeric(
-                                U8,
+                            inner: Base(
+                                Numeric(
+                                    U8,
+                                ),
                             ),
                         },
                     ),
@@ -57,7 +58,7 @@ note:
 6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256 {
 7 │ │         return keccak256(val)
 8 │ │     }
-  │ ╰─────^ attributes hash: 10874278598381710302
+  │ ╰─────^ attributes hash: 14115249111516313873
   │  
   = FunctionSignature {
         self_decl: None,
@@ -70,8 +71,10 @@ note:
                     Array(
                         Array {
                             size: 3,
-                            inner: Numeric(
-                                U8,
+                            inner: Base(
+                                Numeric(
+                                    U8,
+                                ),
                             ),
                         },
                     ),
@@ -105,7 +108,7 @@ note:
 10 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256 {
 11 │ │         return keccak256(val)
 12 │ │     }
-   │ ╰─────^ attributes hash: 1385099984461119772
+   │ ╰─────^ attributes hash: 3591219705610392773
    │  
    = FunctionSignature {
          self_decl: None,
@@ -118,8 +121,10 @@ note:
                      Array(
                          Array {
                              size: 32,
-                             inner: Numeric(
-                                 U8,
+                             inner: Base(
+                                 Numeric(
+                                     U8,
+                                 ),
                              ),
                          },
                      ),

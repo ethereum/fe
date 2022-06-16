@@ -438,6 +438,7 @@ fn test_arrays() {
     case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
     case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
     case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
+    case("for_loop_with_complex_elem_array.fe", &[], int_token(222)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
@@ -1859,12 +1860,32 @@ fn abi_decode_complex() {
             Some(&bytes_complex),
         );
 
-        let nested_dynamic_complex = tuple_token(&[bytes_complex, static_complex, string_complex]);
+        let nested_dynamic_complex =
+            tuple_token(&[bytes_complex, static_complex.clone(), string_complex]);
         harness.test_function(
             &mut executor,
             "decode_nested_dynamic_complex",
             &[nested_dynamic_complex.clone()],
             Some(&nested_dynamic_complex),
+        );
+
+        let static_complex_array =
+            ethabi::Token::FixedArray(std::iter::repeat(static_complex).take(3).collect());
+        harness.test_function(
+            &mut executor,
+            "decode_static_complex_elem_array",
+            &[static_complex_array.clone()],
+            Some(&static_complex_array),
+        );
+
+        let dynamic_complex_array =
+            ethabi::Token::FixedArray(std::iter::repeat(nested_dynamic_complex).take(3).collect());
+        dbg!(ethabi::encode(&[dynamic_complex_array.clone()]).len());
+        harness.test_function(
+            &mut executor,
+            "decode_dynamic_complex_elem_array",
+            &[dynamic_complex_array.clone()],
+            Some(&dynamic_complex_array),
         );
 
         assert_harness_gas_report!(harness);

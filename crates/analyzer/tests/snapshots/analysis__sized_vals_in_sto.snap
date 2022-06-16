@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ sized_vals_in_sto.fe:4:5
@@ -111,7 +110,7 @@ note:
 22 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
 23 │ │         self.nums = x
 24 │ │     }
-   │ ╰─────^ attributes hash: 15243923981938152137
+   │ ╰─────^ attributes hash: 3795910266468030735
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -126,8 +125,10 @@ note:
                      Array(
                          Array {
                              size: 42,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
@@ -161,7 +162,7 @@ note:
 26 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
 27 │ │         return self.nums.to_mem()
 28 │ │     }
-   │ ╰─────^ attributes hash: 7235961322057554817
+   │ ╰─────^ attributes hash: 7198573459523579428
    │  
    = FunctionSignature {
          self_decl: Some(
@@ -173,8 +174,10 @@ note:
              Array(
                  Array {
                      size: 42,
-                     inner: Numeric(
-                         U256,
+                     inner: Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  },
              ),
@@ -369,7 +372,7 @@ note:
    ┌─ sized_vals_in_sto.fe:39:9
    │
 39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9998967556022527347
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11879127803411427086
    │
    = Event {
          name: "MyEvent",
@@ -391,8 +394,10 @@ note:
                      Array(
                          Array {
                              size: 42,
-                             inner: Numeric(
-                                 U256,
+                             inner: Base(
+                                 Numeric(
+                                     U256,
+                                 ),
                              ),
                          },
                      ),
