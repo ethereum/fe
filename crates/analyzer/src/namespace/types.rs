@@ -47,7 +47,6 @@ pub enum Type {
     /// of `self` within a contract function.
     SelfContract(Contract),
     Struct(Struct),
-    Trait(Trait),
     Generic(Generic),
 }
 
@@ -410,7 +409,6 @@ impl Type {
             Type::Tuple(inner) => inner.to_string().into(),
             Type::String(inner) => inner.to_string().into(),
             Type::Struct(inner) => inner.name.clone(),
-            Type::Trait(inner) => inner.name.clone(),
             Type::Generic(inner) => inner.name.clone(),
             Type::Contract(inner) | Type::SelfContract(inner) => inner.name.clone(),
         }
@@ -482,7 +480,7 @@ impl Type {
             | Type::Struct(_)
             | Type::Generic(_)
             | Type::Contract(_) => true,
-            Type::Map(_) | Type::SelfContract(_) | Type::Trait(_) => false,
+            Type::Map(_) | Type::SelfContract(_) => false,
         }
     }
 }
@@ -686,7 +684,6 @@ impl fmt::Display for Type {
             Type::Contract(inner) => inner.fmt(f),
             Type::SelfContract(inner) => inner.fmt(f),
             Type::Struct(inner) => inner.fmt(f),
-            Type::Trait(inner) => inner.fmt(f),
             Type::Generic(inner) => inner.fmt(f),
         }
     }

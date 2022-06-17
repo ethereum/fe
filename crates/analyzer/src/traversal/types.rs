@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, Constant, NamedThing};
 use crate::errors::TypeError;
-use crate::namespace::items::Item;
+use crate::namespace::items::{Item, TraitId};
 use crate::namespace::types::{GenericArg, GenericParamKind, GenericType, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
@@ -237,5 +237,77 @@ pub fn type_desc(
             }))
         }
         ast::TypeDesc::Unit => Ok(Type::unit()),
+    }
+}
+
+/// Maps a type description node to a `TraitId`.
+pub fn type_desc_to_trait(
+    context: &mut dyn AnalyzerContext,
+    desc: &Node<ast::TypeDesc>,
+) -> Result<TraitId, TypeError> {
+    match &desc.kind {
+        ast::TypeDesc::Base { base } => {
+            let named_thing = context.resolve_name(base, desc.span)?;
+            resolve_concrete_trait_named_thing(context, named_thing, desc)
+        }
+        ast::TypeDesc::Path(path) => {
+            let named_thing = context.resolve_path(path, desc.span);
+            resolve_concrete_trait_named_thing(context, named_thing, desc)
+        }
+        // generic will need to allow for paths too
+        ast::TypeDesc::Generic { base, .. } => {
+            let named_thing = context.resolve_name(&base.kind, desc.span)?;
+            resolve_concrete_trait_named_thing(context, named_thing, desc)
+        }
+        _ => panic!("Should be rejected by parser"),
+    }
+}
+
+pub fn resolve_concrete_trait_named_thing<T: std::fmt::Display>(
+    context: &mut dyn AnalyzerContext,
+    val: Option<NamedThing>,
+    base_desc: &Node<T>,
+) -> Result<TraitId, TypeError> {
+    match val {
+        Some(NamedThing::Item(Item::Trait(treit))) => Ok(treit),
+        Some(NamedThing::Item(Item::Type(ty))) => Err(TypeError::new(context.error(
+            &format!("expected trait, found type `{}`", ty.name(context.db())),
+            base_desc.span,
+            "not a trait",
+        ))),
+        Some(named_thing) => Err(TypeError::new(context.fancy_error(
+            &format!("`{}` is not a trait name", base_desc.kind),
+            if let Some(def_span) = named_thing.name_span(context.db()) {
+                vec![
+                    Label::primary(
+                        def_span,
+                        format!(
+                            "`{}` is defined here as a {}",
+                            base_desc.kind,
+                            named_thing.item_kind_display_name()
+                        ),
+                    ),
+                    Label::primary(
+                        base_desc.span,
+                        format!("`{}` is used here as a trait", base_desc.kind),
+                    ),
+                ]
+            } else {
+                vec![Label::primary(
+                    base_desc.span,
+                    format!(
+                        "`{}` is a {}",
+                        base_desc.kind,
+                        named_thing.item_kind_display_name()
+                    ),
+                )]
+            },
+            vec![],
+        ))),
+        None => Err(TypeError::new(context.error(
+            "undefined trait",
+            base_desc.span,
+            &format!("`{}` has not been defined", base_desc.kind),
+        ))),
     }
 }

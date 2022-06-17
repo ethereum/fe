@@ -89,12 +89,10 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
             ast::ModuleStmt::Function(node) => Some(Item::Function(
                 db.intern_function(Rc::new(Function::new(db, node, None, module))),
             )),
-            ast::ModuleStmt::Trait(node) => Some(Item::Type(TypeDef::Trait(db.intern_trait(
-                Rc::new(Trait {
-                    ast: node.clone(),
-                    module,
-                }),
-            )))),
+            ast::ModuleStmt::Trait(node) => Some(Item::Trait(db.intern_trait(Rc::new(Trait {
+                ast: node.clone(),
+                module,
+            })))),
             ast::ModuleStmt::Pragma(_) | ast::ModuleStmt::Use(_) | ast::ModuleStmt::Impl(_) => None,
             ast::ModuleStmt::Event(node) => Some(Item::Event(db.intern_event(Rc::new(Event {
                 ast: node.clone(),
@@ -119,7 +117,7 @@ pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ImplId]> {
                 let mut scope = ItemScope::new(db, module);
                 let receiver_type = type_desc(&mut scope, &impl_node.kind.receiver).unwrap();
 
-                if let Some(Item::Type(TypeDef::Trait(val))) = treit {
+                if let Some(Item::Trait(val)) = treit {
                     Some(db.intern_impl(Rc::new(Impl {
                         trait_id: val,
                         receiver: receiver_type,

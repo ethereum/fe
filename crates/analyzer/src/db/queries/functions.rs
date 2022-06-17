@@ -7,7 +7,7 @@ use crate::namespace::items::{
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, Contract, CtxDecl, Generic, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
-use crate::traversal::types::type_desc;
+use crate::traversal::types::{type_desc, type_desc_to_trait};
 use fe_common::diagnostics::Label;
 use fe_parser::ast::{self, GenericParameter};
 use fe_parser::node::Node;
@@ -255,17 +255,9 @@ pub fn resolve_function_param_type(
         if let Some(val) = function.generic_param(db, base) {
             let bounds = match val {
                 ast::GenericParameter::Unbounded(_) => vec![],
-                ast::GenericParameter::Bounded { bound, .. } => match type_desc(context, &bound)? {
-                    Type::Trait(trait_ty) => vec![trait_ty.id],
-                    other => {
-                        context.error(
-                            &format!("expected trait, found type `{}`", other),
-                            bound.span,
-                            "not a trait",
-                        );
-                        vec![]
-                    }
-                },
+                ast::GenericParameter::Bounded { bound, .. } => {
+                    vec![type_desc_to_trait(context, &bound)?]
+                }
             };
 
             return Ok(Type::Generic(Generic {
@@ -401,11 +393,7 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                 directs.push((root, Item::Function(*method), DepLocality::Local));
             }
             CallType::TraitValueMethod { trait_id, .. } => {
-                directs.push((
-                    root,
-                    Item::Type(TypeDef::Trait(*trait_id)),
-                    DepLocality::Local,
-                ));
+                directs.push((root, Item::Trait(*trait_id), DepLocality::Local));
             }
             CallType::External { contract, function } => {
                 directs.push((root, Item::Function(*function), DepLocality::External));

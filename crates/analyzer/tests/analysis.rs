@@ -345,7 +345,7 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     .collect(),
             ]
             .concat(),
-            Item::Type(TypeDef::Trait(val)) => val
+            Item::Trait(val) => val
                 .all_functions(db)
                 .iter()
                 .flat_map(|fun| {

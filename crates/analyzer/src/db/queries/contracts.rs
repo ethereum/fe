@@ -330,14 +330,6 @@ pub fn contract_field_type(
 
     let node = &field.data(db).ast;
 
-    if let Ok(Type::Trait(ref val)) = typ {
-        scope.error(
-            "traits can not be used as contract fields",
-            node.span,
-            &format!("trait `{}` can not appear here", val.name),
-        );
-    }
-
     if node.kind.is_pub {
         scope.not_yet_implemented("contract `pub` fields", node.span);
     }

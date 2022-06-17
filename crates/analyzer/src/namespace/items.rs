@@ -36,6 +36,7 @@ pub enum Item {
     // Events aren't normal types; they *could* be moved into
     // TypeDef, but it would have consequences.
     Event(EventId),
+    Trait(TraitId),
     Function(FunctionId),
     Constant(ModuleConstantId),
     // Needed until we can represent keccak256 as a FunctionId.
@@ -48,6 +49,7 @@ impl Item {
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             Item::Type(id) => id.name(db),
+            Item::Trait(id) => id.name(db),
             Item::GenericType(id) => id.name(),
             Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
@@ -62,6 +64,7 @@ impl Item {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         match self {
             Item::Type(id) => id.name_span(db),
+            Item::Trait(id) => Some(id.name_span(db)),
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
@@ -81,6 +84,7 @@ impl Item {
             | Self::Intrinsic(_)
             | Self::GenericType(_) => true,
             Self::Type(id) => id.is_public(db),
+            Self::Trait(id) => id.is_public(db),
             Self::Event(id) => id.is_public(db),
             Self::Function(id) => id.is_public(db),
             Self::Constant(id) => id.is_public(db),
@@ -94,6 +98,7 @@ impl Item {
             | Item::BuiltinFunction(_)
             | Item::Intrinsic(_) => true,
             Item::Type(_)
+            | Item::Trait(_)
             | Item::Event(_)
             | Item::Function(_)
             | Item::Constant(_)
@@ -113,6 +118,7 @@ impl Item {
     pub fn item_kind_display_name(&self) -> &'static str {
         match self {
             Item::Type(_) | Item::GenericType(_) => "type",
+            Item::Trait(_) => "trait",
             Item::Event(_) => "event",
             Item::Function(_) | Item::BuiltinFunction(_) => "function",
             Item::Intrinsic(_) => "intrinsic function",
@@ -129,6 +135,7 @@ impl Item {
             Item::Type(val) => val.items(db),
             Item::GenericType(_)
             | Item::Event(_)
+            | Item::Trait(_)
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
@@ -139,6 +146,7 @@ impl Item {
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
         match self {
             Item::Type(id) => id.parent(db),
+            Item::Trait(id) => Some(id.parent(db)),
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
@@ -222,6 +230,7 @@ impl Item {
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match self {
             Item::Type(id) => id.sink_diagnostics(db, sink),
+            Item::Trait(id) => id.sink_diagnostics(db, sink),
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
             Item::GenericType(_) | Item::BuiltinFunction(_) | Item::Intrinsic(_) => {}
@@ -772,7 +781,6 @@ impl ModuleConstantId {
 pub enum TypeDef {
     Alias(TypeAliasId),
     Struct(StructId),
-    Trait(TraitId),
     Contract(ContractId),
     Primitive(types::Base),
 }
@@ -804,7 +812,6 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.name(db),
             TypeDef::Struct(id) => id.name(db),
-            TypeDef::Trait(id) => id.name(db),
             TypeDef::Contract(id) => id.name(db),
             TypeDef::Primitive(typ) => typ.name(),
         }
@@ -814,7 +821,6 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.name_span(db)),
             TypeDef::Struct(id) => Some(id.name_span(db)),
-            TypeDef::Trait(id) => Some(id.name_span(db)),
             TypeDef::Contract(id) => Some(id.name_span(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -828,10 +834,6 @@ impl TypeDef {
                 name: id.name(db),
                 field_count: id.fields(db).len(), // for the EvmSized trait
             })),
-            TypeDef::Trait(id) => Ok(types::Type::Trait(types::Trait {
-                id: *id,
-                name: id.name(db),
-            })),
             TypeDef::Contract(id) => Ok(types::Type::Contract(types::Contract {
                 id: *id,
                 name: id.name(db),
@@ -844,7 +846,6 @@ impl TypeDef {
         match self {
             Self::Alias(id) => id.is_public(db),
             Self::Struct(id) => id.is_public(db),
-            Self::Trait(id) => id.is_public(db),
             Self::Contract(id) => id.is_public(db),
             Self::Primitive(_) => true,
         }
@@ -854,7 +855,6 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.parent(db)),
             TypeDef::Struct(id) => Some(id.parent(db)),
-            TypeDef::Trait(id) => Some(id.parent(db)),
             TypeDef::Contract(id) => Some(id.parent(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -864,7 +864,6 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.sink_diagnostics(db, sink),
             TypeDef::Struct(id) => id.sink_diagnostics(db, sink),
-            TypeDef::Trait(id) => id.sink_diagnostics(db, sink),
             TypeDef::Contract(id) => id.sink_diagnostics(db, sink),
             TypeDef::Primitive(_) => {}
         }
@@ -1158,7 +1157,7 @@ impl FunctionSigId {
     }
 
     pub fn is_trait_fn(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.parent(db), Item::Type(TypeDef::Trait(_)))
+        matches!(self.parent(db), Item::Trait(_))
     }
 
     pub fn is_impl_fn(&self, db: &dyn AnalyzerDb) -> bool {
@@ -1344,7 +1343,7 @@ impl Class {
         match self {
             Class::Contract(id) => Item::Type(TypeDef::Contract(*id)),
             Class::Struct(id) => Item::Type(TypeDef::Struct(*id)),
-            Class::Trait(id) => Item::Type(TypeDef::Trait(*id)),
+            Class::Trait(id) => Item::Trait(*id),
             // Coercing into an Item of the basis of the receiver doesn't seem ideal but can hopefully
             // be addressed when we get rid of `Class`.
             Class::Impl(id) => id
@@ -1595,7 +1594,6 @@ impl ImplId {
             Type::Contract(_)
             | Type::Map(_)
             | Type::SelfContract(_)
-            | Type::Trait(_)
             | Type::Generic(_)
             // TODO: We should find a way to support these types. We only support implementing traits for structs
             // so far because it simplifies things regarding the assign location of the underlying type.
