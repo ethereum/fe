@@ -21,6 +21,7 @@ pub enum ModuleStmt {
     Contract(Node<Contract>),
     Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
+    Enum(Node<Enum>),
     Trait(Node<Trait>),
     Impl(Node<Impl>),
     Function(Node<Function>),
@@ -86,6 +87,13 @@ pub struct Struct {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
+    pub pub_qual: Option<Span>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Enum {
+    pub name: Node<SmolStr>,
+    pub variants: Vec<Node<Variant>>,
     pub pub_qual: Option<Span>,
 }
 
@@ -178,6 +186,39 @@ pub struct Field {
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
+}
+
+/// Enum variant definition.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Variant {
+    pub name: Node<SmolStr>,
+    pub kind: VariantKind,
+}
+
+/// Enum variant kind.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum VariantKind {
+    /// Unit variant.
+    /// E.g., `Bar` in
+    ///
+    /// ```fe
+    /// enum Foo {
+    ///     Bar
+    ///     Baz(u32, i32)
+    /// }
+    /// ```
+    Unit,
+
+    /// Tuple variant.
+    /// E.g., `Baz(u32, i32)` in
+    ///
+    /// ```fe
+    /// enum Foo {
+    ///     Bar
+    ///     Baz(u32, i32)
+    /// }
+    /// ```
+    Tuple(Vec<Node<TypeDesc>>),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -465,6 +506,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
+            ModuleStmt::Enum(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
             ModuleStmt::Event(inner) => inner.span,
             ModuleStmt::ParseError(span) => *span,
@@ -513,6 +555,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Enum(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
             ModuleStmt::Event(node) => write!(f, "{}", node.kind),
             ModuleStmt::ParseError(span) => {
@@ -672,6 +715,24 @@ impl fmt::Display for Struct {
     }
 }
 
+impl fmt::Display for Enum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let Enum {
+            name,
+            variants,
+            pub_qual,
+        } = self;
+
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "enum {} ", name.kind)?;
+        write!(f, "{{")?;
+        write_nodes_line_wrapped(&mut indented(f), variants)?;
+        write!(f, "}}")
+    }
+}
+
 impl fmt::Display for TypeDesc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -720,6 +781,18 @@ impl fmt::Display for Field {
             write!(f, "const ")?;
         }
         write!(f, "{}: {}", self.name.kind, self.typ.kind)
+    }
+}
+
+impl fmt::Display for Variant {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name.kind)?;
+        match &self.kind {
+            VariantKind::Unit => Ok(()),
+            VariantKind::Tuple(elts) => {
+                write!(f, "({})", node_comma_joined(elts))
+            }
+        }
     }
 }
 

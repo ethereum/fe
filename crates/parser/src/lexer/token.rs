@@ -95,6 +95,8 @@ pub enum TokenKind {
     SelfValue,
     #[token("struct")]
     Struct,
+    #[token("enum")]
+    Enum,
     #[token("trait")]
     Trait,
     #[token("type")]
@@ -242,6 +244,7 @@ impl TokenKind {
             Revert => "keyword `revert`",
             SelfValue => "keyword `self`",
             Struct => "keyword `struct`",
+            Enum => "keyword `enum`",
             Trait => "keyword `trait`",
             Type => "keyword `type`",
             Unsafe => "keyword `unsafe`",

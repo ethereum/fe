@@ -184,6 +184,14 @@ test_parse! { struct_def, try_parse_module, r#"struct S {
 }"# }
 test_parse! { empty_struct_def, try_parse_module, "struct S {}" }
 
+test_parse! { enum_def, try_parse_module, r#"enum E {
+    Unit1
+    Tuple1(i32, String<10>)
+    Unit2
+    Tuple2(Array<u32, 10>, u256)
+}"# }
+test_parse! { enum_enum_def, try_parse_module, r#"enum E {}"# }
+
 test_parse! { contract_def, try_parse_module, r#"contract Foo {
   x: address
   pub y: u8
