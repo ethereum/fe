@@ -653,6 +653,7 @@ dependencies = [
  "fe-library",
  "hex",
  "indexmap",
+ "num-bigint",
  "num-traits",
  "once_cell",
  "ron",

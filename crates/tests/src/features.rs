@@ -856,7 +856,19 @@ fn test_numeric_sizes() {
             );
             harness.test_function(
                 &mut executor,
+                &format!("get_u{}_const_min", config.size),
+                &[],
+                Some(&config.u_min.clone()),
+            );
+            harness.test_function(
+                &mut executor,
                 &format!("get_u{}_max", config.size),
+                &[],
+                Some(&config.u_max.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_u{}_const_max", config.size),
                 &[],
                 Some(&config.u_max.clone()),
             );
@@ -866,9 +878,23 @@ fn test_numeric_sizes() {
                 &[],
                 Some(&config.i_min.clone()),
             );
+
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_const_min", config.size),
+                &[],
+                Some(&config.i_min.clone()),
+            );
             harness.test_function(
                 &mut executor,
                 &format!("get_i{}_max", config.size),
+                &[],
+                Some(&config.i_max.clone()),
+            );
+
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_const_max", config.size),
                 &[],
                 Some(&config.i_max.clone()),
             );
