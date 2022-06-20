@@ -1,3 +1,5 @@
+use num_bigint::{BigInt, Sign};
+
 /// A type that represents the radix of a numeric literal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Radix {
@@ -60,6 +62,14 @@ impl<'a> Literal<'a> {
     }
 }
 
+// Converts any positive or negative `BigInt` into a hex str using 2s complement representation for negative values.
+pub fn to_hex_str(val: &BigInt) -> String {
+    format!(
+        "0x{}",
+        BigInt::from_bytes_be(Sign::Plus, &val.to_signed_bytes_be()).to_str_radix(16)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,5 +86,13 @@ mod tests {
 
         // Invalid radix is treated as `Decimal`.
         assert_eq!(Literal::new("0D15").radix(), Radix::Decimal);
+    }
+
+    #[test]
+    fn test_to_hex_str() {
+        assert_eq!(to_hex_str(&BigInt::from(-1i8)), "0xff");
+        assert_eq!(to_hex_str(&BigInt::from(-2i8)), "0xfe");
+        assert_eq!(to_hex_str(&BigInt::from(1i8)), "0x1");
+        assert_eq!(to_hex_str(&BigInt::from(2i8)), "0x2");
     }
 }

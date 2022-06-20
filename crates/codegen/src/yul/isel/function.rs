@@ -1,5 +1,6 @@
 #![allow(unused)]
 use super::{context::Context, inst_order::InstSerializer};
+use fe_common::numeric::to_hex_str;
 
 use fe_abi::function::{AbiFunction, AbiFunctionType};
 use fe_common::db::Upcast;
@@ -730,7 +731,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
             Value::Constant { constant, .. } => match &constant.data(self.db.upcast()).value {
                 ConstantValue::Immediate(imm) => {
-                    literal_expression! {(imm)}
+                    // YUL does not support representing negative integers with leading minus (e.g. `-1` in YUL would lead to an ICE).
+                    // To mitigate that we convert all numeric values into hexadecimal representation.
+                    literal_expression! {(to_hex_str(imm))}
                 }
                 ConstantValue::Str(s) => {
                     self.ctx.string_constants.insert(s.to_string());
