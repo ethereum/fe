@@ -7,7 +7,7 @@ note:
   ┌─ return_array.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256) -> Array<u256, 5> {
-3 │ │         let my_array: Array<u256, 5>
+3 │ │         let my_array: Array<u256, 5> = [0; 5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
 6 │ │     }
@@ -16,12 +16,22 @@ note:
 note: 
   ┌─ return_array.fe:3:13
   │
-3 │         let my_array: Array<u256, 5>
+3 │         let my_array: Array<u256, 5> = [0; 5]
   │             ^^^^^^^^ Array<u256, 5>
 
 note: 
-  ┌─ return_array.fe:4:9
+  ┌─ return_array.fe:3:41
   │
+3 │         let my_array: Array<u256, 5> = [0; 5]
+  │                                         ^  ^ u256: Value
+  │                                         │   
+  │                                         u256: Value
+
+note: 
+  ┌─ return_array.fe:3:40
+  │
+3 │         let my_array: Array<u256, 5> = [0; 5]
+  │                                        ^^^^^^ Array<u256, 5>: Memory
 4 │         my_array[3] = x
   │         ^^^^^^^^ ^ u256: Value
   │         │         

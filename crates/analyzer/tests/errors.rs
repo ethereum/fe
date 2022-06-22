@@ -341,3 +341,5 @@ test_file! { ctx_builtins_param_incorrect_type }
 test_file! { ctx_undefined_create }
 test_file! { ctx_undefined_create2 }
 test_file! { ctx_undefined_event }
+test_file! { uninit_values }
+test_file! { invalid_repeat_length }

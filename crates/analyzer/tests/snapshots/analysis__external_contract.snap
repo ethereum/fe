@@ -35,7 +35,7 @@ note:
    ┌─ external_contract.fe:14:5
    │  
 14 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3> {
-15 │ │         let my_array: Array<u256, 3>
+15 │ │         let my_array: Array<u256, 3> = [0; 3]
 16 │ │         my_array[0] = a
 17 │ │         my_array[1] = a * b
 18 │ │         my_array[2] = b
@@ -46,12 +46,22 @@ note:
 note: 
    ┌─ external_contract.fe:15:13
    │
-15 │         let my_array: Array<u256, 3>
+15 │         let my_array: Array<u256, 3> = [0; 3]
    │             ^^^^^^^^ Array<u256, 3>
 
 note: 
-   ┌─ external_contract.fe:16:9
+   ┌─ external_contract.fe:15:41
    │
+15 │         let my_array: Array<u256, 3> = [0; 3]
+   │                                         ^  ^ u256: Value
+   │                                         │   
+   │                                         u256: Value
+
+note: 
+   ┌─ external_contract.fe:15:40
+   │
+15 │         let my_array: Array<u256, 3> = [0; 3]
+   │                                        ^^^^^^ Array<u256, 3>: Memory
 16 │         my_array[0] = a
    │         ^^^^^^^^ ^ u256: Value
    │         │         

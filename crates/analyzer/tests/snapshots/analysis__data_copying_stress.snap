@@ -389,7 +389,7 @@ note:
    ┌─ data_copying_stress.fe:56:5
    │  
 56 │ ╭     pub fn assign_my_nums_and_return(self) -> Array<u256, 5> {
-57 │ │         let my_nums_mem: Array<u256, 5>
+57 │ │         let my_nums_mem: Array<u256, 5> = [0; 5]
 58 │ │         self.my_nums[0] = 42
 59 │ │         self.my_nums[1] = 26
    · │
@@ -400,12 +400,22 @@ note:
 note: 
    ┌─ data_copying_stress.fe:57:13
    │
-57 │         let my_nums_mem: Array<u256, 5>
+57 │         let my_nums_mem: Array<u256, 5> = [0; 5]
    │             ^^^^^^^^^^^ Array<u256, 5>
 
 note: 
-   ┌─ data_copying_stress.fe:58:9
+   ┌─ data_copying_stress.fe:57:44
    │
+57 │         let my_nums_mem: Array<u256, 5> = [0; 5]
+   │                                            ^  ^ u256: Value
+   │                                            │   
+   │                                            u256: Value
+
+note: 
+   ┌─ data_copying_stress.fe:57:43
+   │
+57 │         let my_nums_mem: Array<u256, 5> = [0; 5]
+   │                                           ^^^^^^ Array<u256, 5>: Memory
 58 │         self.my_nums[0] = 42
    │         ^^^^ Foo: Value
 

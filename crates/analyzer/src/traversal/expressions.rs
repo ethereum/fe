@@ -1,5 +1,7 @@
 use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
+use crate::context::{
+    AnalyzerContext, CallType, Constant, ExpressionAttributes, Location, NamedThing,
+};
 use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{Class, FunctionId, Item, StructId, TypeDef};
@@ -7,15 +9,17 @@ use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
+use crate::traversal::const_expr::eval_expr;
 use crate::traversal::types::apply_generic_type_args;
 use crate::traversal::utils::add_bin_operations_errors;
 
 use fe_common::diagnostics::Label;
 use fe_common::{numeric, Span};
 use fe_parser::ast as fe;
-use fe_parser::ast::UnaryOperator;
+use fe_parser::ast::GenericArg;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 use smol_str::SmolStr;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
@@ -45,9 +49,9 @@ pub fn expr(
             args,
         } => expr_call(context, func, generic_args, args),
         fe::Expr::List { elts } => expr_list(context, elts, expected_type),
+        fe::Expr::Repeat { .. } => expr_repeat(context, exp, expected_type),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp, expected_type),
         fe::Expr::Str(_) => expr_str(context, exp, expected_type),
-
         fe::Expr::Bool(_) => Ok(ExpressionAttributes::new(
             TypeId::bool(context.db()),
             Location::Value,
@@ -128,6 +132,66 @@ pub fn expr_list(
             size: elts.len(),
             inner: inner_type,
         })),
+        location: Location::Memory,
+        move_location: None,
+        const_value: None,
+    })
+}
+
+pub fn expr_repeat(
+    context: &mut dyn AnalyzerContext,
+    expr: &Node<fe::Expr>,
+    expected_type: Option<TypeId>,
+) -> Result<ExpressionAttributes, FatalError> {
+    let (value, len) = if let fe::Expr::Repeat { value, len } = &expr.kind {
+        (value, len)
+    } else {
+        unreachable!()
+    };
+
+    let value = assignable_expr(context, value, None)?;
+
+    let size = match &len.kind {
+        GenericArg::Int(size) => size.kind,
+        GenericArg::TypeDesc(_) => {
+            return Err(FatalError::new(context.fancy_error(
+                "expected a constant u256 value",
+                vec![Label::primary(len.span, "Array length")],
+                vec!["Note: Array length must be a constant u256".to_string()],
+            )));
+        }
+        GenericArg::ConstExpr(expr) => {
+            assignable_expr(context, expr, None)?;
+            if let Constant::Int(len) = eval_expr(context, expr)? {
+                len.to_usize().unwrap()
+            } else {
+                return Err(FatalError::new(context.fancy_error(
+                    "expected a constant u256 value",
+                    vec![Label::primary(len.span, "Array length")],
+                    vec!["Note: Array length must be a constant u256".to_string()],
+                )));
+            }
+        }
+    };
+
+    let array_typ = context.db().intern_type(Type::Array(Array {
+        size,
+        inner: value.typ,
+    }));
+
+    if let Some(expected_typ) = expected_type {
+        if expected_typ.typ(context.db()) != array_typ.typ(context.db()) {
+            return Err(FatalError::new(context.type_error(
+                "type mismatch",
+                expr.span,
+                expected_typ,
+                array_typ,
+            )));
+        }
+    }
+
+    Ok(ExpressionAttributes {
+        typ: array_typ,
         location: Location::Memory,
         move_location: None,
         const_value: None,
@@ -781,7 +845,7 @@ fn expr_unary_operation(
                     Location::Value,
                 ))
             }
-            UnaryOperator::Invert => {
+            fe::UnaryOperator::Invert => {
                 if !operand_attributes.typ.is_integer(context.db()) {
                     emit_err(context, "a numeric type")
                 }
