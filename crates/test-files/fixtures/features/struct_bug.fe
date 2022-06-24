@@ -1,10 +1,6 @@
 struct Point {
     pub x: u16
     pub y: u16
-    
-    pub fn new_y(self, _ y: u16) -> Point {
-        return Point (x: self.x, y: y)
-    }
 }
 
 pub struct Board {
@@ -12,17 +8,17 @@ pub struct Board {
     pub second: Point
 
     pub fn swap_y_workaround(self, p1: Point, p2: Point) {
-        # We should not need this since `new_y` should not mutate existing memory
+        # We should not need this since we aren't mutating p1 or p2
         let p1y: u16 = p1.y
 
-        self.first = p1.new_y(p2.y)
-        self.second = p2.new_y(p1y)
+        self.first = Point (x: p1.x, y: p2.y)
+        self.second = Point (x: p2.x, y: p1y)
     }
 
     pub fn swap_y(self, p1: Point, p2: Point) {
-        # This should work because it should not mutate `p1` or `p2`. But somehow it does mutate them so this doesn't work.
-        self.first = p1.new_y(p2.y)
-        self.second = p2.new_y(p1.y)
+        # This should work because p1 and p2 shouldn't be mutated here
+        self.first = Point (x: p1.x, y: p2.y)
+        self.second = Point (x: p2.x, y: p1.y)
     }
 }
 
