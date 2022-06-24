@@ -1,0 +1,51 @@
+struct Point {
+    pub x: u16
+    pub y: u16
+    
+    pub fn new_y(self, _ y: u16) -> Point {
+        return Point (x: self.x, y: y)
+    }
+}
+
+pub struct Board {
+    pub first: Point
+    pub second: Point
+
+    pub fn swap_y_workaround(self, p1: Point, p2: Point) {
+        # We should not need this since `new_y` should not mutate existing memory
+        let p1y: u16 = p1.y
+
+        self.first = p1.new_y(p2.y)
+        self.second = p2.new_y(p1y)
+    }
+
+    pub fn swap_y(self, p1: Point, p2: Point) {
+        # This should work because it should not mutate `p1` or `p2`. But somehow it does mutate them so this doesn't work.
+        self.first = p1.new_y(p2.y)
+        self.second = p2.new_y(p1.y)
+    }
+}
+
+contract Foo {
+    pub fn bar(self, x: u16, y: u16) -> u16 {
+
+        let p1: Point = Point(x:100, y: 200)
+        let p2: Point = Point(x: 1, y: 2)
+
+        let b: Board = Board(first: p1, second: p2)
+
+        assert b.first.x == 100 and b.first.y == 200
+        assert b.second.x == 1 and b.second.y == 2
+
+        #b.swap_y_workaround(p1: b.first, p2: b.second)
+
+        # This causes the test to revert. If you comment this out and comment in the line above using `swap_y_workaround`
+        # it will work just fine.
+        b.swap_y(p1: b.first, p2: b.second)
+
+        assert b.first.y == 2
+        assert b.second.y == 200
+
+        return 0
+    }
+}

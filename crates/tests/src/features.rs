@@ -437,6 +437,7 @@ fn test_arrays() {
     case::int_literal_coercion("int_literal_coercion.fe", &[], uint_token(300)),
     case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
     case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
+    case::struct_bug("struct_bug.fe", &[uint_token(0), uint_token(0)], uint_token(0)),
     case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
     case("for_loop_with_complex_elem_array.fe", &[], int_token(222)),
 )]
