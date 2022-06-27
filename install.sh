@@ -1,11 +1,22 @@
 #!/bin/bash
 set -e
 
+
 # Reference from https://github.com/foundry-rs/foundry/blob/master/foundryup/install
+need_cmd() {
+  if ! check_cmd "$1"; then
+    err "need '$1' (command not found)"
+  fi
+}
+
+check_cmd() {
+  command -v "$1" > /dev/null 2>&1
+}
 
 echo "Installing fe compiler to your system..."
 
-# 
+need_cmd jq
+
 FE_DIR=${FE_DIR-"$HOME/.fe"}
 FE_BIN_DIR="$FE_DIR/bin"
 FE_BIN="$FE_BIN_DIR/fe"
@@ -61,3 +72,6 @@ if [[ "$OSTYPE" =~ ^darwin && ! -f /usr/local/opt/libusb/lib/libusb-1.0.0.dylib 
 fi
 
 echo "Install complete... Please start new terminal or run 'source $PROFILE' to reset shell env"
+
+
+
