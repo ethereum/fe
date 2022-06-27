@@ -5,21 +5,19 @@ At this point Fe is only available for **Linux** and **MacOS**.
 > Note: If you happen to be a Windows developer, consider getting involved
 > and help us to support the Windows platform. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
 
-### Download the compiler
 
-At this point Fe is only distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through popular package managers such as `apt` or `homebrew`.
+First run the command below to get fe compiler, and add fe compier to your PATH:
 
-Depending on your operating system, the file that you download is either named `fe_amd64` or `fe_mac`.
-
-> Note: We will rename the file to `fe` and assume that name for the rest of the guide. In the future when Fe can be installed via other mechanisms we can assume `fe` to become the canonical command name.
-
-### Add permission to execute
-
-In order to be able to execute the Fe compiler we will have to make the file *executable*. This can be done by navigating to the directory where the file is located and executing `chmod + x <filename>` (e.g. `chmod +x fe`).
-
-After we have set the proper permissions we should be able to run `./fe_amd64 --help` or `./fe_mac -h` and an output that should be roughly comparable to:
-
+```bash
+curl https://raw.githubusercontent.com/ethereum/fe/create-install-script/install.sh | sh
 ```
+
+Check install successfuly 
+```
+
+> fe
+
+
 Fe 0.4.0-alpha
 Compiler for the Fe language
 
@@ -40,3 +38,5 @@ OPTIONS:
 ARGS:
     <input>    The input source file to use e.g erc20.fe
 ```
+
+Happy coding!!! 
