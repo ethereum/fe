@@ -4,7 +4,7 @@ use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
 use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
-use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
+use crate::namespace::items::{EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
 use crate::namespace::types::{Type, TypeId};
 use crate::AnalyzerDb;
@@ -292,7 +292,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if name == "self" {
             return Ok(Some(NamedThing::SelfValue {
                 decl: sig.self_decl,
-                class: self.function.class(self.db),
+                parent: self.function.sig(self.db).direct_parent(self.db),
                 span: self.function.self_span(self.db),
             }));
         }
@@ -324,11 +324,12 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if let Some(param) = param {
             Ok(Some(param))
         } else {
-            let item = if let Some(Class::Contract(contract)) = self.function.class(self.db) {
-                contract.resolve_name(self.db, name)
-            } else {
-                self.function.module(self.db).resolve_name(self.db, name)
-            }?;
+            let item =
+                if let Item::Type(TypeDef::Contract(contract)) = self.function.parent(self.db) {
+                    contract.resolve_name(self.db, name)
+                } else {
+                    self.function.module(self.db).resolve_name(self.db, name)
+                }?;
 
             if let Some(item) = item {
                 check_item_visibility(self, item, span);

@@ -352,6 +352,13 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     build_display_diagnostic(fun.data(db).ast.span, &fun.signature(db).display(db))
                 })
                 .collect::<Vec<_>>(),
+            Item::Impl(val) => val
+                .all_functions(db)
+                .iter()
+                .map(|fun| {
+                    build_display_diagnostic(fun.data(db).ast.span, &fun.signature(db).display(db))
+                })
+                .collect::<Vec<_>>(),
             Item::Function(id) => function_diagnostics(*id, db),
             Item::Constant(id) => vec![build_display_diagnostic(
                 id.span(db),

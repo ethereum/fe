@@ -9,11 +9,11 @@ error: `self` can't be used as a variable name
 2 │     let self: u8 = 10
   │         ^^^^ expected a name, found keyword `self`
 
-error: `self` can only be used in contract or struct functions
+error: `self` can only be used in contract, struct, trait or impl functions
   ┌─ compile_errors/self_misuse.fe:3:5
   │
 3 │     self = 5
-  │     ^^^^ not allowed in functions defined outside of a contract or struct
+  │     ^^^^ not allowed in functions defined directly in a module
 
 error: `self` is not callable
    ┌─ compile_errors/self_misuse.fe:16:9

@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use smol_str::SmolStr;
 
 use crate::context::{Analysis, AnalyzerContext};
-use crate::namespace::items::{FunctionSig, FunctionSigId, TraitId};
+use crate::namespace::items::{FunctionSig, FunctionSigId, Item, TraitId};
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::TypeId;
 use crate::AnalyzerDb;
@@ -20,7 +20,7 @@ pub fn trait_all_functions(db: &dyn AnalyzerDb, trait_: TraitId) -> Rc<[Function
             db.intern_function_sig(Rc::new(FunctionSig {
                 ast: node.clone(),
                 module: trait_.module(db),
-                parent: Some(trait_.as_class()),
+                parent: Some(Item::Trait(trait_)),
             }))
         })
         .collect()
