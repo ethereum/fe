@@ -15,6 +15,8 @@ use std::rc::Rc;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};
 
+use super::items::ImplId;
+
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
 }
@@ -95,6 +97,12 @@ impl TypeId {
     }
     pub fn as_class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.typ(db).as_class()
+    }
+    pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
+        match self.typ(db) {
+            Type::Struct(id) => id.get_impl_for(db, trait_),
+            _ => trait_.module(db).impls(db).get(&(trait_, *self)).cloned(),
+        }
     }
 }
 
@@ -409,6 +417,7 @@ impl Type {
     pub fn id(&self, db: &dyn AnalyzerDb) -> TypeId {
         db.intern_type(self.clone())
     }
+
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             Type::Base(inner) => inner.name(),

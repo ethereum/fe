@@ -1109,6 +1109,7 @@ impl FunctionSigId {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
             Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
             Item::Impl(id) => Some(id.receiver(db)),
+            Item::Type(TypeDef::Primitive(ty)) => Some(db.intern_type(Type::Base(ty))),
             _ => None,
         }
     }
@@ -1560,28 +1561,23 @@ impl ImplId {
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match &self.data(db).receiver.typ(db) {
-            Type::Contract(_)
-            | Type::Map(_)
-            | Type::SelfContract(_)
-            | Type::Generic(_)
-            // TODO: We should find a way to support these types. We only support implementing traits for structs
-            // so far because it simplifies things regarding the assign location of the underlying type.
-            | Type::Base(_)
-            | Type::Array(_)
-            | Type::Tuple(_)
-            | Type::String(_) => sink.push(&errors::fancy_error(
-                format!(
-                    "`impl` blocks aren't allowed for {}",
-                    self.data(db).receiver.display(db)
-                ),
-                vec![Label::primary(
-                    self.data(db).ast.span,
-                    "illegal `impl` block",
-                )],
-                vec![],
-            )),
+            Type::Contract(_) | Type::Map(_) | Type::SelfContract(_) | Type::Generic(_) => sink
+                .push(&errors::fancy_error(
+                    format!(
+                        "`impl` blocks aren't allowed for {}",
+                        self.data(db).receiver.display(db)
+                    ),
+                    vec![Label::primary(
+                        self.data(db).ast.span,
+                        "illegal `impl` block",
+                    )],
+                    vec![],
+                )),
             Type::Struct(id) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+            }
+            Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
+                self.validate_type_or_trait_is_in_ingot(db, sink, None)
             }
         }
 

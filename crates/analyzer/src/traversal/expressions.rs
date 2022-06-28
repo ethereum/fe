@@ -555,6 +555,8 @@ fn expr_subscript(
             Location::Memory => Location::Memory,
             // neither maps or arrays can be stored as values, so this is unreachable
             Location::Value => unreachable!(),
+            // Generics can't be subscritpable
+            Location::Unresolved => unreachable!(),
         };
 
         return Ok(ExpressionAttributes::new(typ, location));
@@ -1524,11 +1526,31 @@ fn expr_call_builtin_value_method(
                     );
                 }
                 Location::Memory => {}
+                Location::Unresolved => {
+                    context.fancy_error(
+                        "`clone()` called on generic type",
+                        vec![
+                            Label::primary(value.span, "this value can not be cloned"),
+                            Label::secondary(method_name.span, "hint: remove `.clone()`"),
+                        ],
+                        vec![],
+                    );
+                }
             }
             Ok((value_attrs.into_cloned(), calltype))
         }
         ValueMethod::ToMem => {
             match value_attrs.location {
+                Location::Unresolved => {
+                    context.fancy_error(
+                        "`to_mem()` called on generic type",
+                        vec![
+                            Label::primary(value.span, "this value can not be copied to memory"),
+                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                        ],
+                        vec![],
+                    );
+                }
                 Location::Storage { .. } => {}
                 Location::Value => {
                     context.fancy_error(

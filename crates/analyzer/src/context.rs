@@ -350,6 +350,8 @@ pub enum Location {
     },
     Memory,
     Value,
+    // An unresolved location is used for generic types prior to monomorphization.
+    Unresolved,
 }
 
 impl Location {
@@ -358,12 +360,8 @@ impl Location {
     pub fn assign_location(typ: &Type) -> Self {
         match typ {
             Type::Base(_) | Type::Contract(_) => Location::Value,
-            // For now assume that generics can only ever refer to structs
-            Type::Array(_)
-            | Type::Tuple(_)
-            | Type::String(_)
-            | Type::Struct(_)
-            | Type::Generic(_) => Location::Memory,
+            Type::Generic(_) => Location::Unresolved,
+            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
             _ => panic!("Type can not be assigned, returned or passed"),
         }
     }
