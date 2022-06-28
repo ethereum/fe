@@ -292,8 +292,8 @@ fn expr_named_thing(
             let location = Location::assign_location(&typ_id.typ(context.db()));
             Ok(ExpressionAttributes::new(typ_id, location))
         }
-        Some(NamedThing::SelfValue { decl, class, .. }) => {
-            if let Some(class) = class {
+        Some(NamedThing::SelfValue { decl, parent, .. }) => {
+            if let Some(class) = parent.and_then(|class| class.as_class()) {
                 if decl.is_none() {
                     context.fancy_error(
                         "`self` is not defined",
@@ -346,10 +346,10 @@ fn expr_named_thing(
                 }
             } else {
                 Err(FatalError::new(context.fancy_error(
-                    "`self` can only be used in contract or struct functions",
+                    "`self` can only be used in contract, struct, trait or impl functions",
                     vec![Label::primary(
                         exp.span,
-                        "not allowed in functions defined outside of a contract or struct",
+                        "not allowed in functions defined directly in a module",
                     )],
                     vec![],
                 )))
@@ -869,7 +869,9 @@ fn expr_call_name<T: std::fmt::Display>(
         if context.is_in_function() {
             let func_id = context.parent_function();
             if let Some(function) = func_id
-                .class(context.db())
+                .sig(context.db())
+                .self_item(context.db())
+                .and_then(|item| item.as_class())
                 .and_then(|class| class.self_function(context.db(), name))
             {
                 // TODO: this doesn't have to be fatal
@@ -1015,6 +1017,7 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 func.kind
             ),
         ))),
+        NamedThing::Item(Item::Impl(_)) => unreachable!(),
         NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,

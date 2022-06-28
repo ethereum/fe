@@ -33,6 +33,7 @@ pub enum Item {
     // TypeDef, but it would have consequences.
     Event(EventId),
     Trait(TraitId),
+    Impl(ImplId),
     Function(FunctionId),
     Constant(ModuleConstantId),
     // Needed until we can represent keccak256 as a FunctionId.
@@ -46,6 +47,7 @@ impl Item {
         match self {
             Item::Type(id) => id.name(db),
             Item::Trait(id) => id.name(db),
+            Item::Impl(id) => id.name(db),
             Item::GenericType(id) => id.name(),
             Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
@@ -65,9 +67,11 @@ impl Item {
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
             Item::Constant(id) => Some(id.name_span(db)),
-            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Ingot(_) | Item::Module(_) => {
-                None
-            }
+            Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
+            | Item::Ingot(_)
+            | Item::Module(_)
+            | Item::Impl(_) => None,
         }
     }
 
@@ -78,6 +82,7 @@ impl Item {
             | Self::Module(_)
             | Self::BuiltinFunction(_)
             | Self::Intrinsic(_)
+            | Self::Impl(_)
             | Self::GenericType(_) => true,
             Self::Type(id) => id.is_public(db),
             Self::Trait(id) => id.is_public(db),
@@ -95,6 +100,7 @@ impl Item {
             | Item::Intrinsic(_) => true,
             Item::Type(_)
             | Item::Trait(_)
+            | Item::Impl(_)
             | Item::Event(_)
             | Item::Function(_)
             | Item::Constant(_)
@@ -115,6 +121,7 @@ impl Item {
         match self {
             Item::Type(_) | Item::GenericType(_) => "type",
             Item::Trait(_) => "trait",
+            Item::Impl(_) => "impl",
             Item::Event(_) => "event",
             Item::Function(_) | Item::BuiltinFunction(_) => "function",
             Item::Intrinsic(_) => "intrinsic function",
@@ -132,6 +139,7 @@ impl Item {
             Item::GenericType(_)
             | Item::Event(_)
             | Item::Trait(_)
+            | Item::Impl(_)
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
@@ -143,6 +151,7 @@ impl Item {
         match self {
             Item::Type(id) => id.parent(db),
             Item::Trait(id) => Some(id.parent(db)),
+            Item::Impl(id) => Some(id.parent(db)),
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
@@ -223,10 +232,21 @@ impl Item {
         }
     }
 
+    pub fn as_class(&self) -> Option<Class> {
+        match self {
+            Item::Type(TypeDef::Contract(id)) => Some(Class::Contract(*id)),
+            Item::Type(TypeDef::Struct(id)) => Some(Class::Struct(*id)),
+            Item::Trait(id) => Some(Class::Trait(*id)),
+            Item::Impl(id) => Some(Class::Impl(*id)),
+            _ => None,
+        }
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match self {
             Item::Type(id) => id.sink_diagnostics(db, sink),
             Item::Trait(id) => id.sink_diagnostics(db, sink),
+            Item::Impl(id) => id.sink_diagnostics(db, sink),
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
             Item::GenericType(_) | Item::BuiltinFunction(_) | Item::Intrinsic(_) => {}
@@ -698,7 +718,7 @@ impl ModuleId {
 
         self.all_impls(db)
             .iter()
-            .for_each(|val| val.sink_diagnostics(db, sink));
+            .for_each(|id| id.sink_diagnostics(db, sink));
     }
 
     #[doc(hidden)]
@@ -1067,7 +1087,7 @@ impl ContractFieldId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FunctionSig {
     pub ast: Node<ast::FunctionSignature>,
-    pub parent: Option<Class>,
+    pub parent: Option<Item>,
     pub module: ModuleId,
 }
 
@@ -1080,11 +1100,6 @@ impl FunctionSigId {
         db.lookup_intern_function_sig(*self)
     }
 
-    // This should probably be scrapped in favor of `parent(`
-    pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
-        self.data(db).parent
-    }
-
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl.is_some()
     }
@@ -1093,6 +1108,7 @@ impl FunctionSigId {
         match self.parent(db) {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
             Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
+            Item::Impl(id) => Some(id.receiver(db)),
             _ => None,
         }
     }
@@ -1131,19 +1147,26 @@ impl FunctionSigId {
         self.data(db).ast.kind.pub_
     }
 
-    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+    pub fn self_item(&self, db: &dyn AnalyzerDb) -> Option<Item> {
         let data = self.data(db);
         data.parent
-            .map(|class| class.as_item(db))
-            .unwrap_or(Item::Module(data.module))
+    }
+
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        self.self_item(db)
+            .unwrap_or_else(|| Item::Module(self.module(db)))
     }
 
     pub fn is_trait_fn(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.parent(db), Item::Trait(_))
     }
 
+    pub fn is_module_fn(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.parent(db), Item::Module(_))
+    }
+
     pub fn is_impl_fn(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.class(db), Some(Class::Impl(_)))
+        matches!(self.parent(db), Item::Impl(_))
     }
 
     pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
@@ -1188,7 +1211,7 @@ impl Function {
     pub fn new(
         db: &dyn AnalyzerDb,
         ast: &Node<ast::Function>,
-        parent: Option<Class>,
+        parent: Option<Item>,
         module: ModuleId,
     ) -> Self {
         let sig = db.intern_function_sig(Rc::new(FunctionSig {
@@ -1222,16 +1245,13 @@ impl FunctionId {
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.sig(db).module(db)
     }
-    // This should probably be scrapped in favor of `parent(`
-    pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
-        self.sig(db).class(db)
-    }
     pub fn self_type(&self, db: &dyn AnalyzerDb) -> Option<types::TypeId> {
         self.sig(db).self_type(db)
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         self.sig(db).parent(db)
     }
+
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).takes_self(db)
     }

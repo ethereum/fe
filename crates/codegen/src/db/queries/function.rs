@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
-use fe_analyzer::display::Displayable;
-use fe_analyzer::namespace::items::Class;
+use fe_analyzer::{display::Displayable, namespace::items::Item};
 use fe_mir::ir::{FunctionBody, FunctionId, FunctionSignature};
 
 use crate::{db::CodegenDb, yul::legalize};
@@ -29,8 +28,8 @@ pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
         function.type_suffix(db.upcast())
     );
 
-    let func_name = match analyzer_func.class(db.upcast()) {
-        Some(Class::Impl(id)) => {
+    let func_name = match analyzer_func.sig(db.upcast()).self_item(db.upcast()) {
+        Some(Item::Impl(id)) => {
             let class_name = format!(
                 "{}${}",
                 id.trait_id(db.upcast()).name(db.upcast()),

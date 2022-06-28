@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::items::Class;
 use fe_analyzer::namespace::types as analyzer_types;
+use fe_analyzer::namespace::items::Item;
+
 use smol_str::SmolStr;
 
 use crate::{
@@ -89,8 +90,8 @@ impl ir::FunctionId {
             self.type_suffix(db)
         );
 
-        match analyzer_func.class(db.upcast()) {
-            Some(Class::Impl(id)) => {
+        match analyzer_func.sig(db.upcast()).self_item(db.upcast()) {
+            Some(Item::Impl(id)) => {
                 let class_name = format!(
                     "<{} as {}>",
                     id.receiver(db.upcast()).display(db.upcast()),

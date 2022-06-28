@@ -3,17 +3,17 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: `self` can only be used in contract or struct functions
+error: `self` can only be used in contract, struct, trait or impl functions
   ┌─ compile_errors/self_in_standalone_fn.fe:1:12
   │
 1 │ fn pure_fn(self) {
-  │            ^^^^ not allowed in functions defined outside of a contract or struct
+  │            ^^^^ not allowed in functions defined directly in a module
 
-error: `self` can only be used in contract or struct functions
+error: `self` can only be used in contract, struct, trait or impl functions
   ┌─ compile_errors/self_in_standalone_fn.fe:2:5
   │
 2 │     self.mut_fn()
-  │     ^^^^ not allowed in functions defined outside of a contract or struct
+  │     ^^^^ not allowed in functions defined directly in a module
 
 error: `pure_fn` expects 0 arguments, but 1 was provided
   ┌─ compile_errors/self_in_standalone_fn.fe:1:4

@@ -3,7 +3,7 @@ use crate::db::{Analysis, AnalyzerDb};
 use crate::display::Displayable;
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
+    DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, CtxDecl, Generic, SelfDecl, Type, TypeId};
@@ -26,7 +26,7 @@ pub fn function_signature(
     let def = &function.data(db).ast;
 
     let mut scope = ItemScope::new(db, function.module(db));
-    let fn_parent = function.class(db);
+    let fn_parent = function.parent(db);
 
     let mut self_decl = None;
     let mut ctx_decl = None;
@@ -51,7 +51,7 @@ pub fn function_signature(
         },
     );
 
-    if !matches!(fn_parent, Some(Class::Struct(_))) && function.is_generic(db) {
+    if !matches!(fn_parent, Item::Type(TypeDef::Struct(_))) && function.is_generic(db) {
         scope.fancy_error(
             "generic function parameters aren't yet supported outside of struct functions",
             vec![Label::primary(
@@ -87,11 +87,11 @@ pub fn function_signature(
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
             ast::FunctionArg::Self_ => {
-                if fn_parent.is_none() {
+                if matches!(fn_parent, Item::Module(_)) {
                     scope.error(
-                        "`self` can only be used in contract or struct functions",
+                        "`self` can only be used in contract, struct, trait or impl functions",
                         arg.span,
-                        "not allowed in functions defined outside of a contract or struct",
+                        "not allowed in functions defined directly in a module",
                     );
                 } else {
                     self_decl = Some(SelfDecl::Mutable);
@@ -371,8 +371,8 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
     );
     // A function that takes `self` depends on the type of `self`, so that any
     // relevant struct getters/setters are included when compiling.
-    if let Some(class) = function.class(db) {
-        directs.push((root, class.as_item(db), DepLocality::Local));
+    if !function.sig(db).is_module_fn(db) {
+        directs.push((root, function.parent(db), DepLocality::Local));
     }
 
     let body = function.body(db);

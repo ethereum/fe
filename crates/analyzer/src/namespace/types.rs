@@ -541,7 +541,7 @@ impl TypeDowncast for Type {
             Type::Struct(id) => Some(Class::Struct(*id)),
             Type::Contract(id) | Type::SelfContract(id) => Some(Class::Contract(*id)),
             Type::Generic(inner) if !inner.bounds.is_empty() => {
-                // FIXME: This won't hold when we support multiple bounds or traits can be implemented for non-struct types
+                // FIXME: This won't hold when we support multiple bounds
                 inner.bounds.first().map(TraitId::as_class)
             }
             _ => None,

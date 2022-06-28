@@ -219,7 +219,7 @@ pub enum NamedThing {
 
         /// The function's parent, if any. If `None`, `self` has been
         /// used in a module-level function.
-        class: Option<Class>,
+        parent: Option<Item>,
         span: Option<Span>,
     },
     // SelfType // when/if we add a `Self` type keyword
