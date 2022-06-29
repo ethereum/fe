@@ -761,6 +761,9 @@ dependencies = [
 name = "fe-lsp"
 version = "0.1.0"
 dependencies = [
+ "fe-common",
+ "fe-driver",
+ "fe-parser",
  "tokio",
  "tower-lsp",
 ]
