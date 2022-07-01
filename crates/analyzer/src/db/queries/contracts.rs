@@ -22,9 +22,14 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[
     body.iter()
         .filter_map(|stmt| match stmt {
             ast::ContractStmt::Event(_) => None,
-            ast::ContractStmt::Function(node) => Some(db.intern_function(Rc::new(
-                items::Function::new(db, node, Some(items::Class::Contract(contract)), module),
-            ))),
+            ast::ContractStmt::Function(node) => {
+                Some(db.intern_function(Rc::new(items::Function::new(
+                    db,
+                    node,
+                    Some(Item::Type(TypeDef::Contract(contract))),
+                    module,
+                ))))
+            }
         })
         .collect()
 }

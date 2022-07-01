@@ -917,16 +917,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
 
-                let struct_type = self
+                let concrete_type = self
                     .func
                     .signature(self.db)
                     .resolved_generics
                     .get(generic_type)
-                    .expect("unresolved generic type")
-                    .as_struct(self.db.upcast())
-                    .expect("unexpected implementer of trait");
+                    .cloned()
+                    .expect("unresolved generic type");
 
-                let impl_ = struct_type
+                let impl_ = concrete_type
                     .get_impl_for(self.db.upcast(), *trait_id)
                     .expect("missing impl");
 

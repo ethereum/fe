@@ -116,7 +116,7 @@ pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[Funct
             db.intern_function(Rc::new(items::Function::new(
                 db,
                 node,
-                Some(items::Class::Struct(struct_)),
+                Some(Item::Type(TypeDef::Struct(struct_))),
                 struct_data.module,
             )))
         })

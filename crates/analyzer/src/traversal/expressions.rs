@@ -292,8 +292,8 @@ fn expr_named_thing(
             let location = Location::assign_location(&typ_id.typ(context.db()));
             Ok(ExpressionAttributes::new(typ_id, location))
         }
-        Some(NamedThing::SelfValue { decl, class, .. }) => {
-            if let Some(class) = class {
+        Some(NamedThing::SelfValue { decl, parent, .. }) => {
+            if let Some(class) = parent.and_then(|class| class.as_class()) {
                 if decl.is_none() {
                     context.fancy_error(
                         "`self` is not defined",
@@ -346,10 +346,10 @@ fn expr_named_thing(
                 }
             } else {
                 Err(FatalError::new(context.fancy_error(
-                    "`self` can only be used in contract or struct functions",
+                    "`self` can only be used in contract, struct, trait or impl functions",
                     vec![Label::primary(
                         exp.span,
-                        "not allowed in functions defined outside of a contract or struct",
+                        "not allowed in functions defined directly in a module",
                     )],
                     vec![],
                 )))
@@ -555,6 +555,8 @@ fn expr_subscript(
             Location::Memory => Location::Memory,
             // neither maps or arrays can be stored as values, so this is unreachable
             Location::Value => unreachable!(),
+            // Generics can't be subscritpable
+            Location::Unresolved => unreachable!(),
         };
 
         return Ok(ExpressionAttributes::new(typ, location));
@@ -869,7 +871,9 @@ fn expr_call_name<T: std::fmt::Display>(
         if context.is_in_function() {
             let func_id = context.parent_function();
             if let Some(function) = func_id
-                .class(context.db())
+                .sig(context.db())
+                .self_item(context.db())
+                .and_then(|item| item.as_class())
                 .and_then(|class| class.self_function(context.db(), name))
             {
                 // TODO: this doesn't have to be fatal
@@ -1015,6 +1019,7 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 func.kind
             ),
         ))),
+        NamedThing::Item(Item::Impl(_)) => unreachable!(),
         NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,
@@ -1521,11 +1526,31 @@ fn expr_call_builtin_value_method(
                     );
                 }
                 Location::Memory => {}
+                Location::Unresolved => {
+                    context.fancy_error(
+                        "`clone()` called on generic type",
+                        vec![
+                            Label::primary(value.span, "this value can not be cloned"),
+                            Label::secondary(method_name.span, "hint: remove `.clone()`"),
+                        ],
+                        vec![],
+                    );
+                }
             }
             Ok((value_attrs.into_cloned(), calltype))
         }
         ValueMethod::ToMem => {
             match value_attrs.location {
+                Location::Unresolved => {
+                    context.fancy_error(
+                        "`to_mem()` called on generic type",
+                        vec![
+                            Label::primary(value.span, "this value can not be copied to memory"),
+                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                        ],
+                        vec![],
+                    );
+                }
                 Location::Storage { .. } => {}
                 Location::Value => {
                     context.fancy_error(
