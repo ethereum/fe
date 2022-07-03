@@ -1,9 +1,12 @@
 use crate::db::SourceDb;
 use crate::files::{SourceFileId, Utf8PathBuf};
 use crate::Span;
+use codespan_lsp::byte_span_to_range;
 pub use codespan_reporting::diagnostic as cs;
 use codespan_reporting::files::Error as CsError;
 use codespan_reporting::term;
+use lsp_types::{Diagnostic as LSPDiagnostic, Range as LSPRange};
+
 pub use cs::Severity;
 use std::ops::Range;
 use std::rc::Rc;
@@ -33,6 +36,21 @@ impl Diagnostic {
             labels: vec![],
             notes: vec![],
         }
+    }
+
+    pub fn into_lsp(self, db: &dyn SourceDb) -> LSPDiagnostic {
+        let lsp_severity = match self.severity {
+            Severity::Help | Severity::Note => Some(lsp_types::DiagnosticSeverity::INFORMATION),
+            Severity::Warning => Some(lsp_types::DiagnosticSeverity::WARNING),
+            Severity::Error | Severity::Bug => Some(lsp_types::DiagnosticSeverity::ERROR),
+        };
+
+        return LSPDiagnostic {
+            range: self.labels[0].clone().into_lsp_range(db),
+            severity: lsp_severity,
+            message: self.message,
+            ..Default::default()
+        };
     }
 }
 
@@ -85,6 +103,19 @@ impl Label {
             range: self.span.into(),
             message: self.message,
         }
+    }
+
+    pub fn into_lsp_range(self, db: &dyn SourceDb) -> LSPRange {
+        let files = SourceDbWrapper(db);
+        return byte_span_to_range(
+            &files,
+            self.span.file_id,
+            Range {
+                start: self.span.start,
+                end: self.span.end,
+            },
+        )
+        .unwrap();
     }
 }
 

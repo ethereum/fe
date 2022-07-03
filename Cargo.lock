@@ -248,19 +248,17 @@ dependencies = [
 [[package]]
 name = "codespan-lsp"
 version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc4159b76af02757139baf42c0c971c6dc155330999fbfd8eddb29b97fb2db68"
+source = "git+https://github.com/vuvoth/codespan#87d0226b5fc9dc5ac65e619e6dbc3b7cdf3dabe8"
 dependencies = [
  "codespan-reporting",
- "lsp-types 0.88.0",
+ "lsp-types",
  "url",
 ]
 
 [[package]]
 name = "codespan-reporting"
 version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
+source = "git+https://github.com/vuvoth/codespan#87d0226b5fc9dc5ac65e619e6dbc3b7cdf3dabe8"
 dependencies = [
  "termcolor",
  "unicode-width",
@@ -681,11 +679,13 @@ name = "fe-common"
 version = "0.18.0-alpha"
 dependencies = [
  "camino",
+ "codespan-lsp",
  "codespan-reporting",
  "difference",
  "fe-library",
  "hex",
  "indexmap",
+ "lsp-types",
  "num-bigint",
  "num-traits",
  "once_cell",
@@ -772,12 +772,10 @@ dependencies = [
 name = "fe-lsp"
 version = "0.1.0"
 dependencies = [
- "codespan-lsp",
- "codespan-reporting",
  "fe-common",
  "fe-driver",
  "fe-parser",
- "lsp-types 0.93.0",
+ "lsp-types",
  "tokio",
  "tower-lsp",
 ]
@@ -1281,19 +1279,6 @@ dependencies = [
  "regex-syntax",
  "syn",
  "utf8-ranges",
-]
-
-[[package]]
-name = "lsp-types"
-version = "0.88.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8e8e042772e4e10b3785822f63c82399d0dd233825de44d2596f7fa86e023e0"
-dependencies = [
- "bitflags",
- "serde",
- "serde_json",
- "serde_repr",
- "url",
 ]
 
 [[package]]
@@ -2363,7 +2348,7 @@ dependencies = [
  "futures",
  "httparse",
  "log",
- "lsp-types 0.93.0",
+ "lsp-types",
  "memchr",
  "serde",
  "serde_json",

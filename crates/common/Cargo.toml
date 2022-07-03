@@ -10,7 +10,9 @@ repository = "https://github.com/ethereum/fe"
 fe-library = {path = "../library", version = "^0.18.0-alpha"}
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
-codespan-reporting = "0.11.1"
+codespan-reporting = {git = "https://github.com/vuvoth/codespan"}
+codespan-lsp = {git = "https://github.com/vuvoth/codespan"}
+lsp-types = "0.93.0"
 serde = { version = "1", features = ["derive"] }
 ron = "0.5.1"
 difference = "2.0"

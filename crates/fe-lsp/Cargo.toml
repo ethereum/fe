@@ -8,8 +8,6 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.17.0", features = ["full"] }
 tower-lsp = { version = "0.17.0"}
-codespan-lsp = "0.11.1"
-codespan-reporting = "0.11.1"
 fe-common = {path = "../common", version = "^0.18.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.18.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.18.0-alpha"}
