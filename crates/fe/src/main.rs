@@ -11,7 +11,8 @@ struct FelangCli {
     command: Commands,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     install_panic_hook();
 
     let cli = FelangCli::parse();
@@ -25,6 +26,9 @@ fn main() {
         }
         Commands::New(arg) => {
             task::create_new_project(arg);
+        }
+        Commands::Lsp(args) => {
+            task::start_lsp_sever(args).await;
         }
     }
 }

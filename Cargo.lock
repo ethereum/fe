@@ -615,10 +615,12 @@ dependencies = [
  "clap 3.1.18",
  "fe-common",
  "fe-driver",
+ "fe-lsp",
  "fe-parser",
  "fs_extra",
  "include_dir",
  "indexmap",
+ "tokio",
  "walkdir",
 ]
 
