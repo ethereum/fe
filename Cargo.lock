@@ -775,7 +775,6 @@ dependencies = [
  "fe-common",
  "fe-driver",
  "fe-parser",
- "lsp-types",
  "tokio",
  "tower-lsp",
 ]

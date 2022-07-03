@@ -38,19 +38,24 @@ impl Diagnostic {
         }
     }
 
-    pub fn into_lsp(self, db: &dyn SourceDb) -> LSPDiagnostic {
+    pub fn into_lsps(self, db: &dyn SourceDb) -> Vec<LSPDiagnostic> {
         let lsp_severity = match self.severity {
-            Severity::Help | Severity::Note => Some(lsp_types::DiagnosticSeverity::INFORMATION),
+            Severity::Note => Some(lsp_types::DiagnosticSeverity::INFORMATION),
             Severity::Warning => Some(lsp_types::DiagnosticSeverity::WARNING),
             Severity::Error | Severity::Bug => Some(lsp_types::DiagnosticSeverity::ERROR),
+            Severity::Help => Some(lsp_types::DiagnosticSeverity::HINT),
         };
 
-        return LSPDiagnostic {
-            range: self.labels[0].clone().into_lsp_range(db),
-            severity: lsp_severity,
-            message: self.message,
-            ..Default::default()
-        };
+        return self
+            .labels
+            .into_iter()
+            .map(|label| LSPDiagnostic {
+                range: label.into_lsp_range(db),
+                severity: lsp_severity,
+                message: self.message.clone(),
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
     }
 }
 

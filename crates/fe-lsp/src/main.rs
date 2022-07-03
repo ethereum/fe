@@ -13,6 +13,7 @@ struct TextDocumentItem {
     text: String,
     version: i32,
 }
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, initialize_params: InitializeParams) -> LSPResult<InitializeResult> {
@@ -116,7 +117,8 @@ impl Backend {
 
         return diags
             .into_iter()
-            .map(|diag| diag.into_lsp(&db))
+            .map(|diag| diag.into_lsps(&db))
+            .flatten()
             .collect::<Vec<_>>();
     }
 

@@ -11,4 +11,3 @@ tower-lsp = { version = "0.17.0"}
 fe-common = {path = "../common", version = "^0.18.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.18.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.18.0-alpha"}
-lsp-types = "0.93.0"
