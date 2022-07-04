@@ -2,7 +2,7 @@ use crate::context::AnalyzerContext;
 use crate::display::DisplayWithDb;
 use crate::display::Displayable;
 use crate::errors::TypeError;
-use crate::namespace::items::{Class, ContractId, StructId, TraitId};
+use crate::namespace::items::{ContractId, StructId, TraitId};
 use crate::AnalyzerDb;
 
 use fe_common::impl_intern_key;
@@ -15,7 +15,9 @@ use std::rc::Rc;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};
 
+use super::items::FunctionSigId;
 use super::items::ImplId;
+use super::items::ModuleId;
 
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
@@ -86,6 +88,9 @@ impl TypeId {
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
     }
+    pub fn is_contract(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Contract(_) | Type::SelfContract(_))
+    }
     pub fn is_integer(&self, db: &dyn AnalyzerDb) -> bool {
         self.typ(db).is_integer()
     }
@@ -95,14 +100,65 @@ impl TypeId {
     pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
         self.typ(db).as_struct()
     }
-    pub fn as_class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
-        self.typ(db).as_class()
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.typ(db).name(db)
     }
+
+    pub fn kind_display_name(&self, db: &dyn AnalyzerDb) -> &str {
+        match self.typ(db) {
+            Type::Contract(_) | Type::SelfContract(_) => "contract",
+            Type::Struct(_) => "struct",
+            _ => "type",
+        }
+    }
+
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         match self.typ(db) {
             Type::Struct(id) => id.get_impl_for(db, trait_),
             _ => trait_.module(db).impls(db).get(&(trait_, *self)).cloned(),
         }
+    }
+
+    /// Returns all `impls` for the type
+    pub fn get_all_impls(&self, db: &dyn AnalyzerDb, module_id: ModuleId) -> Vec<ImplId> {
+        // TODO: Probably, this isn't looking for all `impl` at all relevant places.
+        // An `impl` could be in the module of the type but it could also be in the module
+        // of the trait (which we don't know yet since we just want to get all `impl` regardless of the trait).
+        // Most likely, what we actually need is a mapping from type to impls and then we can just pick all
+        // `impl` for some type via that mapping.
+        module_id
+            .impls(db)
+            .iter()
+            .filter_map(
+                |((_, ty), impl_)| {
+                    if ty == self {
+                        Some(*impl_)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .collect()
+    }
+
+    pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
+        match self.typ(db) {
+            Type::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Type::SelfContract(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Type::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            // FIXME: multiple bounds
+            Type::Generic(inner) => inner
+                .bounds
+                .first()
+                .and_then(|bound| bound.function(db, name)),
+            _ => None,
+        }
+    }
+
+    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
+        let fun = self.function_sig(db, name)?;
+        fun.takes_self(db).then(|| fun)
     }
 }
 
@@ -503,7 +559,6 @@ pub trait TypeDowncast {
     fn as_map(&self) -> Option<&Map>;
     fn as_int(&self) -> Option<Integer>;
     fn as_primitive(&self) -> Option<Base>;
-    fn as_class(&self) -> Option<Class>;
     fn as_generic(&self) -> Option<&Generic>;
     fn as_struct(&self) -> Option<StructId>;
 }
@@ -545,17 +600,6 @@ impl TypeDowncast for Type {
             _ => None,
         }
     }
-    fn as_class(&self) -> Option<Class> {
-        match self {
-            Type::Struct(id) => Some(Class::Struct(*id)),
-            Type::Contract(id) | Type::SelfContract(id) => Some(Class::Contract(*id)),
-            Type::Generic(inner) if !inner.bounds.is_empty() => {
-                // FIXME: This won't hold when we support multiple bounds
-                inner.bounds.first().map(TraitId::as_class)
-            }
-            _ => None,
-        }
-    }
     fn as_struct(&self) -> Option<StructId> {
         match self {
             Type::Struct(id) => Some(*id),
@@ -588,9 +632,6 @@ impl TypeDowncast for Option<&Type> {
     }
     fn as_primitive(&self) -> Option<Base> {
         self.and_then(TypeDowncast::as_primitive)
-    }
-    fn as_class(&self) -> Option<Class> {
-        self.and_then(TypeDowncast::as_class)
     }
     fn as_struct(&self) -> Option<StructId> {
         self.and_then(TypeDowncast::as_struct)

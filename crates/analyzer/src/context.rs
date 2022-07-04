@@ -1,7 +1,7 @@
 use crate::display::Displayable;
 
 use crate::namespace::items::{
-    Class, ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
+    ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
 };
 use crate::namespace::types::{Generic, SelfDecl, Type, TypeId};
 use crate::AnalyzerDb;
@@ -451,12 +451,12 @@ pub enum CallType {
 
     // MyStruct.foo() (soon MyStruct::foo())
     AssociatedFunction {
-        class: Class,
+        typ: TypeId,
         function: FunctionId,
     },
     // some_struct_or_contract.foo()
     ValueMethod {
-        class: Class,
+        typ: TypeId,
         method: FunctionId,
     },
     // some_trait.foo()

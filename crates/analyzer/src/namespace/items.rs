@@ -1,7 +1,7 @@
 use crate::context::{self, Analysis, Constant};
 use crate::display::Displayable;
 use crate::errors::{self, IncompleteItem, TypeError};
-use crate::namespace::types::{self, GenericType, Type, TypeDowncast, TypeId};
+use crate::namespace::types::{self, GenericType, Type, TypeId};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use crate::{builtins, errors::ConstEvalError};
@@ -232,12 +232,12 @@ impl Item {
         }
     }
 
-    pub fn as_class(&self) -> Option<Class> {
+    pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self {
-            Item::Type(TypeDef::Contract(id)) => Some(Class::Contract(*id)),
-            Item::Type(TypeDef::Struct(id)) => Some(Class::Struct(*id)),
-            Item::Trait(id) => Some(Class::Trait(*id)),
-            Item::Impl(id) => Some(Class::Impl(*id)),
+            Item::Type(TypeDef::Contract(id)) => id.function(db, name).map(|fun| fun.sig(db)),
+            Item::Type(TypeDef::Struct(id)) => id.function(db, name).map(|fun| fun.sig(db)),
+            Item::Impl(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Item::Trait(id) => id.function(db, name),
             _ => None,
         }
     }
@@ -1158,6 +1158,16 @@ impl FunctionSigId {
             .unwrap_or_else(|| Item::Module(self.module(db)))
     }
 
+    /// Looks up the `FunctionId` based on the parent of the function signature
+    pub fn function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
+        match self.parent(db) {
+            Item::Type(TypeDef::Struct(id)) => id.function(db, &self.name(db)),
+            Item::Impl(id) => id.function(db, &self.name(db)),
+            Item::Type(TypeDef::Contract(id)) => id.function(db, &self.name(db)),
+            _ => None,
+        }
+    }
+
     pub fn is_trait_fn(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.parent(db), Item::Trait(_))
     }
@@ -1292,70 +1302,6 @@ impl FunctionId {
     }
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).is_contract_func(db)
-    }
-}
-
-/// A `Class` is an item that can have member functions.
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum Class {
-    Contract(ContractId),
-    Struct(StructId),
-    Trait(TraitId),
-    Impl(ImplId),
-}
-impl Class {
-    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        match self {
-            Class::Contract(id) => id.function(db, name),
-            Class::Struct(id) => id.function(db, name),
-            Class::Impl(id) => id.function(db, name),
-            // This would possibly change when in the future trait methods can provide a default implementation
-            Class::Trait(_) => None,
-        }
-    }
-    pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
-        match self {
-            Class::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
-            Class::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
-            Class::Impl(id) => id.function(db, name).map(|fun| fun.sig(db)),
-            Class::Trait(id) => id.function(db, name),
-        }
-    }
-    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
-        let fun = self.function_sig(db, name)?;
-        fun.takes_self(db).then(|| fun)
-    }
-
-    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
-        match self {
-            Class::Contract(inner) => inner.name(db),
-            Class::Struct(inner) => inner.name(db),
-            Class::Trait(inner) => inner.name(db),
-            Class::Impl(inner) => inner.name(db),
-        }
-    }
-    pub fn kind(&self) -> &str {
-        match self {
-            Class::Contract(_) => "contract",
-            Class::Struct(_) => "struct",
-            Class::Trait(_) => "trait",
-            Class::Impl(_) => "impl",
-        }
-    }
-    pub fn as_item(&self, db: &dyn AnalyzerDb) -> Item {
-        match self {
-            Class::Contract(id) => Item::Type(TypeDef::Contract(*id)),
-            Class::Struct(id) => Item::Type(TypeDef::Struct(*id)),
-            Class::Trait(id) => Item::Trait(*id),
-            // Coercing into an Item of the basis of the receiver doesn't seem ideal but can hopefully
-            // be addressed when we get rid of `Class`.
-            Class::Impl(id) => id
-                .receiver(db)
-                .typ(db)
-                .as_struct()
-                .map(|id| Item::Type(TypeDef::Struct(id)))
-                .expect("missing receiver"),
-        }
     }
 }
 
@@ -1744,10 +1690,6 @@ impl TraitId {
 
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         self.functions(db).get(name).copied()
-    }
-
-    pub fn as_class(&self) -> Class {
-        Class::Trait(*self)
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
