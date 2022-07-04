@@ -4,7 +4,7 @@ use crate::context::{
 };
 use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
-use crate::namespace::items::{Class, FunctionId, Item, StructId, TypeDef};
+use crate::namespace::items::{FunctionId, Item, StructId, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
 use crate::operations;
@@ -357,7 +357,7 @@ fn expr_named_thing(
             Ok(ExpressionAttributes::new(typ_id, location))
         }
         Some(NamedThing::SelfValue { decl, parent, .. }) => {
-            if let Some(class) = parent.and_then(|class| class.as_class()) {
+            if let Some(target) = parent {
                 if decl.is_none() {
                     context.fancy_error(
                         "`self` is not defined",
@@ -376,17 +376,17 @@ fn expr_named_thing(
                         },
                     );
                 }
-                match class {
-                    Class::Struct(id) => Ok(ExpressionAttributes::new(
+                match target {
+                    Item::Type(TypeDef::Struct(id)) => Ok(ExpressionAttributes::new(
                         context.db().intern_type(Type::Struct(id)),
                         Location::Memory,
                     )),
-                    Class::Impl(id) => Ok(ExpressionAttributes::new(
+                    Item::Impl(id) => Ok(ExpressionAttributes::new(
                         id.receiver(context.db()),
                         Location::Memory,
                     )),
                     // This can only happen when trait methods can implement a default body
-                    Class::Trait(id) => Err(FatalError::new(context.fancy_error(
+                    Item::Trait(id) => Err(FatalError::new(context.fancy_error(
                         &format!(
                             "`{}` is a trait, and can't be used as an expression",
                             exp.kind
@@ -403,10 +403,11 @@ fn expr_named_thing(
                         ],
                         vec![],
                     ))),
-                    Class::Contract(id) => Ok(ExpressionAttributes::new(
+                    Item::Type(TypeDef::Contract(id)) => Ok(ExpressionAttributes::new(
                         context.db().intern_type(Type::SelfContract(id)),
                         Location::Value,
                     )),
+                    _ => unreachable!(),
                 }
             } else {
                 Err(FatalError::new(context.fancy_error(
@@ -937,8 +938,8 @@ fn expr_call_name<T: std::fmt::Display>(
             if let Some(function) = func_id
                 .sig(context.db())
                 .self_item(context.db())
-                .and_then(|item| item.as_class())
-                .and_then(|class| class.self_function(context.db(), name))
+                .and_then(|target| target.function_sig(context.db(), name))
+                .filter(|fun| fun.takes_self(context.db()))
             {
                 // TODO: this doesn't have to be fatal
                 FatalError::new(context.fancy_error(
@@ -1429,95 +1430,93 @@ fn expr_call_method(
         );
     }
 
-    // If the target is a "class" type (contract or struct), check for a member
-    // function
-    if let Some(class) = target_attributes.typ.as_class(context.db()) {
-        if matches!(class, Class::Contract(_)) {
-            check_for_call_to_special_fns(context, &field.kind, field.span)?;
-        }
-        if let Some(method) = class.function_sig(context.db(), &field.kind) {
-            let is_self = is_self_value(target);
-
-            if is_self && !method.takes_self(context.db()) {
-                context.fancy_error(
-                    &format!("`{}` must be called without `self`", &field.kind),
-                    vec![Label::primary(field.span, "function does not take self")],
-                    vec![format!(
-                        "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                        &field.kind, &field.kind
-                    )],
-                );
-            } else if !is_self && !method.is_public(context.db()) {
-                context.fancy_error(
-                    &format!(
-                        "the function `{}` on `{} {}` is private",
-                        &field.kind,
-                        class.kind(),
-                        class.name(context.db())
+    let target_type = target_attributes.typ;
+    if target_type.is_contract(context.db()) {
+        check_for_call_to_special_fns(context, &field.kind, field.span)?;
+    }
+    if let Some(method) = target_type.function_sig(context.db(), &field.kind) {
+        let is_self = is_self_value(target);
+        if is_self && !method.takes_self(context.db()) {
+            context.fancy_error(
+                &format!("`{}` must be called without `self`", &field.kind),
+                vec![Label::primary(field.span, "function does not take self")],
+                vec![format!(
+                    "Suggestion: try `{}(...)` instead of `self.{}(...)`",
+                    &field.kind, &field.kind
+                )],
+            );
+        } else if !is_self && !method.is_public(context.db()) {
+            context.fancy_error(
+                &format!(
+                    "the function `{}` on `{} {}` is private",
+                    &field.kind,
+                    target_type.kind_display_name(context.db()),
+                    target_type.name(context.db())
+                ),
+                vec![
+                    Label::primary(field.span, "this function is not `pub`"),
+                    Label::secondary(
+                        method.data(context.db()).ast.span,
+                        format!("`{}` is defined here", &field.kind),
                     ),
-                    vec![
-                        Label::primary(field.span, "this function is not `pub`"),
-                        Label::secondary(
-                            method.data(context.db()).ast.span,
-                            format!("`{}` is defined here", &field.kind),
-                        ),
-                    ],
-                    vec![],
-                );
+                ],
+                vec![],
+            );
+        }
+        let sig = method.signature(context.db());
+        validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
+
+        let calltype = match target_type.typ(context.db()) {
+            Type::Contract(contract) | Type::SelfContract(contract) => {
+                let method = contract
+                    .function(context.db(), &method.name(context.db()))
+                    .unwrap();
+                if is_self {
+                    CallType::ValueMethod {
+                        typ: target_type,
+                        method,
+                    }
+                } else {
+                    // External contract address must be loaded onto the stack.
+                    context.update_expression(
+                        target,
+                        target_attributes
+                            .into_loaded(context.db())
+                            .expect("should be able to move contract type to stack"),
+                    );
+
+                    CallType::External {
+                        contract,
+                        function: method,
+                    }
+                }
             }
-
-            let sig = method.signature(context.db());
-            validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
-
-            let calltype = match class {
-                Class::Contract(contract) => {
-                    let method = contract
-                        .function(context.db(), &method.name(context.db()))
-                        .unwrap();
-                    if is_self {
-                        CallType::ValueMethod { class, method }
-                    } else {
-                        // External contract address must be loaded onto the stack.
-                        context.update_expression(
-                            target,
-                            target_attributes
-                                .into_loaded(context.db())
-                                .expect("should be able to move contract type to stack"),
-                        );
-
-                        CallType::External {
-                            contract,
-                            function: method,
-                        }
-                    }
+            Type::Struct(val) => {
+                let method = val
+                    .function(context.db(), &method.name(context.db()))
+                    .unwrap();
+                if matches!(target_attributes.final_location(), Location::Storage { .. }) {
+                    context.fancy_error(
+                        "struct functions can only be called on structs in memory",
+                        vec![
+                            Label::primary(target.span, "this value is in storage"),
+                            Label::secondary(
+                                field.span,
+                                "hint: copy the struct to memory with `.to_mem()`",
+                            ),
+                        ],
+                        vec![],
+                    );
                 }
-                Class::Struct(val) => {
-                    let method = val
-                        .function(context.db(), &method.name(context.db()))
-                        .unwrap();
-                    if matches!(target_attributes.final_location(), Location::Storage { .. }) {
-                        context.fancy_error(
-                            "struct functions can only be called on structs in memory",
-                            vec![
-                                Label::primary(target.span, "this value is in storage"),
-                                Label::secondary(
-                                    field.span,
-                                    "hint: copy the struct to memory with `.to_mem()`",
-                                ),
-                            ],
-                            vec![],
-                        );
-                    }
-                    CallType::ValueMethod { class, method }
+                CallType::ValueMethod {
+                    typ: target_type,
+                    method,
                 }
-                Class::Impl(val) => {
-                    let method = val
-                        .function(context.db(), &method.name(context.db()))
-                        .unwrap();
-                    CallType::ValueMethod { class, method }
-                }
-                Class::Trait(trait_id) => CallType::TraitValueMethod {
-                    trait_id,
+            }
+            Type::Generic(inner) => {
+                CallType::TraitValueMethod {
+                    // Fixme
+                    trait_id: *inner.bounds.first().expect("expected trait bound"),
                     method,
                     generic_type: target_attributes
                         .typ
@@ -1525,13 +1524,15 @@ fn expr_call_method(
                         .as_generic()
                         .expect("expected generic type")
                         .clone(),
-                },
-            };
+                }
+            }
+            // In the future, functions can be called on all types (via traits)
+            _ => unreachable!(),
+        };
 
-            let return_type = sig.return_type.clone()?;
-            let location = Location::assign_location(&return_type.typ(context.db()));
-            return Ok((ExpressionAttributes::new(return_type, location), calltype));
-        }
+        let return_type = sig.return_type.clone()?;
+        let location = Location::assign_location(&return_type.typ(context.db()));
+        return Ok((ExpressionAttributes::new(return_type, location), calltype));
     }
     Err(FatalError::new(context.fancy_error(
         &format!(
@@ -1726,184 +1727,186 @@ fn expr_call_type_attribute(
 
     let arg_attributes = expr_call_args(context, args)?;
 
-    if let Some(class) = typ.as_class() {
-        let class_name = class.name(context.db());
+    let target_type = typ.id(context.db());
+    let target_name = typ.name(context.db());
 
-        if let Class::Contract(contract) = class {
-            // Check for Foo.create/create2 (this will go away when the context object is
-            // ready)
-            if let Ok(function) = ContractTypeMethod::from_str(&field.kind) {
-                if context.root_item() == Item::Type(TypeDef::Contract(contract)) {
-                    context.fancy_error(
-                        &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", function.as_ref(), contract=&class_name),
+    if let Type::Contract(contract) = typ {
+        // Check for Foo.create/create2 (this will go away when the context object is
+        // ready)
+        if let Ok(function) = ContractTypeMethod::from_str(&field.kind) {
+            if context.root_item() == Item::Type(TypeDef::Contract(contract)) {
+                context.fancy_error(
+                        &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", function.as_ref(), contract=&target_name),
                         vec![Label::primary(field.span, "Contract creation")],
-                        vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", &class_name)]);
-                }
-                let arg_count = function.arg_count();
-                validate_arg_count(
-                    context,
-                    &field.kind,
-                    field.span,
-                    args,
-                    arg_count,
-                    "argument",
-                );
+                        vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", &target_name)]);
+            }
+            let arg_count = function.arg_count();
+            validate_arg_count(
+                context,
+                &field.kind,
+                field.span,
+                args,
+                arg_count,
+                "argument",
+            );
 
-                for i in 0..arg_count {
-                    if let Some(attrs) = arg_attributes.get(i) {
-                        if i == 0 {
-                            if let Some(context_type) = context.get_context_type() {
-                                if attrs.typ != context_type {
-                                    context.fancy_error(
-                                        &format!(
-                                            "incorrect type for argument to `{}.{}`",
-                                            &class_name,
-                                            function.as_ref()
-                                        ),
-                                        vec![Label::primary(
-                                            args.kind[i].span,
-                                            format!(
-                                                "this has type `{}`; expected `Context`",
-                                                &attrs.typ.display(context.db())
-                                            ),
-                                        )],
-                                        vec![],
-                                    );
-                                }
-                            } else {
+            for i in 0..arg_count {
+                if let Some(attrs) = arg_attributes.get(i) {
+                    if i == 0 {
+                        if let Some(context_type) = context.get_context_type() {
+                            if attrs.typ != context_type {
                                 context.fancy_error(
-                                    "`Context` is not defined",
-                                    vec![
-                                        Label::primary(
-                                            args.span,
-                                            "`ctx` must be defined and passed into the function",
+                                    &format!(
+                                        "incorrect type for argument to `{}.{}`",
+                                        &target_name,
+                                        function.as_ref()
+                                    ),
+                                    vec![Label::primary(
+                                        args.kind[i].span,
+                                        format!(
+                                            "this has type `{}`; expected `Context`",
+                                            &attrs.typ.display(context.db())
                                         ),
-                                        Label::secondary(
-                                            context.parent_function().name_span(context.db()),
-                                            "Note: declare `ctx` in this function signature",
-                                        ),
-                                        Label::secondary(
-                                            context.parent_function().name_span(context.db()),
-                                            "Example: `pub fn foo(ctx: Context, ...)`",
-                                        ),
-                                    ],
-                                    vec![
-                                        "Note: import context with `use std::context::Context`"
-                                            .into(),
-                                        "Example: `MyContract.create(ctx, 0)`".into(),
-                                    ],
+                                    )],
+                                    vec![],
                                 );
                             }
-                        } else if !attrs.typ.is_integer(context.db()) {
+                        } else {
                             context.fancy_error(
-                                &format!(
-                                    "incorrect type for argument to `{}.{}`",
-                                    &class_name,
-                                    function.as_ref()
-                                ),
-                                vec![Label::primary(
-                                    args.kind[i].span,
-                                    format!(
-                                        "this has type `{}`; expected a number",
-                                        &attrs.typ.display(context.db())
+                                "`Context` is not defined",
+                                vec![
+                                    Label::primary(
+                                        args.span,
+                                        "`ctx` must be defined and passed into the function",
                                     ),
-                                )],
-                                vec![],
+                                    Label::secondary(
+                                        context.parent_function().name_span(context.db()),
+                                        "Note: declare `ctx` in this function signature",
+                                    ),
+                                    Label::secondary(
+                                        context.parent_function().name_span(context.db()),
+                                        "Example: `pub fn foo(ctx: Context, ...)`",
+                                    ),
+                                ],
+                                vec![
+                                    "Note: import context with `use std::context::Context`".into(),
+                                    "Example: `MyContract.create(ctx, 0)`".into(),
+                                ],
                             );
                         }
+                    } else if !attrs.typ.is_integer(context.db()) {
+                        context.fancy_error(
+                            &format!(
+                                "incorrect type for argument to `{}.{}`",
+                                &target_name,
+                                function.as_ref()
+                            ),
+                            vec![Label::primary(
+                                args.kind[i].span,
+                                format!(
+                                    "this has type `{}`; expected a number",
+                                    &attrs.typ.display(context.db())
+                                ),
+                            )],
+                            vec![],
+                        );
                     }
                 }
-                return Ok((
-                    ExpressionAttributes::new(context.db().intern_type(typ), Location::Value),
-                    CallType::BuiltinAssociatedFunction { contract, function },
-                ));
             }
+            return Ok((
+                ExpressionAttributes::new(context.db().intern_type(typ), Location::Value),
+                CallType::BuiltinAssociatedFunction { contract, function },
+            ));
+        }
+    }
+
+    if let Some(sig) = target_type.function_sig(context.db(), &field.kind) {
+        if sig.takes_self(context.db()) {
+            return Err(FatalError::new(context.fancy_error(
+                &format!(
+                    "`{}` function `{}` must be called on an instance of `{}`",
+                    &target_name, &field.kind, &target_name,
+                ),
+                vec![Label::primary(
+                    target_span,
+                    format!(
+                        "expected a value of type `{}`, found type name",
+                        &target_name
+                    ),
+                )],
+                vec![],
+            )));
+        } else {
+            context.fancy_error(
+                "Static functions need to be called with `::` not `.`",
+                vec![Label::primary(
+                    field.span,
+                    "This is a static function (doesn't take a `self` parameter)",
+                )],
+                vec![format!(
+                    "Try `{}::{}(...)` instead",
+                    &target_name, &field.kind
+                )],
+            );
         }
 
-        if let Some(function) = class.function(context.db(), &field.kind) {
-            if function.takes_self(context.db()) {
-                return Err(FatalError::new(context.fancy_error(
-                    &format!(
-                        "`{}` function `{}` must be called on an instance of `{}`",
-                        &class_name, &field.kind, &class_name,
-                    ),
-                    vec![Label::primary(
-                        target_span,
-                        format!(
-                            "expected a value of type `{}`, found type name",
-                            &class_name
-                        ),
-                    )],
-                    vec![],
-                )));
-            } else {
-                context.fancy_error(
-                    "Static functions need to be called with `::` not `.`",
-                    vec![Label::primary(
-                        field.span,
-                        "This is a static function (doesn't take a `self` parameter)",
-                    )],
-                    vec![format!(
-                        "Try `{}::{}(...)` instead",
-                        &class_name, &field.kind
-                    )],
-                );
-            }
+        // Returns `true` if the current contract belongs to the same class as an input
+        // `callee_class`.
+        let is_same_class = |callee_class| match (context.root_item(), callee_class) {
+            (Item::Type(TypeDef::Contract(caller)), Type::Contract(callee)) => caller == callee,
+            (Item::Type(TypeDef::Struct(caller)), Type::Struct(callee)) => caller == callee,
+            _ => false,
+        };
 
-            // Returns `true` if the current contract belongs to the same class as an input
-            // `callee_class`.
-            let is_same_class = |callee_class| match (context.root_item(), callee_class) {
-                (Item::Type(TypeDef::Contract(caller)), Class::Contract(callee)) => {
-                    caller == callee
-                }
-                (Item::Type(TypeDef::Struct(caller)), Class::Struct(callee)) => caller == callee,
-                _ => false,
-            };
-
-            // Check for visibility of callee.
-            // Emits an error if callee is not public and caller doesn't belong to the same
-            // class as callee.
-            if !function.is_public(context.db()) && is_same_class(class) {
-                context.fancy_error(
+        // Check for visibility of callee.
+        // Emits an error if callee is not public and caller doesn't belong to the same
+        // class as callee.
+        if !sig.is_public(context.db()) && is_same_class(target_type.typ(context.db())) {
+            context.fancy_error(
                     &format!(
                         "the function `{}.{}` is private",
-                        &class_name,
+                        &target_name,
                         &field.kind,
                     ),
                     vec![
                         Label::primary(field.span, "this function is not `pub`"),
                         Label::secondary(
-                            function.data(context.db()).ast.span,
+                            sig.data(context.db()).ast.span,
                             format!("`{}` is defined here", &field.kind),
                         ),
                     ],
                     vec![
-                        format!("`{}.{}` can only be called from other functions within `{}`", &class_name, &field.kind, &class_name),
-                        format!("Hint: use `pub fn {fun}(..` to make `{cls}.{fun}` callable from outside of `{cls}`", fun=&field.kind, cls=&class_name),
+                        format!("`{}.{}` can only be called from other functions within `{}`", &target_name, &field.kind, &target_name),
+                        format!("Hint: use `pub fn {fun}(..` to make `{cls}.{fun}` callable from outside of `{cls}`", fun=&field.kind, cls=&target_name),
                     ],
                 );
-            }
+        }
 
-            if matches!(class, Class::Contract(_)) {
-                // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen
-                // doesn't compile-in pure functions defined on external
-                // contracts. We should also discuss how/if this will work when
-                // the external contract is deployed and called via STATICCALL
-                // or whatever.
-                context.not_yet_implemented(
+        if target_type.is_contract(context.db()) {
+            // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen
+            // doesn't compile-in pure functions defined on external
+            // contracts. We should also discuss how/if this will work when
+            // the external contract is deployed and called via STATICCALL
+            // or whatever.
+            context.not_yet_implemented(
                     &format!("calling contract-associated pure functions. Consider moving `{}` outside of `{}`",
-                             &field.kind, class_name),
+                             &field.kind, target_name),
                     target_span + field.span,
                 );
-            }
-
-            let ret_type = function.signature(context.db()).return_type.clone()?;
-            let location = Location::assign_location(&ret_type.typ(context.db()));
-            return Ok((
-                ExpressionAttributes::new(ret_type, location),
-                CallType::AssociatedFunction { class, function },
-            ));
         }
+
+        let ret_type = sig.signature(context.db()).return_type.clone()?;
+        let location = Location::assign_location(&ret_type.typ(context.db()));
+
+        return Ok((
+            ExpressionAttributes::new(ret_type, location),
+            CallType::AssociatedFunction {
+                typ: target_type,
+                function: sig
+                    .function(context.db())
+                    .expect("expected function signature to have body"),
+            },
+        ));
     }
 
     Err(FatalError::new(context.fancy_error(

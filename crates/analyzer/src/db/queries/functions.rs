@@ -381,11 +381,7 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
             CallType::Pure(function) | CallType::AssociatedFunction { function, .. } => {
                 directs.push((root, Item::Function(*function), DepLocality::Local));
             }
-            CallType::ValueMethod { class, method, .. } => {
-                // Including the "class" type here is probably redundant; the type will
-                // also be part of the fn sig, or some type decl, or some create/create2 call,
-                // or...
-                directs.push((root, class.as_item(db), DepLocality::Local));
+            CallType::ValueMethod { method, .. } => {
                 directs.push((root, Item::Function(*method), DepLocality::Local));
             }
             CallType::TraitValueMethod { trait_id, .. } => {
