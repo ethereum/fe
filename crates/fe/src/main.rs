@@ -11,6 +11,7 @@ struct FelangCli {
     command: Commands,
 }
 
+#[cfg(feature = "lsp-support")]
 #[tokio::main]
 async fn main() {
     install_panic_hook();
@@ -29,6 +30,25 @@ async fn main() {
         }
         Commands::Lsp(args) => {
             task::start_lsp_sever(args).await;
+        }
+    }
+}
+
+#[cfg(not(feature = "lsp-support"))]
+fn main() {
+    install_panic_hook();
+
+    let cli = FelangCli::parse();
+
+    match cli.command {
+        Commands::Build(arg) => {
+            task::build(arg);
+        }
+        Commands::Check(arg) => {
+            task::check(arg);
+        }
+        Commands::New(arg) => {
+            task::create_new_project(arg);
         }
     }
 }

@@ -11,17 +11,18 @@ repository = "https://github.com/ethereum/fe"
 version = "0.18.0-alpha"
 
 [features]
+lsp-support = ["fe-lsp", "tokio"]
 solc-backend = ["fe-driver/solc-backend"]
 
 [dependencies]
-clap = {version="3.1.18", features = ["derive"]}
+clap = {version = "3.1.18", features = ["derive"]}
 fs_extra = "1.2.0"
-walkdir = "2"
-indexmap = "1.6.2"
 include_dir = "0.7.2"
-tokio = { version = "1.17.0", features = ["full"] }
+indexmap = "1.6.2"
+tokio = {version = "1.17.0", features = ["full"], optional = true}
+walkdir = "2"
 
-fe-lsp = {path = "../fe-lsp", version = "^0.1.0"}
 fe-common = {path = "../common", version = "^0.18.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.18.0-alpha"}
+fe-lsp = {path = "../fe-lsp", version = "^0.1.0", optional = true}
 fe-parser = {path = "../parser", version = "^0.18.0-alpha"}
