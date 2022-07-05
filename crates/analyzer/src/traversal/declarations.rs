@@ -31,6 +31,24 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
                     value_attributes.typ,
                 );
             }
+        } else if matches!(declared_type.typ(scope.db()), Type::Array(_)) {
+            scope.error(
+                "uninitialized variable",
+                target.span,
+                "array types must be initialized at declaration site",
+            );
+        } else if matches!(declared_type.typ(scope.db()), Type::Struct(_)) {
+            scope.error(
+                "uninitialized variable",
+                target.span,
+                "struct types must be initialized at declaration site",
+            );
+        } else if matches!(declared_type.typ(scope.db()), Type::Tuple(_)) {
+            scope.error(
+                "uninitialized variable",
+                target.span,
+                "tuple types must be initialized at declaration site",
+            );
         }
 
         add_var(scope, target, declared_type)?;

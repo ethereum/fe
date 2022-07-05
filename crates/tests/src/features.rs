@@ -2080,3 +2080,18 @@ fn generics() {
         harness.test_function(&mut executor, "generic_compute", &[], None);
     });
 }
+
+#[test]
+fn array_repeat() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "array_repeat.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "foo",
+            &[],
+            Some(&uint_array_token(&[8, 42, 8, 8])),
+        );
+
+        harness.test_function(&mut executor, "bar", &[], None);
+    });
+}

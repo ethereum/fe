@@ -94,7 +94,7 @@ note:
    ┌─ events.fe:37:5
    │  
 37 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
-38 │ │         let addrs: Array<address, 2>
+38 │ │         let addrs: Array<address, 2> = [address(0); 2]
 39 │ │         addrs[0] = addr1
 40 │ │         addrs[1] = addr2
 41 │ │         emit Addresses(ctx, addrs)
@@ -104,12 +104,28 @@ note:
 note: 
    ┌─ events.fe:38:13
    │
-38 │         let addrs: Array<address, 2>
+38 │         let addrs: Array<address, 2> = [address(0); 2]
    │             ^^^^^ Array<address, 2>
 
 note: 
-   ┌─ events.fe:39:9
+   ┌─ events.fe:38:49
    │
+38 │         let addrs: Array<address, 2> = [address(0); 2]
+   │                                                 ^ u256: Value
+
+note: 
+   ┌─ events.fe:38:41
+   │
+38 │         let addrs: Array<address, 2> = [address(0); 2]
+   │                                         ^^^^^^^^^^  ^ u256: Value
+   │                                         │            
+   │                                         address: Value
+
+note: 
+   ┌─ events.fe:38:40
+   │
+38 │         let addrs: Array<address, 2> = [address(0); 2]
+   │                                        ^^^^^^^^^^^^^^^ Array<address, 2>: Memory
 39 │         addrs[0] = addr1
    │         ^^^^^ ^ u256: Value
    │         │      

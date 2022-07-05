@@ -668,6 +668,22 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.aggregate_construct(ty, args, expr.into())
             }
 
+            ast::Expr::Repeat { value, len: _ } => {
+                let array_type = if let Type::Array(array_type) = self.analyzer_body.expressions
+                    [&expr.id]
+                    .typ
+                    .typ(self.db.upcast())
+                {
+                    array_type
+                } else {
+                    panic!("not an array");
+                };
+
+                let args = vec![self.lower_expr_to_value(value); array_type.size];
+                let ty = self.expr_ty(expr);
+                self.builder.aggregate_construct(ty, args, expr.into())
+            }
+
             ast::Expr::Bool(b) => {
                 let imm = self.builder.make_imm_from_bool(*b, ty);
                 self.builder.bind(imm, expr.into())

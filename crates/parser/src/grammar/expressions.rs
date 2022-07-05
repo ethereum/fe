@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr, Path};
+use crate::ast::{self, CallArg, Expr, GenericArg, Path};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -230,7 +230,7 @@ fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
             unary_op(par, &op, operand)
         }
         ParenOpen => parse_group_or_tuple(par),
-        BracketOpen => parse_list(par),
+        BracketOpen => parse_list_or_repeat(par),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
@@ -297,13 +297,55 @@ fn postfix_binding_power(op: TokenKind) -> Option<u8> {
     }
 }
 
-/// Parse a square-bracket list expression, eg. `[1, 2, x]`
-fn parse_list(par: &mut Parser) -> ParseResult<Node<Expr>> {
+/// Parse a square-bracket list expression, eg. `[1, 2, x]` or `[true; 42]`
+fn parse_list_or_repeat(par: &mut Parser) -> ParseResult<Node<Expr>> {
     let lbracket = par.assert(TokenKind::BracketOpen);
-    let elts = parse_expr_list(par, TokenKind::BracketClose, None)?;
-    let rbracket = par.assert(TokenKind::BracketClose);
-    let span = lbracket.span + rbracket.span;
-    Ok(Node::new(Expr::List { elts }, span))
+    let elts = parse_expr_list(par, &[TokenKind::BracketClose, TokenKind::Semi], None)?;
+
+    if elts.len() == 1 {
+        if par.peek() == Some(TokenKind::BracketClose) {
+            let rbracket = par.assert(TokenKind::BracketClose);
+            let span = lbracket.span + rbracket.span;
+            Ok(Node::new(Expr::List { elts }, span))
+        } else if par.peek() == Some(TokenKind::Semi) {
+            par.assert(TokenKind::Semi);
+
+            let len = if par.peek() == Some(TokenKind::BraceOpen) {
+                // handle `{ ... }` const expression
+                let brace_open = par.next()?;
+                let expr = parse_expr(par)?;
+                if !matches!(par.peek(), Some(TokenKind::BraceClose)) {
+                    par.error(brace_open.span, "missing closing delimiter `}`");
+                    return Err(ParseFailed);
+                }
+                let brace_close = par.assert(TokenKind::BraceClose);
+                let span = brace_open.span + brace_close.span;
+                Box::new(Node::new(GenericArg::ConstExpr(expr), span))
+            } else {
+                // handle const expression without braces
+                let expr = parse_expr(par)?;
+                let span = expr.span;
+                Box::new(Node::new(GenericArg::ConstExpr(expr), span))
+            };
+
+            let rbracket = par.assert(TokenKind::BracketClose);
+            let span = lbracket.span + rbracket.span;
+            Ok(Node::new(
+                Expr::Repeat {
+                    value: Box::new(elts[0].clone()),
+                    len,
+                },
+                span,
+            ))
+        } else {
+            par.error(lbracket.span, "expected `]` or `;`");
+            Err(ParseFailed)
+        }
+    } else {
+        let rbracket = par.assert(TokenKind::BracketClose);
+        let span = lbracket.span + rbracket.span;
+        Ok(Node::new(Expr::List { elts }, span))
+    }
 }
 
 /// Parse a paren-wrapped expression, which might turn out to be a tuple
@@ -328,7 +370,7 @@ fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
         Comma => {
             // tuple
             par.next()?;
-            let elts = parse_expr_list(par, ParenClose, Some(elem))?;
+            let elts = parse_expr_list(par, &[ParenClose], Some(elem))?;
             let rparen = par.expect(ParenClose, "failed to parse tuple expression")?;
             let span = lparen.span + rparen.span;
             Ok(Node::new(Expr::Tuple { elts }, span))
@@ -349,7 +391,7 @@ fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
 /// `peek()`ed.
 fn parse_expr_list(
     par: &mut Parser,
-    end_marker: TokenKind,
+    end_markers: &[TokenKind],
     head: Option<Node<Expr>>,
 ) -> ParseResult<Vec<Node<Expr>>> {
     let mut elts = vec![];
@@ -358,7 +400,7 @@ fn parse_expr_list(
     }
     loop {
         let next = par.peek_or_err()?;
-        if next == end_marker {
+        if end_markers.contains(&next) {
             break;
         }
         elts.push(parse_expr(par)?);
@@ -366,7 +408,7 @@ fn parse_expr_list(
             TokenKind::Comma => {
                 par.next()?;
             }
-            tk if tk == end_marker => break,
+            tk if end_markers.contains(&tk) => break,
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
