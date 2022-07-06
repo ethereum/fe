@@ -196,27 +196,36 @@
 
                       </div>
                       <code class="language-python flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">
+# Context is a struct provided by the standard library
+# that gives access to various features of the EVM
+use std::context::Context
+
 # The `contract` keyword defines a new contract type
-contract GuestBook:
+contract GuestBook {
     # Strings are generic over a constant number
     # that restricts its maximum size
     messages: Map&lt;address, String&lt;100&gt;&gt;
 
     # Events can be defined on contract or module level
-    event Signed:
+    event Signed {
         book_msg: String&lt;100&gt;
+    }
 
-    pub fn sign(book_msg: String&lt;100&gt;):
+    pub fn sign(self, ctx: Context, book_msg: String&lt;100&gt;) {
         # All storage access is explicit using `self.&lt;some-key&gt;`
-        self.messages[msg.sender] = book_msg
+        self.messages[ctx.msg_sender()] = book_msg
 
-        # Emit the `Signed` event
-        emit Signed(book_msg=book_msg)
+        # Emit the `Signed` event. In the future, this will change to:
+        # `ctx.emit(Signed(ctx, book_msg))`
+        emit Signed(ctx, book_msg)
+    }
 
-    pub fn get_msg(addr: address) -> String&lt;100&gt;:
+    pub fn get_msg(self, addr: address) -> String&lt;100&gt; {
         # Copying data from storage to memory
         # has to be done explicitly via `to_mem()`
         return self.messages[addr].to_mem()
+    }
+}
 </code>
                     </pre>
                   </div>

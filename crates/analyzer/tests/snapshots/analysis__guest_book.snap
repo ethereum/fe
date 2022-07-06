@@ -4,96 +4,96 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ guest_book.fe:7:5
+  ┌─ guest_book.fe:9:5
   │
-7 │     messages: Map<address, String<100>>
+9 │     messages: Map<address, String<100>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
-   ┌─ guest_book.fe:11:9
+   ┌─ guest_book.fe:13:9
    │
-11 │         book_msg: String<100>
+13 │         book_msg: String<100>
    │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ guest_book.fe:14:5
+   ┌─ guest_book.fe:16:5
    │  
-14 │ ╭     pub fn sign(self, ctx: Context, book_msg: String<100>) {
-15 │ │         # All storage access is explicit using `self.<some-key>`
-16 │ │         self.messages[ctx.msg_sender()] = book_msg
-17 │ │ 
-18 │ │         # Emit the `Signed` event
-19 │ │         emit Signed(ctx, book_msg)
-20 │ │     }
+16 │ ╭     pub fn sign(self, ctx: Context, book_msg: String<100>) {
+17 │ │         # All storage access is explicit using `self.<some-key>`
+18 │ │         self.messages[ctx.msg_sender()] = book_msg
+19 │ │ 
+   · │
+22 │ │         emit Signed(ctx, book_msg)
+23 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
 
 note: 
-   ┌─ guest_book.fe:16:9
+   ┌─ guest_book.fe:18:9
    │
-16 │         self.messages[ctx.msg_sender()] = book_msg
+18 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^ GuestBook: Value
 
 note: 
-   ┌─ guest_book.fe:16:9
+   ┌─ guest_book.fe:18:9
    │
-16 │         self.messages[ctx.msg_sender()] = book_msg
+18 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^^^^^^^^^^ ^^^ Context: Memory
    │         │              
    │         Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ guest_book.fe:16:23
+   ┌─ guest_book.fe:18:23
    │
-16 │         self.messages[ctx.msg_sender()] = book_msg
+18 │         self.messages[ctx.msg_sender()] = book_msg
    │                       ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ guest_book.fe:16:9
+   ┌─ guest_book.fe:18:9
    │
-16 │         self.messages[ctx.msg_sender()] = book_msg
+18 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
    │         │                                  
    │         String<100>: Storage { nonce: None }
    ·
-19 │         emit Signed(ctx, book_msg)
+22 │         emit Signed(ctx, book_msg)
    │                     ^^^  ^^^^^^^^ String<100>: Memory
    │                     │     
    │                     Context: Memory
 
 note: 
-   ┌─ guest_book.fe:22:5
+   ┌─ guest_book.fe:25:5
    │  
-22 │ ╭     pub fn get_msg(self, addr: address) -> String<100> {
-23 │ │         # Copying data from storage to memory
-24 │ │         # has to be done explicitly via `to_mem()`
-25 │ │         return self.messages[addr].to_mem()
-26 │ │     }
+25 │ ╭     pub fn get_msg(self, addr: address) -> String<100> {
+26 │ │         # Copying data from storage to memory
+27 │ │         # has to be done explicitly via `to_mem()`
+28 │ │         return self.messages[addr].to_mem()
+29 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: addr, typ: address }] -> String<100>
 
 note: 
-   ┌─ guest_book.fe:25:16
+   ┌─ guest_book.fe:28:16
    │
-25 │         return self.messages[addr].to_mem()
+28 │         return self.messages[addr].to_mem()
    │                ^^^^ GuestBook: Value
 
 note: 
-   ┌─ guest_book.fe:25:16
+   ┌─ guest_book.fe:28:16
    │
-25 │         return self.messages[addr].to_mem()
+28 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^ ^^^^ address: Value
    │                │              
    │                Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ guest_book.fe:25:16
+   ┌─ guest_book.fe:28:16
    │
-25 │         return self.messages[addr].to_mem()
+28 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
 
 note: 
-   ┌─ guest_book.fe:25:16
+   ┌─ guest_book.fe:28:16
    │
-25 │         return self.messages[addr].to_mem()
+28 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
 
