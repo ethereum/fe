@@ -1,13 +1,13 @@
 [package]
+edition = "2021"
 name = "fe-lsp"
 version = "0.1.0"
-edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.17.0", features = ["full"] }
-tower-lsp = { version = "0.17.0"}
-fe-common = {path = "../common", version = "^0.18.0-alpha"}
-fe-driver = {path = "../driver", version = "^0.18.0-alpha"}
-fe-parser = {path = "../parser", version = "^0.18.0-alpha"}
+fe-common = {path = "../common", version = "^0.19.1-alpha"}
+fe-driver = {path = "../driver", version = "^0.19.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.19.1-alpha"}
+tokio = {version = "1.17.0", features = ["full"]}
+tower-lsp = {version = "0.17.0"}
