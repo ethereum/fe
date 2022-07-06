@@ -1,16 +1,21 @@
 use crate::context::AnalyzerContext;
+use crate::display::DisplayWithDb;
+use crate::display::Displayable;
 use crate::errors::TypeError;
 use crate::namespace::items::{Class, ContractId, StructId, TraitId};
 use crate::AnalyzerDb;
 
+use fe_common::impl_intern_key;
 use fe_common::Span;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
 use std::fmt;
+use std::rc::Rc;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};
-use vec1::Vec1;
+
+use super::items::ImplId;
 
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
@@ -42,12 +47,63 @@ pub enum Type {
     Tuple(Tuple),
     String(FeString),
     /// An "external" contract. Effectively just a `newtype`d address.
-    Contract(Contract),
+    Contract(ContractId),
     /// The type of a contract while it's being executed. Ie. the type
     /// of `self` within a contract function.
-    SelfContract(Contract),
-    Struct(Struct),
+    SelfContract(ContractId),
+    Struct(StructId),
     Generic(Generic),
+}
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct TypeId(pub(crate) u32);
+impl_intern_key!(TypeId);
+impl TypeId {
+    pub fn unit(db: &dyn AnalyzerDb) -> Self {
+        db.intern_type(Type::unit())
+    }
+    pub fn bool(db: &dyn AnalyzerDb) -> Self {
+        db.intern_type(Type::bool())
+    }
+    pub fn int(db: &dyn AnalyzerDb, int: Integer) -> Self {
+        db.intern_type(Type::int(int))
+    }
+    pub fn address(db: &dyn AnalyzerDb) -> Self {
+        db.intern_type(Type::Base(Base::Address))
+    }
+    pub fn base(db: &dyn AnalyzerDb, t: Base) -> Self {
+        db.intern_type(Type::Base(t))
+    }
+
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Type {
+        db.lookup_intern_type(*self)
+    }
+    pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
+        self.typ(db).has_fixed_size()
+    }
+    pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
+        self.typ(db).is_base()
+    }
+    pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Base(Base::Bool))
+    }
+    pub fn is_integer(&self, db: &dyn AnalyzerDb) -> bool {
+        self.typ(db).is_integer()
+    }
+    pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
+        self.typ(db).as_string().is_some()
+    }
+    pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
+        self.typ(db).as_struct()
+    }
+    pub fn as_class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
+        self.typ(db).as_class()
+    }
+    pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
+        match self.typ(db) {
+            Type::Struct(id) => id.get_impl_for(db, trait_),
+            _ => trait_.module(db).impls(db).get(&(trait_, *self)).cloned(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -93,71 +149,27 @@ pub enum Integer {
 
 pub const U256: Base = Base::Numeric(Integer::U256);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Array {
     pub size: usize,
-    pub inner: Box<Type>,
+    pub inner: TypeId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Map {
-    pub key: Base,
-    pub value: Box<Type>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Tuple {
-    pub items: Vec1<Type>,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Struct {
-    pub name: SmolStr,
-    pub id: StructId,
-    pub field_count: usize,
-}
-impl Struct {
-    pub fn from_id(id: StructId, db: &dyn AnalyzerDb) -> Self {
-        Self {
-            name: id.name(db),
-            id,
-            field_count: id.fields(db).len(),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Trait {
-    pub name: SmolStr,
-    pub id: TraitId,
-}
-impl Trait {
-    pub fn from_id(id: TraitId, db: &dyn AnalyzerDb) -> Self {
-        Self {
-            name: id.name(db),
-            id,
-        }
-    }
+    pub key: TypeId,
+    pub value: TypeId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Generic {
     pub name: SmolStr,
-    pub bounds: Vec<TraitId>,
+    pub bounds: Rc<[TraitId]>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Contract {
-    pub name: SmolStr,
-    pub id: ContractId,
-}
-impl Contract {
-    pub fn from_id(id: ContractId, db: &dyn AnalyzerDb) -> Self {
-        Self {
-            name: id.name(db),
-            id,
-        }
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Tuple {
+    pub items: Rc<[TypeId]>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -170,7 +182,7 @@ pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
     pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
-    pub return_type: Result<Type, TypeError>,
+    pub return_type: Result<TypeId, TypeError>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -187,10 +199,10 @@ pub enum CtxDecl {
 pub struct FunctionParam {
     label: Option<SmolStr>,
     pub name: SmolStr,
-    pub typ: Result<Type, TypeError>,
+    pub typ: Result<TypeId, TypeError>,
 }
 impl FunctionParam {
-    pub fn new(label: Option<&str>, name: &str, typ: Result<Type, TypeError>) -> Self {
+    pub fn new(label: Option<&str>, name: &str, typ: Result<TypeId, TypeError>) -> Self {
         Self {
             label: label.map(SmolStr::new),
             name: name.into(),
@@ -249,8 +261,8 @@ impl GenericType {
     }
 
     // see traversal::types::apply_generic_type_args for error checking
-    pub fn apply(&self, args: &[GenericArg]) -> Option<Type> {
-        match self {
+    pub fn apply(&self, db: &dyn AnalyzerDb, args: &[GenericArg]) -> Option<TypeId> {
+        let typ = match self {
             GenericType::String => match args {
                 [GenericArg::Int(max_size)] => Some(Type::String(FeString {
                     max_size: *max_size,
@@ -259,19 +271,20 @@ impl GenericType {
             },
             GenericType::Map => match args {
                 [GenericArg::Type(key), GenericArg::Type(value)] => Some(Type::Map(Map {
-                    key: key.as_primitive()?,
-                    value: Box::new(value.clone()),
+                    key: *key,
+                    value: *value,
                 })),
                 _ => None,
             },
             GenericType::Array => match args {
                 [GenericArg::Type(element), GenericArg::Int(size)] => Some(Type::Array(Array {
                     size: *size,
-                    inner: Box::new(element.clone()),
+                    inner: *element,
                 })),
                 _ => None,
             },
-        }
+        }?;
+        Some(db.intern_type(typ))
     }
 }
 
@@ -293,7 +306,7 @@ pub enum GenericParamKind {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     Int(usize),
-    Type(Type),
+    Type(TypeId),
 }
 
 impl Integer {
@@ -328,7 +341,7 @@ impl Integer {
 
     /// Returns `true` if the integer is at least the same size (or larger) than
     /// `other`
-    pub fn can_hold(&self, other: &Integer) -> bool {
+    pub fn can_hold(&self, other: Integer) -> bool {
         self.size() >= other.size()
     }
 
@@ -396,28 +409,26 @@ pub struct Event {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EventField {
     pub name: SmolStr,
-    pub typ: Result<Type, TypeError>,
+    pub typ: Result<TypeId, TypeError>,
     pub is_indexed: bool,
 }
 
 impl Type {
-    pub fn name(&self) -> SmolStr {
+    pub fn id(&self, db: &dyn AnalyzerDb) -> TypeId {
+        db.intern_type(self.clone())
+    }
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             Type::Base(inner) => inner.name(),
-            Type::Array(inner) => inner.to_string().into(),
-            Type::Map(inner) => inner.to_string().into(),
-            Type::Tuple(inner) => inner.to_string().into(),
-            Type::String(inner) => inner.to_string().into(),
-            Type::Struct(inner) => inner.name.clone(),
-            Type::Generic(inner) => inner.name.clone(),
-            Type::Contract(inner) | Type::SelfContract(inner) => inner.name.clone(),
+            _ => self.display(db).to_string().into(),
         }
     }
 
     pub fn def_span(&self, context: &dyn AnalyzerContext) -> Option<Span> {
         match self {
-            Self::Struct(inner) => Some(inner.id.span(context.db())),
-            Self::Contract(inner) | Self::SelfContract(inner) => Some(inner.id.span(context.db())),
+            Self::Struct(id) => Some(id.span(context.db())),
+            Self::Contract(id) | Self::SelfContract(id) => Some(id.span(context.db())),
             _ => None,
         }
     }
@@ -493,8 +504,8 @@ pub trait TypeDowncast {
     fn as_int(&self) -> Option<Integer>;
     fn as_primitive(&self) -> Option<Base>;
     fn as_class(&self) -> Option<Class>;
-    fn as_generic(&self) -> Option<Generic>;
-    fn as_struct(&self) -> Option<Struct>;
+    fn as_generic(&self) -> Option<&Generic>;
+    fn as_struct(&self) -> Option<StructId>;
 }
 
 impl TypeDowncast for Type {
@@ -536,24 +547,24 @@ impl TypeDowncast for Type {
     }
     fn as_class(&self) -> Option<Class> {
         match self {
-            Type::Struct(inner) => Some(Class::Struct(inner.id)),
-            Type::Contract(inner) | Type::SelfContract(inner) => Some(Class::Contract(inner.id)),
+            Type::Struct(id) => Some(Class::Struct(*id)),
+            Type::Contract(id) | Type::SelfContract(id) => Some(Class::Contract(*id)),
             Type::Generic(inner) if !inner.bounds.is_empty() => {
-                // FIXME: This won't hold when we support multiple bounds or traits can be implemented for non-struct types
+                // FIXME: This won't hold when we support multiple bounds
                 inner.bounds.first().map(TraitId::as_class)
             }
             _ => None,
         }
     }
-    fn as_struct(&self) -> Option<Struct> {
+    fn as_struct(&self) -> Option<StructId> {
         match self {
-            Type::Struct(val) => Some(val.clone()),
+            Type::Struct(id) => Some(*id),
             _ => None,
         }
     }
-    fn as_generic(&self) -> Option<Generic> {
+    fn as_generic(&self) -> Option<&Generic> {
         match self {
-            Type::Generic(generic) => Some(generic.clone()),
+            Type::Generic(inner) => Some(inner),
             _ => None,
         }
     }
@@ -581,10 +592,10 @@ impl TypeDowncast for Option<&Type> {
     fn as_class(&self) -> Option<Class> {
         self.and_then(TypeDowncast::as_class)
     }
-    fn as_struct(&self) -> Option<Struct> {
+    fn as_struct(&self) -> Option<StructId> {
         self.and_then(TypeDowncast::as_struct)
     }
-    fn as_generic(&self) -> Option<Generic> {
+    fn as_generic(&self) -> Option<&Generic> {
         self.and_then(TypeDowncast::as_generic)
     }
 }
@@ -595,97 +606,37 @@ impl From<Base> for Type {
     }
 }
 
-impl SafeNames for Type {
-    fn lower_snake(&self) -> String {
-        match self {
-            Type::Array(array) => array.lower_snake(),
-            Type::Base(base) => base.lower_snake(),
-            Type::Tuple(tuple) => tuple.lower_snake(),
-            Type::String(string) => string.lower_snake(),
-            Type::Contract(contract) => contract.lower_snake(),
-            Type::Struct(val) => val.lower_snake(),
-            _ => panic!("Can not construct safe name for {self}"),
-        }
-    }
-}
-
-impl SafeNames for Base {
-    fn lower_snake(&self) -> String {
-        match self {
-            Base::Numeric(Integer::U256) => "u256".to_string(),
-            Base::Numeric(Integer::U128) => "u128".to_string(),
-            Base::Numeric(Integer::U64) => "u64".to_string(),
-            Base::Numeric(Integer::U32) => "u32".to_string(),
-            Base::Numeric(Integer::U16) => "u16".to_string(),
-            Base::Numeric(Integer::U8) => "u8".to_string(),
-            Base::Numeric(Integer::I256) => "i256".to_string(),
-            Base::Numeric(Integer::I128) => "i128".to_string(),
-            Base::Numeric(Integer::I64) => "i64".to_string(),
-            Base::Numeric(Integer::I32) => "i32".to_string(),
-            Base::Numeric(Integer::I16) => "i16".to_string(),
-            Base::Numeric(Integer::I8) => "i8".to_string(),
-            Base::Address => "address".to_string(),
-            Base::Bool => "bool".to_string(),
-            Base::Unit => "unit".to_string(),
-        }
-    }
-}
-
-impl SafeNames for Array {
-    fn lower_snake(&self) -> String {
-        format!("array_{}_{}", self.inner.lower_snake(), self.size)
-    }
-}
-
-impl SafeNames for Struct {
-    fn lower_snake(&self) -> String {
-        format!("struct_{}", self.name)
-    }
-}
-
-impl SafeNames for Tuple {
-    fn lower_snake(&self) -> String {
-        let field_names = self
-            .items
-            .iter()
-            .map(SafeNames::lower_snake)
-            .collect::<Vec<String>>();
-        let joined_names = field_names.join("_");
-
-        // The trailing `_` denotes the end of the tuple, to differentiate between
-        // different tuple nestings. Eg
-        // (A, (B, C), D) => tuple_A_tuple_B_C__D_
-        // (A, (B, C, D)) => tuple_A_tuple_B_C_D__
-        // Conceptually, each paren and comma is replaced with an underscore.
-        format!("tuple_{}_", joined_names)
-    }
-}
-
-impl SafeNames for Contract {
-    fn lower_snake(&self) -> String {
-        unimplemented!();
-    }
-}
-
-impl SafeNames for FeString {
-    fn lower_snake(&self) -> String {
-        format!("string_{}", self.max_size)
-    }
-}
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl DisplayWithDb for Type {
+    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::fmt::Display;
         match self {
             Type::Base(inner) => inner.fmt(f),
-            Type::Array(inner) => inner.fmt(f),
-            Type::Map(inner) => inner.fmt(f),
-            Type::Tuple(inner) => inner.fmt(f),
             Type::String(inner) => inner.fmt(f),
-            Type::Contract(inner) => inner.fmt(f),
-            Type::SelfContract(inner) => inner.fmt(f),
-            Type::Struct(inner) => inner.fmt(f),
+            Type::Array(arr) => {
+                write!(f, "Array<{}, {}>", arr.inner.display(db), arr.size)
+            }
+            Type::Map(map) => {
+                let Map { key, value } = map;
+                write!(f, "Map<{}, {}>", key.display(db), value.display(db),)
+            }
+            Type::Tuple(id) => {
+                write!(f, "(")?;
+                let mut delim = "";
+                for item in id.items.iter() {
+                    write!(f, "{}{}", delim, item.display(db))?;
+                    delim = ", ";
+                }
+                write!(f, ")")
+            }
+            Type::Contract(id) | Type::SelfContract(id) => write!(f, "{}", id.name(db)),
+            Type::Struct(id) => write!(f, "{}", id.name(db)),
             Type::Generic(inner) => inner.fmt(f),
         }
+    }
+}
+impl DisplayWithDb for TypeId {
+    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.typ(db).format(db, f)
     }
 }
 
@@ -721,71 +672,36 @@ impl fmt::Display for Integer {
     }
 }
 
-impl fmt::Display for Array {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Array<{}, {}>", self.inner, self.size)
-    }
-}
-
-impl fmt::Display for Map {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Map<{}, {}>", self.key, self.value)
-    }
-}
-
-impl fmt::Display for Tuple {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(")?;
-        let mut delim = "";
-        for item in &self.items {
-            write!(f, "{}{}", delim, item)?;
-            delim = ", ";
-        }
-        write!(f, ")")
-    }
-}
-
 impl fmt::Display for FeString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "String<{}>", self.max_size)
     }
 }
 
-impl fmt::Display for Contract {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-impl fmt::Debug for Contract {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Contract")
-            .field("name", &self.name)
-            .finish()
-    }
-}
+impl DisplayWithDb for FunctionSignature {
+    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FunctionSignature {
+            self_decl,
+            ctx_decl: _,
+            params,
+            return_type,
+        } = self;
 
-impl fmt::Display for Struct {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-impl fmt::Debug for Struct {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Struct")
-            .field("name", &self.name)
-            .field("field_count", &self.field_count)
-            .finish()
-    }
-}
-
-impl fmt::Display for Trait {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-impl fmt::Debug for Trait {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Struct").field("name", &self.name).finish()
+        write!(f, "self: {:?}, ", self_decl)?;
+        write!(f, "params: [")?;
+        let mut delim = "";
+        for p in params {
+            write!(
+                f,
+                "{}{{ label: {:?}, name: {}, typ: {} }}",
+                delim,
+                p.label,
+                p.name,
+                p.typ.as_ref().unwrap().display(db),
+            )?;
+            delim = ", ";
+        }
+        write!(f, "] -> {}", return_type.as_ref().unwrap().display(db))
     }
 }
 

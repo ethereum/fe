@@ -1,16 +1,17 @@
 ---
 source: crates/tests/src/stress.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
+
 ---
-set_my_vals([String("my string"), String("my other string"), Uint(26), Uint(42)]) used 138325 gas
-emit_my_event([]) used 3694 gas
+set_my_vals([String("my string"), String("my other string"), Uint(26), Uint(42)]) used 138316 gas
+emit_my_event([]) used 3685 gas
 set_to_my_other_vals([]) used 1286 gas
-emit_my_event([]) used 3694 gas
-mutate_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 1493 gas
-multiple_references_shared_memory([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 680 gas
-clone_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 2494 gas
-clone_mutate_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 2528 gas
-assign_my_nums_and_return([]) used 92449 gas
-set_my_addrs([FixedArray([Address(0x0000000000000000000000000000000000000000), Address(0x0000000000000000000000000000000000000001), Address(0x0000000000000000000000000000000000000002)])]) used 47327 gas
-get_my_second_addr([]) used 468 gas
+emit_my_event([]) used 3685 gas
+mutate_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 1486 gas
+multiple_references_shared_memory([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 677 gas
+clone_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 2484 gas
+clone_mutate_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 2518 gas
+assign_my_nums_and_return([]) used 92537 gas
+set_my_addrs([FixedArray([Address(0x0000000000000000000000000000000000000000), Address(0x0000000000000000000000000000000000000001), Address(0x0000000000000000000000000000000000000002)])]) used 47336 gas
+get_my_second_addr([]) used 466 gas
 

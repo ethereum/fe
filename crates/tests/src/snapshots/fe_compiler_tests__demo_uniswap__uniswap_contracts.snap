@@ -1,17 +1,18 @@
 ---
 source: crates/tests/src/demo_uniswap.rs
 expression: "format!(\"{}\", pair_harness.gas_reporter)"
+
 ---
-factory([]) used 275 gas
-token0([]) used 297 gas
-token1([]) used 319 gas
-mint([Address(0x1000000000000000000000000000000000000001)]) used 148429 gas
-balanceOf([Address(0x1000000000000000000000000000000000000001)]) used 628 gas
-balanceOf([Address(0x0000000000000000000000000000000000000000)]) used 628 gas
-get_reserves([]) used 801 gas
-swap([Uint(1993), Uint(0), Address(0x0000000000000000000000000000000000000042)]) used 36368 gas
-get_reserves([]) used 801 gas
-transfer([Address(0x5544753c1deedce3cb267ca69ea62c24711b786f), Uint(141421356237309503880)]) used 5802 gas
-burn([Address(0x1000000000000000000000000000000000000001)]) used 3650 gas
-get_reserves([]) used 801 gas
+factory([]) used 271 gas
+token0([]) used 293 gas
+token1([]) used 315 gas
+mint([Address(0x1000000000000000000000000000000000000001)]) used 148541 gas
+balanceOf([Address(0x1000000000000000000000000000000000000001)]) used 621 gas
+balanceOf([Address(0x0000000000000000000000000000000000000000)]) used 621 gas
+get_reserves([]) used 797 gas
+swap([Uint(1993), Uint(0), Address(0x0000000000000000000000000000000000000042)]) used 36362 gas
+get_reserves([]) used 797 gas
+transfer([Address(0x2d29e52a4a29f76b6e81ba4ecf542b7bef31fff1), Uint(141421356237309503880)]) used 5795 gas
+burn([Address(0x1000000000000000000000000000000000000001)]) used 3634 gas
+get_reserves([]) used 797 gas
 

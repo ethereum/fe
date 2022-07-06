@@ -9,20 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> i256 {
 3 │ │         return -3
 4 │ │     }
-  │ ╰─────^ attributes hash: 8116994679119332188
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    I256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [] -> i256
 
 note: 
   ┌─ return_i256.fe:3:17

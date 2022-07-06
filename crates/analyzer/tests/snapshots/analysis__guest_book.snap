@@ -25,46 +25,7 @@ note:
 18 │ │         # Emit the `Signed` event
 19 │ │         emit Signed(ctx, book_msg)
 20 │ │     }
-   │ ╰─────^ attributes hash: 12497999579229810685
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "book_msg",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
 
 note: 
    ┌─ guest_book.fe:16:9
@@ -100,29 +61,6 @@ note:
    │                     Context: Memory
 
 note: 
-   ┌─ guest_book.fe:19:9
-   │
-19 │         emit Signed(ctx, book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
-   │
-   = Event {
-         name: "Signed",
-         fields: [
-             EventField {
-                 name: "book_msg",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ guest_book.fe:22:5
    │  
 22 │ ╭     pub fn get_msg(self, addr: address) -> String<100> {
@@ -130,32 +68,7 @@ note:
 24 │ │         # has to be done explicitly via `to_mem()`
 25 │ │         return self.messages[addr].to_mem()
 26 │ │     }
-   │ ╰─────^ attributes hash: 3325224293767249368
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             String(
-                 FeString {
-                     max_size: 100,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: addr, typ: address }] -> String<100>
 
 note: 
    ┌─ guest_book.fe:25:16

@@ -9,32 +9,7 @@ note:
 2 │ ╭     pub fn square(x: u256) -> u256 {
 3 │ │         return x * x
 4 │ │     }
-  │ ╰─────^ attributes hash: 6622018637299644818
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }] -> u256
 
 note: 
   ┌─ associated_fns.fe:3:16
@@ -62,33 +37,7 @@ note:
 10 │ ╭     pub fn new(x: u256) -> MyStruct {
 11 │ │         return MyStruct(x)
 12 │ │     }
-   │ ╰─────^ attributes hash: 2145703897684373991
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Struct(
-                 Struct {
-                     name: "MyStruct",
-                     field_count: 1,
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }] -> MyStruct
 
 note: 
    ┌─ associated_fns.fe:11:25
@@ -115,34 +64,7 @@ note:
 19 │ │         self.my_struct = MyStruct::new(x: val)
 20 │ │         return Lib::square(x: self.my_struct.x)
 21 │ │     }
-   │ ╰─────^ attributes hash: 2950430758151367369
-   │  
-   = FunctionSignature {
-         self_decl: Some(
-             Mutable,
-         ),
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "val",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: val, typ: u256 }] -> u256
 
 note: 
    ┌─ associated_fns.fe:19:9

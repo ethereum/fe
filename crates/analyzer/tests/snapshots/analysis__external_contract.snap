@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ external_contract.fe:5:9
@@ -18,69 +19,7 @@ note:
 10 │ ╭     pub fn emit_event(ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 11 │ │         emit MyEvent(ctx, my_num, my_addrs, my_string)
 12 │ │     }
-   │ ╰─────^ attributes hash: 3754416609002139684
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 5,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 11,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
 
 note: 
    ┌─ external_contract.fe:11:22
@@ -93,115 +32,36 @@ note:
    │                      Context: Memory
 
 note: 
-   ┌─ external_contract.fe:11:9
-   │
-11 │         emit MyEvent(ctx, my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14493411523883858336
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "my_num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 5,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 11,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
    ┌─ external_contract.fe:14:5
    │  
 14 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3> {
-15 │ │         let my_array: Array<u256, 3>
+15 │ │         let my_array: Array<u256, 3> = [0; 3]
 16 │ │         my_array[0] = a
 17 │ │         my_array[1] = a * b
 18 │ │         my_array[2] = b
 19 │ │         return my_array
 20 │ │     }
-   │ ╰─────^ attributes hash: 8432779812067699525
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 3,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:15:13
    │
-15 │         let my_array: Array<u256, 3>
+15 │         let my_array: Array<u256, 3> = [0; 3]
    │             ^^^^^^^^ Array<u256, 3>
 
 note: 
-   ┌─ external_contract.fe:16:9
+   ┌─ external_contract.fe:15:41
    │
+15 │         let my_array: Array<u256, 3> = [0; 3]
+   │                                         ^  ^ u256: Value
+   │                                         │   
+   │                                         u256: Value
+
+note: 
+   ┌─ external_contract.fe:15:40
+   │
+15 │         let my_array: Array<u256, 3> = [0; 3]
+   │                                        ^^^^^^ Array<u256, 3>: Memory
 16 │         my_array[0] = a
    │         ^^^^^^^^ ^ u256: Value
    │         │         
@@ -255,78 +115,7 @@ note:
 25 │ │         let foo: Foo = Foo(foo_address)
 26 │ │         foo.emit_event(ctx, my_num, my_addrs, my_string)
 27 │ │     }
-   │ ╰─────^ attributes hash: 14242721142940057862
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: Some(
-             Mutable,
-         ),
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "ctx",
-                 typ: Ok(
-                     Struct(
-                         Struct {
-                             name: "Context",
-                             field_count: 0,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "foo_address",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_addrs",
-                 typ: Ok(
-                     Array(
-                         Array {
-                             size: 5,
-                             inner: Base(
-                                 Address,
-                             ),
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "my_string",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 11,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: foo_address, typ: address }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
 
 note: 
    ┌─ external_contract.fe:25:13
@@ -366,57 +155,7 @@ note:
 30 │ │         let foo: Foo = Foo(foo_address)
 31 │ │         return foo.build_array(a, b)
 32 │ │     }
-   │ ╰─────^ attributes hash: 6675851927406831661
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [
-             FunctionParam {
-                 label: None,
-                 name: "foo_address",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 label: None,
-                 name: "b",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Array(
-                 Array {
-                     size: 3,
-                     inner: Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 },
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [{ label: None, name: foo_address, typ: address }, { label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:30:13

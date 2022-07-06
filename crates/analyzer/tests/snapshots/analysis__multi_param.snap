@@ -1,80 +1,39 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ multi_param.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256, y: u256, z: u256) -> Array<u256, 3> {
-3 │ │         let my_array: Array<u256, 3>
+3 │ │         let my_array: Array<u256, 3> = [0; 3]
 4 │ │         my_array[0] = x
 5 │ │         my_array[1] = y
 6 │ │         my_array[2] = z
 7 │ │         return my_array
 8 │ │     }
-  │ ╰─────^ attributes hash: 10696147843982229344
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "z",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Array(
-                Array {
-                    size: 3,
-                    inner: Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                },
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }, { label: None, name: z, typ: u256 }] -> Array<u256, 3>
 
 note: 
   ┌─ multi_param.fe:3:13
   │
-3 │         let my_array: Array<u256, 3>
+3 │         let my_array: Array<u256, 3> = [0; 3]
   │             ^^^^^^^^ Array<u256, 3>
 
 note: 
-  ┌─ multi_param.fe:4:9
+  ┌─ multi_param.fe:3:41
   │
+3 │         let my_array: Array<u256, 3> = [0; 3]
+  │                                         ^  ^ u256: Value
+  │                                         │   
+  │                                         u256: Value
+
+note: 
+  ┌─ multi_param.fe:3:40
+  │
+3 │         let my_array: Array<u256, 3> = [0; 3]
+  │                                        ^^^^^^ Array<u256, 3>: Memory
 4 │         my_array[0] = x
   │         ^^^^^^^^ ^ u256: Value
   │         │         

@@ -1,12 +1,13 @@
 use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
-use crate::errors::FatalError;
+use crate::display::Displayable;
+use crate::errors::{self, FatalError};
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{Base, EventField, Type};
+use crate::namespace::types::{EventField, Type, TypeId};
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
-use fe_parser::node::Node;
+use fe_parser::node::{Node, Span};
 
 pub fn traverse_statements(
     scope: &mut BlockScope,
@@ -46,29 +47,22 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
         fe::FuncStmt::For { target, iter, body } => {
             // Make sure iter is in the function scope & it should be an array.
             let iter_type = expressions::assignable_expr(scope, iter, None)?.typ;
-            let target_type = if let Type::Array(array) = iter_type {
+            let target_type = if let Type::Array(array) = iter_type.typ(scope.db()) {
                 array.inner
             } else {
-                return Err(FatalError::new(scope.type_error(
+                return Err(FatalError::new(scope.register_diag(errors::type_error(
                     "invalid `for` loop iterator type",
                     iter.span,
                     &"array",
-                    &iter_type,
-                )));
+                    &iter_type.display(scope.db()),
+                ))));
             };
 
-            scope
-                .root
-                .map_variable_type(target, target_type.as_ref().clone());
+            scope.root.map_variable_type(target, target_type);
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             // add_var emits a msg on err; we can ignore the Result.
-            let _ = body_scope.add_var(
-                &target.kind,
-                target_type.as_ref().clone(),
-                false,
-                target.span,
-            );
+            let _ = body_scope.add_var(&target.kind, target_type, false, target.span);
 
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)
@@ -103,20 +97,23 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             or_else,
         } => {
             let test_type = expressions::value_expr(scope, test, None)?.typ;
-            if test_type != Type::Base(Base::Bool) {
-                scope.type_error(
-                    "`if` statement condition is not bool",
-                    test.span,
-                    &Base::Bool,
-                    &test_type,
-                );
-            }
-
+            error_if_not_bool(
+                scope,
+                test_type,
+                test.span,
+                "`if` statement condition is not bool",
+            );
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), body)?;
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), or_else)?;
             Ok(())
         }
         _ => unreachable!(),
+    }
+}
+
+fn error_if_not_bool(scope: &mut BlockScope, typ: TypeId, span: Span, msg: &str) {
+    if typ.typ(scope.db()) != Type::bool() {
+        scope.type_error(msg, span, scope.db().intern_type(Type::bool()), typ);
     }
 }
 
@@ -140,15 +137,12 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
             let test_type = expressions::value_expr(scope, test, None)?.typ;
-            if test_type != Type::Base(Base::Bool) {
-                scope.type_error(
-                    "`while` loop condition is not bool",
-                    test.span,
-                    &Base::Bool,
-                    &test_type,
-                );
-            }
-
+            error_if_not_bool(
+                scope,
+                test_type,
+                test.span,
+                "`while` loop condition is not bool",
+            );
             traverse_statements(&mut scope.new_child(BlockScopeType::Loop), body)?;
             Ok(())
         }
@@ -195,7 +189,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                     let params_with_ctx = [
                         vec![EventField {
                             name: "ctx".into(),
-                            typ: Ok(Type::Struct(context_type)),
+                            typ: Ok(context_type),
                             is_indexed: false,
                         }],
                         event.typ(scope.db()).fields.clone(),
@@ -252,22 +246,23 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
 fn assert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test_type = expressions::value_expr(scope, test, None)?.typ;
-        if test_type != Type::Base(Base::Bool) {
-            scope.type_error(
-                "`assert` condition is not bool",
-                test.span,
-                &Base::Bool,
-                &test_type,
-            );
-        }
+        error_if_not_bool(
+            scope,
+            test_type,
+            test.span,
+            "`assert` condition is not bool",
+        );
 
         if let Some(msg) = msg {
             let msg_attributes = expressions::assignable_expr(scope, msg, None)?;
-            if !matches!(msg_attributes.typ, Type::String(_)) {
+            if !matches!(msg_attributes.typ.typ(scope.db()), Type::String(_)) {
                 scope.error(
                     "`assert` reason must be a string",
                     msg.span,
-                    &format!("this has type `{}`; expected a string", msg_attributes.typ),
+                    &format!(
+                        "this has type `{}`; expected a string",
+                        msg_attributes.typ.display(scope.db())
+                    ),
                 );
             }
         }
@@ -282,13 +277,13 @@ fn revert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fatal
     if let fe::FuncStmt::Revert { error } = &stmt.kind {
         if let Some(error_expr) = error {
             let error_attributes = expressions::assignable_expr(scope, error_expr, None)?;
-            if !matches!(error_attributes.typ, Type::Struct(_)) {
+            if error_attributes.typ.as_struct(scope.db()).is_none() {
                 scope.error(
                     "`revert` error must be a struct",
                     error_expr.span,
                     &format!(
                         "this has type `{}`; expected a struct",
-                        error_attributes.typ
+                        error_attributes.typ.display(scope.db())
                     ),
                 );
             }
@@ -305,15 +300,16 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
         let expected_type = scope.root.function_return_type()?;
 
         let attributes = match value {
-            Some(val) => expressions::assignable_expr(scope, val, Some(&expected_type))?,
-            None => ExpressionAttributes::new(Type::unit(), Location::Value),
+            Some(val) => expressions::assignable_expr(scope, val, Some(expected_type))?,
+            None => ExpressionAttributes::new(TypeId::unit(scope.db()), Location::Value),
         };
 
         if attributes.typ != expected_type {
             scope.error(
                 &format!(
                     "expected function to return `{}` but was `{}`",
-                    expected_type, attributes.typ
+                    expected_type.display(scope.db()),
+                    attributes.typ.display(scope.db())
                 ),
                 stmt.span,
                 "",

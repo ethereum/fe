@@ -1,4 +1,5 @@
 use crate::context::{AnalyzerContext, Location, NamedThing};
+use crate::display::Displayable;
 use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::operations;
@@ -15,7 +16,7 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
         let target_attributes = expressions::expr(scope, target, None)?;
 
-        let value_attributes = expressions::expr(scope, value, Some(&target_attributes.typ))?;
+        let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
         check_assign_target(scope, target)?;
         if target_attributes.typ != value_attributes.typ {
             scope.fancy_error(
@@ -23,13 +24,16 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
                 vec![
                     Label::primary(
                         target.span,
-                        format!("this variable has type `{}`", target_attributes.typ),
+                        format!(
+                            "this variable has type `{}`",
+                            target_attributes.typ.display(scope.db())
+                        ),
                     ),
                     Label::secondary(
                         value.span,
                         format!(
                             "this value has incompatible type `{}`",
-                            value_attributes.typ
+                            value_attributes.typ.display(scope.db())
                         ),
                     ),
                 ],
@@ -103,16 +107,21 @@ pub fn aug_assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
         check_assign_target(scope, target)?;
         let target_attributes = expressions::expr(scope, target, None)?;
-        let value_attributes = expressions::expr(scope, value, Some(&target_attributes.typ))?;
+        let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
 
-        if let Err(err) = operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ) {
+        if let Err(err) = operations::bin(
+            scope.db(),
+            target_attributes.typ,
+            op.kind,
+            value_attributes.typ,
+        ) {
             add_bin_operations_errors(
                 scope,
                 &op.kind,
                 target.span,
-                &target_attributes.typ,
+                target_attributes.typ,
                 value.span,
-                &value_attributes.typ,
+                value_attributes.typ,
                 err,
             );
         }

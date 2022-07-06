@@ -59,6 +59,7 @@ pub(crate) fn eval_expr(
         | ast::Expr::Attribute { .. }
         | ast::Expr::Call { .. }
         | ast::Expr::List { .. }
+        | ast::Expr::Repeat { .. }
         | ast::Expr::Tuple { .. }
         | ast::Expr::Unit => Err(not_const_error(context, expr.span)),
     }

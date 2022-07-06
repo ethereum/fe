@@ -119,6 +119,6 @@ pub fn legalized_type(db: &dyn CodegenDb, ty: TypeId) -> TypeId {
         _ => return ty,
     };
 
-    let analyzer_ty = ty_data.analyzer_ty.clone();
+    let analyzer_ty = ty_data.analyzer_ty;
     db.mir_intern_type(Type::new(ty_kind, analyzer_ty).into())
 }

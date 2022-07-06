@@ -5,7 +5,7 @@ use fe_analyzer::{
     context::CallType as AnalyzerCallType,
     namespace::{
         items as analyzer_items,
-        types::{self as analyzer_types, Type, TypeDowncast},
+        types::{self as analyzer_types, Type},
     },
 };
 use fe_common::numeric::Literal;
@@ -36,15 +36,14 @@ pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) ->
 pub fn lower_monomorphized_func_signature(
     db: &dyn MirDb,
     func: analyzer_items::FunctionId,
-    concrete_args: &[Type],
+    mut concrete_args: &[analyzer_types::TypeId],
 ) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
-    let mut concrete_args: &[Type] = concrete_args;
     let has_self = func.takes_self(db.upcast());
 
     if has_self {
-        let self_ty = func.self_typ(db.upcast()).unwrap();
+        let self_ty = func.self_type(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
         params.push(make_param(db, "self", self_ty, source));
         // similarly, when in the future analyzer params contain `self` we won't need to adjust the concrete args anymore
@@ -53,7 +52,8 @@ pub fn lower_monomorphized_func_signature(
         }
     }
     let analyzer_signature = func.signature(db.upcast());
-    let mut resolved_generics: BTreeMap<analyzer_types::Generic, Type> = BTreeMap::new();
+    let mut resolved_generics: BTreeMap<analyzer_types::Generic, analyzer_types::TypeId> =
+        BTreeMap::new();
 
     for (index, param) in analyzer_signature.params.iter().enumerate() {
         let source = arg_source(db, func, &param.name);
@@ -62,19 +62,10 @@ pub fn lower_monomorphized_func_signature(
             .cloned()
             .unwrap_or_else(|| param.typ.clone().unwrap());
 
-        params.push(make_param(
-            db,
-            param.clone().name,
-            provided_type.clone(),
-            source,
-        ));
+        params.push(make_param(db, param.clone().name, provided_type, source));
 
-        if let analyzer_types::FunctionParam {
-            typ: Ok(Type::Generic(generic)),
-            ..
-        } = param
-        {
-            resolved_generics.insert(generic.clone(), provided_type);
+        if let Type::Generic(generic) = param.typ.clone().unwrap().typ(db.upcast()) {
+            resolved_generics.insert(generic, provided_type);
         }
     }
 
@@ -147,16 +138,17 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::Type) -> TypeId {
+    fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
         // If the analyzer type is generic we first need to resolve it to its concrete type before lowering to a MIR type
-        if let analyzer_types::Type::Generic(generic) = analyzer_ty {
+        if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
             let resolved_type = self
                 .func
                 .signature(self.db)
                 .resolved_generics
                 .get(&generic)
-                .expect("expected generic to be resolved")
-                .clone();
+                .cloned()
+                .expect("expected generic to be resolved");
+
             return self.db.mir_lowered_type(resolved_type);
         }
 
@@ -195,7 +187,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::FuncStmt::ConstantDecl { name, value, .. } => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&name.id].clone());
+                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&name.id]);
 
                 let value = self.analyzer_body.expressions[&value.id]
                     .const_value
@@ -362,7 +354,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id].clone());
+                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let local = Local::user_local(name.clone(), ty, var.into());
 
                 let value = self.builder.declare(local);
@@ -403,7 +395,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id].clone());
+                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let local = Local::user_local(name.clone(), ty, var.into());
 
                 let lhs = self.builder.declare(local);
@@ -500,7 +492,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let preheader_bb = self.builder.make_block();
         let entry_bb = self.builder.make_block();
         let exit_bb = self.builder.make_block();
-        let iter_elem_ty = self.analyzer_body.var_types[&loop_variable.id].clone();
+
+        let iter_elem_ty = self.analyzer_body.var_types[&loop_variable.id];
         let iter_elem_ty = self.lower_analyzer_type(iter_elem_ty);
 
         self.builder.jump(preheader_bb, SourceInfo::dummy());
@@ -675,6 +668,22 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.aggregate_construct(ty, args, expr.into())
             }
 
+            ast::Expr::Repeat { value, len: _ } => {
+                let array_type = if let Type::Array(array_type) = self.analyzer_body.expressions
+                    [&expr.id]
+                    .typ
+                    .typ(self.db.upcast())
+                {
+                    array_type
+                } else {
+                    panic!("not an array");
+                };
+
+                let args = vec![self.lower_expr_to_value(value); array_type.size];
+                let ty = self.expr_ty(expr);
+                self.builder.aggregate_construct(ty, args, expr.into())
+            }
+
             ast::Expr::Bool(b) => {
                 let imm = self.builder.make_imm_from_bool(*b, ty);
                 self.builder.bind(imm, expr.into())
@@ -748,7 +757,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
-        let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ.clone();
+        let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
         self.lower_analyzer_type(analyzer_ty)
     }
 
@@ -924,16 +933,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
 
-                let struct_type = self
+                let concrete_type = self
                     .func
                     .signature(self.db)
                     .resolved_generics
                     .get(generic_type)
-                    .as_struct()
-                    .expect("unexpected implementer of trait");
+                    .cloned()
+                    .expect("unresolved generic type");
 
-                let impl_ = struct_type
-                    .id
+                let impl_ = concrete_type
                     .get_impl_for(self.db.upcast(), *trait_id)
                     .expect("missing impl");
 
@@ -954,7 +962,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             AnalyzerCallType::TypeConstructor(to_ty) => {
-                if matches!(to_ty, fe_analyzer::namespace::types::Type::String(..)) {
+                if to_ty.is_string(self.db.upcast()) {
                     let arg = *args.last().unwrap();
                     self.builder.mem_copy(arg, source)
                 } else if ty.is_primitive(self.db) {
@@ -1027,7 +1035,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     fn make_unit(&mut self) -> ValueId {
-        let unit_ty = analyzer_types::Type::Base(analyzer_types::Base::Unit);
+        let unit_ty = analyzer_types::TypeId::unit(self.db.upcast());
         let unit_ty = self.db.mir_lowered_type(unit_ty);
         self.builder.make_unit(unit_ty)
     }
@@ -1254,12 +1262,12 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
 fn make_param(
     db: &dyn MirDb,
     name: impl Into<SmolStr>,
-    ty: impl Into<analyzer_types::Type>,
+    ty: analyzer_types::TypeId,
     source: SourceInfo,
 ) -> FunctionParam {
     FunctionParam {
         name: name.into(),
-        ty: db.mir_lowered_type(ty.into()),
+        ty: db.mir_lowered_type(ty),
         source,
     }
 }

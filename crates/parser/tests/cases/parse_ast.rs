@@ -81,6 +81,8 @@ test_parse! { expr_path_call, expressions::parse_expr, "foo::bar::abc1()" }
 test_parse! { expr_string, expressions::parse_expr, r#""hi \tmom\n""# }
 test_parse! { expr_list, expressions::parse_expr, "[]" }
 test_parse! { expr_list2, expressions::parse_expr, "[x, y, z,]" }
+test_parse! { expr_repeat, expressions::parse_expr, "[true; 42]" }
+test_parse! { expr_repeat2, expressions::parse_expr, "[5 + 4; 26]" }
 test_parse! { expr_ternary, expressions::parse_expr, "x + 1 if y + 2 else z + 3" }
 test_parse! { expr_group, expressions::parse_expr, "(1 + 2) * 3" }
 test_parse! { expr_tuple1, expressions::parse_expr, "(1,)" }

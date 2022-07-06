@@ -9,43 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: u128, y: u128) -> u128 {
 3 │ │         return x & y
 4 │ │     }
-  │ ╰─────^ attributes hash: 233274078014721184
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: None,
-        params: [
-            FunctionParam {
-                label: None,
-                name: "x",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U128,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                label: None,
-                name: "y",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U128,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U128,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u128 }, { label: None, name: y, typ: u128 }] -> u128
 
 note: 
   ┌─ return_bitwiseand_u128.fe:3:16

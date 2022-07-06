@@ -337,6 +337,10 @@ pub enum Expr {
     List {
         elts: Vec<Node<Expr>>,
     },
+    Repeat {
+        value: Box<Node<Expr>>,
+        len: Box<Node<GenericArg>>,
+    },
     Tuple {
         elts: Vec<Node<Expr>>,
     },
@@ -964,6 +968,7 @@ impl fmt::Display for Expr {
                 write!(f, "({})", node_comma_joined(&args.kind))
             }
             Expr::List { elts } => write!(f, "[{}]", node_comma_joined(elts)),
+            Expr::Repeat { value: elt, len } => write!(f, "[{}; {}]", elt.kind, len.kind),
             Expr::Tuple { elts } => {
                 if elts.len() == 1 {
                     write!(f, "({},)", elts[0].kind)
@@ -1181,6 +1186,7 @@ fn expr_left_binding_power(expr: &Expr) -> u8 {
         Expr::Subscript { .. } => max_power,
         Expr::Call { .. } => max_power,
         Expr::List { .. } => max_power,
+        Expr::Repeat { .. } => max_power,
         Expr::Tuple { .. } => max_power,
         Expr::Bool(_) => max_power,
         Expr::Name(_) => max_power,
@@ -1204,6 +1210,7 @@ fn expr_right_binding_power(expr: &Expr) -> u8 {
         Expr::Subscript { .. } => max_power,
         Expr::Call { .. } => max_power,
         Expr::List { .. } => max_power,
+        Expr::Repeat { .. } => max_power,
         Expr::Tuple { .. } => max_power,
         Expr::Bool(_) => max_power,
         Expr::Name(_) => max_power,

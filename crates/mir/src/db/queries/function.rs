@@ -1,8 +1,10 @@
 use std::rc::Rc;
 
+use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::items::Class;
+use fe_analyzer::namespace::items::Item;
 use fe_analyzer::namespace::types as analyzer_types;
+
 use smol_str::SmolStr;
 
 use crate::{
@@ -21,7 +23,7 @@ pub fn mir_lowered_func_signature(
 pub fn mir_lowered_monomorphized_func_signature(
     db: &dyn MirDb,
     analyzer_func: analyzer_items::FunctionId,
-    concrete_args: Vec<analyzer_types::Type>,
+    concrete_args: Vec<analyzer_types::TypeId>,
 ) -> ir::FunctionId {
     lower_monomorphized_func_signature(db, analyzer_func, &concrete_args)
 }
@@ -69,7 +71,7 @@ impl ir::FunctionId {
             .resolved_generics
             .values()
             .fold(String::new(), |acc, param| {
-                format!("{}_{}", acc, param.name())
+                format!("{}_{}", acc, param.display(db.upcast()))
             })
             .into()
     }
@@ -88,11 +90,11 @@ impl ir::FunctionId {
             self.type_suffix(db)
         );
 
-        match analyzer_func.class(db.upcast()) {
-            Some(Class::Impl(id)) => {
+        match analyzer_func.sig(db.upcast()).self_item(db.upcast()) {
+            Some(Item::Impl(id)) => {
                 let class_name = format!(
                     "<{} as {}>",
-                    id.receiver(db.upcast()).name(),
+                    id.receiver(db.upcast()).display(db.upcast()),
                     id.trait_id(db.upcast()).name(db.upcast())
                 );
                 format!("{}::{}", class_name, func_name).into()

@@ -14,7 +14,7 @@ contract Foo {
     }
 
     pub fn c() {
-        let x: BadField
+        let x: BadField = BadField(x: 0)
         x.x = 10
     }
 }

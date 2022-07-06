@@ -54,7 +54,7 @@ contract Foo {
     }
 
     pub fn assign_my_nums_and_return(self) -> Array<u256, 5> {
-        let my_nums_mem: Array<u256, 5>
+        let my_nums_mem: Array<u256, 5> = [0; 5]
         self.my_nums[0] = 42
         self.my_nums[1] = 26
         self.my_nums[2] = 0

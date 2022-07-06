@@ -38,36 +38,23 @@ note:
    │  
  9 │ ╭     fn bar() -> i32 {
 10 │ │         const LOCAL_CONST: i32 = C3 * 2
-11 │ │         let _arr1: Array<i32, { C2 }>
-12 │ │         let _arr2: Array<i32, { LOCAL_CONST }>
-13 │ │         let _my_array: MY_ARRAY
+11 │ │         let _arr1: Array<i32, { C2 }> = [i32(0); { C2 }]
+12 │ │         let _arr2: Array<i32, { LOCAL_CONST }> = [i32(0); { LOCAL_CONST }]
+13 │ │         let _my_array: MY_ARRAY = [true; { C4 }]
 14 │ │         return C4
 15 │ │     }
-   │ ╰─────^ attributes hash: 18058099208132403133
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     I32,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> i32
 
 note: 
    ┌─ module_const.fe:10:15
    │
 10 │         const LOCAL_CONST: i32 = C3 * 2
    │               ^^^^^^^^^^^ i32
-11 │         let _arr1: Array<i32, { C2 }>
+11 │         let _arr1: Array<i32, { C2 }> = [i32(0); { C2 }]
    │             ^^^^^ Array<i32, 3>
-12 │         let _arr2: Array<i32, { LOCAL_CONST }>
+12 │         let _arr2: Array<i32, { LOCAL_CONST }> = [i32(0); { LOCAL_CONST }]
    │             ^^^^^ Array<i32, 88>
-13 │         let _my_array: MY_ARRAY
+13 │         let _my_array: MY_ARRAY = [true; { C4 }]
    │             ^^^^^^^^^ Array<bool, 42>
 
 note: 
@@ -83,11 +70,52 @@ note:
    │
 10 │         const LOCAL_CONST: i32 = C3 * 2
    │                                  ^^^^^^ i32: Value
-11 │         let _arr1: Array<i32, { C2 }>
-   │                                 ^^ i32: Value
-12 │         let _arr2: Array<i32, { LOCAL_CONST }>
-   │                                 ^^^^^^^^^^^ i32: Value
-13 │         let _my_array: MY_ARRAY
+11 │         let _arr1: Array<i32, { C2 }> = [i32(0); { C2 }]
+   │                                 ^^           ^ i32: Value
+   │                                 │             
+   │                                 i32: Value
+
+note: 
+   ┌─ module_const.fe:11:42
+   │
+11 │         let _arr1: Array<i32, { C2 }> = [i32(0); { C2 }]
+   │                                          ^^^^^^    ^^ i32: Value
+   │                                          │          
+   │                                          i32: Value
+
+note: 
+   ┌─ module_const.fe:11:41
+   │
+11 │         let _arr1: Array<i32, { C2 }> = [i32(0); { C2 }]
+   │                                         ^^^^^^^^^^^^^^^^ Array<i32, 3>: Memory
+12 │         let _arr2: Array<i32, { LOCAL_CONST }> = [i32(0); { LOCAL_CONST }]
+   │                                 ^^^^^^^^^^^           ^ i32: Value
+   │                                 │                      
+   │                                 i32: Value
+
+note: 
+   ┌─ module_const.fe:12:51
+   │
+12 │         let _arr2: Array<i32, { LOCAL_CONST }> = [i32(0); { LOCAL_CONST }]
+   │                                                   ^^^^^^    ^^^^^^^^^^^ i32: Value
+   │                                                   │          
+   │                                                   i32: Value
+
+note: 
+   ┌─ module_const.fe:12:50
+   │
+12 │         let _arr2: Array<i32, { LOCAL_CONST }> = [i32(0); { LOCAL_CONST }]
+   │                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ Array<i32, 88>: Memory
+13 │         let _my_array: MY_ARRAY = [true; { C4 }]
+   │                                    ^^^^    ^^ i32: Value
+   │                                    │        
+   │                                    bool: Value
+
+note: 
+   ┌─ module_const.fe:13:35
+   │
+13 │         let _my_array: MY_ARRAY = [true; { C4 }]
+   │                                   ^^^^^^^^^^^^^^ Array<bool, 42>: Memory
 14 │         return C4
    │                ^^ i32: Value
 

@@ -2070,5 +2070,28 @@ fn generics() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "generic_functions.fe", "Example", &[]);
         harness.test_function(&mut executor, "generic_compute", &[], None);
+
+        let harness = deploy_contract(
+            &mut executor,
+            "generic_functions_primitves.fe",
+            "Example",
+            &[],
+        );
+        harness.test_function(&mut executor, "generic_compute", &[], None);
+    });
+}
+
+#[test]
+fn array_repeat() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "array_repeat.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "foo",
+            &[],
+            Some(&uint_array_token(&[8, 42, 8, 8])),
+        );
+
+        harness.test_function(&mut executor, "bar", &[], None);
     });
 }

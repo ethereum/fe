@@ -10,7 +10,7 @@ use crate::AnalyzerDb;
 pub fn type_alias_type(
     db: &dyn AnalyzerDb,
     alias: TypeAliasId,
-) -> Analysis<Result<types::Type, TypeError>> {
+) -> Analysis<Result<types::TypeId, TypeError>> {
     let mut scope = ItemScope::new(db, alias.data(db).module);
     let typ = type_desc(&mut scope, &alias.data(db).ast.kind.typ);
 
@@ -21,7 +21,7 @@ pub fn type_alias_type_cycle(
     db: &dyn AnalyzerDb,
     _cycle: &[String],
     alias: &TypeAliasId,
-) -> Analysis<Result<types::Type, TypeError>> {
+) -> Analysis<Result<types::TypeId, TypeError>> {
     let mut context = TempContext::default();
     let err = Err(TypeError::new(context.error(
         "recursive type definition",

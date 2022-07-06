@@ -13,20 +13,7 @@ note:
    · │
 15 │ │         return C10
 16 │ │     }
-   │ ╰─────^ attributes hash: 6115314201970082834
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         ctx_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
+   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
    ┌─ const_local.fe:3:15
@@ -53,7 +40,7 @@ note:
    │               ^^ bool
 13 │         const C10: u256 = 42 if C9 else 0 # 42
    │               ^^^ u256
-14 │         let _arr: Array<bool, { C10 }>
+14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │             ^^^^ Array<bool, 42>
 
 note: 
@@ -158,8 +145,17 @@ note:
    │
 13 │         const C10: u256 = 42 if C9 else 0 # 42
    │                           ^^^^^^^^^^^^^^^ u256: Value
-14 │         let _arr: Array<bool, { C10 }>
-   │                                 ^^^ u256: Value
+14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
+   │                                 ^^^       ^^^^    ^^^ u256: Value
+   │                                 │         │        
+   │                                 │         bool: Value
+   │                                 u256: Value
+
+note: 
+   ┌─ const_local.fe:14:42
+   │
+14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
+   │                                          ^^^^^^^^^^^^^^^ Array<bool, 42>: Memory
 15 │         return C10
    │                ^^^ u256: Value
 

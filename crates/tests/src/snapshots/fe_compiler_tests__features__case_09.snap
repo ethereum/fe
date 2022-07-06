@@ -1,6 +1,7 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
+
 ---
-bit_or([Uint(26), Uint(42)]) used 473 gas
+bit_or([Uint(26), Uint(42)]) used 468 gas
 

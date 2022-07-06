@@ -9,35 +9,7 @@ note:
 4 │ ╭     pub fn bar(ctx: Context) -> u256 {
 5 │ │         return ctx.msg_sig()
 6 │ │     }
-  │ ╰─────^ attributes hash: 10526263819290319263
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        ctx_decl: Some(
-            Mutable,
-        ),
-        params: [
-            FunctionParam {
-                label: None,
-                name: "ctx",
-                typ: Ok(
-                    Struct(
-                        Struct {
-                            name: "Context",
-                            field_count: 0,
-                        },
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+  │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
   ┌─ return_msg_sig.fe:5:16

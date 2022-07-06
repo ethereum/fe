@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use smol_str::SmolStr;
 
 use crate::context::{Analysis, AnalyzerContext};
-use crate::namespace::items::{Class, Function, FunctionId, ImplId};
+use crate::namespace::items::{Function, FunctionId, ImplId, Item};
 use crate::namespace::scopes::ItemScope;
 use crate::AnalyzerDb;
 use std::rc::Rc;
@@ -19,7 +19,7 @@ pub fn impl_all_functions(db: &dyn AnalyzerDb, impl_: ImplId) -> Rc<[FunctionId]
             db.intern_function(Rc::new(Function::new(
                 db,
                 node,
-                Some(Class::Impl(impl_)),
+                Some(Item::Impl(impl_)),
                 impl_data.module,
             )))
         })
