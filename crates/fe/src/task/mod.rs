@@ -12,19 +12,11 @@ use clap::Subcommand;
 pub use lsp::{start_lsp_sever, LspArgs};
 pub use new::{create_new_project, NewProjectArgs};
 
-#[cfg(feature = "lsp-support")]
 #[derive(Subcommand)]
 pub enum Commands {
     Build(BuildArgs),
     Check(CheckArgs),
     New(NewProjectArgs),
+    #[cfg(feature = "lsp-support")]
     Lsp(LspArgs),
-}
-
-#[cfg(not(feature = "lsp-support"))]
-#[derive(Subcommand)]
-pub enum Commands {
-    Build(BuildArgs),
-    Check(CheckArgs),
-    New(NewProjectArgs),
 }
