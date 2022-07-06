@@ -10,7 +10,7 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
-## 0.19.0-alpha "Sunstone" (2022-07-06)
+## 0.19.1-alpha "Sunstone" (2022-07-06)
 
 
 ### Features
@@ -210,7 +210,6 @@ Fe is moving fast. Read up on all the latest improvements.
 
 
 ### Bugfixes
-
 
 - Fix a bug that incorrect instruction is selected when the operands of a comp instruction are a signed type. ([#734](https://github.com/ethereum/fe/issues/734))
 - Fix issue where a negative constant leads to an ICE
