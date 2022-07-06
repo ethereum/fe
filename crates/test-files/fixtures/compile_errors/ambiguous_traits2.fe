@@ -1,0 +1,20 @@
+trait DoThing {
+  fn do(self);
+}
+
+struct Bar {
+  fn do(self) {
+
+  }
+}
+
+impl DoThing for Bar {
+  fn do(self) {
+  }
+}
+
+contract Example {
+  pub fn run_test(self) {
+    Bar().do()
+  }
+}

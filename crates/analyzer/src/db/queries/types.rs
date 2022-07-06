@@ -1,11 +1,27 @@
+use std::rc::Rc;
+
 use crate::context::{AnalyzerContext, TempContext};
 use crate::db::Analysis;
 use crate::errors::TypeError;
-use crate::namespace::items::TypeAliasId;
+use crate::namespace::items::{ImplId, TypeAliasId};
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types;
+use crate::namespace::types::{self, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
+
+pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
+    db.root_ingot()
+        .all_existing_impls(db)
+        .iter()
+        .filter_map(|val| {
+            if val.receiver(db) == ty {
+                Some(*val)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
 
 pub fn type_alias_type(
     db: &dyn AnalyzerDb,

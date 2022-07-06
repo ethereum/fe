@@ -34,7 +34,7 @@ struct Runner {
 }
 
 contract Example {
-  pub fn generic_compute(self) {
+  pub fn run_test(self) {
     let runner: Runner = Runner();
     assert runner.run(Mac()) == 1001
     assert runner.run(Linux(counter: 10)) == 1015

@@ -95,11 +95,11 @@ error: cannot find value `ctx` in this scope
 18 │         emit MyEvent(ctx, x: 1)
    │                      ^^^ undefined
 
-error: the type `MyStruct` is private
+error: the struct `MyStruct` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:22:16
    │
 22 │         let s: MyStruct = MyStruct(x: 1)
-   │                ^^^^^^^^ this type is not `pub`
+   │                ^^^^^^^^ this struct is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:11:8
    │
@@ -109,11 +109,11 @@ error: the type `MyStruct` is private
    = `MyStruct` can only be used within `foo`
    = Hint: use `pub` to make `MyStruct` visible from outside of `foo`
 
-error: the type `MyStruct` is private
+error: the struct `MyStruct` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:22:27
    │
 22 │         let s: MyStruct = MyStruct(x: 1)
-   │                           ^^^^^^^^ this type is not `pub`
+   │                           ^^^^^^^^ this struct is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:11:8
    │

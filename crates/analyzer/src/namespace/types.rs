@@ -17,7 +17,6 @@ use strum::{AsRefStr, EnumIter, EnumString};
 
 use super::items::FunctionSigId;
 use super::items::ImplId;
-use super::items::ModuleId;
 
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
@@ -109,6 +108,8 @@ impl TypeId {
         match self.typ(db) {
             Type::Contract(_) | Type::SelfContract(_) => "contract",
             Type::Struct(_) => "struct",
+            Type::Array(_) => "array",
+            Type::Tuple(_) => "tuple",
             _ => "type",
         }
     }
@@ -120,26 +121,9 @@ impl TypeId {
         }
     }
 
-    /// Returns all `impls` for the type
-    pub fn get_all_impls(&self, db: &dyn AnalyzerDb, module_id: ModuleId) -> Vec<ImplId> {
-        // TODO: Probably, this isn't looking for all `impl` at all relevant places.
-        // An `impl` could be in the module of the type but it could also be in the module
-        // of the trait (which we don't know yet since we just want to get all `impl` regardless of the trait).
-        // Most likely, what we actually need is a mapping from type to impls and then we can just pick all
-        // `impl` for some type via that mapping.
-        module_id
-            .impls(db)
-            .iter()
-            .filter_map(
-                |((_, ty), impl_)| {
-                    if ty == self {
-                        Some(*impl_)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .collect()
+    // Returns all `impl` for the type even from foreign ingots
+    pub fn get_all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
+        db.all_impls(*self)
     }
 
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
@@ -147,13 +131,31 @@ impl TypeId {
             Type::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::SelfContract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
-            // FIXME: multiple bounds
+            // TODO: This won't hold when we support multiple bounds
             Type::Generic(inner) => inner
                 .bounds
                 .first()
                 .and_then(|bound| bound.function(db, name)),
             _ => None,
         }
+    }
+
+    /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only considers functions natively
+    /// implemented on the type but also those that are provided by implemented traits on the type.
+    pub fn function_sigs(&self, db: &dyn AnalyzerDb, name: &str) -> Vec<FunctionSigId> {
+        let native = self.function_sig(db, name);
+
+        let mut fns: Vec<FunctionSigId> = self
+            .get_all_impls(db)
+            .iter()
+            .filter_map(|impl_| impl_.function(db, name))
+            .map(|fun| fun.sig(db))
+            .collect();
+
+        if let Some(fun) = native {
+            fns.push(fun)
+        }
+        fns
     }
 
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {

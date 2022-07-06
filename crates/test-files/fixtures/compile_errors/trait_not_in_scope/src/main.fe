@@ -1,0 +1,6 @@
+
+contract Example {
+  pub fn run_test(self) {
+    1.do()
+  }
+}

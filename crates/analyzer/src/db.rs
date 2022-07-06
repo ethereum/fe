@@ -53,6 +53,10 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn ingot_files(&self, ingot: IngotId) -> Rc<[SourceFileId]>;
     #[salsa::input]
     fn ingot_external_ingots(&self, ingot: IngotId) -> Rc<IndexMap<SmolStr, IngotId>>;
+    // Having the root ingot available as a "global" might offend functional programming purists
+    // but it makes for much nicer ergonomics in queries that just need the global entrypoint
+    #[salsa::input]
+    fn root_ingot(&self) -> IngotId;
 
     #[salsa::invoke(queries::ingots::ingot_modules)]
     fn ingot_modules(&self, ingot: IngotId) -> Rc<[ModuleId]>;
@@ -178,6 +182,10 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     // Event
     #[salsa::invoke(queries::events::event_type)]
     fn event_type(&self, event: EventId) -> Analysis<Rc<types::Event>>;
+
+    // Type
+    #[salsa::invoke(queries::types::all_impls)]
+    fn all_impls(&self, ty: TypeId) -> Rc<[ImplId]>;
 
     // Type alias
     #[salsa::invoke(queries::types::type_alias_type)]

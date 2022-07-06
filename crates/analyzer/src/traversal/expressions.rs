@@ -4,7 +4,7 @@ use crate::context::{
 };
 use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
-use crate::namespace::items::{FunctionId, Item, StructId, TypeDef};
+use crate::namespace::items::{FunctionId, ImplId, Item, StructId, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
 use crate::operations;
@@ -1434,115 +1434,188 @@ fn expr_call_method(
     if target_type.is_contract(context.db()) {
         check_for_call_to_special_fns(context, &field.kind, field.span)?;
     }
-    if let Some(method) = target_type.function_sig(context.db(), &field.kind) {
-        let is_self = is_self_value(target);
-        if is_self && !method.takes_self(context.db()) {
-            context.fancy_error(
-                &format!("`{}` must be called without `self`", &field.kind),
-                vec![Label::primary(field.span, "function does not take self")],
-                vec![format!(
-                    "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                    &field.kind, &field.kind
-                )],
-            );
-        } else if !is_self && !method.is_public(context.db()) {
-            context.fancy_error(
-                &format!(
-                    "the function `{}` on `{} {}` is private",
-                    &field.kind,
-                    target_type.kind_display_name(context.db()),
-                    target_type.name(context.db())
-                ),
-                vec![
-                    Label::primary(field.span, "this function is not `pub`"),
-                    Label::secondary(
-                        method.data(context.db()).ast.span,
-                        format!("`{}` is defined here", &field.kind),
+
+    match target_type
+        .function_sigs(context.db(), &field.kind)
+        .as_slice()
+    {
+        [] => Err(FatalError::new(context.fancy_error(
+            &format!(
+                "No function `{}` exists on type `{}`",
+                &field.kind,
+                &target_attributes.typ.display(context.db())
+            ),
+            vec![Label::primary(field.span, "undefined function")],
+            vec![],
+        ))),
+        [method] => {
+            let is_self = is_self_value(target);
+            if is_self && !method.takes_self(context.db()) {
+                context.fancy_error(
+                    &format!("`{}` must be called without `self`", &field.kind),
+                    vec![Label::primary(field.span, "function does not take self")],
+                    vec![format!(
+                        "Suggestion: try `{}(...)` instead of `self.{}(...)`",
+                        &field.kind, &field.kind
+                    )],
+                );
+            } else if !is_self && !method.is_public(context.db()) {
+                context.fancy_error(
+                    &format!(
+                        "the function `{}` on `{} {}` is private",
+                        &field.kind,
+                        target_type.kind_display_name(context.db()),
+                        target_type.name(context.db())
                     ),
-                ],
-                vec![],
-            );
-        }
-        let sig = method.signature(context.db());
-        validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
-
-        let calltype = match target_type.typ(context.db()) {
-            Type::Contract(contract) | Type::SelfContract(contract) => {
-                let method = contract
-                    .function(context.db(), &method.name(context.db()))
-                    .unwrap();
-                if is_self {
-                    CallType::ValueMethod {
-                        typ: target_type,
-                        method,
-                    }
-                } else {
-                    // External contract address must be loaded onto the stack.
-                    context.update_expression(
-                        target,
-                        target_attributes
-                            .into_loaded(context.db())
-                            .expect("should be able to move contract type to stack"),
-                    );
-
-                    CallType::External {
-                        contract,
-                        function: method,
-                    }
-                }
+                    vec![
+                        Label::primary(field.span, "this function is not `pub`"),
+                        Label::secondary(
+                            method.data(context.db()).ast.span,
+                            format!("`{}` is defined here", &field.kind),
+                        ),
+                    ],
+                    vec![],
+                );
             }
-            Type::Struct(val) => {
-                let method = val
-                    .function(context.db(), &method.name(context.db()))
-                    .unwrap();
-                if matches!(target_attributes.final_location(), Location::Storage { .. }) {
-                    context.fancy_error(
-                        "struct functions can only be called on structs in memory",
-                        vec![
-                            Label::primary(target.span, "this value is in storage"),
-                            Label::secondary(
-                                field.span,
-                                "hint: copy the struct to memory with `.to_mem()`",
-                            ),
-                        ],
-                        vec![],
-                    );
+            let sig = method.signature(context.db());
+            validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
+
+            let calltype = match target_type.typ(context.db()) {
+                Type::Contract(contract) | Type::SelfContract(contract) => {
+                    let method = contract
+                        .function(context.db(), &method.name(context.db()))
+                        .unwrap();
+                    if is_self {
+                        CallType::ValueMethod {
+                            typ: target_type,
+                            method,
+                        }
+                    } else {
+                        // External contract address must be loaded onto the stack.
+                        context.update_expression(
+                            target,
+                            target_attributes
+                                .into_loaded(context.db())
+                                .expect("should be able to move contract type to stack"),
+                        );
+
+                        CallType::External {
+                            contract,
+                            function: method,
+                        }
+                    }
                 }
-                CallType::ValueMethod {
-                    typ: target_type,
-                    method,
-                }
-            }
-            Type::Generic(inner) => {
-                CallType::TraitValueMethod {
-                    // Fixme
+                Type::Generic(inner) => CallType::TraitValueMethod {
                     trait_id: *inner.bounds.first().expect("expected trait bound"),
-                    method,
+                    method: *method,
                     generic_type: target_attributes
                         .typ
                         .typ(context.db())
                         .as_generic()
                         .expect("expected generic type")
                         .clone(),
-                }
-            }
-            // In the future, functions can be called on all types (via traits)
-            _ => unreachable!(),
-        };
+                },
+                ty => {
+                    let method = method.function(context.db()).unwrap();
 
-        let return_type = sig.return_type.clone()?;
-        let location = Location::assign_location(&return_type.typ(context.db()));
-        return Ok((ExpressionAttributes::new(return_type, location), calltype));
+                    if matches!(ty, Type::Struct(_) | Type::Tuple(_) | Type::Array(_))
+                        && matches!(target_attributes.final_location(), Location::Storage { .. })
+                    {
+                        let kind = target_type.kind_display_name(context.db());
+                        context.fancy_error(
+                            &format!(
+                                "{kind} functions can only be called on {kind} in memory",
+                                kind = kind
+                            ),
+                            vec![
+                                Label::primary(target.span, "this value is in storage"),
+                                Label::secondary(
+                                    field.span,
+                                    format!("hint: copy the {} to memory with `.to_mem()`", kind),
+                                ),
+                            ],
+                            vec![],
+                        );
+                    }
+
+                    if let Item::Impl(id) = method.parent(context.db()) {
+                        validate_trait_in_scope(context, field.span, method, id);
+                    }
+
+                    CallType::ValueMethod {
+                        typ: target_type,
+                        method,
+                    }
+                }
+            };
+
+            let return_type = sig.return_type.clone()?;
+            let location = Location::assign_location(&return_type.typ(context.db()));
+            Ok((ExpressionAttributes::new(return_type, location), calltype))
+        }
+        [first, second, ..] => {
+            context.fancy_error(
+                "multiple applicable items in scope",
+                vec![
+                    Label::primary(
+                        first.name_span(context.db()),
+                        format!(
+                            "candidate #1 is defined here on the `{}`",
+                            first.parent(context.db()).item_kind_display_name()
+                        ),
+                    ),
+                    Label::primary(
+                        second.name_span(context.db()),
+                        format!(
+                            "candidate #2 is defined here on the `{}`",
+                            second.parent(context.db()).item_kind_display_name()
+                        ),
+                    ),
+                ],
+                vec!["Hint: rename one of the methods to disambiguate".into()],
+            );
+            let return_type = first.signature(context.db()).return_type.clone()?;
+            let location = Location::assign_location(&return_type.typ(context.db()));
+            return Ok((
+                ExpressionAttributes::new(return_type, location),
+                CallType::ValueMethod {
+                    typ: target_type,
+                    method: first.function(context.db()).unwrap(),
+                },
+            ));
+        }
     }
-    Err(FatalError::new(context.fancy_error(
-        &format!(
-            "No function `{}` exists on type `{}`",
-            &field.kind,
-            &target_attributes.typ.display(context.db())
-        ),
-        vec![Label::primary(field.span, "undefined function")],
-        vec![],
-    )))
+}
+
+fn validate_trait_in_scope(
+    context: &mut dyn AnalyzerContext,
+    name_span: Span,
+    called_fn: FunctionId,
+    impl_: ImplId,
+) {
+    let treit = impl_.trait_id(context.db());
+    let type_name = impl_.receiver(context.db()).name(context.db());
+
+    if !context
+        .module()
+        .is_in_scope(context.db(), Item::Trait(treit))
+    {
+        context.fancy_error(
+            &format!(
+                "No method named `{}` found for type `{}` in the current scope",
+                called_fn.name(context.db()),
+                type_name
+            ),
+            vec![
+                Label::primary(name_span, format!("method not found in `{}`", type_name)),
+                Label::secondary(called_fn.name_span(context.db()), format!("the method is available for `{}` here", type_name))
+            ],
+            vec![
+                "Hint: items from traits can only be used if the trait is in scope".into(),
+                format!("Hint: the following trait is implemented but not in scope; perhaps add a `use` for it: `trait {}`", treit.name(context.db()))
+            ],
+        );
+    }
 }
 
 fn expr_call_builtin_value_method(

@@ -9,7 +9,7 @@ error: import name conflicts with the ingot named "std"
 1 │ use std
   │     ^^^ `std` is already defined
 
-error: cannot glob import from type
+error: cannot glob import from struct
   ┌─ compile_errors/bad_ingot/src/foo.fe:1:18
   │
 1 │ use ingot::bing::Bong::*
@@ -51,7 +51,7 @@ error: unresolved path item
 4 │ use none::*
   │     ^^^^ not found
 
-error: a type with the same name has already been imported
+error: a struct with the same name has already been imported
   ┌─ compile_errors/bad_ingot/src/main.fe:2:28
   │
 2 │ use biz::bad::{Bur, Bud as Bar, Boo}
@@ -66,11 +66,11 @@ error: function name conflicts with the ingot named "std"
 12 │ fn std() {}
    │    ^^^ `std` is already defined
 
-error: the type `Foo` is private
+error: the struct `Foo` is private
   ┌─ compile_errors/bad_ingot/src/main.fe:7:19
   │
 7 │     pub fn a() -> foo::Foo {
-  │                   ^^^^^^^^ this type is not `pub`
+  │                   ^^^^^^^^ this struct is not `pub`
   │
   ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
   │
@@ -80,11 +80,11 @@ error: the type `Foo` is private
   = `Foo` can only be used within `foo`
   = Hint: use `pub` to make `Foo` visible from outside of `foo`
 
-error: the type `Foo` is private
+error: the struct `Foo` is private
   ┌─ compile_errors/bad_ingot/src/main.fe:8:16
   │
 8 │         return foo::Foo(my_num: true)
-  │                ^^^^^^^^ this type is not `pub`
+  │                ^^^^^^^^ this struct is not `pub`
   │
   ┌─ compile_errors/bad_ingot/src/foo.fe:5:8
   │
