@@ -211,6 +211,9 @@ test_stmt! { revert_reason_not_struct, "revert 1" }
 test_stmt! { invalid_ascii, "String<2>(\"ä\")" }
 test_stmt! { invert_non_numeric, "~true" }
 
+test_file! { ambiguous_traits }
+test_file! { ambiguous_traits2 }
+test_ingot! { trait_not_in_scope }
 test_file! { bad_string }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }

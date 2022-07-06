@@ -2065,20 +2065,19 @@ fn ctx_init_in_call() {
     });
 }
 
-#[test]
-fn generics() {
+// These tests are expected to make assertions in Fe only
+#[rstest(
+    fixture_file,
+    case::simple_traits("simple_traits.fe"),
+    case::generic_functions("generic_functions.fe"),
+    case::generic_functions_primitves("generic_functions_primitves.fe")
+)]
+fn execution_tests(fixture_file: &str) {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "generic_functions.fe", "Example", &[]);
-        harness.test_function(&mut executor, "generic_compute", &[], None);
-
-        let harness = deploy_contract(
-            &mut executor,
-            "generic_functions_primitves.fe",
-            "Example",
-            &[],
-        );
-        harness.test_function(&mut executor, "generic_compute", &[], None);
-    });
+        let harness = deploy_contract(&mut executor, fixture_file, "Example", &[]);
+        harness.test_function(&mut executor, "run_test", &[], None);
+        assert_harness_gas_report!(harness);
+    })
 }
 
 #[test]

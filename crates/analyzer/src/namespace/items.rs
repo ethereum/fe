@@ -119,6 +119,7 @@ impl Item {
 
     pub fn item_kind_display_name(&self) -> &'static str {
         match self {
+            Item::Type(TypeDef::Struct(_)) => "struct",
             Item::Type(_) | Item::GenericType(_) => "type",
             Item::Trait(_) => "trait",
             Item::Impl(_) => "impl",
@@ -360,6 +361,7 @@ impl IngotId {
             })
             .collect();
 
+        db.set_root_ingot(ingot);
         db.set_ingot_files(ingot, file_ids);
         db.set_ingot_external_ingots(ingot, Rc::new(deps));
         ingot
@@ -389,6 +391,22 @@ impl IngotId {
 
     pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         self.root_module(db).expect("missing root module").items(db)
+    }
+
+    /// Returns all `impl` from the current ingot as well as dependency ingots
+    pub fn all_existing_impls(&self, db: &dyn AnalyzerDb) -> Vec<ImplId> {
+        let ingot_modules = self
+            .all_modules(db)
+            .iter()
+            .flat_map(|module_id| module_id.all_impls(db).to_vec())
+            .collect::<Vec<_>>();
+
+        self.external_ingots(db)
+            .values()
+            .flat_map(|ingot| ingot.all_modules(db).to_vec())
+            .flat_map(|module_id| module_id.all_impls(db).to_vec())
+            .chain(ingot_modules)
+            .collect()
     }
 
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
@@ -526,6 +544,22 @@ impl ModuleId {
     /// statements in a module.
     pub fn used_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, (Span, Item)>> {
         db.module_used_item_map(*self).value
+    }
+
+    /// Returns `true` if the `item` is in scope of the module.
+    pub fn is_in_scope(&self, db: &dyn AnalyzerDb, item: Item) -> bool {
+        if let Some(val) = item.module(db) {
+            if val == *self {
+                return true;
+            }
+        }
+
+        if let Some((_, val)) = self.used_items(db).get(&item.name(db)) {
+            if *val == item {
+                return true;
+            }
+        }
+        false
     }
 
     /// Returns all of the internal items, except for `use`d items. This is used
