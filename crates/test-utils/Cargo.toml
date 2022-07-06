@@ -18,7 +18,7 @@ test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.11.1", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
-solc = {git = "https://github.com/g-r-a-n-t/solc-rust", rev = "52d4146", optional = true}
+solc = {git = "https://github.com/cburgdorf/solc-rust", rev = "75ed40e", optional = true}
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 indexmap = "1.6.2"
 insta = "1.7.1"
