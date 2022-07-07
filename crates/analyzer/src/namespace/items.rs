@@ -393,22 +393,6 @@ impl IngotId {
         self.root_module(db).expect("missing root module").items(db)
     }
 
-    /// Returns all `impl` from the current ingot as well as dependency ingots
-    pub fn all_existing_impls(&self, db: &dyn AnalyzerDb) -> Vec<ImplId> {
-        let ingot_modules = self
-            .all_modules(db)
-            .iter()
-            .flat_map(|module_id| module_id.all_impls(db).to_vec())
-            .collect::<Vec<_>>();
-
-        self.external_ingots(db)
-            .values()
-            .flat_map(|ingot| ingot.all_modules(db).to_vec())
-            .flat_map(|module_id| module_id.all_impls(db).to_vec())
-            .chain(ingot_modules)
-            .collect()
-    }
-
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
         let mut diagnostics = vec![];
         self.sink_diagnostics(db, &mut diagnostics);
@@ -1372,13 +1356,6 @@ impl StructId {
 
     pub fn as_type(&self, db: &dyn AnalyzerDb) -> TypeId {
         db.intern_type(Type::Struct(*self))
-    }
-
-    pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
-        self.module(db)
-            .impls(db)
-            .get(&(trait_, db.intern_type(Type::Struct(*self))))
-            .cloned()
     }
 
     pub fn has_private_field(&self, db: &dyn AnalyzerDb) -> bool {

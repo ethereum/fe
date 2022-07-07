@@ -114,11 +114,10 @@ impl TypeId {
         }
     }
 
+    /// Return the `impl` for the given trait. There can only ever be a single implementation
+    /// per concrete type and trait.
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
-        match self.typ(db) {
-            Type::Struct(id) => id.get_impl_for(db, trait_),
-            _ => trait_.module(db).impls(db).get(&(trait_, *self)).cloned(),
-        }
+        db.impl_for(*self, trait_)
     }
 
     // Returns all `impl` for the type even from foreign ingots
@@ -142,20 +141,8 @@ impl TypeId {
 
     /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only considers functions natively
     /// implemented on the type but also those that are provided by implemented traits on the type.
-    pub fn function_sigs(&self, db: &dyn AnalyzerDb, name: &str) -> Vec<FunctionSigId> {
-        let native = self.function_sig(db, name);
-
-        let mut fns: Vec<FunctionSigId> = self
-            .get_all_impls(db)
-            .iter()
-            .filter_map(|impl_| impl_.function(db, name))
-            .map(|fun| fun.sig(db))
-            .collect();
-
-        if let Some(fun) = native {
-            fns.push(fun)
-        }
-        fns
+    pub fn function_sigs(&self, db: &dyn AnalyzerDb, name: &str) -> Rc<[FunctionSigId]> {
+        db.function_sigs(*self, name.into())
     }
 
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {

@@ -1437,6 +1437,7 @@ fn expr_call_method(
 
     match target_type
         .function_sigs(context.db(), &field.kind)
+        .to_vec()
         .as_slice()
     {
         [] => Err(FatalError::new(context.fancy_error(
