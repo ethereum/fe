@@ -1,25 +1,47 @@
 use std::rc::Rc;
 
+use smol_str::SmolStr;
+
 use crate::context::{AnalyzerContext, TempContext};
 use crate::db::Analysis;
 use crate::errors::TypeError;
-use crate::namespace::items::{ImplId, TypeAliasId};
+use crate::namespace::items::{FunctionSigId, ImplId, TraitId, TypeAliasId};
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 
+/// Returns all `impl` for the given type from the current ingot as well as dependency ingots
 pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
-    db.root_ingot()
-        .all_existing_impls(db)
+    let ingot_modules = db
+        .root_ingot()
+        .all_modules(db)
         .iter()
-        .filter_map(|val| {
-            if val.receiver(db) == ty {
-                Some(*val)
-            } else {
-                None
-            }
-        })
+        .flat_map(|module_id| module_id.all_impls(db).to_vec())
+        .collect::<Vec<_>>();
+
+    db.ingot_external_ingots(db.root_ingot())
+        .values()
+        .flat_map(|ingot| ingot.all_modules(db).to_vec())
+        .flat_map(|module_id| module_id.all_impls(db).to_vec())
+        .chain(ingot_modules)
+        .filter(|val| val.receiver(db) == ty)
+        .collect()
+}
+
+pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplId> {
+    db.all_impls(ty)
+        .iter()
+        .find(|impl_| impl_.trait_id(db) == treit)
+        .cloned()
+}
+
+pub fn function_sigs(db: &dyn AnalyzerDb, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]> {
+    ty.get_all_impls(db)
+        .iter()
+        .filter_map(|impl_| impl_.function(db, &name))
+        .map(|fun| fun.sig(db))
+        .chain(ty.function_sig(db, &name).map_or(vec![], |fun| vec![fun]))
         .collect()
 }
 
