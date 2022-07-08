@@ -2095,3 +2095,16 @@ fn array_repeat() {
         harness.test_function(&mut executor, "bar", &[], None);
     });
 }
+
+#[test]
+fn std_crypto() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "std_crypto.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "foo",
+            &[],
+            None,
+        );
+    });
+}

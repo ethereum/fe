@@ -1,0 +1,11 @@
+
+pub fn ec_recover(hash: u256, v: u256, r: u256, s: u256) -> address {
+    let input: Array<u256, 4> = [0; 4]
+    input[0] = hash
+    input[1] = v
+    input[2] = r
+    input[3] = s
+    let output: Array<u256, 1> = [0]
+    unsafe { __call(0x01, 0, 0, u256(input), 128, u256(output), 32) }
+    return address(output[0])
+}

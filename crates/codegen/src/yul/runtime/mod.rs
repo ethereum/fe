@@ -155,7 +155,7 @@ pub trait RuntimeProvider {
         value: yul::Expression,
         from_ty: TypeId,
     ) -> yul::Expression {
-        debug_assert!(from_ty.is_primitive(db.upcast()));
+        // debug_assert!(from_ty.is_primitive(db.upcast()));
         let from_size = from_ty.size_of(db.upcast(), SLOT_SIZE);
 
         if from_ty.is_signed(db.upcast()) {

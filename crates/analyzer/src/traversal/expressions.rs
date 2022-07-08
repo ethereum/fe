@@ -1300,14 +1300,16 @@ fn expr_call_type_constructor(
                         }
                     }
                     _ => {
-                        context.error(
-                            "type mismatch",
-                            arg.span,
-                            &format!(
-                                "expected a numeric type but was `{}`",
-                                arg_typ.display(context.db())
-                            ),
-                        );
+                        if !context.inherits_type(BlockScopeType::Unsafe) {
+                            context.error(
+                                "type mismatch",
+                                arg.span,
+                                &format!(
+                                    "expected a numeric type but was `{}`",
+                                    arg_typ.display(context.db())
+                                ),
+                            );
+                        }
                     }
                 }
             }
