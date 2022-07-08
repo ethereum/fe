@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use colored::Colorize;
-use revm::primitives::{AccountInfo, Bytecode, Env, TransactTo, B160, U256};
+use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, B160, U256};
 use std::fmt::Display;
 
 #[derive(Debug, Default)]
@@ -83,9 +83,18 @@ pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
 
     if result.is_success() {
         sink.inc_success_count();
+        true
+    } else if let ExecutionResult::Revert { gas_used, output } = result {
+        sink.insert_failure(
+            name,
+            &format!(
+                "Reverted gas used: {} output: {}",
+                gas_used,
+                hex::encode(output)
+            ),
+        );
+        false
     } else {
-        sink.insert_failure(name, &format!("{result:?}"));
-    };
-
-    result.is_success()
+        panic!("test halted")
+    }
 }

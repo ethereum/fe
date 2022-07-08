@@ -4,6 +4,11 @@ use ingot::error::{
     ERROR_FAILED_SEND_VALUE,
     Error
 }
+use ingot::buf::{
+    RawCallBuffer, 
+    MemoryBufferReader, 
+    MemoryBufferWriter
+}
 
 struct OutOfReachMarker {}
 
@@ -56,7 +61,7 @@ pub struct Context {
     }
 
     pub fn msg_sig(self) -> u256 {
-        unsafe { return evm::shr(224, evm::call_data_load(offset: 0)) }
+        unsafe { return evm::shr(bits: 224, value: evm::call_data_load(offset: 0)) }
     }
 
     pub fn balance_of(self, _ account: address) -> u256 {
@@ -86,7 +91,27 @@ pub struct Context {
         }
     }
 
+    /// Makes a call to the given address.
+    pub fn raw_call(
+        self, 
+        addr: address, 
+        value: u256, 
+        mut buf: RawCallBuffer 
+    ) -> bool {
+        unsafe {
+            return evm::call(
+                gas: evm::gas_remaining(), 
+                addr, 
+                value,
+                input_offset: buf.offset(), 
+                input_len: buf.input_len(),
+                output_offset: buf.offset(), 
+                output_len: buf.output_len()
+            ) == 1
+        }
+    }
+
     pub fn emit<T: Emittable>(mut self, _ val: T) {
         val.emit(OutOfReachMarker())
-    }
+    }    
 }

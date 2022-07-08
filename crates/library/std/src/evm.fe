@@ -155,20 +155,20 @@ pub fn xor(_ x: u256, _ y: u256) -> u256 {
   unsafe { return __xor(x, y) }
 }
 
-pub fn byte(offset: u256, _ x: u256) -> u256 {
-  unsafe { return __byte(offset, x) }
+pub fn byte(offset: u256, value: u256) -> u256 {
+  unsafe { return __byte(offset, value) }
 }
 
-pub fn shl(_ x: u256, _ y: u256) -> u256 {
-  unsafe { return __shl(x, y) }
+pub fn shl(bits: u256, value: u256) -> u256 {
+  unsafe { return __shl(bits, value) }
 }
 
-pub fn shr(_ x: u256, _ y: u256) -> u256 {
-  unsafe { return __shr(x, y) }
+pub fn shr(bits: u256, value: u256) -> u256 {
+  unsafe { return __shr(bits, value) }
 }
 
-pub fn sar(_ x: u256, _ y: u256) -> u256 {
-  unsafe { return __sar(x, y) }
+pub fn sar(bits: u256, value: u256) -> u256 {
+  unsafe { return __sar(bits, value) }
 }
 
 
