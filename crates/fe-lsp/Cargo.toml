@@ -6,6 +6,7 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dashmap = "5.3.4"
 fe-common = {path = "../common", version = "^0.19.1-alpha"}
 fe-driver = {path = "../driver", version = "^0.19.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.19.1-alpha"}

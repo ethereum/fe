@@ -1,3 +1,6 @@
+use dashmap::DashMap;
+use fe_common::SourceFileId;
+use fe_parser::ast::Module;
 use tower_lsp::jsonrpc::Result as LSPResult;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -5,6 +8,7 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    ast_map: DashMap<String, Module>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +34,8 @@ impl LanguageServer for Backend {
                 )),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
+                definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -47,6 +53,17 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> LSPResult<()> {
         Ok(())
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> LSPResult<Option<GotoDefinitionResponse>> {
+        self.client
+            .log_message(MessageType::INFO, format!("Hello {:#?}", params))
+            .await;
+
+        Ok(None)
     }
 
     async fn completion(&self, _: CompletionParams) -> LSPResult<Option<CompletionResponse>> {
@@ -136,12 +153,24 @@ impl Backend {
                 Some(text_document.version),
             )
             .await;
+        self.update_ast(text_document.clone()).await;
+    }
+
+    async fn update_ast(&self, text_document: TextDocumentItem) {
+        let file_id = SourceFileId::dummy_file();
+        let (module_ast, _) = fe_parser::parse_file(file_id, &text_document.text);
+        self.ast_map
+            .insert(text_document.uri.to_string(), module_ast);
     }
 }
+
 pub async fn lsp_server() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        ast_map: DashMap::new(),
+    });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
