@@ -1459,7 +1459,8 @@ fn expr_call_method(
     // and the global objects are replaced by `Context`, we can remove this.
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
-        if let Ok(Some(NamedThing::Item(Item::Type(def)))) = context.resolve_name(name, target.span) {
+        if let Ok(Some(NamedThing::Item(Item::Type(def)))) = context.resolve_name(name, target.span)
+        {
             let typ = def.typ(context.db())?;
             return expr_call_type_attribute(context, typ, target.span, field, generic_args, args);
         }
