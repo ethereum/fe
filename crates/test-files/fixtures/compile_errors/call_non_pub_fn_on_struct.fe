@@ -1,0 +1,10 @@
+struct Foo {
+    fn do_private_thingz() {
+    }
+}
+
+contract Bar {
+    fn test() {
+        Foo::do_private_thingz()
+    }
+}

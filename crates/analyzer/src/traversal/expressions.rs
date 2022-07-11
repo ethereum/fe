@@ -4,7 +4,7 @@ use crate::context::{
 };
 use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
-use crate::namespace::items::{FunctionId, ImplId, Item, StructId, TypeDef};
+use crate::namespace::items::{FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef};
 use crate::namespace::scopes::BlockScopeType;
 use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
 use crate::operations;
@@ -1011,7 +1011,7 @@ fn expr_call_named_thing<T: std::fmt::Display>(
             expr_call_intrinsic(context, function, func.span, generic_args, args)
         }
         NamedThing::Item(Item::Function(function)) => {
-            expr_call_pure(context, function, generic_args, args)
+            expr_call_pure(context, function, func.span, generic_args, args)
         }
         NamedThing::Item(Item::Type(def)) => {
             if let Some(args) = generic_args {
@@ -1202,12 +1202,62 @@ fn expr_call_intrinsic(
     ))
 }
 
+fn validate_visibility_of_called_fn(
+    context: &mut dyn AnalyzerContext,
+    call_span: Span,
+    called_fn: FunctionSigId,
+) {
+    let fn_parent = called_fn.parent(context.db());
+
+    // We don't need to validate `pub` if the called function is a module function
+    if let Item::Module(_) = fn_parent {
+        return;
+    }
+
+    let name = called_fn.name(context.db());
+    let parent_name = fn_parent.name(context.db());
+
+    let is_called_from_same_item = fn_parent == context.parent_function().parent(context.db());
+    if !called_fn.is_public(context.db()) && !is_called_from_same_item {
+        context.fancy_error(
+            &format!(
+                "the function `{}` on `{} {}` is private",
+                name,
+                fn_parent.item_kind_display_name(),
+                fn_parent.name(context.db())
+            ),
+            vec![
+                Label::primary(call_span, "this function is not `pub`"),
+                Label::secondary(
+                    called_fn.name_span(context.db()),
+                    format!("`{}` is defined here", name),
+                ),
+            ],
+            vec![
+                format!(
+                    "`{}` can only be called from other functions within `{}`",
+                    name, parent_name
+                ),
+                format!(
+                    "Hint: use `pub fn {fun}(..)` to make `{fun}` callable from outside of `{parent}`",
+                    fun = name,
+                    parent = parent_name
+                ),
+            ],
+        );
+    }
+}
+
 fn expr_call_pure(
     context: &mut dyn AnalyzerContext,
     function: FunctionId,
+    call_span: Span,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let sig = function.sig(context.db());
+    validate_visibility_of_called_fn(context, call_span, sig);
+
     let fn_name = function.name(context.db());
     if let Some(args) = generic_args {
         context.fancy_error(
@@ -1409,8 +1459,7 @@ fn expr_call_method(
     // and the global objects are replaced by `Context`, we can remove this.
     // All other `NamedThing`s will be handled correctly by `expr()`.
     if let fe::Expr::Name(name) = &target.kind {
-        if let Ok(Some(NamedThing::Item(Item::Type(def)))) = context.resolve_name(name, target.span)
-        {
+        if let Ok(Some(NamedThing::Item(Item::Type(def)))) = context.resolve_name(name, target.span) {
             let typ = def.typ(context.db())?;
             return expr_call_type_attribute(context, typ, target.span, field, generic_args, args);
         }
@@ -1451,6 +1500,9 @@ fn expr_call_method(
         ))),
         [method] => {
             let is_self = is_self_value(target);
+
+            validate_visibility_of_called_fn(context, field.span, *method);
+
             if is_self && !method.takes_self(context.db()) {
                 context.fancy_error(
                     &format!("`{}` must be called without `self`", &field.kind),
@@ -1460,24 +1512,8 @@ fn expr_call_method(
                         &field.kind, &field.kind
                     )],
                 );
-            } else if !is_self && !method.is_public(context.db()) {
-                context.fancy_error(
-                    &format!(
-                        "the function `{}` on `{} {}` is private",
-                        &field.kind,
-                        target_type.kind_display_name(context.db()),
-                        target_type.name(context.db())
-                    ),
-                    vec![
-                        Label::primary(field.span, "this function is not `pub`"),
-                        Label::secondary(
-                            method.data(context.db()).ast.span,
-                            format!("`{}` is defined here", &field.kind),
-                        ),
-                    ],
-                    vec![],
-                );
             }
+
             let sig = method.signature(context.db());
             validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
 
@@ -1924,37 +1960,7 @@ fn expr_call_type_attribute(
             );
         }
 
-        // Returns `true` if the current contract belongs to the same class as an input
-        // `callee_class`.
-        let is_same_class = |callee_class| match (context.root_item(), callee_class) {
-            (Item::Type(TypeDef::Contract(caller)), Type::Contract(callee)) => caller == callee,
-            (Item::Type(TypeDef::Struct(caller)), Type::Struct(callee)) => caller == callee,
-            _ => false,
-        };
-
-        // Check for visibility of callee.
-        // Emits an error if callee is not public and caller doesn't belong to the same
-        // class as callee.
-        if !sig.is_public(context.db()) && is_same_class(target_type.typ(context.db())) {
-            context.fancy_error(
-                    &format!(
-                        "the function `{}.{}` is private",
-                        &target_name,
-                        &field.kind,
-                    ),
-                    vec![
-                        Label::primary(field.span, "this function is not `pub`"),
-                        Label::secondary(
-                            sig.data(context.db()).ast.span,
-                            format!("`{}` is defined here", &field.kind),
-                        ),
-                    ],
-                    vec![
-                        format!("`{}.{}` can only be called from other functions within `{}`", &target_name, &field.kind, &target_name),
-                        format!("Hint: use `pub fn {fun}(..` to make `{cls}.{fun}` callable from outside of `{cls}`", fun=&field.kind, cls=&target_name),
-                    ],
-                );
-        }
+        validate_visibility_of_called_fn(context, field.span, sig);
 
         if target_type.is_contract(context.db()) {
             // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen

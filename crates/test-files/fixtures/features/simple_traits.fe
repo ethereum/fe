@@ -36,6 +36,8 @@ contract Example {
   }
 
   pub fn run_test(self) {
+    let x: Bar = Bar()
+    assert x.double() == 2
     assert Bar().double() == 2
     assert u8(1).double() == 2
     assert (0, 1).double() == 2
