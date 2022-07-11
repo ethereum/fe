@@ -14,7 +14,7 @@ note:
 note: 
   ┌─ struct_fns.fe:5:5
   │  
-5 │ ╭     pub fn new(x: u64, y: u64) -> Point {
+5 │ ╭     fn internal_new(x: u64, y: u64) -> Point {
 6 │ │         return Point(x, y)
 7 │ │     }
   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> Point
@@ -36,485 +36,507 @@ note:
 note: 
    ┌─ struct_fns.fe:9:5
    │  
- 9 │ ╭     pub fn origin() -> Point {
-10 │ │         return Point(x: 0, y: 0)
+ 9 │ ╭     pub fn new(x: u64, y: u64) -> Point {
+10 │ │         return Point::internal_new(x, y)
 11 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> Point
+
+note: 
+   ┌─ struct_fns.fe:10:36
+   │
+10 │         return Point::internal_new(x, y)
+   │                                    ^  ^ u64: Value
+   │                                    │   
+   │                                    u64: Value
+
+note: 
+   ┌─ struct_fns.fe:10:16
+   │
+10 │         return Point::internal_new(x, y)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:13:5
+   │  
+13 │ ╭     pub fn origin() -> Point {
+14 │ │         return Point(x: 0, y: 0)
+15 │ │     }
    │ ╰─────^ self: None, params: [] -> Point
 
 note: 
-   ┌─ struct_fns.fe:10:25
+   ┌─ struct_fns.fe:14:25
    │
-10 │         return Point(x: 0, y: 0)
+14 │         return Point(x: 0, y: 0)
    │                         ^     ^ u64: Value
    │                         │      
    │                         u64: Value
 
 note: 
-   ┌─ struct_fns.fe:10:16
+   ┌─ struct_fns.fe:14:16
    │
-10 │         return Point(x: 0, y: 0)
+14 │         return Point(x: 0, y: 0)
    │                ^^^^^^^^^^^^^^^^^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:13:5
-   │  
-13 │ ╭     pub fn x(self) -> u64 {
-14 │ │         return self.x
-15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u64
-
-note: 
-   ┌─ struct_fns.fe:14:16
-   │
-14 │         return self.x
-   │                ^^^^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:14:16
-   │
-14 │         return self.x
-   │                ^^^^^^ u64: Memory => Value
 
 note: 
    ┌─ struct_fns.fe:17:5
    │  
-17 │ ╭     pub fn set_x(self, _ x: u64) -> u64 {
-18 │ │         let old: u64 = self.x
-19 │ │         self.x = x
-20 │ │         return old
-21 │ │     }
+17 │ ╭     pub fn x(self) -> u64 {
+18 │ │         return self.x
+19 │ │     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u64
+
+note: 
+   ┌─ struct_fns.fe:18:16
+   │
+18 │         return self.x
+   │                ^^^^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:18:16
+   │
+18 │         return self.x
+   │                ^^^^^^ u64: Memory => Value
+
+note: 
+   ┌─ struct_fns.fe:21:5
+   │  
+21 │ ╭     pub fn set_x(self, _ x: u64) -> u64 {
+22 │ │         let old: u64 = self.x
+23 │ │         self.x = x
+24 │ │         return old
+25 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u64 }] -> u64
 
 note: 
-   ┌─ struct_fns.fe:18:13
+   ┌─ struct_fns.fe:22:13
    │
-18 │         let old: u64 = self.x
+22 │         let old: u64 = self.x
    │             ^^^ u64
 
 note: 
-   ┌─ struct_fns.fe:18:24
+   ┌─ struct_fns.fe:22:24
    │
-18 │         let old: u64 = self.x
+22 │         let old: u64 = self.x
    │                        ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:18:24
+   ┌─ struct_fns.fe:22:24
    │
-18 │         let old: u64 = self.x
+22 │         let old: u64 = self.x
    │                        ^^^^^^ u64: Memory => Value
-19 │         self.x = x
+23 │         self.x = x
    │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:19:9
+   ┌─ struct_fns.fe:23:9
    │
-19 │         self.x = x
+23 │         self.x = x
    │         ^^^^^^   ^ u64: Value
    │         │         
    │         u64: Memory
-20 │         return old
+24 │         return old
    │                ^^^ u64: Value
 
 note: 
-   ┌─ struct_fns.fe:23:5
+   ┌─ struct_fns.fe:27:5
    │  
-23 │ ╭     pub fn reflect(self) {
-24 │ │         let x: u64 = self.x
-25 │ │         let y: u64 = self.y
-26 │ │         self.x = y
-27 │ │         self.y = x
-28 │ │     }
+27 │ ╭     pub fn reflect(self) {
+28 │ │         let x: u64 = self.x
+29 │ │         let y: u64 = self.y
+30 │ │         self.x = y
+31 │ │         self.y = x
+32 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
-   ┌─ struct_fns.fe:24:13
+   ┌─ struct_fns.fe:28:13
    │
-24 │         let x: u64 = self.x
+28 │         let x: u64 = self.x
    │             ^ u64
-25 │         let y: u64 = self.y
+29 │         let y: u64 = self.y
    │             ^ u64
 
 note: 
-   ┌─ struct_fns.fe:24:22
+   ┌─ struct_fns.fe:28:22
    │
-24 │         let x: u64 = self.x
+28 │         let x: u64 = self.x
    │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:24:22
+   ┌─ struct_fns.fe:28:22
    │
-24 │         let x: u64 = self.x
+28 │         let x: u64 = self.x
    │                      ^^^^^^ u64: Memory => Value
-25 │         let y: u64 = self.y
+29 │         let y: u64 = self.y
    │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:25:22
+   ┌─ struct_fns.fe:29:22
    │
-25 │         let y: u64 = self.y
+29 │         let y: u64 = self.y
    │                      ^^^^^^ u64: Memory => Value
-26 │         self.x = y
+30 │         self.x = y
    │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:26:9
+   ┌─ struct_fns.fe:30:9
    │
-26 │         self.x = y
+30 │         self.x = y
    │         ^^^^^^   ^ u64: Value
    │         │         
    │         u64: Memory
-27 │         self.y = x
+31 │         self.y = x
    │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:27:9
+   ┌─ struct_fns.fe:31:9
    │
-27 │         self.y = x
+31 │         self.y = x
    │         ^^^^^^   ^ u64: Value
    │         │         
    │         u64: Memory
 
 note: 
-   ┌─ struct_fns.fe:30:5
+   ┌─ struct_fns.fe:34:5
    │  
-30 │ ╭     pub fn translate(self, x: u64, y: u64) {
-31 │ │         self.x += x
-32 │ │         self.y += y
-33 │ │     }
+34 │ ╭     pub fn translate(self, x: u64, y: u64) {
+35 │ │         self.x += x
+36 │ │         self.y += y
+37 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> ()
 
 note: 
-   ┌─ struct_fns.fe:31:9
+   ┌─ struct_fns.fe:35:9
    │
-31 │         self.x += x
+35 │         self.x += x
    │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:31:9
+   ┌─ struct_fns.fe:35:9
    │
-31 │         self.x += x
+35 │         self.x += x
    │         ^^^^^^    ^ u64: Value
    │         │          
    │         u64: Memory
-32 │         self.y += y
+36 │         self.y += y
    │         ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:32:9
+   ┌─ struct_fns.fe:36:9
    │
-32 │         self.y += y
+36 │         self.y += y
    │         ^^^^^^    ^ u64: Value
    │         │          
    │         u64: Memory
 
 note: 
-   ┌─ struct_fns.fe:35:5
+   ┌─ struct_fns.fe:39:5
    │  
-35 │ ╭     pub fn add(self, _ other: Point) -> Point {
-36 │ │         let x: u64 = self.x + other.x
-37 │ │         let y: u64 = self.y + other.y
-38 │ │         return Point(x, y)
-39 │ │     }
+39 │ ╭     pub fn add(self, _ other: Point) -> Point {
+40 │ │         let x: u64 = self.x + other.x
+41 │ │         let y: u64 = self.y + other.y
+42 │ │         return Point(x, y)
+43 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: other, typ: Point }] -> Point
 
 note: 
-   ┌─ struct_fns.fe:36:13
+   ┌─ struct_fns.fe:40:13
    │
-36 │         let x: u64 = self.x + other.x
+40 │         let x: u64 = self.x + other.x
    │             ^ u64
-37 │         let y: u64 = self.y + other.y
+41 │         let y: u64 = self.y + other.y
    │             ^ u64
 
 note: 
-   ┌─ struct_fns.fe:36:22
+   ┌─ struct_fns.fe:40:22
    │
-36 │         let x: u64 = self.x + other.x
+40 │         let x: u64 = self.x + other.x
    │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:36:22
+   ┌─ struct_fns.fe:40:22
    │
-36 │         let x: u64 = self.x + other.x
+40 │         let x: u64 = self.x + other.x
    │                      ^^^^^^   ^^^^^ Point: Memory
    │                      │         
    │                      u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:36:31
+   ┌─ struct_fns.fe:40:31
    │
-36 │         let x: u64 = self.x + other.x
+40 │         let x: u64 = self.x + other.x
    │                               ^^^^^^^ u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:36:22
+   ┌─ struct_fns.fe:40:22
    │
-36 │         let x: u64 = self.x + other.x
+40 │         let x: u64 = self.x + other.x
    │                      ^^^^^^^^^^^^^^^^ u64: Value
-37 │         let y: u64 = self.y + other.y
+41 │         let y: u64 = self.y + other.y
    │                      ^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:37:22
+   ┌─ struct_fns.fe:41:22
    │
-37 │         let y: u64 = self.y + other.y
+41 │         let y: u64 = self.y + other.y
    │                      ^^^^^^   ^^^^^ Point: Memory
    │                      │         
    │                      u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:37:31
+   ┌─ struct_fns.fe:41:31
    │
-37 │         let y: u64 = self.y + other.y
+41 │         let y: u64 = self.y + other.y
    │                               ^^^^^^^ u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:37:22
+   ┌─ struct_fns.fe:41:22
    │
-37 │         let y: u64 = self.y + other.y
+41 │         let y: u64 = self.y + other.y
    │                      ^^^^^^^^^^^^^^^^ u64: Value
-38 │         return Point(x, y)
+42 │         return Point(x, y)
    │                      ^  ^ u64: Value
    │                      │   
    │                      u64: Value
 
 note: 
-   ┌─ struct_fns.fe:38:16
+   ┌─ struct_fns.fe:42:16
    │
-38 │         return Point(x, y)
+42 │         return Point(x, y)
    │                ^^^^^^^^^^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:42:1
+   ┌─ struct_fns.fe:46:1
    │  
-42 │ ╭ pub fn do_pointy_things() {
-43 │ │     let p1: Point = Point::origin()
-44 │ │     p1.translate(x: 5, y: 10)
-45 │ │     let p2: Point = Point(x: 1, y: 2)
-46 │ │     let p3: Point = p1.add(p2)
-47 │ │     assert p3.x == 6 and p3.y == 12
-48 │ │ }
+46 │ ╭ pub fn do_pointy_things() {
+47 │ │     let p1: Point = Point::origin()
+48 │ │     p1.translate(x: 5, y: 10)
+49 │ │     let p2: Point = Point(x: 1, y: 2)
+50 │ │     let p3: Point = p1.add(p2)
+51 │ │     assert p3.x == 6 and p3.y == 12
+52 │ │ }
    │ ╰─^ self: None, params: [] -> ()
 
 note: 
-   ┌─ struct_fns.fe:43:9
+   ┌─ struct_fns.fe:47:9
    │
-43 │     let p1: Point = Point::origin()
+47 │     let p1: Point = Point::origin()
    │         ^^ Point
-44 │     p1.translate(x: 5, y: 10)
-45 │     let p2: Point = Point(x: 1, y: 2)
+48 │     p1.translate(x: 5, y: 10)
+49 │     let p2: Point = Point(x: 1, y: 2)
    │         ^^ Point
-46 │     let p3: Point = p1.add(p2)
+50 │     let p3: Point = p1.add(p2)
    │         ^^ Point
 
 note: 
-   ┌─ struct_fns.fe:43:21
+   ┌─ struct_fns.fe:47:21
    │
-43 │     let p1: Point = Point::origin()
+47 │     let p1: Point = Point::origin()
    │                     ^^^^^^^^^^^^^^^ Point: Memory
-44 │     p1.translate(x: 5, y: 10)
+48 │     p1.translate(x: 5, y: 10)
    │     ^^              ^     ^^ u64: Value
    │     │               │      
    │     │               u64: Value
    │     Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:44:5
+   ┌─ struct_fns.fe:48:5
    │
-44 │     p1.translate(x: 5, y: 10)
+48 │     p1.translate(x: 5, y: 10)
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-45 │     let p2: Point = Point(x: 1, y: 2)
+49 │     let p2: Point = Point(x: 1, y: 2)
    │                              ^     ^ u64: Value
    │                              │      
    │                              u64: Value
 
 note: 
-   ┌─ struct_fns.fe:45:21
+   ┌─ struct_fns.fe:49:21
    │
-45 │     let p2: Point = Point(x: 1, y: 2)
+49 │     let p2: Point = Point(x: 1, y: 2)
    │                     ^^^^^^^^^^^^^^^^^ Point: Memory
-46 │     let p3: Point = p1.add(p2)
+50 │     let p3: Point = p1.add(p2)
    │                     ^^     ^^ Point: Memory
    │                     │       
    │                     Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:46:21
+   ┌─ struct_fns.fe:50:21
    │
-46 │     let p3: Point = p1.add(p2)
+50 │     let p3: Point = p1.add(p2)
    │                     ^^^^^^^^^^ Point: Memory
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │            ^^ Point: Memory
 
 note: 
-   ┌─ struct_fns.fe:47:12
+   ┌─ struct_fns.fe:51:12
    │
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │            ^^^^    ^ u64: Value
    │            │        
    │            u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:47:12
+   ┌─ struct_fns.fe:51:12
    │
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │            ^^^^^^^^^     ^^ Point: Memory
    │            │              
    │            bool: Value
 
 note: 
-   ┌─ struct_fns.fe:47:26
+   ┌─ struct_fns.fe:51:26
    │
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │                          ^^^^    ^^ u64: Value
    │                          │        
    │                          u64: Memory => Value
 
 note: 
-   ┌─ struct_fns.fe:47:26
+   ┌─ struct_fns.fe:51:26
    │
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │                          ^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:47:12
+   ┌─ struct_fns.fe:51:12
    │
-47 │     assert p3.x == 6 and p3.y == 12
+51 │     assert p3.x == 6 and p3.y == 12
    │            ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
-   ┌─ struct_fns.fe:51:5
+   ┌─ struct_fns.fe:55:5
    │  
-51 │ ╭     pub fn bar(x: u64, y: u64) -> u64 {
-52 │ │         do_pointy_things()
-53 │ │         let p: Point = Point::new(x, y)
-54 │ │         assert p.x == x and p.y == y
+55 │ ╭     pub fn bar(x: u64, y: u64) -> u64 {
+56 │ │         do_pointy_things()
+57 │ │         let p: Point = Point::new(x, y)
+58 │ │         assert p.x == x and p.y == y
    · │
-58 │ │         return p.y
-59 │ │     }
+62 │ │         return p.y
+63 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u64 }, { label: None, name: y, typ: u64 }] -> u64
 
 note: 
-   ┌─ struct_fns.fe:53:13
+   ┌─ struct_fns.fe:57:13
    │
-53 │         let p: Point = Point::new(x, y)
+57 │         let p: Point = Point::new(x, y)
    │             ^ Point
 
 note: 
-   ┌─ struct_fns.fe:52:9
+   ┌─ struct_fns.fe:56:9
    │
-52 │         do_pointy_things()
+56 │         do_pointy_things()
    │         ^^^^^^^^^^^^^^^^^^ (): Value
-53 │         let p: Point = Point::new(x, y)
+57 │         let p: Point = Point::new(x, y)
    │                                   ^  ^ u64: Value
    │                                   │   
    │                                   u64: Value
 
 note: 
-   ┌─ struct_fns.fe:53:24
+   ┌─ struct_fns.fe:57:24
    │
-53 │         let p: Point = Point::new(x, y)
+57 │         let p: Point = Point::new(x, y)
    │                        ^^^^^^^^^^^^^^^^ Point: Memory
-54 │         assert p.x == x and p.y == y
-   │                ^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:54:16
-   │
-54 │         assert p.x == x and p.y == y
-   │                ^^^    ^ u64: Value
-   │                │       
-   │                u64: Memory => Value
-
-note: 
-   ┌─ struct_fns.fe:54:16
-   │
-54 │         assert p.x == x and p.y == y
-   │                ^^^^^^^^     ^ Point: Memory
-   │                │             
-   │                bool: Value
-
-note: 
-   ┌─ struct_fns.fe:54:29
-   │
-54 │         assert p.x == x and p.y == y
-   │                             ^^^    ^ u64: Value
-   │                             │       
-   │                             u64: Memory => Value
-
-note: 
-   ┌─ struct_fns.fe:54:29
-   │
-54 │         assert p.x == x and p.y == y
-   │                             ^^^^^^^^ bool: Value
-
-note: 
-   ┌─ struct_fns.fe:54:16
-   │
-54 │         assert p.x == x and p.y == y
-   │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-55 │         p.set_x(100)
-   │         ^       ^^^ u64: Value
-   │         │        
-   │         Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:55:9
-   │
-55 │         p.set_x(100)
-   │         ^^^^^^^^^^^^ u64: Value
-56 │         p.reflect()
-   │         ^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:56:9
-   │
-56 │         p.reflect()
-   │         ^^^^^^^^^^^ (): Value
-57 │         assert p.x() == y and p.y == 100
-   │                ^ Point: Memory
-
-note: 
-   ┌─ struct_fns.fe:57:16
-   │
-57 │         assert p.x() == y and p.y == 100
-   │                ^^^^^    ^ u64: Value
-   │                │         
-   │                u64: Value
-
-note: 
-   ┌─ struct_fns.fe:57:16
-   │
-57 │         assert p.x() == y and p.y == 100
-   │                ^^^^^^^^^^     ^ Point: Memory
-   │                │               
-   │                bool: Value
-
-note: 
-   ┌─ struct_fns.fe:57:31
-   │
-57 │         assert p.x() == y and p.y == 100
-   │                               ^^^    ^^^ u64: Value
-   │                               │       
-   │                               u64: Memory => Value
-
-note: 
-   ┌─ struct_fns.fe:57:31
-   │
-57 │         assert p.x() == y and p.y == 100
-   │                               ^^^^^^^^^^ bool: Value
-
-note: 
-   ┌─ struct_fns.fe:57:16
-   │
-57 │         assert p.x() == y and p.y == 100
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-58 │         return p.y
+58 │         assert p.x == x and p.y == y
    │                ^ Point: Memory
 
 note: 
    ┌─ struct_fns.fe:58:16
    │
-58 │         return p.y
+58 │         assert p.x == x and p.y == y
+   │                ^^^    ^ u64: Value
+   │                │       
+   │                u64: Memory => Value
+
+note: 
+   ┌─ struct_fns.fe:58:16
+   │
+58 │         assert p.x == x and p.y == y
+   │                ^^^^^^^^     ^ Point: Memory
+   │                │             
+   │                bool: Value
+
+note: 
+   ┌─ struct_fns.fe:58:29
+   │
+58 │         assert p.x == x and p.y == y
+   │                             ^^^    ^ u64: Value
+   │                             │       
+   │                             u64: Memory => Value
+
+note: 
+   ┌─ struct_fns.fe:58:29
+   │
+58 │         assert p.x == x and p.y == y
+   │                             ^^^^^^^^ bool: Value
+
+note: 
+   ┌─ struct_fns.fe:58:16
+   │
+58 │         assert p.x == x and p.y == y
+   │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+59 │         p.set_x(100)
+   │         ^       ^^^ u64: Value
+   │         │        
+   │         Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:59:9
+   │
+59 │         p.set_x(100)
+   │         ^^^^^^^^^^^^ u64: Value
+60 │         p.reflect()
+   │         ^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:60:9
+   │
+60 │         p.reflect()
+   │         ^^^^^^^^^^^ (): Value
+61 │         assert p.x() == y and p.y == 100
+   │                ^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:61:16
+   │
+61 │         assert p.x() == y and p.y == 100
+   │                ^^^^^    ^ u64: Value
+   │                │         
+   │                u64: Value
+
+note: 
+   ┌─ struct_fns.fe:61:16
+   │
+61 │         assert p.x() == y and p.y == 100
+   │                ^^^^^^^^^^     ^ Point: Memory
+   │                │               
+   │                bool: Value
+
+note: 
+   ┌─ struct_fns.fe:61:31
+   │
+61 │         assert p.x() == y and p.y == 100
+   │                               ^^^    ^^^ u64: Value
+   │                               │       
+   │                               u64: Memory => Value
+
+note: 
+   ┌─ struct_fns.fe:61:31
+   │
+61 │         assert p.x() == y and p.y == 100
+   │                               ^^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ struct_fns.fe:61:16
+   │
+61 │         assert p.x() == y and p.y == 100
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+62 │         return p.y
+   │                ^ Point: Memory
+
+note: 
+   ┌─ struct_fns.fe:62:16
+   │
+62 │         return p.y
    │                ^^^ u64: Memory => Value
 
 

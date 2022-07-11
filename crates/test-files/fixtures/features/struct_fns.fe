@@ -2,8 +2,12 @@ struct Point {
     pub x: u64
     pub y: u64
 
-    pub fn new(x: u64, y: u64) -> Point {
+    fn internal_new(x: u64, y: u64) -> Point {
         return Point(x, y)
+    }
+
+    pub fn new(x: u64, y: u64) -> Point {
+        return Point::internal_new(x, y)
     }
 
     pub fn origin() -> Point {

@@ -814,26 +814,17 @@ pub enum TypeDef {
     Contract(ContractId),
     Primitive(types::Base),
 }
+
 impl TypeDef {
     pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         match self {
             TypeDef::Struct(val) => {
-                Rc::new(
-                    val.functions(db)
-                        .iter()
-                        .filter_map(|(name, field)| {
-                            if field.takes_self(db) {
-                                // In the future we probably want to resolve instance methods as well. But this would require
-                                // the caller to pass an instance as the first argument e.g. `Rectangle::can_hold(self_instance, other)`.
-                                // This isn't yet supported so for now path access to functions is limited to static functions only.
-                                None
-                            } else {
-                                Some((name.to_owned(), Item::Function(*field)))
-                            }
-                        })
-                        .collect(),
-                )
+                // In the future we probably want to resolve instance methods as well. But this would require
+                // the caller to pass an instance as the first argument e.g. `Rectangle::can_hold(self_instance, other)`.
+                // This isn't yet supported so for now path access to functions is limited to static functions only.
+                val.pure_functions_as_items(db)
             }
+            TypeDef::Contract(val) => val.pure_functions_as_items(db),
             _ => todo!("cannot access items in types yet"),
         }
     }
@@ -1320,6 +1311,37 @@ impl FunctionId {
     }
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).is_contract_func(db)
+    }
+}
+
+trait FunctionsAsItems {
+    fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>>;
+
+    fn pure_functions_as_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
+        Rc::new(
+            self.functions(db)
+                .iter()
+                .filter_map(|(name, field)| {
+                    if field.takes_self(db) {
+                        None
+                    } else {
+                        Some((name.to_owned(), Item::Function(*field)))
+                    }
+                })
+                .collect(),
+        )
+    }
+}
+
+impl FunctionsAsItems for StructId {
+    fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
+        self.functions(db)
+    }
+}
+
+impl FunctionsAsItems for ContractId {
+    fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
+        self.functions(db)
     }
 }
 

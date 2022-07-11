@@ -3,7 +3,7 @@ contract Foo {
         return pure_bar(x, y)
     }
 
-    pub fn pure_bar(x: u256, y: u256) -> u256 {
+    fn pure_bar(x: u256, y: u256) -> u256 {
         return x + y
     }
 }
