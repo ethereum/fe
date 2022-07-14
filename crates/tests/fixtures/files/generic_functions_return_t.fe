@@ -1,0 +1,8 @@
+struct Foo<T> {
+  pub val: T 
+}
+
+#test
+fn test() {
+  let x: Foo<u32> = Foo ( val: 1 );
+}

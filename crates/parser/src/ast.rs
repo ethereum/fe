@@ -96,6 +96,7 @@ pub struct Struct {
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
     pub pub_qual: Option<Span>,
+    pub generic_params: Node<Vec<GenericParameter>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -762,6 +763,8 @@ impl fmt::Display for Struct {
             fields,
             functions,
             pub_qual,
+            // TODO: display
+            generic_params,
         } = self;
 
         if pub_qual.is_some() {

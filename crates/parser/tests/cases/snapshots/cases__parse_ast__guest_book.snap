@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
+assertion_line: 273
 expression: "ast_string(stringify!(guest_book), try_parse_module,\n    r#\"\ntype BookMsg = Array<bytes, 100>\n\nstruct Signed {\n    #indexed\n    book_msg: BookMsg\n}\n\ncontract GuestBook {\n    pub guest_book: Map<address, BookMsg>\n\n    pub fn sign(self, book_msg: BookMsg) {\n        self.guest_book[msg.sender] = book_msg\n\n        ctx.emit(Signed(book_msg: book_msg))\n    }\n    pub fn get_msg(self, addr: address) -> BookMsg {\n        return self.guest_book[addr]\n    }\n}\"#)"
-
 ---
 Node(
   kind: Module(
@@ -110,6 +110,13 @@ Node(
           ],
           functions: [],
           pub_qual: None,
+          generic_params: Node(
+            kind: [],
+            span: Span(
+              start: 42,
+              end: 48,
+            ),
+          ),
         ),
         span: Span(
           start: 35,

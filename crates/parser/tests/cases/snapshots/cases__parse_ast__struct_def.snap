@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
+assertion_line: 207
 expression: "ast_string(stringify!(struct_def), try_parse_module,\n    r#\"struct S {\n  #indexed\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8 {\n    return self.z + self.y\n  }\n  unsafe fn bar() {}\n}\"#)"
-
 ---
 Node(
   kind: Module(
@@ -334,6 +334,13 @@ Node(
             ),
           ],
           pub_qual: None,
+          generic_params: Node(
+            kind: [],
+            span: Span(
+              start: 7,
+              end: 8,
+            ),
+          ),
         ),
         span: Span(
           start: 0,
