@@ -1444,6 +1444,22 @@ impl StructId {
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.struct_function_map(*self).value
     }
+
+    pub fn generic_params(&self, db: &dyn AnalyzerDb) -> Vec<GenericParameter> {
+        self.data(db).ast.kind.generic_params.kind.clone()
+    }
+
+    pub fn generic_param(&self, db: &dyn AnalyzerDb, param_name: &str) -> Option<GenericParameter> {
+        self.generic_params(db)
+            .iter()
+            .find(|param| match param {
+                GenericParameter::Unbounded(name) if name.kind == param_name => true,
+                GenericParameter::Bounded { name, .. } if name.kind == param_name => true,
+                _ => false,
+            })
+            .cloned()
+    }
+
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         self.functions(db).get(name).copied()
     }

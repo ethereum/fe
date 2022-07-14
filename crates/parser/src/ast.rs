@@ -764,7 +764,7 @@ impl fmt::Display for Struct {
             functions,
             pub_qual,
             // TODO: display
-            generic_params,
+            generic_params: _,
         } = self;
 
         if pub_qual.is_some() {

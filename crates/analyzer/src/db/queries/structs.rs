@@ -8,10 +8,11 @@ use crate::namespace::items::{
     StructId, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{Type, TypeId};
-use crate::traversal::types::type_desc;
+use crate::namespace::types::{Generic, Type, TypeId};
+use crate::traversal::types::{type_desc, type_desc_to_trait};
 use crate::AnalyzerDb;
 use fe_common::utils::humanize::pluralize_conditionally;
+use fe_parser::node::Node;
 use fe_parser::{ast, Label};
 use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
@@ -128,7 +129,8 @@ pub fn struct_field_type(
     if let Some(_node) = value {
         scope.not_yet_implemented("struct field initial value assignment", field_data.ast.span);
     }
-    let typ = match type_desc(&mut scope, typ, None) {
+
+    let typ = match resolve_struct_field_type(db, field, &mut scope, typ) {
         Ok(typ) => match typ.typ(db) {
             Type::Contract(_) => {
                 scope.not_yet_implemented(
@@ -148,6 +150,33 @@ pub fn struct_field_type(
     };
 
     Analysis::new(typ, scope.diagnostics.take().into())
+}
+
+pub fn resolve_struct_field_type(
+    db: &dyn AnalyzerDb,
+    field: StructFieldId,
+    context: &mut dyn AnalyzerContext,
+    desc: &Node<ast::TypeDesc>,
+) -> Result<TypeId, TypeError> {
+    let parent = field.data(db).parent;
+    // First check if the param type is a local generic of the struct. If not, resolve as a regular type.
+    if let ast::TypeDesc::Base { base } = &desc.kind {
+        if let Some(val) = parent.generic_param(db, base) {
+            let bounds = match val {
+                ast::GenericParameter::Unbounded(_) => vec![].into(),
+                ast::GenericParameter::Bounded { bound, .. } => {
+                    vec![type_desc_to_trait(context, &bound)?].into()
+                }
+            };
+
+            return Ok(db.intern_type(Type::Generic(Generic {
+                name: base.clone(),
+                bounds,
+            })));
+        }
+    }
+
+    type_desc(context, desc, None)
 }
 
 pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[FunctionId]> {
