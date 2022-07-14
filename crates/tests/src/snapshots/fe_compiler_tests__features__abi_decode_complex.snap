@@ -4,9 +4,9 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
 decode_static_complex([Tuple([Tuple([Int(10), Int(20)]), Int(30)])]) used 790 gas
-decode_string_complex([Tuple([String("Hello"), Int(30)])]) used 1427 gas
-decode_bytes_complex([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)])]) used 995 gas
-decode_nested_dynamic_complex([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])]) used 3617 gas
+decode_string_complex([Tuple([String("Hello"), Int(30)])]) used 1467 gas
+decode_bytes_complex([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)])]) used 962 gas
+decode_nested_dynamic_complex([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])]) used 3609 gas
 decode_static_complex_elem_array([FixedArray([Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)])])]) used 3089 gas
-decode_dynamic_complex_elem_array([FixedArray([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])])]) used 12630 gas
+decode_dynamic_complex_elem_array([FixedArray([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])])]) used 12606 gas
 

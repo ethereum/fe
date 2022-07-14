@@ -3,8 +3,8 @@ source: crates/tests/src/demo_erc20.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
-name([]) used 1525 gas
-symbol([]) used 1559 gas
+name([]) used 1546 gas
+symbol([]) used 1580 gas
 decimals([]) used 306 gas
 totalSupply([]) used 307 gas
 balanceOf([Address(0x1000000000000000000000000000000000000001)]) used 574 gas
