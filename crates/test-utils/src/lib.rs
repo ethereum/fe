@@ -1,10 +1,12 @@
-use evm_runtime::{ExitReason, Handler};
+use evm::executor::stack::{PrecompileFailure, PrecompileFn, PrecompileOutput};
+use evm::ExitSucceed;
+use evm_runtime::{Context, ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;
 use fe_driver as driver;
 use primitive_types::{H160, U256};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use yultsur::*;
@@ -70,7 +72,8 @@ pub type Backend<'a> = evm::backend::MemoryBackend<'a>;
 pub type StackState<'a> = evm::executor::stack::MemoryStackState<'a, 'a, Backend<'a>>;
 
 #[allow(dead_code)]
-pub type Executor<'a, 'b> = evm::executor::stack::StackExecutor<'a, 'b, StackState<'a>, ()>;
+pub type Executor<'a, 'b> =
+    evm::executor::stack::StackExecutor<'a, 'b, StackState<'a>, BTreeMap<H160, PrecompileFn>>;
 
 #[allow(dead_code)]
 pub const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
@@ -268,7 +271,28 @@ pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
         evm::executor::stack::StackSubstateMetadata::new(u64::MAX, &config),
         &backend,
     );
-    let executor = Executor::new_with_precompiles(stack_state, &config, &());
+    fn ec_recover(
+        a: &[u8],
+        b: Option<u64>,
+        c: &Context,
+        d: bool,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
+        Ok(PrecompileOutput {
+            exit_status: ExitSucceed::Returned,
+            cost: 0,
+            output: vec![
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x71, 0x56,
+                0x52, 0x6f, 0xbd, 0x7a, 0x3c, 0x72, 0x96, 0x9b, 0x54, 0xf6, 0x4e, 0x42, 0xc1, 0x0f,
+                0xbb, 0x76, 0x8c, 0x8a,
+            ],
+            logs: vec![],
+        })
+    }
+    let mock_precompiles = BTreeMap::from([(
+        H160::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+        ec_recover as PrecompileFn,
+    )]);
+    let executor = Executor::new_with_precompiles(stack_state, &config, &mock_precompiles);
 
     test(executor)
 }

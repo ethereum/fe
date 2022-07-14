@@ -6,6 +6,9 @@ pub fn ec_recover(hash: u256, v: u256, r: u256, s: u256) -> address {
     input[2] = r
     input[3] = s
     let output: Array<u256, 1> = [0]
-    unsafe { __call(0x01, 0, 0, u256(input), 128, u256(output), 32) }
+    unsafe {
+        let success: u256 = __staticcall(__gas(), 0x01, u256(input), 128, u256(output), 32)
+        assert success == 1
+    }
     return address(output[0])
 }
