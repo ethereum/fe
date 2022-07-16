@@ -12,3 +12,6 @@ fe-driver = {path = "../driver", version = "^0.19.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.19.1-alpha"}
 tokio = {version = "1.17.0", features = ["full"]}
 tower-lsp = {version = "0.17.0"}
+ropey = "1.5.0"
+codespan-reporting = {git = "https://github.com/vuvoth/codespan"}
+codespan-lsp = {git = "https://github.com/vuvoth/codespan"}
