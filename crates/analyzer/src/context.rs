@@ -1,4 +1,7 @@
-use crate::display::Displayable;
+use crate::{
+    display::Displayable,
+    namespace::items::{EnumVariantId, TypeDef},
+};
 
 use crate::namespace::items::{
     ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
@@ -213,6 +216,7 @@ pub trait AnalyzerContext {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NamedThing {
     Item(Item),
+    EnumVariant(EnumVariantId),
     SelfValue {
         /// Function `self` parameter.
         decl: Option<SelfDecl>,
@@ -235,6 +239,7 @@ impl NamedThing {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         match self {
             NamedThing::Item(item) => item.name_span(db),
+            NamedThing::EnumVariant(variant) => Some(variant.span(db)),
             NamedThing::SelfValue { span, .. } => *span,
             NamedThing::Variable { span, .. } => Some(*span),
         }
@@ -243,15 +248,35 @@ impl NamedThing {
     pub fn is_builtin(&self) -> bool {
         match self {
             NamedThing::Item(item) => item.is_builtin(),
-            NamedThing::Variable { .. } | NamedThing::SelfValue { .. } => false,
+            NamedThing::EnumVariant(_)
+            | NamedThing::Variable { .. }
+            | NamedThing::SelfValue { .. } => false,
         }
     }
 
     pub fn item_kind_display_name(&self) -> &str {
         match self {
             NamedThing::Item(item) => item.item_kind_display_name(),
+            NamedThing::EnumVariant(_) => "enum variant",
             NamedThing::Variable { .. } => "variable",
             NamedThing::SelfValue { .. } => "value",
+        }
+    }
+
+    pub fn resolve_path_segment(
+        &self,
+        db: &dyn AnalyzerDb,
+        segment: &SmolStr,
+    ) -> Option<NamedThing> {
+        match self {
+            Self::Item(Item::Type(TypeDef::Enum(enum_))) => {
+                enum_.variant(db, segment).map(NamedThing::EnumVariant)
+            }
+            Self::Item(item) => item
+                .items(db)
+                .get(segment)
+                .map(|resolved| NamedThing::Item(*resolved)),
+            _ => None,
         }
     }
 }
@@ -361,7 +386,9 @@ impl Location {
         match typ {
             Type::Base(_) | Type::Contract(_) => Location::Value,
             Type::Generic(_) => Location::Unresolved,
-            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
+            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) | Type::Enum(_) => {
+                Location::Memory
+            }
             _ => panic!("Type can not be assigned, returned or passed"),
         }
     }
@@ -460,13 +487,14 @@ pub enum CallType {
         method: FunctionId,
     },
     // some_trait.foo()
-    // The reason this can not use `ValueMethod` is mainly because the trait might not have a function implementation
-    // and even if it had it might not be the one that ends up getting executed. An `impl` block will decide that.
+    // The reason this can not use `ValueMethod` is mainly because the trait might not have a
+    // function implementation and even if it had it might not be the one that ends up getting
+    // executed. An `impl` block will decide that.
     TraitValueMethod {
         trait_id: TraitId,
         method: FunctionSigId,
-        // Traits can not directly be used as types but can act as bounds for generics. This is the generic type
-        // that the method is called on.
+        // Traits can not directly be used as types but can act as bounds for generics. This is the
+        // generic type that the method is called on.
         generic_type: Generic,
     },
     External {
@@ -475,6 +503,7 @@ pub enum CallType {
     },
     Pure(FunctionId),
     TypeConstructor(TypeId),
+    EnumConstructor(EnumVariantId),
 }
 
 impl CallType {
@@ -484,6 +513,7 @@ impl CallType {
             BuiltinFunction(_)
             | BuiltinValueMethod { .. }
             | TypeConstructor(_)
+            | EnumConstructor(_)
             | Intrinsic(_)
             | TraitValueMethod { .. }
             | BuiltinAssociatedFunction { .. } => None,
@@ -506,6 +536,11 @@ impl CallType {
             | CallType::Pure(id) => id.name(db),
             CallType::TraitValueMethod { method: id, .. } => id.name(db),
             CallType::TypeConstructor(typ) => typ.display(db).to_string().into(),
+            CallType::EnumConstructor(variant) => {
+                let enum_name = variant.parent(db).name(db);
+                let variant_name = variant.name(db);
+                format!("{enum_name}::{variant_name}").into()
+            }
         }
     }
 

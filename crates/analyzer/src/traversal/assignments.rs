@@ -80,7 +80,9 @@ fn check_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> Result<
 
         Name(name) => match scope.resolve_name(name, expr.span)? {
             Some(NamedThing::SelfValue { .. }) => Ok(()),
-            Some(NamedThing::Item(_)) | None => Err(invalid_assign_target(scope, expr)),
+            Some(NamedThing::Item(_) | NamedThing::EnumVariant(_)) | None => {
+                Err(invalid_assign_target(scope, expr))
+            }
             Some(NamedThing::Variable { is_const, .. }) => {
                 if is_const {
                     Err(FatalError::new(scope.fancy_error("cannot assign to constant variable",

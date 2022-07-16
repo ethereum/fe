@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
-    context::CallType as AnalyzerCallType,
+    context::{CallType as AnalyzerCallType, NamedThing},
     namespace::{
         items as analyzer_items,
         types::{self as analyzer_types, Type},
@@ -46,7 +46,8 @@ pub fn lower_monomorphized_func_signature(
         let self_ty = func.self_type(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
         params.push(make_param(db, "self", self_ty, source));
-        // similarly, when in the future analyzer params contain `self` we won't need to adjust the concrete args anymore
+        // similarly, when in the future analyzer params contain `self` we won't need to
+        // adjust the concrete args anymore
         if !concrete_args.is_empty() {
             concrete_args = &concrete_args[1..]
         }
@@ -139,7 +140,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
-        // If the analyzer type is generic we first need to resolve it to its concrete type before lowering to a MIR type
+        // If the analyzer type is generic we first need to resolve it to its concrete
+        // type before lowering to a MIR type
         if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
             let resolved_type = self
                 .func
@@ -980,6 +982,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     unreachable!()
                 }
             }
+
+            AnalyzerCallType::EnumConstructor(_variant) => {
+                todo!()
+            }
         }
     }
 
@@ -1099,7 +1105,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 .unwrap()
                 .unwrap()
             {
-                analyzer_items::Item::Constant(id) => self.db.mir_lowered_constant(id),
+                NamedThing::Item(analyzer_items::Item::Constant(id)) => {
+                    self.db.mir_lowered_constant(id)
+                }
                 _ => panic!("name defined in global must be constant"),
             };
             let ty = constant.ty(self.db);
@@ -1113,7 +1121,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let func_id = self.builder.func_id();
         let module = func_id.module(self.db);
         let constant = match module.resolve_path(self.db.upcast(), path).value.unwrap() {
-            analyzer_items::Item::Constant(id) => self.db.mir_lowered_constant(id),
+            NamedThing::Item(analyzer_items::Item::Constant(id)) => {
+                self.db.mir_lowered_constant(id)
+            }
             _ => panic!("path defined in global must be constant"),
         };
         let ty = constant.ty(self.db);

@@ -18,6 +18,7 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeI
         analyzer_types::Type::Contract(_) => TypeKind::Address,
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
+        analyzer_types::Type::Enum(_enum_) => todo!(),
         analyzer_types::Type::Generic(_) => {
             panic!("should be lowered in `lower_types_in_functions`")
         }

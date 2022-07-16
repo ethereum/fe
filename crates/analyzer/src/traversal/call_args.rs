@@ -41,8 +41,17 @@ impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>) {
     }
 }
 
+impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>) {
+    fn label(&self) -> Option<&str> {
+        self.0.as_ref().map(smol_str::SmolStr::as_str)
+    }
+    fn typ(&self) -> Result<TypeId, TypeError> {
+        self.1.clone()
+    }
+}
+
 pub fn validate_arg_count(
-    context: &mut dyn AnalyzerContext,
+    context: &dyn AnalyzerContext,
     name: &str,
     name_span: Span,
     args: &Node<Vec<impl Spanned>>,
@@ -98,7 +107,8 @@ pub fn validate_named_args(
     params: &[impl LabeledParameter],
 ) -> Result<(), FatalError> {
     validate_arg_count(context, name, name_span, args, params.len(), "argument");
-    // TODO: if the first arg is missing, every other arg will get a label and type error
+    // TODO: if the first arg is missing, every other arg will get a label and type
+    // error
 
     for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
         let expected_label = param.label();

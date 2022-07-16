@@ -13,7 +13,7 @@ fn type_label(db: &dyn AnalyzerDb, span: Span, typ: TypeId) -> Label {
 }
 
 pub fn add_bin_operations_errors(
-    context: &mut dyn AnalyzerContext,
+    context: &dyn AnalyzerContext,
     op: &dyn Display,
     lspan: Span,
     ltype: TypeId,

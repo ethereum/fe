@@ -273,6 +273,29 @@ pub enum FunctionArg {
     Self_,
 }
 
+impl FunctionArg {
+    pub fn label_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular(arg) => arg.label.as_ref().map(|label| label.span),
+            Self::Self_ => None,
+        }
+    }
+
+    pub fn name_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular(arg) => Some(arg.name.span),
+            Self::Self_ => None,
+        }
+    }
+
+    pub fn typ_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular(arg) => Some(arg.typ.span),
+            Self::Self_ => None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum FuncStmt {
     Return {
@@ -444,6 +467,18 @@ impl Node<Contract> {
 }
 
 impl Node<Struct> {
+    pub fn name(&self) -> &str {
+        &self.kind.name.kind
+    }
+}
+
+impl Node<Enum> {
+    pub fn name(&self) -> &str {
+        &self.kind.name.kind
+    }
+}
+
+impl Node<Variant> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
     }

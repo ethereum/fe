@@ -2,7 +2,7 @@ use crate::context::AnalyzerContext;
 use crate::display::DisplayWithDb;
 use crate::display::Displayable;
 use crate::errors::TypeError;
-use crate::namespace::items::{ContractId, StructId, TraitId};
+use crate::namespace::items::{ContractId, EnumId, FunctionSigId, ImplId, StructId, TraitId};
 use crate::AnalyzerDb;
 
 use fe_common::impl_intern_key;
@@ -14,9 +14,6 @@ use std::fmt;
 use std::rc::Rc;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};
-
-use super::items::FunctionSigId;
-use super::items::ImplId;
 
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
@@ -53,6 +50,7 @@ pub enum Type {
     /// of `self` within a contract function.
     SelfContract(ContractId),
     Struct(StructId),
+    Enum(EnumId),
     Generic(Generic),
 }
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
@@ -114,8 +112,8 @@ impl TypeId {
         }
     }
 
-    /// Return the `impl` for the given trait. There can only ever be a single implementation
-    /// per concrete type and trait.
+    /// Return the `impl` for the given trait. There can only ever be a single
+    /// implementation per concrete type and trait.
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         db.impl_for(*self, trait_)
     }
@@ -139,8 +137,9 @@ impl TypeId {
         }
     }
 
-    /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only considers functions natively
-    /// implemented on the type but also those that are provided by implemented traits on the type.
+    /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only
+    /// considers functions natively implemented on the type but also those
+    /// that are provided by implemented traits on the type.
     pub fn function_sigs(&self, db: &dyn AnalyzerDb, name: &str) -> Rc<[FunctionSigId]> {
         db.function_sigs(*self, name.into())
     }
@@ -534,6 +533,7 @@ impl Type {
             | Type::Tuple(_)
             | Type::String(_)
             | Type::Struct(_)
+            | Type::Enum(_)
             | Type::Generic(_)
             | Type::Contract(_) => true,
             Type::Map(_) | Type::SelfContract(_) => false,
@@ -660,6 +660,7 @@ impl DisplayWithDb for Type {
             }
             Type::Contract(id) | Type::SelfContract(id) => write!(f, "{}", id.name(db)),
             Type::Struct(id) => write!(f, "{}", id.name(db)),
+            Type::Enum(id) => write!(f, "{}", id.name(db)),
             Type::Generic(inner) => inner.fmt(f),
         }
     }

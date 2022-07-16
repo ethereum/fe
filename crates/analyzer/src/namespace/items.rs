@@ -1,5 +1,5 @@
-use crate::context::{self, Analysis, Constant};
-use crate::display::Displayable;
+use crate::context::{self, Analysis, Constant, NamedThing};
+use crate::display::{DisplayWithDb, Displayable};
 use crate::errors::{self, IncompleteItem, TypeError};
 use crate::namespace::types::{self, GenericType, Type, TypeId};
 use crate::traversal::pragma::check_pragma_version;
@@ -13,9 +13,10 @@ use fe_parser::ast::GenericParameter;
 use fe_parser::node::{Node, Span};
 use fe_parser::{ast, node::NodeId};
 use indexmap::{indexmap, IndexMap};
+use smallvec::SmallVec;
 use smol_str::SmolStr;
-use std::ops::Deref;
 use std::rc::Rc;
+use std::{fmt, ops::Deref};
 use strum::IntoEnumIterator;
 
 /// A named item. This does not include things inside of
@@ -199,6 +200,7 @@ impl Item {
         match self {
             Item::Type(TypeDef::Contract(id)) => Some(id.dependency_graph(db)),
             Item::Type(TypeDef::Struct(id)) => Some(id.dependency_graph(db)),
+            Item::Type(TypeDef::Enum(id)) => Some(id.dependency_graph(db)),
             Item::Function(id) => Some(id.dependency_graph(db)),
             _ => None,
         }
@@ -208,12 +210,12 @@ impl Item {
         &self,
         db: &dyn AnalyzerDb,
         segments: &[Node<SmolStr>],
-    ) -> Analysis<Option<Item>> {
-        let mut curr_item = *self;
+    ) -> Analysis<Option<NamedThing>> {
+        let mut curr_item = NamedThing::Item(*self);
 
         for node in segments {
-            curr_item = match curr_item.items(db).get(&node.kind) {
-                Some(item) => *item,
+            curr_item = match curr_item.resolve_path_segment(db, &node.kind) {
+                Some(item) => item,
                 None => {
                     return Analysis {
                         value: None,
@@ -572,7 +574,11 @@ impl ModuleId {
     }
 
     /// Resolve a path that starts with an item defined in the module.
-    pub fn resolve_path(&self, db: &dyn AnalyzerDb, path: &ast::Path) -> Analysis<Option<Item>> {
+    pub fn resolve_path(
+        &self,
+        db: &dyn AnalyzerDb,
+        path: &ast::Path,
+    ) -> Analysis<Option<NamedThing>> {
         Item::Module(*self).resolve_path_segments(db, &path.segments)
     }
 
@@ -582,7 +588,7 @@ impl ModuleId {
         &self,
         db: &dyn AnalyzerDb,
         path: &ast::Path,
-    ) -> Analysis<Option<Item>> {
+    ) -> Analysis<Option<NamedThing>> {
         let segments = &path.segments;
         let first_segment = &segments[0];
 
@@ -605,7 +611,7 @@ impl ModuleId {
         &self,
         db: &dyn AnalyzerDb,
         path: &ast::Path,
-    ) -> Analysis<Option<Item>> {
+    ) -> Analysis<Option<NamedThing>> {
         let segments = &path.segments;
         let first_segment = &segments[0];
 
@@ -629,9 +635,9 @@ impl ModuleId {
         &self,
         db: &dyn AnalyzerDb,
         name: &str,
-    ) -> Result<Option<Item>, IncompleteItem> {
+    ) -> Result<Option<NamedThing>, IncompleteItem> {
         if let Some(thing) = self.internal_items(db).get(name) {
-            Ok(Some(*thing))
+            Ok(Some(NamedThing::Item(*thing)))
         } else if self.is_incomplete(db) {
             Err(IncompleteItem::new())
         } else {
@@ -810,6 +816,7 @@ impl ModuleConstantId {
 pub enum TypeDef {
     Alias(TypeAliasId),
     Struct(StructId),
+    Enum(EnumId),
     Contract(ContractId),
     Primitive(types::Base),
 }
@@ -818,9 +825,11 @@ impl TypeDef {
     pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         match self {
             TypeDef::Struct(val) => {
-                // In the future we probably want to resolve instance methods as well. But this would require
-                // the caller to pass an instance as the first argument e.g. `Rectangle::can_hold(self_instance, other)`.
-                // This isn't yet supported so for now path access to functions is limited to static functions only.
+                // In the future we probably want to resolve instance methods as well. But this
+                // would require the caller to pass an instance as the first
+                // argument e.g. `Rectangle::can_hold(self_instance, other)`.
+                // This isn't yet supported so for now path access to functions is limited to
+                // static functions only.
                 val.pure_functions_as_items(db)
             }
             TypeDef::Contract(val) => val.pure_functions_as_items(db),
@@ -832,6 +841,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.name(db),
             TypeDef::Struct(id) => id.name(db),
+            TypeDef::Enum(id) => id.name(db),
             TypeDef::Contract(id) => id.name(db),
             TypeDef::Primitive(typ) => typ.name(),
         }
@@ -841,6 +851,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.name_span(db)),
             TypeDef::Struct(id) => Some(id.name_span(db)),
+            TypeDef::Enum(id) => Some(id.name_span(db)),
             TypeDef::Contract(id) => Some(id.name_span(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -850,6 +861,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Ok(id.type_id(db)?.typ(db)),
             TypeDef::Struct(id) => Ok(Type::Struct(*id)),
+            TypeDef::Enum(id) => Ok(Type::Enum(*id)),
             TypeDef::Contract(id) => Ok(Type::Contract(*id)),
             TypeDef::Primitive(base) => Ok(Type::Base(*base)),
         }
@@ -863,6 +875,7 @@ impl TypeDef {
         match self {
             Self::Alias(id) => id.is_public(db),
             Self::Struct(id) => id.is_public(db),
+            Self::Enum(id) => id.is_public(db),
             Self::Contract(id) => id.is_public(db),
             Self::Primitive(_) => true,
         }
@@ -872,6 +885,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => Some(id.parent(db)),
             TypeDef::Struct(id) => Some(id.parent(db)),
+            TypeDef::Enum(id) => Some(id.parent(db)),
             TypeDef::Contract(id) => Some(id.parent(db)),
             TypeDef::Primitive(_) => None,
         }
@@ -881,6 +895,7 @@ impl TypeDef {
         match self {
             TypeDef::Alias(id) => id.sink_diagnostics(db, sink),
             TypeDef::Struct(id) => id.sink_diagnostics(db, sink),
+            TypeDef::Enum(id) => id.sink_diagnostics(db, sink),
             TypeDef::Contract(id) => id.sink_diagnostics(db, sink),
             TypeDef::Primitive(_) => {}
         }
@@ -976,14 +991,14 @@ impl ContractId {
         &self,
         db: &dyn AnalyzerDb,
         name: &str,
-    ) -> Result<Option<Item>, IncompleteItem> {
+    ) -> Result<Option<NamedThing>, IncompleteItem> {
         if let Some(item) = self
             .function(db, name)
             .filter(|f| !f.takes_self(db))
             .map(Item::Function)
             .or_else(|| self.event(db, name).map(Item::Event))
         {
-            Ok(Some(item))
+            Ok(Some(NamedThing::Item(item)))
         } else {
             self.module(db).resolve_name(db, name)
         }
@@ -1453,6 +1468,128 @@ impl StructFieldId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Enum {
+    pub ast: Node<ast::Enum>,
+    pub module: ModuleId,
+}
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct EnumId(pub(crate) u32);
+impl_intern_key!(EnumId);
+
+impl EnumId {
+    pub fn data(self, db: &dyn AnalyzerDb) -> Rc<Enum> {
+        db.lookup_intern_enum(self)
+    }
+    pub fn span(self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn name(self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
+    }
+    pub fn name_span(self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.kind.name.span
+    }
+
+    pub fn as_type(self, db: &dyn AnalyzerDb) -> TypeId {
+        db.intern_type(Type::Enum(self))
+    }
+
+    pub fn is_public(self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.pub_qual.is_some()
+    }
+
+    pub fn variant(self, db: &dyn AnalyzerDb, name: &str) -> Option<EnumVariantId> {
+        self.variants(db).get(name).copied()
+    }
+
+    pub fn variants(self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, EnumVariantId>> {
+        db.enum_variant_map(self).value
+    }
+
+    pub fn module(self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn parent(self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+
+    pub fn dependency_graph(self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
+        db.enum_dependency_graph(self).value.0
+    }
+
+    pub fn sink_diagnostics(self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        sink.push_all(db.enum_variant_map(self).diagnostics.iter());
+        sink.push_all(db.enum_dependency_graph(self).diagnostics.iter());
+
+        db.enum_all_variants(self)
+            .iter()
+            .for_each(|variant| variant.sink_diagnostics(db, sink))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct EnumVariant {
+    pub ast: Node<ast::Variant>,
+    pub parent: EnumId,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct EnumVariantId(pub(crate) u32);
+impl_intern_key!(EnumVariantId);
+impl EnumVariantId {
+    pub fn data(self, db: &dyn AnalyzerDb) -> Rc<EnumVariant> {
+        db.lookup_intern_enum_variant(self)
+    }
+    pub fn name(self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
+    }
+    pub fn span(self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn name_with_parent(self, db: &dyn AnalyzerDb) -> SmolStr {
+        let parent = self.parent(db);
+        format!("{}::{}", parent.name(db), self.name(db)).into()
+    }
+
+    pub fn kind(self, db: &dyn AnalyzerDb) -> Result<EnumVariantKind, TypeError> {
+        db.enum_variant_kind(self).value
+    }
+
+    pub fn sink_diagnostics(self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        db.enum_variant_kind(self).sink_diagnostics(sink)
+    }
+
+    pub fn parent(self, db: &dyn AnalyzerDb) -> EnumId {
+        self.data(db).parent
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum EnumVariantKind {
+    Unit,
+    Tuple(SmallVec<[TypeId; 4]>),
+}
+
+impl DisplayWithDb for EnumVariantKind {
+    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Unit => write!(f, "unit"),
+            Self::Tuple(elts) => {
+                write!(f, "(")?;
+                let mut delim = "";
+                for ty in elts {
+                    write!(f, "{}", delim)?;
+                    ty.format(db, f)?;
+                    delim = ", ";
+                }
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Impl {
     pub trait_id: TraitId,
     pub receiver: TypeId,
@@ -1552,6 +1689,9 @@ impl ImplId {
                     vec![],
                 )),
             Type::Struct(id) => {
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+            }
+            Type::Enum(id) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
             }
             Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {

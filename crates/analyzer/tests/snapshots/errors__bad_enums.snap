@@ -1,0 +1,50 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: Can not call a unit variant `MyEnum::Unit`
+  ┌─ compile_errors/bad_enums.fe:9:28
+  │
+9 │         let unit: MyEnum = MyEnum::Unit()
+  │                            ^^^^^^^^^^^^ `MyEnum::Unit` is a unit variant
+  │
+  = Suggestion: remove the parentheses to construct the unit variant `MyEnum::Unit`
+
+error: `MyEnum::UnitTuple` is not a unit variant
+   ┌─ compile_errors/bad_enums.fe:10:34
+   │
+ 3 │     UnitTuple()
+   │     ----------- `UnitTuple` is defined here
+   ·
+10 │         let unit_tuple: MyEnum = MyEnum::UnitTuple
+   │                                  ^^^^^^^^^^^^^^^^^ `MyEnum::UnitTuple` is not a unit variant
+
+error: `MyEnum::UnitTuple` expects 0 arguments, but 1 was provided
+   ┌─ compile_errors/bad_enums.fe:11:35
+   │
+11 │         let unit_tuple2: MyEnum = MyEnum::UnitTuple(x)
+   │                                   ^^^^^^^^^^^^^^^^^ - supplied 1 argument
+   │                                   │                  
+   │                                   expects 0 arguments
+
+error: incorrect type for `MyEnum::Tuple` argument at position 0
+   ┌─ compile_errors/bad_enums.fe:12:43
+   │
+12 │         let tuple: MyEnum = MyEnum::Tuple(y, x)
+   │                                           ^ this has type `u256`; expected type `i32`
+
+error: incorrect type for `MyEnum::Tuple` argument at position 1
+   ┌─ compile_errors/bad_enums.fe:12:46
+   │
+12 │         let tuple: MyEnum = MyEnum::Tuple(y, x)
+   │                                              ^ this has type `i32`; expected type `u256`
+
+error: `MyEnum::Tuple` expects 2 arguments, but 1 was provided
+   ┌─ compile_errors/bad_enums.fe:13:30
+   │
+13 │         let tuple2: MyEnum = MyEnum::Tuple(x)
+   │                              ^^^^^^^^^^^^^ - supplied 1 argument
+   │                              │              
+   │                              expects 2 arguments
+
+

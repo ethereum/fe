@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: the type `MyInt` is private
   ┌─ compile_errors/bad_visibility/src/main.fe:7:33
@@ -44,20 +43,6 @@ error: the constant `MY_CONST` is private
    │
    = `MY_CONST` can only be used within `foo`
    = Hint: use `pub` to make `MY_CONST` visible from outside of `foo`
-
-error: the constant `MY_CONST` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:13:16
-   │
-13 │         return MY_CONST
-   │                ^^^^^^^^ this constant is not `pub`
-   │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:3:1
-   │
- 3 │ const MY_CONST: MyInt = 1
-   │ ------------------------- `MY_CONST` is defined here
-   │
-   = `MY_CONST` can only be used within `foo`
-   = Hint: use `pub const MY_CONST` to make `MY_CONST` visible from outside of `foo`
 
 error: the event `MyEvent` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:17:14

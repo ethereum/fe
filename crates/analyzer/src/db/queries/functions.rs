@@ -245,8 +245,9 @@ pub fn resolve_function_param_type(
     context: &mut dyn AnalyzerContext,
     desc: &Node<ast::TypeDesc>,
 ) -> Result<TypeId, TypeError> {
-    // First check if the param type is a local generic of the function. This won't hold when in the future
-    // generics can appear on the contract, struct or module level but it could be good enough for now.
+    // First check if the param type is a local generic of the function. This won't
+    // hold when in the future generics can appear on the contract, struct or
+    // module level but it could be good enough for now.
     if let ast::TypeDesc::Base { base } = &desc.kind {
         if let Some(val) = function.generic_param(db, base) {
             let bounds = match val {
@@ -407,6 +408,11 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                 )),
                 _ => {}
             },
+            CallType::EnumConstructor(variant) => directs.push((
+                root,
+                Item::Type(TypeDef::Enum(variant.parent(db))),
+                DepLocality::Local,
+            )),
             CallType::BuiltinAssociatedFunction { contract, .. } => {
                 // create/create2 call. The contract type is "external" for dependency graph
                 // purposes.

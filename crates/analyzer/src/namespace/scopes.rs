@@ -110,27 +110,27 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
-        let item = self.module.resolve_name(self.db, name)?;
+        let resolved = self.module.resolve_name(self.db, name)?;
 
-        if let Some(item) = item {
-            check_item_visibility(self, item, span);
+        if let Some(named_thing) = &resolved {
+            check_visibility(self, named_thing, span);
         }
 
-        Ok(item.map(NamedThing::Item))
+        Ok(resolved)
     }
 
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
-        let item = self.module.resolve_path_internal(self.db(), path);
+        let resolved = self.module.resolve_path_internal(self.db(), path);
 
-        for diagnostic in item.diagnostics.iter() {
+        for diagnostic in resolved.diagnostics.iter() {
             self.add_diagnostic(diagnostic.clone())
         }
 
-        if let Some(item) = item.value {
-            check_item_visibility(self, item, span);
+        if let Some(named_thing) = &resolved.value {
+            check_visibility(self, named_thing, span);
         }
 
-        item.value.map(NamedThing::Item)
+        resolved.value
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -324,36 +324,36 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if let Some(param) = param {
             Ok(Some(param))
         } else {
-            let item =
+            let resolved =
                 if let Item::Type(TypeDef::Contract(contract)) = self.function.parent(self.db) {
                     contract.resolve_name(self.db, name)
                 } else {
                     self.function.module(self.db).resolve_name(self.db, name)
                 }?;
 
-            if let Some(item) = item {
-                check_item_visibility(self, item, span);
+            if let Some(named_thing) = &resolved {
+                check_visibility(self, named_thing, span);
             }
 
-            Ok(item.map(NamedThing::Item))
+            Ok(resolved)
         }
     }
 
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
-        let item = self
+        let resolved = self
             .function
             .module(self.db())
             .resolve_path_internal(self.db(), path);
 
-        for diagnostic in item.diagnostics.iter() {
+        for diagnostic in resolved.diagnostics.iter() {
             self.add_diagnostic(diagnostic.clone())
         }
 
-        if let Some(item) = item.value {
-            check_item_visibility(self, item, span);
+        if let Some(named_thing) = &resolved.value {
+            check_visibility(self, named_thing, span);
         }
 
-        item.value.map(NamedThing::Item)
+        resolved.value
     }
 
     fn get_context_type(&self) -> Option<TypeId> {
@@ -578,28 +578,30 @@ impl<T> OptionExt for Option<T> {
 
 /// Check an item visibility and sink diagnostics if an item is invisible from
 /// the scope.
-fn check_item_visibility(context: &dyn AnalyzerContext, item: Item, span: Span) {
-    let item_module = item
-        .module(context.db())
-        .unwrap_or_else(|| context.module());
-    if !item.is_public(context.db()) && item_module != context.module() {
-        let module_name = item_module.name(context.db());
-        let item_name = item.name(context.db());
-        let item_span = item.name_span(context.db()).unwrap_or(span);
-        let item_kind_name = item.item_kind_display_name();
-        context.fancy_error(
-            &format!("the {} `{}` is private", item_kind_name, item_name,),
-            vec![
-                Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
-                Label::secondary(item_span, format!("`{}` is defined here", item_name)),
-            ],
-            vec![
-                format!("`{}` can only be used within `{}`", item_name, module_name),
-                format!(
-                    "Hint: use `pub` to make `{}` visible from outside of `{}`",
-                    item_name, module_name,
-                ),
-            ],
-        );
+fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing, span: Span) {
+    if let NamedThing::Item(item) = named_thing {
+        let item_module = item
+            .module(context.db())
+            .unwrap_or_else(|| context.module());
+        if !item.is_public(context.db()) && item_module != context.module() {
+            let module_name = item_module.name(context.db());
+            let item_name = item.name(context.db());
+            let item_span = item.name_span(context.db()).unwrap_or(span);
+            let item_kind_name = item.item_kind_display_name();
+            context.fancy_error(
+                &format!("the {} `{}` is private", item_kind_name, item_name,),
+                vec![
+                    Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
+                    Label::secondary(item_span, format!("`{}` is defined here", item_name)),
+                ],
+                vec![
+                    format!("`{}` can only be used within `{}`", item_name, module_name),
+                    format!(
+                        "Hint: use `pub` to make `{}` visible from outside of `{}`",
+                        item_name, module_name,
+                    ),
+                ],
+            );
+        }
     }
 }

@@ -199,6 +199,7 @@ pub fn struct_dependency_graph(
             )),
             // Not possible yet, but it will be soon
             Type::Struct(id) => Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local)),
+            Type::Enum(id) => Some((root, Item::Type(TypeDef::Enum(id)), DepLocality::Local)),
             _ => None,
         })
         .collect::<Vec<_>>();

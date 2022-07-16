@@ -200,6 +200,7 @@ test_analysis! { create2_contract, "features/create2_contract.fe"}
 test_analysis! { create_contract, "features/create_contract.fe"}
 test_analysis! { create_contract_from_init, "features/create_contract_from_init.fe"}
 test_analysis! { empty, "features/empty.fe"}
+test_analysis! { enums, "features/enums.fe"}
 test_analysis! { events, "features/events.fe"}
 test_analysis! { module_level_events, "features/module_level_events.fe"}
 test_analysis! { external_contract, "features/external_contract.fe"}
@@ -323,6 +324,15 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     .flat_map(|id| function_diagnostics(*id, db))
                     .collect(),
             ]
+            .concat(),
+            Item::Type(TypeDef::Enum(enum_)) => [label_in_non_overlapping_groups(
+                db,
+                &enum_
+                    .variants(db)
+                    .values()
+                    .map(|variant| (variant.data(db).ast.span, variant.kind(db).unwrap()))
+                    .collect::<Vec<_>>(),
+            )]
             .concat(),
             Item::Type(TypeDef::Contract(contract)) => [
                 label_in_non_overlapping_groups(
