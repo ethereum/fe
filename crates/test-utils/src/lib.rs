@@ -1,14 +1,16 @@
 use evm::executor::stack::{PrecompileFailure, PrecompileFn, PrecompileOutput};
 use evm::ExitSucceed;
-use evm_runtime::{Context, ExitReason, Handler};
+use evm_runtime::{Context, ExitReason, ExitRevert, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;
 use fe_driver as driver;
+use hex_literal::hex;
 use primitive_types::{H160, U256};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use lazy_static::lazy_static;
 use yultsur::*;
 
 #[macro_export]
@@ -77,6 +79,61 @@ pub type Executor<'a, 'b> =
 
 #[allow(dead_code)]
 pub const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
+
+struct PrecompileCase {
+    address: H160,
+    input: Vec<u8>,
+    output: Vec<u8>,
+    price: u64,
+}
+
+static EC_RECOVER_ADDRESS: H160 = H160::from(hex!("0000000000000000000000000000000000000001").to_vec());
+
+static MOCK_PRECOMPILE_CASES: &[PrecompileCase] = &[PrecompileCase {
+    address: EC_RECOVER_ADDRESS,
+    input: hex!(r#"
+            456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3
+            000000000000000000000000000000000000000000000000000000000000001c
+            9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608
+            4f8ae3bd7535248d0bd448298cc2e2071e56992d0774dc340c368ae950852ada
+        "#).to_vec(),
+    output: hex!("7156526fbd7a3c72969b54f64e42c10fbb768c8a").to_vec(),
+    price: 3000,
+}];
+
+
+lazy_static! {
+    static mock_precompile_set: BTreeMap<H160, PrecompileFn> = build_mock_precompile_set()
+}
+
+fn build_mock_precompile_set() -> PrecompileFn {
+    fn mock_fn(
+        input: &[u8],
+        gas_limit: Option<u64>,
+        _: &Context,
+        _: bool,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
+        let gas_limit = gas_limit.expect("gas not provided");
+        let case = cases.find(|case| case.input == input).expect("no case matching input");
+
+        if gas_limit < case.price {
+            Err(PrecompileFailure::Revert {
+                exit_status: ExitRevert::Reverted,
+                output: vec![],
+                cost: 0,
+            })
+        } else {
+            Ok(PrecompileOutput {
+                exit_status: ExitSucceed::Returned,
+                cost: case.price,
+                output: case.output,
+                logs: vec![],
+            })
+        }
+    }
+
+    mock_fn as PrecompileFn
+}
 
 #[allow(dead_code)]
 pub struct ContractHarness {
@@ -264,6 +321,10 @@ pub fn with_executor(test: &dyn Fn(Executor)) {
     with_executor_backend(backend, test)
 }
 
+fn mock_precompiles() -> BTreeMap<H160, PrecompileFn> {
+    let ec_recover_cases = &)
+}
+
 #[allow(dead_code)]
 pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
     let config = evm::Config::london();
@@ -280,11 +341,8 @@ pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
         Ok(PrecompileOutput {
             exit_status: ExitSucceed::Returned,
             cost: 0,
-            output: vec![
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x71, 0x56,
-                0x52, 0x6f, 0xbd, 0x7a, 0x3c, 0x72, 0x96, 0x9b, 0x54, 0xf6, 0x4e, 0x42, 0xc1, 0x0f,
-                0xbb, 0x76, 0x8c, 0x8a,
-            ],
+            output: hex!("0000000000000000000000007156526fbd7a3c72969b54f64e42c10fbb768c8a")
+                .to_vec(),
             logs: vec![],
         })
     }
