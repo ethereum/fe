@@ -4,9 +4,9 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
 set_my_vals([String("my string"), String("my other string"), Uint(26), Uint(42)]) used 138316 gas
-emit_my_event([]) used 3685 gas
+emit_my_event([]) used 3709 gas
 set_to_my_other_vals([]) used 1286 gas
-emit_my_event([]) used 3685 gas
+emit_my_event([]) used 3709 gas
 mutate_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 1486 gas
 multiple_references_shared_memory([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 677 gas
 clone_and_return([FixedArray([Uint(1), Uint(2), Uint(3), Uint(4), Uint(5), Uint(6), Uint(7), Uint(8), Uint(9), Uint(10)])]) used 2484 gas

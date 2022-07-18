@@ -7,9 +7,9 @@ create_house([]) used 69429 gas
 bar([]) used 1271 gas
 set_house([Tuple([Uint(1000000), Uint(250), Uint(6), Bool(true)])]) used 1175 gas
 get_house([]) used 1078 gas
-encode_house([]) used 1248 gas
+encode_house([]) used 1263 gas
 hashed_house([]) used 846 gas
 create_mixed([]) used 350 gas
-complex_struct_in_memory([]) used 3624 gas
-complex_struct_in_storage([]) used 183573 gas
+complex_struct_in_memory([]) used 3656 gas
+complex_struct_in_storage([]) used 183605 gas
 

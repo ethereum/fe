@@ -249,10 +249,11 @@ pub(super) fn make_abi_encode_string_type(
     let func_def = function_definition! {
         function [func_name.ident()]([src.ident()], [dst.ident()]) -> [enc_size.ident()] {
             (let [string_len.ident()] := mload([src.expr()]))
-            ([enc_size.ident()] := add(32, (mul([string_len.expr()], 32))))
             (let data_size := add(32, [string_len.expr()]))
-            ([yul::Statement::Expression(provider.ptr_copy(db, src.expr(), dst.expr(), literal_expression!{data_size}, false, is_dst_storage))])
             ([enc_size.ident()] := mul((div((add(data_size, 31)), 32)), 32))
+            (let padding_word_ptr := add([dst.expr()], (sub([enc_size.expr()], 32))))
+            (mstore(padding_word_ptr, 0))
+            ([yul::Statement::Expression(provider.ptr_copy(db, src.expr(), dst.expr(), literal_expression!{data_size}, false, is_dst_storage))])
         }
     };
     RuntimeFunction::from_statement(func_def)
@@ -274,6 +275,10 @@ pub(super) fn make_abi_encode_bytes_type(
     let func_def = function_definition! {
         function [func_name.ident()]([src.ident()], [dst.ident()]) -> [enc_size.ident()] {
             ([enc_size.ident()] := [literal_expression!{ (ceil_32(32 + len)) }])
+            (if (gt([enc_size.expr()], 0)) {
+                (let padding_word_ptr := add([dst.expr()], (sub([enc_size.expr()], 32))))
+                (mstore(padding_word_ptr, 0))
+            })
             ([yul::Statement::Expression(provider.ptr_store(db, dst.expr(), literal_expression!{ (len) }, dst_len_ty))])
             ([dst.ident()] := add(32, [dst.expr()]))
             ([yul::Statement::Expression(provider.ptr_copy(db, src.expr(), dst.expr(), literal_expression!{(len)}, false, is_dst_storage))])

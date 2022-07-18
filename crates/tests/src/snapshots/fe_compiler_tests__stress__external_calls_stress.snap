@@ -3,14 +3,14 @@ source: crates/tests/src/stress.rs
 expression: "format!(\"{}\", proxy_harness.gas_reporter)"
 
 ---
-call_set_my_string([String("hello world")]) used 52868 gas
-call_get_my_string([]) used 3215 gas
+call_set_my_string([String("hello world")]) used 52901 gas
+call_get_my_string([]) used 3280 gas
 call_set_my_tuple([Tuple([Uint(42), Address(0x0000000000000000000000000000000000000026)])]) used 45643 gas
 call_get_my_tuple([]) used 1730 gas
-call_set_my_string_and_tuple([String("foo"), Tuple([Uint(99), Address(0x00000000000000000000000000000000000000ab)])]) used 3871 gas
+call_set_my_string_and_tuple([String("foo"), Tuple([Uint(99), Address(0x00000000000000000000000000000000000000ab)])]) used 3904 gas
 call_get_my_tuple([]) used 1730 gas
-call_get_my_string([]) used 3215 gas
+call_get_my_string([]) used 3280 gas
 call_get_tuple([]) used 1606 gas
-call_get_string([]) used 2727 gas
+call_get_string([]) used 2792 gas
 call_get_array([]) used 2437 gas
 
