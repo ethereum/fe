@@ -1,25 +1,27 @@
 use std::rc::Rc;
+mod go_to_definition;
 use std::string;
 
 use codespan_lsp::byte_span_to_range;
+use codespan_reporting::files::{Error as CsError, Files};
 use dashmap::DashMap;
-use fe_common::SourceFileId;
 use fe_common::db::SourceDb;
 use fe_common::files::Utf8PathBuf;
+use fe_common::SourceFileId;
 use fe_driver::Db;
-use fe_parser::ast::{FuncStmt, Function, Module, ModuleStmt, ContractStmt};
+use fe_parser::ast::{ContractStmt, FuncStmt, Function, Module, ModuleStmt};
 use fe_parser::node::Node;
+use go_to_definition::find_span_contain_fn_name;
 use ropey::Rope;
 use tower_lsp::jsonrpc::Result as LSPResult;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-use codespan_reporting::files::{Error as CsError, Files};
 
 #[derive(Debug)]
 struct Backend {
     client: Client,
     ast_map: DashMap<String, Module>,
-    content: DashMap<String, String>
+    content: DashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -70,13 +72,9 @@ impl LanguageServer for Backend {
         &self,
         params: GotoDefinitionParams,
     ) -> LSPResult<Option<GotoDefinitionResponse>> {
-        let uri = params
-        .text_document_position_params
-        .text_document
-        .uri;
+        let uri = params.text_document_position_params.text_document.uri;
 
-        let file_id = uri
-            .to_string();
+        let file_id = uri.to_string();
 
         self.client
             .log_message(
@@ -101,38 +99,76 @@ impl LanguageServer for Backend {
 
         let offset = char + position.character as usize;
 
+        let span_option = find_span_contain_fn_name(&ast, offset);
         // find sematic of current token
+        let span;
 
-
+        if span_option == None {
+            return Ok(None);
+        }
+        else  {
+            span = span_option.unwrap();
+        }
         self.client
-        .log_message(MessageType::INFO, format!("input {}", &source[205..210]))
-        .await;
+            .log_message(MessageType::INFO, format!("offset = {} span info {:?}", offset, span))
+            .await;
+        
+        self.client
+            .log_message(MessageType::INFO, format!("input {}", &source[span.start ..span.end]))
+            .await;
         for stmt in &ast.body {
             if let ModuleStmt::Contract(contract) = stmt {
                 for csmt in &contract.kind.body {
                     if let ContractStmt::Function(func) = csmt {
-                    self.client.log_message(MessageType::INFO, format!("{:?}", func.kind.sig.kind.name.kind)).await;
-                        if func.kind.sig.kind.name.kind == source[205..210] {
+                        self.client
+                            .log_message(
+                                MessageType::INFO,
+                                format!("{:?}", func.kind.sig.kind.name.kind),
+                            )
+                            .await;
+                        if func.kind.sig.kind.name.kind == source[span.start..span.end] {
                             let sp = func.kind.sig.kind.name.span;
                             let f = file_id.clone();
                             let s = source.clone();
                             let span_file_id = FileId::new(&f, &s);
 
-                            self.client.log_message(MessageType::INFO, format!("{:?}", sp)).await;
-                            self.client.log_message(MessageType::INFO, format!("hehe {:?}", span_file_id.line_index(span_file_id, sp.start))).await;
-                            self.client.log_message(MessageType::INFO, format!("hehe {:?}", span_file_id.line_range(span_file_id, 9))).await;
-                            
-                            let position = byte_span_to_range(&span_file_id, span_file_id, 
+                            self.client
+                                .log_message(MessageType::INFO, format!("{:?}", sp))
+                                .await;
+                            self.client
+                                .log_message(
+                                    MessageType::INFO,
+                                    format!(
+                                        "hehe {:?}",
+                                        span_file_id.line_index(span_file_id, sp.start)
+                                    ),
+                                )
+                                .await;
+                            self.client
+                                .log_message(
+                                    MessageType::INFO,
+                                    format!("hehe {:?}", span_file_id.line_range(span_file_id, 9)),
+                                )
+                                .await;
+
+                            let position = byte_span_to_range(
+                                &span_file_id,
+                                span_file_id,
                                 std::ops::Range {
                                     start: sp.start,
-                                    end: sp.end
-                                }
-                            ).unwrap();
+                                    end: sp.end,
+                                },
+                            )
+                            .unwrap();
 
-                            self.client.log_message(MessageType::INFO, format!("{:?}", position)).await;
+                            self.client
+                                .log_message(MessageType::INFO, format!("{:?}", position))
+                                .await;
 
-                            return Ok(Some(GotoDefinitionResponse::Scalar(Location::new(uri, position))));
-                        } 
+                            return Ok(Some(GotoDefinitionResponse::Scalar(Location::new(
+                                uri, position,
+                            ))));
+                        }
                     }
                 }
             }
@@ -148,7 +184,7 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, format!("Offset {}", offset))
             .await;
- 
+
         Ok(None)
     }
 
@@ -256,25 +292,20 @@ pub async fn lsp_server() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         ast_map: DashMap::new(),
-        content: DashMap::new()
+        content: DashMap::new(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
-
-
 #[derive(Clone, Copy, PartialEq)]
 struct FileId<'a> {
     pub name: &'a str,
-    pub source: &'a str
+    pub source: &'a str,
 }
 
 impl<'a> FileId<'a> {
-    pub fn new(name: &'a str, source: &'a str) -> Self{
-        FileId { 
-            name,
-            source 
-        }
+    pub fn new(name: &'a str, source: &'a str) -> Self {
+        FileId { name, source }
     }
 }
 
@@ -297,19 +328,26 @@ impl<'a> codespan_reporting::files::Files<'a> for FileId<'_> {
         Ok(line_idx)
     }
 
-    fn line_range(&self, file: FileId, line_index: usize) -> Result<std::ops::Range<usize>, CsError> {
+    fn line_range(
+        &self,
+        file: FileId,
+        line_index: usize,
+    ) -> Result<std::ops::Range<usize>, CsError> {
         let src = file.source.to_string();
-        
+
         let r = Rope::from_str(&src);
         let mut start = 0;
         let mut end = 0;
         if line_index == 0 {
-            return Ok(std::ops::Range{start: 0, end: r.line(0).to_string().len()});
+            return Ok(std::ops::Range {
+                start: 0,
+                end: r.line(0).to_string().len(),
+            });
         }
-        for i in 0..line_index{
+        for i in 0..line_index {
             start += r.line(i).to_string().len();
         }
         end = start + r.line(line_index).to_string().len();
-        Ok(std::ops::Range{start, end})
+        Ok(std::ops::Range { start, end })
     }
 }
