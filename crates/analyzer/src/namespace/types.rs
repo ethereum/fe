@@ -72,6 +72,11 @@ impl TypeId {
     pub fn base(db: &dyn AnalyzerDb, t: Base) -> Self {
         db.intern_type(Type::Base(t))
     }
+    pub fn tuple(db: &dyn AnalyzerDb, items: &[TypeId]) -> Self {
+        db.intern_type(Type::Tuple(Tuple {
+            items: items.into(),
+        }))
+    }
 
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Type {
         db.lookup_intern_type(*self)

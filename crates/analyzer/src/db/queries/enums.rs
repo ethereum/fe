@@ -27,9 +27,11 @@ pub fn enum_all_variants(db: &dyn AnalyzerDb, enum_: EnumId) -> Rc<[EnumVariantI
         .kind
         .variants
         .iter()
-        .map(|variant| {
+        .enumerate()
+        .map(|(tag, variant)| {
             db.intern_enum_variant(Rc::new(EnumVariant {
                 ast: variant.clone(),
+                tag,
                 parent: enum_,
             }))
         })

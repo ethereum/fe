@@ -1,10 +1,10 @@
-use std::{collections::BTreeMap, rc::Rc};
+use std::{collections::BTreeMap, rc::Rc, vec};
 
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
     context::{CallType as AnalyzerCallType, NamedThing},
     namespace::{
-        items as analyzer_items,
+        items::{self as analyzer_items},
         types::{self as analyzer_types, Type},
     },
 };
@@ -12,6 +12,7 @@ use fe_common::numeric::Literal;
 use fe_parser::{ast, node::Node};
 use fxhash::FxHashMap;
 use id_arena::{Arena, Id};
+use num_bigint::BigInt;
 use smol_str::SmolStr;
 
 use crate::{
@@ -697,7 +698,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::Path(path) => {
-                let value = self.resolve_path(path);
+                let value = self.resolve_path(path, expr.into());
                 self.builder.bind(value, expr.into())
             }
 
@@ -736,10 +737,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::Expr::Attribute { value, attr } => {
                 let idx_ty = self.u256_ty();
                 let idx = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
-                let idx = self.builder.make_value(Value::Immediate {
-                    imm: idx,
-                    ty: idx_ty,
-                });
+                let idx = self.make_imm(idx, idx_ty);
                 let lhs = self.lower_assignable_value(value).into();
                 AssignableValue::Aggregate { lhs, idx }
             }
@@ -753,7 +751,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
             ast::Expr::Name(name) => self.resolve_name(name).into(),
-            ast::Expr::Path(path) => self.resolve_path(path).into(),
+            ast::Expr::Path(path) => self.resolve_path(path, expr.into()).into(),
             _ => self.lower_expr_to_value(expr).into(),
         }
     }
@@ -983,8 +981,18 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
 
-            AnalyzerCallType::EnumConstructor(_variant) => {
-                todo!()
+            AnalyzerCallType::EnumConstructor(variant) => {
+                let tag_type = ty.enum_tag_type(self.db);
+                let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
+                let data_ty = ty
+                    .enum_variant_type_by_name(self.db, &variant.name(self.db.upcast()))
+                    .unwrap();
+                let enum_args = if data_ty.is_unit(self.db) {
+                    vec![tag, self.make_unit()]
+                } else {
+                    std::iter::once(tag).chain(args.into_iter()).collect()
+                };
+                self.builder.aggregate_construct(ty, enum_args, source)
             }
         }
     }
@@ -1007,10 +1015,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let index = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
                 let index_ty = self.u256_ty();
                 let value = self.lower_aggregate_access(value, indices);
-                indices.push(self.builder.make_value(Value::Immediate {
-                    imm: index,
-                    ty: index_ty,
-                }));
+                indices.push(self.make_imm(index, index_ty));
                 value
             }
 
@@ -1044,6 +1049,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let unit_ty = analyzer_types::TypeId::unit(self.db.upcast());
         let unit_ty = self.db.mir_lowered_type(unit_ty);
         self.builder.make_unit(unit_ty)
+    }
+
+    fn make_imm(&mut self, imm: impl Into<BigInt>, ty: TypeId) -> ValueId {
+        self.builder.make_value(Value::Immediate {
+            imm: imm.into(),
+            ty,
+        })
     }
 
     fn make_local_constant(
@@ -1117,17 +1129,28 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     /// Resolve a path appeared in an expression.
     /// NOTE: Don't call this to resolve method receiver.
-    fn resolve_path(&mut self, path: &ast::Path) -> ValueId {
+    fn resolve_path(&mut self, path: &ast::Path, source: SourceInfo) -> ValueId {
         let func_id = self.builder.func_id();
         let module = func_id.module(self.db);
-        let constant = match module.resolve_path(self.db.upcast(), path).value.unwrap() {
+        match module.resolve_path(self.db.upcast(), path).value.unwrap() {
             NamedThing::Item(analyzer_items::Item::Constant(id)) => {
-                self.db.mir_lowered_constant(id)
+                let constant = self.db.mir_lowered_constant(id);
+                let ty = constant.ty(self.db);
+                self.builder.make_constant(constant, ty)
+            }
+            NamedThing::EnumVariant(variant) => {
+                let enum_ty = self
+                    .db
+                    .mir_lowered_type(variant.parent(self.db.upcast()).as_type(self.db.upcast()));
+                let tag_type = enum_ty.enum_tag_type(self.db);
+                let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
+                let data = self.make_unit();
+                let enum_args = vec![tag, data];
+                let inst = self.builder.aggregate_construct(enum_ty, enum_args, source);
+                self.map_to_tmp(inst, enum_ty)
             }
             _ => panic!("path defined in global must be constant"),
-        };
-        let ty = constant.ty(self.db);
-        self.builder.make_constant(constant, ty)
+        }
     }
 
     fn scope(&self) -> &Scope {

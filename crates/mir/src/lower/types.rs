@@ -1,7 +1,7 @@
 use crate::{
     db::MirDb,
     ir::{
-        types::{ArrayDef, EventDef, MapDef, StructDef, TupleDef},
+        types::{ArrayDef, EnumDef, EnumVariant, EventDef, MapDef, StructDef, TupleDef},
         Type, TypeId, TypeKind,
     },
 };
@@ -18,7 +18,7 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeI
         analyzer_types::Type::Contract(_) => TypeKind::Address,
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
-        analyzer_types::Type::Enum(_enum_) => todo!(),
+        analyzer_types::Type::Enum(enum_) => lower_enum(db, enum_),
         analyzer_types::Type::Generic(_) => {
             panic!("should be lowered in `lower_types_in_functions`")
         }
@@ -162,6 +162,38 @@ fn lower_struct(db: &dyn MirDb, id: analyzer_items::StructId) -> TypeKind {
         module_id,
     };
     TypeKind::Struct(def)
+}
+
+fn lower_enum(db: &dyn MirDb, id: analyzer_items::EnumId) -> TypeKind {
+    let analyzer_variants = id.variants(db.upcast());
+    let mut variants = Vec::with_capacity(analyzer_variants.len());
+    for variant in analyzer_variants.values() {
+        let variant_ty = match variant.kind(db.upcast()).unwrap() {
+            analyzer_items::EnumVariantKind::Tuple(elts) => {
+                let tuple_ty = analyzer_types::TypeId::tuple(db.upcast(), &elts);
+                db.mir_lowered_type(tuple_ty)
+            }
+            analyzer_items::EnumVariantKind::Unit => {
+                let unit_ty = analyzer_types::TypeId::unit(db.upcast());
+                db.mir_lowered_type(unit_ty)
+            }
+        };
+
+        variants.push(EnumVariant {
+            name: variant.name(db.upcast()),
+            span: variant.span(db.upcast()),
+            ty: variant_ty,
+        });
+    }
+
+    let def = EnumDef {
+        name: id.name(db.upcast()),
+        span: id.span(db.upcast()),
+        variants,
+        module_id: id.module(db.upcast()),
+    };
+
+    TypeKind::Enum(def)
 }
 
 fn intern_type(

@@ -57,6 +57,9 @@ impl PrettyPrint for TypeId {
             TypeKind::Struct(def) => {
                 write!(w, "{}", def.name)
             }
+            TypeKind::Enum(def) => {
+                write!(w, "{}", def.name)
+            }
             TypeKind::Event(def) => {
                 write!(w, "{}", def.name)
             }

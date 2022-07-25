@@ -1531,6 +1531,7 @@ impl EnumId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct EnumVariant {
     pub ast: Node<ast::Variant>,
+    pub tag: usize,
     pub parent: EnumId,
 }
 
@@ -1554,6 +1555,10 @@ impl EnumVariantId {
 
     pub fn kind(self, db: &dyn AnalyzerDb) -> Result<EnumVariantKind, TypeError> {
         db.enum_variant_kind(self).value
+    }
+
+    pub fn tag(self, db: &dyn AnalyzerDb) -> usize {
+        self.data(db).tag
     }
 
     pub fn sink_diagnostics(self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
