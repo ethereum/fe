@@ -5,7 +5,7 @@ use crate::context::{
 };
 use crate::display::Displayable;
 use crate::errors::{TypeCoercionError, TypeError};
-use crate::namespace::items::{Item, TraitId};
+use crate::namespace::items::{Item, TraitId, TypeDef};
 use crate::namespace::types::{
     Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple, Type,
     TypeId,
@@ -483,15 +483,19 @@ pub fn resolve_concrete_type_named_thing<T: std::fmt::Display>(
 ) -> Result<TypeId, TypeError> {
     match named_thing {
         Some(NamedThing::Item(Item::Type(id))) => {
-            if let Some(args) = generic_args {
-                context.fancy_error(
-                    &format!("`{}` type is not generic", base_desc.kind),
-                    vec![Label::primary(
-                        args.span,
-                        "unexpected generic argument list",
-                    )],
-                    vec![],
-                );
+            // TODO: We should get rid of Item::GenericType. It's not a helpful seperation since most types will
+            // be allowed to become generic over time (structs, enums etc)
+            if !matches!(id, TypeDef::Struct(_)) {
+                if let Some(args) = generic_args {
+                    context.fancy_error(
+                        &format!("`{}` type is not generic", base_desc.kind),
+                        vec![Label::primary(
+                            args.span,
+                            "unexpected generic argument list",
+                        )],
+                        vec![],
+                    );
+                }
             }
             id.type_id(context.db())
         }
