@@ -201,6 +201,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
         | ir::TypeKind::Contract(_)
         | ir::TypeKind::Map(_)
         | ir::TypeKind::MPtr(_)
+        | ir::TypeKind::Enum(_)
         | ir::TypeKind::SPtr(_) => unreachable!(),
     }
 }
