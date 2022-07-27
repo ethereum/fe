@@ -125,6 +125,26 @@ test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
 
 test_parse! { stmt_if, functions::parse_stmt, "if a { \n b }" }
 test_parse! { stmt_if2, functions::parse_stmt, "if a { b } else if c { d } else if e { \n f } \n else {\n g }" }
+test_parse! { stmt_match, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit => {
+        return 0
+    }
+    MyEnum::Tuple(x, y) => {
+        let sum: i32 = x + y;
+        return sum
+    }
+    _ => {
+        return -1
+    }
+}"# }
+test_parse! { stmt_match2, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit | MyEnum::Tuple(_, _) => {
+        return 0
+    }
+    _ => {
+        return -1
+    }
+}"# }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }

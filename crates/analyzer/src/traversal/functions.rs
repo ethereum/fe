@@ -31,6 +31,7 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
         For { .. } => for_loop(scope, stmt),
         While { .. } => while_loop(scope, stmt),
         If { .. } => if_statement(scope, stmt),
+        Match { .. } => match_statement(scope, stmt),
         Unsafe { .. } => unsafe_block(scope, stmt),
         Assert { .. } => assert(scope, stmt),
         Expr { value } => expressions::expr(scope, value, None).map(|_| ()),
@@ -106,6 +107,15 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), body)?;
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), or_else)?;
             Ok(())
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn match_statement(_scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
+    match &stmt.kind {
+        fe::FuncStmt::Match { .. } => {
+            todo!()
         }
         _ => unreachable!(),
     }

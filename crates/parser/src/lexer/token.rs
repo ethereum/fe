@@ -79,6 +79,8 @@ pub enum TokenKind {
     Idx,
     #[token("if")]
     If,
+    #[token("match")]
+    Match,
     #[token("impl")]
     Impl,
     #[token("pragma")]
@@ -205,6 +207,8 @@ pub enum TokenKind {
     GtGtEq,
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
 }
 
 impl TokenKind {
@@ -236,6 +240,7 @@ impl TokenKind {
             Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
+            Match => "keyword `match`",
             Impl => "keyword `impl`",
             Pragma => "keyword `pragma`",
             For => "keyword `for`",
@@ -297,6 +302,7 @@ impl TokenKind {
             LtLtEq => "symbol `<<=`",
             GtGtEq => "symbol `>>=`",
             Arrow => "symbol `->`",
+            FatArrow => "symbol `=>`",
 
             Error => unreachable!(), // TODO this is reachable
         }

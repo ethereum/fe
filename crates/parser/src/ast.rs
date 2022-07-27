@@ -334,6 +334,10 @@ pub enum FuncStmt {
         body: Vec<Node<FuncStmt>>,
         or_else: Vec<Node<FuncStmt>>,
     },
+    Match {
+        expr: Node<Expr>,
+        arms: Vec<Node<MatchArm>>,
+    },
     Assert {
         test: Node<Expr>,
         msg: Option<Node<Expr>>,
@@ -351,6 +355,24 @@ pub enum FuncStmt {
         error: Option<Node<Expr>>,
     },
     Unsafe(Vec<Node<FuncStmt>>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct MatchArm {
+    pub pat: Node<Pattern>,
+    pub body: Vec<Node<FuncStmt>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum Pattern {
+    /// Represents a wildcard pattern `_`.
+    WildCard,
+    /// Represents unit variant pattern. e.g., `Enum::Unit`.
+    Path(Node<Path>),
+    /// Represents tuple variant pattern. e.g., `Enum::Tuple(x, y, z)`.
+    PathTuple(Node<Path>, Vec<Node<Pattern>>),
+    /// Represents or pattern. e.g., `EnumUnit | EnumTuple(_, _, _)`
+    Or(Vec<Node<Pattern>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -782,7 +804,7 @@ impl fmt::Display for TypeDesc {
                 }
             }
             TypeDesc::Generic { base, args } => {
-                write!(f, "{}<{}>", base.kind, comma_joined(&args.kind))
+                write!(f, "{}<{}>", base.kind, comma_joined(args.kind.iter()))
             }
         }
     }
@@ -878,7 +900,7 @@ impl fmt::Display for Function {
         }
         write!(f, "fn {}", name.kind)?;
         if !generic_params.kind.is_empty() {
-            write!(f, "<{}>", comma_joined(&generic_params.kind))?;
+            write!(f, "<{}>", comma_joined(generic_params.kind.iter()))?;
         }
         write!(f, "({})", node_comma_joined(args))?;
 
@@ -983,6 +1005,11 @@ impl fmt::Display for FuncStmt {
                     }
                 }
             }
+            FuncStmt::Match { expr, arms } => {
+                write!(f, "match {} {{", expr.kind)?;
+                write_nodes_line_wrapped(&mut indented(f), arms)?;
+                write!(f, "}}")
+            }
             FuncStmt::Assert { test, msg } => {
                 if let Some(msg) = msg {
                     write!(f, "assert {}, {}", test.kind, msg.kind)
@@ -1071,7 +1098,7 @@ impl fmt::Display for Expr {
             } => {
                 write!(f, "{}", func.kind)?;
                 if let Some(generic_args) = generic_args {
-                    write!(f, "<{}>", comma_joined(&generic_args.kind))?;
+                    write!(f, "<{}>", comma_joined(generic_args.kind.iter()))?;
                 }
                 write!(f, "({})", node_comma_joined(&args.kind))
             }
@@ -1163,16 +1190,53 @@ impl fmt::Display for CompOperator {
     }
 }
 
-fn node_comma_joined(nodes: &[Node<impl fmt::Display>]) -> String {
-    comma_joined(&nodes.iter().map(|node| &node.kind).collect::<Vec<_>>())
+impl fmt::Display for MatchArm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} => {{", self.pat.kind)?;
+        write_nodes_line_wrapped(&mut indented(f), &self.body)?;
+        write!(f, "}}")
+    }
 }
 
-fn comma_joined(items: &[impl fmt::Display]) -> String {
+impl fmt::Display for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WildCard => write!(f, "_"),
+            Self::Path(path) => write!(f, "{}", path.kind),
+            Self::PathTuple(path, elts) => {
+                write!(f, "{}", path.kind)?;
+                write!(f, "({})", node_comma_joined(elts))
+            }
+            Self::Or(pats) => {
+                write!(f, "{}", node_delim_joined(pats, "| "))
+            }
+        }
+    }
+}
+
+fn node_comma_joined(nodes: &[Node<impl fmt::Display>]) -> String {
+    node_delim_joined(nodes, ", ")
+}
+
+fn node_delim_joined(nodes: &[Node<impl fmt::Display>], delim: &str) -> String {
+    delim_joined(nodes.iter().map(|node| &node.kind), delim)
+}
+
+fn comma_joined<T>(items: impl Iterator<Item = T>) -> String
+where
+    T: fmt::Display,
+{
+    delim_joined(items, ", ")
+}
+
+fn delim_joined<T>(items: impl Iterator<Item = T>, delim: &str) -> String
+where
+    T: fmt::Display,
+{
     items
-        .iter()
         .map(|item| format!("{}", item))
         .collect::<Vec<_>>()
-        .join(", ")
+        .join(delim)
 }
 
 fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>]) -> fmt::Result {

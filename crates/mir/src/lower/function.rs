@@ -249,6 +249,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 or_else,
             } => self.lower_if(test, body, or_else),
 
+            ast::FuncStmt::Match { .. } => {
+                todo!()
+            }
+
             ast::FuncStmt::Assert { test, msg } => {
                 let then_bb = self.builder.make_block();
                 let false_bb = self.builder.make_block();
