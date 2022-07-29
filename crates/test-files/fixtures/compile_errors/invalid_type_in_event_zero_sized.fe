@@ -1,0 +1,11 @@
+contract EmptyContract {
+}
+
+struct EmptyStruct {
+}
+
+event Event {
+    x: ()
+    y: EmptyStruct
+    z: EmptyContract
+}

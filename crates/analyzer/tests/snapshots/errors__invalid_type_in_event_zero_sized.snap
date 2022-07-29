@@ -1,0 +1,23 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: event field type must have a non-zero types
+  ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:8:8
+  │
+8 │     x: ()
+  │        ^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+  ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:9:8
+  │
+9 │     y: EmptyStruct
+  │        ^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:10:8
+   │
+10 │     z: EmptyContract
+   │        ^^^^^^^^^^^^^ this type can't be used as an event field
+
+
