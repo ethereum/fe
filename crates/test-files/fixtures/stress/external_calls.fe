@@ -29,31 +29,31 @@ contract Foo {
         self.my_tuple = some_tuple
     }
 
-    pub fn get_string() -> String<10> {
+    pub fn get_string(self) -> String<10> {
         return String<10>("hi")
     }
 
-    pub fn get_array() -> Array<u16, 4> {
+    pub fn get_array(self) -> Array<u16, 4> {
         return [u16(1), u16(2), u16(3), u16(257)]
     }
 
-    pub fn get_tuple() -> (u256, u256, bool) {
+    pub fn get_tuple(self) -> (u256, u256, bool) {
         return (42, 26, false)
     }
 
-    pub fn do_revert() {
+    pub fn do_revert(self) {
         revert
     }
 
-    pub fn do_revert2() -> bool {
+    pub fn do_revert2(self) -> bool {
         revert
     }
 
-    pub fn do_revert_with_data() {
+    pub fn do_revert_with_data(self) {
         revert SomeError(code: 4711)
     }
 
-    pub fn do_revert_with_data2() -> bool {
+    pub fn do_revert_with_data2(self) -> bool {
         revert SomeError(code: 4711)
     }
 }

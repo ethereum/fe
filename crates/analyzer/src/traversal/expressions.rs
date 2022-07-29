@@ -1500,17 +1500,23 @@ fn expr_call_method(
             vec![],
         ))),
         [method] => {
-            let is_self = is_self_value(target);
-
             validate_visibility_of_called_fn(context, field.span, *method);
 
-            if is_self && !method.takes_self(context.db()) {
+            if !method.takes_self(context.db()) {
+                let prefix = if method.is_module_fn(context.db())
+                    && context.module() == method.module(context.db())
+                {
+                    "".into()
+                } else {
+                    format!("{}::", method.parent(context.db()).name(context.db()))
+                };
+
                 context.fancy_error(
                     &format!("`{}` must be called without `self`", &field.kind),
                     vec![Label::primary(field.span, "function does not take self")],
                     vec![format!(
-                        "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                        &field.kind, &field.kind
+                        "Suggestion: try `{}{}(...)` instead of `self.{}(...)`",
+                        prefix, &field.kind, &field.kind
                     )],
                 );
             }
@@ -1523,7 +1529,8 @@ fn expr_call_method(
                     let method = contract
                         .function(context.db(), &method.name(context.db()))
                         .unwrap();
-                    if is_self {
+
+                    if is_self_value(target) {
                         CallType::ValueMethod {
                             typ: target_type,
                             method,
@@ -1962,19 +1969,6 @@ fn expr_call_type_attribute(
         }
 
         validate_visibility_of_called_fn(context, field.span, sig);
-
-        if target_type.is_contract(context.db()) {
-            // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen
-            // doesn't compile-in pure functions defined on external
-            // contracts. We should also discuss how/if this will work when
-            // the external contract is deployed and called via STATICCALL
-            // or whatever.
-            context.not_yet_implemented(
-                    &format!("calling contract-associated pure functions. Consider moving `{}` outside of `{}`",
-                             &field.kind, target_name),
-                    target_span + field.span,
-                );
-        }
 
         let ret_type = sig.signature(context.db()).return_type.clone()?;
         let location = Location::assign_location(&ret_type.typ(context.db()));

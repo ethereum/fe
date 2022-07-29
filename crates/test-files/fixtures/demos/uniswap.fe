@@ -1,11 +1,11 @@
 use std::context::Context
 
 contract ERC20 {
-    pub fn balanceOf(_ account: address) -> u256 {
+    pub fn balanceOf(self, _ account: address) -> u256 {
         return 0
     }
 
-    pub fn transfer(to: address, _ amount: u256) -> bool {
+    pub fn transfer(self, to: address, _ amount: u256) -> bool {
         return false
     }
 }
