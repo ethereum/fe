@@ -741,12 +741,18 @@ fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
 
     if let Some(TokenKind::ParenOpen) = par.peek() {
         par.next().unwrap();
-        let mut args = vec![parse_pattern(par)?];
-        while let Some(TokenKind::Comma) = par.peek() {
-            par.next().unwrap();
-            args.push(parse_pattern(par)?);
-        }
-        let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
+        let (args, last_span) = if let Some(TokenKind::ParenClose) = par.peek() {
+            (vec![], par.next().unwrap().span)
+        } else {
+            let mut args = vec![parse_pattern(par)?];
+            while let Some(TokenKind::Comma) = par.peek() {
+                par.next().unwrap();
+                args.push(parse_pattern(par)?);
+            }
+            let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
+            (args, last_span)
+        };
+
         let span = pattern.span + last_span;
         match pattern.kind {
             Pattern::Path(path) => Ok(Node::new(Pattern::PathTuple(path, args), span)),
@@ -775,6 +781,7 @@ fn try_merge_path_pattern(
                 .kind
                 .segments
                 .extend_from_slice(&right_path.kind.segments);
+            left_path.span = span;
             let span = left.span + right.span;
             Ok(Node::new(Pattern::Path(left_path), span))
         }

@@ -329,6 +329,13 @@ fn all_paths_return_or_revert(block: &[Node<ast::FuncStmt>]) -> bool {
                     return true;
                 }
             }
+
+            ast::FuncStmt::Match { arms, .. } => {
+                return arms
+                    .iter()
+                    .all(|arm| all_paths_return_or_revert(&arm.kind.body));
+            }
+
             ast::FuncStmt::Unsafe(body) => {
                 if all_paths_return_or_revert(body) {
                     return true;

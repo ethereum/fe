@@ -36,7 +36,7 @@ Node(
               ),
               span: Span(
                 start: 20,
-                end: 26,
+                end: 32,
               ),
             )),
             span: Span(
@@ -91,7 +91,7 @@ Node(
               ),
               span: Span(
                 start: 65,
-                end: 71,
+                end: 78,
               ),
             ), [
               Node(

@@ -1,0 +1,137 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&db, module)"
+---
+note: 
+  ┌─ enum_match.fe:2:5
+  │
+2 │     Unit
+  │     ^^^^ unit
+3 │     UnitTuple()
+  │     ^^^^^^^^^^^ ()
+4 │     Tuple(u32, u256)
+  │     ^^^^^^^^^^^^^^^^ (u32, u256)
+
+note: 
+  ┌─ enum_match.fe:8:5
+  │
+8 │     Tuple(u32, u256)
+  │     ^^^^^^^^^^^^^^^^ (u32, u256)
+9 │     Nested(MyEnum)
+  │     ^^^^^^^^^^^^^^ (MyEnum)
+
+note: 
+   ┌─ enum_match.fe:13:5
+   │  
+13 │ ╭     pub fn bar(x: u32, y: u256) -> u256 {
+14 │ │         let my_enum: MyEnum = MyEnum::Tuple(x, y);
+15 │ │         match my_enum {
+16 │ │             MyEnum::Unit | MyEnum::UnitTuple() => {
+   · │
+22 │ │         }
+23 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+   ┌─ enum_match.fe:14:13
+   │
+14 │         let my_enum: MyEnum = MyEnum::Tuple(x, y);
+   │             ^^^^^^^ MyEnum
+
+note: 
+   ┌─ enum_match.fe:14:45
+   │
+14 │         let my_enum: MyEnum = MyEnum::Tuple(x, y);
+   │                                             ^  ^ u256: Value
+   │                                             │   
+   │                                             u32: Value
+
+note: 
+   ┌─ enum_match.fe:14:31
+   │
+14 │         let my_enum: MyEnum = MyEnum::Tuple(x, y);
+   │                               ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+15 │         match my_enum {
+   │               ^^^^^^^ MyEnum: Memory
+16 │             MyEnum::Unit | MyEnum::UnitTuple() => {
+17 │                 return 0
+   │                        ^ u256: Value
+   ·
+20 │                 return u256(x1) + y1
+   │                             ^^ u32: Value
+
+note: 
+   ┌─ enum_match.fe:20:24
+   │
+20 │                 return u256(x1) + y1
+   │                        ^^^^^^^^   ^^ u256: Value
+   │                        │           
+   │                        u256: Value
+
+note: 
+   ┌─ enum_match.fe:20:24
+   │
+20 │                 return u256(x1) + y1
+   │                        ^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ enum_match.fe:25:5
+   │  
+25 │ ╭     pub fn enum_nested(x: u32, y: u256) -> u256 {
+26 │ │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+27 │ │         match nested {
+28 │ │             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
+   · │
+34 │ │         }
+35 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+   ┌─ enum_match.fe:26:13
+   │
+26 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+   │             ^^^^^^ MyEnumNested
+
+note: 
+   ┌─ enum_match.fe:26:71
+   │
+26 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+   │                                                                       ^  ^ u256: Value
+   │                                                                       │   
+   │                                                                       u32: Value
+
+note: 
+   ┌─ enum_match.fe:26:57
+   │
+26 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+   │                                                         ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+   ┌─ enum_match.fe:26:36
+   │
+26 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+   │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEnumNested: Memory
+27 │         match nested {
+   │               ^^^^^^ MyEnumNested: Memory
+28 │             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
+29 │                 return u256(x1) + y1
+   │                             ^^ u32: Value
+
+note: 
+   ┌─ enum_match.fe:29:24
+   │
+29 │                 return u256(x1) + y1
+   │                        ^^^^^^^^   ^^ u256: Value
+   │                        │           
+   │                        u256: Value
+
+note: 
+   ┌─ enum_match.fe:29:24
+   │
+29 │                 return u256(x1) + y1
+   │                        ^^^^^^^^^^^^^ u256: Value
+   ·
+32 │                 return 0
+   │                        ^ u256: Value
+
+

@@ -201,6 +201,7 @@ test_analysis! { create_contract, "features/create_contract.fe"}
 test_analysis! { create_contract_from_init, "features/create_contract_from_init.fe"}
 test_analysis! { empty, "features/empty.fe"}
 test_analysis! { enums, "features/enums.fe"}
+test_analysis! { enum_match, "features/enum_match.fe"}
 test_analysis! { events, "features/events.fe"}
 test_analysis! { module_level_events, "features/module_level_events.fe"}
 test_analysis! { external_contract, "features/external_contract.fe"}

@@ -133,6 +133,21 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         resolved.value
     }
 
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self.module.resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        let named_thing = resolved.value?;
+        if is_visible(self, &named_thing) {
+            Some(named_thing)
+        } else {
+            None
+        }
+    }
+
     fn add_diagnostic(&self, diag: Diagnostic) {
         self.diagnostics.borrow_mut().push(diag)
     }
@@ -356,6 +371,24 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         resolved.value
     }
 
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self
+            .function
+            .module(self.db())
+            .resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        let named_thing = resolved.value?;
+        if is_visible(self, &named_thing) {
+            Some(named_thing)
+        } else {
+            None
+        }
+    }
+
     fn get_context_type(&self) -> Option<TypeId> {
         if let Ok(Some(NamedThing::Item(Item::Type(TypeDef::Struct(id))))) =
             self.resolve_name("Context", Span::dummy())
@@ -382,6 +415,8 @@ pub struct BlockScope<'a, 'b> {
 pub enum BlockScopeType {
     Function,
     IfElse,
+    Match,
+    MatchArm,
     Loop,
     Unsafe,
 }
@@ -476,6 +511,10 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
         self.root.resolve_path(path, span)
+    }
+
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        self.root.maybe_resolve_path(path)
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -603,5 +642,16 @@ fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing, spa
                 ],
             );
         }
+    }
+}
+
+fn is_visible(context: &dyn AnalyzerContext, named_thing: &NamedThing) -> bool {
+    if let NamedThing::Item(item) = named_thing {
+        let item_module = item
+            .module(context.db())
+            .unwrap_or_else(|| context.module());
+        item.is_public(context.db()) || item_module == context.module()
+    } else {
+        true
     }
 }

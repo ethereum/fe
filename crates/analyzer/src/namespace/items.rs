@@ -1576,6 +1576,15 @@ pub enum EnumVariantKind {
     Tuple(SmallVec<[TypeId; 4]>),
 }
 
+impl EnumVariantKind {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Unit => "unit variant",
+            Self::Tuple(..) => "tuple variant",
+        }
+    }
+}
+
 impl DisplayWithDb for EnumVariantKind {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

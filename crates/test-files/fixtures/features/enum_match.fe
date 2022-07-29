@@ -1,0 +1,36 @@
+pub enum MyEnum {
+    Unit
+    UnitTuple()
+    Tuple(u32, u256)
+}
+
+pub enum MyEnumNested  {
+    Tuple(u32, u256)
+    Nested(MyEnum)
+}
+
+contract Foo {
+    pub fn bar(x: u32, y: u256) -> u256 {
+        let my_enum: MyEnum = MyEnum::Tuple(x, y);
+        match my_enum {
+            MyEnum::Unit | MyEnum::UnitTuple() => {
+                return 0
+            }
+            MyEnum::Tuple(x1, y1) => {
+                return u256(x1) + y1
+            }
+        }
+    }
+    
+    pub fn enum_nested(x: u32, y: u256) -> u256 {
+        let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+        match nested {
+            MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
+                return u256(x1) + y1
+            }
+            _ => {
+                return 0
+            }
+        }
+    }
+}

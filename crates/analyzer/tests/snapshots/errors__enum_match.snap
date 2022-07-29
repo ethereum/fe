@@ -1,0 +1,68 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: 
+   ┌─ compile_errors/enum_match.fe:22:13
+   │
+22 │             MyEnumNested::Tuple(x1, y1) => {
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this has type `MyEnumNested`; expected type `MyEnum`
+
+error: 
+   ┌─ compile_errors/enum_match.fe:31:33
+   │
+31 │             MyEnumNested::Tuple(MyEnum::Unit, _) => {
+   │                                 ^^^^^^^^^^^^ this has type `MyEnum`; expected type `u32`
+
+error: expected a tuple variant
+   ┌─ compile_errors/enum_match.fe:43:13
+   │
+ 2 │     Unit
+   │     ---- Unit is defined here
+   ·
+43 │             MyEnum::Unit() => {
+   │             ^^^^^^^^^^^^ the variant is defined as unit variant
+
+error: expected an unit variant
+   ┌─ compile_errors/enum_match.fe:46:13
+   │
+ 3 │     UnitTuple()
+   │     ----------- UnitTuple is defined here
+   ·
+46 │             MyEnum::UnitTuple => {
+   │             ^^^^^^^^^^^^^^^^^ the variant is defined as tuple variant
+
+error: the number of tuple variant mismatch
+   ┌─ compile_errors/enum_match.fe:49:13
+   │
+ 4 │     Tuple(u32, u256)
+   │     ---------------- Tuple is defined here
+   ·
+49 │             MyEnum::Tuple(y1) => {
+   │             ^^^^^^^^^^^^^^^^^ expected 2 elements, but 1
+
+error: variable `x1` is not bound in all sub patterns
+   ┌─ compile_errors/enum_match.fe:61:37
+   │
+61 │             MyEnum::Tuple(x1, y1) | MyEnum::UnitTuple() => {
+   │                                     ^^^^^^^^^^^^^^^^^^^ variable `x1` is not bound here
+
+error: variable `y1` is not bound in all sub patterns
+   ┌─ compile_errors/enum_match.fe:61:37
+   │
+61 │             MyEnum::Tuple(x1, y1) | MyEnum::UnitTuple() => {
+   │                                     ^^^^^^^^^^^^^^^^^^^ variable `y1` is not bound here
+
+error: mismatched type for `x1` between sub patterns
+   ┌─ compile_errors/enum_match.fe:70:83
+   │
+70 │             MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) | MyEnumNested::Tuple(y1, x1) => {
+   │                                                                                   ^^ this has type `u256`; expected type `u32`
+
+error: mismatched type for `y1` between sub patterns
+   ┌─ compile_errors/enum_match.fe:70:79
+   │
+70 │             MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) | MyEnumNested::Tuple(y1, x1) => {
+   │                                                                               ^^ this has type `u32`; expected type `u256`
+
+
