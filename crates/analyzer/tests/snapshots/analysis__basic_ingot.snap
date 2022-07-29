@@ -251,10 +251,10 @@ note:
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:12:5
    │  
-12 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256 {
+12 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 13 │ │         return x + y
 14 │ │     }
-   │ ╰─────^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:13:16

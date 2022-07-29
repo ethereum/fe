@@ -9,7 +9,7 @@ pub fn get_42_backend() -> u256 {
 }
 
 pub contract BingContract {
-    pub fn add(_ x: u256, _ y: u256) -> u256 {
+    pub fn add(self, _ x: u256, _ y: u256) -> u256 {
         return x + y
     }
 }

@@ -6,10 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ uniswap.fe:4:5
   │  
-4 │ ╭     pub fn balanceOf(_ account: address) -> u256 {
+4 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 5 │ │         return 0
 6 │ │     }
-  │ ╰─────^ self: None, params: [{ label: Some("_"), name: account, typ: address }] -> u256
+  │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
   ┌─ uniswap.fe:5:16
@@ -20,10 +20,10 @@ note:
 note: 
    ┌─ uniswap.fe:8:5
    │  
- 8 │ ╭     pub fn transfer(to: address, _ amount: u256) -> bool {
+ 8 │ ╭     pub fn transfer(self, to: address, _ amount: u256) -> bool {
  9 │ │         return false
 10 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: to, typ: address }, { label: Some("_"), name: amount, typ: u256 }] -> bool
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: to, typ: address }, { label: Some("_"), name: amount, typ: u256 }] -> bool
 
 note: 
   ┌─ uniswap.fe:9:16

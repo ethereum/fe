@@ -1,7 +1,7 @@
 use std::context::Context
 
 contract Foo {
-    pub fn bar(_ a: u256) {}
+    pub fn bar(self, _ a: u256) {}
 }
 
 contract FooProxy {
