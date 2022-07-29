@@ -502,7 +502,7 @@ impl Type {
             Type::Base(Base::Unit) => true,
             Type::Contract(inner) => inner.fields(db).is_empty(),
             Type::Struct(inner) => inner.fields(db).is_empty(),
-            _ => false
+            _ => false,
         }
     }
     /// Creates an instance of bool.
