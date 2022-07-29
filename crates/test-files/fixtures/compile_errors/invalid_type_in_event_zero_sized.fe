@@ -5,7 +5,8 @@ struct EmptyStruct {
 }
 
 event Event {
-    x: ()
-    y: EmptyStruct
-    z: EmptyContract
+    idx x: ()
+    idx y: EmptyStruct
+    idx z: EmptyContract
+    v: ()
 }
