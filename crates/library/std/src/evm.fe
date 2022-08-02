@@ -1,4 +1,4 @@
-# Basic context accessor functions.
+// Basic context accessor functions.
 pub unsafe fn chain_id() -> u256 {
   return __chainid()
 }
@@ -64,8 +64,8 @@ pub unsafe fn call_value() -> u256 {
 }
 
 
-# Overflowing math ops. Should these be unsafe or named
-# `overflowing_add`, etc?
+// Overflowing math ops. Should these be unsafe or named
+// `overflowing_add`, etc?
 pub fn add(_ x: u256, _ y: u256) -> u256 {
   unsafe { return __add(x, y) }
 }
@@ -111,8 +111,8 @@ pub fn sign_extend(_ i: u256, _ x: u256) -> u256 {
 }
 
 
-# Comparison ops
-# TODO: return bool (see issue #653)
+// Comparison ops
+// TODO: return bool (see issue //653)
 pub fn lt(_ x: u256, _ y: u256) -> u256 {
   unsafe { return __lt(x, y) }
 }
@@ -138,7 +138,7 @@ pub fn is_zero(_ x: u256) -> u256 {
 }
 
 
-# Bitwise ops
+// Bitwise ops
 pub fn bitwise_and(_ x: u256, _ y: u256) -> u256 {
   unsafe { return __and(x, y) }
 }
@@ -172,7 +172,7 @@ pub fn sar(_ x: u256, _ y: u256) -> u256 {
 }
 
 
-# Evm state access and control
+// Evm state access and control
 pub unsafe fn return_mem(offset: u256, len: u256) {
     __return(offset, len)
 }
@@ -185,9 +185,9 @@ pub unsafe fn selfdestruct(_ addr: address) {
     __selfdestruct(u256(addr))
 }
 
-# Invalid opcode. Equivalent to revert(0, 0),
-# except that all remaining gas in the current context
-# is consumed.
+// Invalid opcode. Equivalent to revert(0, 0),
+// except that all remaining gas in the current context
+// is consumed.
 pub unsafe fn invalid() {
     __invalid()
 }
@@ -200,10 +200,10 @@ pub unsafe fn pc() -> u256 {
     return __pc()
 }
 
-# TODO: dunno if we should enable this
-# pub unsafe fn pop(_ x: u256) {
-#     return __pop(x)
-# }
+// TODO: dunno if we should enable this
+// pub unsafe fn pop(_ x: u256) {
+//     return __pop(x)
+// }
 
 pub unsafe fn mload(offset p: u256) -> u256 {
     return __mload(p)
@@ -274,7 +274,7 @@ pub unsafe fn keccak256_mem(offset: u256, len: u256) -> u256 {
 }
 
 
-# Contract creation and calling
+// Contract creation and calling
 
 pub unsafe fn create(value v: u256, offset p: u256, len n: u256) -> address {
     return address(__create(v, p, n))
@@ -284,7 +284,7 @@ pub unsafe fn create2(value v: u256, offset p: u256, len n: u256, salt s: u256) 
     return address(__create2(v, p, n, s))
 }
 
-# TODO: return bool (success)
+// TODO: return bool (success)
 pub unsafe fn call(gas: u256, addr: address, value: u256, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
     return __call(gas, u256(addr), value, input_offset, input_len, output_offset, output_len)
 }
@@ -301,7 +301,7 @@ pub unsafe fn static_call(gas: u256, addr: address, input_offset: u256, input_le
     return __staticcall(gas, u256(addr), input_offset, input_len, output_offset, output_len)
 }
 
-# Logging functions
+// Logging functions
 
 pub unsafe fn log0(offset p: u256, len s: u256) {
     return __log0(p, s)

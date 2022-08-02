@@ -1,3 +1,3 @@
-# Dummy trait used in testing. We can remove this once we have more useful traits
+// Dummy trait used in testing. We can remove this once we have more useful traits
 
 pub trait Dummy {}
