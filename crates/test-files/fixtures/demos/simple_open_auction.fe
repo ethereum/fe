@@ -1,6 +1,6 @@
 use std::context::Context
 
-# errors
+// errors
 struct AuctionAlreadyEnded {}
 struct AuctionNotYetEnded {}
 struct AuctionEndAlreadyCalled {}
@@ -10,7 +10,7 @@ struct BidNotHighEnough {
 }
 
 contract SimpleOpenAuction {
-    # states
+    // states
     auction_end_time: u256
     beneficiary: address
 
@@ -21,7 +21,7 @@ contract SimpleOpenAuction {
 
     ended: bool
 
-    # events
+    // events
     event HighestBidIncreased {
         idx bidder: address
         amount: u256
@@ -32,13 +32,13 @@ contract SimpleOpenAuction {
         amount: u256
     }
 
-    # constructor
+    // constructor
     pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address) {
         self.beneficiary = beneficiary_addr
         self.auction_end_time = ctx.block_timestamp() + bidding_time
     }
 
-    #method
+    //method
     pub fn bid(self, ctx: Context) {
         if ctx.block_timestamp() > self.auction_end_time {
             revert AuctionAlreadyEnded()

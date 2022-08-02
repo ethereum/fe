@@ -78,7 +78,7 @@ function highlight_fe(hljs) {
         end: '"',
         contains: [{ begin: "\\\\." }],
       },
-      hljs.COMMENT("#", "\n"),
+      hljs.COMMENT("//", "\n"),
     ],
   }
 }

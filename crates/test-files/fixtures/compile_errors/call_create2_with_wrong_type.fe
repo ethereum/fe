@@ -5,7 +5,7 @@ contract Bar {}
 contract Foo {
     pub fn foo(ctx: Context) {
         Bar.create2(ctx, true, 1)
-        Bar.create2(ctx, 1)  # agroce #447
+        Bar.create2(ctx, 1)  // agroce //447
         Bar.create2(ctx)
     }
 }

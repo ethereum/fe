@@ -1,4 +1,4 @@
-# https://github.com/ethereum/fe/issues/530
+// https://github.com/ethereum/fe/issues/530
 
 struct BadField {
     pub x: MysteryType

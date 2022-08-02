@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn tabs_and_comment() {
         check(
-            "\n\t \tcontract\n\tFoo # hi mom!\n ",
+            "\n\t \tcontract\n\tFoo // hi mom!\n ",
             &[Newline, Contract, Newline, Name, Newline],
         );
     }
