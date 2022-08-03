@@ -1,16 +1,17 @@
 use crate::errors::{BinaryOperationError, IndexingError};
-use crate::namespace::types::{Array, Base, Integer, Map, Type, TypeId};
+use crate::namespace::types::{Array, Integer, Map, Type, TypeDowncast, TypeId};
+use crate::traversal::types::try_coerce_type;
 use crate::AnalyzerDb;
-
 use fe_parser::ast as fe;
 
 /// Finds the type of an index operation and checks types.
 ///
 /// e.g. `foo[42]`
-pub fn index(db: &dyn AnalyzerDb, value: TypeId, index: TypeId) -> Result<TypeId, IndexingError> {
+pub fn index(db: &dyn AnalyzerDb, value: TypeId, indext: TypeId) -> Result<TypeId, IndexingError> {
     match value.typ(db) {
-        Type::Array(array) => index_array(db, &array, index),
-        Type::Map(map) => index_map(&map, index),
+        Type::Array(array) => index_array(db, &array, indext),
+        Type::Map(map) => index_map(db, &map, indext),
+        Type::SPtr(inner) => Ok(Type::SPtr(index(db, inner, indext)?).id(db)),
         Type::Base(_)
         | Type::Tuple(_)
         | Type::String(_)
@@ -22,16 +23,16 @@ pub fn index(db: &dyn AnalyzerDb, value: TypeId, index: TypeId) -> Result<TypeId
 }
 
 fn index_array(db: &dyn AnalyzerDb, array: &Array, index: TypeId) -> Result<TypeId, IndexingError> {
-    if index.typ(db) != Type::u256() {
+    if try_coerce_type(db, index, Type::u256().id(db)).is_err() {
         return Err(IndexingError::WrongIndexType);
     }
 
     Ok(array.inner)
 }
 
-fn index_map(map: &Map, index: TypeId) -> Result<TypeId, IndexingError> {
+fn index_map(db: &dyn AnalyzerDb, map: &Map, index: TypeId) -> Result<TypeId, IndexingError> {
     let Map { key, value } = map;
-    if index != *key {
+    if try_coerce_type(db, index, *key).is_err() {
         return Err(IndexingError::WrongIndexType);
     }
     Ok(*value)
@@ -44,9 +45,7 @@ pub fn bin(
     op: fe::BinOperator,
     right: TypeId,
 ) -> Result<TypeId, BinaryOperationError> {
-    if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) =
-        (left.typ(db), right.typ(db))
-    {
+    if let (Some(left), Some(right)) = (left.as_int(db), right.as_int(db)) {
         let int = match op {
             fe::BinOperator::Add
             | fe::BinOperator::Sub

@@ -71,11 +71,11 @@ impl PrettyPrint for TypeId {
                 write!(w, ">")
             }
             TypeKind::MPtr(inner) => {
-                write!(w, "*@s ")?;
+                write!(w, "*@m ")?;
                 inner.pretty_print(db, store, w)
             }
             TypeKind::SPtr(inner) => {
-                write!(w, "*@m ")?;
+                write!(w, "*@s ")?;
                 inner.pretty_print(db, store, w)
             }
         }

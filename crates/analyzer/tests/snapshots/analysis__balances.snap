@@ -15,13 +15,13 @@ note:
   ┌─ balances.fe:5:16
   │
 5 │         return ctx.self_balance()
-  │                ^^^ Context: Memory
+  │                ^^^ Context
 
 note: 
   ┌─ balances.fe:5:16
   │
 5 │         return ctx.self_balance()
-  │                ^^^^^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ balances.fe:8:5
@@ -35,14 +35,14 @@ note:
   ┌─ balances.fe:9:16
   │
 9 │         return ctx.balance_of(someone)
-  │                ^^^            ^^^^^^^ address: Value
+  │                ^^^            ^^^^^^^ address
   │                │               
-  │                Context: Memory
+  │                Context
 
 note: 
   ┌─ balances.fe:9:16
   │
 9 │         return ctx.balance_of(someone)
-  │                ^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

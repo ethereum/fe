@@ -10,7 +10,7 @@ use crate::{
     namespace::scopes::BlockScopeType,
 };
 use crate::{
-    errors::{self, CannotMove, IncompleteItem, TypeError},
+    errors::{self, IncompleteItem, TypeError},
     namespace::items::ModuleId,
 };
 use fe_common::diagnostics::Diagnostic;
@@ -340,33 +340,6 @@ impl AnalyzerContext for TempContext {
     }
 }
 
-/// Indicates where an expression is stored.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Location {
-    /// A storage value may not have a nonce known at compile time, so it is
-    /// optional.
-    Storage {
-        nonce: Option<usize>,
-    },
-    Memory,
-    Value,
-    // An unresolved location is used for generic types prior to monomorphization.
-    Unresolved,
-}
-
-impl Location {
-    /// The expected location of a value with the given type when being
-    /// assigned, returned, or passed.
-    pub fn assign_location(typ: &Type) -> Self {
-        match typ {
-            Type::Base(_) | Type::Contract(_) => Location::Value,
-            Type::Generic(_) => Location::Unresolved,
-            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
-            _ => panic!("Type can not be assigned, returned or passed"),
-        }
-    }
-}
-
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
@@ -381,53 +354,24 @@ pub struct FunctionBody {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpressionAttributes {
     pub typ: TypeId,
-    pub location: Location,
-    pub move_location: Option<Location>,
     // Evaluated constant value of const local definition.
     pub const_value: Option<Constant>,
 }
 
 impl ExpressionAttributes {
-    pub fn new(typ: TypeId, location: Location) -> Self {
+    pub fn new(typ: TypeId) -> Self {
         Self {
             typ,
-            location,
-            move_location: None,
             const_value: None,
         }
-    }
-
-    /// Adds a move to memory.
-    pub fn into_cloned(mut self) -> Self {
-        self.move_location = Some(Location::Memory);
-        self
-    }
-
-    /// Adds a move to value, if it is in storage or memory.
-    pub fn into_loaded(mut self, db: &dyn AnalyzerDb) -> Result<Self, CannotMove> {
-        match self.typ.typ(db) {
-            Type::Base(_) | Type::Contract(_) => {
-                if self.location != Location::Value {
-                    self.move_location = Some(Location::Value);
-                }
-
-                Ok(self)
-            }
-            _ => Err(CannotMove),
-        }
-    }
-
-    /// The final location of an expression after a possible move.
-    pub fn final_location(&self) -> Location {
-        self.move_location.unwrap_or(self.location)
     }
 }
 
 impl crate::display::DisplayWithDb for ExpressionAttributes {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}: {:?}", self.typ.display(db), self.location)?;
-        if let Some(move_to) = self.move_location {
-            write!(f, " => {:?}", move_to)?;
+        write!(f, "{}", self.typ.display(db))?;
+        if let Some(val) = &self.const_value {
+            write!(f, " = {:?}", val)?;
         }
         Ok(())
     }

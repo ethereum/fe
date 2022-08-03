@@ -326,7 +326,7 @@ pub fn module_constant_type(
         }
         Ok(typ) => {
             if let Ok(expr_attr) =
-                expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(*typ))
+                expressions::expr(&mut scope, &constant_data.ast.kind.value, Some(*typ))
             {
                 if typ != &expr_attr.typ {
                     scope.type_error(
@@ -384,9 +384,7 @@ pub fn module_constant_value(
         }
     };
 
-    if let Err(err) =
-        expressions::assignable_expr(&mut scope, &constant_data.ast.kind.value, Some(typ))
-    {
+    if let Err(err) = expressions::expr(&mut scope, &constant_data.ast.kind.value, Some(typ)) {
         // No need to emit diagnostics, it's already emitted in `module_constant_type`.
         return Analysis {
             value: Err(err.into()),

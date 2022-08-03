@@ -1,14 +1,166 @@
 use crate::context::{AnalyzerContext, Constant, NamedThing};
 use crate::display::Displayable;
-use crate::errors::TypeError;
+use crate::errors::{TypeCoercionError, TypeError};
 use crate::namespace::items::{Item, TraitId};
-use crate::namespace::types::{GenericArg, GenericParamKind, GenericType, Tuple, Type, TypeId};
+use crate::namespace::types::{
+    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, Tuple, Type, TypeId,
+};
 use crate::traversal::call_args::validate_arg_count;
+use crate::AnalyzerDb;
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
+
+pub fn try_cast_type(
+    context: &mut dyn AnalyzerContext,
+    from: TypeId,
+    from_span: Span,
+    into: TypeId,
+    into_span: Span,
+) {
+    if into == from {
+        return;
+    }
+    if let Type::SPtr(from) = from.typ(context.db()) {
+        return try_cast_type(context, from, from_span, into, into_span);
+    }
+
+    match (from.typ(context.db()), into.typ(context.db())) {
+        (Type::String(from), Type::String(into)) => {
+            if from.max_size > into.max_size {
+                context.error(
+                    "string capacity exceeded",
+                    from_span,
+                    &format!(
+                        "this string has length {}; expected length <= {}",
+                        from.max_size, into.max_size
+                    ),
+                );
+            }
+        }
+
+        (Type::Base(Base::Address), Type::Contract(_)) => {}
+        (Type::Contract(_), Type::Base(Base::Address)) => {}
+
+        (Type::Base(Base::Numeric(from_int)), Type::Base(Base::Numeric(into_int))) => {
+            let sign_differs = from_int.is_signed() != into_int.is_signed();
+            let size_differs = from_int.size() != into_int.size();
+
+            if sign_differs && size_differs {
+                context.error(
+                        "Casting between numeric values can change the sign or size but not both at once",
+                        from_span,
+                        &format!("can not cast from `{}` to `{}` in a single step",
+                                 from.display(context.db()),
+                                 into.display(context.db())));
+            }
+        }
+        (Type::Base(Base::Numeric(_)), Type::Base(Base::Address)) => {}
+        (Type::Base(Base::Address), Type::Base(Base::Numeric(into))) => {
+            if into != Integer::U256 {
+                context.error(
+                    &format!("can't cast `address` to `{}`", into),
+                    into_span,
+                    "try `u256` here",
+                );
+            }
+        }
+        (Type::SelfContract(_), Type::Base(Base::Address)) => {
+            context.error(
+                "`self` address must be retrieved via `Context` object",
+                into_span + from_span,
+                "use `ctx.self_address()` here",
+            );
+        }
+
+        (_, Type::Base(Base::Unit)) => unreachable!(), // rejected in expr_call_type
+        (_, Type::Base(Base::Bool)) => unreachable!(), // handled in expr_call_type_constructor
+        (_, Type::Tuple(_)) => unreachable!(),         // rejected in expr_call_type
+        (_, Type::Struct(_)) => unreachable!(),        // handled in expr_call_type_constructor
+        (_, Type::Map(_)) => unreachable!(),           // handled in expr_call_type_constructor
+        (_, Type::Array(_)) => unreachable!(),         // handled in expr_call_type_constructor
+        (_, Type::Generic(_)) => unreachable!(),       // handled in expr_call_type_constructor
+        (_, Type::SelfContract(_)) => unreachable!(),  // contract names become Contract
+
+        _ => {
+            context.error(
+                &format!(
+                    "incorrect type for argument to `{}`",
+                    into.display(context.db())
+                ),
+                from_span,
+                &format!(
+                    "cannot cast type `{}` to type `{}`",
+                    from.display(context.db()),
+                    into.display(context.db()),
+                ),
+            );
+        }
+    };
+}
+
+pub fn try_coerce_type(
+    db: &dyn AnalyzerDb,
+    from: TypeId,
+    into: TypeId,
+) -> Result<(), TypeCoercionError> {
+    if from == into {
+        return Ok(());
+    }
+
+    match (from.typ(db), into.typ(db)) {
+        (Type::SPtr(from), Type::SPtr(into)) => try_coerce_type(db, from, into),
+
+        // primitive types can be moved from storage implicitly
+        (Type::SPtr(from), Type::Base(_)) => try_coerce_type(db, from, into),
+        // contract type is also a primitive
+        (Type::SPtr(from), Type::Contract(_)) => try_coerce_type(db, from, into),
+
+        // complex types require .to_mem()
+        (Type::SPtr(from), _) => {
+            try_coerce_type(db, from, into)?;
+            Err(TypeCoercionError::RequiresToMem)
+        }
+
+        // all types can be moved into storage implicitly
+        (_, Type::SPtr(into)) => try_coerce_type(db, from, into),
+
+        (Type::String(FeString { max_size: from }), Type::String(FeString { max_size: into })) => {
+            if into >= from {
+                Ok(())
+            } else {
+                Err(TypeCoercionError::Incompatible)
+            }
+        }
+        (Type::SelfContract(from), Type::Contract(into)) => {
+            if from == into {
+                Err(TypeCoercionError::SelfContractType)
+            } else {
+                Err(TypeCoercionError::Incompatible)
+            }
+        }
+
+        (Type::Tuple(from), Type::Tuple(into)) => {
+            if from.items.len() == into.items.len()
+                && from
+                    .items
+                    .iter()
+                    .zip(into.items.iter())
+                    .map(|(from, into)| try_coerce_type(db, *from, *into).is_ok())
+                    .all(|x| x)
+            {
+                Ok(())
+            } else {
+                Err(TypeCoercionError::Incompatible)
+            }
+        }
+
+        // TODO: allow implicit coercion to larget int sizes?
+        (_, _) => Err(TypeCoercionError::Incompatible),
+    }
+}
 
 pub fn apply_generic_type_args(
     context: &mut dyn AnalyzerContext,

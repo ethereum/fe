@@ -15,18 +15,18 @@ note:
   ┌─ return_i128_cast.fe:3:22
   │
 3 │         return i128(-3)
-  │                      ^ u256: Value
+  │                      ^ u256
 
 note: 
   ┌─ return_i128_cast.fe:3:21
   │
 3 │         return i128(-3)
-  │                     ^^ i128: Value
+  │                     ^^ i128
 
 note: 
   ┌─ return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
-  │                ^^^^^^^^ i128: Value
+  │                ^^^^^^^^ i128
 
 

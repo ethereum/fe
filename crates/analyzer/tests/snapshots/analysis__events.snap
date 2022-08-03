@@ -49,10 +49,10 @@ note:
    ┌─ events.fe:24:19
    │
 24 │         emit Nums(ctx, num1: 26, num2: 42)
-   │                   ^^^        ^^        ^^ u256: Value
+   │                   ^^^        ^^        ^^ u256
    │                   │          │          
-   │                   │          u256: Value
-   │                   Context: Memory
+   │                   │          u256
+   │                   Context
 
 note: 
    ┌─ events.fe:27:5
@@ -66,10 +66,10 @@ note:
    ┌─ events.fe:28:20
    │
 28 │         emit Bases(ctx, num: 26, addr)
-   │                    ^^^       ^^  ^^^^ address: Value
+   │                    ^^^       ^^  ^^^^ address
    │                    │         │    
-   │                    │         u256: Value
-   │                    Context: Memory
+   │                    │         u256
+   │                    Context
 
 note: 
    ┌─ events.fe:31:5
@@ -83,12 +83,12 @@ note:
    ┌─ events.fe:32:18
    │
 32 │         emit Mix(ctx, num1: 26, addr, num2: 42, my_bytes)
-   │                  ^^^        ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>: Memory
+   │                  ^^^        ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>
    │                  │          │   │           │    
-   │                  │          │   │           u256: Value
-   │                  │          │   address: Value
-   │                  │          u256: Value
-   │                  Context: Memory
+   │                  │          │   │           u256
+   │                  │          │   address
+   │                  │          u256
+   │                  Context
 
 note: 
    ┌─ events.fe:35:5
@@ -111,48 +111,48 @@ note:
    ┌─ events.fe:36:49
    │
 36 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                                 ^ u256: Value
+   │                                                 ^ u256
 
 note: 
    ┌─ events.fe:36:41
    │
 36 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                         ^^^^^^^^^^  ^ u256: Value
+   │                                         ^^^^^^^^^^  ^ u256
    │                                         │            
-   │                                         address: Value
+   │                                         address
 
 note: 
    ┌─ events.fe:36:40
    │
 36 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                        ^^^^^^^^^^^^^^^ Array<address, 2>: Memory
+   │                                        ^^^^^^^^^^^^^^^ Array<address, 2>
 37 │         addrs[0] = addr1
-   │         ^^^^^ ^ u256: Value
+   │         ^^^^^ ^ u256
    │         │      
-   │         Array<address, 2>: Memory
+   │         Array<address, 2>
 
 note: 
    ┌─ events.fe:37:9
    │
 37 │         addrs[0] = addr1
-   │         ^^^^^^^^   ^^^^^ address: Value
+   │         ^^^^^^^^   ^^^^^ address
    │         │           
-   │         address: Memory
+   │         address
 38 │         addrs[1] = addr2
-   │         ^^^^^ ^ u256: Value
+   │         ^^^^^ ^ u256
    │         │      
-   │         Array<address, 2>: Memory
+   │         Array<address, 2>
 
 note: 
    ┌─ events.fe:38:9
    │
 38 │         addrs[1] = addr2
-   │         ^^^^^^^^   ^^^^^ address: Value
+   │         ^^^^^^^^   ^^^^^ address
    │         │           
-   │         address: Memory
+   │         address
 39 │         emit Addresses(ctx, addrs)
-   │                        ^^^  ^^^^^ Array<address, 2>: Memory
+   │                        ^^^  ^^^^^ Array<address, 2>
    │                        │     
-   │                        Context: Memory
+   │                        Context
 
 

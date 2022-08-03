@@ -7,7 +7,7 @@ note:
   ┌─ two_contracts.fe:2:5
   │
 2 │     other: Bar
-  │     ^^^^^^^^^^ Bar
+  │     ^^^^^^^^^^ SPtr<Bar>
 
 note: 
    ┌─ two_contracts.fe:8:5
@@ -22,41 +22,41 @@ note:
   ┌─ two_contracts.fe:9:9
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ two_contracts.fe:9:9
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │         ^^^^^^^^^^              ^^^ Context: Memory
+  │         ^^^^^^^^^^              ^^^ Context
   │         │                        
-  │         Bar: Storage { nonce: Some(0) } => Value
+  │         SPtr<Bar>
 
 note: 
   ┌─ two_contracts.fe:9:33
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │                                 ^^^^^^^^^^^^^^^^^^ address: Value
+  │                                 ^^^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ two_contracts.fe:9:9
    │
  9 │         self.other.set_foo_addr(ctx.self_address())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 10 │         return self.other.answer()
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ two_contracts.fe:10:16
    │
 10 │         return self.other.answer()
-   │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^ SPtr<Bar>
 
 note: 
    ┌─ two_contracts.fe:10:16
    │
 10 │         return self.other.answer()
-   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ two_contracts.fe:13:5
@@ -70,21 +70,21 @@ note:
    ┌─ two_contracts.fe:14:16
    │
 14 │         return x + y
-   │                ^   ^ u256: Value
+   │                ^   ^ u256
    │                │    
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ two_contracts.fe:14:16
    │
 14 │         return x + y
-   │                ^^^^^ u256: Value
+   │                ^^^^^ u256
 
 note: 
    ┌─ two_contracts.fe:19:5
    │
 19 │     other: Foo
-   │     ^^^^^^^^^^ Foo
+   │     ^^^^^^^^^^ SPtr<Foo>
 
 note: 
    ┌─ two_contracts.fe:21:5
@@ -98,21 +98,21 @@ note:
    ┌─ two_contracts.fe:22:9
    │
 22 │         self.other = Foo(addr)
-   │         ^^^^ Bar: Value
+   │         ^^^^ Bar
 
 note: 
    ┌─ two_contracts.fe:22:9
    │
 22 │         self.other = Foo(addr)
-   │         ^^^^^^^^^^       ^^^^ address: Value
+   │         ^^^^^^^^^^       ^^^^ address
    │         │                 
-   │         Foo: Storage { nonce: Some(0) }
+   │         SPtr<Foo>
 
 note: 
    ┌─ two_contracts.fe:22:22
    │
 22 │         self.other = Foo(addr)
-   │                      ^^^^^^^^^ Foo: Value
+   │                      ^^^^^^^^^ Foo
 
 note: 
    ┌─ two_contracts.fe:25:5
@@ -126,21 +126,21 @@ note:
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^ Bar: Value
+   │                ^^^^ Bar
 
 note: 
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^^^^^^^     ^^  ^^ u256: Value
+   │                ^^^^^^^^^^     ^^  ^^ u256
    │                │              │    
-   │                │              u256: Value
-   │                Foo: Storage { nonce: Some(0) } => Value
+   │                │              u256
+   │                SPtr<Foo>
 
 note: 
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

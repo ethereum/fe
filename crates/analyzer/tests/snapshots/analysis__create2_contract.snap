@@ -15,7 +15,7 @@ note:
   ┌─ create2_contract.fe:3:16
   │
 3 │         return 42
-  │                ^^ u256: Value
+  │                ^^ u256
 
 note: 
    ┌─ create2_contract.fe:8:5
@@ -36,23 +36,23 @@ note:
   ┌─ create2_contract.fe:9:36
   │
 9 │         let foo: Foo = Foo.create2(ctx, 0, 52)
-  │                                    ^^^  ^  ^^ u256: Value
+  │                                    ^^^  ^  ^^ u256
   │                                    │    │   
-  │                                    │    u256: Value
-  │                                    Context: Memory
+  │                                    │    u256
+  │                                    Context
 
 note: 
    ┌─ create2_contract.fe:9:24
    │
  9 │         let foo: Foo = Foo.create2(ctx, 0, 52)
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^ Foo: Value
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^ Foo
 10 │         return address(foo)
-   │                        ^^^ Foo: Value
+   │                        ^^^ Foo
 
 note: 
    ┌─ create2_contract.fe:10:16
    │
 10 │         return address(foo)
-   │                ^^^^^^^^^^^^ address: Value
+   │                ^^^^^^^^^^^^ address
 
 

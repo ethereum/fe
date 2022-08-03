@@ -1,10 +1,10 @@
-use crate::context::{AnalyzerContext, Location, NamedThing};
+use crate::context::{AnalyzerContext, NamedThing};
 use crate::display::Displayable;
-use crate::errors::FatalError;
+use crate::errors::{self, FatalError, TypeCoercionError};
 use crate::namespace::scopes::BlockScope;
 use crate::operations;
-use crate::traversal::expressions;
 use crate::traversal::utils::add_bin_operations_errors;
+use crate::traversal::{expressions, types::try_coerce_type};
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -13,12 +13,20 @@ use fe_parser::node::Node;
 ///
 /// e.g. `foo[42] = "bar"`, `self.foo[42] = "bar"`, `foo = 42`
 pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
-        let target_attributes = expressions::expr(scope, target, None)?;
+    let (target, value) = match &stmt.kind {
+        fe::FuncStmt::Assign { target, value } => (target, value),
+        _ => unreachable!(),
+    };
+    let target_attributes = expressions::expr(scope, target, None)?;
 
-        let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
-        check_assign_target(scope, target)?;
-        if target_attributes.typ != value_attributes.typ {
+    let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
+    check_assign_target(scope, target)?;
+
+    match try_coerce_type(scope.db(), value_attributes.typ, target_attributes.typ) {
+        Err(TypeCoercionError::RequiresToMem) => {
+            scope.add_diagnostic(errors::to_mem_error(value.span));
+        }
+        Err(TypeCoercionError::Incompatible) => {
             scope.fancy_error(
                 "mismatched types",
                 vec![
@@ -40,30 +48,15 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
                 vec![],
             );
         }
-
-        if matches!(
-            (
-                target_attributes.location,
-                value_attributes.final_location(),
-            ),
-            (Location::Memory, Location::Storage { .. })
-        ) {
-            scope.fancy_error(
-                "location mismatch",
-                vec![
-                    Label::primary(target.span, "this variable is located in memory"),
-                    Label::secondary(value.span, "this value is located in storage"),
-                ],
-                vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
-                     "Example: `self.my_array.to_mem()`".into(),
-                    ],
-            );
+        Err(TypeCoercionError::SelfContractType) => {
+            scope.add_diagnostic(errors::self_contract_type_error(
+                value.span,
+                &target_attributes.typ.display(scope.db()),
+            ));
         }
-
-        return Ok(());
+        Ok(()) => {}
     }
-
-    unreachable!()
+    Ok(())
 }
 
 fn check_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> Result<(), FatalError> {

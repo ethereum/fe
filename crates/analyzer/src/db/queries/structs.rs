@@ -92,7 +92,7 @@ pub fn struct_field_type(
                 );
                 Ok(typ)
             }
-            t if t.has_fixed_size() => Ok(typ),
+            t if t.has_fixed_size(db) => Ok(typ),
             _ => Err(TypeError::new(scope.error(
                 "struct field type must have a fixed size",
                 field_data.ast.span,

@@ -15,13 +15,13 @@ note:
   ┌─ create_contract_from_init.fe:3:16
   │
 3 │         return 42
-  │                ^^ u256: Value
+  │                ^^ u256
 
 note: 
   ┌─ create_contract_from_init.fe:8:5
   │
 8 │     foo_addr: address
-  │     ^^^^^^^^^^^^^^^^^ address
+  │     ^^^^^^^^^^^^^^^^^ SPtr<address>
 
 note: 
    ┌─ create_contract_from_init.fe:14:5
@@ -35,12 +35,12 @@ note:
    ┌─ create_contract_from_init.fe:15:16
    │
 15 │         return self.foo_addr
-   │                ^^^^ FooFactory: Value
+   │                ^^^^ FooFactory
 
 note: 
    ┌─ create_contract_from_init.fe:15:16
    │
 15 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^^^ SPtr<address>
 
 

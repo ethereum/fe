@@ -15,7 +15,7 @@ note:
   ┌─ revert.fe:7:5
   │
 7 │     my_other_error: OtherError
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:9:5
@@ -37,23 +37,23 @@ note:
    ┌─ revert.fe:14:9
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │         ^^^                        ^ u256: Value
+   │         ^^^                        ^ u256
    │         │                           
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ revert.fe:14:28
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │                            ^^^^^^^^^^       ^^^ u256: Value
+   │                            ^^^^^^^^^^       ^^^ u256
    │                            │                 
-   │                            address: Value
+   │                            address
 
 note: 
    ┌─ revert.fe:14:9
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ revert.fe:17:5
@@ -67,15 +67,15 @@ note:
    ┌─ revert.fe:18:32
    │
 18 │         revert OtherError(msg: 1, val: true)
-   │                                ^       ^^^^ bool: Value
+   │                                ^       ^^^^ bool
    │                                │        
-   │                                u256: Value
+   │                                u256
 
 note: 
    ┌─ revert.fe:18:16
    │
 18 │         revert OtherError(msg: 1, val: true)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
    ┌─ revert.fe:21:5
@@ -90,35 +90,35 @@ note:
    ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
+   │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool
    │         │                                     │        
-   │         │                                     u256: Value
-   │         OtherError: Storage { nonce: Some(0) }
+   │         │                                     u256
+   │         SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:22:31
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
+   │                ^^^^^^^^^^^^^^^^^^^ SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 

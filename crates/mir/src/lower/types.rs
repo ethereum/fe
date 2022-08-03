@@ -8,9 +8,13 @@ use crate::{
 
 use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
-pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeId {
+pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId {
     let ty_kind = match analyzer_ty.typ(db.upcast()) {
-        analyzer_types::Type::Base(base) => lower_base(&base),
+        analyzer_types::Type::SPtr(inner) => {
+            // TODO: lower to SPtr(lower_type(db, inner).
+            return lower_type(db, inner);
+        }
+        analyzer_types::Type::Base(base) => lower_base(base),
         analyzer_types::Type::Array(arr) => lower_array(db, &arr),
         analyzer_types::Type::Map(map) => lower_map(db, &map),
         analyzer_types::Type::Tuple(tup) => lower_tuple(db, &tup),
@@ -23,7 +27,7 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeI
         }
     };
 
-    intern_type(db, ty_kind, Some(*analyzer_ty))
+    intern_type(db, ty_kind, Some(analyzer_ty))
 }
 
 pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
@@ -55,7 +59,7 @@ pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeI
     intern_type(db, ty, None)
 }
 
-fn lower_base(base: &analyzer_types::Base) -> TypeKind {
+fn lower_base(base: analyzer_types::Base) -> TypeKind {
     use analyzer_types::{Base, Integer};
 
     match base {

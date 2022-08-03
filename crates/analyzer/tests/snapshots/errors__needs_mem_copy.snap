@@ -3,24 +3,31 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: location mismatch
-  ┌─ compile_errors/needs_mem_copy.fe:5:9
+error: value must be copied to memory
+  ┌─ compile_errors/needs_mem_copy.fe:5:20
   │
 5 │         my_array = self.my_sto_array
-  │         ^^^^^^^^   ----------------- this value is located in storage
-  │         │           
-  │         this variable is located in memory
+  │                    ^^^^^^^^^^^^^^^^^ this value is in storage
   │
   = Hint: values located in storage can be copied to memory using the `to_mem` function.
   = Example: `self.my_array.to_mem()`
 
 error: value must be copied to memory
-  ┌─ compile_errors/needs_mem_copy.fe:9:16
+  ┌─ compile_errors/needs_mem_copy.fe:6:34
   │
-9 │         return self.my_sto_array
-  │                ^^^^^^^^^^^^^^^^^ this value is in storage
+6 │         let x: Array<u256, 10> = self.my_sto_array
+  │                                  ^^^^^^^^^^^^^^^^^ this value is in storage
   │
   = Hint: values located in storage can be copied to memory using the `to_mem` function.
   = Example: `self.my_array.to_mem()`
+
+error: value must be copied to memory
+   ┌─ compile_errors/needs_mem_copy.fe:10:16
+   │
+10 │         return self.my_sto_array
+   │                ^^^^^^^^^^^^^^^^^ this value is in storage
+   │
+   = Hint: values located in storage can be copied to memory using the `to_mem` function.
+   = Example: `self.my_array.to_mem()`
 
 

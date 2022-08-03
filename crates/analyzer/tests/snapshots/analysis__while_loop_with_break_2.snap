@@ -25,40 +25,40 @@ note:
   ┌─ while_loop_with_break_2.fe:3:25
   │
 3 │         let val: u256 = 0
-  │                         ^ u256: Value
+  │                         ^ u256
 4 │         while val < 2 {
-  │               ^^^   ^ u256: Value
+  │               ^^^   ^ u256
   │               │      
-  │               u256: Value
+  │               u256
 
 note: 
   ┌─ while_loop_with_break_2.fe:4:15
   │
 4 │         while val < 2 {
-  │               ^^^^^^^ bool: Value
+  │               ^^^^^^^ bool
 5 │             val = val + 1
-  │             ^^^   ^^^   ^ u256: Value
+  │             ^^^   ^^^   ^ u256
   │             │     │      
-  │             │     u256: Value
-  │             u256: Value
+  │             │     u256
+  │             u256
 
 note: 
   ┌─ while_loop_with_break_2.fe:5:19
   │
 5 │             val = val + 1
-  │                   ^^^^^^^ u256: Value
+  │                   ^^^^^^^ u256
 6 │             if val == 1 {
-  │                ^^^    ^ u256: Value
+  │                ^^^    ^ u256
   │                │       
-  │                u256: Value
+  │                u256
 
 note: 
    ┌─ while_loop_with_break_2.fe:6:16
    │
  6 │             if val == 1 {
-   │                ^^^^^^^^ bool: Value
+   │                ^^^^^^^^ bool
    ·
 10 │         return val
-   │                ^^^ u256: Value
+   │                ^^^ u256
 
 

@@ -331,7 +331,7 @@ pub fn contract_field_type(
     field: ContractFieldId,
 ) -> Analysis<Result<types::TypeId, errors::TypeError>> {
     let mut scope = ItemScope::new(db, field.data(db).parent.module(db));
-    let typ = type_desc(&mut scope, &field.data(db).ast.kind.typ);
+    let typ = type_desc(&mut scope, &field.data(db).ast.kind.typ).map(|t| Type::SPtr(t).id(db));
 
     let node = &field.data(db).ast;
 

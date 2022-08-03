@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub fn mir_lowered_type(db: &dyn MirDb, analyzer_type: analyzer_types::TypeId) -> TypeId {
-    lower_type(db, &analyzer_type)
+    lower_type(db, analyzer_type)
 }
 
 pub fn mir_lowered_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {

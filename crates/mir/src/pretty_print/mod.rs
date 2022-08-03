@@ -13,4 +13,10 @@ pub trait PrettyPrint {
         store: &BodyDataStore,
         w: &mut W,
     ) -> fmt::Result;
+
+    fn pretty_string(&self, db: &dyn MirDb, store: &BodyDataStore) -> String {
+        let mut s = String::new();
+        self.pretty_print(db, store, &mut s).unwrap();
+        s
+    }
 }

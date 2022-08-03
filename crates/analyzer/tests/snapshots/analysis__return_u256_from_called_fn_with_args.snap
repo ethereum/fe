@@ -7,7 +7,7 @@ note:
   ┌─ return_u256_from_called_fn_with_args.fe:2:5
   │
 2 │     baz: Map<u256, u256>
-  │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
+  │     ^^^^^^^^^^^^^^^^^^^^ SPtr<Map<u256, u256>>
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:5
@@ -21,39 +21,39 @@ note:
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
   │
 5 │         return v1 + v2 + v3 + v4 + v5
-  │                ^^   ^^ u256: Value
+  │                ^^   ^^ u256
   │                │     
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
   │
 5 │         return v1 + v2 + v3 + v4 + v5
-  │                ^^^^^^^   ^^ u256: Value
+  │                ^^^^^^^   ^^ u256
   │                │          
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
   │
 5 │         return v1 + v2 + v3 + v4 + v5
-  │                ^^^^^^^^^^^^   ^^ u256: Value
+  │                ^^^^^^^^^^^^   ^^ u256
   │                │               
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
   │
 5 │         return v1 + v2 + v3 + v4 + v5
-  │                ^^^^^^^^^^^^^^^^^   ^^ u256: Value
+  │                ^^^^^^^^^^^^^^^^^   ^^ u256
   │                │                    
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
   │
 5 │         return v1 + v2 + v3 + v4 + v5
-  │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:8:5
@@ -67,7 +67,7 @@ note:
   ┌─ return_u256_from_called_fn_with_args.fe:9:16
   │
 9 │         return 100
-  │                ^^^ u256: Value
+  │                ^^^ u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:12:5
@@ -82,57 +82,57 @@ note:
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
    │
 13 │         self.baz[0] = 43
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
    │
 13 │         self.baz[0] = 43
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Map<u256, u256>: Storage { nonce: Some(0) }
+   │         SPtr<Map<u256, u256>>
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
    │
 13 │         self.baz[0] = 43
-   │         ^^^^^^^^^^^   ^^ u256: Value
+   │         ^^^^^^^^^^^   ^^ u256
    │         │              
-   │         u256: Storage { nonce: None }
+   │         SPtr<u256>
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                    ^  ^  ^^^^^  ^^   ^^ u256: Value
+   │                    ^  ^  ^^^^^  ^^   ^^ u256
    │                    │  │  │      │     
-   │                    │  │  │      u256: Value
-   │                    │  │  u256: Value
-   │                    │  u256: Value
-   │                    u256: Value
+   │                    │  │  │      u256
+   │                    │  │  u256
+   │                    │  u256
+   │                    u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:33
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                 ^^^^^^^  ^^^^ Foo: Value
+   │                                 ^^^^^^^  ^^^^ Foo
    │                                 │         
-   │                                 u256: Value
+   │                                 u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:42
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                          ^^^^^^^^ ^ u256: Value
+   │                                          ^^^^^^^^ ^ u256
    │                                          │         
-   │                                          Map<u256, u256>: Storage { nonce: Some(0) }
+   │                                          SPtr<Map<u256, u256>>
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:42
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                          ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+   │                                          ^^^^^^^^^^^ SPtr<u256>
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:16
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

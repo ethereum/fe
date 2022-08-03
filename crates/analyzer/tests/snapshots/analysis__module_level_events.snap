@@ -25,17 +25,17 @@ note:
   ┌─ module_level_events.fe:9:23
   │
 9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-  │                       ^^^          ^^^ Context: Memory
+  │                       ^^^          ^^^ Context
   │                       │             
-  │                       Context: Memory
+  │                       Context
 
 note: 
   ┌─ module_level_events.fe:9:36
   │
 9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-  │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
+  │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256
   │                                    │                           │    
-  │                                    │                           address: Value
-  │                                    address: Value
+  │                                    │                           address
+  │                                    address
 
 

@@ -1,8 +1,9 @@
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::display::Displayable;
-use crate::errors::{FatalError, TypeError};
+use crate::errors::{self, FatalError, TypeCoercionError, TypeError};
 use crate::namespace::types::{EventField, FunctionParam, Generic, Type, TypeId};
-use crate::traversal::expressions::assignable_expr;
+use crate::traversal::expressions;
+use crate::traversal::types::try_coerce_type;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
@@ -151,7 +152,7 @@ pub fn validate_named_args(
         }
 
         let param_type = param.typ()?;
-        let val_attrs = assignable_expr(context, &arg.kind.value, Some(param_type))?;
+        let val_attrs = expressions::expr(context, &arg.kind.value, Some(param_type))?;
         if !validate_arg_type(context, arg, val_attrs.typ, param_type) {
             let msg = if let Some(label) = param.label() {
                 format!("incorrect type for `{}` argument `{}`", name, label)
@@ -195,6 +196,20 @@ fn validate_arg_type(
         }
         true
     } else {
-        arg_type == param_type
+        match try_coerce_type(context.db(), arg_type, param_type) {
+            Err(TypeCoercionError::Incompatible) => false,
+            Err(TypeCoercionError::RequiresToMem) => {
+                context.add_diagnostic(errors::to_mem_error(arg.span));
+                true
+            }
+            Err(TypeCoercionError::SelfContractType) => {
+                context.add_diagnostic(errors::self_contract_type_error(
+                    arg.span,
+                    &param_type.display(context.db()),
+                ));
+                true
+            }
+            Ok(()) => true,
+        }
     }
 }
