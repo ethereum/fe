@@ -47,7 +47,7 @@ contract Example {
     assert runner.run(Mac()) == 1001
     assert runner.run(Linux(counter: 10)) == 1015
 
-    # We are testing that we can satisfy a trait bound where the trait is defined in another module
+    // We are testing that we can satisfy a trait bound where the trait is defined in another module
     runner.dummy(Mac())
   }
 }
