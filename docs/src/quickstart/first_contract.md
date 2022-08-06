@@ -25,7 +25,7 @@ Here we're using a [`map`](../spec/type_system/types/map.md) to associate messag
 The messages will simply be a [`string`](../spec/type_system/types/string.md) of a maximum length of `100` written as `String<100>`.
 The addresses are represented by the builtin [`address`](../spec/type_system/types/address.md) type.
 
-Execute `./fe guest_book.fe` to compile the file. The compiler tells us that it compiled our contract and that it has put the artifacts into a subdirectory called `output`.
+Execute `./fe build guest_book.fe` to compile the file. The compiler tells us that it compiled our contract and that it has put the artifacts into a subdirectory called `output`.
 
 ```
 Compiled guest_book.fe. Outputs in `output`
@@ -74,7 +74,7 @@ Failed to write output to directory: `output`. Error: Directory 'output' is not 
 
 Oops, the compiler is telling us that the `output` directory is a non-empty directory and plays it safe by asking us if we are sure that we want to overwrite it. We have to use the `--overwrite` flag to allow the compiler to overwrite what is stored in the `output` directory.
 
-Let's try it again with `./fe guest_book.fe --overwrite`.
+Let's try it again with `./fe build guest_book.fe --overwrite`.
 
 This time it worked and we can also see that the `GuestBook_abi.json` has become slightly more interesting.
 
