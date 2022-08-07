@@ -85,7 +85,7 @@ impl TypeId {
         self.typ(db).is_base()
     }
     pub fn is_zero_size(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_zero_size(db)
+        self.typ(db).is_zero_size()
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
@@ -497,11 +497,9 @@ impl Type {
         false
     }
 
-    pub fn is_zero_size(&self, db: &dyn AnalyzerDb) -> bool {
+    pub fn is_zero_size(&self) -> bool {
         match &self {
             Type::Base(Base::Unit) => true,
-            Type::Contract(inner) => inner.fields(db).is_empty(),
-            Type::Struct(inner) => inner.fields(db).is_empty(),
             _ => false,
         }
     }
