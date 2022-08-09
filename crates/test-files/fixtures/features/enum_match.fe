@@ -28,7 +28,7 @@ contract Foo {
             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
                 return u256(x1) + y1
             }
-            _ => {
+            MyEnumNested::Nested(MyEnum::Unit | MyEnum::UnitTuple()) => {
                 return 0
             }
         }

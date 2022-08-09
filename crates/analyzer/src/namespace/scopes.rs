@@ -557,17 +557,17 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name, span) {
             Ok(Some(NamedThing::SelfValue { .. })) => {
-                self.error(
+                let err = self.error(
                     "`self` can't be used as a variable name",
                     span,
                     "expected a name, found keyword `self`",
                 );
-                Err(AlreadyDefined)
+                Err(AlreadyDefined::new(err))
             }
 
             Ok(Some(named_item)) => {
                 if named_item.is_builtin() {
-                    self.error(
+                    let err = self.error(
                         &format!(
                             "variable name conflicts with built-in {}",
                             named_item.item_kind_display_name(),
@@ -579,10 +579,10 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                             named_item.item_kind_display_name()
                         ),
                     );
-                    return Err(AlreadyDefined);
+                    Err(AlreadyDefined::new(err))
                 } else {
                     // It's (currently) an error to shadow a variable in a nested scope
-                    self.duplicate_name_error(
+                    let err = self.duplicate_name_error(
                         &format!("duplicate definition of variable `{}`", name),
                         name,
                         named_item
@@ -590,8 +590,8 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                             .expect("missing name_span of non-builtin"),
                         span,
                     );
+                    Err(AlreadyDefined::new(err))
                 }
-                Err(AlreadyDefined)
             }
             _ => {
                 self.variable_defs

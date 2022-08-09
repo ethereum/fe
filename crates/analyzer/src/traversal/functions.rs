@@ -15,6 +15,8 @@ use indexmap::map::Entry;
 use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
 
+use super::exhaustiveness;
+
 pub fn traverse_statements(
     scope: &mut BlockScope,
     body: &[Node<fe::FuncStmt>],
@@ -132,16 +134,18 @@ fn match_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<
             );
 
             // Do type check on pattern, then do analysis on arm body.
+            let mut err_in_pat_check = Ok(());
             for arm in arms {
                 let mut arm_scope = match_scope.new_child(BlockScopeType::MatchArm);
 
                 // Collect binds in the pattern.
-                let binds =
-                    if let Ok(binds) = match_pattern(&mut arm_scope, &arm.kind.pat, expr_type) {
-                        binds
-                    } else {
+                let binds = match match_pattern(&mut arm_scope, &arm.kind.pat, expr_type) {
+                    Ok(binds) => binds,
+                    Err(err) => {
+                        err_in_pat_check = Err(err);
                         continue;
-                    };
+                    }
+                };
 
                 // Introduce binds into arm body scope.
                 let mut is_add_var_ok = true;
@@ -158,9 +162,8 @@ fn match_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<
                 }
             }
 
-            // Check pattern matching anomalies.
-            // todo!()
-            Ok(())
+            err_in_pat_check?;
+            exhaustiveness::check_match_exhaustiveness(scope, arms, stmt.span, expr_type)
         }
         _ => unreachable!(),
     }

@@ -64,6 +64,12 @@ impl From<ConstEvalError> for FatalError {
     }
 }
 
+impl From<AlreadyDefined> for FatalError {
+    fn from(err: AlreadyDefined) -> Self {
+        Self(err.0)
+    }
+}
+
 /// Error indicating constant evaluation failed.
 ///
 /// This error emitted when
@@ -118,7 +124,13 @@ impl IncompleteItem {
 
 /// Error to be returned from APIs that should reject duplicate definitions
 #[derive(Debug)]
-pub struct AlreadyDefined;
+pub struct AlreadyDefined(DiagnosticVoucher);
+impl AlreadyDefined {
+    #[allow(clippy::new_without_default)]
+    pub fn new(voucher: DiagnosticVoucher) -> Self {
+        Self(voucher)
+    }
+}
 
 /// Error indicating that a value can not move between memory and storage
 #[derive(Debug)]

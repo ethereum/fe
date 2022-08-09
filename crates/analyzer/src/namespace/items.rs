@@ -224,7 +224,7 @@ impl Item {
                             node.span,
                             "not found",
                         )]),
-                    }
+                    };
                 }
             }
         }
@@ -1582,6 +1582,17 @@ impl EnumVariantKind {
             Self::Unit => "unit variant",
             Self::Tuple(..) => "tuple variant",
         }
+    }
+
+    pub fn field_len(&self) -> usize {
+        match self {
+            Self::Unit => 0,
+            Self::Tuple(elts) => elts.len(),
+        }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        matches!(self, Self::Unit)
     }
 }
 
