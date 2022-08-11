@@ -4,106 +4,106 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-   ┌─ strings.fe:5:9
-   │
- 5 │         s2: String<26>
-   │         ^^^^^^^^^^^^^^ String<26>
- 6 │         u: u256
-   │         ^^^^^^^ u256
- 7 │         s1: String<42>
-   │         ^^^^^^^^^^^^^^ String<42>
- 8 │         s3: String<100>
-   │         ^^^^^^^^^^^^^^^ String<100>
- 9 │         a: address
-   │         ^^^^^^^^^^ address
-10 │         s4: String<18>
-   │         ^^^^^^^^^^^^^^ String<18>
-11 │         s5: String<100>
-   │         ^^^^^^^^^^^^^^^ String<100>
+  ┌─ strings.fe:3:9
+  │
+3 │         s2: String<26>
+  │         ^^^^^^^^^^^^^^ String<26>
+4 │         u: u256
+  │         ^^^^^^^ u256
+5 │         s1: String<42>
+  │         ^^^^^^^^^^^^^^ String<42>
+6 │         s3: String<100>
+  │         ^^^^^^^^^^^^^^^ String<100>
+7 │         a: address
+  │         ^^^^^^^^^^ address
+8 │         s4: String<18>
+  │         ^^^^^^^^^^^^^^ String<18>
+9 │         s5: String<100>
+  │         ^^^^^^^^^^^^^^^ String<100>
 
 note: 
-   ┌─ strings.fe:18:5
+   ┌─ strings.fe:16:5
    │  
-18 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {
-19 │ │         return s2
-20 │ │     }
+16 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {
+17 │ │         return s2
+18 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: s1, typ: String<100> }, { label: None, name: s2, typ: String<100> }] -> String<100>
 
 note: 
-   ┌─ strings.fe:19:16
+   ┌─ strings.fe:17:16
    │
-19 │         return s2
+17 │         return s2
    │                ^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:22:5
+   ┌─ strings.fe:20:5
    │  
-22 │ ╭     pub fn return_static_string() -> String<43> {
-23 │ │         return "The quick brown fox jumps over the lazy dog"
-24 │ │     }
+20 │ ╭     pub fn return_static_string() -> String<43> {
+21 │ │         return "The quick brown fox jumps over the lazy dog"
+22 │ │     }
    │ ╰─────^ self: None, params: [] -> String<43>
 
 note: 
-   ┌─ strings.fe:23:16
+   ┌─ strings.fe:21:16
    │
-23 │         return "The quick brown fox jumps over the lazy dog"
+21 │         return "The quick brown fox jumps over the lazy dog"
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
 
 note: 
-   ┌─ strings.fe:26:5
+   ┌─ strings.fe:24:5
    │  
-26 │ ╭     pub fn return_casted_static_string() -> String<100> {
-27 │ │         return String<100>("foo")
-28 │ │     }
+24 │ ╭     pub fn return_casted_static_string() -> String<100> {
+25 │ │         return String<100>("foo")
+26 │ │     }
    │ ╰─────^ self: None, params: [] -> String<100>
 
 note: 
-   ┌─ strings.fe:27:28
+   ┌─ strings.fe:25:28
    │
-27 │         return String<100>("foo")
+25 │         return String<100>("foo")
    │                            ^^^^^ String<3>: Memory
 
 note: 
-   ┌─ strings.fe:27:16
+   ┌─ strings.fe:25:16
    │
-27 │         return String<100>("foo")
+25 │         return String<100>("foo")
    │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
-   ┌─ strings.fe:30:5
+   ┌─ strings.fe:28:5
    │  
-30 │ ╭     pub fn shorter_string_assign() {
-31 │ │         let s: String<18> = "fe"
-32 │ │     }
+28 │ ╭     pub fn shorter_string_assign() {
+29 │ │         let s: String<18> = "fe"
+30 │ │     }
    │ ╰─────^ self: None, params: [] -> ()
 
 note: 
-   ┌─ strings.fe:31:13
+   ┌─ strings.fe:29:13
    │
-31 │         let s: String<18> = "fe"
+29 │         let s: String<18> = "fe"
    │             ^ String<18>
 
 note: 
-   ┌─ strings.fe:31:29
+   ┌─ strings.fe:29:29
    │
-31 │         let s: String<18> = "fe"
+29 │         let s: String<18> = "fe"
    │                             ^^^^ String<18>: Memory
 
 note: 
-   ┌─ strings.fe:34:5
+   ┌─ strings.fe:32:5
    │  
-34 │ ╭     pub fn return_special_chars() -> String<18> {
-35 │ │         return "\n\"'\r\t
-36 │ │         foo\\"
-37 │ │     }
+32 │ ╭     pub fn return_special_chars() -> String<18> {
+33 │ │         return "\n\"'\r\t
+34 │ │         foo\\"
+35 │ │     }
    │ ╰─────^ self: None, params: [] -> String<18>
 
 note: 
-   ┌─ strings.fe:35:16
+   ┌─ strings.fe:33:16
    │  
-35 │           return "\n\"'\r\t
+33 │           return "\n\"'\r\t
    │ ╭────────────────^
-36 │ │         foo\\"
+34 │ │         foo\\"
    │ ╰──────────────^ String<18>: Memory
 
 

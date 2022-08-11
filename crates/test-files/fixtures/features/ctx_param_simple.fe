@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     pub fn bar(self, ctx: Context) -> u256 {
         return ctx.block_number()

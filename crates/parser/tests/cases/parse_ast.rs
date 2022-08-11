@@ -252,8 +252,6 @@ contract GuestBook {
 }"# }
 
 test_parse! { module_level_events, try_parse_module, r#"
-use std::context::Context
-
 event Transfer {
     idx sender: address
     idx receiver: address

@@ -28,7 +28,7 @@ contract Foo {
     }
 
     fn some_skip_condition() -> bool {
-        # some complex logic
+        // some complex logic
         return true
     }
 }
@@ -52,7 +52,7 @@ contract Foo {
     }
 
     fn some_skip_condition() -> bool {
-        # some complex logic
+        // some complex logic
         return true
     }
 }

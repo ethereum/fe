@@ -119,9 +119,9 @@ An _integer literal_ has one of four forms:
 Examples of integer literals of various forms:
 
 ```fe,ignore
-123                      # type u256
-0xff                     # type u256
-0o70                     # type u256
-0b1111_1111_1001_0000    # type u256
-0b1111_1111_1001_0000i64 # type u256
+123                      // type u256
+0xff                     // type u256
+0o70                     // type u256
+0b1111_1111_1001_0000    // type u256
+0b1111_1111_1001_0000i64 // type u256
 ```

@@ -1,5 +1,4 @@
 use std::evm::{balance, balance_of}
-use std::context::Context
 
 contract Foo {
     pub fn my_balance(self, ctx: Context) -> u256 {

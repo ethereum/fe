@@ -53,8 +53,6 @@ We don't need to do anything further yet with these files that the compiler prod
 Let's focus on the functionality of our world changing application and add a method to sign the guestbook.
 
 ```fe
-use std::context::Context
-
 contract GuestBook {
   messages: Map<address, String<100>>
 
@@ -101,8 +99,6 @@ Since our contract now has a public `sign` method the corresponding ABI has chan
 To make the guest book more useful we will also add a method `get_msg` to read entries from a given address.
 
 ```fe,ignore
-use std::context::Context
-
 contract GuestBook {
   messages: Map<address, String<100>>
 
@@ -137,8 +133,6 @@ When we try to return a reference type such as an array from the storage of the 
 The code should compile fine when we change it accordingly.
 
 ```fe
-use std::context::Context
-
 contract GuestBook {
   messages: Map<address, String<100>>
 

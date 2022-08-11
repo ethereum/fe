@@ -4,7 +4,6 @@ use bing::Bing as Bong
 use bing::get_42_backend
 use ding::{dang::Dang as Dung, dong}
 use bing::BingContract
-use std::context::Context
 
 contract Foo {
     pub fn get_my_baz() -> Baz {

@@ -1,7 +1,3 @@
-// Context is a struct provided by the standard library
-// that gives access to various features of the EVM
-use std::context::Context
-
 // The `contract` keyword defines a new contract type
 contract GuestBook {
     // Strings are generic over a constant number
@@ -13,6 +9,8 @@ contract GuestBook {
         book_msg: String<100>
     }
 
+    // Context is a struct provided by the standard library
+    // that gives access to various features of the EVM
     pub fn sign(self, ctx: Context, book_msg: String<100>) {
         // All storage access is explicit using `self.<some-key>`
         self.messages[ctx.msg_sender()] = book_msg

@@ -1,5 +1,4 @@
 use foo::{Foo, Bar, FooBar}
-use std::context::Context
 
 contract FooBarBing {
     pub fn get_bar() -> Bar {

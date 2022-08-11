@@ -4,23 +4,23 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ self_address.fe:4:5
+  ┌─ self_address.fe:2:5
   │  
-4 │ ╭     pub fn my_address(ctx: Context) -> address {
-5 │ │         return ctx.self_address()
-6 │ │     }
+2 │ ╭     pub fn my_address(ctx: Context) -> address {
+3 │ │         return ctx.self_address()
+4 │ │     }
   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
-  ┌─ self_address.fe:5:16
+  ┌─ self_address.fe:3:16
   │
-5 │         return ctx.self_address()
+3 │         return ctx.self_address()
   │                ^^^ Context: Memory
 
 note: 
-  ┌─ self_address.fe:5:16
+  ┌─ self_address.fe:3:16
   │
-5 │         return ctx.self_address()
+3 │         return ctx.self_address()
   │                ^^^^^^^^^^^^^^^^^^ address: Value
 
 

@@ -219,10 +219,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                                 "Example: `pub fn foo(ctx: Context, ...)`",
                             ),
                         ],
-                        vec![
-                            "Note: import context with `use std::context::Context`".into(),
-                            "Example: emit MyEvent(ctx, ...)".into(),
-                        ],
+                        vec!["Example: emit MyEvent(ctx, ...)".into()],
                     );
                 }
             }

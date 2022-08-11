@@ -28,8 +28,6 @@
 An example of a `contract`:
 
 ```fe
-use std::context::Context
-
 contract GuestBook {
     messages: Map<address, String<100>>
 

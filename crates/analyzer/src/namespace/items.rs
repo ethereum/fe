@@ -258,8 +258,7 @@ impl Item {
     }
 }
 
-// Placeholder; someday std::prelude will be a proper module.
-pub fn std_prelude_items() -> IndexMap<SmolStr, Item> {
+pub fn builtin_items() -> IndexMap<SmolStr, Item> {
     let mut items = indexmap! {
         SmolStr::new("bool") => Item::Type(TypeDef::Primitive(types::Base::Bool)),
         SmolStr::new("address") => Item::Type(TypeDef::Primitive(types::Base::Address)),
@@ -689,7 +688,7 @@ impl ModuleId {
             .external_ingots(db)
             .iter()
             .map(|(name, ingot)| (name.clone(), Item::Ingot(*ingot)))
-            .chain(std_prelude_items())
+            .chain(builtin_items())
             .collect::<IndexMap<_, _>>();
 
         if ingot.data(db).mode != IngotMode::StandaloneModule {

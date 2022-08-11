@@ -1,5 +1,3 @@
-use std::context::Context
-
 event HelloWorld {
     message: String<26>
 }

@@ -1,5 +1,3 @@
-use std::context::Context
-
 event Transfer {
     idx sender: address
     idx receiver: address

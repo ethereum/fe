@@ -10,8 +10,6 @@ attribute functions `create` or `create2`.
 Example:
 
 ```fe
-use std::context::Context
-
 contract Foo {
     pub fn get_my_num() -> u256 {
         return 42
@@ -20,7 +18,7 @@ contract Foo {
 
 contract FooFactory {
     pub fn create2_foo(ctx: Context) -> address {
-        # `0` is the value being sent and `52` is the address salt
+        // `0` is the value being sent and `52` is the address salt
         let foo: Foo = Foo.create2(ctx, 0, 52)
         return address(foo)
     }

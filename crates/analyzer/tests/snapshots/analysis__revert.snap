@@ -4,121 +4,121 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ revert.fe:4:5
+  ┌─ revert.fe:2:5
   │
-4 │     pub msg: u256
+2 │     pub msg: u256
   │     ^^^^^^^^^^^^^ u256
-5 │     pub val: bool
+3 │     pub val: bool
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ revert.fe:9:5
+  ┌─ revert.fe:7:5
   │
-9 │     my_other_error: OtherError
+7 │     my_other_error: OtherError
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
-   ┌─ revert.fe:11:5
+   ┌─ revert.fe:9:5
    │  
-11 │ ╭     pub fn bar() -> u256 {
-12 │ │         revert
-13 │ │     }
+ 9 │ ╭     pub fn bar() -> u256 {
+10 │ │         revert
+11 │ │     }
    │ ╰─────^ self: None, params: [] -> u256
 
 note: 
-   ┌─ revert.fe:15:5
+   ┌─ revert.fe:13:5
    │  
-15 │ ╭     pub fn revert_custom_error(ctx: Context) {
-16 │ │         ctx.send_value(to: address(0), wei: 100)
-17 │ │     }
+13 │ ╭     pub fn revert_custom_error(ctx: Context) {
+14 │ │         ctx.send_value(to: address(0), wei: 100)
+15 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ revert.fe:16:9
+   ┌─ revert.fe:14:9
    │
-16 │         ctx.send_value(to: address(0), wei: 100)
+14 │         ctx.send_value(to: address(0), wei: 100)
    │         ^^^                        ^ u256: Value
    │         │                           
    │         Context: Memory
 
 note: 
-   ┌─ revert.fe:16:28
+   ┌─ revert.fe:14:28
    │
-16 │         ctx.send_value(to: address(0), wei: 100)
+14 │         ctx.send_value(to: address(0), wei: 100)
    │                            ^^^^^^^^^^       ^^^ u256: Value
    │                            │                 
    │                            address: Value
 
 note: 
-   ┌─ revert.fe:16:9
+   ┌─ revert.fe:14:9
    │
-16 │         ctx.send_value(to: address(0), wei: 100)
+14 │         ctx.send_value(to: address(0), wei: 100)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
-   ┌─ revert.fe:19:5
+   ┌─ revert.fe:17:5
    │  
-19 │ ╭     pub fn revert_other_error() {
-20 │ │         revert OtherError(msg: 1, val: true)
-21 │ │     }
+17 │ ╭     pub fn revert_other_error() {
+18 │ │         revert OtherError(msg: 1, val: true)
+19 │ │     }
    │ ╰─────^ self: None, params: [] -> ()
 
 note: 
-   ┌─ revert.fe:20:32
+   ┌─ revert.fe:18:32
    │
-20 │         revert OtherError(msg: 1, val: true)
+18 │         revert OtherError(msg: 1, val: true)
    │                                ^       ^^^^ bool: Value
    │                                │        
    │                                u256: Value
 
 note: 
-   ┌─ revert.fe:20:16
+   ┌─ revert.fe:18:16
    │
-20 │         revert OtherError(msg: 1, val: true)
+18 │         revert OtherError(msg: 1, val: true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
 
 note: 
-   ┌─ revert.fe:23:5
+   ┌─ revert.fe:21:5
    │  
-23 │ ╭     pub fn revert_other_error_from_sto(self) {
-24 │ │         self.my_other_error = OtherError(msg: 1, val: true)
-25 │ │         revert self.my_other_error.to_mem()
-26 │ │     }
+21 │ ╭     pub fn revert_other_error_from_sto(self) {
+22 │ │         self.my_other_error = OtherError(msg: 1, val: true)
+23 │ │         revert self.my_other_error.to_mem()
+24 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
 note: 
-   ┌─ revert.fe:24:9
+   ┌─ revert.fe:22:9
    │
-24 │         self.my_other_error = OtherError(msg: 1, val: true)
+22 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:24:9
+   ┌─ revert.fe:22:9
    │
-24 │         self.my_other_error = OtherError(msg: 1, val: true)
+22 │         self.my_other_error = OtherError(msg: 1, val: true)
    │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
    │         │                                     │        
    │         │                                     u256: Value
    │         OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:24:31
+   ┌─ revert.fe:22:31
    │
-24 │         self.my_other_error = OtherError(msg: 1, val: true)
+22 │         self.my_other_error = OtherError(msg: 1, val: true)
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
-25 │         revert self.my_other_error.to_mem()
+23 │         revert self.my_other_error.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ revert.fe:25:16
+   ┌─ revert.fe:23:16
    │
-25 │         revert self.my_other_error.to_mem()
+23 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ revert.fe:25:16
+   ┌─ revert.fe:23:16
    │
-25 │         revert self.my_other_error.to_mem()
+23 │         revert self.my_other_error.to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
 
 

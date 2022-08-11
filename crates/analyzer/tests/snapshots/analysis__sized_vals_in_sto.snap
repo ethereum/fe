@@ -4,211 +4,211 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ sized_vals_in_sto.fe:4:5
+  ┌─ sized_vals_in_sto.fe:2:5
   │
-4 │     num: u256
+2 │     num: u256
   │     ^^^^^^^^^ u256
-5 │     nums: Array<u256, 42>
+3 │     nums: Array<u256, 42>
   │     ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-6 │     str: String<26>
+4 │     str: String<26>
   │     ^^^^^^^^^^^^^^^ String<26>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:9:9
-   │
- 9 │         num: u256
-   │         ^^^^^^^^^ u256
-10 │         nums: Array<u256, 42>
-   │         ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-11 │         str: String<26>
-   │         ^^^^^^^^^^^^^^^ String<26>
+  ┌─ sized_vals_in_sto.fe:7:9
+  │
+7 │         num: u256
+  │         ^^^^^^^^^ u256
+8 │         nums: Array<u256, 42>
+  │         ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
+9 │         str: String<26>
+  │         ^^^^^^^^^^^^^^^ String<26>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:14:5
+   ┌─ sized_vals_in_sto.fe:12:5
    │  
-14 │ ╭     pub fn write_num(self, x: u256) {
-15 │ │         self.num = x
-16 │ │     }
+12 │ ╭     pub fn write_num(self, x: u256) {
+13 │ │         self.num = x
+14 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u256 }] -> ()
 
 note: 
-   ┌─ sized_vals_in_sto.fe:15:9
+   ┌─ sized_vals_in_sto.fe:13:9
    │
-15 │         self.num = x
+13 │         self.num = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:15:9
+   ┌─ sized_vals_in_sto.fe:13:9
    │
-15 │         self.num = x
+13 │         self.num = x
    │         ^^^^^^^^   ^ u256: Value
    │         │           
    │         u256: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:18:5
+   ┌─ sized_vals_in_sto.fe:16:5
    │  
-18 │ ╭     pub fn read_num(self) -> u256 {
-19 │ │         return self.num
-20 │ │     }
+16 │ ╭     pub fn read_num(self) -> u256 {
+17 │ │         return self.num
+18 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
-   ┌─ sized_vals_in_sto.fe:19:16
+   ┌─ sized_vals_in_sto.fe:17:16
    │
-19 │         return self.num
+17 │         return self.num
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:19:16
+   ┌─ sized_vals_in_sto.fe:17:16
    │
-19 │         return self.num
+17 │         return self.num
    │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:22:5
+   ┌─ sized_vals_in_sto.fe:20:5
    │  
-22 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
-23 │ │         self.nums = x
-24 │ │     }
+20 │ ╭     pub fn write_nums(self, x: Array<u256, 42>) {
+21 │ │         self.nums = x
+22 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: Array<u256, 42> }] -> ()
 
 note: 
-   ┌─ sized_vals_in_sto.fe:23:9
+   ┌─ sized_vals_in_sto.fe:21:9
    │
-23 │         self.nums = x
+21 │         self.nums = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:23:9
+   ┌─ sized_vals_in_sto.fe:21:9
    │
-23 │         self.nums = x
+21 │         self.nums = x
    │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
    │         │            
    │         Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:26:5
+   ┌─ sized_vals_in_sto.fe:24:5
    │  
-26 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
-27 │ │         return self.nums.to_mem()
-28 │ │     }
+24 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
+25 │ │         return self.nums.to_mem()
+26 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> Array<u256, 42>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:25:16
    │
-27 │         return self.nums.to_mem()
+25 │         return self.nums.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:25:16
    │
-27 │         return self.nums.to_mem()
+25 │         return self.nums.to_mem()
    │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:27:16
+   ┌─ sized_vals_in_sto.fe:25:16
    │
-27 │         return self.nums.to_mem()
+25 │         return self.nums.to_mem()
    │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:30:5
+   ┌─ sized_vals_in_sto.fe:28:5
    │  
-30 │ ╭     pub fn write_str(self, x: String<26>) {
-31 │ │         self.str = x
-32 │ │     }
+28 │ ╭     pub fn write_str(self, x: String<26>) {
+29 │ │         self.str = x
+30 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: String<26> }] -> ()
 
 note: 
-   ┌─ sized_vals_in_sto.fe:31:9
+   ┌─ sized_vals_in_sto.fe:29:9
    │
-31 │         self.str = x
+29 │         self.str = x
    │         ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:31:9
+   ┌─ sized_vals_in_sto.fe:29:9
    │
-31 │         self.str = x
+29 │         self.str = x
    │         ^^^^^^^^   ^ String<26>: Memory
    │         │           
    │         String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:34:5
+   ┌─ sized_vals_in_sto.fe:32:5
    │  
-34 │ ╭     pub fn read_str(self) -> String<26> {
-35 │ │         return self.str.to_mem()
-36 │ │     }
+32 │ ╭     pub fn read_str(self) -> String<26> {
+33 │ │         return self.str.to_mem()
+34 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> String<26>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:35:16
+   ┌─ sized_vals_in_sto.fe:33:16
    │
-35 │         return self.str.to_mem()
+33 │         return self.str.to_mem()
    │                ^^^^ Foo: Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:35:16
+   ┌─ sized_vals_in_sto.fe:33:16
    │
-35 │         return self.str.to_mem()
+33 │         return self.str.to_mem()
    │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:35:16
+   ┌─ sized_vals_in_sto.fe:33:16
    │
-35 │         return self.str.to_mem()
+33 │         return self.str.to_mem()
    │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:38:5
+   ┌─ sized_vals_in_sto.fe:36:5
    │  
-38 │ ╭     pub fn emit_event(self, ctx: Context) {
-39 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-40 │ │     }
+36 │ ╭     pub fn emit_event(self, ctx: Context) {
+37 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+38 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:22
+   ┌─ sized_vals_in_sto.fe:37:22
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                      ^^^       ^^^^ Foo: Value
    │                      │          
    │                      Context: Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:32
+   ┌─ sized_vals_in_sto.fe:37:32
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                ^^^^^^^^        ^^^^ Foo: Value
    │                                │                
    │                                u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:48
+   ┌─ sized_vals_in_sto.fe:37:48
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:48
+   ┌─ sized_vals_in_sto.fe:37:48
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                                ^^^^^^^^^^^^^^^^^^       ^^^^ Foo: Value
    │                                                │                         
    │                                                Array<u256, 42>: Storage { nonce: Some(1) } => Memory
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:73
+   ┌─ sized_vals_in_sto.fe:37:73
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                                                         ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ sized_vals_in_sto.fe:39:73
+   ┌─ sized_vals_in_sto.fe:37:73
    │
-39 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                                                         ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 

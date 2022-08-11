@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: type mismatch
-  ┌─ compile_errors/ctx_missing_load.fe:9:13
+  ┌─ compile_errors/ctx_missing_load.fe:7:13
   │
-9 │         Foo(0)
+7 │         Foo(0)
   │             ^ this has type `u256`; expected type `address`
 
 

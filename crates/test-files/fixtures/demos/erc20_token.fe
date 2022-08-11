@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract ERC20 {
     _balances: Map<address, u256>
     _allowances: Map<address, Map<address, u256>>

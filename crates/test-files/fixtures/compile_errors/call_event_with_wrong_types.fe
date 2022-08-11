@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     event MyEvent {
         val_1: String<5>

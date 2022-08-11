@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     my_sto_tuple: (u256, i32)
 

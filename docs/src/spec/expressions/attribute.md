@@ -26,7 +26,7 @@ contract Foo {
     }
 
     pub fn baz(some_point: Point, some_tuple: (bool, u256)) {
-        # Different examples of attribute expressions
+        // Different examples of attribute expressions
         let bool_1: bool = some_tuple.item0
         let x1: u256 = some_point.x
         let point1: u256 = get_point().x

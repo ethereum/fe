@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     pub fn bar() {
         let fake_ctx: Context = Context()

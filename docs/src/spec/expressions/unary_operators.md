@@ -12,9 +12,9 @@ Example:
 
 ```fe
 fn f() {
-  let x: bool = not true  # false
+  let x: bool = not true  // false
   let y: i256 = -1
-  let z: i256 = i256(~1)  # -2
+  let z: i256 = i256(~1)  // -2
 }
 ```
 

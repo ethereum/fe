@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     pub fn bar(ctx: Context) -> address {
         let foo: Foo = Foo.create2(ctx, 2, 0)

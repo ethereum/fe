@@ -3,8 +3,6 @@ source: crates/parser/tests/cases/print_ast.rs
 expression: "parse_and_print(\"demos/erc20_token.fe\", src)"
 
 ---
-use std::context::Context
-
 contract ERC20 {
     _balances: Map<address, u256>
     _allowances: Map<address, Map<address, u256>>

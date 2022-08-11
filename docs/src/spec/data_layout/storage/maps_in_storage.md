@@ -7,8 +7,8 @@ Example:
 
 ```fe
 contract Foo {
-  bar: Map<address, u256> # bar is assigned a static nonce by the compiler
-  baz: Map<address, Map<address, u256>> # baz is assigned a static nonce by the compiler
+  bar: Map<address, u256> // bar is assigned a static nonce by the compiler
+  baz: Map<address, Map<address, u256>> // baz is assigned a static nonce by the compiler
 }
 ```
 

@@ -17,12 +17,12 @@ struct Rectangle {
 }
 
 contract Example {
-  # A Rectangle in storage
+  // A Rectangle in storage
   area: Rectangle
 
   fn do_something() {
     let length: u256 = 20
-    # A rectangle in memory
+    // A rectangle in memory
     let square: Rectangle = Rectangle(width: 10, length)
   }
 }

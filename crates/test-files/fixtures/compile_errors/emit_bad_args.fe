@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Bar {
     event Foo {
         idx x: address

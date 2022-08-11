@@ -10,9 +10,9 @@ A _literal expression_ consists of one of the [literal][LITERAL] forms described
 It directly describes a number, string or boolean value.
 
 ```fe,ignore
-"hello"   # string type
-5         # integer type
-true      # boolean type
+"hello"   // string type
+5         // integer type
+true      // boolean type
 ```
 
 [LITERAL]: ../lexical_structure/tokens.md#literals

@@ -4,180 +4,180 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ ownable.fe:4:5
+  ┌─ ownable.fe:2:5
   │
-4 │     _owner: address
+2 │     _owner: address
   │     ^^^^^^^^^^^^^^^ address
 
 note: 
-  ┌─ ownable.fe:7:9
+  ┌─ ownable.fe:5:9
   │
-7 │         idx previousOwner: address
+5 │         idx previousOwner: address
   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ address
-8 │         idx newOwner: address
+6 │         idx newOwner: address
   │         ^^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ ownable.fe:15:5
+   ┌─ ownable.fe:13:5
    │  
-15 │ ╭     pub fn owner(self) -> address {
-16 │ │         return self._owner
-17 │ │     }
+13 │ ╭     pub fn owner(self) -> address {
+14 │ │         return self._owner
+15 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
-   ┌─ ownable.fe:16:16
+   ┌─ ownable.fe:14:16
    │
-16 │         return self._owner
+14 │         return self._owner
    │                ^^^^ Ownable: Value
 
 note: 
-   ┌─ ownable.fe:16:16
+   ┌─ ownable.fe:14:16
    │
-16 │         return self._owner
+14 │         return self._owner
    │                ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ ownable.fe:19:5
+   ┌─ ownable.fe:17:5
    │  
-19 │ ╭     pub fn renounceOwnership(self, ctx: Context) {
-20 │ │         assert ctx.msg_sender() == self._owner
-21 │ │         self._owner = address(0)
-22 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
-23 │ │     }
+17 │ ╭     pub fn renounceOwnership(self, ctx: Context) {
+18 │ │         assert ctx.msg_sender() == self._owner
+19 │ │         self._owner = address(0)
+20 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+21 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ ownable.fe:20:16
+   ┌─ ownable.fe:18:16
    │
-20 │         assert ctx.msg_sender() == self._owner
+18 │         assert ctx.msg_sender() == self._owner
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ ownable.fe:20:16
+   ┌─ ownable.fe:18:16
    │
-20 │         assert ctx.msg_sender() == self._owner
+18 │         assert ctx.msg_sender() == self._owner
    │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
    │                │                    
    │                address: Value
 
 note: 
-   ┌─ ownable.fe:20:36
+   ┌─ ownable.fe:18:36
    │
-20 │         assert ctx.msg_sender() == self._owner
+18 │         assert ctx.msg_sender() == self._owner
    │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ ownable.fe:20:16
+   ┌─ ownable.fe:18:16
    │
-20 │         assert ctx.msg_sender() == self._owner
+18 │         assert ctx.msg_sender() == self._owner
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-21 │         self._owner = address(0)
+19 │         self._owner = address(0)
    │         ^^^^ Ownable: Value
 
 note: 
-   ┌─ ownable.fe:21:9
+   ┌─ ownable.fe:19:9
    │
-21 │         self._owner = address(0)
+19 │         self._owner = address(0)
    │         ^^^^^^^^^^^           ^ u256: Value
    │         │                      
    │         address: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ ownable.fe:21:23
+   ┌─ ownable.fe:19:23
    │
-21 │         self._owner = address(0)
+19 │         self._owner = address(0)
    │                       ^^^^^^^^^^ address: Value
-22 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
    │                                   ^^^                 ^^^ Context: Memory
    │                                   │                    
    │                                   Context: Memory
 
 note: 
-   ┌─ ownable.fe:22:55
+   ┌─ ownable.fe:20:55
    │
-22 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
    │                                                       ^^^^^^^^^^^^^^^^                    ^ u256: Value
    │                                                       │                                    
    │                                                       address: Value
 
 note: 
-   ┌─ ownable.fe:22:83
+   ┌─ ownable.fe:20:83
    │
-22 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
+20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
    │                                                                                   ^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ ownable.fe:25:5
+   ┌─ ownable.fe:23:5
    │  
-25 │ ╭     pub fn transferOwnership(self, ctx: Context, newOwner: address) {
-26 │ │         assert ctx.msg_sender() == self._owner
-27 │ │         assert newOwner != address(0)
-28 │ │         self._owner = newOwner
-29 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
-30 │ │     }
+23 │ ╭     pub fn transferOwnership(self, ctx: Context, newOwner: address) {
+24 │ │         assert ctx.msg_sender() == self._owner
+25 │ │         assert newOwner != address(0)
+26 │ │         self._owner = newOwner
+27 │ │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
+28 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: newOwner, typ: address }] -> ()
 
 note: 
-   ┌─ ownable.fe:26:16
+   ┌─ ownable.fe:24:16
    │
-26 │         assert ctx.msg_sender() == self._owner
+24 │         assert ctx.msg_sender() == self._owner
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ ownable.fe:26:16
+   ┌─ ownable.fe:24:16
    │
-26 │         assert ctx.msg_sender() == self._owner
+24 │         assert ctx.msg_sender() == self._owner
    │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
    │                │                    
    │                address: Value
 
 note: 
-   ┌─ ownable.fe:26:36
+   ┌─ ownable.fe:24:36
    │
-26 │         assert ctx.msg_sender() == self._owner
+24 │         assert ctx.msg_sender() == self._owner
    │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ ownable.fe:26:16
+   ┌─ ownable.fe:24:16
    │
-26 │         assert ctx.msg_sender() == self._owner
+24 │         assert ctx.msg_sender() == self._owner
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-27 │         assert newOwner != address(0)
+25 │         assert newOwner != address(0)
    │                ^^^^^^^^            ^ u256: Value
    │                │                    
    │                address: Value
 
 note: 
-   ┌─ ownable.fe:27:28
+   ┌─ ownable.fe:25:28
    │
-27 │         assert newOwner != address(0)
+25 │         assert newOwner != address(0)
    │                            ^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ ownable.fe:27:16
+   ┌─ ownable.fe:25:16
    │
-27 │         assert newOwner != address(0)
+25 │         assert newOwner != address(0)
    │                ^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-28 │         self._owner = newOwner
+26 │         self._owner = newOwner
    │         ^^^^ Ownable: Value
 
 note: 
-   ┌─ ownable.fe:28:9
+   ┌─ ownable.fe:26:9
    │
-28 │         self._owner = newOwner
+26 │         self._owner = newOwner
    │         ^^^^^^^^^^^   ^^^^^^^^ address: Value
    │         │              
    │         address: Storage { nonce: Some(0) }
-29 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
+27 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
    │                                   ^^^                 ^^^ Context: Memory
    │                                   │                    
    │                                   Context: Memory
 
 note: 
-   ┌─ ownable.fe:29:55
+   ┌─ ownable.fe:27:55
    │
-29 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
+27 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
    │                                                       ^^^^^^^^^^^^^^^^  ^^^^^^^^ address: Value
    │                                                       │                  
    │                                                       address: Value

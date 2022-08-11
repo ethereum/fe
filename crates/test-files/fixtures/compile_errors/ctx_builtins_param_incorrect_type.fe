@@ -1,5 +1,3 @@
-use std::context::Context
-
 event WorldMessage {
     message: String<42>
 }

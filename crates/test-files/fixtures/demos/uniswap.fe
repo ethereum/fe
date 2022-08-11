@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract ERC20 {
     pub fn balanceOf(self, _ account: address) -> u256 {
         return 0

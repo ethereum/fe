@@ -4,12 +4,12 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: the function `do_private_thingz` on `type Foo` is private
-   ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:13:25
+   ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:11:25
    │
- 6 │     fn do_private_thingz(self) {
+ 4 │     fn do_private_thingz(self) {
    │        ----------------- `do_private_thingz` is defined here
    ·
-13 │         Foo(address(0)).do_private_thingz()
+11 │         Foo(address(0)).do_private_thingz()
    │                         ^^^^^^^^^^^^^^^^^ this function is not `pub`
    │
    = `do_private_thingz` can only be called from other functions within `Foo`

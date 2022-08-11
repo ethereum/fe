@@ -16,7 +16,7 @@ contract Foo {
         if not self.in_whitelist(addr: to) {
             revert
         }
-        # more logic here
+        // more logic here
     }
 
     fn in_whitelist(self, addr: address) -> bool {
@@ -37,7 +37,7 @@ contract Foo {
         if not self.in_whitelist(addr: to) {
             revert ApplicationError(code: 5)
         }
-        # more logic here
+        // more logic here
     }
 
     fn in_whitelist(self, addr: address) -> bool {

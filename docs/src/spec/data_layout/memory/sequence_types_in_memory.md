@@ -7,7 +7,7 @@ Example:
 
 ```fe
 fn f() {
-    let foo: Array<u256, 100> # foo is a pointer that references 100 * 256 bits in memory.
+    let foo: Array<u256, 100> = [0; 100] // foo is a pointer that references 100 * 256 bits in memory.
 }
 ```
 

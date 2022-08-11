@@ -4,38 +4,38 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ module_level_events.fe:4:5
+  ┌─ module_level_events.fe:2:5
   │
-4 │     idx sender: address
+2 │     idx sender: address
   │     ^^^^^^^^^^^^^^^^^^^ address
-5 │     idx receiver: address
+3 │     idx receiver: address
   │     ^^^^^^^^^^^^^^^^^^^^^ address
-6 │     value: u256
+4 │     value: u256
   │     ^^^^^^^^^^^ u256
 
 note: 
-   ┌─ module_level_events.fe:10:5
+   ┌─ module_level_events.fe:8:5
    │  
-10 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
-11 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-12 │ │     }
+ 8 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
+ 9 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+10 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
-   ┌─ module_level_events.fe:11:23
-   │
-11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-   │                       ^^^          ^^^ Context: Memory
-   │                       │             
-   │                       Context: Memory
+  ┌─ module_level_events.fe:9:23
+  │
+9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+  │                       ^^^          ^^^ Context: Memory
+  │                       │             
+  │                       Context: Memory
 
 note: 
-   ┌─ module_level_events.fe:11:36
-   │
-11 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-   │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
-   │                                    │                           │    
-   │                                    │                           address: Value
-   │                                    address: Value
+  ┌─ module_level_events.fe:9:36
+  │
+9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
+  │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
+  │                                    │                           │    
+  │                                    │                           address: Value
+  │                                    address: Value
 
 

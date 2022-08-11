@@ -56,8 +56,6 @@ Run `fe --help` to explore further options.
 The following is a simple contract implemented in Fe.
 
 ```rust
-use std::context::Context
-
 contract GuestBook {
     messages: Map<address, String<100>>
 

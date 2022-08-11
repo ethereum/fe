@@ -1,5 +1,3 @@
-use std::context::Context
-
 struct OtherError {
     pub msg: u256
     pub val: bool

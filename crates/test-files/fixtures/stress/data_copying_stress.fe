@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     my_string: String<42>
     my_other_string: String<42>

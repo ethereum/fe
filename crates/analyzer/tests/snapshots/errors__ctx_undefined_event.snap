@@ -3,18 +3,26 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: `Context` is not defined
-  ┌─ compile_errors/ctx_undefined_event.fe:7:9
+error: `YouWin` expects 2 arguments, but 1 was provided
+  ┌─ compile_errors/ctx_undefined_event.fe:7:14
   │
-6 │     pub fn bar() {
-  │            ---
-  │            │
-  │            Note: declare `ctx` in this function signature
-  │            Example: `pub fn foo(ctx: Context, ...)`
 7 │         emit YouWin(amount: 42)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^ `ctx` must be defined and passed into the event
+  │              ^^^^^^ ---------- supplied 1 argument
+  │              │       
+  │              expects 2 arguments
+
+error: argument label mismatch
+  ┌─ compile_errors/ctx_undefined_event.fe:7:21
   │
-  = Note: import context with `use std::context::Context`
-  = Example: emit MyEvent(ctx, ...)
+7 │         emit YouWin(amount: 42)
+  │                     ^^^^^^ expected `ctx`
+  │
+  = Note: arguments must be provided in order.
+
+error: incorrect type for `YouWin` argument `ctx`
+  ┌─ compile_errors/ctx_undefined_event.fe:7:29
+  │
+7 │         emit YouWin(amount: 42)
+  │                             ^^ this has type `u256`; expected type `Context`
 
 

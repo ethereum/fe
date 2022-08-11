@@ -13,11 +13,11 @@ Examples:
 
 ```fe
 contract Foo {
-  # An array in storage
+  // An array in storage
   bar: Array<u8, 10>
 
   fn do_something() {
-    # An array in memory
+    // An array in memory
     let values: Array<u256, 3> = [10, 100, 100]
   }
 }
