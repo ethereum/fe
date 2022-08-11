@@ -2,22 +2,82 @@
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 ---
-error: event field type must have a non-zero types
-  ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:8:12
-  │
-8 │     idx x: ()
-  │            ^^ this type can't be used as an event field
-
-error: event field type must have a non-zero types
-  ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:9:12
-  │
-9 │     idx y: EmptyStruct
-  │            ^^^^^^^^^^^ this type can't be used as an event field
-
-error: event field type must have a non-zero types
-   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:10:12
+error: feature not yet implemented: contract types aren't yet supported as struct fields
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:14:5
    │
-10 │     idx z: EmptyContract
-   │            ^^^^^^^^^^^^^ this type can't be used as an event field
+14 │     y: EmptyContract
+   │     ^^^^^^^^^^^^^^^^ not yet implemented
+
+error: recursive struct `Foo`
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:17:8
+   │
+17 │ struct Foo {
+   │        ^^^ struct `Foo` has infinite size due to recursive definition
+
+error: recursive struct `Baz`
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:21:8
+   │
+21 │ struct Baz {
+   │        ^^^ struct `Baz` has infinite size due to recursive definition
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:27:13
+   │
+27 │     idx a : ()
+   │             ^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:28:13
+   │
+28 │     idx b : EmptyContract 
+   │             ^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:29:13
+   │
+29 │     idx c : EmptyStruct
+   │             ^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:34:12
+   │
+34 │     idx b: ((), EmptyContract, EmptyStruct) 
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:35:12
+   │
+35 │     idx c: Array<EmptyStruct, 0>
+   │            ^^^^^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:39:12
+   │
+39 │     idx a: Array<(), 0>
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:40:12
+   │
+40 │     idx b: Array<UnEmptyStruct, 0>
+   │            ^^^^^^^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:44:12
+   │
+44 │     idx a: Array<(), 0>
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:45:12
+   │
+45 │     idx b: AnotherEmpty
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:52:12
+   │
+52 │     idx f: Foo
+   │            ^^^ this type can't be used as an event field
 
 

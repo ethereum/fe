@@ -1,12 +1,53 @@
-contract EmptyContract {
+struct EmptyStruct {}
+contract EmptyContract {}
+
+struct UnEmptyStruct {
+    v: u32
 }
 
-struct EmptyStruct {
+contract UnEmptyContract {
+    u: u256
 }
 
-event Event {
-    idx x: ()
-    idx y: EmptyStruct
-    idx z: EmptyContract
-    v: ()
+struct AnotherEmpty {
+    x: EmptyStruct
+    y: EmptyContract
+}
+
+struct Foo {
+    x: Baz
+}
+
+struct Baz {
+    x: Foo
+}
+
+
+event FirstCase {
+    idx a : ()
+    idx b : EmptyContract 
+    idx c : EmptyStruct
+}
+
+event SecondCase {
+    idx a: u256 
+    idx b: ((), EmptyContract, EmptyStruct) 
+    idx c: Array<EmptyStruct, 0>
+}
+
+event ThirdCase {
+    idx a: Array<(), 0>
+    idx b: Array<UnEmptyStruct, 0>
+}
+
+event FifthCase {
+    idx a: Array<(), 0>
+    idx b: AnotherEmpty
+    idx c: Array<UnEmptyStruct, 1>
+}
+
+event SixthCase {
+    idx d: UnEmptyStruct
+    idx e: ((), UnEmptyStruct)
+    idx f: Foo
 }

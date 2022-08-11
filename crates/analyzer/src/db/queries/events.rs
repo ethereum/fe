@@ -41,7 +41,7 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
 
             let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ {
                 typ if typ.has_fixed_size(scope.db()) => {
-                    if *is_idx && typ.is_zero_size(scope.db()) {
+                    if *is_idx && typ.is_zero_sized(db) {
                         Err(TypeError::new(scope.error(
                             "event field type must have a non-zero types",
                             typ_node.span,

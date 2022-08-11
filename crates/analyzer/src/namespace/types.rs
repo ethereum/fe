@@ -84,8 +84,8 @@ impl TypeId {
     pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
         self.typ(db).is_base()
     }
-    pub fn is_zero_size(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_zero_size()
+    pub fn is_zero_sized(&self, db: &dyn AnalyzerDb) -> bool {
+        db.is_zero_sized(*self)
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
@@ -496,13 +496,7 @@ impl Type {
         }
         false
     }
-
-    pub fn is_zero_size(&self) -> bool {
-        match &self {
-            Type::Base(Base::Unit) => true,
-            _ => false,
-        }
-    }
+ 
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         Type::Base(Base::Bool)
