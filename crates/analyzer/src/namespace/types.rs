@@ -496,7 +496,7 @@ impl Type {
         }
         false
     }
- 
+
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         Type::Base(Base::Bool)

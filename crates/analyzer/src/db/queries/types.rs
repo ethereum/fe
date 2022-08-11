@@ -7,7 +7,7 @@ use crate::db::Analysis;
 use crate::errors::TypeError;
 use crate::namespace::items::{FunctionSigId, ImplId, TraitId, TypeAliasId};
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, TypeId, Array, Tuple, Type, FeString, Base};
+use crate::namespace::types::{self, Array, Base, FeString, Tuple, Type, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 
@@ -107,12 +107,7 @@ pub fn is_zero_sized(db: &dyn AnalyzerDb, ty: types::TypeId) -> bool {
     }
 }
 
-
 // because we already catch this error so this should be empty
-pub fn is_zero_sized_cycle(
-    _db: &dyn AnalyzerDb,
-    _cycle: &[String],
-    _ty: &types::TypeId,
-) -> bool {
+pub fn is_zero_sized_cycle(_db: &dyn AnalyzerDb, _cycle: &[String], _ty: &types::TypeId) -> bool {
     true
 }
