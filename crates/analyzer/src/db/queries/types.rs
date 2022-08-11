@@ -94,16 +94,7 @@ pub fn is_zero_sized(db: &dyn AnalyzerDb, ty: types::TypeId) -> bool {
             }
             true
         }
-        Type::Contract(contract_id) => {
-            for field_type_id in db.contract_all_fields(contract_id).iter() {
-                let field_type = db.contract_field_type(*field_type_id).value.unwrap();
-                if !(field_type).is_zero_sized(db) {
-                    return false;
-                }
-            }
-            true
-        }
-        Type::Generic(_) | Type::Map(_) | Type::SelfContract(_) => false,
+        Type::Generic(_) | Type::Map(_) | Type::SelfContract(_) | Type::Contract(_) => false,
     }
 }
 

@@ -1,17 +1,12 @@
 struct EmptyStruct {}
-contract EmptyContract {}
+contract Contract {}
 
 struct UnEmptyStruct {
     v: u32
 }
 
-contract UnEmptyContract {
-    u: u256
-}
-
 struct AnotherEmpty {
     x: EmptyStruct
-    y: EmptyContract
 }
 
 struct Foo {
@@ -25,13 +20,13 @@ struct Baz {
 
 event FirstCase {
     idx a : ()
-    idx b : EmptyContract 
+    idx b : Contract 
     idx c : EmptyStruct
 }
 
 event SecondCase {
     idx a: u256 
-    idx b: ((), EmptyContract, EmptyStruct) 
+    idx b: ((), EmptyStruct) 
     idx c: Array<EmptyStruct, 0>
 }
 
