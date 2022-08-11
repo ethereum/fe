@@ -76,32 +76,32 @@ pub fn is_zero_sized(db: &dyn AnalyzerDb, ty: types::TypeId) -> bool {
         Type::Base(base) => matches!(base, Base::Unit),
         Type::Array(Array { size, inner }) => size == 0 || inner.is_zero_sized(db),
         Type::Tuple(Tuple { items }) => {
-            for item in items.into_iter() {
+            for item in items.iter() {
                 if !db.is_zero_sized(*item) {
                     return false;
                 }
             }
-            return true;
+            true
         }
         Type::String(FeString { max_size }) => max_size == 0,
         Type::Struct(struct_id) => {
-            for field_type_id in db.struct_all_fields(struct_id).into_iter() {
+            for field_type_id in db.struct_all_fields(struct_id).iter() {
                 // assume all type is correct.
                 let field_type = db.struct_field_type(*field_type_id).value.unwrap();
                 if !(field_type).is_zero_sized(db) {
                     return false;
                 }
             }
-            return true;
+            true
         }
         Type::Contract(contract_id) => {
-            for field_type_id in db.contract_all_fields(contract_id).into_iter() {
+            for field_type_id in db.contract_all_fields(contract_id).iter() {
                 let field_type = db.contract_field_type(*field_type_id).value.unwrap();
                 if !(field_type).is_zero_sized(db) {
                     return false;
                 }
             }
-            return true;
+            true
         }
         Type::Generic(_) | Type::Map(_) | Type::SelfContract(_) => false,
     }
