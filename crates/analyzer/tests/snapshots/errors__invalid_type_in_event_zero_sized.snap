@@ -1,0 +1,77 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: recursive struct `Foo`
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:12:8
+   │
+12 │ struct Foo {
+   │        ^^^ struct `Foo` has infinite size due to recursive definition
+
+error: recursive struct `Baz`
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:16:8
+   │
+16 │ struct Baz {
+   │        ^^^ struct `Baz` has infinite size due to recursive definition
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:22:13
+   │
+22 │     idx a : ()
+   │             ^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:24:13
+   │
+24 │     idx c : EmptyStruct
+   │             ^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:29:12
+   │
+29 │     idx b: ((), EmptyStruct) 
+   │            ^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:30:12
+   │
+30 │     idx c: Array<EmptyStruct, 0>
+   │            ^^^^^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:34:12
+   │
+34 │     idx a: Array<(), 0>
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:35:12
+   │
+35 │     idx b: Array<UnEmptyStruct, 0>
+   │            ^^^^^^^^^^^^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:39:12
+   │
+39 │     idx a: Array<(), 0>
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:40:12
+   │
+40 │     idx b: AnotherEmpty
+   │            ^^^^^^^^^^^^ this type can't be used as an event field
+
+error: event field type must have a non-zero types
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:47:12
+   │
+47 │     idx f: Foo
+   │            ^^^ this type can't be used as an event field
+
+error: event field type is invalid
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:52:8
+   │
+52 │     b: Map<u256,u256>
+   │        ^^^^^^^^^^^^^^ this type can't be used as an event field
+
+

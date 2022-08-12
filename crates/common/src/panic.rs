@@ -1,13 +1,13 @@
 use once_cell::sync::Lazy;
 use std::panic;
 
+type PanicHook = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
 const BUG_REPORT_URL: &str = "https://github.com/ethereum/fe/issues/new";
-static DEFAULT_PANIC_HOOK: Lazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    Lazy::new(|| {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(report_ice));
-        hook
-    });
+static DEFAULT_PANIC_HOOK: Lazy<Box<PanicHook>> = Lazy::new(|| {
+    let hook = panic::take_hook();
+    panic::set_hook(Box::new(report_ice));
+    hook
+});
 
 pub fn install_panic_hook() {
     Lazy::force(&DEFAULT_PANIC_HOOK);

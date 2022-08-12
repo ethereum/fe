@@ -7,7 +7,7 @@ use crate::db::Analysis;
 use crate::errors::TypeError;
 use crate::namespace::items::{FunctionSigId, ImplId, TraitId, TypeAliasId};
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, TypeId};
+use crate::namespace::types::{self, Array, Base, FeString, Tuple, Type, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 
@@ -68,4 +68,37 @@ pub fn type_alias_type_cycle(
     )));
 
     Analysis::new(err, context.diagnostics.take().into())
+}
+
+pub fn is_zero_sized(db: &dyn AnalyzerDb, ty: types::TypeId) -> bool {
+    let typ = db.lookup_intern_type(ty);
+    match typ {
+        Type::Base(base) => matches!(base, Base::Unit),
+        Type::Array(Array { size, inner }) => size == 0 || inner.is_zero_sized(db),
+        Type::Tuple(Tuple { items }) => {
+            for item in items.iter() {
+                if !db.is_zero_sized(*item) {
+                    return false;
+                }
+            }
+            true
+        }
+        Type::String(FeString { max_size }) => max_size == 0,
+        Type::Struct(struct_id) => {
+            for field_type_id in db.struct_all_fields(struct_id).iter() {
+                // assume all type is correct.
+                let field_type = db.struct_field_type(*field_type_id).value.unwrap();
+                if !(field_type).is_zero_sized(db) {
+                    return false;
+                }
+            }
+            true
+        }
+        Type::Generic(_) | Type::Map(_) | Type::SelfContract(_) | Type::Contract(_) => false,
+    }
+}
+
+// because we already catch this error so this should be empty
+pub fn is_zero_sized_cycle(_db: &dyn AnalyzerDb, _cycle: &[String], _ty: &types::TypeId) -> bool {
+    true
 }

@@ -195,6 +195,9 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::types::type_alias_type)]
     #[salsa::cycle(queries::types::type_alias_type_cycle)]
     fn type_alias_type(&self, id: TypeAliasId) -> Analysis<Result<TypeId, TypeError>>;
+    #[salsa::invoke(queries::types::is_zero_sized)]
+    #[salsa::cycle(queries::types::is_zero_sized_cycle)]
+    fn is_zero_sized(&self, ty: TypeId) -> bool;
 }
 
 #[salsa::database(AnalyzerDbStorage, SourceDbStorage)]
