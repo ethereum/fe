@@ -26,11 +26,11 @@ contract ERC20 {
     }
 
     pub fn name(self) -> String<100> {
-        return self._name.to_mem()
+        return self._name
     }
 
     pub fn symbol(self) -> String<100> {
-        return self._symbol.to_mem()
+        return self._symbol
     }
 
     pub fn decimals(self) -> u8 {

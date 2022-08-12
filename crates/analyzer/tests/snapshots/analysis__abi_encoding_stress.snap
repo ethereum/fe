@@ -59,41 +59,35 @@ note:
    ┌─ abi_encoding_stress.fe:26:9
    │
 26 │         self.my_addrs = my_addrs
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:26:9
    │
 26 │         self.my_addrs = my_addrs
-   │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<address, 5>: Memory
+   │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<address, 5>
    │         │                
-   │         Array<address, 5>: Storage { nonce: Some(0) }
+   │         Array<address, 5>
 
 note: 
    ┌─ abi_encoding_stress.fe:29:5
    │  
 29 │ ╭     pub fn get_my_addrs(self) -> Array<address, 5> {
-30 │ │         return self.my_addrs.to_mem()
+30 │ │         return self.my_addrs
 31 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> Array<address, 5>
 
 note: 
    ┌─ abi_encoding_stress.fe:30:16
    │
-30 │         return self.my_addrs.to_mem()
-   │                ^^^^ Foo: Value
+30 │         return self.my_addrs
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:30:16
    │
-30 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:30:16
-   │
-30 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) } => Memory
+30 │         return self.my_addrs
+   │                ^^^^^^^^^^^^^ Array<address, 5>
 
 note: 
    ┌─ abi_encoding_stress.fe:33:5
@@ -107,15 +101,15 @@ note:
    ┌─ abi_encoding_stress.fe:34:9
    │
 34 │         self.my_u128 = my_u128
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:34:9
    │
 34 │         self.my_u128 = my_u128
-   │         ^^^^^^^^^^^^   ^^^^^^^ u128: Value
+   │         ^^^^^^^^^^^^   ^^^^^^^ u128
    │         │               
-   │         u128: Storage { nonce: Some(1) }
+   │         u128
 
 note: 
    ┌─ abi_encoding_stress.fe:37:5
@@ -129,13 +123,13 @@ note:
    ┌─ abi_encoding_stress.fe:38:16
    │
 38 │         return self.my_u128
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:38:16
    │
 38 │         return self.my_u128
-   │                ^^^^^^^^^^^^ u128: Storage { nonce: Some(1) } => Value
+   │                ^^^^^^^^^^^^ u128
 
 note: 
    ┌─ abi_encoding_stress.fe:41:5
@@ -149,41 +143,35 @@ note:
    ┌─ abi_encoding_stress.fe:42:9
    │
 42 │         self.my_string = my_string
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:42:9
    │
 42 │         self.my_string = my_string
-   │         ^^^^^^^^^^^^^^   ^^^^^^^^^ String<10>: Memory
+   │         ^^^^^^^^^^^^^^   ^^^^^^^^^ String<10>
    │         │                 
-   │         String<10>: Storage { nonce: Some(2) }
+   │         String<10>
 
 note: 
    ┌─ abi_encoding_stress.fe:45:5
    │  
 45 │ ╭     pub fn get_my_string(self) -> String<10> {
-46 │ │         return self.my_string.to_mem()
+46 │ │         return self.my_string
 47 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> String<10>
 
 note: 
    ┌─ abi_encoding_stress.fe:46:16
    │
-46 │         return self.my_string.to_mem()
-   │                ^^^^ Foo: Value
+46 │         return self.my_string
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:46:16
    │
-46 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:46:16
-   │
-46 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) } => Memory
+46 │         return self.my_string
+   │                ^^^^^^^^^^^^^^ String<10>
 
 note: 
    ┌─ abi_encoding_stress.fe:49:5
@@ -197,41 +185,35 @@ note:
    ┌─ abi_encoding_stress.fe:50:9
    │
 50 │         self.my_u16s = my_u16s
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:50:9
    │
 50 │         self.my_u16s = my_u16s
-   │         ^^^^^^^^^^^^   ^^^^^^^ Array<u16, 255>: Memory
+   │         ^^^^^^^^^^^^   ^^^^^^^ Array<u16, 255>
    │         │               
-   │         Array<u16, 255>: Storage { nonce: Some(3) }
+   │         Array<u16, 255>
 
 note: 
    ┌─ abi_encoding_stress.fe:53:5
    │  
 53 │ ╭     pub fn get_my_u16s(self) -> Array<u16, 255> {
-54 │ │         return self.my_u16s.to_mem()
+54 │ │         return self.my_u16s
 55 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> Array<u16, 255>
 
 note: 
    ┌─ abi_encoding_stress.fe:54:16
    │
-54 │         return self.my_u16s.to_mem()
-   │                ^^^^ Foo: Value
+54 │         return self.my_u16s
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:54:16
    │
-54 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:54:16
-   │
-54 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) } => Memory
+54 │         return self.my_u16s
+   │                ^^^^^^^^^^^^ Array<u16, 255>
 
 note: 
    ┌─ abi_encoding_stress.fe:57:5
@@ -245,15 +227,15 @@ note:
    ┌─ abi_encoding_stress.fe:58:9
    │
 58 │         self.my_bool = my_bool
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:58:9
    │
 58 │         self.my_bool = my_bool
-   │         ^^^^^^^^^^^^   ^^^^^^^ bool: Value
+   │         ^^^^^^^^^^^^   ^^^^^^^ bool
    │         │               
-   │         bool: Storage { nonce: Some(4) }
+   │         bool
 
 note: 
    ┌─ abi_encoding_stress.fe:61:5
@@ -267,13 +249,13 @@ note:
    ┌─ abi_encoding_stress.fe:62:16
    │
 62 │         return self.my_bool
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:62:16
    │
 62 │         return self.my_bool
-   │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(4) } => Value
+   │                ^^^^^^^^^^^^ bool
 
 note: 
    ┌─ abi_encoding_stress.fe:65:5
@@ -287,41 +269,35 @@ note:
    ┌─ abi_encoding_stress.fe:66:9
    │
 66 │         self.my_bytes = my_bytes
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:66:9
    │
 66 │         self.my_bytes = my_bytes
-   │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<u8, 100>: Memory
+   │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<u8, 100>
    │         │                
-   │         Array<u8, 100>: Storage { nonce: Some(5) }
+   │         Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:69:5
    │  
 69 │ ╭     pub fn get_my_bytes(self) -> Array<u8, 100> {
-70 │ │         return self.my_bytes.to_mem()
+70 │ │         return self.my_bytes
 71 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:70:16
    │
-70 │         return self.my_bytes.to_mem()
-   │                ^^^^ Foo: Value
+70 │         return self.my_bytes
+   │                ^^^^ Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:70:16
    │
-70 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:70:16
-   │
-70 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
+70 │         return self.my_bytes
+   │                ^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:73:5
@@ -335,30 +311,30 @@ note:
    ┌─ abi_encoding_stress.fe:74:33
    │
 74 │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
-   │                                 ^^              ^^ u8: Value
+   │                                 ^^              ^^ u8
    │                                 │                
-   │                                 u256: Value
+   │                                 u256
 
 note: 
    ┌─ abi_encoding_stress.fe:74:46
    │
 74 │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
-   │                                              ^^^^^^           ^^^^                   ^^^^^^ u256: Value
+   │                                              ^^^^^^           ^^^^                   ^^^^^^ u256
    │                                              │                │                       
-   │                                              │                bool: Value
-   │                                              u8: Value
+   │                                              │                bool
+   │                                              u8
 
 note: 
    ┌─ abi_encoding_stress.fe:74:78
    │
 74 │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
-   │                                                                              ^^^^^^^^^^^^^^^ address: Value
+   │                                                                              ^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ abi_encoding_stress.fe:74:16
    │
 74 │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyStruct: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:77:5
@@ -376,144 +352,120 @@ note:
    ┌─ abi_encoding_stress.fe:78:9
    │
 78 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^ MyStruct: Memory
+   │         ^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:78:9
    │
 78 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^^^^^^^^   ^^^^^^^^ u256: Value
+   │         ^^^^^^^^^^^^^^^^   ^^^^^^^^ u256
    │         │                   
-   │         u256: Memory
+   │         u256
 79 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^ MyStruct: Memory
+   │         ^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:79:9
    │
 79 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^^^^^^^^^      ^^ u8: Value
+   │         ^^^^^^^^^^^^^^^^^      ^^ u8
    │         │                       
-   │         u8: Memory
+   │         u8
 
 note: 
    ┌─ abi_encoding_stress.fe:79:29
    │
 79 │         my_struct.my_num2 = u8(42)
-   │                             ^^^^^^ u8: Value
+   │                             ^^^^^^ u8
 80 │         my_struct.my_bool = false
-   │         ^^^^^^^^^ MyStruct: Memory
+   │         ^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:80:9
    │
 80 │         my_struct.my_bool = false
-   │         ^^^^^^^^^^^^^^^^^   ^^^^^ bool: Value
+   │         ^^^^^^^^^^^^^^^^^   ^^^^^ bool
    │         │                    
-   │         bool: Memory
+   │         bool
 81 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^ MyStruct: Memory
+   │         ^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:81:9
    │
 81 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^^^^^^^^^           ^^^^ u256: Value
+   │         ^^^^^^^^^^^^^^^^^           ^^^^ u256
    │         │                            
-   │         address: Memory
+   │         address
 
 note: 
    ┌─ abi_encoding_stress.fe:81:29
    │
 81 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^^^^^^^ address: Value
+   │                             ^^^^^^^^^^^^^ address
 82 │         return my_struct
-   │                ^^^^^^^^^ MyStruct: Memory
+   │                ^^^^^^^^^ MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:85:5
    │  
 85 │ ╭     pub fn emit_my_event(self, ctx: Context) {
-86 │ │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
+86 │ │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
 87 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:86:22
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                      ^^^            ^^^^ Foo: Value
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                      ^^^            ^^^^ Foo
    │                      │               
-   │                      Context: Memory
+   │                      Context
 
 note: 
    ┌─ abi_encoding_stress.fe:86:37
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                     ^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) }
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                     ^^^^^^^^^^^^^           ^^^^ Foo
+   │                                     │                        
+   │                                     Array<address, 5>
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:37
+   ┌─ abi_encoding_stress.fe:86:61
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                     ^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                     │                                 
-   │                                     Array<address, 5>: Storage { nonce: Some(0) } => Memory
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                                             ^^^^^^^^^^^^             ^^^^ Foo
+   │                                                             │                         
+   │                                                             u128
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:70
+   ┌─ abi_encoding_stress.fe:86:86
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                      ^^^^^^^^^^^^             ^^^^ Foo: Value
-   │                                                                      │                         
-   │                                                                      u128: Storage { nonce: Some(1) } => Value
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                                                                      ^^^^^^^^^^^^^^           ^^^^ Foo
+   │                                                                                      │                         
+   │                                                                                      String<10>
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:95
+   ┌─ abi_encoding_stress.fe:86:111
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                               ^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) }
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                                                                                               ^^^^^^^^^^^^           ^^^^ Foo
+   │                                                                                                               │                       
+   │                                                                                                               Array<u16, 255>
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:95
+   ┌─ abi_encoding_stress.fe:86:134
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                               ^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                                                                               │                                  
-   │                                                                                               String<10>: Storage { nonce: Some(2) } => Memory
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                                                                                                                      ^^^^^^^^^^^^            ^^^^ Foo
+   │                                                                                                                                      │                        
+   │                                                                                                                                      bool
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:129
+   ┌─ abi_encoding_stress.fe:86:158
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                 ^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:86:129
-   │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                 ^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                                                                                                                 │                                
-   │                                                                                                                                 Array<u16, 255>: Storage { nonce: Some(3) } => Memory
-
-note: 
-   ┌─ abi_encoding_stress.fe:86:161
-   │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                 ^^^^^^^^^^^^            ^^^^ Foo: Value
-   │                                                                                                                                                                 │                        
-   │                                                                                                                                                                 bool: Storage { nonce: Some(4) } => Value
-
-note: 
-   ┌─ abi_encoding_stress.fe:86:185
-   │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                                         ^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) }
-
-note: 
-   ┌─ abi_encoding_stress.fe:86:185
-   │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                                         ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
+86 │         emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
+   │                                                                                                                                                              ^^^^^^^^^^^^^ Array<u8, 100>
 
 

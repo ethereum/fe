@@ -15,15 +15,15 @@ note:
   ┌─ associated_fns.fe:3:16
   │
 3 │         return x * x
-  │                ^   ^ u256: Value
+  │                ^   ^ u256
   │                │    
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ associated_fns.fe:3:16
   │
 3 │         return x * x
-  │                ^^^^^ u256: Value
+  │                ^^^^^ u256
 
 note: 
   ┌─ associated_fns.fe:8:5
@@ -43,13 +43,13 @@ note:
    ┌─ associated_fns.fe:11:25
    │
 11 │         return MyStruct(x)
-   │                         ^ u256: Value
+   │                         ^ u256
 
 note: 
    ┌─ associated_fns.fe:11:16
    │
 11 │         return MyStruct(x)
-   │                ^^^^^^^^^^^ MyStruct: Memory
+   │                ^^^^^^^^^^^ MyStruct
 
 note: 
    ┌─ associated_fns.fe:16:5
@@ -70,40 +70,40 @@ note:
    ┌─ associated_fns.fe:19:9
    │
 19 │         self.my_struct = MyStruct::new(x: val)
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ associated_fns.fe:19:9
    │
 19 │         self.my_struct = MyStruct::new(x: val)
-   │         ^^^^^^^^^^^^^^                    ^^^ u256: Value
+   │         ^^^^^^^^^^^^^^                    ^^^ u256
    │         │                                  
-   │         MyStruct: Storage { nonce: Some(0) }
+   │         MyStruct
 
 note: 
    ┌─ associated_fns.fe:19:26
    │
 19 │         self.my_struct = MyStruct::new(x: val)
-   │                          ^^^^^^^^^^^^^^^^^^^^^ MyStruct: Memory
+   │                          ^^^^^^^^^^^^^^^^^^^^^ MyStruct
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^ Foo: Value
+   │                               ^^^^ Foo
 
 note: 
    ┌─ associated_fns.fe:20:31
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^^^^^^^^^^^ MyStruct: Storage { nonce: Some(0) }
+   │                               ^^^^^^^^^^^^^^ MyStruct
 
 note: 
    ┌─ associated_fns.fe:20:31
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+   │                               ^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ associated_fns.fe:20:16
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

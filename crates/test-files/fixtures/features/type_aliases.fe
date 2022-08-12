@@ -31,6 +31,6 @@ contract Forum {
     }
 
     pub fn get_post(self, id: PostId) -> PostBody {
-        return self.posts[id].to_mem()
+        return self.posts[id]
     }
 }

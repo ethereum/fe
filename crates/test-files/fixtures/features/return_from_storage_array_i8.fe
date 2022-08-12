@@ -3,6 +3,6 @@ contract Foo {
 
     pub fn bar(self, val: i8) -> Array<i8, 1> {
         self.some_thing[0] = val
-        return self.some_thing.to_mem()
+        return self.some_thing
     }
 }

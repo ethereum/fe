@@ -23,7 +23,7 @@ note:
   ┌─ return_unit.fe:7:16
   │
 7 │         return ()
-  │                ^^ (): Value
+  │                ^^ ()
 
 note: 
    ┌─ return_unit.fe:10:5
@@ -45,7 +45,7 @@ note:
    ┌─ return_unit.fe:15:16
    │
 15 │         return ()
-   │                ^^ (): Value
+   │                ^^ ()
 
 note: 
    ┌─ return_unit.fe:18:5

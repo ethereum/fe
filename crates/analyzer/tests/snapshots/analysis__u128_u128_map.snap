@@ -21,21 +21,21 @@ note:
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u128: Value
+  │                ^^^^^^^^ ^^^ u128
   │                │         
-  │                Map<u128, u128>: Storage { nonce: Some(0) }
+  │                Map<u128, u128>
 
 note: 
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u128: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^ u128
 
 note: 
    ┌─ u128_u128_map.fe:8:5
@@ -49,22 +49,22 @@ note:
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u128: Value
+  │         ^^^^^^^^ ^^^ u128
   │         │         
-  │         Map<u128, u128>: Storage { nonce: Some(0) }
+  │         Map<u128, u128>
 
 note: 
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u128: Value
+  │         ^^^^^^^^^^^^^   ^^^^^ u128
   │         │                
-  │         u128: Storage { nonce: None }
+  │         u128
 
 

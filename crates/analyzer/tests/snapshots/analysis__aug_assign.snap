@@ -22,11 +22,11 @@ note:
   ┌─ aug_assign.fe:5:9
   │
 5 │         a += b
-  │         ^    ^ u256: Value
+  │         ^    ^ u256
   │         │     
-  │         u256: Value
+  │         u256
 6 │         return a
-  │                ^ u256: Value
+  │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:9:5
@@ -41,11 +41,11 @@ note:
    ┌─ aug_assign.fe:10:9
    │
 10 │         a -= b
-   │         ^    ^ u256: Value
+   │         ^    ^ u256
    │         │     
-   │         u256: Value
+   │         u256
 11 │         return a
-   │                ^ u256: Value
+   │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:14:5
@@ -60,11 +60,11 @@ note:
    ┌─ aug_assign.fe:15:9
    │
 15 │         a *= b
-   │         ^    ^ u256: Value
+   │         ^    ^ u256
    │         │     
-   │         u256: Value
+   │         u256
 16 │         return a
-   │                ^ u256: Value
+   │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:19:5
@@ -79,11 +79,11 @@ note:
    ┌─ aug_assign.fe:20:9
    │
 20 │         a /= b
-   │         ^    ^ u256: Value
+   │         ^    ^ u256
    │         │     
-   │         u256: Value
+   │         u256
 21 │         return a
-   │                ^ u256: Value
+   │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:24:5
@@ -98,11 +98,11 @@ note:
    ┌─ aug_assign.fe:25:9
    │
 25 │         a %= b
-   │         ^    ^ u256: Value
+   │         ^    ^ u256
    │         │     
-   │         u256: Value
+   │         u256
 26 │         return a
-   │                ^ u256: Value
+   │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:29:5
@@ -117,11 +117,11 @@ note:
    ┌─ aug_assign.fe:30:9
    │
 30 │         a **= b
-   │         ^     ^ u256: Value
+   │         ^     ^ u256
    │         │      
-   │         u256: Value
+   │         u256
 31 │         return a
-   │                ^ u256: Value
+   │                ^ u256
 
 note: 
    ┌─ aug_assign.fe:34:5
@@ -136,11 +136,11 @@ note:
    ┌─ aug_assign.fe:35:9
    │
 35 │         a <<= b
-   │         ^     ^ u8: Value
+   │         ^     ^ u8
    │         │      
-   │         u8: Value
+   │         u8
 36 │         return a
-   │                ^ u8: Value
+   │                ^ u8
 
 note: 
    ┌─ aug_assign.fe:39:5
@@ -155,11 +155,11 @@ note:
    ┌─ aug_assign.fe:40:9
    │
 40 │         a >>= b
-   │         ^     ^ u8: Value
+   │         ^     ^ u8
    │         │      
-   │         u8: Value
+   │         u8
 41 │         return a
-   │                ^ u8: Value
+   │                ^ u8
 
 note: 
    ┌─ aug_assign.fe:44:5
@@ -174,11 +174,11 @@ note:
    ┌─ aug_assign.fe:45:9
    │
 45 │         a |= b
-   │         ^    ^ u8: Value
+   │         ^    ^ u8
    │         │     
-   │         u8: Value
+   │         u8
 46 │         return a
-   │                ^ u8: Value
+   │                ^ u8
 
 note: 
    ┌─ aug_assign.fe:49:5
@@ -193,11 +193,11 @@ note:
    ┌─ aug_assign.fe:50:9
    │
 50 │         a ^= b
-   │         ^    ^ u8: Value
+   │         ^    ^ u8
    │         │     
-   │         u8: Value
+   │         u8
 51 │         return a
-   │                ^ u8: Value
+   │                ^ u8
 
 note: 
    ┌─ aug_assign.fe:54:5
@@ -212,11 +212,11 @@ note:
    ┌─ aug_assign.fe:55:9
    │
 55 │         a &= b
-   │         ^    ^ u8: Value
+   │         ^    ^ u8
    │         │     
-   │         u8: Value
+   │         u8
 56 │         return a
-   │                ^ u8: Value
+   │                ^ u8
 
 note: 
    ┌─ aug_assign.fe:59:5
@@ -232,33 +232,33 @@ note:
    ┌─ aug_assign.fe:60:9
    │
 60 │         self.my_num = a
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ aug_assign.fe:60:9
    │
 60 │         self.my_num = a
-   │         ^^^^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^^^^   ^ u256
    │         │              
-   │         u256: Storage { nonce: Some(0) }
+   │         u256
 61 │         self.my_num += b
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ aug_assign.fe:61:9
    │
 61 │         self.my_num += b
-   │         ^^^^^^^^^^^    ^ u256: Value
+   │         ^^^^^^^^^^^    ^ u256
    │         │               
-   │         u256: Storage { nonce: Some(0) }
+   │         u256
 62 │         return self.my_num
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ aug_assign.fe:62:16
    │
 62 │         return self.my_num
-   │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^ u256
 
 note: 
    ┌─ aug_assign.fe:65:5
@@ -281,48 +281,48 @@ note:
    ┌─ aug_assign.fe:66:42
    │
 66 │         let my_array: Array<u256, 10> = [0; 10]
-   │                                          ^  ^^ u256: Value
+   │                                          ^  ^^ u256
    │                                          │   
-   │                                          u256: Value
+   │                                          u256
 
 note: 
    ┌─ aug_assign.fe:66:41
    │
 66 │         let my_array: Array<u256, 10> = [0; 10]
-   │                                         ^^^^^^^ Array<u256, 10>: Memory
+   │                                         ^^^^^^^ Array<u256, 10>
 67 │         my_array[7] = a
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Array<u256, 10>: Memory
+   │         Array<u256, 10>
 
 note: 
    ┌─ aug_assign.fe:67:9
    │
 67 │         my_array[7] = a
-   │         ^^^^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^^^^   ^ u256
    │         │              
-   │         u256: Memory
+   │         u256
 68 │         my_array[7] += b
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Array<u256, 10>: Memory
+   │         Array<u256, 10>
 
 note: 
    ┌─ aug_assign.fe:68:9
    │
 68 │         my_array[7] += b
-   │         ^^^^^^^^^^^    ^ u256: Value
+   │         ^^^^^^^^^^^    ^ u256
    │         │               
-   │         u256: Memory
+   │         u256
 69 │         return my_array[7]
-   │                ^^^^^^^^ ^ u256: Value
+   │                ^^^^^^^^ ^ u256
    │                │         
-   │                Array<u256, 10>: Memory
+   │                Array<u256, 10>
 
 note: 
    ┌─ aug_assign.fe:69:16
    │
 69 │         return my_array[7]
-   │                ^^^^^^^^^^^ u256: Memory => Value
+   │                ^^^^^^^^^^^ u256
 
 

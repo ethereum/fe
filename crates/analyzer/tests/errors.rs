@@ -230,7 +230,6 @@ test_file! { call_undefined_function_on_storage_struct }
 test_file! { call_non_pub_fn_on_external_contract }
 test_file! { call_non_pub_fn_on_struct }
 test_file! { call_non_pub_fn_on_struct2 }
-test_file! { cannot_move }
 test_file! { cannot_move2 }
 test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
@@ -280,7 +279,6 @@ test_file! { missing_return_after_if }
 test_file! { module_const_unknown_type }
 test_file! { module_const_non_base_type }
 test_file! { module_const_call }
-test_file! { needs_mem_copy }
 test_file! { not_callable }
 test_file! { not_in_scope }
 test_file! { not_in_scope_2 }
@@ -316,10 +314,6 @@ test_file! { call_call_on_self }
 test_file! { call_call_on_external_contract }
 test_file! { call_with_pub_fns }
 test_file! { abi_encode_u256 }
-test_file! { abi_encode_from_storage }
-test_file! { assert_sto_msg_no_copy }
-test_file! { for_loop_sto_iter_no_copy }
-test_file! { revert_sto_error_no_copy }
 
 test_file! { call_to_mut_fn_without_self }
 test_file! { call_to_pure_fn_on_self }

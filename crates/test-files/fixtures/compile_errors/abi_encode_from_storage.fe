@@ -1,7 +1,0 @@
-contract Foo {
-    my_field: (u256, bool)
-
-    pub fn bar(self) {
-        self.my_field.abi_encode()
-    }
-}

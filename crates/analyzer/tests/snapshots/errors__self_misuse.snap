@@ -32,10 +32,13 @@ error: `g` must be called via `self`
    │
    = Suggestion: use `self.g(...)` instead of `g(...)`
 
-error: invalid use of contract `self`
+error: `self` can't be used where a contract of type `C` is expected
    ┌─ compile_errors/self_misuse.fe:38:13
    │
 38 │         bar(self)
-   │             ^^^^ `self` can't be used here
+   │             ^^^^ cannot use `self` here
+   │
+   = Hint: Values of type `C` represent external contracts.
+     To treat `self` as an external contract, use `C(ctx.self_address())`.
 
 

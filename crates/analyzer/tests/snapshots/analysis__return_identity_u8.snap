@@ -15,6 +15,6 @@ note:
   ┌─ return_identity_u8.fe:3:16
   │
 3 │         return x
-  │                ^ u8: Value
+  │                ^ u8
 
 

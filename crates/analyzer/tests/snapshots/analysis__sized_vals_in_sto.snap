@@ -35,15 +35,15 @@ note:
    ┌─ sized_vals_in_sto.fe:13:9
    │
 13 │         self.num = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:13:9
    │
 13 │         self.num = x
-   │         ^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^   ^ u256
    │         │           
-   │         u256: Storage { nonce: Some(0) }
+   │         u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:16:5
@@ -57,13 +57,13 @@ note:
    ┌─ sized_vals_in_sto.fe:17:16
    │
 17 │         return self.num
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:17:16
    │
 17 │         return self.num
-   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^ u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:20:5
@@ -77,41 +77,35 @@ note:
    ┌─ sized_vals_in_sto.fe:21:9
    │
 21 │         self.nums = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:21:9
    │
 21 │         self.nums = x
-   │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
+   │         ^^^^^^^^^   ^ Array<u256, 42>
    │         │            
-   │         Array<u256, 42>: Storage { nonce: Some(1) }
+   │         Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:24:5
    │  
 24 │ ╭     pub fn read_nums(self) -> Array<u256, 42> {
-25 │ │         return self.nums.to_mem()
+25 │ │         return self.nums
 26 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:25:16
    │
-25 │         return self.nums.to_mem()
-   │                ^^^^ Foo: Value
+25 │         return self.nums
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:25:16
    │
-25 │         return self.nums.to_mem()
-   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ sized_vals_in_sto.fe:25:16
-   │
-25 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+25 │         return self.nums
+   │                ^^^^^^^^^ Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:28:5
@@ -125,90 +119,72 @@ note:
    ┌─ sized_vals_in_sto.fe:29:9
    │
 29 │         self.str = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:29:9
    │
 29 │         self.str = x
-   │         ^^^^^^^^   ^ String<26>: Memory
+   │         ^^^^^^^^   ^ String<26>
    │         │           
-   │         String<26>: Storage { nonce: Some(2) }
+   │         String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:32:5
    │  
 32 │ ╭     pub fn read_str(self) -> String<26> {
-33 │ │         return self.str.to_mem()
+33 │ │         return self.str
 34 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:33:16
    │
-33 │         return self.str.to_mem()
-   │                ^^^^ Foo: Value
+33 │         return self.str
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:33:16
    │
-33 │         return self.str.to_mem()
-   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
-
-note: 
-   ┌─ sized_vals_in_sto.fe:33:16
-   │
-33 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+33 │         return self.str
+   │                ^^^^^^^^ String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:36:5
    │  
 36 │ ╭     pub fn emit_event(self, ctx: Context) {
-37 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+37 │ │         emit MyEvent(ctx, num: self.num, nums: self.nums, str: self.str)
 38 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:22
    │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                      ^^^       ^^^^ Foo: Value
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums, str: self.str)
+   │                      ^^^       ^^^^ Foo
    │                      │          
-   │                      Context: Memory
+   │                      Context
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:32
    │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                                ^^^^^^^^        ^^^^ Foo: Value
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums, str: self.str)
+   │                                ^^^^^^^^        ^^^^ Foo
    │                                │                
-   │                                u256: Storage { nonce: Some(0) } => Value
+   │                                u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:48
    │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                                                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums, str: self.str)
+   │                                                ^^^^^^^^^       ^^^^ Foo
+   │                                                │                
+   │                                                Array<u256, 42>
 
 note: 
-   ┌─ sized_vals_in_sto.fe:37:48
+   ┌─ sized_vals_in_sto.fe:37:64
    │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                                                ^^^^^^^^^^^^^^^^^^       ^^^^ Foo: Value
-   │                                                │                         
-   │                                                Array<u256, 42>: Storage { nonce: Some(1) } => Memory
-
-note: 
-   ┌─ sized_vals_in_sto.fe:37:73
-   │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                                                                         ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
-
-note: 
-   ┌─ sized_vals_in_sto.fe:37:73
-   │
-37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
-   │                                                                         ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+37 │         emit MyEvent(ctx, num: self.num, nums: self.nums, str: self.str)
+   │                                                                ^^^^^^^^ String<26>
 
 

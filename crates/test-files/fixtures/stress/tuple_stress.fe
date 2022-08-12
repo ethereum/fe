@@ -35,7 +35,7 @@ contract Foo {
     }
 
     pub fn get_my_sto_tuple(self) -> (u256, i32) {
-        return self.my_sto_tuple.to_mem()
+        return self.my_sto_tuple
     }
 
     pub fn build_tuple_and_emit(self, ctx: Context) {

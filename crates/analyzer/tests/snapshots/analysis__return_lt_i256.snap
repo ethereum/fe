@@ -15,14 +15,14 @@ note:
   ┌─ return_lt_i256.fe:3:16
   │
 3 │         return x < y
-  │                ^   ^ i256: Value
+  │                ^   ^ i256
   │                │    
-  │                i256: Value
+  │                i256
 
 note: 
   ┌─ return_lt_i256.fe:3:16
   │
 3 │         return x < y
-  │                ^^^^^ bool: Value
+  │                ^^^^^ bool
 
 

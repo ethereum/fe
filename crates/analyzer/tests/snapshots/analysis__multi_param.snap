@@ -25,52 +25,52 @@ note:
   ┌─ multi_param.fe:3:41
   │
 3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                         ^  ^ u256: Value
+  │                                         ^  ^ u256
   │                                         │   
-  │                                         u256: Value
+  │                                         u256
 
 note: 
   ┌─ multi_param.fe:3:40
   │
 3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                        ^^^^^^ Array<u256, 3>: Memory
+  │                                        ^^^^^^ Array<u256, 3>
 4 │         my_array[0] = x
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ multi_param.fe:4:9
   │
 4 │         my_array[0] = x
-  │         ^^^^^^^^^^^   ^ u256: Value
+  │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 5 │         my_array[1] = y
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ multi_param.fe:5:9
   │
 5 │         my_array[1] = y
-  │         ^^^^^^^^^^^   ^ u256: Value
+  │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 6 │         my_array[2] = z
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ multi_param.fe:6:9
   │
 6 │         my_array[2] = z
-  │         ^^^^^^^^^^^   ^ u256: Value
+  │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 7 │         return my_array
-  │                ^^^^^^^^ Array<u256, 3>: Memory
+  │                ^^^^^^^^ Array<u256, 3>
 
 

@@ -22,7 +22,6 @@ contract GuestBook {
 
     pub fn get_msg(self, addr: address) -> String<100> {
         // Copying data from storage to memory
-        // has to be done explicitly via `to_mem()`
-        return self.messages[addr].to_mem()
+        return self.messages[addr]
     }
 }

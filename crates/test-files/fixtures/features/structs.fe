@@ -76,7 +76,7 @@ contract Foo {
         self.my_bar.something = (1, true)
         assert self.my_bar.something.item0 == 1
         assert self.my_bar.something.item1
-        return self.my_bar.name.to_mem()
+        return self.my_bar.name
     }
 
     pub fn complex_struct_in_memory(self) -> String<3> {
@@ -121,7 +121,7 @@ contract Foo {
     }
 
     pub fn get_house(self) -> House {
-        return self.my_house.to_mem()
+        return self.my_house
     }
 
     pub fn create_house(self) {

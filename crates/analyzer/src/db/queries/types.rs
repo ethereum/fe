@@ -37,7 +37,7 @@ pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplI
 }
 
 pub fn function_sigs(db: &dyn AnalyzerDb, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]> {
-    ty.get_all_impls(db)
+    db.all_impls(ty)
         .iter()
         .filter_map(|impl_| impl_.function(db, &name))
         .map(|fun| fun.sig(db))

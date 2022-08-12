@@ -82,7 +82,7 @@ impl TypeId {
         self.typ(db).has_fixed_size()
     }
     pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_base()
+        matches!(self.typ(db), Type::Base(_))
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
@@ -91,13 +91,16 @@ impl TypeId {
         matches!(self.typ(db), Type::Contract(_) | Type::SelfContract(_))
     }
     pub fn is_integer(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_integer()
+        matches!(self.typ(db), Type::Base(Base::Numeric(_)))
+    }
+    pub fn is_map(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Map(_))
     }
     pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).as_string().is_some()
+        matches!(self.typ(db), Type::String(_))
     }
-    pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
-        self.typ(db).as_struct()
+    pub fn is_struct(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Struct(_))
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -120,11 +123,8 @@ impl TypeId {
         db.impl_for(*self, trait_)
     }
 
-    // Returns all `impl` for the type even from foreign ingots
-    pub fn get_all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
-        db.all_impls(*self)
-    }
-
+    // Signature for the function with the given name defined directly on the type.
+    // Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
             Type::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
@@ -482,18 +482,6 @@ impl Type {
         matches!(self, Type::Base(_))
     }
 
-    /// Returns `true` if the type is integer.
-    pub fn is_integer(&self) -> bool {
-        matches!(self, Type::Base(Base::Numeric(_)))
-    }
-
-    pub fn is_signed_integer(&self) -> bool {
-        if let Type::Base(Base::Numeric(integer)) = &self {
-            return integer.is_signed();
-        }
-        false
-    }
-
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         Type::Base(Base::Bool)
@@ -542,91 +530,43 @@ impl Type {
 }
 
 pub trait TypeDowncast {
-    fn as_array(&self) -> Option<&Array>;
-    fn as_tuple(&self) -> Option<&Tuple>;
-    fn as_string(&self) -> Option<&FeString>;
-    fn as_map(&self) -> Option<&Map>;
-    fn as_int(&self) -> Option<Integer>;
-    fn as_primitive(&self) -> Option<Base>;
-    fn as_generic(&self) -> Option<&Generic>;
-    fn as_struct(&self) -> Option<StructId>;
+    fn as_array(&self, db: &dyn AnalyzerDb) -> Option<Array>;
+    fn as_tuple(&self, db: &dyn AnalyzerDb) -> Option<Tuple>;
+    fn as_string(&self, db: &dyn AnalyzerDb) -> Option<FeString>;
+    fn as_map(&self, db: &dyn AnalyzerDb) -> Option<Map>;
+    fn as_int(&self, db: &dyn AnalyzerDb) -> Option<Integer>;
 }
 
-impl TypeDowncast for Type {
-    fn as_array(&self) -> Option<&Array> {
-        match self {
+impl TypeDowncast for TypeId {
+    fn as_array(&self, db: &dyn AnalyzerDb) -> Option<Array> {
+        match self.typ(db) {
             Type::Array(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_tuple(&self) -> Option<&Tuple> {
-        match self {
+    fn as_tuple(&self, db: &dyn AnalyzerDb) -> Option<Tuple> {
+        match self.typ(db) {
             Type::Tuple(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_string(&self) -> Option<&FeString> {
-        match self {
+    fn as_string(&self, db: &dyn AnalyzerDb) -> Option<FeString> {
+        match self.typ(db) {
             Type::String(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_map(&self) -> Option<&Map> {
-        match self {
+    fn as_map(&self, db: &dyn AnalyzerDb) -> Option<Map> {
+        match self.typ(db) {
             Type::Map(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_int(&self) -> Option<Integer> {
-        match self {
-            Type::Base(Base::Numeric(int)) => Some(*int),
+    fn as_int(&self, db: &dyn AnalyzerDb) -> Option<Integer> {
+        match self.typ(db) {
+            Type::Base(Base::Numeric(int)) => Some(int),
             _ => None,
         }
-    }
-    fn as_primitive(&self) -> Option<Base> {
-        match self {
-            Type::Base(base) => Some(*base),
-            _ => None,
-        }
-    }
-    fn as_struct(&self) -> Option<StructId> {
-        match self {
-            Type::Struct(id) => Some(*id),
-            _ => None,
-        }
-    }
-    fn as_generic(&self) -> Option<&Generic> {
-        match self {
-            Type::Generic(inner) => Some(inner),
-            _ => None,
-        }
-    }
-}
-
-impl TypeDowncast for Option<&Type> {
-    fn as_array(&self) -> Option<&Array> {
-        self.and_then(TypeDowncast::as_array)
-    }
-    fn as_tuple(&self) -> Option<&Tuple> {
-        self.and_then(TypeDowncast::as_tuple)
-    }
-    fn as_string(&self) -> Option<&FeString> {
-        self.and_then(TypeDowncast::as_string)
-    }
-    fn as_map(&self) -> Option<&Map> {
-        self.and_then(TypeDowncast::as_map)
-    }
-    fn as_int(&self) -> Option<Integer> {
-        self.and_then(TypeDowncast::as_int)
-    }
-    fn as_primitive(&self) -> Option<Base> {
-        self.and_then(TypeDowncast::as_primitive)
-    }
-    fn as_struct(&self) -> Option<StructId> {
-        self.and_then(TypeDowncast::as_struct)
-    }
-    fn as_generic(&self) -> Option<&Generic> {
-        self.and_then(TypeDowncast::as_generic)
     }
 }
 

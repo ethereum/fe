@@ -58,12 +58,12 @@ contract Foo {
         self.my_nums[2] = 0
         self.my_nums[3] = 1
         self.my_nums[4] = 255
-        my_nums_mem = self.my_nums.to_mem()
+        my_nums_mem = self.my_nums
         return my_nums_mem
     }
 
     pub fn emit_my_event(self, ctx: Context) {
-        emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
+        emit_my_event_internal(ctx, self.my_string, self.my_u256)
     }
 
     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {

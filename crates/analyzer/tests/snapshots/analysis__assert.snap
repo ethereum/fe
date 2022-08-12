@@ -23,15 +23,15 @@ note:
   ┌─ assert.fe:6:16
   │
 6 │         assert baz > 5
-  │                ^^^   ^ u256: Value
+  │                ^^^   ^ u256
   │                │      
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ assert.fe:6:16
   │
 6 │         assert baz > 5
-  │                ^^^^^^^ bool: Value
+  │                ^^^^^^^ bool
 
 note: 
    ┌─ assert.fe:9:5
@@ -45,17 +45,17 @@ note:
    ┌─ assert.fe:10:16
    │
 10 │         assert baz > 5, "Must be greater than five"
-   │                ^^^   ^ u256: Value
+   │                ^^^   ^ u256
    │                │      
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ assert.fe:10:16
    │
 10 │         assert baz > 5, "Must be greater than five"
-   │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory
+   │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>
    │                │         
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:13:5
@@ -69,17 +69,17 @@ note:
    ┌─ assert.fe:14:16
    │
 14 │         assert baz > 5, reason
-   │                ^^^   ^ u256: Value
+   │                ^^^   ^ u256
    │                │      
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ assert.fe:14:16
    │
 14 │         assert baz > 5, reason
-   │                ^^^^^^^  ^^^^^^ String<1000>: Memory
+   │                ^^^^^^^  ^^^^^^ String<1000>
    │                │         
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:17:5
@@ -94,30 +94,30 @@ note:
    ┌─ assert.fe:18:9
    │
 18 │         self.my_bool = false
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ assert.fe:18:9
    │
 18 │         self.my_bool = false
-   │         ^^^^^^^^^^^^   ^^^^^ bool: Value
+   │         ^^^^^^^^^^^^   ^^^^^ bool
    │         │               
-   │         bool: Storage { nonce: Some(0) }
+   │         bool
 19 │         assert self.my_bool
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ assert.fe:19:16
    │
 19 │         assert self.my_bool
-   │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^^ bool
 
 note: 
    ┌─ assert.fe:22:5
    │  
 22 │ ╭     pub fn assert_sto_string_msg(self) {
 23 │ │         self.my_string = "hello"
-24 │ │         assert false, self.my_string.to_mem()
+24 │ │         assert false, self.my_string
 25 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> ()
 
@@ -125,30 +125,24 @@ note:
    ┌─ assert.fe:23:9
    │
 23 │         self.my_string = "hello"
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ assert.fe:23:9
    │
 23 │         self.my_string = "hello"
-   │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>: Memory
+   │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>
    │         │                 
-   │         String<5>: Storage { nonce: Some(1) }
-24 │         assert false, self.my_string.to_mem()
-   │                ^^^^^  ^^^^ Foo: Value
+   │         String<5>
+24 │         assert false, self.my_string
+   │                ^^^^^  ^^^^ Foo
    │                │       
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:24:23
    │
-24 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) }
-
-note: 
-   ┌─ assert.fe:24:23
-   │
-24 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => Memory
+24 │         assert false, self.my_string
+   │                       ^^^^^^^^^^^^^^ String<5>
 
 

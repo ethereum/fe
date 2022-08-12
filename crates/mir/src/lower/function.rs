@@ -882,7 +882,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             AnalyzerCallType::BuiltinValueMethod { method, .. } => {
                 let arg = self.lower_method_receiver(func);
                 match method {
-                    ValueMethod::ToMem | ValueMethod::Clone => self.builder.mem_copy(arg, source),
+                    ValueMethod::Clone => self.builder.mem_copy(arg, source),
                     ValueMethod::AbiEncode => self.builder.abi_encode(arg, source),
                 }
             }

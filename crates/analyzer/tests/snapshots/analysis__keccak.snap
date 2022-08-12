@@ -15,13 +15,13 @@ note:
   ┌─ keccak.fe:3:26
   │
 3 │         return keccak256(val)
-  │                          ^^^ Array<u8, 1>: Memory
+  │                          ^^^ Array<u8, 1>
 
 note: 
   ┌─ keccak.fe:3:16
   │
 3 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^ u256
 
 note: 
   ┌─ keccak.fe:6:5
@@ -35,13 +35,13 @@ note:
   ┌─ keccak.fe:7:26
   │
 7 │         return keccak256(val)
-  │                          ^^^ Array<u8, 3>: Memory
+  │                          ^^^ Array<u8, 3>
 
 note: 
   ┌─ keccak.fe:7:16
   │
 7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ keccak.fe:10:5
@@ -55,12 +55,12 @@ note:
    ┌─ keccak.fe:11:26
    │
 11 │         return keccak256(val)
-   │                          ^^^ Array<u8, 32>: Memory
+   │                          ^^^ Array<u8, 32>
 
 note: 
    ┌─ keccak.fe:11:16
    │
 11 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^ u256
 
 

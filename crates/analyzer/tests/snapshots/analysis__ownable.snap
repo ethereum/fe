@@ -29,13 +29,13 @@ note:
    ┌─ ownable.fe:14:16
    │
 14 │         return self._owner
-   │                ^^^^ Ownable: Value
+   │                ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:14:16
    │
 14 │         return self._owner
-   │                ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:17:5
@@ -51,61 +51,61 @@ note:
    ┌─ ownable.fe:18:16
    │
 18 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context: Memory
+   │                ^^^ Context
 
 note: 
    ┌─ ownable.fe:18:16
    │
 18 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
+   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:18:36
    │
 18 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                                    ^^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:18:16
    │
 18 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 19 │         self._owner = address(0)
-   │         ^^^^ Ownable: Value
+   │         ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:19:9
    │
 19 │         self._owner = address(0)
-   │         ^^^^^^^^^^^           ^ u256: Value
+   │         ^^^^^^^^^^^           ^ u256
    │         │                      
-   │         address: Storage { nonce: Some(0) }
+   │         address
 
 note: 
    ┌─ ownable.fe:19:23
    │
 19 │         self._owner = address(0)
-   │                       ^^^^^^^^^^ address: Value
+   │                       ^^^^^^^^^^ address
 20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
-   │                                   ^^^                 ^^^ Context: Memory
+   │                                   ^^^                 ^^^ Context
    │                                   │                    
-   │                                   Context: Memory
+   │                                   Context
 
 note: 
    ┌─ ownable.fe:20:55
    │
 20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
-   │                                                       ^^^^^^^^^^^^^^^^                    ^ u256: Value
+   │                                                       ^^^^^^^^^^^^^^^^                    ^ u256
    │                                                       │                                    
-   │                                                       address: Value
+   │                                                       address
 
 note: 
    ┌─ ownable.fe:20:83
    │
 20 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner: address(0))
-   │                                                                                   ^^^^^^^^^^ address: Value
+   │                                                                                   ^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:23:5
@@ -122,64 +122,64 @@ note:
    ┌─ ownable.fe:24:16
    │
 24 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context: Memory
+   │                ^^^ Context
 
 note: 
    ┌─ ownable.fe:24:16
    │
 24 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
+   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:24:36
    │
 24 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                                    ^^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:24:16
    │
 24 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 25 │         assert newOwner != address(0)
-   │                ^^^^^^^^            ^ u256: Value
+   │                ^^^^^^^^            ^ u256
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:25:28
    │
 25 │         assert newOwner != address(0)
-   │                            ^^^^^^^^^^ address: Value
+   │                            ^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:25:16
    │
 25 │         assert newOwner != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^ bool
 26 │         self._owner = newOwner
-   │         ^^^^ Ownable: Value
+   │         ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:26:9
    │
 26 │         self._owner = newOwner
-   │         ^^^^^^^^^^^   ^^^^^^^^ address: Value
+   │         ^^^^^^^^^^^   ^^^^^^^^ address
    │         │              
-   │         address: Storage { nonce: Some(0) }
+   │         address
 27 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
-   │                                   ^^^                 ^^^ Context: Memory
+   │                                   ^^^                 ^^^ Context
    │                                   │                    
-   │                                   Context: Memory
+   │                                   Context
 
 note: 
    ┌─ ownable.fe:27:55
    │
 27 │         emit OwnershipTransferred(ctx, previousOwner: ctx.msg_sender(), newOwner)
-   │                                                       ^^^^^^^^^^^^^^^^  ^^^^^^^^ address: Value
+   │                                                       ^^^^^^^^^^^^^^^^  ^^^^^^^^ address
    │                                                       │                  
-   │                                                       address: Value
+   │                                                       address
 
 

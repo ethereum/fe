@@ -17,7 +17,7 @@ contract Foo {
     }
 
     pub fn get_data(self) -> MyStruct {
-        return self.data.to_mem()
+        return self.data
     }
 
     pub fn set_string(self, val: String<100>) {
@@ -25,7 +25,7 @@ contract Foo {
     }
 
     pub fn get_string(self) -> String<100> {
-        return self.some_string.to_mem()
+        return self.some_string
     }
 
     pub fn set_item(self, index: u256, item: i8) {
@@ -33,7 +33,7 @@ contract Foo {
     }
 
     pub fn get_items(self) -> Array<i8, 1> {
-        return self.items.to_mem()
+        return self.items
     }
 
     pub fn set_range(self, ctx: Context, from: u256, to: u256) {
@@ -50,6 +50,6 @@ contract Foo {
     }
 
     pub fn get_range(self) -> Array<u256, 100> {
-        return self.more_items.to_mem()
+        return self.more_items
     }
 }

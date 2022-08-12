@@ -21,6 +21,6 @@ contract Foo {
 
     pub fn assert_sto_string_msg(self) {
         self.my_string = "hello"
-        assert false, self.my_string.to_mem()
+        assert false, self.my_string
     }
 }

@@ -1,4 +1,5 @@
 use fe_analyzer::namespace::items::{IngotId, ModuleId};
+use fe_common::diagnostics::print_diagnostics;
 use fe_common::{db::Upcast, files::Utf8Path};
 use fe_mir::{
     analysis::{ControlFlowGraph, DomTree, LoopTree, PostDomTree},
@@ -16,7 +17,8 @@ macro_rules! test_lowering {
 
             let diags = module.diagnostics(&db);
             if !diags.is_empty() {
-                panic!("lowering failed")
+                print_diagnostics(&db, &diags);
+                panic!("module analysis failed");
             }
 
             for func in db.mir_lower_module_all_functions(module).iter() {

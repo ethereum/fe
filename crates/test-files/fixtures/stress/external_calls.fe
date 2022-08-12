@@ -7,7 +7,7 @@ contract Foo {
     my_string: String<100>
 
     pub fn get_my_string(self) -> String<100> {
-        return self.my_string.to_mem()
+        return self.my_string
     }
 
     pub fn set_my_string(self, some_string: String<100>) {
@@ -15,7 +15,7 @@ contract Foo {
     }
 
     pub fn get_my_tuple(self) -> (u256, address) {
-        return self.my_tuple.to_mem()
+        return self.my_tuple
     }
 
     pub fn set_my_tuple(self, some_tuple: (u256, address)) {

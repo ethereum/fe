@@ -27,7 +27,7 @@ contract Foo {
     }
 
     pub fn get_my_addrs(self) -> Array<address, 5> {
-        return self.my_addrs.to_mem()
+        return self.my_addrs
     }
 
     pub fn set_my_u128(self, my_u128: u128) {
@@ -43,7 +43,7 @@ contract Foo {
     }
 
     pub fn get_my_string(self) -> String<10> {
-        return self.my_string.to_mem()
+        return self.my_string
     }
 
     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>) {
@@ -51,7 +51,7 @@ contract Foo {
     }
 
     pub fn get_my_u16s(self) -> Array<u16, 255> {
-        return self.my_u16s.to_mem()
+        return self.my_u16s
     }
 
     pub fn set_my_bool(self, my_bool: bool) {
@@ -67,7 +67,7 @@ contract Foo {
     }
 
     pub fn get_my_bytes(self) -> Array<u8, 100> {
-        return self.my_bytes.to_mem()
+        return self.my_bytes
     }
 
     pub fn get_my_struct() -> MyStruct {
@@ -83,6 +83,6 @@ contract Foo {
     }
 
     pub fn emit_my_event(self, ctx: Context) {
-        emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
+        emit MyEvent(ctx, my_addrs: self.my_addrs, my_u128: self.my_u128, my_string: self.my_string, my_u16s: self.my_u16s, my_bool: self.my_bool, my_bytes: self.my_bytes)
     }
 }

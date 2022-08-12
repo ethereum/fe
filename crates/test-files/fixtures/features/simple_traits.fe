@@ -42,6 +42,6 @@ contract Example {
     assert u8(1).double() == 2
     assert (0, 1).double() == 2
     assert [1, 0].double() == 2
-    assert self.my_array.to_mem().double() == 2
+    assert self.my_array.double() == 2
   }
 }

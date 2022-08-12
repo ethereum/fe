@@ -5,7 +5,6 @@ use strum::{AsRefStr, EnumIter, EnumString};
 #[strum(serialize_all = "snake_case")]
 pub enum ValueMethod {
     Clone,
-    ToMem,
     AbiEncode,
 }
 

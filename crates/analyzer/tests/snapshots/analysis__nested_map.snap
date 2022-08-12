@@ -23,29 +23,29 @@ note:
   ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^ ^ address: Value
+  │                ^^^^^^^^ ^ address
   │                │         
-  │                Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
+  │                Map<address, Map<address, u256>>
 
 note: 
   ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^ ^ address: Value
+  │                ^^^^^^^^^^^ ^ address
   │                │            
-  │                Map<address, u256>: Storage { nonce: None }
+  │                Map<address, u256>
 
 note: 
   ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ nested_map.fe:9:5
@@ -59,31 +59,31 @@ note:
    ┌─ nested_map.fe:10:9
    │
 10 │         self.bar[a][b] = value
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ nested_map.fe:10:9
    │
 10 │         self.bar[a][b] = value
-   │         ^^^^^^^^ ^ address: Value
+   │         ^^^^^^^^ ^ address
    │         │         
-   │         Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
+   │         Map<address, Map<address, u256>>
 
 note: 
    ┌─ nested_map.fe:10:9
    │
 10 │         self.bar[a][b] = value
-   │         ^^^^^^^^^^^ ^ address: Value
+   │         ^^^^^^^^^^^ ^ address
    │         │            
-   │         Map<address, u256>: Storage { nonce: None }
+   │         Map<address, u256>
 
 note: 
    ┌─ nested_map.fe:10:9
    │
 10 │         self.bar[a][b] = value
-   │         ^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │         ^^^^^^^^^^^^^^   ^^^^^ u256
    │         │                 
-   │         u256: Storage { nonce: None }
+   │         u256
 
 note: 
    ┌─ nested_map.fe:13:5
@@ -97,29 +97,29 @@ note:
    ┌─ nested_map.fe:14:16
    │
 14 │         return self.baz[a][b]
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ nested_map.fe:14:16
    │
 14 │         return self.baz[a][b]
-   │                ^^^^^^^^ ^ address: Value
+   │                ^^^^^^^^ ^ address
    │                │         
-   │                Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
+   │                Map<address, Map<u256, bool>>
 
 note: 
    ┌─ nested_map.fe:14:16
    │
 14 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^ ^ u256: Value
+   │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Map<u256, bool>: Storage { nonce: None }
+   │                Map<u256, bool>
 
 note: 
    ┌─ nested_map.fe:14:16
    │
 14 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Value
+   │                ^^^^^^^^^^^^^^ bool
 
 note: 
    ┌─ nested_map.fe:17:5
@@ -133,30 +133,30 @@ note:
    ┌─ nested_map.fe:18:9
    │
 18 │         self.baz[a][b] = value
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ nested_map.fe:18:9
    │
 18 │         self.baz[a][b] = value
-   │         ^^^^^^^^ ^ address: Value
+   │         ^^^^^^^^ ^ address
    │         │         
-   │         Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
+   │         Map<address, Map<u256, bool>>
 
 note: 
    ┌─ nested_map.fe:18:9
    │
 18 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^^^^ ^ u256
    │         │            
-   │         Map<u256, bool>: Storage { nonce: None }
+   │         Map<u256, bool>
 
 note: 
    ┌─ nested_map.fe:18:9
    │
 18 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^^^^   ^^^^^ bool: Value
+   │         ^^^^^^^^^^^^^^   ^^^^^ bool
    │         │                 
-   │         bool: Storage { nonce: None }
+   │         bool
 
 

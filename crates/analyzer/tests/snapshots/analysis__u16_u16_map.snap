@@ -21,21 +21,21 @@ note:
   ┌─ u16_u16_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ u16_u16_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u16: Value
+  │                ^^^^^^^^ ^^^ u16
   │                │         
-  │                Map<u16, u16>: Storage { nonce: Some(0) }
+  │                Map<u16, u16>
 
 note: 
   ┌─ u16_u16_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u16: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^ u16
 
 note: 
    ┌─ u16_u16_map.fe:8:5
@@ -49,22 +49,22 @@ note:
   ┌─ u16_u16_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ u16_u16_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u16: Value
+  │         ^^^^^^^^ ^^^ u16
   │         │         
-  │         Map<u16, u16>: Storage { nonce: Some(0) }
+  │         Map<u16, u16>
 
 note: 
   ┌─ u16_u16_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u16: Value
+  │         ^^^^^^^^^^^^^   ^^^^^ u16
   │         │                
-  │         u16: Storage { nonce: None }
+  │         u16
 
 

@@ -30,68 +30,68 @@ note:
   ┌─ for_loop_with_static_array.fe:3:41
   │
 3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                         ^  ^ u256: Value
+  │                                         ^  ^ u256
   │                                         │   
-  │                                         u256: Value
+  │                                         u256
 
 note: 
   ┌─ for_loop_with_static_array.fe:3:40
   │
 3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                        ^^^^^^ Array<u256, 3>: Memory
+  │                                        ^^^^^^ Array<u256, 3>
 4 │         my_array[0] = 5
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:4:9
   │
 4 │         my_array[0] = 5
-  │         ^^^^^^^^^^^   ^ u256: Value
+  │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 5 │         my_array[1] = 10
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[1] = 10
-  │         ^^^^^^^^^^^   ^^ u256: Value
+  │         ^^^^^^^^^^^   ^^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 6 │         my_array[2] = 15
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>: Memory
+  │         Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:6:9
   │
 6 │         my_array[2] = 15
-  │         ^^^^^^^^^^^   ^^ u256: Value
+  │         ^^^^^^^^^^^   ^^ u256
   │         │              
-  │         u256: Memory
+  │         u256
 7 │         let sum: u256 = 0
-  │                         ^ u256: Value
+  │                         ^ u256
 8 │         for i in my_array {
-  │                  ^^^^^^^^ Array<u256, 3>: Memory
+  │                  ^^^^^^^^ Array<u256, 3>
 9 │             sum = sum + i
-  │             ^^^   ^^^   ^ u256: Value
+  │             ^^^   ^^^   ^ u256
   │             │     │      
-  │             │     u256: Value
-  │             u256: Value
+  │             │     u256
+  │             u256
 
 note: 
    ┌─ for_loop_with_static_array.fe:9:19
    │
  9 │             sum = sum + i
-   │                   ^^^^^^^ u256: Value
+   │                   ^^^^^^^ u256
 10 │         }
 11 │         return sum
-   │                ^^^ u256: Value
+   │                ^^^ u256
 
 
