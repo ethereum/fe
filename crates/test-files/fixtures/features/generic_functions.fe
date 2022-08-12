@@ -1,8 +1,12 @@
+use std::traits::Dummy
+
 trait Computable {
   fn compute(self, val: u256) -> u256;
 }
 
 struct Mac {}
+
+impl Dummy for Mac {}
 
 impl Computable for Mac {
   fn compute(self, val: u256) -> u256 {
@@ -31,6 +35,10 @@ struct Runner {
   pub fn run<T: Computable>(self, _ val: T) -> u256 {
     return val.compute(val: 1000)
   }
+
+  pub fn dummy<T: Dummy>(self, _ val: T) {
+
+  }
 }
 
 contract Example {
@@ -38,5 +46,8 @@ contract Example {
     let runner: Runner = Runner();
     assert runner.run(Mac()) == 1001
     assert runner.run(Linux(counter: 10)) == 1015
+
+    // We are testing that we can satisfy a trait bound where the trait is defined in another module
+    runner.dummy(Mac())
   }
 }

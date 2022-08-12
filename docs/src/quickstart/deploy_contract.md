@@ -50,7 +50,7 @@ contract GuestBook {
 }
 ```
 
-If you haven't already, run `./fe guest_book.fe --overwrite` to obtain the bytecode that we want to deploy.
+If you haven't already, run `./fe build guest_book.fe --overwrite` to obtain the bytecode that we want to deploy.
 
 To make the deployment, we will need to send a transaction to a node that participates in the Görli network. We can run our own node, sign up at [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/) to use one of their nodes or find an open public node such as `https://goerli-light.eth.linkpool.io` which we will use to keep this tutorial as accessible as possible.
 

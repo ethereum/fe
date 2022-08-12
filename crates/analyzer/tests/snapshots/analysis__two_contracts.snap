@@ -61,10 +61,10 @@ note:
 note: 
    ┌─ two_contracts.fe:15:5
    │  
-15 │ ╭     pub fn add(_ x: u256, _ y: u256) -> u256 {
+15 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 16 │ │         return x + y
 17 │ │     }
-   │ ╰─────^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ two_contracts.fe:16:16

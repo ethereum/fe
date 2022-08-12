@@ -1479,6 +1479,13 @@ fn external_contract() {
             Some(&uint_array_token(&[a, c, b])),
         );
 
+        proxy_harness.test_function(
+            &mut executor,
+            "add",
+            &[uint_token(a), uint_token(b)],
+            Some(&uint_token(68)),
+        );
+
         foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
 
         assert_harness_gas_report!(proxy_harness);

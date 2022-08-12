@@ -1700,10 +1700,9 @@ impl TraitId {
     }
 
     pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: TypeId) -> bool {
-        self.module(db)
-            .all_impls(db)
+        ty.get_all_impls(db)
             .iter()
-            .any(|val| &val.trait_id(db) == self && val.receiver(db) == ty)
+            .any(|val| &val.trait_id(db) == self)
     }
 
     pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {

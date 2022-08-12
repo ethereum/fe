@@ -3,7 +3,7 @@ use std::context::Context
 contract Foo {
     pub fn __init__() {}
 
-    pub fn f() {}
+    pub fn f(self) {}
 }
 
 contract Bar {

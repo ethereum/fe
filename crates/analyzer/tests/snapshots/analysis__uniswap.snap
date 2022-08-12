@@ -6,10 +6,10 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ uniswap.fe:4:5
   │  
-4 │ ╭     pub fn balanceOf(_ account: address) -> u256 {
+4 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 5 │ │         return 0
 6 │ │     }
-  │ ╰─────^ self: None, params: [{ label: Some("_"), name: account, typ: address }] -> u256
+  │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
   ┌─ uniswap.fe:5:16
@@ -20,10 +20,10 @@ note:
 note: 
    ┌─ uniswap.fe:8:5
    │  
- 8 │ ╭     pub fn transfer(to: address, _ amount: u256) -> bool {
+ 8 │ ╭     pub fn transfer(self, to: address, _ amount: u256) -> bool {
  9 │ │         return false
 10 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: to, typ: address }, { label: Some("_"), name: amount, typ: u256 }] -> bool
+   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: to, typ: address }, { label: Some("_"), name: amount, typ: u256 }] -> bool
 
 note: 
   ┌─ uniswap.fe:9:16
@@ -868,8 +868,8 @@ note:
     ┌─ uniswap.fe:146:5
     │  
 146 │ ╭     fn _update(self, ctx: Context, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256) {
-147 │ │         # changed from u32s
-148 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
+147 │ │         // changed from u32s
+148 │ │         // TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
 149 │ │         let block_timestamp: u256 = ctx.block_timestamp() % 2 ** 32
     · │
 158 │ │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
@@ -1351,7 +1351,7 @@ note:
     │             ^^^^^^^ u256
 193 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │             ^^^^^^ bool
-194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+194 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │             ^^^^^^^^^^^^ u256
 195 │         let liquidity: u256 = 0
     │             ^^^^^^^^^ u256
@@ -1465,13 +1465,13 @@ note:
     │
 193 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+194 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │                                  ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:194:34
     │
-194 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+194 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │                                  ^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
 195 │         let liquidity: u256 = 0
     │                               ^ u256: Value
@@ -1510,7 +1510,7 @@ note:
     │
 197 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
+198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │             ^^^^       ^^^              ^ u256: Value
     │             │          │                 
     │             │          Context: Memory
@@ -1519,7 +1519,7 @@ note:
 note: 
     ┌─ uniswap.fe:198:33
     │
-198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
+198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │                                 ^^^^^^^^^^         ^^^^^^^^^^^^^^^^^ u256: Value
     │                                 │                   
     │                                 address: Value
@@ -1527,7 +1527,7 @@ note:
 note: 
     ┌─ uniswap.fe:198:13
     │
-198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
+198 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 199 │         } else {
 200 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
@@ -1613,13 +1613,13 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 205 │         if fee_on {
     │            ^^^^^^ bool: Value
-206 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
+206 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:206:13
     │
-206 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
+206 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │             ^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^ u256: Value
     │             │             │           
     │             │             u256: Value
@@ -1628,7 +1628,7 @@ note:
 note: 
     ┌─ uniswap.fe:206:27
     │
-206 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
+206 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │                           ^^^^^^^^^^^^^^^^^^^ u256: Value
 207 │         }
 208 │         emit Mint(ctx, sender: ctx.msg_sender(), amount0, amount1)
@@ -1679,11 +1679,11 @@ note:
 221 │ 
 222 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │             ^^^^^^ bool
-223 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+223 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │             ^^^^^^^^^^^^ u256
-224 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+224 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │             ^^^^^^^ u256
-225 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+225 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │             ^^^^^^^ u256
 
 note: 
@@ -1788,15 +1788,15 @@ note:
     │
 222 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-223 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+223 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │                                  ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:223:34
     │
-223 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+223 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │                                  ^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
-224 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+224 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │                              ^^^^^^^^^   ^^^^^^^^ u256: Value
     │                              │            
     │                              u256: Value
@@ -1804,7 +1804,7 @@ note:
 note: 
     ┌─ uniswap.fe:224:29
     │
-224 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+224 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^ u256: Value
     │                             │                         
     │                             u256: Value
@@ -1812,9 +1812,9 @@ note:
 note: 
     ┌─ uniswap.fe:224:29
     │
-224 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+224 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
-225 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+225 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                              ^^^^^^^^^   ^^^^^^^^ u256: Value
     │                              │            
     │                              u256: Value
@@ -1822,7 +1822,7 @@ note:
 note: 
     ┌─ uniswap.fe:225:29
     │
-225 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+225 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^ u256: Value
     │                             │                         
     │                             u256: Value
@@ -1830,7 +1830,7 @@ note:
 note: 
     ┌─ uniswap.fe:225:29
     │
-225 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+225 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 226 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
     │                ^^^^^^^   ^ u256: Value
@@ -2174,7 +2174,7 @@ note:
     │
 255 │         if amount0_out > 0 {
     │            ^^^^^^^^^^^^^^^ bool: Value
-256 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
+256 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
     │             ^^^^^^          ^^  ^^^^^^^^^^^ u256: Value
     │             │               │    
     │             │               address: Value
@@ -2183,7 +2183,7 @@ note:
 note: 
     ┌─ uniswap.fe:256:13
     │
-256 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
+256 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 257 │         }
 258 │         if amount1_out > 0 {
@@ -2196,7 +2196,7 @@ note:
     │
 258 │         if amount1_out > 0 {
     │            ^^^^^^^^^^^^^^^ bool: Value
-259 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
+259 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
     │             ^^^^^^          ^^  ^^^^^^^^^^^ u256: Value
     │             │               │    
     │             │               address: Value
@@ -2205,7 +2205,7 @@ note:
 note: 
     ┌─ uniswap.fe:259:13
     │
-259 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
+259 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
     ·
 265 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
@@ -2486,8 +2486,8 @@ note:
     ┌─ uniswap.fe:283:5
     │  
 283 │ ╭     pub fn skim(self, ctx: Context, to: address) {
-284 │ │         let token0: ERC20 = self.token0 # gas savings
-285 │ │         let token1: ERC20 = self.token1 # gas savings
+284 │ │         let token0: ERC20 = self.token0 // gas savings
+285 │ │         let token1: ERC20 = self.token1 // gas savings
 286 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
 287 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
 288 │ │     }
@@ -2496,29 +2496,29 @@ note:
 note: 
     ┌─ uniswap.fe:284:13
     │
-284 │         let token0: ERC20 = self.token0 # gas savings
+284 │         let token0: ERC20 = self.token0 // gas savings
     │             ^^^^^^ ERC20
-285 │         let token1: ERC20 = self.token1 # gas savings
+285 │         let token1: ERC20 = self.token1 // gas savings
     │             ^^^^^^ ERC20
 
 note: 
     ┌─ uniswap.fe:284:29
     │
-284 │         let token0: ERC20 = self.token0 # gas savings
+284 │         let token0: ERC20 = self.token0 // gas savings
     │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:284:29
     │
-284 │         let token0: ERC20 = self.token0 # gas savings
+284 │         let token0: ERC20 = self.token0 // gas savings
     │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(5) } => Value
-285 │         let token1: ERC20 = self.token1 # gas savings
+285 │         let token1: ERC20 = self.token1 // gas savings
     │                             ^^^^ UniswapV2Pair: Value
 
 note: 
     ┌─ uniswap.fe:285:29
     │
-285 │         let token1: ERC20 = self.token1 # gas savings
+285 │         let token1: ERC20 = self.token1 // gas savings
     │                             ^^^^^^^^^^^ ERC20: Storage { nonce: Some(6) } => Value
 286 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
     │         ^^^^^^          ^^  ^^^^^^           ^^^ Context: Memory

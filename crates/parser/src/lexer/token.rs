@@ -29,7 +29,7 @@ impl<'a> Add<&Token<'a>> for Span {
 pub enum TokenKind {
     // Ignoring comments and spaces/tabs for now.
     // If we implement an auto-formatting tool, we'll probably want to change this.
-    #[regex(r"#[^\n]*", logos::skip)]
+    #[regex(r"//[^\n]*", logos::skip)]
     #[regex("[ \t]+", logos::skip)]
     #[error]
     Error,

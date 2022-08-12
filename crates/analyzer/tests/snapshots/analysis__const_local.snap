@@ -24,21 +24,21 @@ note:
    │               ^^ i64
  5 │         const C3: i64 = 10
    │               ^^ i64
- 6 │         const C4: i64 = (C1 * C2) + C3 # 12
+ 6 │         const C4: i64 = (C1 * C2) + C3 // 12
    │               ^^ i64
  7 │         const EXP: u8 = 2
    │               ^^^ u8
- 8 │         const C5: i64 = (C2 ** EXP) # 4
+ 8 │         const C5: i64 = (C2 ** EXP) // 4
    │               ^^ i64
- 9 │         const C6: i64 = (C5 << 1) # 8
+ 9 │         const C6: i64 = (C5 << 1) // 8
    │               ^^ i64
-10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) // true
    │               ^^ bool
 11 │         const C8: bool = false
    │               ^^ bool
-12 │         const C9: bool = C8 < C7 # true
+12 │         const C9: bool = C8 < C7 // true
    │               ^^ bool
-13 │         const C10: u256 = 42 if C9 else 0 # 42
+13 │         const C10: u256 = 42 if C9 else 0 // 42
    │               ^^^ u256
 14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │             ^^^^ Array<bool, 42>
@@ -52,7 +52,7 @@ note:
   │                         ^ i64: Value
 5 │         const C3: i64 = 10
   │                         ^^ i64: Value
-6 │         const C4: i64 = (C1 * C2) + C3 # 12
+6 │         const C4: i64 = (C1 * C2) + C3 // 12
   │                          ^^   ^^ i64: Value
   │                          │     
   │                          i64: Value
@@ -60,7 +60,7 @@ note:
 note: 
   ┌─ const_local.fe:6:25
   │
-6 │         const C4: i64 = (C1 * C2) + C3 # 12
+6 │         const C4: i64 = (C1 * C2) + C3 // 12
   │                         ^^^^^^^^^   ^^ i64: Value
   │                         │            
   │                         i64: Value
@@ -68,11 +68,11 @@ note:
 note: 
   ┌─ const_local.fe:6:25
   │
-6 │         const C4: i64 = (C1 * C2) + C3 # 12
+6 │         const C4: i64 = (C1 * C2) + C3 // 12
   │                         ^^^^^^^^^^^^^^ i64: Value
 7 │         const EXP: u8 = 2
   │                         ^ u8: Value
-8 │         const C5: i64 = (C2 ** EXP) # 4
+8 │         const C5: i64 = (C2 ** EXP) // 4
   │                          ^^    ^^^ u8: Value
   │                          │      
   │                          i64: Value
@@ -80,9 +80,9 @@ note:
 note: 
   ┌─ const_local.fe:8:25
   │
-8 │         const C5: i64 = (C2 ** EXP) # 4
+8 │         const C5: i64 = (C2 ** EXP) // 4
   │                         ^^^^^^^^^^^ i64: Value
-9 │         const C6: i64 = (C5 << 1) # 8
+9 │         const C6: i64 = (C5 << 1) // 8
   │                          ^^    ^ u256: Value
   │                          │      
   │                          i64: Value
@@ -90,9 +90,9 @@ note:
 note: 
    ┌─ const_local.fe:9:25
    │
- 9 │         const C6: i64 = (C5 << 1) # 8
+ 9 │         const C6: i64 = (C5 << 1) // 8
    │                         ^^^^^^^^^ i64: Value
-10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) // true
    │                           ^^   ^^ i64: Value
    │                           │     
    │                           i64: Value
@@ -100,7 +100,7 @@ note:
 note: 
    ┌─ const_local.fe:10:26
    │
-10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) // true
    │                          ^^^^^^^^^      ^^   ^^ i64: Value
    │                          │              │     
    │                          │              i64: Value
@@ -109,17 +109,17 @@ note:
 note: 
    ┌─ const_local.fe:10:40
    │
-10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) // true
    │                                        ^^^^^^^^^ bool: Value
 
 note: 
    ┌─ const_local.fe:10:26
    │
-10 │         const C7: bool = (C5 < C6) and (C4 > C5) # true
+10 │         const C7: bool = (C5 < C6) and (C4 > C5) // true
    │                          ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 11 │         const C8: bool = false
    │                          ^^^^^ bool: Value
-12 │         const C9: bool = C8 < C7 # true
+12 │         const C9: bool = C8 < C7 // true
    │                          ^^   ^^ bool: Value
    │                          │     
    │                          bool: Value
@@ -127,15 +127,15 @@ note:
 note: 
    ┌─ const_local.fe:12:26
    │
-12 │         const C9: bool = C8 < C7 # true
+12 │         const C9: bool = C8 < C7 // true
    │                          ^^^^^^^ bool: Value
-13 │         const C10: u256 = 42 if C9 else 0 # 42
+13 │         const C10: u256 = 42 if C9 else 0 // 42
    │                                 ^^ bool: Value
 
 note: 
    ┌─ const_local.fe:13:27
    │
-13 │         const C10: u256 = 42 if C9 else 0 # 42
+13 │         const C10: u256 = 42 if C9 else 0 // 42
    │                           ^^            ^ u256: Value
    │                           │              
    │                           u256: Value
@@ -143,7 +143,7 @@ note:
 note: 
    ┌─ const_local.fe:13:27
    │
-13 │         const C10: u256 = 42 if C9 else 0 # 42
+13 │         const C10: u256 = 42 if C9 else 0 // 42
    │                           ^^^^^^^^^^^^^^^ u256: Value
 14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │                                 ^^^       ^^^^    ^^^ u256: Value

@@ -7,7 +7,7 @@ note:
    ┌─ const_generics.fe:2:5
    │  
  2 │ ╭     pub fn bar() {
- 3 │ │         # const generics with literal.
+ 3 │ │         // const generics with literal.
  4 │ │         let array_lit: Array<i32, 8> = [i32(0); 8]
  5 │ │         let array_lit2: Array<i32, { 8 }> = [i32(0); 8]
    · │

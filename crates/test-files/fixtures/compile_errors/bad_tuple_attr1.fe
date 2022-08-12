@@ -1,4 +1,4 @@
-# See ethereum/fe issue #396
+// See ethereum/fe issue //396
 contract foo {
     my_sto_tuple: (u256, i32)
 

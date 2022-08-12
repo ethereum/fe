@@ -3,7 +3,7 @@ use std::context::Context
 contract Foo {
     my_num: u256
 
-    pub fn baz(ctx: Context) -> u256 {
+    pub fn baz(self, ctx: Context) -> u256 {
         return ctx.block_number()
     }
 

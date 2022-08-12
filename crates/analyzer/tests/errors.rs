@@ -324,6 +324,7 @@ test_file! { revert_sto_error_no_copy }
 
 test_file! { call_to_mut_fn_without_self }
 test_file! { call_to_pure_fn_on_self }
+test_file! { call_to_pure_struct_fn_on_instance }
 test_file! { missing_self }
 test_file! { self_not_first }
 test_file! { self_in_standalone_fn }
