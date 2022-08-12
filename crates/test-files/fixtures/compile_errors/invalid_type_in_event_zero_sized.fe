@@ -46,3 +46,8 @@ event SixthCase {
     idx e: ((), UnEmptyStruct)
     idx f: Foo
 }
+
+event SeventhCase {
+    idx a: u256
+    b: Map<u256,u256>
+}

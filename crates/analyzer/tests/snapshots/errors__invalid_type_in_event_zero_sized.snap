@@ -68,4 +68,10 @@ error: event field type must have a non-zero types
 47 │     idx f: Foo
    │            ^^^ this type can't be used as an event field
 
+error: event field type is invalid
+   ┌─ compile_errors/invalid_type_in_event_zero_sized.fe:52:8
+   │
+52 │     b: Map<u256,u256>
+   │        ^^^^^^^^^^^^^^ this type can't be used as an event field
+
 

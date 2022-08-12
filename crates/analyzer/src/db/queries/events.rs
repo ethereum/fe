@@ -39,24 +39,34 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
                 typ: typ_node,
             } = &field.kind;
 
-            let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ {
-                typ if typ.has_fixed_size(scope.db()) => {
-                    if *is_idx && typ.is_zero_sized(db) {
-                        Err(TypeError::new(scope.error(
-                            "event field type must have a non-zero types",
+            let typ =
+                type_desc(&mut scope, typ_node).and_then(|typ| match db.lookup_intern_type(typ) {
+                    types::Type::Generic(_)
+                    | types::Type::Map(_)
+                    | types::Type::SelfContract(_) => Err(TypeError::new(scope.error(
+                        "event field type is invalid",
+                        typ_node.span,
+                        "this type can't be used as an event field",
+                    ))),
+                    _ => match typ {
+                        typ if typ.has_fixed_size(scope.db()) => {
+                            if *is_idx && typ.is_zero_sized(db) {
+                                Err(TypeError::new(scope.error(
+                                    "event field type must have a non-zero types",
+                                    typ_node.span,
+                                    "this type can't be used as an event field",
+                                )))
+                            } else {
+                                Ok(typ)
+                            }
+                        }
+                        _ => Err(TypeError::new(scope.error(
+                            "event field type must have a fixed size",
                             typ_node.span,
-                            "this type can't be used as an event field",
-                        )))
-                    } else {
-                        Ok(typ)
-                    }
-                }
-                _ => Err(TypeError::new(scope.error(
-                    "event field type must have a fixed size",
-                    typ_node.span,
-                    "this can't be used as an event field",
-                ))),
-            });
+                            "this can't be used as an event field",
+                        ))),
+                    },
+                });
 
             // If we've already seen the max number of indexed fields,
             // ignore the `idx` qualifier on this one. We'll emit an error below.
