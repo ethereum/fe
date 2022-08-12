@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     favorite_number: u256
 

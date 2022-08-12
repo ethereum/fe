@@ -3,8 +3,6 @@ source: crates/parser/tests/cases/print_ast.rs
 expression: "parse_and_print(\"demos/guest_book.fe\", src)"
 
 ---
-use std::context::Context
-
 contract GuestBook {
     messages: Map<address, String<100>>
 

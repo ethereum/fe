@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: cannot find value `ctx` in this scope
-  ┌─ compile_errors/ctx_undeclared.fe:5:16
+  ┌─ compile_errors/ctx_undeclared.fe:3:16
   │
-5 │         return ctx.block_number()
+3 │         return ctx.block_number()
   │                ^^^ undefined
 
 

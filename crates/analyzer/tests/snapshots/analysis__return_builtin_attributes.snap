@@ -4,203 +4,203 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_builtin_attributes.fe:4:5
+  ┌─ return_builtin_attributes.fe:2:5
   │  
-4 │ ╭     pub fn base_fee(ctx: Context) -> u256 {
-5 │ │         return ctx.base_fee()
-6 │ │     }
+2 │ ╭     pub fn base_fee(ctx: Context) -> u256 {
+3 │ │         return ctx.base_fee()
+4 │ │     }
   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-  ┌─ return_builtin_attributes.fe:5:16
+  ┌─ return_builtin_attributes.fe:3:16
   │
-5 │         return ctx.base_fee()
+3 │         return ctx.base_fee()
   │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_builtin_attributes.fe:5:16
+  ┌─ return_builtin_attributes.fe:3:16
   │
-5 │         return ctx.base_fee()
+3 │         return ctx.base_fee()
   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:8:5
-   │  
- 8 │ ╭     pub fn coinbase(ctx: Context) -> address {
- 9 │ │         return ctx.block_coinbase()
-10 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
+  ┌─ return_builtin_attributes.fe:6:5
+  │  
+6 │ ╭     pub fn coinbase(ctx: Context) -> address {
+7 │ │         return ctx.block_coinbase()
+8 │ │     }
+  │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
-  ┌─ return_builtin_attributes.fe:9:16
+  ┌─ return_builtin_attributes.fe:7:16
   │
-9 │         return ctx.block_coinbase()
+7 │         return ctx.block_coinbase()
   │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_builtin_attributes.fe:9:16
+  ┌─ return_builtin_attributes.fe:7:16
   │
-9 │         return ctx.block_coinbase()
+7 │         return ctx.block_coinbase()
   │                ^^^^^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:12:5
+   ┌─ return_builtin_attributes.fe:10:5
    │  
-12 │ ╭     pub fn difficulty(ctx: Context) -> u256 {
-13 │ │         return ctx.block_difficulty()
-14 │ │     }
+10 │ ╭     pub fn difficulty(ctx: Context) -> u256 {
+11 │ │         return ctx.block_difficulty()
+12 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:13:16
+   ┌─ return_builtin_attributes.fe:11:16
    │
-13 │         return ctx.block_difficulty()
+11 │         return ctx.block_difficulty()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:13:16
+   ┌─ return_builtin_attributes.fe:11:16
    │
-13 │         return ctx.block_difficulty()
+11 │         return ctx.block_difficulty()
    │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:16:5
+   ┌─ return_builtin_attributes.fe:14:5
    │  
-16 │ ╭     pub fn number(ctx: Context) -> u256 {
-17 │ │         return ctx.block_number()
-18 │ │     }
+14 │ ╭     pub fn number(ctx: Context) -> u256 {
+15 │ │         return ctx.block_number()
+16 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:17:16
+   ┌─ return_builtin_attributes.fe:15:16
    │
-17 │         return ctx.block_number()
+15 │         return ctx.block_number()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:17:16
+   ┌─ return_builtin_attributes.fe:15:16
    │
-17 │         return ctx.block_number()
+15 │         return ctx.block_number()
    │                ^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:20:5
+   ┌─ return_builtin_attributes.fe:18:5
    │  
-20 │ ╭     pub fn timestamp(ctx: Context) -> u256 {
-21 │ │         return ctx.block_timestamp()
-22 │ │     }
+18 │ ╭     pub fn timestamp(ctx: Context) -> u256 {
+19 │ │         return ctx.block_timestamp()
+20 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:21:16
+   ┌─ return_builtin_attributes.fe:19:16
    │
-21 │         return ctx.block_timestamp()
+19 │         return ctx.block_timestamp()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:21:16
+   ┌─ return_builtin_attributes.fe:19:16
    │
-21 │         return ctx.block_timestamp()
+19 │         return ctx.block_timestamp()
    │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:24:5
+   ┌─ return_builtin_attributes.fe:22:5
    │  
-24 │ ╭     pub fn chainid(ctx: Context) -> u256 {
-25 │ │         return ctx.chain_id()
-26 │ │     }
+22 │ ╭     pub fn chainid(ctx: Context) -> u256 {
+23 │ │         return ctx.chain_id()
+24 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:25:16
+   ┌─ return_builtin_attributes.fe:23:16
    │
-25 │         return ctx.chain_id()
+23 │         return ctx.chain_id()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:25:16
+   ┌─ return_builtin_attributes.fe:23:16
    │
-25 │         return ctx.chain_id()
+23 │         return ctx.chain_id()
    │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:28:5
+   ┌─ return_builtin_attributes.fe:26:5
    │  
-28 │ ╭     pub fn sender(ctx: Context) -> address {
-29 │ │         return ctx.msg_sender()
-30 │ │     }
+26 │ ╭     pub fn sender(ctx: Context) -> address {
+27 │ │         return ctx.msg_sender()
+28 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
-   ┌─ return_builtin_attributes.fe:29:16
+   ┌─ return_builtin_attributes.fe:27:16
    │
-29 │         return ctx.msg_sender()
+27 │         return ctx.msg_sender()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:29:16
+   ┌─ return_builtin_attributes.fe:27:16
    │
-29 │         return ctx.msg_sender()
+27 │         return ctx.msg_sender()
    │                ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:32:5
+   ┌─ return_builtin_attributes.fe:30:5
    │  
-32 │ ╭     pub fn value(ctx: Context) -> u256 {
-33 │ │         return ctx.msg_value()
-34 │ │     }
+30 │ ╭     pub fn value(ctx: Context) -> u256 {
+31 │ │         return ctx.msg_value()
+32 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:33:16
+   ┌─ return_builtin_attributes.fe:31:16
    │
-33 │         return ctx.msg_value()
+31 │         return ctx.msg_value()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:33:16
+   ┌─ return_builtin_attributes.fe:31:16
    │
-33 │         return ctx.msg_value()
+31 │         return ctx.msg_value()
    │                ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:36:5
+   ┌─ return_builtin_attributes.fe:34:5
    │  
-36 │ ╭     pub fn origin(ctx: Context) -> address {
-37 │ │         return ctx.tx_origin()
-38 │ │     }
+34 │ ╭     pub fn origin(ctx: Context) -> address {
+35 │ │         return ctx.tx_origin()
+36 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
-   ┌─ return_builtin_attributes.fe:37:16
+   ┌─ return_builtin_attributes.fe:35:16
    │
-37 │         return ctx.tx_origin()
+35 │         return ctx.tx_origin()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:37:16
+   ┌─ return_builtin_attributes.fe:35:16
    │
-37 │         return ctx.tx_origin()
+35 │         return ctx.tx_origin()
    │                ^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ return_builtin_attributes.fe:40:5
+   ┌─ return_builtin_attributes.fe:38:5
    │  
-40 │ ╭     pub fn gas_price(ctx: Context) -> u256 {
-41 │ │         return ctx.tx_gas_price()
-42 │ │     }
+38 │ ╭     pub fn gas_price(ctx: Context) -> u256 {
+39 │ │         return ctx.tx_gas_price()
+40 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-   ┌─ return_builtin_attributes.fe:41:16
+   ┌─ return_builtin_attributes.fe:39:16
    │
-41 │         return ctx.tx_gas_price()
+39 │         return ctx.tx_gas_price()
    │                ^^^ Context: Memory
 
 note: 
-   ┌─ return_builtin_attributes.fe:41:16
+   ┌─ return_builtin_attributes.fe:39:16
    │
-41 │         return ctx.tx_gas_price()
+39 │         return ctx.tx_gas_price()
    │                ^^^^^^^^^^^^^^^^^^ u256: Value
 
 

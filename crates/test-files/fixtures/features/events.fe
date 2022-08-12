@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     event Nums {
         idx num1: u256

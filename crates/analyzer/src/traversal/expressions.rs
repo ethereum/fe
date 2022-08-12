@@ -1895,7 +1895,7 @@ fn expr_call_type_attribute(
                                 vec![
                                     Label::primary(
                                         args.span,
-                                        "`ctx` must be defined and passed into the function",
+                                        "`ctx` must be passed into the function",
                                     ),
                                     Label::secondary(
                                         context.parent_function().name_span(context.db()),
@@ -1906,10 +1906,7 @@ fn expr_call_type_attribute(
                                         "Example: `pub fn foo(ctx: Context, ...)`",
                                     ),
                                 ],
-                                vec![
-                                    "Note: import context with `use std::context::Context`".into(),
-                                    "Example: `MyContract.create(ctx, 0)`".into(),
-                                ],
+                                vec!["Example: `MyContract.create(ctx, 0)`".into()],
                             );
                         }
                     } else if !attrs.typ.is_integer(context.db()) {

@@ -4,43 +4,43 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ create_contract_from_init.fe:4:5
+  ┌─ create_contract_from_init.fe:2:5
   │  
-4 │ ╭     pub fn get_my_num() -> u256 {
-5 │ │         return 42
-6 │ │     }
+2 │ ╭     pub fn get_my_num() -> u256 {
+3 │ │         return 42
+4 │ │     }
   │ ╰─────^ self: None, params: [] -> u256
 
 note: 
-  ┌─ create_contract_from_init.fe:5:16
+  ┌─ create_contract_from_init.fe:3:16
   │
-5 │         return 42
+3 │         return 42
   │                ^^ u256: Value
 
 note: 
-   ┌─ create_contract_from_init.fe:10:5
-   │
-10 │     foo_addr: address
-   │     ^^^^^^^^^^^^^^^^^ address
+  ┌─ create_contract_from_init.fe:8:5
+  │
+8 │     foo_addr: address
+  │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ create_contract_from_init.fe:16:5
+   ┌─ create_contract_from_init.fe:14:5
    │  
-16 │ ╭     pub fn get_foo_addr(self) -> address {
-17 │ │         return self.foo_addr
-18 │ │     }
+14 │ ╭     pub fn get_foo_addr(self) -> address {
+15 │ │         return self.foo_addr
+16 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [] -> address
 
 note: 
-   ┌─ create_contract_from_init.fe:17:16
+   ┌─ create_contract_from_init.fe:15:16
    │
-17 │         return self.foo_addr
+15 │         return self.foo_addr
    │                ^^^^ FooFactory: Value
 
 note: 
-   ┌─ create_contract_from_init.fe:17:16
+   ┌─ create_contract_from_init.fe:15:16
    │
-17 │         return self.foo_addr
+15 │         return self.foo_addr
    │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 

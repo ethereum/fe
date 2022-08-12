@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     pub fn __init__() {}
 

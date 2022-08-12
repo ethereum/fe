@@ -27,7 +27,7 @@ contract Foo {
     }
 
     fn some_abort_condition() -> bool {
-        # some complex logic
+        // some complex logic
         return true
     }
 }
@@ -51,7 +51,7 @@ contract Foo {
     }
 
     fn some_abort_condition() -> bool {
-        # some complex logic
+        // some complex logic
         return true
     }
 }

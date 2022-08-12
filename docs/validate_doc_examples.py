@@ -57,7 +57,7 @@ def create_fe_file(snippet: CodeSnippet) -> pathlib.Path:
     return fe_snippet_path
 
 def run_snippet(path: pathlib.Path) -> 'subprocess.CompletedProcess[bytes]':
-    return subprocess.run(["./target/debug/fe", str(path), '--overwrite', '-e', 'abi'])
+    return subprocess.run(["./target/debug/fe", "check", str(path)])
 
 def validate_code_examples() -> None:
     TMP_SNIPPET_DIR.mkdir(exist_ok=True)

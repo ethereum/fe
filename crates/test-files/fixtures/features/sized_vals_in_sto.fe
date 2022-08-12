@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     num: u256
     nums: Array<u256, 42>

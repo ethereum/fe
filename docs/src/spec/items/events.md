@@ -17,8 +17,6 @@ An _event_ is a nominal [event type] defined with the keyword `event`. It is emi
 An example of a `event` item and its use:
 
 ```fe
-use std::context::Context
-
 contract Foo {
     event Transfer {
         idx sender: address
@@ -27,8 +25,8 @@ contract Foo {
     }
 
     fn transfer(ctx: Context, to: address, value: u256) {
-        # Heavy logic here
-        # All done, log the event for listeners
+        // Heavy logic here
+        // All done, log the event for listeners
         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
     }
 }

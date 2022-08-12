@@ -1,4 +1,3 @@
-use std::context::Context
 use std::evm
 
 contract Foo {

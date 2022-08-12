@@ -45,7 +45,7 @@ Fe is moving fast. Read up on all the latest improvements.
   Example:
 
   ```fe
-  use std::context::Context # see issue #679
+  use std::context::Context // see issue #679
 
   contract Foo {
     pub fn emit_stuff(ctx: Context) {
@@ -165,7 +165,7 @@ Fe is moving fast. Read up on all the latest improvements.
   struct Pair {
       pub x: i256
       pub y: i256
-    
+
       pub fn new(_ x: i256, _ y: i256) -> Pair {
           return Pair(x, y)
       }
@@ -203,7 +203,7 @@ Fe is moving fast. Read up on all the latest improvements.
   e.g.
 
   ```
-  let my_array: Array<bool, 42> = [bool; 42] 
+  let my_array: Array<bool, 42> = [bool; 42]
   ```
 
   Also added checks to ensure array and struct types are initialized. These checks are currently performed at the declaration site, but will be loosened in the future. ([#747](https://github.com/ethereum/fe/issues/747))
@@ -228,16 +228,16 @@ Fe is moving fast. Read up on all the latest improvements.
 - Fix a bug that causes ICE when nested if-statement has multiple exit point.
 
   E.g. the following code would previously crash the compiler but shouldn't:
-  ```fe
+  ```fe,ignore
    pub fn foo(self) {
       if true {
-          if self.something { 
-              return 
+          if self.something {
+              return
           }
       }
       if true {
-          if self.something { 
-              return 
+          if self.something {
+              return
           }
       }
   }
@@ -268,7 +268,7 @@ Fe is moving fast. Read up on all the latest improvements.
 
 - Support for underscores in numbers to improve readability e.g. `100_000`.
 
-  Example 
+  Example
 
   ```
       let num: u256 = 1000_000_000_000
@@ -296,14 +296,14 @@ Fe is moving fast. Read up on all the latest improvements.
   ([#590](https://github.com/ethereum/fe/issues/590))
 - Reject unary minus operation if the target type is an unsigned integer number.
 
-  Code below should be reject by `fe` compiler: 
+  Code below should be reject by `fe` compiler:
 
-  ```python 
+  ```python
   contract Foo:
       pub fn bar(self) -> u32:
           let unsigned: u32 = 1
           return -unsigned
-    
+
       pub fn foo():
           let a: i32 = 1
           let b: u32 = -a
@@ -316,8 +316,8 @@ Fe is moving fast. Read up on all the latest improvements.
   ```
   struct MyArray:
       pub x: Array<i32, 2>
-    
-    
+
+
   contract Foo:
       pub fn bar(my_arr: MyArray):
           pass
@@ -329,7 +329,7 @@ Fe is moving fast. Read up on all the latest improvements.
 - Return instead of revert when contract is called without data.
 
   If a contract is called without data so that no function is invoked,
-  we would previously `revert` but that would leave us without a 
+  we would previously `revert` but that would leave us without a
   way to send ETH to a contract so instead it will cause a `return` now. ([#694](https://github.com/ethereum/fe/issues/694))
 - Resolve compiler crash when using certain reserved YUL words as struct field names.
 
@@ -418,7 +418,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
     pub fn demo(self):
       transfer(address(0), wei: add(1000, 42))
-  ``` ([#397](https://github.com/ethereum/fe/issues/397))
+  ```
+  ([#397](https://github.com/ethereum/fe/issues/397))
 
 
 ### Bugfixes
@@ -449,7 +450,9 @@ Fe is moving fast. Read up on all the latest improvements.
   contract Bar:
       fn transferBar(to: address, value: u256):
           emit Transfer(sender: msg.sender, receiver: to, value)
-  ``` ([#80](https://github.com/ethereum/fe/issues/80))
+  ```
+  ([#80](https://github.com/ethereum/fe/issues/80))
+
 - The Fe standard library now includes a `std::evm` module, which provides functions that perform low-level evm operations.
   Many of these are marked `unsafe`, and thus can only be used inside of an `unsafe` function or an `unsafe` block.
 
@@ -465,7 +468,10 @@ Fe is moving fast. Read up on all the latest improvements.
   ```
 
   The global functions `balance` and `balance_of` have been removed; these can now be called as `std::evm::balance()`, etc.
-  The global function `send_value` has been ported to Fe, and is now available as `std::send_value`. ([#629](https://github.com/ethereum/fe/issues/629))
+  The global function `send_value` has been ported to Fe, and is now available
+  as `std::send_value`.
+  ([#629](https://github.com/ethereum/fe/issues/629))
+
 - Support structs that have non-base type fields in storage.
 
   Example:
@@ -532,8 +538,10 @@ Fe is moving fast. Read up on all the latest improvements.
           assert self.my_bar.something.item1
 
           return self.my_bar.name.to_mem()
-  ``` ([#636](https://github.com/ethereum/fe/issues/636))
-- Features that read and modify state outside of contracts are now implemented on a struct 
+  ```
+  ([#636](https://github.com/ethereum/fe/issues/636))
+
+- Features that read and modify state outside of contracts are now implemented on a struct
   named "Context". `Context` is included in the standard library and can be imported with
   `use std::context::Context`. Instances of `Context` are created by calls to public functions
   that declare it in the signature or by unsafe code.
@@ -588,7 +596,9 @@ Fe is moving fast. Read up on all the latest improvements.
 
       fn bar(ctx: Context) -> address:
           return ctx.self_address()
-  ``` ([#638](https://github.com/ethereum/fe/issues/638))
+  ```
+  ([#638](https://github.com/ethereum/fe/issues/638))
+
 - # Features
 
   ## Support local constant
@@ -646,7 +656,9 @@ Fe is moving fast. Read up on all the latest improvements.
   contract FOO:
       pub fn bar():
           BAR = 10
-  ``` ([#649](https://github.com/ethereum/fe/issues/649))
+  ```
+  ([#649](https://github.com/ethereum/fe/issues/649))
+
 - Argument label syntax now uses `:` instead of `=`. Example:
 
   ```
@@ -656,7 +668,9 @@ Fe is moving fast. Read up on all the latest improvements.
 
   let x: MyStruct = MyStruct(x: 10, y: 11)
   # previously:     MyStruct(x = 10, y = 11)
-  ``` ([#665](https://github.com/ethereum/fe/issues/665))
+  ```
+  ([#665](https://github.com/ethereum/fe/issues/665))
+
 - Support module-level `pub` modifier, now default visibility of items in a module is private.
 
   Example:
@@ -667,7 +681,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
   # This constant can NOT be used outside of the module.
   const PRIVATE: i32 = 1
-  ``` ([#677](https://github.com/ethereum/fe/issues/677))
+  ```
+  ([#677](https://github.com/ethereum/fe/issues/677))
 
 
 ### Internal Changes - for Fe Contributors
@@ -710,7 +725,8 @@ Fe is moving fast. Read up on all the latest improvements.
       self.house = House::new(price, size)
       let can_access_price: u256 = self.house.price
       # can not access `self.house.vacant` because the field is private
-  ``` ([#214](https://github.com/ethereum/fe/issues/214))
+  ```
+  ([#214](https://github.com/ethereum/fe/issues/214))
 - Support non-base type fields in structs
 
   Support is currently limited in two ways:
@@ -721,8 +737,9 @@ Fe is moving fast. Read up on all the latest improvements.
   ```
   fn f(addr: address) -> u256:
     return u256(addr)
-  ``` ([#621](https://github.com/ethereum/fe/issues/621))
-- A special function named `__call__` can now be defined in contracts. 
+  ```
+  ([#621](https://github.com/ethereum/fe/issues/621))
+- A special function named `__call__` can now be defined in contracts.
 
   The body of this function will execute in place of the standard dispatcher when the contract is called.
 
@@ -736,7 +753,8 @@ Fe is moving fast. Read up on all the latest improvements.
                   __revert(0, 0)
               else:
                   __return(0, 0)
-  ``` ([#622](https://github.com/ethereum/fe/issues/622))
+  ```
+  ([#622](https://github.com/ethereum/fe/issues/622))
 
 
 ### Bugfixes
@@ -755,7 +773,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
   fn fail():
     revert Error(code = BAD_MOJO)
-  ``` ([#619](https://github.com/ethereum/fe/issues/619))
+  ```
+  ([#619](https://github.com/ethereum/fe/issues/619))
 - Fixed a regression where an empty list expression (`[]`) would lead to a compiler crash. ([#623](https://github.com/ethereum/fe/issues/623))
 - Fixed a bug where int array elements were not sign extended in their ABI encodings. ([#633](https://github.com/ethereum/fe/issues/633))
 
@@ -822,8 +841,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
 - Added a globally available *dummy* std lib.
 
-  This library contains a single `get_42` function, which can be called using `std::get_42()`. Once 
-  low-level intrinsics have been added to the language, we can delete `get_42` and start adding 
+  This library contains a single `get_42` function, which can be called using `std::get_42()`. Once
+  low-level intrinsics have been added to the language, we can delete `get_42` and start adding
   useful code. ([#601](https://github.com/ethereum/fe/issues/601))
 
 
@@ -897,7 +916,8 @@ Fe is moving fast. Read up on all the latest improvements.
     let p3: Point = p1.add(p2)
 
     assert p3.x == 6 and p3.y == 12
-  ``` ([#577](https://github.com/ethereum/fe/issues/577))
+  ```
+  ([#577](https://github.com/ethereum/fe/issues/577))
 
 
 ### Bugfixes
@@ -908,7 +928,7 @@ Fe is moving fast. Read up on all the latest improvements.
   Example:
 
   ```
-  let my_array: i256[1] = [-1 << 1] 
+  let my_array: i256[1] = [-1 << 1]
   ```
 
   Previous to this fix, the given example would lead to an ICE. ([#550](https://github.com/ethereum/fe/issues/550))
@@ -972,7 +992,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
       pub fn add_points(self, user: address, val: u256):
           self.points[user] += add_bonus(val)
-  ``` ([#566](https://github.com/ethereum/fe/issues/566))
+  ```
+  ([#566](https://github.com/ethereum/fe/issues/566))
 - Implemented a `send_value(to: address, value_in_wei: u256)` function.
 
   The function is similar to the [`sendValue` function by OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5b28259dacf47fc208e03611eb3ba8eeaed63cc0/contracts/utils/Address.sol#L54-L59) with the differences being that:
@@ -1116,13 +1137,14 @@ Fe is moving fast. Read up on all the latest improvements.
 
       pub fn bar(self, my_num: u256):
           self.my_stored_num = my_num
-        
+
       pub fn baz(self):
           self.bar(my_pure_func())
-        
+
       pub fn my_pure_func() -> u256:
           return 42 + 26
-  ``` ([#520](https://github.com/ethereum/fe/issues/520))
+  ```
+  ([#520](https://github.com/ethereum/fe/issues/520))
 - The analyzer now disallows defining a type, variable, or function whose
   name conflicts with a built-in type, function, or object.
 
@@ -1134,7 +1156,8 @@ Fe is moving fast. Read up on all the latest improvements.
   │
   1 │ type u256 = u8
   │      ^^^^ `u256` is a built-in type
-  ``` ([#539](https://github.com/ethereum/fe/issues/539))
+  ```
+  ([#539](https://github.com/ethereum/fe/issues/539))
 
 
 ### Bugfixes
@@ -1207,14 +1230,14 @@ Fe is moving fast. Read up on all the latest improvements.
 
   This can be especially problematic if gives developers the impression
   that they could apply function arguments in any order as long as they
-  are named which is **not** the case. 
+  are named which is **not** the case.
 
   ```
   contract Foo:
 
       pub fn baz():
           self.bar(val2=1, doesnt_even_exist=2)
-    
+
       pub fn bar(val1: u256, val2: u256):
           pass
   ```
@@ -1439,12 +1462,12 @@ Fe is moving fast. Read up on all the latest improvements.
       pass
 
   ...
-    
+
   contract MyContract:
       pass
-   
+
   ...
-    
+
   struct MyStruct:
       pass
   ```
@@ -1472,7 +1495,7 @@ Fe is moving fast. Read up on all the latest improvements.
 - Analyzer now disallows using `context.add_` methods to update attributes. ([#392](https://github.com/ethereum/fe/issues/392))
 - `()` now represents a distinct type internally called the unit type, instead of an empty tuple.
 
-  The lowering pass now does the following: Valueless return statements are given a `()` value and 
+  The lowering pass now does the following: Valueless return statements are given a `()` value and
   functions without a return value are given explicit `()` returns. ([#406](https://github.com/ethereum/fe/issues/406))
 - Add CI check to ensure fragment files always end with a new line ([#4711](https://github.com/ethereum/fe/issues/4711))
 
@@ -1637,7 +1660,7 @@ Fe is moving fast. Read up on all the latest improvements.
     pub fn implicit_a2() ->():
       pass
   ```
-  
+
 - The JSON ABI builder now supports structs as both input and output. ([#296](https://github.com/ethereum/fe/issues/296))
 - Make subsequently defined contracts visible.
 
@@ -1743,7 +1766,7 @@ Fe is moving fast. Read up on all the latest improvements.
   i.e.
 
   ```
-  # Would both overwrite output files and run the Yul optimizer. 
+  # Would both overwrite output files and run the Yul optimizer.
   $ fe my_contract.fe --overwrite
   ```
 
@@ -1830,9 +1853,9 @@ Fe is moving fast. Read up on all the latest improvements.
           assert building.vacant
 
           return building.price
-  ``` 
-- Added support for external contract calls. Contract definitions now 
-  add a type to the module scope, which may be used to create contract 
+  ```
+- Added support for external contract calls. Contract definitions now
+  add a type to the module scope, which may be used to create contract
   values with the contract's public functions as callable attributes. ([#204](https://github.com/ethereum/fe/issues/204))
 
   Example:
@@ -1912,7 +1935,7 @@ Fe is moving fast. Read up on all the latest improvements.
   ```
    pub fn update_house_price(price: u256):
           self.my_house.price = price
-  ``` 
+  ```
 - Implement global `keccak256` method. The method expects one parameter of `bytes[n]`
   and returns the hash as an `u256`. In a future version `keccak256` will most likely
   be moved behind an import so that it has to be imported (e.g. `from std.crypto import keccak256`). ([#255](https://github.com/ethereum/fe/issues/255))
@@ -1950,8 +1973,8 @@ Fe is moving fast. Read up on all the latest improvements.
 
   With this change all additions (e.g `x + y`) for signed and unsigned
   integers check for over- and underflows and revert if necessary. ([#265](https://github.com/ethereum/fe/issues/265))
-- Added a builtin function `abi_encode()` that can be used to encode structs. The return type is a 
-  fixed-size array of bytes that is equal in size to the encoding. The type system does not support 
+- Added a builtin function `abi_encode()` that can be used to encode structs. The return type is a
+  fixed-size array of bytes that is equal in size to the encoding. The type system does not support
   dynamically-sized arrays yet, which is why we used fixed. ([#266](https://github.com/ethereum/fe/issues/266))
 
   Example:
@@ -1962,7 +1985,7 @@ Fe is moving fast. Read up on all the latest improvements.
       size: u256
       rooms: u8
       vacant: bool
-    
+
   contract Foo:
       pub fn hashed_house() -> u256:
           house: House = House(
@@ -1976,7 +1999,7 @@ Fe is moving fast. Read up on all the latest improvements.
 - Perform over/underflow checks for subtractions (SafeMath). ([#267](https://github.com/ethereum/fe/issues/267))
 
   With this change all subtractions (e.g `x - y`) for signed and unsigned
-  integers check for over- and underflows and revert if necessary. 
+  integers check for over- and underflows and revert if necessary.
 - Support for the boolean operations `and` and `or`. ([#270](https://github.com/ethereum/fe/issues/270))
 
   Examples:
@@ -2128,5 +2151,3 @@ This is the first **alpha** release and kicks off our release schedule which wil
 
 - Updated the Solidity backend to v0.8.0. ([#169](https://github.com/ethereum/fe/issues/169))
 - Run CI tests on Mac and support creating Mac binaries for releases. ([#178](https://github.com/ethereum/fe/issues/178))
-
-

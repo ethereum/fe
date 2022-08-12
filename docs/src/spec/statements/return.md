@@ -19,7 +19,7 @@ contract Foo {
     }
 
     fn in_whitelist(self, to: address) -> bool {
-        # revert used as placeholder for actual logic
+        // revert used as placeholder for actual logic
         revert
     }
 }
@@ -36,7 +36,7 @@ contract Foo {
     }
 
     fn in_whitelist(self, to: address) -> bool {
-        # revert used as placeholder for actual logic
+        // revert used as placeholder for actual logic
         revert
     }
 }

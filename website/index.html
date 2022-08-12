@@ -51,7 +51,7 @@
         <a href="https://blog.fe-lang.org" class="transition duration-100 ease-in-out mt-1 text-lg block px-2 py-2 hover:bg-gray-700 hover:text-white rounded-sm sm:mt-0 sm:ml-2 sm:px-4" title="Blog">Blog</a>
       </nav>
     </div>
-  </header> 
+  </header>
   <main role="main">
     <section class="px-4 py-12 pt-12 sm:py-16 lg:pt-24 max-w-screen-lg xl:max-w-screen-xl mx-auto md:flex justify-between lg:justify-around items-center bg-red-500 rounded-sm">
       <img class="h-52 lg:h-72 lg:ml-8 xl:ml-0 hidden sm:block" src="fe-logo.svg" alt="Fe Programming language">
@@ -196,10 +196,6 @@
 
                       </div>
                       <code class="language-fe flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">
-// Context is a struct provided by the standard library
-// that gives access to various features of the EVM
-use std::context::Context
-
 // The `contract` keyword defines a new contract type
 contract GuestBook {
     // Strings are generic over a constant number
@@ -211,6 +207,8 @@ contract GuestBook {
         book_msg: String&lt;100&gt;
     }
 
+    // Context is a struct provided by the standard library
+    // that gives access to various features of the EVM
     pub fn sign(self, ctx: Context, book_msg: String&lt;100&gt;) {
         // All storage access is explicit using `self.&lt;some-key&gt;`
         self.messages[ctx.msg_sender()] = book_msg

@@ -23,8 +23,6 @@ The `emit` statement is used to create [log entries] in the blockchain. The `emi
 Examples:
 
 ```fe
-use std::context::Context
-
 contract Foo {
     event Mix {
         num1: u256

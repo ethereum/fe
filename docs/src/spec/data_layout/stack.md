@@ -12,7 +12,7 @@ Example:
 
 ```fe
 fn f() {
-    let foo: u256 = 42 # foo is stored on the stack
-    let bar: Array<u256, 100> # bar is a memory pointer stored on the stack
+    let foo: u256 = 42 // foo is stored on the stack
+    let bar: Array<u256, 100> = [0; 100] // bar is a memory pointer stored on the stack
 }
 ```

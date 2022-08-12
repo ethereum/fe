@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `Foo.create2(...)` called within `Foo` creates an illegal circular dependency
-  ┌─ compile_errors/circular_dependency_create2.fe:5:28
+  ┌─ compile_errors/circular_dependency_create2.fe:3:28
   │
-5 │         let foo: Foo = Foo.create2(ctx, 2, 0)
+3 │         let foo: Foo = Foo.create2(ctx, 2, 0)
   │                            ^^^^^^^ Contract creation
   │
   = Note: Consider using a dedicated factory contract to create instances of `Foo`

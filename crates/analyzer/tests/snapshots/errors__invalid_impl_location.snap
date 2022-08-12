@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: illegal `impl`. Either type or trait must be in the same ingot as the `impl`
-  ┌─ compile_errors/invalid_impl_location.fe:4:1
+  ┌─ compile_errors/invalid_impl_location.fe:3:1
   │
-4 │ impl Dummy for Context {}
+3 │ impl Dummy for Context {}
   │ ^^^^^^^^^^^^^^^^^^^^^^ Neither `Context` nor `Dummy` are in the ingot of the `impl` block
 
 

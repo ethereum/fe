@@ -31,7 +31,7 @@ contract Foo {
 
     pub fn baz() {
         let val1: u256 = 2
-        # A list expression
+        // A list expression
         let foo: Array<u256, 3> = [1, val1, get_val3()]
     }
 }

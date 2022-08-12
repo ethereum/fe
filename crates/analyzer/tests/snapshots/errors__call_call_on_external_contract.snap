@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `__call__()` is not directly callable
-   ┌─ compile_errors/call_call_on_external_contract.fe:12:13
+   ┌─ compile_errors/call_call_on_external_contract.fe:10:13
    │
-12 │         foo.__call__()
+10 │         foo.__call__()
    │             ^^^^^^^^
    │
    = Note: `__call__` is not part of the contract's interface, and can't be called.

@@ -4,425 +4,425 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ simple_open_auction.fe:9:5
+  ┌─ simple_open_auction.fe:7:5
   │
-9 │     pub highest_bid: u256
+7 │     pub highest_bid: u256
   │     ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ simple_open_auction.fe:14:5
+   ┌─ simple_open_auction.fe:12:5
    │
-14 │     auction_end_time: u256
+12 │     auction_end_time: u256
    │     ^^^^^^^^^^^^^^^^^^^^^^ u256
-15 │     beneficiary: address
+13 │     beneficiary: address
    │     ^^^^^^^^^^^^^^^^^^^^ address
-16 │ 
-17 │     highest_bidder: address
+14 │ 
+15 │     highest_bidder: address
    │     ^^^^^^^^^^^^^^^^^^^^^^^ address
-18 │     highest_bid: u256
+16 │     highest_bid: u256
    │     ^^^^^^^^^^^^^^^^^ u256
-19 │ 
-20 │     pending_returns: Map<address, u256>
+17 │ 
+18 │     pending_returns: Map<address, u256>
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
-21 │ 
-22 │     ended: bool
+19 │ 
+20 │     ended: bool
    │     ^^^^^^^^^^^ bool
 
 note: 
-   ┌─ simple_open_auction.fe:26:9
+   ┌─ simple_open_auction.fe:24:9
    │
-26 │         idx bidder: address
+24 │         idx bidder: address
    │         ^^^^^^^^^^^^^^^^^^^ address
-27 │         amount: u256
+25 │         amount: u256
    │         ^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ simple_open_auction.fe:31:9
+   ┌─ simple_open_auction.fe:29:9
    │
-31 │         idx winner: address
+29 │         idx winner: address
    │         ^^^^^^^^^^^^^^^^^^^ address
-32 │         amount: u256
+30 │         amount: u256
    │         ^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ simple_open_auction.fe:42:5
+   ┌─ simple_open_auction.fe:40:5
    │  
-42 │ ╭     pub fn bid(self, ctx: Context) {
-43 │ │         if ctx.block_timestamp() > self.auction_end_time {
-44 │ │             revert AuctionAlreadyEnded()
-45 │ │         }
+40 │ ╭     pub fn bid(self, ctx: Context) {
+41 │ │         if ctx.block_timestamp() > self.auction_end_time {
+42 │ │             revert AuctionAlreadyEnded()
+43 │ │         }
    · │
-55 │ │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
-56 │ │     }
+53 │ │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+54 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ simple_open_auction.fe:43:12
+   ┌─ simple_open_auction.fe:41:12
    │
-43 │         if ctx.block_timestamp() > self.auction_end_time {
+41 │         if ctx.block_timestamp() > self.auction_end_time {
    │            ^^^ Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:43:12
+   ┌─ simple_open_auction.fe:41:12
    │
-43 │         if ctx.block_timestamp() > self.auction_end_time {
+41 │         if ctx.block_timestamp() > self.auction_end_time {
    │            ^^^^^^^^^^^^^^^^^^^^^   ^^^^ SimpleOpenAuction: Value
    │            │                        
    │            u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:43:36
+   ┌─ simple_open_auction.fe:41:36
    │
-43 │         if ctx.block_timestamp() > self.auction_end_time {
+41 │         if ctx.block_timestamp() > self.auction_end_time {
    │                                    ^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:43:12
+   ┌─ simple_open_auction.fe:41:12
    │
-43 │         if ctx.block_timestamp() > self.auction_end_time {
+41 │         if ctx.block_timestamp() > self.auction_end_time {
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-44 │             revert AuctionAlreadyEnded()
+42 │             revert AuctionAlreadyEnded()
    │                    ^^^^^^^^^^^^^^^^^^^^^ AuctionAlreadyEnded: Memory
-45 │         }
-46 │         if ctx.msg_value() <= self.highest_bid {
+43 │         }
+44 │         if ctx.msg_value() <= self.highest_bid {
    │            ^^^ Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:46:12
+   ┌─ simple_open_auction.fe:44:12
    │
-46 │         if ctx.msg_value() <= self.highest_bid {
+44 │         if ctx.msg_value() <= self.highest_bid {
    │            ^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction: Value
    │            │                   
    │            u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:46:31
+   ┌─ simple_open_auction.fe:44:31
    │
-46 │         if ctx.msg_value() <= self.highest_bid {
+44 │         if ctx.msg_value() <= self.highest_bid {
    │                               ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:46:12
+   ┌─ simple_open_auction.fe:44:12
    │
-46 │         if ctx.msg_value() <= self.highest_bid {
+44 │         if ctx.msg_value() <= self.highest_bid {
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-47 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
+45 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
    │                                                  ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:47:50
+   ┌─ simple_open_auction.fe:45:50
    │
-47 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
+45 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
    │                                                  ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:47:20
+   ┌─ simple_open_auction.fe:45:20
    │
-47 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
+45 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BidNotHighEnough: Memory
-48 │         }
-49 │         if self.highest_bid != 0 {
+46 │         }
+47 │         if self.highest_bid != 0 {
    │            ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:49:12
+   ┌─ simple_open_auction.fe:47:12
    │
-49 │         if self.highest_bid != 0 {
+47 │         if self.highest_bid != 0 {
    │            ^^^^^^^^^^^^^^^^    ^ u256: Value
    │            │                    
    │            u256: Storage { nonce: Some(3) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:49:12
+   ┌─ simple_open_auction.fe:47:12
    │
-49 │         if self.highest_bid != 0 {
+47 │         if self.highest_bid != 0 {
    │            ^^^^^^^^^^^^^^^^^^^^^ bool: Value
-50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
+48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │             ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:50:13
+   ┌─ simple_open_auction.fe:48:13
    │
-50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
+48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │             ^^^^^^^^^^^^^^^^^^^^ ^^^^ SimpleOpenAuction: Value
    │             │                     
    │             Map<address, u256>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ simple_open_auction.fe:50:34
+   ┌─ simple_open_auction.fe:48:34
    │
-50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
+48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │                                  ^^^^^^^^^^^^^^^^^^^ address: Storage { nonce: Some(2) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:50:13
+   ┌─ simple_open_auction.fe:48:13
    │
-50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
+48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction: Value
    │             │                                             
    │             u256: Storage { nonce: None }
 
 note: 
-   ┌─ simple_open_auction.fe:50:58
+   ┌─ simple_open_auction.fe:48:58
    │
-50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
+48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │                                                          ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) }
-51 │         }
-52 │         self.highest_bidder = ctx.msg_sender()
+49 │         }
+50 │         self.highest_bidder = ctx.msg_sender()
    │         ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:52:9
+   ┌─ simple_open_auction.fe:50:9
    │
-52 │         self.highest_bidder = ctx.msg_sender()
+50 │         self.highest_bidder = ctx.msg_sender()
    │         ^^^^^^^^^^^^^^^^^^^   ^^^ Context: Memory
    │         │                      
    │         address: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ simple_open_auction.fe:52:31
+   ┌─ simple_open_auction.fe:50:31
    │
-52 │         self.highest_bidder = ctx.msg_sender()
+50 │         self.highest_bidder = ctx.msg_sender()
    │                               ^^^^^^^^^^^^^^^^ address: Value
-53 │         self.highest_bid = ctx.msg_value()
+51 │         self.highest_bid = ctx.msg_value()
    │         ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:53:9
+   ┌─ simple_open_auction.fe:51:9
    │
-53 │         self.highest_bid = ctx.msg_value()
+51 │         self.highest_bid = ctx.msg_value()
    │         ^^^^^^^^^^^^^^^^   ^^^ Context: Memory
    │         │                   
    │         u256: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ simple_open_auction.fe:53:28
+   ┌─ simple_open_auction.fe:51:28
    │
-53 │         self.highest_bid = ctx.msg_value()
+51 │         self.highest_bid = ctx.msg_value()
    │                            ^^^^^^^^^^^^^^^ u256: Value
-54 │ 
-55 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+52 │ 
+53 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
    │                                  ^^^          ^^^ Context: Memory
    │                                  │             
    │                                  Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:55:47
+   ┌─ simple_open_auction.fe:53:47
    │
-55 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+53 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
    │                                               ^^^^^^^^^^^^^^^^          ^^^ Context: Memory
    │                                               │                          
    │                                               address: Value
 
 note: 
-   ┌─ simple_open_auction.fe:55:73
+   ┌─ simple_open_auction.fe:53:73
    │
-55 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+53 │         emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
    │                                                                         ^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:58:5
+   ┌─ simple_open_auction.fe:56:5
    │  
-58 │ ╭     pub fn withdraw(self, ctx: Context) -> bool {
-59 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-60 │ │ 
-61 │ │         if amount > 0 {
+56 │ ╭     pub fn withdraw(self, ctx: Context) -> bool {
+57 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+58 │ │ 
+59 │ │         if amount > 0 {
    · │
-65 │ │         return true
-66 │ │     }
+63 │ │         return true
+64 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> bool
 
 note: 
-   ┌─ simple_open_auction.fe:59:13
+   ┌─ simple_open_auction.fe:57:13
    │
-59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │             ^^^^^^ u256
 
 note: 
-   ┌─ simple_open_auction.fe:59:28
+   ┌─ simple_open_auction.fe:57:28
    │
-59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │                            ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:59:28
+   ┌─ simple_open_auction.fe:57:28
    │
-59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │                            ^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
    │                            │                     
    │                            Map<address, u256>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ simple_open_auction.fe:59:49
+   ┌─ simple_open_auction.fe:57:49
    │
-59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │                                                 ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ simple_open_auction.fe:59:28
+   ┌─ simple_open_auction.fe:57:28
    │
-59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
+57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
-60 │ 
-61 │         if amount > 0 {
+58 │ 
+59 │         if amount > 0 {
    │            ^^^^^^   ^ u256: Value
    │            │         
    │            u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:61:12
+   ┌─ simple_open_auction.fe:59:12
    │
-61 │         if amount > 0 {
+59 │         if amount > 0 {
    │            ^^^^^^^^^^ bool: Value
-62 │             self.pending_returns[ctx.msg_sender()] = 0
+60 │             self.pending_returns[ctx.msg_sender()] = 0
    │             ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:62:13
+   ┌─ simple_open_auction.fe:60:13
    │
-62 │             self.pending_returns[ctx.msg_sender()] = 0
+60 │             self.pending_returns[ctx.msg_sender()] = 0
    │             ^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
    │             │                     
    │             Map<address, u256>: Storage { nonce: Some(4) }
 
 note: 
-   ┌─ simple_open_auction.fe:62:34
+   ┌─ simple_open_auction.fe:60:34
    │
-62 │             self.pending_returns[ctx.msg_sender()] = 0
+60 │             self.pending_returns[ctx.msg_sender()] = 0
    │                                  ^^^^^^^^^^^^^^^^ address: Value
 
 note: 
-   ┌─ simple_open_auction.fe:62:13
+   ┌─ simple_open_auction.fe:60:13
    │
-62 │             self.pending_returns[ctx.msg_sender()] = 0
+60 │             self.pending_returns[ctx.msg_sender()] = 0
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^ u256: Value
    │             │                                         
    │             u256: Storage { nonce: None }
-63 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
+61 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
    │             ^^^                ^^^ Context: Memory
    │             │                   
    │             Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:63:32
+   ┌─ simple_open_auction.fe:61:32
    │
-63 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
+61 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
    │                                ^^^^^^^^^^^^^^^^       ^^^^^^ u256: Value
    │                                │                       
    │                                address: Value
 
 note: 
-   ┌─ simple_open_auction.fe:63:13
+   ┌─ simple_open_auction.fe:61:13
    │
-63 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
+61 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
-64 │         }
-65 │         return true
+62 │         }
+63 │         return true
    │                ^^^^ bool: Value
 
 note: 
-   ┌─ simple_open_auction.fe:68:5
+   ┌─ simple_open_auction.fe:66:5
    │  
-68 │ ╭     pub fn action_end(self, ctx: Context) {
-69 │ │         if ctx.block_timestamp() <= self.auction_end_time {
-70 │ │             revert AuctionNotYetEnded()
-71 │ │         }
+66 │ ╭     pub fn action_end(self, ctx: Context) {
+67 │ │         if ctx.block_timestamp() <= self.auction_end_time {
+68 │ │             revert AuctionNotYetEnded()
+69 │ │         }
    · │
-78 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-79 │ │     }
+76 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+77 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ simple_open_auction.fe:69:12
+   ┌─ simple_open_auction.fe:67:12
    │
-69 │         if ctx.block_timestamp() <= self.auction_end_time {
+67 │         if ctx.block_timestamp() <= self.auction_end_time {
    │            ^^^ Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:69:12
+   ┌─ simple_open_auction.fe:67:12
    │
-69 │         if ctx.block_timestamp() <= self.auction_end_time {
+67 │         if ctx.block_timestamp() <= self.auction_end_time {
    │            ^^^^^^^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction: Value
    │            │                         
    │            u256: Value
 
 note: 
-   ┌─ simple_open_auction.fe:69:37
+   ┌─ simple_open_auction.fe:67:37
    │
-69 │         if ctx.block_timestamp() <= self.auction_end_time {
+67 │         if ctx.block_timestamp() <= self.auction_end_time {
    │                                     ^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:69:12
+   ┌─ simple_open_auction.fe:67:12
    │
-69 │         if ctx.block_timestamp() <= self.auction_end_time {
+67 │         if ctx.block_timestamp() <= self.auction_end_time {
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
-70 │             revert AuctionNotYetEnded()
+68 │             revert AuctionNotYetEnded()
    │                    ^^^^^^^^^^^^^^^^^^^^ AuctionNotYetEnded: Memory
-71 │         }
-72 │         if self.ended {
+69 │         }
+70 │         if self.ended {
    │            ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:72:12
+   ┌─ simple_open_auction.fe:70:12
    │
-72 │         if self.ended {
+70 │         if self.ended {
    │            ^^^^^^^^^^ bool: Storage { nonce: Some(5) } => Value
-73 │             revert AuctionEndAlreadyCalled()
+71 │             revert AuctionEndAlreadyCalled()
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^ AuctionEndAlreadyCalled: Memory
-74 │         }
-75 │         self.ended = true
+72 │         }
+73 │         self.ended = true
    │         ^^^^ SimpleOpenAuction: Value
 
 note: 
-   ┌─ simple_open_auction.fe:75:9
+   ┌─ simple_open_auction.fe:73:9
    │
-75 │         self.ended = true
+73 │         self.ended = true
    │         ^^^^^^^^^^   ^^^^ bool: Value
    │         │             
    │         bool: Storage { nonce: Some(5) }
-76 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
+74 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
    │                           ^^^          ^^^^ SimpleOpenAuction: Value
    │                           │             
    │                           Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:76:40
+   ┌─ simple_open_auction.fe:74:40
    │
-76 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
+74 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
    │                                        ^^^^^^^^^^^^^^^^^^^          ^^^^ SimpleOpenAuction: Value
    │                                        │                             
    │                                        address: Storage { nonce: Some(2) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:76:69
+   ┌─ simple_open_auction.fe:74:69
    │
-76 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
+74 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
    │                                                                     ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) } => Value
-77 │ 
-78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+75 │ 
+76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │         ^^^                ^^^^ SimpleOpenAuction: Value
    │         │                   
    │         Context: Memory
 
 note: 
-   ┌─ simple_open_auction.fe:78:28
+   ┌─ simple_open_auction.fe:76:28
    │
-78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │                            ^^^^^^^^^^^^^^^^       ^^^^ SimpleOpenAuction: Value
    │                            │                       
    │                            address: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:78:51
+   ┌─ simple_open_auction.fe:76:51
    │
-78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │                                                   ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(3) } => Value
 
 note: 
-   ┌─ simple_open_auction.fe:78:9
+   ┌─ simple_open_auction.fe:76:9
    │
-78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 

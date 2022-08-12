@@ -1,5 +1,3 @@
-use std::context::Context
-
 contract Foo {
     pub fn bar(self, a: u256, b: u256) {}
 }

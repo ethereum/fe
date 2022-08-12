@@ -1,5 +1,3 @@
-use std::context::Context
-
 struct MyStruct {
     my_num: u256
     my_num2: u8

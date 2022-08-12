@@ -35,8 +35,6 @@ ethsign import --keystore ~/.ethereum/keystore/
 Let's recall that we finished our guest book in the previous chapter with the following code.
 
 ```fe
-use std::context::Context
-
 contract GuestBook {
   messages: Map<address, String<100>>
 

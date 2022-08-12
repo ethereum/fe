@@ -11,7 +11,7 @@ Example:
 ```fe
 contract Foo {
     pub fn baz(foo: u256) {
-        # name expression resolving to the value of `foo`
+        // name expression resolving to the value of `foo`
         foo
     }
 }

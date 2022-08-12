@@ -4,9 +4,9 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `ctx` cannot be passed into pure functions
-  ┌─ compile_errors/ctx_pure.fe:3:12
+  ┌─ compile_errors/ctx_pure.fe:1:12
   │
-3 │ pub fn foo(ctx: Context) {}
+1 │ pub fn foo(ctx: Context) {}
   │            ^^^^^^^^^^^^ `ctx` can only be passed into contract functions
 
 

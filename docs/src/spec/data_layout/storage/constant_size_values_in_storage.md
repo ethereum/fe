@@ -6,7 +6,7 @@ Example:
 
 ```fe
 contract Cats {
-   population: u256 # assigned a static location by the compiler
+   population: u256 // assigned a static location by the compiler
 }
 ```
 

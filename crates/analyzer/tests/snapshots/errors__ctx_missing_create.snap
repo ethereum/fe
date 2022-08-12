@@ -4,17 +4,17 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `create` expects 2 arguments, but 1 was provided
-  ┌─ compile_errors/ctx_missing_create.fe:9:13
+  ┌─ compile_errors/ctx_missing_create.fe:7:13
   │
-9 │         Foo.create(0)
+7 │         Foo.create(0)
   │             ^^^^^^ - supplied 1 argument
   │             │       
   │             expects 2 arguments
 
 error: incorrect type for argument to `Foo.create`
-  ┌─ compile_errors/ctx_missing_create.fe:9:20
+  ┌─ compile_errors/ctx_missing_create.fe:7:20
   │
-9 │         Foo.create(0)
+7 │         Foo.create(0)
   │                    ^ this has type `u256`; expected `Context`
 
 

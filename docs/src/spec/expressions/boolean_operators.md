@@ -10,7 +10,7 @@ The operators `or` and `and` may be applied to operands of boolean type. The `or
 Example:
 
 ```fe
-const x: bool = false or true # true
+const x: bool = false or true // true
 ```
 
 [_Expression_]: ./index.md

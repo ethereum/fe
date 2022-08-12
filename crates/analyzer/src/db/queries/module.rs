@@ -434,7 +434,7 @@ pub fn module_used_item_map(
     let mut diagnostics = vec![];
     let body = &module.ast(db).body;
 
-    let items = body
+    let mut items = body
         .iter()
         .fold(indexmap! {}, |mut accum, stmt| {
             if let ast::ModuleStmt::Use(use_stmt) = stmt {
@@ -480,6 +480,29 @@ pub fn module_used_item_map(
             }
         })
         .collect::<IndexMap<_, _>>();
+
+    // Add `use std::prelude::*` to every module not in std
+    if !module.is_in_std(db) {
+        let prelude_items = resolve_use_tree(
+            db,
+            module,
+            &Node::new(
+                ast::UseTree::Glob {
+                    prefix: ast::Path {
+                        segments: vec![
+                            Node::new("std".into(), Span::dummy()),
+                            Node::new("prelude".into(), Span::dummy()),
+                        ],
+                    },
+                },
+                Span::dummy(),
+            ),
+            true,
+        )
+        .value;
+
+        items.extend(Rc::try_unwrap(prelude_items).unwrap().into_iter());
+    }
 
     Analysis::new(Rc::new(items), diagnostics.into())
 }

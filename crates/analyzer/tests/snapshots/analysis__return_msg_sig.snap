@@ -4,23 +4,23 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ return_msg_sig.fe:4:5
+  ┌─ return_msg_sig.fe:2:5
   │  
-4 │ ╭     pub fn bar(ctx: Context) -> u256 {
-5 │ │         return ctx.msg_sig()
-6 │ │     }
+2 │ ╭     pub fn bar(ctx: Context) -> u256 {
+3 │ │         return ctx.msg_sig()
+4 │ │     }
   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
-  ┌─ return_msg_sig.fe:5:16
+  ┌─ return_msg_sig.fe:3:16
   │
-5 │         return ctx.msg_sig()
+3 │         return ctx.msg_sig()
   │                ^^^ Context: Memory
 
 note: 
-  ┌─ return_msg_sig.fe:5:16
+  ┌─ return_msg_sig.fe:3:16
   │
-5 │         return ctx.msg_sig()
+3 │         return ctx.msg_sig()
   │                ^^^^^^^^^^^^^ u256: Value
 
 

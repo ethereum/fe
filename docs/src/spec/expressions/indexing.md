@@ -15,15 +15,15 @@ contract Foo {
     balances: Map<address, u256>
 
     pub fn baz(self, values: Array<u256, 10>) {
-        # Assign value at slot 5
+        // Assign value at slot 5
         values[5] = 1000
-        # Read value at slot 5
+        // Read value at slot 5
         let val1: u256 = values[5]
 
-        # Assign value for address zero
+        // Assign value for address zero
         self.balances[address(0)] = 10000
 
-        # Read balance of address zero
+        // Read balance of address zero
         let bal: u256 = self.balances[address(0)]
     }
 }

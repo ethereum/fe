@@ -1,5 +1,3 @@
-use std::context::Context
-
 type Posts = Map<PostId, PostBody>
 
 type Scoreboard = Map<PostId, Score>
