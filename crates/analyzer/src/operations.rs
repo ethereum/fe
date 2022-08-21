@@ -19,14 +19,17 @@ pub fn index(
         Type::SPtr(inner) => {
             Ok(Type::SPtr(index(context, inner, indext, index_expr)?).id(context.db()))
         }
+        Type::Mut(inner) => {
+            Ok(Type::Mut(index(context, inner, indext, index_expr)?).id(context.db()))
+        }
         Type::Base(_)
-            | Type::Tuple(_)
-            | Type::String(_)
-            | Type::Contract(_)
-            | Type::SelfContract(_)
-            | Type::Generic(_)
-            | Type::Struct(_)
-            | Type::Enum(_) => Err(IndexingError::NotSubscriptable),
+        | Type::Tuple(_)
+        | Type::String(_)
+        | Type::Contract(_)
+        | Type::SelfContract(_)
+        | Type::Generic(_)
+        | Type::Struct(_)
+        | Type::Enum(_) => Err(IndexingError::NotSubscriptable),
     }
 }
 
@@ -34,15 +37,15 @@ pub fn expected_index_type(context: &mut dyn AnalyzerContext, obj: TypeId) -> Op
     match obj.typ(context.db()) {
         Type::Array(_) => Some(Type::u256().id(context.db())),
         Type::Map(Map { key, .. }) => Some(key),
-        Type::SPtr(inner) => expected_index_type(context, inner),
+        Type::SPtr(inner) | Type::Mut(inner) => expected_index_type(context, inner),
         Type::Base(_)
-            | Type::Tuple(_)
-            | Type::String(_)
-            | Type::Contract(_)
-            | Type::SelfContract(_)
-            | Type::Generic(_)
-            | Type::Enum(_)
-            | Type::Struct(_) => None,
+        | Type::Tuple(_)
+        | Type::String(_)
+        | Type::Contract(_)
+        | Type::SelfContract(_)
+        | Type::Generic(_)
+        | Type::Enum(_)
+        | Type::Struct(_) => None,
     }
 }
 

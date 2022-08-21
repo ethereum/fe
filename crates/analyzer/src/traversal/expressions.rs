@@ -35,7 +35,11 @@ pub fn expr_type(
     expr(context, exp, None).map(|attr| attr.typ)
 }
 
-pub fn expect_expr_type(context: &mut dyn AnalyzerContext, exp: &Node<fe::Expr>, expected: TypeId) -> Result<(), FatalError> {
+pub fn expect_expr_type(
+    context: &mut dyn AnalyzerContext,
+    exp: &Node<fe::Expr>,
+    expected: TypeId,
+) -> Result<(), FatalError> {
     let attr = expr(context, exp, Some(expected))?;
 
     let actual = attr.adjusted_type();
@@ -757,7 +761,7 @@ fn expr_bin_operation(
                 Err(FatalError::new(diag))
             }
         }
-        Ok(typ) => Ok(ExpressionAttributes::new(typ))
+        Ok(typ) => Ok(ExpressionAttributes::new(typ)),
     }
 }
 
@@ -2020,30 +2024,17 @@ fn expr_ternary(
         // Should have the same return Type
         if if_attr.typ != else_attr.typ {
             let if_expr_ty = deref_type(context, exp, if_attr.typ);
-            if try_coerce_type(
-                context,
-                Some(else_expr),
-                else_attr.typ,
-                if_expr_ty,
-            )
-            .is_err()
-            {
+            if try_coerce_type(context, Some(else_expr), else_attr.typ, if_expr_ty).is_err() {
                 context.fancy_error(
                     "`if` and `else` values must have same type",
                     vec![
                         Label::primary(
                             if_expr.span,
-                            format!(
-                                "this has type `{}`",
-                                if_attr.typ.display(context.db())
-                            ),
+                            format!("this has type `{}`", if_attr.typ.display(context.db())),
                         ),
                         Label::secondary(
                             else_expr.span,
-                            format!(
-                                "this has type `{}`",
-                                else_attr.typ.display(context.db())
-                            ),
+                            format!("this has type `{}`", else_attr.typ.display(context.db())),
                         ),
                     ],
                     vec![],

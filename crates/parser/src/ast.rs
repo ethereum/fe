@@ -246,38 +246,37 @@ pub struct Function {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct RegularFunctionArg {
-    pub label: Option<Node<SmolStr>>,
-    pub name: Node<SmolStr>,
-    pub typ: Node<TypeDesc>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum FunctionArg {
-    Regular(RegularFunctionArg),
-    Self_,
+    Regular {
+        mut_: Option<Span>,
+        label: Option<Node<SmolStr>>,
+        name: Node<SmolStr>,
+        typ: Node<TypeDesc>,
+    },
+    Self_ {
+        mut_: Option<Span>,
+    },
 }
-
 impl FunctionArg {
     pub fn label_span(&self) -> Option<Span> {
         match self {
-            Self::Regular(arg) => arg.label.as_ref().map(|label| label.span),
-            Self::Self_ => None,
+            Self::Regular { label, .. } => label.as_ref().map(|label| label.span),
+            Self::Self_ { .. } => None,
         }
     }
 
     pub fn name_span(&self) -> Option<Span> {
         match self {
-            Self::Regular(arg) => Some(arg.name.span),
-            Self::Self_ => None,
+            Self::Regular { name, .. } => Some(name.span),
+            Self::Self_ { .. } => None,
         }
     }
 
     pub fn typ_span(&self) -> Option<Span> {
         match self {
-            Self::Regular(arg) => Some(arg.typ.span),
-            Self::Self_ => None,
+            Self::Regular { typ, .. } => Some(typ.span),
+            Self::Self_ { .. } => None,
         }
     }
 }
@@ -288,6 +287,7 @@ pub enum FuncStmt {
         value: Option<Node<Expr>>,
     },
     VarDecl {
+        mut_: Option<Span>,
         target: Node<VarDeclTarget>,
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
@@ -533,15 +533,15 @@ impl Node<Function> {
 impl Node<FunctionArg> {
     pub fn name(&self) -> &str {
         match &self.kind {
-            FunctionArg::Regular(arg) => &arg.name.kind,
-            FunctionArg::Self_ => "self",
+            FunctionArg::Regular { name, .. } => &name.kind,
+            FunctionArg::Self_ { .. } => "self",
         }
     }
 
     pub fn name_span(&self) -> Span {
         match &self.kind {
-            FunctionArg::Regular(arg) => arg.name.span,
-            FunctionArg::Self_ => self.span,
+            FunctionArg::Regular { name, .. } => name.span,
+            FunctionArg::Self_ { .. } => self.span,
         }
     }
 }
@@ -902,20 +902,30 @@ impl fmt::Display for Function {
     }
 }
 
-impl fmt::Display for RegularFunctionArg {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(label) = &self.label {
-            write!(f, "{} ", label.kind)?;
-        }
-        write!(f, "{}: {}", self.name.kind, self.typ.kind)
-    }
-}
-
 impl fmt::Display for FunctionArg {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionArg::Regular(arg) => write!(f, "{}", arg),
-            FunctionArg::Self_ => write!(f, "self"),
+            FunctionArg::Regular {
+                mut_,
+                label,
+                name,
+                typ,
+            } => {
+                if mut_.is_some() {
+                    write!(f, "mut ")?
+                }
+                if let Some(label) = label {
+                    write!(f, "{} ", label.kind)?
+                }
+
+                write!(f, "{}: {}", name.kind, typ.kind)
+            }
+            FunctionArg::Self_ { mut_ } => {
+                if mut_.is_some() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "self")
+            }
         }
     }
 }
@@ -930,11 +940,21 @@ impl fmt::Display for FuncStmt {
                     write!(f, "return")
                 }
             }
-            FuncStmt::VarDecl { target, typ, value } => {
+            FuncStmt::VarDecl {
+                mut_,
+                target,
+                typ,
+                value,
+            } => {
+                let mut_ = if mut_.is_some() { "mut " } else { "" };
                 if let Some(value) = value {
-                    write!(f, "let {}: {} = {}", target.kind, typ.kind, value.kind)
+                    write!(
+                        f,
+                        "let {}{}: {} = {}",
+                        mut_, target.kind, typ.kind, value.kind
+                    )
                 } else {
-                    write!(f, "let {}: {}", target.kind, typ.kind)
+                    write!(f, "let {}{}: {}", mut_, target.kind, typ.kind)
                 }
             }
             FuncStmt::ConstantDecl { name, typ, value } => {

@@ -28,7 +28,8 @@ Node(
               ),
               args: [
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: Some(Node(
                       kind: "from",
                       span: Span(
@@ -52,14 +53,15 @@ Node(
                         end: 32,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
-                    start: 17,
+                    start: 12,
                     end: 32,
                   ),
                 ),
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: Some(Node(
                       kind: "to",
                       span: Span(
@@ -83,14 +85,15 @@ Node(
                         end: 51,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
-                    start: 37,
+                    start: 34,
                     end: 51,
                   ),
                 ),
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: Some(Node(
                       kind: "_",
                       span: Span(
@@ -114,9 +117,9 @@ Node(
                         end: 63,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
-                    start: 55,
+                    start: 53,
                     end: 63,
                   ),
                 ),

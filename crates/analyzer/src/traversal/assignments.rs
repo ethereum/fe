@@ -72,8 +72,17 @@ pub fn aug_assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
             let target_typ = value_expr_type(scope, target, None)?;
             let value_typ = value_expr_type(scope, value, Some(target_typ))?;
 
-            if let Err(err) = operations::bin(scope, target_typ, target, op.kind, value_typ, value) {
-                add_bin_operations_errors(scope, &op.kind, target.span, target_typ, value.span, value_typ, err);
+            if let Err(err) = operations::bin(scope, target_typ, target, op.kind, value_typ, value)
+            {
+                add_bin_operations_errors(
+                    scope,
+                    &op.kind,
+                    target.span,
+                    target_typ,
+                    value.span,
+                    value_typ,
+                    err,
+                );
             }
         }
         return Ok(());

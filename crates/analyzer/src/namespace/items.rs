@@ -1097,6 +1097,7 @@ impl FunctionSigId {
         db.lookup_intern_function_sig(*self)
     }
 
+    // XXX #[deprecated]
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl.is_some()
     }
@@ -1113,12 +1114,9 @@ impl FunctionSigId {
     }
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         if self.takes_self(db) {
-            self.data(db)
-                .ast
-                .kind
-                .args
-                .iter()
-                .find_map(|arg| matches!(arg.kind, ast::FunctionArg::Self_).then(|| arg.span))
+            self.data(db).ast.kind.args.iter().find_map(|arg| {
+                matches!(arg.kind, ast::FunctionArg::Self_ { .. }).then(|| arg.span)
+            })
         } else {
             None
         }
@@ -1736,7 +1734,7 @@ impl ImplId {
             Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, None)
             }
-            Type::SPtr(_) => unreachable!(),
+            Type::SPtr(_) | Type::Mut(_) => unreachable!(),
         }
 
         if !self.trait_id(db).is_public(db) && self.trait_id(db).module(db) != self.module(db) {

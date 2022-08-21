@@ -340,7 +340,6 @@ test_ingot! { bad_visibility }
 test_file! { ctx_not_first }
 test_file! { ctx_not_after_self }
 test_file! { ctx_init }
-test_file! { ctx_pure }
 test_file! { ctx_undeclared }
 test_file! { ctx_missing_internal_call }
 test_file! { ctx_missing_create }

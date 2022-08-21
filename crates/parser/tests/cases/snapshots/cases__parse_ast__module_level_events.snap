@@ -158,7 +158,8 @@ Node(
                     ),
                     args: [
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "ctx",
@@ -176,14 +177,15 @@ Node(
                               end: 148,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
                           start: 136,
                           end: 148,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "to",
@@ -201,14 +203,15 @@ Node(
                               end: 161,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
                           start: 150,
                           end: 161,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "value",
@@ -226,7 +229,7 @@ Node(
                               end: 174,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
                           start: 163,
                           end: 174,
