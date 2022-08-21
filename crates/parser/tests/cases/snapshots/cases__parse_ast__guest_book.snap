@@ -213,14 +213,17 @@ Node(
                     ),
                     args: [
                       Node(
-                        kind: Self_,
+                        kind: Self_(
+                          mut_: None,
+                        ),
                         span: Span(
                           start: 169,
                           end: 173,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "book_msg",
@@ -238,7 +241,7 @@ Node(
                               end: 192,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
                           start: 175,
                           end: 192,
@@ -454,14 +457,17 @@ Node(
                     ),
                     args: [
                       Node(
-                        kind: Self_,
+                        kind: Self_(
+                          mut_: None,
+                        ),
                         span: Span(
                           start: 314,
                           end: 318,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "addr",
@@ -479,7 +485,7 @@ Node(
                               end: 333,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
                           start: 320,
                           end: 333,

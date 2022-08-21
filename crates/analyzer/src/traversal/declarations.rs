@@ -10,7 +10,13 @@ use fe_parser::node::Node;
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
+    if let fe::FuncStmt::VarDecl {
+        target,
+        typ,
+        value,
+        mut_: _,
+    } = &stmt.kind
+    {
         let declared_type = types::type_desc(scope, typ)?;
         if let Type::Map(_) = declared_type.typ(scope.db()) {
             return Err(FatalError::new(scope.error(

@@ -184,7 +184,8 @@ Node(
               ),
               args: [
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: None,
                     name: Node(
                       kind: "x",
@@ -202,7 +203,7 @@ Node(
                         end: 106,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
                     start: 101,
                     end: 106,

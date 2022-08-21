@@ -5,6 +5,7 @@ expression: "ast_string(stringify!(stmt_var_decl_tuple), functions::parse_stmt,\
 ---
 Node(
   kind: VarDecl(
+    mut_: None,
     target: Node(
       kind: Tuple([
         Node(

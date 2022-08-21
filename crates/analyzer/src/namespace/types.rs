@@ -53,6 +53,7 @@ pub enum Type {
     Enum(EnumId),
     Generic(Generic),
     SPtr(TypeId),
+    Mut(TypeId),
 }
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct TypeId(pub(crate) u32);
@@ -216,6 +217,7 @@ impl TypeId {
                 }
                 Ok(res)
             }
+            Type::Mut(inner) => inner.is_encodable(db),
             Type::Map(_)
             | Type::SelfContract(_)
             | Type::Generic(_)
@@ -581,7 +583,7 @@ impl Type {
             | Type::Generic(_)
             | Type::Contract(_) => true,
             Type::Map(_) | Type::SelfContract(_) => false,
-            Type::SPtr(inner) => inner.has_fixed_size(db),
+            Type::SPtr(inner) | Type::Mut(inner) => inner.has_fixed_size(db),
         }
     }
 }
@@ -660,6 +662,7 @@ impl DisplayWithDb for Type {
             Type::Enum(id) => write!(f, "{}", id.name(db)),
             Type::Generic(inner) => inner.fmt(f),
             Type::SPtr(inner) => write!(f, "SPtr<{}>", inner.display(db)),
+            Type::Mut(inner) => write!(f, "mut {}", inner.display(db)),
         }
     }
 }

@@ -1315,6 +1315,7 @@ impl Scope {
 }
 
 fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceInfo {
+    // XXX use self_span
     func.data(db.upcast())
         .ast
         .kind
@@ -1322,7 +1323,7 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
         .kind
         .args
         .iter()
-        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_))
+        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_ { .. }))
         .unwrap()
         .into()
 }
@@ -1336,14 +1337,14 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
         .args
         .iter()
         .find_map(|arg| match &arg.kind {
-            ast::FunctionArg::Regular(ast::RegularFunctionArg { name, .. }) => {
+            ast::FunctionArg::Regular { name, .. } => {
                 if name.kind == arg_name {
                     Some(name.into())
                 } else {
                     None
                 }
             }
-            ast::FunctionArg::Self_ => None,
+            ast::FunctionArg::Self_ { .. } => None,
         })
         .unwrap()
 }
