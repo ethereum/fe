@@ -19,17 +19,17 @@ note:
    ┌─ abi_encoding_stress.fe:9:5
    │
  9 │     my_addrs: Array<address, 5>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<address, 5>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
 10 │     my_u128: u128
-   │     ^^^^^^^^^^^^^ SPtr<u128>
+   │     ^^^^^^^^^^^^^ u128
 11 │     my_string: String<10>
-   │     ^^^^^^^^^^^^^^^^^^^^^ SPtr<String<10>>
+   │     ^^^^^^^^^^^^^^^^^^^^^ String<10>
 12 │     my_u16s: Array<u16, 255>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<u16, 255>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>
 13 │     my_bool: bool
-   │     ^^^^^^^^^^^^^ SPtr<bool>
+   │     ^^^^^^^^^^^^^ bool
 14 │     my_bytes: Array<u8, 100>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<u8, 100>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:17:9

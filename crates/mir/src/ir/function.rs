@@ -7,13 +7,11 @@ use num_bigint::BigInt;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
-use crate::db::MirDb;
-
 use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
     inst::{BranchInfo, Inst, InstId, InstKind},
-    types::{TypeId, TypeKind},
+    types::TypeId,
     value::{AssignableValue, Local, Value, ValueId},
     BasicBlockId, SourceInfo,
 };
@@ -221,23 +219,6 @@ impl BodyDataStore {
 
     pub fn value_ty(&self, vid: ValueId) -> TypeId {
         self.values[vid].ty()
-    }
-
-    pub fn assignable_value_ty(&self, db: &dyn MirDb, value: &AssignableValue) -> TypeId {
-        match value {
-            AssignableValue::Value(value) => self.value_ty(*value),
-            AssignableValue::Aggregate { lhs, idx } => {
-                let lhs = self.assignable_value_ty(db, lhs).deref(db);
-                lhs.projection_ty(db, self.value_data(*idx))
-            }
-            AssignableValue::Map { lhs, .. } => {
-                let lhs = self.assignable_value_ty(db, lhs).deref(db);
-                match &lhs.data(db).kind {
-                    TypeKind::Map(def) => def.value_ty,
-                    _ => unreachable!(),
-                }
-            }
-        }
     }
 
     pub fn map_result(&mut self, inst: InstId, result: AssignableValue) {

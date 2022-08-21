@@ -182,9 +182,9 @@ note:
    ┌─ structs.fe:47:5
    │
 47 │     my_house: House
-   │     ^^^^^^^^^^^^^^^ SPtr<House>
+   │     ^^^^^^^^^^^^^^^ House
 48 │     my_bar: Bar
-   │     ^^^^^^^^^^^ SPtr<Bar>
+   │     ^^^^^^^^^^^ Bar
 
 note: 
    ┌─ structs.fe:50:5

@@ -7,9 +7,9 @@ note:
   ┌─ assert.fe:2:5
   │
 2 │     my_bool: bool
-  │     ^^^^^^^^^^^^^ SPtr<bool>
+  │     ^^^^^^^^^^^^^ bool
 3 │     my_string: String<5>
-  │     ^^^^^^^^^^^^^^^^^^^^ SPtr<String<5>>
+  │     ^^^^^^^^^^^^^^^^^^^^ String<5>
 
 note: 
   ┌─ assert.fe:5:5

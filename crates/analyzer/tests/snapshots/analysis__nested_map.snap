@@ -7,9 +7,9 @@ note:
   ┌─ nested_map.fe:2:5
   │
 2 │     bar: Map<address, Map<address, u256>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Map<address, u256>>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
 3 │     baz: Map<address, Map<u256, bool>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Map<u256, bool>>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<u256, bool>>
 
 note: 
   ┌─ nested_map.fe:5:5

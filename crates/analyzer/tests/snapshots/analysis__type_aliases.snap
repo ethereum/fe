@@ -49,11 +49,11 @@ note:
    ┌─ type_aliases.fe:16:5
    │
 16 │     posts: Posts
-   │     ^^^^^^^^^^^^ SPtr<Map<u256, String<32>>>
+   │     ^^^^^^^^^^^^ Map<u256, String<32>>
 17 │     authors: AuthorPosts
-   │     ^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+   │     ^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 18 │     scoreboard: Scoreboard
-   │     ^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<u256, u64>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^ Map<u256, u64>
 
 note: 
    ┌─ type_aliases.fe:20:5

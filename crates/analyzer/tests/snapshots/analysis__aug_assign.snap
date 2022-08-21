@@ -7,7 +7,7 @@ note:
   ┌─ aug_assign.fe:2:5
   │
 2 │     my_num: u256
-  │     ^^^^^^^^^^^^ SPtr<u256>
+  │     ^^^^^^^^^^^^ u256
 
 note: 
   ┌─ aug_assign.fe:4:5

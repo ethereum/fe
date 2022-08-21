@@ -240,25 +240,30 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                     )))
             }
 
+            InstKind::Load { src } => {
+                let src_ty = self.body.store.value_ty(*src);
+                let src = self.value_expr(*src);
+                debug_assert!(src_ty.is_ptr(self.db.upcast()));
+
+                let result = self.body.store.inst_result(inst).unwrap();
+                debug_assert!(!result
+                    .ty(self.db.upcast(), &self.body.store)
+                    .is_ptr(self.db.upcast()));
+                self.assign_inst_result(inst, src, src_ty)
+            }
+
             InstKind::AggregateAccess { value, indices } => {
                 let base = self.value_expr(*value);
                 let mut ptr = base;
-                let ptr_ty = self.body.store.value_ty(*value);
-                let mut inner_ty = ptr_ty.deref(self.db.upcast());
+                let mut inner_ty = self.body.store.value_ty(*value);
                 for &idx in indices {
-                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty);
+                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty.deref(self.db.upcast()));
                     inner_ty =
                         inner_ty.projection_ty(self.db.upcast(), self.body.store.value_data(idx));
                 }
 
-                let elem_ptr_ty = if ptr_ty.is_mptr(self.db.upcast()) {
-                    inner_ty.make_mptr(self.db.upcast())
-                } else {
-                    inner_ty.make_sptr(self.db.upcast())
-                };
-
                 let result = self.body.store.inst_result(inst).unwrap();
-                self.assign_inst_result(inst, ptr, elem_ptr_ty)
+                self.assign_inst_result(inst, ptr, inner_ty)
             }
 
             InstKind::MapAccess { value, key } => {
@@ -793,28 +798,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn assignable_value_ty(&self, value: &AssignableValue) -> TypeId {
-        match value {
-            AssignableValue::Value(value) => self.body.store.value_ty(*value),
-            AssignableValue::Aggregate { lhs, idx } => {
-                let lhs_ty = self.assignable_value_ty(lhs);
-                let ty = lhs_ty
-                    .deref(self.db.upcast())
-                    .projection_ty(self.db.upcast(), self.body.store.value_data(*idx));
-
-                if lhs_ty.is_sptr(self.db.upcast()) {
-                    ty.make_sptr(self.db.upcast())
-                } else {
-                    ty.make_mptr(self.db.upcast())
-                }
-            }
-            AssignableValue::Map { lhs, key } => {
-                let map_ty = self.assignable_value_ty(lhs).deref(self.db.upcast());
-                match &map_ty.data(self.db.upcast()).kind {
-                    TypeKind::Map(def) => def.value_ty.make_sptr(self.db.upcast()),
-                    _ => unreachable!(),
-                }
-            }
-        }
+        value.ty(self.db.upcast(), &self.body.store)
     }
 
     fn aggregate_elem_ptr(

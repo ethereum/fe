@@ -7,17 +7,17 @@ note:
   ┌─ data_copying_stress.fe:2:5
   │
 2 │     my_string: String<42>
-  │     ^^^^^^^^^^^^^^^^^^^^^ SPtr<String<42>>
+  │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
 3 │     my_other_string: String<42>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<String<42>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
 4 │     my_u256: u256
-  │     ^^^^^^^^^^^^^ SPtr<u256>
+  │     ^^^^^^^^^^^^^ u256
 5 │     my_other_u256: u256
-  │     ^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+  │     ^^^^^^^^^^^^^^^^^^^ u256
 6 │     my_nums: Array<u256, 5>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<u256, 5>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
 7 │     my_addrs: Array<address, 3>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<address, 3>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
 
 note: 
    ┌─ data_copying_stress.fe:10:9

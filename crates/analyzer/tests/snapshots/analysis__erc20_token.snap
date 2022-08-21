@@ -7,17 +7,17 @@ note:
   ┌─ erc20_token.fe:2:5
   │
 2 │     _balances: Map<address, u256>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 3 │     _allowances: Map<address, Map<address, u256>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Map<address, u256>>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
 4 │     _total_supply: u256
-  │     ^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+  │     ^^^^^^^^^^^^^^^^^^^ u256
 5 │     _name: String<100>
-  │     ^^^^^^^^^^^^^^^^^^ SPtr<String<100>>
+  │     ^^^^^^^^^^^^^^^^^^ String<100>
 6 │     _symbol: String<100>
-  │     ^^^^^^^^^^^^^^^^^^^^ SPtr<String<100>>
+  │     ^^^^^^^^^^^^^^^^^^^^ String<100>
 7 │     _decimals: u8
-  │     ^^^^^^^^^^^^^ SPtr<u8>
+  │     ^^^^^^^^^^^^^ u8
 
 note: 
    ┌─ erc20_token.fe:10:9

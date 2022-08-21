@@ -7,7 +7,7 @@ note:
   ┌─ return_u256_from_called_fn_with_args.fe:2:5
   │
 2 │     baz: Map<u256, u256>
-  │     ^^^^^^^^^^^^^^^^^^^^ SPtr<Map<u256, u256>>
+  │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:4:5

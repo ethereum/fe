@@ -1,4 +1,4 @@
-use std::{rc::Rc, str::FromStr};
+use std::{fmt, rc::Rc, str::FromStr};
 
 use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
@@ -8,7 +8,7 @@ use num_traits::ToPrimitive;
 use crate::{
     db::MirDb,
     ir::{
-        types::{ArrayDef, TypeKind},
+        types::{ArrayDef, TupleDef, TypeKind},
         Type, TypeId, Value,
     },
     lower::types::{lower_event_type, lower_type},
@@ -33,7 +33,7 @@ impl TypeId {
 
     pub fn projection_ty(self, db: &dyn MirDb, access: &Value) -> TypeId {
         let ty = self.deref(db);
-        match &ty.data(db).as_ref().kind {
+        let pty = match &ty.data(db).kind {
             TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
             TypeKind::Tuple(def) => {
                 let index = expect_projection_index(access);
@@ -47,12 +47,17 @@ impl TypeId {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
-            other => unreachable!("{:?} is not an aggregate type", other),
+            _ => unreachable!("{:?} is not an aggregate type", ty.as_string(db)),
+        };
+        match &self.data(db).kind {
+            TypeKind::SPtr(_) | TypeKind::Contract(_) => pty.make_sptr(db),
+            TypeKind::MPtr(_) => pty.make_mptr(db),
+            _ => pty,
         }
     }
 
     pub fn deref(self, db: &dyn MirDb) -> TypeId {
-        match &self.data(db).as_ref().kind {
+        match &self.data(db).kind {
             TypeKind::SPtr(inner) => *inner,
             TypeKind::MPtr(inner) => *inner,
             _ => self,
@@ -70,7 +75,7 @@ impl TypeId {
     pub fn projection_ty_imm(self, db: &dyn MirDb, index: usize) -> TypeId {
         debug_assert!(self.is_aggregate(db));
 
-        match &self.data(db).as_ref().kind {
+        match &self.data(db).kind {
             TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
             TypeKind::Tuple(def) => def.items[index],
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
@@ -80,7 +85,7 @@ impl TypeId {
     }
 
     pub fn aggregate_field_num(self, db: &dyn MirDb) -> usize {
-        match &self.data(db).as_ref().kind {
+        match &self.data(db).kind {
             TypeKind::Array(ArrayDef { len, .. }) => *len,
             TypeKind::Tuple(def) => def.items.len(),
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields.len(),
@@ -91,7 +96,7 @@ impl TypeId {
 
     pub fn index_from_fname(self, db: &dyn MirDb, fname: &str) -> BigInt {
         let ty = self.deref(db);
-        match &ty.data(db).as_ref().kind {
+        match &ty.data(db).kind {
             TypeKind::Tuple(_) => {
                 // TODO: Fix this when the syntax for tuple access changes.
                 let index_str = &fname[4..];
@@ -118,7 +123,7 @@ impl TypeId {
 
     pub fn is_primitive(self, db: &dyn MirDb) -> bool {
         matches!(
-            &self.data(db).as_ref().kind,
+            &self.data(db).kind,
             TypeKind::I8
                 | TypeKind::I16
                 | TypeKind::I32
@@ -139,7 +144,7 @@ impl TypeId {
 
     pub fn is_integral(self, db: &dyn MirDb) -> bool {
         matches!(
-            &self.data(db).as_ref().kind,
+            &self.data(db).kind,
             TypeKind::I8
                 | TypeKind::I16
                 | TypeKind::I32
@@ -156,7 +161,7 @@ impl TypeId {
     }
 
     pub fn is_address(self, db: &dyn MirDb) -> bool {
-        matches!(&self.data(db).as_ref().kind, TypeKind::Address)
+        matches!(&self.data(db).kind, TypeKind::Address)
     }
 
     pub fn is_signed(self, db: &dyn MirDb) -> bool {
@@ -173,7 +178,7 @@ impl TypeId {
 
     /// Returns size of the type in bytes.
     pub fn size_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
-        match &self.data(db).as_ref().kind {
+        match &self.data(db).kind {
             TypeKind::Bool | TypeKind::I8 | TypeKind::U8 => 1,
             TypeKind::I16 | TypeKind::U16 => 2,
             TypeKind::I32 | TypeKind::U32 => 4,
@@ -266,7 +271,7 @@ impl TypeId {
 
     pub fn is_aggregate(self, db: &dyn MirDb) -> bool {
         matches!(
-            &self.data(db).as_ref().kind,
+            &self.data(db).kind,
             TypeKind::Array(_)
                 | TypeKind::Tuple(_)
                 | TypeKind::Struct(_)
@@ -276,12 +281,12 @@ impl TypeId {
     }
 
     pub fn is_array(self, db: &dyn MirDb) -> bool {
-        matches!(&self.data(db).as_ref().kind, TypeKind::Array(_))
+        matches!(&self.data(db).kind, TypeKind::Array(_))
     }
 
     pub fn is_string(self, db: &dyn MirDb) -> bool {
         matches! {
-            &self.data(db).as_ref().kind,
+            &self.data(db).kind,
             TypeKind::String(_)
         }
     }
@@ -317,6 +322,76 @@ impl TypeId {
         } else {
             panic!("expected `Array` type; but got {:?}", data.as_ref())
         }
+    }
+
+    pub fn print<W: fmt::Write>(&self, db: &dyn MirDb, w: &mut W) -> fmt::Result {
+        match &self.data(db).kind {
+            TypeKind::I8 => write!(w, "i8"),
+            TypeKind::I16 => write!(w, "i16"),
+            TypeKind::I32 => write!(w, "i32"),
+            TypeKind::I64 => write!(w, "i64"),
+            TypeKind::I128 => write!(w, "i128"),
+            TypeKind::I256 => write!(w, "i256"),
+            TypeKind::U8 => write!(w, "u8"),
+            TypeKind::U16 => write!(w, "u16"),
+            TypeKind::U32 => write!(w, "u32"),
+            TypeKind::U64 => write!(w, "u64"),
+            TypeKind::U128 => write!(w, "u128"),
+            TypeKind::U256 => write!(w, "u256"),
+            TypeKind::Bool => write!(w, "bool"),
+            TypeKind::Address => write!(w, "address"),
+            TypeKind::Unit => write!(w, "()"),
+            TypeKind::String(size) => write!(w, "Str<{}>", size),
+            TypeKind::Array(ArrayDef { elem_ty, len }) => {
+                write!(w, "[")?;
+                elem_ty.print(db, w)?;
+                write!(w, "; {}]", len)
+            }
+            TypeKind::Tuple(TupleDef { items }) => {
+                write!(w, "(")?;
+                if items.is_empty() {
+                    return write!(w, ")");
+                }
+
+                let len = items.len();
+                for item in &items[0..len - 1] {
+                    item.print(db, w)?;
+                    write!(w, ", ")?;
+                }
+                items.last().unwrap().print(db, w)?;
+                write!(w, ")")
+            }
+            TypeKind::Struct(def) => {
+                write!(w, "{}", def.name)
+            }
+            TypeKind::Event(def) => {
+                write!(w, "{}", def.name)
+            }
+            TypeKind::Contract(def) => {
+                write!(w, "{}", def.name)
+            }
+            TypeKind::Map(def) => {
+                write!(w, "Map<")?;
+                def.key_ty.print(db, w)?;
+                write!(w, ",")?;
+                def.value_ty.print(db, w)?;
+                write!(w, ">")
+            }
+            TypeKind::MPtr(inner) => {
+                write!(w, "*@m ")?;
+                inner.print(db, w)
+            }
+            TypeKind::SPtr(inner) => {
+                write!(w, "*@s ")?;
+                inner.print(db, w)
+            }
+        }
+    }
+
+    pub fn as_string(&self, db: &dyn MirDb) -> String {
+        let mut s = String::new();
+        self.print(db, &mut s).unwrap();
+        s
     }
 }
 

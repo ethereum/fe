@@ -29,9 +29,9 @@ note:
   ┌─ pure_fn_standalone.fe:6:5
   │
 6 │     cool_users: Map<address, bool>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, bool>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, bool>
 7 │     points: Map<address, u256>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 
 note: 
    ┌─ pure_fn_standalone.fe:9:5

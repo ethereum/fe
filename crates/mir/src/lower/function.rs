@@ -639,14 +639,17 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::Subscript { value, index } => {
-                if !self.expr_ty(value).is_aggregate(self.db) {
+                let value_ty = self.expr_ty(value).deref(self.db);
+                if value_ty.is_aggregate(self.db) {
+                    let mut indices = vec![];
+                    let value = self.lower_aggregate_access(expr, &mut indices);
+                    self.builder.aggregate_access(value, indices, expr.into())
+                } else if value_ty.is_map(self.db) {
                     let value = self.lower_expr_to_value(value);
                     let key = self.lower_expr_to_value(index);
                     self.builder.map_access(value, key, expr.into())
                 } else {
-                    let mut indices = vec![];
-                    let value = self.lower_aggregate_access(expr, &mut indices);
-                    self.builder.aggregate_access(value, indices, expr.into())
+                    unreachable!()
                 }
             }
 
@@ -726,7 +729,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
         let ty = self.expr_ty(expr);
         let inst = self.lower_expr(expr);
-        self.map_to_tmp(inst, ty)
+        let value = self.map_to_tmp(inst, ty);
+
+        // Load primitive types onto stack
+        if ty.is_ptr(self.db) && ty.deref(self.db).is_primitive(self.db) {
+            let inst = self.builder.load(value, expr.into());
+            self.map_to_tmp(inst, ty.deref(self.db))
+        } else {
+            value
+        }
     }
 
     fn lower_assignable_value(&mut self, expr: &Node<ast::Expr>) -> AssignableValue {
@@ -744,10 +755,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::Expr::Subscript { value, index } => {
                 let lhs = self.lower_assignable_value(value).into();
                 let attr = self.lower_expr_to_value(index);
-                if self.expr_ty(value).is_aggregate(self.db) {
+                let value_ty = self.expr_ty(value).deref(self.db);
+                if value_ty.is_aggregate(self.db) {
                     AssignableValue::Aggregate { lhs, idx: attr }
-                } else {
+                } else if value_ty.is_map(self.db) {
                     AssignableValue::Map { lhs, key: attr }
+                } else {
+                    unreachable!()
                 }
             }
             ast::Expr::Name(name) => self.resolve_name(name).into(),
@@ -1008,7 +1022,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 value
             }
 
-            ast::Expr::Subscript { value, index } if self.expr_ty(value).is_aggregate(self.db) => {
+            ast::Expr::Subscript { value, index }
+                if self.expr_ty(value).deref(self.db).is_aggregate(self.db) =>
+            {
                 let value = self.lower_aggregate_access(value, indices);
                 indices.push(self.lower_expr_to_value(index));
                 value

@@ -7,7 +7,7 @@ note:
   ┌─ tuple_stress.fe:2:5
   │
 2 │     my_sto_tuple: (u256, i32)
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, i32)>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32)
 
 note: 
   ┌─ tuple_stress.fe:5:9

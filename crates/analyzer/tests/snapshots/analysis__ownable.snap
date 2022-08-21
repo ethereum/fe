@@ -7,7 +7,7 @@ note:
   ┌─ ownable.fe:2:5
   │
 2 │     _owner: address
-  │     ^^^^^^^^^^^^^^^ SPtr<address>
+  │     ^^^^^^^^^^^^^^^ address
 
 note: 
   ┌─ ownable.fe:5:9

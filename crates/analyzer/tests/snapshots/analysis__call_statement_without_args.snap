@@ -7,7 +7,7 @@ note:
   ┌─ call_statement_without_args.fe:2:5
   │
 2 │     baz: Map<u256, u256>
-  │     ^^^^^^^^^^^^^^^^^^^^ SPtr<Map<u256, u256>>
+  │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
   ┌─ call_statement_without_args.fe:4:5

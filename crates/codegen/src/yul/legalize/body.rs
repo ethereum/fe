@@ -147,14 +147,12 @@ fn legalize_inst_result(db: &dyn CodegenDb, body: &mut FunctionBody, inst_id: In
                 let value_ty = body.store.value_ty(*value);
                 match &value_ty.data(db.upcast()).kind {
                     TypeKind::MPtr(..) => result_ty.make_mptr(db.upcast()),
-                    TypeKind::SPtr(..) => result_ty.make_sptr(db.upcast()),
+                    // Note: All SPtr aggregate access results should be SPtr already
                     _ => unreachable!(),
                 }
             }
             _ => result_ty.make_mptr(db.upcast()),
         }
-    } else if result_ty.is_map(db.upcast()) {
-        result_ty.make_sptr(db.upcast())
     } else {
         return;
     };
@@ -198,6 +196,7 @@ fn is_value_contract(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) ->
 }
 
 fn is_lvalue_zst(db: &dyn CodegenDb, body: &FunctionBody, lvalue: &AssignableValue) -> bool {
-    let ty = body.store.assignable_value_ty(db.upcast(), lvalue);
-    ty.is_zero_sized(db.upcast())
+    lvalue
+        .ty(db.upcast(), &body.store)
+        .is_zero_sized(db.upcast())
 }

@@ -35,35 +35,35 @@ note:
    ┌─ uniswap.fe:15:5
    │
 15 │     balances: Map<address, u256>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 16 │     allowances: Map<address, Map<address, u256>>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Map<address, u256>>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
 17 │     total_supply: u256
-   │     ^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^^ u256
 18 │ 
 19 │     nonces: Map<address, u256>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 20 │ 
 21 │     factory: address
-   │     ^^^^^^^^^^^^^^^^ SPtr<address>
+   │     ^^^^^^^^^^^^^^^^ address
 22 │     token0: ERC20
-   │     ^^^^^^^^^^^^^ SPtr<ERC20>
+   │     ^^^^^^^^^^^^^ ERC20
 23 │     token1: ERC20
-   │     ^^^^^^^^^^^^^ SPtr<ERC20>
+   │     ^^^^^^^^^^^^^ ERC20
 24 │ 
 25 │     reserve0: u256
-   │     ^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^ u256
 26 │     reserve1: u256
-   │     ^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^ u256
 27 │     block_timestamp_last: u256
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 28 │ 
 29 │     price0_cumulative_last: u256
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 30 │     price1_cumulative_last: u256
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 31 │     k_last: u256
-   │     ^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^ u256
 
 note: 
    ┌─ uniswap.fe:34:9
@@ -2703,17 +2703,17 @@ note:
     ┌─ uniswap.fe:301:5
     │
 301 │     fee_to: address
-    │     ^^^^^^^^^^^^^^^ SPtr<address>
+    │     ^^^^^^^^^^^^^^^ address
 302 │     fee_to_setter: address
-    │     ^^^^^^^^^^^^^^^^^^^^^^ SPtr<address>
+    │     ^^^^^^^^^^^^^^^^^^^^^^ address
 303 │ 
 304 │     pairs: Map<address, Map<address, address>>
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Map<address, address>>>
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, address>>
 305 │ 
 306 │     all_pairs: Array<address, 100>
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<address, 100>>
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 100>
 307 │     pair_counter: u256
-    │     ^^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │     ^^^^^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:310:9

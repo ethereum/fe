@@ -7,7 +7,7 @@ note:
   ┌─ two_contracts.fe:2:5
   │
 2 │     other: Bar
-  │     ^^^^^^^^^^ SPtr<Bar>
+  │     ^^^^^^^^^^ Bar
 
 note: 
    ┌─ two_contracts.fe:8:5
@@ -84,7 +84,7 @@ note:
    ┌─ two_contracts.fe:19:5
    │
 19 │     other: Foo
-   │     ^^^^^^^^^^ SPtr<Foo>
+   │     ^^^^^^^^^^ Foo
 
 note: 
    ┌─ two_contracts.fe:21:5

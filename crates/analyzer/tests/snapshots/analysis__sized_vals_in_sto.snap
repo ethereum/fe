@@ -7,11 +7,11 @@ note:
   ┌─ sized_vals_in_sto.fe:2:5
   │
 2 │     num: u256
-  │     ^^^^^^^^^ SPtr<u256>
+  │     ^^^^^^^^^ u256
 3 │     nums: Array<u256, 42>
-  │     ^^^^^^^^^^^^^^^^^^^^^ SPtr<Array<u256, 42>>
+  │     ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 4 │     str: String<26>
-  │     ^^^^^^^^^^^^^^^ SPtr<String<26>>
+  │     ^^^^^^^^^^^^^^^ String<26>
 
 note: 
   ┌─ sized_vals_in_sto.fe:7:9

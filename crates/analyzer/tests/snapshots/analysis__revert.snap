@@ -15,7 +15,7 @@ note:
   ┌─ revert.fe:7:5
   │
 7 │     my_other_error: OtherError
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<OtherError>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
    ┌─ revert.fe:9:5

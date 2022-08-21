@@ -967,6 +967,7 @@ impl ContractId {
         db: &dyn AnalyzerDb,
         name: &str,
     ) -> Option<Result<types::TypeId, TypeError>> {
+        // Note: contract field types are wrapped in SPtr in `fn expr_attribute`
         let fields = db.contract_field_map(*self).value;
         Some(fields.get(name)?.typ(db))
     }

@@ -21,7 +21,7 @@ note:
   ┌─ create_contract_from_init.fe:8:5
   │
 8 │     foo_addr: address
-  │     ^^^^^^^^^^^^^^^^^ SPtr<address>
+  │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ create_contract_from_init.fe:14:5

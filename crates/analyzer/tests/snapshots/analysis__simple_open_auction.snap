@@ -13,20 +13,20 @@ note:
    ┌─ simple_open_auction.fe:12:5
    │
 12 │     auction_end_time: u256
-   │     ^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^^^^^^ u256
 13 │     beneficiary: address
-   │     ^^^^^^^^^^^^^^^^^^^^ SPtr<address>
+   │     ^^^^^^^^^^^^^^^^^^^^ address
 14 │ 
 15 │     highest_bidder: address
-   │     ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<address>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^ address
 16 │     highest_bid: u256
-   │     ^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │     ^^^^^^^^^^^^^^^^^ u256
 17 │ 
 18 │     pending_returns: Map<address, u256>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, u256>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u256>
 19 │ 
 20 │     ended: bool
-   │     ^^^^^^^^^^^ SPtr<bool>
+   │     ^^^^^^^^^^^ bool
 
 note: 
    ┌─ simple_open_auction.fe:24:9

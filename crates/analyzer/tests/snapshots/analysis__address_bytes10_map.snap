@@ -7,7 +7,7 @@ note:
   ┌─ address_bytes10_map.fe:2:5
   │
 2 │     bar: Map<address, Array<u8, 10>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, Array<u8, 10>>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Array<u8, 10>>
 
 note: 
   ┌─ address_bytes10_map.fe:4:5

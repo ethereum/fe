@@ -4,7 +4,7 @@ use logos::Logos;
 use smol_str::SmolStr;
 use std::ops::Add;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token<'a> {
     pub kind: TokenKind,
     pub text: &'a str,
@@ -25,7 +25,7 @@ impl<'a> Add<&Token<'a>> for Span {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Logos)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Logos)]
 pub enum TokenKind {
     // Ignoring comments and spaces/tabs for now.
     // If we implement an auto-formatting tool, we'll probably want to change this.

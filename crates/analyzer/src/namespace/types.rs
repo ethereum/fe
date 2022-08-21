@@ -85,6 +85,10 @@ impl TypeId {
             _ => *self,
         }
     }
+    pub fn make_sptr(self, db: &dyn AnalyzerDb) -> TypeId {
+        Type::SPtr(self).id(db)
+    }
+
     pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
         self.typ(db).has_fixed_size(db)
     }

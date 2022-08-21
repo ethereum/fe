@@ -7,7 +7,7 @@ note:
   ┌─ guest_book.fe:5:5
   │
 5 │     messages: Map<address, String<100>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<Map<address, String<100>>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
   ┌─ guest_book.fe:9:9

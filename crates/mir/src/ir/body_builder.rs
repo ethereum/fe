@@ -166,6 +166,12 @@ impl BodyBuilder {
         self.insert_inst(inst)
     }
 
+    pub fn load(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+        let kind = InstKind::Load { src };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
     pub fn aggregate_access(
         &mut self,
         value: ValueId,

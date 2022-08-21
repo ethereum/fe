@@ -55,7 +55,7 @@ note:
    ┌─ associated_fns.fe:16:5
    │
 16 │     my_struct: MyStruct
-   │     ^^^^^^^^^^^^^^^^^^^ SPtr<MyStruct>
+   │     ^^^^^^^^^^^^^^^^^^^ MyStruct
 
 note: 
    ┌─ associated_fns.fe:18:5

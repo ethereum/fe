@@ -77,6 +77,11 @@ impl PrettyPrint for InstId {
                 src.pretty_print(db, store, w)
             }
 
+            InstKind::Load { src } => {
+                write!(w, "load ")?;
+                src.pretty_print(db, store, w)
+            }
+
             InstKind::AggregateAccess { value, indices } => {
                 value.pretty_print(db, store, w)?;
                 for index in indices {

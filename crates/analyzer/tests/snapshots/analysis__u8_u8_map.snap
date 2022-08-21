@@ -7,7 +7,7 @@ note:
   ┌─ u8_u8_map.fe:2:5
   │
 2 │     bar: Map<u8, u8>
-  │     ^^^^^^^^^^^^^^^^ SPtr<Map<u8, u8>>
+  │     ^^^^^^^^^^^^^^^^ Map<u8, u8>
 
 note: 
   ┌─ u8_u8_map.fe:4:5

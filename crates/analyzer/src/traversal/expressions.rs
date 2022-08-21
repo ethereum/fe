@@ -564,7 +564,7 @@ fn field_type(
         }
 
         Type::SelfContract(id) => match id.field_type(context.db(), field_name) {
-            Some(typ) => Ok(typ?),
+            Some(typ) => Ok(typ?.make_sptr(context.db())),
             None => Err(FatalError::new(context.fancy_error(
                 &format!("No field `{}` exists on this contract", field_name),
                 vec![Label::primary(field_span, "undefined field")],

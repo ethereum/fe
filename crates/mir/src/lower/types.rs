@@ -10,10 +10,7 @@ use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
 pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId {
     let ty_kind = match analyzer_ty.typ(db.upcast()) {
-        analyzer_types::Type::SPtr(inner) => {
-            // TODO: lower to SPtr(lower_type(db, inner).
-            return lower_type(db, inner);
-        }
+        analyzer_types::Type::SPtr(inner) => TypeKind::SPtr(lower_type(db, inner)),
         analyzer_types::Type::Base(base) => lower_base(base),
         analyzer_types::Type::Array(arr) => lower_array(db, &arr),
         analyzer_types::Type::Map(map) => lower_map(db, &map),
@@ -114,13 +111,13 @@ fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeKind {
 fn lower_contract(db: &dyn MirDb, contract: analyzer_items::ContractId) -> TypeKind {
     let name = contract.name(db.upcast());
 
-    // Lower contract fields.
+    // Note: contract field types are wrapped in SPtr in TypeId::projection_ty
     let fields = contract
         .fields(db.upcast())
         .iter()
         .map(|(fname, fid)| {
-            let analyzer_types = fid.typ(db.upcast()).unwrap();
-            let ty = db.mir_lowered_type(analyzer_types);
+            let analyzer_type = fid.typ(db.upcast()).unwrap();
+            let ty = db.mir_lowered_type(analyzer_type);
             (fname.clone(), ty)
         })
         .collect();
