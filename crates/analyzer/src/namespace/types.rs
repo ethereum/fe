@@ -299,18 +299,12 @@ pub struct FeString {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
-    pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<TypeId, TypeError>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum SelfDecl {
-    Mutable,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub enum CtxDecl {
     Mutable,
 }
 
@@ -717,7 +711,6 @@ impl DisplayWithDb for FunctionSignature {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let FunctionSignature {
             self_decl,
-            ctx_decl: _,
             params,
             return_type,
         } = self;
