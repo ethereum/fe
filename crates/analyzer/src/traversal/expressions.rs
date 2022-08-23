@@ -1382,10 +1382,7 @@ fn expr_call_method(
                         ) {
                             let kind = target_type.kind_display_name(context.db());
                             context.fancy_error(
-                                &format!(
-                                    "{kind} functions can only be called on {kind} in memory",
-                                    kind = kind
-                                ),
+                                &format!("{kind} functions can only be called on {kind} in memory"),
                                 vec![
                                     Label::primary(target.span, "this value is in storage"),
                                     Label::secondary(

@@ -152,64 +152,53 @@ pub fn validate_named_args(
         }
 
         let param_type = param.typ()?;
-        let val_attrs = expressions::expr(context, &arg.kind.value, Some(param_type))?;
-        if !validate_arg_type(context, arg, val_attrs.typ, param_type) {
-            let msg = if let Some(label) = param.label() {
-                format!("incorrect type for `{}` argument `{}`", name, label)
-            } else {
-                format!(
-                    "incorrect type for `{}` argument at position {}",
-                    name, index
-                )
-            };
-            context.type_error(&msg, arg.kind.value.span, param_type, val_attrs.typ);
+        let arg_attrs = expressions::expr(context, &arg.kind.value, Some(param_type))?;
+        let arg_type = arg_attrs.typ;
+
+        // Check arg type
+        if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
+            for bound in bounds.iter() {
+                if !bound.is_implemented_for(context.db(), arg_type) {
+                    context.error(
+                        &format!(
+                            "the trait bound `{}: {}` is not satisfied",
+                            arg_type.display(context.db()),
+                            bound.name(context.db())
+                        ),
+                        arg.span,
+                        &format!(
+                            "the trait `{}` is not implemented for `{}`",
+                            bound.name(context.db()),
+                            arg_type.display(context.db()),
+                        ),
+                    );
+                }
+            }
+        } else {
+            match try_coerce_type(context.db(), arg_type, param_type) {
+                Err(TypeCoercionError::Incompatible) => {
+                    let msg = if let Some(label) = param.label() {
+                        format!("incorrect type for `{}` argument `{}`", name, label)
+                    } else {
+                        format!(
+                            "incorrect type for `{}` argument at position {}",
+                            name, index
+                        )
+                    };
+                    context.type_error(&msg, arg.kind.value.span, param_type, arg_type);
+                }
+                Err(TypeCoercionError::RequiresToMem) => {
+                    context.add_diagnostic(errors::to_mem_error(arg.span));
+                }
+                Err(TypeCoercionError::SelfContractType) => {
+                    context.add_diagnostic(errors::self_contract_type_error(
+                        arg.span,
+                        &param_type.display(context.db()),
+                    ));
+                }
+                Ok(()) => {}
+            }
         }
     }
     Ok(())
-}
-
-fn validate_arg_type(
-    context: &mut dyn AnalyzerContext,
-    arg: &Node<fe::CallArg>,
-    arg_type: TypeId,
-    param_type: TypeId,
-) -> bool {
-    if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
-        for bound in bounds.iter() {
-            if !bound.is_implemented_for(context.db(), arg_type) {
-                context.error(
-                    &format!(
-                        "the trait bound `{}: {}` is not satisfied",
-                        arg_type.display(context.db()),
-                        bound.name(context.db())
-                    ),
-                    arg.span,
-                    &format!(
-                        "the trait `{}` is not implemented for `{}`",
-                        bound.name(context.db()),
-                        arg_type.display(context.db()),
-                    ),
-                );
-
-                return false;
-            }
-        }
-        true
-    } else {
-        match try_coerce_type(context.db(), arg_type, param_type) {
-            Err(TypeCoercionError::Incompatible) => false,
-            Err(TypeCoercionError::RequiresToMem) => {
-                context.add_diagnostic(errors::to_mem_error(arg.span));
-                true
-            }
-            Err(TypeCoercionError::SelfContractType) => {
-                context.add_diagnostic(errors::self_contract_type_error(
-                    arg.span,
-                    &param_type.display(context.db()),
-                ));
-                true
-            }
-            Ok(()) => true,
-        }
-    }
 }
