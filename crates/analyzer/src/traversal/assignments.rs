@@ -19,10 +19,16 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     };
     let target_attributes = expressions::expr(scope, target, None)?;
 
-    let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
+    let expected_type = target_attributes.typ.deref(scope.db());
+    let value_attributes = expressions::expr(scope, value, Some(expected_type))?;
     check_assign_target(scope, target)?;
 
-    match try_coerce_type(scope.db(), value_attributes.typ, target_attributes.typ) {
+    match try_coerce_type(
+        scope,
+        Some(value),
+        value_attributes.typ,
+        target_attributes.typ,
+    ) {
         Err(TypeCoercionError::RequiresToMem) => {
             scope.add_diagnostic(errors::to_mem_error(value.span));
         }
@@ -54,7 +60,7 @@ pub fn assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
                 &target_attributes.typ.display(scope.db()),
             ));
         }
-        Ok(()) => {}
+        Ok(_) => {}
     }
     Ok(())
 }
@@ -99,22 +105,24 @@ fn invalid_assign_target(scope: &mut BlockScope, expr: &Node<fe::Expr>) -> Fatal
 pub fn aug_assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
         check_assign_target(scope, target)?;
-        let target_attributes = expressions::expr(scope, target, None)?;
-        let value_attributes = expressions::expr(scope, value, Some(target_attributes.typ))?;
+        let target_attr = expressions::expr(scope, target, None)?;
+        let value_attr = expressions::expr(scope, value, Some(target_attr.typ))?;
 
         if let Err(err) = operations::bin(
-            scope.db(),
-            target_attributes.typ,
+            scope,
+            target_attr.typ,
+            target,
             op.kind,
-            value_attributes.typ,
+            value_attr.typ,
+            value,
         ) {
             add_bin_operations_errors(
                 scope,
                 &op.kind,
                 target.span,
-                target_attributes.typ,
+                target_attr.typ,
                 value.span,
-                value_attributes.typ,
+                value_attr.typ,
                 err,
             );
         }

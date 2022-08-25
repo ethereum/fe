@@ -135,7 +135,7 @@ note:
    ┌─ abi_encoding_stress.fe:38:16
    │
 38 │         return self.my_u128
-   │                ^^^^^^^^^^^^ SPtr<u128>
+   │                ^^^^^^^^^^^^ SPtr<u128> -> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:41:5
@@ -273,7 +273,7 @@ note:
    ┌─ abi_encoding_stress.fe:62:16
    │
 62 │         return self.my_bool
-   │                ^^^^^^^^^^^^ SPtr<bool>
+   │                ^^^^^^^^^^^^ SPtr<bool> -> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:65:5
@@ -466,7 +466,7 @@ note:
 86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
    │                                                                      ^^^^^^^^^^^^             ^^^^ Foo
    │                                                                      │                         
-   │                                                                      SPtr<u128>
+   │                                                                      SPtr<u128> -> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:86:95
@@ -502,7 +502,7 @@ note:
 86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
    │                                                                                                                                                                 ^^^^^^^^^^^^            ^^^^ Foo
    │                                                                                                                                                                 │                        
-   │                                                                                                                                                                 SPtr<bool>
+   │                                                                                                                                                                 SPtr<bool> -> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:86:185

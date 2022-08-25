@@ -35,7 +35,7 @@ note:
   ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ SPtr<u64>
+  │                ^^^^^^^^^^^^^ SPtr<u64> -> u64
 
 note: 
    ┌─ u64_u64_map.fe:8:5

@@ -63,7 +63,7 @@ note:
    ┌─ sized_vals_in_sto.fe:17:16
    │
 17 │         return self.num
-   │                ^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:20:5
@@ -183,7 +183,7 @@ note:
 37 │         emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
    │                                ^^^^^^^^        ^^^^ Foo
    │                                │                
-   │                                SPtr<u256>
+   │                                SPtr<u256> -> u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:48

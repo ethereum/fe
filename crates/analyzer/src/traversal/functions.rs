@@ -8,7 +8,7 @@ use crate::traversal::types;
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
-use fe_parser::node::{Node, Span};
+use fe_parser::node::Node;
 
 pub fn traverse_statements(
     scope: &mut BlockScope,
@@ -106,8 +106,8 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             let test_type = expressions::expr(scope, test, None)?.typ;
             error_if_not_bool(
                 scope,
+                test,
                 test_type,
-                test.span,
                 "`if` statement condition is not bool",
             );
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), body)?;
@@ -118,9 +118,10 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
     }
 }
 
-fn error_if_not_bool(scope: &mut BlockScope, typ: TypeId, span: Span, msg: &str) {
-    if !typ.is_bool(scope.db()) {
-        scope.type_error(msg, span, TypeId::bool(scope.db()), typ);
+fn error_if_not_bool(scope: &mut BlockScope, expr: &Node<fe::Expr>, typ: TypeId, msg: &str) {
+    let bool_type = TypeId::bool(scope.db());
+    if types::try_coerce_type(scope, Some(expr), typ, bool_type).is_err() {
+        scope.type_error(msg, expr.span, bool_type, typ);
     }
 }
 
@@ -144,12 +145,7 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
             let test_type = expressions::expr(scope, test, None)?.typ;
-            error_if_not_bool(
-                scope,
-                test_type,
-                test.span,
-                "`while` loop condition is not bool",
-            );
+            error_if_not_bool(scope, test, test_type, "`while` loop condition is not bool");
             traverse_statements(&mut scope.new_child(BlockScopeType::Loop), body)?;
             Ok(())
         }
@@ -250,12 +246,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
 fn assert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test_type = expressions::expr(scope, test, None)?.typ;
-        error_if_not_bool(
-            scope,
-            test_type,
-            test.span,
-            "`assert` condition is not bool",
-        );
+        error_if_not_bool(scope, test, test_type, "`assert` condition is not bool");
 
         if let Some(msg) = msg {
             let msg_attributes = expressions::expr(scope, msg, None)?;
@@ -286,17 +277,17 @@ fn assert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fatal
 fn revert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Revert { error } = &stmt.kind {
         if let Some(error_expr) = error {
-            let error_attributes = expressions::expr(scope, error_expr, None)?;
-            if !error_attributes.typ.is_struct(scope.db()) {
+            let error_attr = expressions::expr(scope, error_expr, None)?;
+            if !error_attr.typ.deref(scope.db()).is_struct(scope.db()) {
                 scope.error(
                     "`revert` error must be a struct",
                     error_expr.span,
                     &format!(
                         "this has type `{}`; expected a struct",
-                        error_attributes.typ.display(scope.db())
+                        error_attr.typ.deref(scope.db()).display(scope.db())
                     ),
                 );
-            } else if matches!(error_attributes.typ.typ(scope.db()), Type::SPtr(_)) {
+            } else if error_attr.typ.is_sptr(scope.db()) {
                 scope.fancy_error(
                     "`revert` value must be copied to memory",
                     vec![Label::primary(error_expr.span, "this value is in storage")],
@@ -322,7 +313,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
             None => ExpressionAttributes::new(TypeId::unit(scope.db())),
         };
 
-        match types::try_coerce_type(scope.db(), value_attr.typ, expected_type) {
+        match types::try_coerce_type(scope, value.as_ref(), value_attr.typ, expected_type) {
             Err(TypeCoercionError::RequiresToMem) => {
                 let value = value.clone().expect("to_mem required on unit type?");
                 scope.add_diagnostic(errors::to_mem_error(value.span));
@@ -344,7 +335,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
                     &expected_type.display(scope.db()),
                 ));
             }
-            Ok(()) => {}
+            Ok(_) => {}
         }
 
         return Ok(());

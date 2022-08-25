@@ -63,7 +63,7 @@ note:
    ┌─ pure_fn_standalone.fe:10:12
    │
 10 │         if self.cool_users[user] {
-   │            ^^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+   │            ^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 11 │             self.points[user] += add_bonus(val)
    │             ^^^^ Foo
 
@@ -81,7 +81,7 @@ note:
 11 │             self.points[user] += add_bonus(val)
    │             ^^^^^^^^^^^^^^^^^              ^^^ u256
    │             │                               
-   │             SPtr<u256>
+   │             SPtr<u256> -> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:11:34
@@ -106,7 +106,7 @@ note:
 13 │             self.points[user] += val
    │             ^^^^^^^^^^^^^^^^^    ^^^ u256
    │             │                     
-   │             SPtr<u256>
+   │             SPtr<u256> -> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:17:5
@@ -192,6 +192,6 @@ note:
    ┌─ pure_fn_standalone.fe:22:16
    │
 22 │         return self.points[a]
-   │                ^^^^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 

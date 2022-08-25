@@ -3,11 +3,11 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: `+` operand types must be equal
+error: `+` operand types are not compatible
   ┌─ compile_errors/return_addition_with_mixed_types.fe:3:16
   │
 3 │         return x + y
-  │                ^   ^ this has type `u128`
+  │                ^   ^ this has type `i32`
   │                │    
   │                this has type `u256`
 

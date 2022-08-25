@@ -127,7 +127,7 @@ note:
    ┌─ return_u256_from_called_fn_with_args.fe:14:42
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                          ^^^^^^^^^^^ SPtr<u256>
+   │                                          ^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:16

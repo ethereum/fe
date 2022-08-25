@@ -35,7 +35,7 @@ note:
   ┌─ u8_u8_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ SPtr<u8>
+  │                ^^^^^^^^^^^^^ SPtr<u8> -> u8
 
 note: 
    ┌─ u8_u8_map.fe:8:5

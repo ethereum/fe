@@ -130,7 +130,7 @@ pub enum IndexingError {
 /// Errors that can result from a binary operation
 #[derive(Debug, PartialEq, Eq)]
 pub enum BinaryOperationError {
-    TypesNotEqual,
+    TypesNotCompatible,
     TypesNotNumeric,
     RightTooLarge,
     RightIsSigned,
@@ -138,6 +138,7 @@ pub enum BinaryOperationError {
 }
 
 /// Errors that can result from an implicit type coercion
+#[derive(Debug, PartialEq, Eq)]
 pub enum TypeCoercionError {
     /// Value is in storage and must be explicitly moved with .to_mem()
     RequiresToMem,

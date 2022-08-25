@@ -250,7 +250,7 @@ note:
 61 │         self.my_num += b
    │         ^^^^^^^^^^^    ^ u256
    │         │               
-   │         SPtr<u256>
+   │         SPtr<u256> -> u256
 62 │         return self.my_num
    │                ^^^^ Foo
 
@@ -258,7 +258,7 @@ note:
    ┌─ aug_assign.fe:62:16
    │
 62 │         return self.my_num
-   │                ^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ aug_assign.fe:65:5

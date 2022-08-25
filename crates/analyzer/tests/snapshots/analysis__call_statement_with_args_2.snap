@@ -79,6 +79,6 @@ note:
    ┌─ call_statement_with_args_2.fe:11:16
    │
 11 │         return self.baz[0]
-   │                ^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^ SPtr<u256> -> u256
 
 

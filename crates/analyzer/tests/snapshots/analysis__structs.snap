@@ -266,7 +266,7 @@ note:
 52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:52:16
@@ -296,7 +296,7 @@ note:
 53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:53:16
@@ -324,7 +324,7 @@ note:
 54 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:54:16
@@ -352,7 +352,7 @@ note:
 55 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:55:16
@@ -380,7 +380,7 @@ note:
 56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                               
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:56:16
@@ -406,7 +406,7 @@ note:
    ┌─ structs.fe:57:16
    │
 57 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 58 │         self.my_bar.numbers[0] = 10
    │         ^^^^ Foo
 
@@ -478,7 +478,7 @@ note:
 60 │         assert self.my_bar.numbers[0] == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:60:16
@@ -508,7 +508,7 @@ note:
 61 │         assert self.my_bar.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:61:16
@@ -561,7 +561,7 @@ note:
 63 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:63:16
@@ -591,7 +591,7 @@ note:
 64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:64:16
@@ -663,7 +663,7 @@ note:
 67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:67:16
@@ -691,7 +691,7 @@ note:
 68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:68:16
@@ -742,7 +742,7 @@ note:
 70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:70:16
@@ -770,7 +770,7 @@ note:
 71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:71:16
@@ -842,7 +842,7 @@ note:
 74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                               
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:74:16
@@ -868,7 +868,7 @@ note:
    ┌─ structs.fe:75:20
    │
 75 │         assert not self.my_bar.something.item1
-   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 
 note: 
    ┌─ structs.fe:75:16
@@ -919,7 +919,7 @@ note:
 77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                               
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ structs.fe:77:16
@@ -945,7 +945,7 @@ note:
    ┌─ structs.fe:78:16
    │
 78 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 79 │         return self.my_bar.name.to_mem()
    │                ^^^^ Foo
 
@@ -1712,7 +1712,7 @@ note:
 129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                       
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:129:16
@@ -1734,7 +1734,7 @@ note:
 130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                      
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:130:16
@@ -1756,7 +1756,7 @@ note:
 131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8>
+    │                SPtr<u8> -> u8
 
 note: 
     ┌─ structs.fe:131:39
@@ -1784,7 +1784,7 @@ note:
 132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool>
+    │                SPtr<bool> -> bool
 
 note: 
     ┌─ structs.fe:132:16
@@ -1822,7 +1822,7 @@ note:
 134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:134:16
@@ -1844,7 +1844,7 @@ note:
 135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                       
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:135:16
@@ -1866,7 +1866,7 @@ note:
 136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8>
+    │                SPtr<u8> -> u8
 
 note: 
     ┌─ structs.fe:136:39
@@ -1894,7 +1894,7 @@ note:
 137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool>
+    │                SPtr<bool> -> bool
 
 note: 
     ┌─ structs.fe:137:16
@@ -1932,7 +1932,7 @@ note:
 139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:139:16
@@ -1954,7 +1954,7 @@ note:
 140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:140:16
@@ -1976,7 +1976,7 @@ note:
 141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8>
+    │                SPtr<u8> -> u8
 
 note: 
     ┌─ structs.fe:141:39
@@ -2004,7 +2004,7 @@ note:
 142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool>
+    │                SPtr<bool> -> bool
 
 note: 
     ┌─ structs.fe:142:16
@@ -2042,7 +2042,7 @@ note:
 144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:144:16
@@ -2064,7 +2064,7 @@ note:
 145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:145:16
@@ -2086,7 +2086,7 @@ note:
 146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8>
+    │                SPtr<u8> -> u8
 
 note: 
     ┌─ structs.fe:146:39
@@ -2112,7 +2112,7 @@ note:
     ┌─ structs.fe:147:16
     │
 147 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 148 │         self.my_house.rooms = u8(100)
     │         ^^^^ Foo
 
@@ -2150,7 +2150,7 @@ note:
 149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:149:16
@@ -2172,7 +2172,7 @@ note:
 150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ structs.fe:150:16
@@ -2194,7 +2194,7 @@ note:
 151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^^^^^^^       ^^^ u8
     │                │                          
-    │                SPtr<u8>
+    │                SPtr<u8> -> u8
 
 note: 
     ┌─ structs.fe:151:39
@@ -2220,7 +2220,7 @@ note:
     ┌─ structs.fe:152:16
     │
 152 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool>
+    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
 
 note: 
     ┌─ structs.fe:155:5

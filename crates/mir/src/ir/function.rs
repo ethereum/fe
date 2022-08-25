@@ -188,10 +188,17 @@ impl BodyDataStore {
         self.blocks.alloc(block)
     }
 
-    /// Returns an instruction result. A returned value is guaranteed to be a
-    /// temporary value.
+    /// Returns an instruction result
     pub fn inst_result(&self, inst: InstId) -> Option<&AssignableValue> {
         self.inst_results.get(&inst)
+    }
+
+    pub fn map_result(&mut self, inst: InstId, result: AssignableValue) {
+        self.inst_results.insert(inst, result);
+    }
+
+    pub fn remove_inst_result(&mut self, inst: InstId) -> Option<AssignableValue> {
+        self.inst_results.remove(&inst)
     }
 
     pub fn rewrite_branch_dest(&mut self, inst: InstId, from: BasicBlockId, to: BasicBlockId) {
@@ -213,16 +220,8 @@ impl BodyDataStore {
         }
     }
 
-    pub fn remove_inst_result(&mut self, inst: InstId) {
-        self.inst_results.remove(&inst);
-    }
-
     pub fn value_ty(&self, vid: ValueId) -> TypeId {
         self.values[vid].ty()
-    }
-
-    pub fn map_result(&mut self, inst: InstId, result: AssignableValue) {
-        self.inst_results.insert(inst, result);
     }
 
     pub fn locals(&self) -> &[ValueId] {

@@ -35,7 +35,7 @@ note:
    ┌─ ownable.fe:14:16
    │
 14 │         return self._owner
-   │                ^^^^^^^^^^^ SPtr<address>
+   │                ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:17:5
@@ -65,7 +65,7 @@ note:
    ┌─ ownable.fe:18:36
    │
 18 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ SPtr<address>
+   │                                    ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:18:16
@@ -136,7 +136,7 @@ note:
    ┌─ ownable.fe:24:36
    │
 24 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ SPtr<address>
+   │                                    ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:24:16

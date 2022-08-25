@@ -172,7 +172,7 @@ note:
 28 │         let score: Score = self.scoreboard[id] + 1
    │                            ^^^^^^^^^^^^^^^^^^^   ^ u64
    │                            │                      
-   │                            SPtr<u64>
+   │                            SPtr<u64> -> u64
 
 note: 
    ┌─ type_aliases.fe:28:28

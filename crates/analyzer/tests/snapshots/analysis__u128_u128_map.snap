@@ -35,7 +35,7 @@ note:
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ SPtr<u128>
+  │                ^^^^^^^^^^^^^ SPtr<u128> -> u128
 
 note: 
    ┌─ u128_u128_map.fe:8:5

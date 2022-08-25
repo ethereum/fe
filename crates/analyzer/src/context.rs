@@ -64,7 +64,7 @@ pub trait AnalyzerContext {
     /// # Panics
     ///
     /// Panics if an entry does not already exist for the node id.
-    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes);
+    fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes));
 
     /// Returns a type of an expression.
     ///
@@ -287,7 +287,7 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't store expression")
     }
 
-    fn update_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
+    fn update_expression(&self, _node: &Node<ast::Expr>, _f: &dyn Fn(&mut ExpressionAttributes)) {
         panic!("TempContext can't update expression");
     }
 
@@ -356,6 +356,7 @@ pub struct ExpressionAttributes {
     pub typ: TypeId,
     // Evaluated constant value of const local definition.
     pub const_value: Option<Constant>,
+    pub type_coercion_chain: Vec<TypeId>,
 }
 
 impl ExpressionAttributes {
@@ -363,15 +364,24 @@ impl ExpressionAttributes {
         Self {
             typ,
             const_value: None,
+            type_coercion_chain: vec![],
         }
     }
 }
 
 impl crate::display::DisplayWithDb for ExpressionAttributes {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.typ.display(db))?;
-        if let Some(val) = &self.const_value {
+        let ExpressionAttributes {
+            typ,
+            const_value,
+            type_coercion_chain,
+        } = self;
+        write!(f, "{}", typ.display(db))?;
+        if let Some(val) = &const_value {
             write!(f, " = {:?}", val)?;
+        }
+        for into_type in type_coercion_chain {
+            write!(f, " -> {}", into_type.display(db))?;
         }
         Ok(())
     }

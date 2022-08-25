@@ -109,7 +109,7 @@ note:
    ┌─ erc20_token.fe:37:16
    │
 37 │         return self._decimals
-   │                ^^^^^^^^^^^^^^ SPtr<u8>
+   │                ^^^^^^^^^^^^^^ SPtr<u8> -> u8
 
 note: 
    ┌─ erc20_token.fe:40:5
@@ -129,7 +129,7 @@ note:
    ┌─ erc20_token.fe:41:16
    │
 41 │         return self._total_supply
-   │                ^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:44:5
@@ -157,7 +157,7 @@ note:
    ┌─ erc20_token.fe:45:16
    │
 45 │         return self._balances[account]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:48:5
@@ -228,7 +228,7 @@ note:
    ┌─ erc20_token.fe:54:16
    │
 54 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:57:5
@@ -310,7 +310,7 @@ note:
 63 │         assert self._allowances[sender][ctx.msg_sender()] >= value
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^ u256
    │                │                                              
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:63:16
@@ -373,7 +373,7 @@ note:
 65 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
    │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                                                             │                                             
-   │                                                                             SPtr<u256>
+   │                                                                             SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:65:77
@@ -444,7 +444,7 @@ note:
 70 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     SPtr<u256>
+   │                                                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:70:69
@@ -515,7 +515,7 @@ note:
 75 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     SPtr<u256>
+   │                                                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:75:69
@@ -622,7 +622,7 @@ note:
 83 │         self._balances[sender] = self._balances[sender] - value
    │                                  ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                  │                         
-   │                                  SPtr<u256>
+   │                                  SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:83:34
@@ -662,7 +662,7 @@ note:
 84 │         self._balances[recipient] = self._balances[recipient] + value
    │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                     │                            
-   │                                     SPtr<u256>
+   │                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:84:37
@@ -741,7 +741,7 @@ note:
 91 │         self._total_supply = self._total_supply + value
    │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                              │                     
-   │                              SPtr<u256>
+   │                              SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:91:30
@@ -781,7 +781,7 @@ note:
 92 │         self._balances[account] = self._balances[account] + value
    │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                   │                          
-   │                                   SPtr<u256>
+   │                                   SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:92:35
@@ -884,7 +884,7 @@ note:
 99 │         self._balances[account] = self._balances[account] - value
    │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                   │                          
-   │                                   SPtr<u256>
+   │                                   SPtr<u256> -> u256
 
 note: 
     ┌─ erc20_token.fe:99:35
@@ -908,7 +908,7 @@ note:
 100 │         self._total_supply = self._total_supply - value
     │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                              │                     
-    │                              SPtr<u256>
+    │                              SPtr<u256> -> u256
 
 note: 
     ┌─ erc20_token.fe:100:30

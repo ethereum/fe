@@ -74,7 +74,7 @@ note:
    ┌─ simple_open_auction.fe:41:36
    │
 41 │         if ctx.block_timestamp() > self.auction_end_time {
-   │                                    ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                    ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:41:12
@@ -99,7 +99,7 @@ note:
    ┌─ simple_open_auction.fe:44:31
    │
 44 │         if ctx.msg_value() <= self.highest_bid {
-   │                               ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                               ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:44:12
@@ -113,7 +113,7 @@ note:
    ┌─ simple_open_auction.fe:45:50
    │
 45 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
-   │                                                  ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                                  ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:45:20
@@ -130,7 +130,7 @@ note:
 47 │         if self.highest_bid != 0 {
    │            ^^^^^^^^^^^^^^^^    ^ u256
    │            │                    
-   │            SPtr<u256>
+   │            SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:47:12
@@ -152,7 +152,7 @@ note:
    ┌─ simple_open_auction.fe:48:34
    │
 48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │                                  ^^^^^^^^^^^^^^^^^^^ SPtr<address>
+   │                                  ^^^^^^^^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ simple_open_auction.fe:48:13
@@ -160,13 +160,13 @@ note:
 48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction
    │             │                                             
-   │             SPtr<u256>
+   │             SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:48:58
    │
 48 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │                                                          ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                                          ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 49 │         }
 50 │         self.highest_bidder = ctx.msg_sender()
    │         ^^^^ SimpleOpenAuction
@@ -262,7 +262,7 @@ note:
    ┌─ simple_open_auction.fe:57:28
    │
 57 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 58 │ 
 59 │         if amount > 0 {
    │            ^^^^^^   ^ u256
@@ -350,7 +350,7 @@ note:
    ┌─ simple_open_auction.fe:67:37
    │
 67 │         if ctx.block_timestamp() <= self.auction_end_time {
-   │                                     ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                     ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:67:12
@@ -367,7 +367,7 @@ note:
    ┌─ simple_open_auction.fe:70:12
    │
 70 │         if self.ended {
-   │            ^^^^^^^^^^ SPtr<bool>
+   │            ^^^^^^^^^^ SPtr<bool> -> bool
 71 │             revert AuctionEndAlreadyCalled()
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^ AuctionEndAlreadyCalled
 72 │         }
@@ -392,13 +392,13 @@ note:
 74 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
    │                                        ^^^^^^^^^^^^^^^^^^^          ^^^^ SimpleOpenAuction
    │                                        │                             
-   │                                        SPtr<address>
+   │                                        SPtr<address> -> address
 
 note: 
    ┌─ simple_open_auction.fe:74:69
    │
 74 │         emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
-   │                                                                     ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                                                     ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 75 │ 
 76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │         ^^^                ^^^^ SimpleOpenAuction
@@ -411,13 +411,13 @@ note:
 76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
    │                            ^^^^^^^^^^^^^^^^       ^^^^ SimpleOpenAuction
    │                            │                       
-   │                            SPtr<address>
+   │                            SPtr<address> -> address
 
 note: 
    ┌─ simple_open_auction.fe:76:51
    │
 76 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-   │                                                   ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                                                   ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ simple_open_auction.fe:76:9

@@ -175,7 +175,7 @@ pub fn validate_named_args(
                 }
             }
         } else {
-            match try_coerce_type(context.db(), arg_type, param_type) {
+            match try_coerce_type(context, Some(&arg.kind.value), arg_type, param_type) {
                 Err(TypeCoercionError::Incompatible) => {
                     let msg = if let Some(label) = param.label() {
                         format!("incorrect type for `{}` argument `{}`", name, label)
@@ -196,7 +196,7 @@ pub fn validate_named_args(
                         &param_type.display(context.db()),
                     ));
                 }
-                Ok(()) => {}
+                Ok(_) => {}
             }
         }
     }

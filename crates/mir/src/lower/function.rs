@@ -99,8 +99,9 @@ pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
     let ast = &analyzer_func.data(db.upcast()).ast;
     let analyzer_body = analyzer_func.body(db.upcast());
 
-    let body = BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref()).lower();
-    body.into()
+    BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref())
+        .lower()
+        .into()
 }
 
 struct BodyLowerHelper<'db, 'a> {
@@ -201,7 +202,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             ast::FuncStmt::Assign { target, value } => {
                 let result = self.lower_assignable_value(target);
-                let expr = self.lower_expr(value);
+                let (expr, _ty) = self.lower_expr(value);
                 self.builder.map_result(expr, result)
             }
 
@@ -360,7 +361,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let value = self.builder.declare(local);
                 self.scope_mut().declare_var(name, value);
                 if let Some(init) = init {
-                    let rhs = self.lower_expr(init);
+                    let (rhs, rhs_ty) = self.lower_expr(init);
+                    debug_assert_eq!(ty.deref(self.db), rhs_ty);
                     self.builder.map_result(rhs, value.into());
                 }
             }
@@ -573,9 +575,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         self.builder.move_to_block(exit_bb);
     }
 
-    fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> InstId {
-        let ty = self.expr_ty(expr);
-        match &expr.kind {
+    fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> (InstId, TypeId) {
+        let mut expr_ty = self.expr_ty(expr);
+        let mut inst = match &expr.kind {
             ast::Expr::Ternary {
                 if_expr,
                 test,
@@ -587,19 +589,21 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
                 let tmp = self
                     .builder
-                    .declare(Local::tmp_local("$ternary_tmp".into(), ty));
+                    .declare(Local::tmp_local("$ternary_tmp".into(), expr_ty));
 
                 let cond = self.lower_expr_to_value(test);
                 self.builder
                     .branch(cond, true_bb, false_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(true_bb);
-                let value = self.lower_expr(if_expr);
+                let (value, value_ty) = self.lower_expr(if_expr);
+                debug_assert_eq!(value_ty, expr_ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(false_bb);
-                let value = self.lower_expr(else_expr);
+                let (value, value_ty) = self.lower_expr(else_expr);
+                debug_assert_eq!(value_ty, expr_ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
@@ -608,7 +612,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::BoolOperation { left, op, right } => {
-                self.lower_bool_op(op.kind, left, right, ty)
+                self.lower_bool_op(op.kind, left, right, expr_ty)
             }
 
             ast::Expr::BinOperation { left, op, right } => {
@@ -688,7 +692,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::Bool(b) => {
-                let imm = self.builder.make_imm_from_bool(*b, ty);
+                let imm = self.builder.make_imm_from_bool(*b, expr_ty);
                 self.builder.bind(imm, expr.into())
             }
 
@@ -704,7 +708,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             ast::Expr::Num(num) => {
                 let imm = Literal::new(num).parse().unwrap();
-                let imm = self.builder.make_imm(imm, ty);
+                let imm = self.builder.make_imm(imm, expr_ty);
                 self.builder.bind(imm, expr.into())
             }
 
@@ -723,21 +727,28 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let value = self.make_unit();
                 self.builder.bind(value, expr.into())
             }
+        };
+
+        for into_ty in &self.analyzer_body.expressions[&expr.id].type_coercion_chain {
+            let into_ty = self.lower_analyzer_type(*into_ty);
+
+            let tmp = self.map_to_tmp(inst, expr_ty);
+            if expr_ty.is_ptr(self.db) && !into_ty.is_ptr(self.db) {
+                inst = self.builder.load(tmp, expr.into());
+            } else if expr_ty.is_string(self.db) {
+                // XXX handle string size difference
+            } else {
+                dbg!(expr_ty.as_string(self.db), into_ty.as_string(self.db));
+                inst = self.builder.cast(tmp, into_ty, expr.into());
+            }
+            expr_ty = into_ty;
         }
+        (inst, expr_ty)
     }
 
     fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
-        let ty = self.expr_ty(expr);
-        let inst = self.lower_expr(expr);
-        let value = self.map_to_tmp(inst, ty);
-
-        // Load primitive types onto stack
-        if ty.is_ptr(self.db) && ty.deref(self.db).is_primitive(self.db) {
-            let inst = self.builder.load(value, expr.into());
-            self.map_to_tmp(inst, ty.deref(self.db))
-        } else {
-            value
-        }
+        let (inst, ty) = self.lower_expr(expr);
+        self.map_to_tmp(inst, ty)
     }
 
     fn lower_assignable_value(&mut self, expr: &Node<ast::Expr>) -> AssignableValue {
@@ -797,7 +808,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(true_bb);
-                let rhs = self.lower_expr(rhs);
+                let (rhs, _rhs_ty) = self.lower_expr(rhs);
                 self.builder.map_result(rhs, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
@@ -819,7 +830,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(false_bb);
-                let rhs = self.lower_expr(rhs);
+                let (rhs, _rhs_ty) = self.lower_expr(rhs);
                 self.builder.map_result(rhs, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
             }
@@ -968,7 +979,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .call(func_id, method_args, CallType::Internal, source)
             }
             AnalyzerCallType::External { function, .. } => {
-                let mut method_args = vec![self.lower_method_receiver(func)];
+                let receiver = self.lower_method_receiver(func);
+                debug_assert!(self.builder.value_ty(receiver).is_address(self.db));
+
+                let mut method_args = vec![receiver];
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*function);
                 self.builder
@@ -986,6 +1000,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     if arg_ty == ty {
                         self.builder.bind(arg, source)
                     } else {
+                        debug_assert!(!arg_ty.is_ptr(self.db)); // Should be explicitly `Load`ed
                         self.builder.cast(arg, ty, source)
                     }
                 } else if ty.is_aggregate(self.db) {

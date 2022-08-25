@@ -149,7 +149,7 @@ note:
    ┌─ uniswap.fe:77:16
    │
 77 │         return self.factory
-   │                ^^^^^^^^^^^^ SPtr<address>
+   │                ^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ uniswap.fe:80:5
@@ -169,7 +169,7 @@ note:
    ┌─ uniswap.fe:81:24
    │
 81 │         return address(self.token0)
-   │                        ^^^^^^^^^^^ SPtr<ERC20>
+   │                        ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 
 note: 
    ┌─ uniswap.fe:81:16
@@ -195,7 +195,7 @@ note:
    ┌─ uniswap.fe:85:24
    │
 85 │         return address(self.token1)
-   │                        ^^^^^^^^^^^ SPtr<ERC20>
+   │                        ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 
 note: 
    ┌─ uniswap.fe:85:16
@@ -233,7 +233,7 @@ note:
 89 │         self.total_supply = self.total_supply + value
    │                             ^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                             │                    
-   │                             SPtr<u256>
+   │                             SPtr<u256> -> u256
 
 note: 
    ┌─ uniswap.fe:89:29
@@ -273,7 +273,7 @@ note:
 90 │         self.balances[to] = self.balances[to] + value
    │                             ^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                             │                    
-   │                             SPtr<u256>
+   │                             SPtr<u256> -> u256
 
 note: 
    ┌─ uniswap.fe:90:29
@@ -340,7 +340,7 @@ note:
 95 │         self.balances[from] = self.balances[from] - value
    │                               ^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                               │                      
-   │                               SPtr<u256>
+   │                               SPtr<u256> -> u256
 
 note: 
    ┌─ uniswap.fe:95:31
@@ -364,7 +364,7 @@ note:
 96 │         self.total_supply = self.total_supply - value
    │                             ^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                             │                    
-   │                             SPtr<u256>
+   │                             SPtr<u256> -> u256
 
 note: 
    ┌─ uniswap.fe:96:29
@@ -476,7 +476,7 @@ note:
 106 │         self.balances[from] = self.balances[from] - value
     │                               ^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                               │                      
-    │                               SPtr<u256>
+    │                               SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:106:31
@@ -516,7 +516,7 @@ note:
 107 │         self.balances[to] = self.balances[to] + value
     │                             ^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                             │                    
-    │                             SPtr<u256>
+    │                             SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:107:29
@@ -645,7 +645,7 @@ note:
 122 │         assert self.allowances[from][ctx.msg_sender()] >= value
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^ u256
     │                │                                           
-    │                SPtr<u256>
+    │                SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:122:16
@@ -713,7 +713,7 @@ note:
 123 │         self.allowances[from][ctx.msg_sender()] = self.allowances[from][ctx.msg_sender()] - value
     │                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                                                   │                                          
-    │                                                   SPtr<u256>
+    │                                                   SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:123:51
@@ -762,7 +762,7 @@ note:
     ┌─ uniswap.fe:129:16
     │
 129 │         return self.balances[account]
-    │                ^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                ^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:132:5
@@ -784,7 +784,7 @@ note:
 133 │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
     │                 ^^^^^^^^^^^^^  ^^^^ UniswapV2Pair
     │                 │               
-    │                 SPtr<u256>
+    │                 SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:133:32
@@ -792,19 +792,19 @@ note:
 133 │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
     │                                ^^^^^^^^^^^^^  ^^^^ UniswapV2Pair
     │                                │               
-    │                                SPtr<u256>
+    │                                SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:133:47
     │
 133 │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
-    │                                               ^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                                               ^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:133:16
     │
 133 │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
-    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (SPtr<u256>, SPtr<u256>, SPtr<u256>)
+    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, u256, u256)
 
 note: 
     ┌─ uniswap.fe:137:5
@@ -834,7 +834,7 @@ note:
     ┌─ uniswap.fe:138:36
     │
 138 │         assert ctx.msg_sender() == self.factory, "UniswapV2: FORBIDDEN"
-    │                                    ^^^^^^^^^^^^ SPtr<address>
+    │                                    ^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:138:16
@@ -919,7 +919,7 @@ note:
     ┌─ uniswap.fe:148:52
     │
 148 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last
-    │                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:148:34
@@ -984,7 +984,7 @@ note:
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^ u256
     │                                           │                             │           
     │                                           │                             u256
-    │                                           SPtr<u256>
+    │                                           SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:150:73
@@ -1023,7 +1023,7 @@ note:
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^ u256
     │                                           │                             │           
     │                                           │                             u256
-    │                                           SPtr<u256>
+    │                                           SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:151:73
@@ -1086,13 +1086,13 @@ note:
 156 │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
     │                                  ^^^^^^^^^^^^^            ^^^^ UniswapV2Pair
     │                                  │                         
-    │                                  SPtr<u256>
+    │                                  SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:156:59
     │
 156 │         emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
-    │                                                           ^^^^^^^^^^^^^ SPtr<u256>
+    │                                                           ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:159:5
@@ -1138,7 +1138,7 @@ note:
     ┌─ uniswap.fe:160:48
     │
 160 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                                                ^^^^^^^^^^^^ SPtr<address>
+    │                                                ^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:160:31
@@ -1174,7 +1174,7 @@ note:
     ┌─ uniswap.fe:162:28
     │
 162 │         let k_last: u256 = self.k_last
-    │                            ^^^^^^^^^^^ SPtr<u256>
+    │                            ^^^^^^^^^^^ SPtr<u256> -> u256
 163 │         if fee_on {
     │            ^^^^^^ bool
 164 │             if k_last != 0 {
@@ -1230,7 +1230,7 @@ note:
 168 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                                           ^^^^^^^^^^^^^^^^^   ^^^^^^ u256
     │                                           │                    
-    │                                           SPtr<u256>
+    │                                           SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:168:43
@@ -1368,7 +1368,7 @@ note:
     ┌─ uniswap.fe:185:30
     │
 185 │         let reserve0: u256 = self.reserve0
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 186 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ UniswapV2Pair
 
@@ -1376,7 +1376,7 @@ note:
     ┌─ uniswap.fe:186:30
     │
 186 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 187 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
     │                              ^^^^ UniswapV2Pair
 
@@ -1386,7 +1386,7 @@ note:
 187 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
     │                              ^^^^^^^^^^^           ^^^ Context
     │                              │                      
-    │                              SPtr<ERC20>
+    │                              SPtr<ERC20> -> ERC20
 
 note: 
     ┌─ uniswap.fe:187:52
@@ -1408,7 +1408,7 @@ note:
 188 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │                              ^^^^^^^^^^^           ^^^ Context
     │                              │                      
-    │                              SPtr<ERC20>
+    │                              SPtr<ERC20> -> ERC20
 
 note: 
     ┌─ uniswap.fe:188:52
@@ -1430,7 +1430,7 @@ note:
     ┌─ uniswap.fe:189:40
     │
 189 │         let amount0: u256 = balance0 - self.reserve0
-    │                                        ^^^^^^^^^^^^^ SPtr<u256>
+    │                                        ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:189:29
@@ -1446,7 +1446,7 @@ note:
     ┌─ uniswap.fe:190:40
     │
 190 │         let amount1: u256 = balance1 - self.reserve1
-    │                                        ^^^^^^^^^^^^^ SPtr<u256>
+    │                                        ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:190:29
@@ -1472,7 +1472,7 @@ note:
     ┌─ uniswap.fe:192:34
     │
 192 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
-    │                                  ^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                                  ^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 193 │         let liquidity: u256 = 0
     │                               ^ u256
 194 │         if total_supply == 0 {
@@ -1696,7 +1696,7 @@ note:
     ┌─ uniswap.fe:212:30
     │
 212 │         let reserve0: u256 = self.reserve0
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 213 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ UniswapV2Pair
 
@@ -1704,7 +1704,7 @@ note:
     ┌─ uniswap.fe:213:30
     │
 213 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 214 │         let token0: ERC20 = self.token0
     │                             ^^^^ UniswapV2Pair
 
@@ -1712,7 +1712,7 @@ note:
     ┌─ uniswap.fe:214:29
     │
 214 │         let token0: ERC20 = self.token0
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 215 │         let token1: ERC20 = self.token1
     │                             ^^^^ UniswapV2Pair
 
@@ -1720,7 +1720,7 @@ note:
     ┌─ uniswap.fe:215:29
     │
 215 │         let token1: ERC20 = self.token1
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 216 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
     │                              ^^^^^^           ^^^ Context
     │                              │                 
@@ -1774,7 +1774,7 @@ note:
     ┌─ uniswap.fe:218:31
     │
 218 │         let liquidity: u256 = self.balances[ctx.self_address()]
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 219 │ 
 220 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^           ^^^  ^^^^^^^^  ^^^^^^^^ u256
@@ -1795,7 +1795,7 @@ note:
     ┌─ uniswap.fe:221:34
     │
 221 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
-    │                                  ^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                                  ^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 222 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │                              ^^^^^^^^^   ^^^^^^^^ u256
     │                              │            
@@ -2070,7 +2070,7 @@ note:
     ┌─ uniswap.fe:243:30
     │
 243 │         let reserve0: u256 = self.reserve0
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 244 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ UniswapV2Pair
 
@@ -2078,7 +2078,7 @@ note:
     ┌─ uniswap.fe:244:30
     │
 244 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ SPtr<u256>
+    │                              ^^^^^^^^^^^^^ SPtr<u256> -> u256
 245 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
     │                ^^^^^^^^^^^   ^^^^^^^^ u256
     │                │              
@@ -2114,7 +2114,7 @@ note:
     ┌─ uniswap.fe:247:29
     │
 247 │         let token0: ERC20 = self.token0
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 248 │         let token1: ERC20 = self.token1
     │                             ^^^^ UniswapV2Pair
 
@@ -2122,7 +2122,7 @@ note:
     ┌─ uniswap.fe:248:29
     │
 248 │         let token1: ERC20 = self.token1
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
     ·
 251 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                ^^            ^^^^^^ ERC20
@@ -2511,7 +2511,7 @@ note:
     ┌─ uniswap.fe:282:29
     │
 282 │         let token0: ERC20 = self.token0 // gas savings
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 283 │         let token1: ERC20 = self.token1 // gas savings
     │                             ^^^^ UniswapV2Pair
 
@@ -2519,7 +2519,7 @@ note:
     ┌─ uniswap.fe:283:29
     │
 283 │         let token1: ERC20 = self.token1 // gas savings
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 284 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
     │         ^^^^^^          ^^  ^^^^^^           ^^^ Context
     │         │               │   │                 
@@ -2545,7 +2545,7 @@ note:
     ┌─ uniswap.fe:284:68
     │
 284 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
-    │                                                                    ^^^^^^^^^^^^^ SPtr<u256>
+    │                                                                    ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:284:29
@@ -2583,7 +2583,7 @@ note:
     ┌─ uniswap.fe:285:68
     │
 285 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │                                                                    ^^^^^^^^^^^^^ SPtr<u256>
+    │                                                                    ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:285:29
@@ -2627,7 +2627,7 @@ note:
     ┌─ uniswap.fe:290:29
     │
 290 │         let token0: ERC20 = self.token0
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 291 │         let token1: ERC20 = self.token1
     │                             ^^^^ UniswapV2Pair
 
@@ -2635,7 +2635,7 @@ note:
     ┌─ uniswap.fe:291:29
     │
 291 │         let token1: ERC20 = self.token1
-    │                             ^^^^^^^^^^^ SPtr<ERC20>
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -> ERC20
 292 │         self._update(ctx,
     │         ^^^^         ^^^ Context
     │         │             
@@ -2679,7 +2679,7 @@ note:
     ┌─ uniswap.fe:295:32
     │
 295 │                      reserve0: self.reserve0,
-    │                                ^^^^^^^^^^^^^ SPtr<u256>
+    │                                ^^^^^^^^^^^^^ SPtr<u256> -> u256
 296 │                      reserve1: self.reserve1)
     │                                ^^^^ UniswapV2Pair
 
@@ -2687,7 +2687,7 @@ note:
     ┌─ uniswap.fe:296:32
     │
 296 │                      reserve1: self.reserve1)
-    │                                ^^^^^^^^^^^^^ SPtr<u256>
+    │                                ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:292:9
@@ -2745,7 +2745,7 @@ note:
     ┌─ uniswap.fe:321:16
     │
 321 │         return self.fee_to
-    │                ^^^^^^^^^^^ SPtr<address>
+    │                ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:324:5
@@ -2765,7 +2765,7 @@ note:
     ┌─ uniswap.fe:325:16
     │
 325 │         return self.fee_to_setter
-    │                ^^^^^^^^^^^^^^^^^^ SPtr<address>
+    │                ^^^^^^^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:328:5
@@ -2785,7 +2785,7 @@ note:
     ┌─ uniswap.fe:329:16
     │
 329 │         return self.pair_counter
-    │                ^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                ^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:332:5
@@ -2909,7 +2909,7 @@ note:
 338 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^            ^ u256
     │                │                                      
-    │                SPtr<address>
+    │                SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:338:46
@@ -3063,7 +3063,7 @@ note:
     ┌─ uniswap.fe:346:24
     │
 346 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                        ^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                        ^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:346:9
@@ -3095,7 +3095,7 @@ note:
 347 │         self.pair_counter = self.pair_counter + 1
     │                             ^^^^^^^^^^^^^^^^^   ^ u256
     │                             │                    
-    │                             SPtr<u256>
+    │                             SPtr<u256> -> u256
 
 note: 
     ┌─ uniswap.fe:347:29
@@ -3122,7 +3122,7 @@ note:
     ┌─ uniswap.fe:349:75
     │
 349 │         emit PairCreated(ctx, token0, token1, pair: address(pair), index: self.pair_counter)
-    │                                                                           ^^^^^^^^^^^^^^^^^ SPtr<u256>
+    │                                                                           ^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 350 │         return address(pair)
     │                        ^^^^ UniswapV2Pair
 
@@ -3159,7 +3159,7 @@ note:
     ┌─ uniswap.fe:354:36
     │
 354 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
-    │                                    ^^^^^^^^^^^^^^^^^^ SPtr<address>
+    │                                    ^^^^^^^^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
     ┌─ uniswap.fe:354:16

@@ -93,28 +93,28 @@ impl TypeId {
         self.typ(db).has_fixed_size(db)
     }
     pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::Base(_))
+        matches!(self.typ(db), Type::Base(_))
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::Base(Base::Bool))
+        matches!(self.typ(db), Type::Base(Base::Bool))
     }
     pub fn is_contract(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(
-            self.deref(db).typ(db),
-            Type::Contract(_) | Type::SelfContract(_)
-        )
+        matches!(self.typ(db), Type::Contract(_) | Type::SelfContract(_))
     }
     pub fn is_integer(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::Base(Base::Numeric(_)))
+        matches!(self.typ(db), Type::Base(Base::Numeric(_)))
     }
     pub fn is_map(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::Map(_))
+        matches!(self.typ(db), Type::Map(_))
     }
     pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::String(_))
+        matches!(self.typ(db), Type::String(_))
     }
     pub fn is_struct(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.deref(db).typ(db), Type::Struct(_))
+        matches!(self.typ(db), Type::Struct(_))
+    }
+    pub fn is_sptr(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::SPtr(_))
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -493,12 +493,8 @@ impl Type {
         }
     }
 
-    pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
-        match self {
-            Type::Base(_) => true,
-            Type::SPtr(inner) => inner.is_base(db),
-            _ => false,
-        }
+    pub fn is_base(&self) -> bool {
+        matches!(self, Type::Base(_))
     }
 
     /// Creates an instance of bool.
@@ -559,31 +555,31 @@ pub trait TypeDowncast {
 
 impl TypeDowncast for TypeId {
     fn as_array(&self, db: &dyn AnalyzerDb) -> Option<Array> {
-        match self.deref(db).typ(db) {
+        match self.typ(db) {
             Type::Array(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_tuple(&self, db: &dyn AnalyzerDb) -> Option<Tuple> {
-        match self.deref(db).typ(db) {
+        match self.typ(db) {
             Type::Tuple(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_string(&self, db: &dyn AnalyzerDb) -> Option<FeString> {
-        match self.deref(db).typ(db) {
+        match self.typ(db) {
             Type::String(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_map(&self, db: &dyn AnalyzerDb) -> Option<Map> {
-        match self.deref(db).typ(db) {
+        match self.typ(db) {
             Type::Map(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_int(&self, db: &dyn AnalyzerDb) -> Option<Integer> {
-        match self.deref(db).typ(db) {
+        match self.typ(db) {
             Type::Base(Base::Numeric(int)) => Some(int),
             _ => None,
         }

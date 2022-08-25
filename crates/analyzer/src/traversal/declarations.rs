@@ -23,7 +23,7 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
         if let Some(value) = value {
             let value_attributes = expressions::expr(scope, value, Some(declared_type))?;
 
-            match types::try_coerce_type(scope.db(), value_attributes.typ, declared_type) {
+            match types::try_coerce_type(scope, Some(value), value_attributes.typ, declared_type) {
                 Err(TypeCoercionError::RequiresToMem) => {
                     scope.add_diagnostic(errors::to_mem_error(value.span));
                 }
@@ -41,7 +41,7 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
                         &declared_type.display(scope.db()),
                     ));
                 }
-                Ok(()) => {}
+                Ok(_) => {}
             }
         } else if matches!(declared_type.typ(scope.db()), Type::Array(_)) {
             scope.error(

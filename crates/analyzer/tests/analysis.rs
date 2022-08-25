@@ -280,6 +280,7 @@ test_analysis! { structs, "features/structs.fe"}
 test_analysis! { struct_fns, "features/struct_fns.fe"}
 test_analysis! { ternary_expression, "features/ternary_expression.fe"}
 test_analysis! { two_contracts, "features/two_contracts.fe"}
+test_analysis! { type_coercion, "features/type_coercion.fe"}
 test_analysis! { u8_u8_map, "features/u8_u8_map.fe"}
 test_analysis! { u16_u16_map, "features/u16_u16_map.fe"}
 test_analysis! { u32_u32_map, "features/u32_u32_map.fe"}

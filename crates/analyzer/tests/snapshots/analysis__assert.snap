@@ -110,7 +110,7 @@ note:
    ┌─ assert.fe:19:16
    │
 19 │         assert self.my_bool
-   │                ^^^^^^^^^^^^ SPtr<bool>
+   │                ^^^^^^^^^^^^ SPtr<bool> -> bool
 
 note: 
    ┌─ assert.fe:22:5

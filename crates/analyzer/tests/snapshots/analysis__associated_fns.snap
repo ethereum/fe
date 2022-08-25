@@ -98,7 +98,7 @@ note:
    ┌─ associated_fns.fe:20:31
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                               ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ associated_fns.fe:20:16

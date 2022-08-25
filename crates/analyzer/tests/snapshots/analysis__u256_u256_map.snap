@@ -35,7 +35,7 @@ note:
   ┌─ u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ SPtr<u256>
+  │                ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ u256_u256_map.fe:8:5

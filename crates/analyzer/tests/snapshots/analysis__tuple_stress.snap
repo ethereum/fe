@@ -161,7 +161,7 @@ note:
 33 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
    │                ^^^^^^^^^^^^^^^^^^^^^^^         ^ u256
    │                │                                
-   │                SPtr<u256>
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ tuple_stress.fe:33:43
@@ -189,7 +189,7 @@ note:
 33 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
    │                                                       ^^^^^^^^^^^^^^^^^^^^^^^        ^ i32
    │                                                       │                               
-   │                                                       SPtr<i32>
+   │                                                       SPtr<i32> -> i32
 
 note: 
    ┌─ tuple_stress.fe:33:82
@@ -286,7 +286,7 @@ note:
    ┌─ tuple_stress.fe:42:28
    │
 42 │         let my_num: u256 = self.my_sto_tuple.item0
-   │                            ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256>
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 43 │         let my_tuple: (u256, bool, address) = (self.my_sto_tuple.item0, true and false, address(26))
    │                                                ^^^^ Foo
 
@@ -303,7 +303,7 @@ note:
    │                                                ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^     ^^^^^ bool
    │                                                │                        │         
    │                                                │                        bool
-   │                                                SPtr<u256>
+   │                                                SPtr<u256> -> u256
 
 note: 
    ┌─ tuple_stress.fe:43:73
@@ -323,7 +323,7 @@ note:
    ┌─ tuple_stress.fe:43:47
    │
 43 │         let my_tuple: (u256, bool, address) = (self.my_sto_tuple.item0, true and false, address(26))
-   │                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (SPtr<u256>, bool, address)
+   │                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool, address)
 44 │         emit_my_event(ctx, my_tuple)
    │                       ^^^  ^^^^^^^^ (u256, bool, address)
    │                       │     

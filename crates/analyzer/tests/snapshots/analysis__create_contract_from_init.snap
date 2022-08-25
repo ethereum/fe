@@ -41,6 +41,6 @@ note:
    ┌─ create_contract_from_init.fe:15:16
    │
 15 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ SPtr<address>
+   │                ^^^^^^^^^^^^^ SPtr<address> -> address
 
 

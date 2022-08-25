@@ -1,4 +1,4 @@
-use crate::context::{AnalyzerContext, Constant, NamedThing};
+use crate::context::{AnalyzerContext, Constant, ExpressionAttributes, NamedThing};
 use crate::display::Displayable;
 use crate::errors::{TypeCoercionError, TypeError};
 use crate::namespace::items::{Item, TraitId};
@@ -6,7 +6,6 @@ use crate::namespace::types::{
     Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, Tuple, Type, TypeId,
 };
 use crate::traversal::call_args::validate_arg_count;
-use crate::AnalyzerDb;
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
@@ -16,15 +15,16 @@ use fe_parser::node::{Node, Span};
 pub fn try_cast_type(
     context: &mut dyn AnalyzerContext,
     from: TypeId,
-    from_span: Span,
+    from_expr: &Node<ast::Expr>,
     into: TypeId,
     into_span: Span,
 ) {
     if into == from {
         return;
     }
-    if let Type::SPtr(from) = from.typ(context.db()) {
-        return try_cast_type(context, from, from_span, into, into_span);
+    if from.is_sptr(context.db()) {
+        let from = deref_type(context, from_expr, from);
+        return try_cast_type(context, from, from_expr, into, into_span);
     }
 
     match (from.typ(context.db()), into.typ(context.db())) {
@@ -32,7 +32,7 @@ pub fn try_cast_type(
             if from.max_size > into.max_size {
                 context.error(
                     "string capacity exceeded",
-                    from_span,
+                    from_expr.span,
                     &format!(
                         "this string has length {}; expected length <= {}",
                         from.max_size, into.max_size
@@ -51,7 +51,7 @@ pub fn try_cast_type(
             if sign_differs && size_differs {
                 context.error(
                         "Casting between numeric values can change the sign or size but not both at once",
-                        from_span,
+                        from_expr.span,
                         &format!("can not cast from `{}` to `{}` in a single step",
                                  from.display(context.db()),
                                  into.display(context.db())));
@@ -70,7 +70,7 @@ pub fn try_cast_type(
         (Type::SelfContract(_), Type::Base(Base::Address)) => {
             context.error(
                 "`self` address must be retrieved via `Context` object",
-                into_span + from_span,
+                into_span + from_expr.span,
                 "use `ctx.self_address()` here",
             );
         }
@@ -90,7 +90,7 @@ pub fn try_cast_type(
                     "incorrect type for argument to `{}`",
                     into.display(context.db())
                 ),
-                from_span,
+                from_expr.span,
                 &format!(
                     "cannot cast type `{}` to type `{}`",
                     from.display(context.db()),
@@ -101,35 +101,76 @@ pub fn try_cast_type(
     };
 }
 
+pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty: TypeId) -> TypeId {
+    match ty.typ(context.db()) {
+        Type::SPtr(inner) => {
+            context.update_expression(expr, &|attr| attr.type_coercion_chain.push(inner));
+            inner
+        }
+        _ => ty,
+    }
+}
+
 pub fn try_coerce_type(
-    db: &dyn AnalyzerDb,
+    context: &mut dyn AnalyzerContext,
+    from_expr: Option<&Node<ast::Expr>>,
     from: TypeId,
     into: TypeId,
-) -> Result<(), TypeCoercionError> {
+) -> Result<TypeId, TypeCoercionError> {
+    let chain = coerce(context, from_expr, from, into, vec![])?;
+    if let Some(expr) = from_expr {
+        context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
+            attr.type_coercion_chain.extend(chain.iter())
+        });
+    }
+    Ok(into)
+}
+
+fn add_coercion(mut chain: Vec<TypeId>, into: TypeId) -> Vec<TypeId> {
+    chain.push(into);
+    chain
+}
+
+fn coerce(
+    context: &mut dyn AnalyzerContext,
+    from_expr: Option<&Node<ast::Expr>>,
+    from: TypeId,
+    into: TypeId,
+    chain: Vec<TypeId>,
+) -> Result<Vec<TypeId>, TypeCoercionError> {
     if from == into {
-        return Ok(());
+        return Ok(chain);
     }
 
-    match (from.typ(db), into.typ(db)) {
-        (Type::SPtr(from), Type::SPtr(into)) => try_coerce_type(db, from, into),
+    match (from.typ(context.db()), into.typ(context.db())) {
+        (Type::SPtr(from), Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
 
-        // primitive types can be moved from storage implicitly
-        (Type::SPtr(from), Type::Base(_)) => try_coerce_type(db, from, into),
-        // contract type is also a primitive
-        (Type::SPtr(from), Type::Contract(_)) => try_coerce_type(db, from, into),
+        // Primitive types can be moved from storage implicitly.
+        // Contract type is also a primitive.
+        (Type::SPtr(from_inner), Type::Base(_) | Type::Contract(_)) => coerce(
+            context,
+            from_expr,
+            from_inner,
+            into,
+            add_coercion(chain, into),
+        ),
 
         // complex types require .to_mem()
         (Type::SPtr(from), _) => {
-            try_coerce_type(db, from, into)?;
+            // If the inner types are incompatible, report that error instead
+            try_coerce_type(context, from_expr, from, into)?;
             Err(TypeCoercionError::RequiresToMem)
         }
 
         // all types can be moved into storage implicitly
-        (_, Type::SPtr(into)) => try_coerce_type(db, from, into),
+        (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
 
-        (Type::String(FeString { max_size: from }), Type::String(FeString { max_size: into })) => {
-            if into >= from {
-                Ok(())
+        (
+            Type::String(FeString { max_size: from_sz }),
+            Type::String(FeString { max_size: into_sz }),
+        ) => {
+            if into_sz >= from_sz {
+                Ok(add_coercion(chain, into))
             } else {
                 Err(TypeCoercionError::Incompatible)
             }
@@ -142,22 +183,39 @@ pub fn try_coerce_type(
             }
         }
 
-        (Type::Tuple(from), Type::Tuple(into)) => {
-            if from.items.len() == into.items.len()
-                && from
-                    .items
-                    .iter()
-                    .zip(into.items.iter())
-                    .map(|(from, into)| try_coerce_type(db, *from, *into).is_ok())
-                    .all(|x| x)
+        (Type::Tuple(ftup), Type::Tuple(itup)) => {
+            // If the rhs is a tuple expr, each element gets its own coercion chain.
+            // Else, we don't allow coercion (for now, at least).
+            if let Some(Node {
+                kind: ast::Expr::Tuple { elts },
+                ..
+            }) = &from_expr
             {
-                Ok(())
+                if ftup.items.len() == itup.items.len()
+                    && elts
+                        .iter()
+                        .zip(ftup.items.iter().zip(itup.items.iter()))
+                        .map(|(elt, (from, into))| {
+                            try_coerce_type(context, Some(elt), *from, *into).is_ok()
+                        })
+                        .all(|x| x)
+                {
+                    // Update the type of the rhs tuple, because its elements
+                    // have been coerced into the lhs element types.
+                    context.update_expression(from_expr.unwrap(), &|attr| attr.typ = into);
+                    return Ok(chain);
+                }
+            }
+            Err(TypeCoercionError::Incompatible)
+        }
+
+        (Type::Base(Base::Numeric(f)), Type::Base(Base::Numeric(i))) => {
+            if f.is_signed() == i.is_signed() && i.size() > f.size() {
+                Ok(add_coercion(chain, into))
             } else {
                 Err(TypeCoercionError::Incompatible)
             }
         }
-
-        // TODO: allow implicit coercion to larget int sizes?
         (_, _) => Err(TypeCoercionError::Incompatible),
     }
 }

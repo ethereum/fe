@@ -35,6 +35,6 @@ note:
   ┌─ constructor.fe:9:16
   │
 9 │         return self.bar[42]
-  │                ^^^^^^^^^^^^ SPtr<u256>
+  │                ^^^^^^^^^^^^ SPtr<u256> -> u256
 
 

@@ -559,7 +559,7 @@ note:
    ┌─ data_copying_stress.fe:66:62
    │
 66 │         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
-   │                                                              ^^^^^^^^^^^^ SPtr<u256>
+   │                                                              ^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ data_copying_stress.fe:66:9
@@ -632,6 +632,6 @@ note:
    ┌─ data_copying_stress.fe:78:16
    │
 78 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^^^^ SPtr<address>
+   │                ^^^^^^^^^^^^^^^^ SPtr<address> -> address
 
 
