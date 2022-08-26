@@ -125,14 +125,14 @@ pub struct AlreadyDefined;
 pub struct CannotMove;
 
 /// Errors that can result from indexing
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum IndexingError {
     WrongIndexType,
     NotSubscriptable,
 }
 
 /// Errors that can result from a binary operation
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BinaryOperationError {
     TypesNotEqual,
     TypesNotNumeric,
