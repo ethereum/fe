@@ -70,7 +70,7 @@ impl salsa::Database for NewDb {}
 
 impl Upcast<dyn SourceDb> for NewDb {
     fn upcast(&self) -> &(dyn SourceDb + 'static) {
-        &*self
+        self
     }
 }
 
@@ -82,7 +82,7 @@ impl UpcastMut<dyn SourceDb> for NewDb {
 
 impl Upcast<dyn AnalyzerDb> for NewDb {
     fn upcast(&self) -> &(dyn AnalyzerDb + 'static) {
-        &*self
+        self
     }
 }
 

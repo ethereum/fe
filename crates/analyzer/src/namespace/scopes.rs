@@ -378,7 +378,7 @@ pub struct BlockScope<'a, 'b> {
     pub typ: BlockScopeType,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BlockScopeType {
     Function,
     IfElse,

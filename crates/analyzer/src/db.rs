@@ -206,7 +206,7 @@ impl salsa::Database for TestDb {}
 
 impl Upcast<dyn SourceDb> for TestDb {
     fn upcast(&self) -> &(dyn SourceDb + 'static) {
-        &*self
+        self
     }
 }
 
