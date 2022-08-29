@@ -18,6 +18,7 @@ num-integer = "0.1.45"
 id-arena = "2.2.1"
 fxhash = "0.2.1"
 dot2 = "0.1.0"
+indexmap = "1.6.2"
 
 [dev-dependencies]
 test-files = { path = "../test-files", package = "fe-test-files" }

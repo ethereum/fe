@@ -32,7 +32,7 @@ pub(super) fn check_match_exhaustiveness(
     }
 
     let pattern_matrix = PatternMatrix::from_arms(scope, arms, ty);
-    match pattern_matrix.find_non_exhaustiveness() {
+    match pattern_matrix.find_non_exhaustiveness(scope.db()) {
         Some(pats) => {
             let err = scope.fancy_error(
                 "patterns is not exhaustive",
@@ -69,7 +69,7 @@ pub(super) fn check_unreachable_pattern(
     let pattern_matrix = PatternMatrix::from_arms(scope, arms, ty);
     let mut res = Ok(());
     for (i, arms) in arms.iter().enumerate() {
-        if !pattern_matrix.is_row_useful(i) {
+        if !pattern_matrix.is_row_useful(scope.db(), i) {
             let err = scope.fancy_error(
                 "unreachable pattern ",
                 vec![Label::primary(

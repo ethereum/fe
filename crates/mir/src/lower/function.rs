@@ -105,7 +105,7 @@ pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
     body.into()
 }
 
-struct BodyLowerHelper<'db, 'a> {
+pub(super) struct BodyLowerHelper<'db, 'a> {
     db: &'db dyn MirDb,
     builder: BodyBuilder,
     ast: &'a Node<ast::Function>,
@@ -116,63 +116,11 @@ struct BodyLowerHelper<'db, 'a> {
 }
 
 impl<'db, 'a> BodyLowerHelper<'db, 'a> {
-    fn new(
-        db: &'db dyn MirDb,
-        func: FunctionId,
-        ast: &'a Node<ast::Function>,
-        analyzer_body: &'a fe_analyzer::context::FunctionBody,
-    ) -> Self {
-        let mut builder = BodyBuilder::new(func, ast.into());
-        let mut scopes = Arena::new();
-
-        // Make a root scope. A root scope collects function parameters and module
-        // constants.
-        let root = Scope::root(db, func, &mut builder);
-        let current_scope = scopes.alloc(root);
-        Self {
-            db,
-            builder,
-            ast,
-            func,
-            analyzer_body,
-            scopes,
-            current_scope,
-        }
+    pub(super) fn db(&self) -> &'db dyn MirDb {
+        self.db
     }
 
-    fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
-        // If the analyzer type is generic we first need to resolve it to its concrete
-        // type before lowering to a MIR type
-        if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
-            let resolved_type = self
-                .func
-                .signature(self.db)
-                .resolved_generics
-                .get(&generic)
-                .cloned()
-                .expect("expected generic to be resolved");
-
-            return self.db.mir_lowered_type(resolved_type);
-        }
-
-        self.db.mir_lowered_type(analyzer_ty)
-    }
-
-    fn lower(mut self) -> FunctionBody {
-        for stmt in &self.ast.kind.body {
-            self.lower_stmt(stmt)
-        }
-
-        let last_block = self.builder.current_block();
-        if !self.builder.is_block_terminated(last_block) {
-            let unit = self.make_unit();
-            self.builder.ret(unit, SourceInfo::dummy());
-        }
-
-        self.builder.build()
-    }
-
-    fn lower_stmt(&mut self, stmt: &Node<ast::FuncStmt>) {
+    pub(super) fn lower_stmt(&mut self, stmt: &Node<ast::FuncStmt>) {
         match &stmt.kind {
             ast::FuncStmt::Return { value } => {
                 let value = if let Some(expr) = value {
@@ -249,8 +197,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 or_else,
             } => self.lower_if(test, body, or_else),
 
-            ast::FuncStmt::Match { .. } => {
-                todo!()
+            ast::FuncStmt::Match { expr, arms } => {
+                let matrix = &self.analyzer_body.matches[&stmt.id];
+                super::pattern_match::lower_match(self, matrix, expr, arms);
             }
 
             ast::FuncStmt::Assert { test, msg } => {
@@ -339,21 +288,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    fn branch_eq(
-        &mut self,
-        v1: ValueId,
-        v2: ValueId,
-        true_bb: BasicBlockId,
-        false_bb: BasicBlockId,
-        source: SourceInfo,
-    ) {
-        let cond = self.builder.eq(v1, v2, source.clone());
-        let bool_ty = self.bool_ty();
-        let cond = self.map_to_tmp(cond, bool_ty);
-        self.builder.branch(cond, true_bb, false_bb, source);
-    }
-
-    fn lower_var_decl(
+    pub(super) fn lower_var_decl(
         &mut self,
         var: &Node<ast::VarDeclTarget>,
         init: Option<&Node<ast::Expr>>,
@@ -393,7 +328,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    fn lower_var_decl_unpack(
+    pub(super) fn lower_var_decl_unpack(
         &mut self,
         var: &Node<ast::VarDeclTarget>,
         init: ValueId,
@@ -424,6 +359,232 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
         }
+    }
+
+    pub(super) fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> InstId {
+        let ty = self.expr_ty(expr);
+        match &expr.kind {
+            ast::Expr::Ternary {
+                if_expr,
+                test,
+                else_expr,
+            } => {
+                let true_bb = self.builder.make_block();
+                let false_bb = self.builder.make_block();
+                let merge_bb = self.builder.make_block();
+
+                let tmp = self
+                    .builder
+                    .declare(Local::tmp_local("$ternary_tmp".into(), ty));
+
+                let cond = self.lower_expr_to_value(test);
+                self.builder
+                    .branch(cond, true_bb, false_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(true_bb);
+                let value = self.lower_expr(if_expr);
+                self.builder.map_result(value, tmp.into());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(false_bb);
+                let value = self.lower_expr(else_expr);
+                self.builder.map_result(value, tmp.into());
+                self.builder.jump(merge_bb, SourceInfo::dummy());
+
+                self.builder.move_to_block(merge_bb);
+                self.builder.bind(tmp, SourceInfo::dummy())
+            }
+
+            ast::Expr::BoolOperation { left, op, right } => {
+                self.lower_bool_op(op.kind, left, right, ty)
+            }
+
+            ast::Expr::BinOperation { left, op, right } => {
+                let lhs = self.lower_expr_to_value(left);
+                let rhs = self.lower_expr_to_value(right);
+                self.lower_binop(op.kind, lhs, rhs, expr.into())
+            }
+
+            ast::Expr::UnaryOperation { op, operand } => {
+                let value = self.lower_expr_to_value(operand);
+                match op.kind {
+                    ast::UnaryOperator::Invert => self.builder.inv(value, expr.into()),
+                    ast::UnaryOperator::Not => self.builder.not(value, expr.into()),
+                    ast::UnaryOperator::USub => self.builder.neg(value, expr.into()),
+                }
+            }
+
+            ast::Expr::CompOperation { left, op, right } => {
+                let lhs = self.lower_expr_to_value(left);
+                let rhs = self.lower_expr_to_value(right);
+                self.lower_comp_op(op.kind, lhs, rhs, expr.into())
+            }
+
+            ast::Expr::Attribute { .. } => {
+                let mut indices = vec![];
+                let value = self.lower_aggregate_access(expr, &mut indices);
+                self.builder.aggregate_access(value, indices, expr.into())
+            }
+
+            ast::Expr::Subscript { value, index } => {
+                if !self.expr_ty(value).is_aggregate(self.db) {
+                    let value = self.lower_expr_to_value(value);
+                    let key = self.lower_expr_to_value(index);
+                    self.builder.map_access(value, key, expr.into())
+                } else {
+                    let mut indices = vec![];
+                    let value = self.lower_aggregate_access(expr, &mut indices);
+                    self.builder.aggregate_access(value, indices, expr.into())
+                }
+            }
+
+            ast::Expr::Call {
+                func,
+                generic_args,
+                args,
+            } => {
+                let ty = self.expr_ty(expr);
+                self.lower_call(func, generic_args, &args.kind, ty, expr.into())
+            }
+
+            ast::Expr::List { elts } | ast::Expr::Tuple { elts } => {
+                let args = elts
+                    .iter()
+                    .map(|elem| self.lower_expr_to_value(elem))
+                    .collect();
+                let ty = self.expr_ty(expr);
+                self.builder.aggregate_construct(ty, args, expr.into())
+            }
+
+            ast::Expr::Repeat { value, len: _ } => {
+                let array_type = if let Type::Array(array_type) = self.analyzer_body.expressions
+                    [&expr.id]
+                    .typ
+                    .typ(self.db.upcast())
+                {
+                    array_type
+                } else {
+                    panic!("not an array");
+                };
+
+                let args = vec![self.lower_expr_to_value(value); array_type.size];
+                let ty = self.expr_ty(expr);
+                self.builder.aggregate_construct(ty, args, expr.into())
+            }
+
+            ast::Expr::Bool(b) => {
+                let imm = self.builder.make_imm_from_bool(*b, ty);
+                self.builder.bind(imm, expr.into())
+            }
+
+            ast::Expr::Name(name) => {
+                let value = self.resolve_name(name);
+                self.builder.bind(value, expr.into())
+            }
+
+            ast::Expr::Path(path) => {
+                let value = self.resolve_path(path, expr.into());
+                self.builder.bind(value, expr.into())
+            }
+
+            ast::Expr::Num(num) => {
+                let imm = Literal::new(num).parse().unwrap();
+                let imm = self.builder.make_imm(imm, ty);
+                self.builder.bind(imm, expr.into())
+            }
+
+            ast::Expr::Str(s) => {
+                let ty = self.expr_ty(expr);
+                let const_value = self.make_local_constant(
+                    "str_in_func".into(),
+                    ty,
+                    ConstantValue::Str(s.clone()),
+                    expr.into(),
+                );
+                self.builder.bind(const_value, expr.into())
+            }
+
+            ast::Expr::Unit => {
+                let value = self.make_unit();
+                self.builder.bind(value, expr.into())
+            }
+        }
+    }
+
+    pub(super) fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
+        let ty = self.expr_ty(expr);
+        let inst = self.lower_expr(expr);
+        self.map_to_tmp(inst, ty)
+    }
+
+    fn new(
+        db: &'db dyn MirDb,
+        func: FunctionId,
+        ast: &'a Node<ast::Function>,
+        analyzer_body: &'a fe_analyzer::context::FunctionBody,
+    ) -> Self {
+        let mut builder = BodyBuilder::new(func, ast.into());
+        let mut scopes = Arena::new();
+
+        // Make a root scope. A root scope collects function parameters and module
+        // constants.
+        let root = Scope::root(db, func, &mut builder);
+        let current_scope = scopes.alloc(root);
+        Self {
+            db,
+            builder,
+            ast,
+            func,
+            analyzer_body,
+            scopes,
+            current_scope,
+        }
+    }
+
+    fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
+        // If the analyzer type is generic we first need to resolve it to its concrete
+        // type before lowering to a MIR type
+        if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
+            let resolved_type = self
+                .func
+                .signature(self.db)
+                .resolved_generics
+                .get(&generic)
+                .cloned()
+                .expect("expected generic to be resolved");
+
+            return self.db.mir_lowered_type(resolved_type);
+        }
+
+        self.db.mir_lowered_type(analyzer_ty)
+    }
+
+    fn lower(mut self) -> FunctionBody {
+        for stmt in &self.ast.kind.body {
+            self.lower_stmt(stmt)
+        }
+
+        let last_block = self.builder.current_block();
+        if !self.builder.is_block_terminated(last_block) {
+            let unit = self.make_unit();
+            self.builder.ret(unit, SourceInfo::dummy());
+        }
+
+        self.builder.build()
+    }
+
+    fn branch_eq(
+        &mut self,
+        v1: ValueId,
+        v2: ValueId,
+        true_bb: BasicBlockId,
+        false_bb: BasicBlockId,
+        source: SourceInfo,
+    ) {
+        let cond = self.builder.eq(v1, v2, source.clone());
+        let bool_ty = self.bool_ty();
+        let cond = self.map_to_tmp(cond, bool_ty);
+        self.builder.branch(cond, true_bb, false_bb, source);
     }
 
     fn lower_if(
@@ -578,162 +739,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         /* Move to exit bb */
         self.exit_scope();
         self.builder.move_to_block(exit_bb);
-    }
-
-    fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> InstId {
-        let ty = self.expr_ty(expr);
-        match &expr.kind {
-            ast::Expr::Ternary {
-                if_expr,
-                test,
-                else_expr,
-            } => {
-                let true_bb = self.builder.make_block();
-                let false_bb = self.builder.make_block();
-                let merge_bb = self.builder.make_block();
-
-                let tmp = self
-                    .builder
-                    .declare(Local::tmp_local("$ternary_tmp".into(), ty));
-
-                let cond = self.lower_expr_to_value(test);
-                self.builder
-                    .branch(cond, true_bb, false_bb, SourceInfo::dummy());
-
-                self.builder.move_to_block(true_bb);
-                let value = self.lower_expr(if_expr);
-                self.builder.map_result(value, tmp.into());
-                self.builder.jump(merge_bb, SourceInfo::dummy());
-
-                self.builder.move_to_block(false_bb);
-                let value = self.lower_expr(else_expr);
-                self.builder.map_result(value, tmp.into());
-                self.builder.jump(merge_bb, SourceInfo::dummy());
-
-                self.builder.move_to_block(merge_bb);
-                self.builder.bind(tmp, SourceInfo::dummy())
-            }
-
-            ast::Expr::BoolOperation { left, op, right } => {
-                self.lower_bool_op(op.kind, left, right, ty)
-            }
-
-            ast::Expr::BinOperation { left, op, right } => {
-                let lhs = self.lower_expr_to_value(left);
-                let rhs = self.lower_expr_to_value(right);
-                self.lower_binop(op.kind, lhs, rhs, expr.into())
-            }
-
-            ast::Expr::UnaryOperation { op, operand } => {
-                let value = self.lower_expr_to_value(operand);
-                match op.kind {
-                    ast::UnaryOperator::Invert => self.builder.inv(value, expr.into()),
-                    ast::UnaryOperator::Not => self.builder.not(value, expr.into()),
-                    ast::UnaryOperator::USub => self.builder.neg(value, expr.into()),
-                }
-            }
-
-            ast::Expr::CompOperation { left, op, right } => {
-                let lhs = self.lower_expr_to_value(left);
-                let rhs = self.lower_expr_to_value(right);
-                self.lower_comp_op(op.kind, lhs, rhs, expr.into())
-            }
-
-            ast::Expr::Attribute { .. } => {
-                let mut indices = vec![];
-                let value = self.lower_aggregate_access(expr, &mut indices);
-                self.builder.aggregate_access(value, indices, expr.into())
-            }
-
-            ast::Expr::Subscript { value, index } => {
-                if !self.expr_ty(value).is_aggregate(self.db) {
-                    let value = self.lower_expr_to_value(value);
-                    let key = self.lower_expr_to_value(index);
-                    self.builder.map_access(value, key, expr.into())
-                } else {
-                    let mut indices = vec![];
-                    let value = self.lower_aggregate_access(expr, &mut indices);
-                    self.builder.aggregate_access(value, indices, expr.into())
-                }
-            }
-
-            ast::Expr::Call {
-                func,
-                generic_args,
-                args,
-            } => {
-                let ty = self.expr_ty(expr);
-                self.lower_call(func, generic_args, &args.kind, ty, expr.into())
-            }
-
-            ast::Expr::List { elts } | ast::Expr::Tuple { elts } => {
-                let args = elts
-                    .iter()
-                    .map(|elem| self.lower_expr_to_value(elem))
-                    .collect();
-                let ty = self.expr_ty(expr);
-                self.builder.aggregate_construct(ty, args, expr.into())
-            }
-
-            ast::Expr::Repeat { value, len: _ } => {
-                let array_type = if let Type::Array(array_type) = self.analyzer_body.expressions
-                    [&expr.id]
-                    .typ
-                    .typ(self.db.upcast())
-                {
-                    array_type
-                } else {
-                    panic!("not an array");
-                };
-
-                let args = vec![self.lower_expr_to_value(value); array_type.size];
-                let ty = self.expr_ty(expr);
-                self.builder.aggregate_construct(ty, args, expr.into())
-            }
-
-            ast::Expr::Bool(b) => {
-                let imm = self.builder.make_imm_from_bool(*b, ty);
-                self.builder.bind(imm, expr.into())
-            }
-
-            ast::Expr::Name(name) => {
-                let value = self.resolve_name(name);
-                self.builder.bind(value, expr.into())
-            }
-
-            ast::Expr::Path(path) => {
-                let value = self.resolve_path(path, expr.into());
-                self.builder.bind(value, expr.into())
-            }
-
-            ast::Expr::Num(num) => {
-                let imm = Literal::new(num).parse().unwrap();
-                let imm = self.builder.make_imm(imm, ty);
-                self.builder.bind(imm, expr.into())
-            }
-
-            ast::Expr::Str(s) => {
-                let ty = self.expr_ty(expr);
-                let const_value = self.make_local_constant(
-                    "str_in_func".into(),
-                    ty,
-                    ConstantValue::Str(s.clone()),
-                    expr.into(),
-                );
-                self.builder.bind(const_value, expr.into())
-            }
-
-            ast::Expr::Unit => {
-                let value = self.make_unit();
-                self.builder.bind(value, expr.into())
-            }
-        }
-    }
-
-    fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
-        let ty = self.expr_ty(expr);
-        let inst = self.lower_expr(expr);
-        self.map_to_tmp(inst, ty)
     }
 
     fn lower_assignable_value(&mut self, expr: &Node<ast::Expr>) -> AssignableValue {

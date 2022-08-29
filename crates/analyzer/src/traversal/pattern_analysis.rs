@@ -1,5 +1,5 @@
-//! This module includes utility structs and its functions for pattern matching analysis.
-//! The algorithm here is based on [Warnings for pattern matching](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/warnings-for-pattern-matching/3165B75113781E2431E3856972940347)
+//! This module includes utility structs and its functions for pattern matching
+//! analysis. The algorithm here is based on [Warnings for pattern matching](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/warnings-for-pattern-matching/3165B75113781E2431E3856972940347)
 
 use std::fmt::{self};
 
@@ -8,6 +8,7 @@ use fe_parser::{
     node::Node,
 };
 use indexmap::IndexSet;
+use smol_str::SmolStr;
 
 use crate::{
     context::{AnalyzerContext, NamedThing},
@@ -20,33 +21,42 @@ use crate::{
     AnalyzerDb,
 };
 
-#[derive(Clone)]
-pub struct PatternMatrix<'db> {
-    rows: Vec<PatternRowVec<'db>>,
-    db: &'db dyn AnalyzerDb,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PatternMatrix {
+    rows: Vec<PatternRowVec>,
 }
 
-impl<'db> PatternMatrix<'db> {
-    pub fn from_arms(
+impl PatternMatrix {
+    pub fn new(rows: Vec<PatternRowVec>) -> Self {
+        Self { rows }
+    }
+
+    pub fn from_arms<'db>(
         scope: &'db BlockScope<'db, 'db>,
         arms: &[Node<MatchArm>],
         ty: TypeId,
     ) -> Self {
         let mut rows = Vec::with_capacity(arms.len());
         for arm in arms {
-            rows.push(PatternRowVec::new(
-                vec![simplify_pattern(scope, &arm.kind.pat.kind, ty)],
-                scope.db(),
-            ));
+            rows.push(PatternRowVec::new(vec![simplify_pattern(
+                scope,
+                &arm.kind.pat.kind,
+                ty,
+            )]));
         }
 
-        Self {
-            rows,
-            db: scope.db(),
-        }
+        Self { rows }
     }
 
-    pub fn find_non_exhaustiveness(&self) -> Option<Vec<SimplifiedPattern>> {
+    pub fn rows(&self) -> &[PatternRowVec] {
+        &self.rows
+    }
+
+    pub fn into_rows(self) -> Vec<PatternRowVec> {
+        self.rows
+    }
+
+    pub fn find_non_exhaustiveness(&self, db: &dyn AnalyzerDb) -> Option<Vec<SimplifiedPattern>> {
         if self.nrows() == 0 {
             // Non Exhaustive!
             return Some(vec![]);
@@ -56,9 +66,10 @@ impl<'db> PatternMatrix<'db> {
         }
 
         let ty = self.first_column_ty();
-        if self.is_complete() {
-            for ctor in self.sigma_set() {
-                match self.phi_specialize(ctor).find_non_exhaustiveness() {
+        let sigma_set = self.sigma_set();
+        if sigma_set.is_complete(db) {
+            for ctor in sigma_set.into_iter() {
+                match self.phi_specialize(db, ctor).find_non_exhaustiveness(db) {
                     Some(vec) if vec.is_empty() => {
                         let pat_kind = SimplifiedPatternKind::Constructor {
                             kind: ctor,
@@ -70,7 +81,7 @@ impl<'db> PatternMatrix<'db> {
                     }
 
                     Some(mut vec) => {
-                        let field_num = ctor.field_len(self.db);
+                        let field_num = ctor.arity(db);
                         debug_assert!(vec.len() >= field_num);
                         let rem = vec.split_off(field_num);
                         let pat_kind = SimplifiedPatternKind::Constructor {
@@ -90,42 +101,42 @@ impl<'db> PatternMatrix<'db> {
 
             None
         } else {
-            self.d_specialize().find_non_exhaustiveness().map(|vec| {
-                let sigma_set = self.sigma_set();
-                let kind = if sigma_set.is_empty() {
-                    SimplifiedPatternKind::WildCard
-                } else {
-                    let complete_sigma = all_ctors(self.db, ty);
-                    SimplifiedPatternKind::Or(
-                        complete_sigma
-                            .difference(&sigma_set)
-                            .into_iter()
-                            .map(|ctor| {
-                                let kind = SimplifiedPatternKind::ctor_with_wild_card_fields(
-                                    self.db, *ctor,
-                                );
-                                SimplifiedPattern::new(kind, ty)
-                            })
-                            .collect(),
-                    )
-                };
+            self.d_specialize(db)
+                .find_non_exhaustiveness(db)
+                .map(|vec| {
+                    let sigma_set = self.sigma_set();
+                    let kind = if sigma_set.is_empty() {
+                        SimplifiedPatternKind::WildCard(None)
+                    } else {
+                        let complete_sigma = SigmaSet::complete_sigma(db, ty);
+                        SimplifiedPatternKind::Or(
+                            complete_sigma
+                                .difference(&sigma_set)
+                                .into_iter()
+                                .map(|ctor| {
+                                    let kind =
+                                        SimplifiedPatternKind::ctor_with_wild_card_fields(db, ctor);
+                                    SimplifiedPattern::new(kind, ty)
+                                })
+                                .collect(),
+                        )
+                    };
 
-                let mut result = vec![SimplifiedPattern::new(kind, ty)];
-                result.extend_from_slice(&vec);
+                    let mut result = vec![SimplifiedPattern::new(kind, ty)];
+                    result.extend_from_slice(&vec);
 
-                result
-            })
+                    result
+                })
         }
     }
 
-    pub fn is_row_useful(&self, row: usize) -> bool {
+    pub fn is_row_useful(&self, db: &dyn AnalyzerDb, row: usize) -> bool {
         debug_assert!(self.nrows() > row);
 
         Self {
             rows: self.rows[0..row].to_vec(),
-            db: self.db,
         }
-        .is_pattern_useful(&self.rows[row])
+        .is_pattern_useful(db, &self.rows[row])
     }
 
     pub fn nrows(&self) -> usize {
@@ -134,54 +145,35 @@ impl<'db> PatternMatrix<'db> {
 
     pub fn ncols(&self) -> usize {
         debug_assert_ne!(self.nrows(), 0);
-        let ncols = self.rows[0].size();
-        debug_assert!(self.rows.iter().all(|row| row.size() == ncols));
+        let ncols = self.rows[0].len();
+        debug_assert!(self.rows.iter().all(|row| row.len() == ncols));
         ncols
     }
 
-    pub fn is_complete(&self) -> bool {
-        let sigma_set = self.sigma_set();
-
-        match sigma_set.first().map(|ctor| ctor.ty(self.db)) {
-            Some(ty) => {
-                let expected = ctor_variant_num(self.db, ty);
-                debug_assert!(sigma_set.len() <= expected);
-                sigma_set.len() == expected
-            }
-            None => false,
+    pub fn swap_col(&mut self, col1: usize, col2: usize) {
+        for row in &mut self.rows {
+            row.swap(col1, col2);
         }
     }
 
-    pub fn sigma_set(&self) -> IndexSet<ConstructorKind> {
-        let mut ctor_set = IndexSet::new();
-        for col in &self.rows {
-            for ctor in col.collect_first_elem_ctors() {
-                ctor_set.insert(ctor);
-            }
-        }
-        ctor_set
+    pub fn sigma_set(&self) -> SigmaSet {
+        SigmaSet::from_rows(self.rows.iter(), 0)
     }
 
-    pub fn phi_specialize(&self, ctor: ConstructorKind) -> Self {
+    pub fn phi_specialize(&self, db: &dyn AnalyzerDb, ctor: ConstructorKind) -> Self {
         let mut new_cols = Vec::new();
         for col in &self.rows {
-            new_cols.extend_from_slice(&col.phi_specialize(ctor));
+            new_cols.extend_from_slice(&col.phi_specialize(db, ctor));
         }
-        Self {
-            rows: new_cols,
-            db: self.db,
-        }
+        Self { rows: new_cols }
     }
 
-    pub fn d_specialize(&self) -> Self {
+    pub fn d_specialize(&self, db: &dyn AnalyzerDb) -> Self {
         let mut new_cols = Vec::new();
         for col in &self.rows {
-            new_cols.extend_from_slice(&col.d_specialize());
+            new_cols.extend_from_slice(&col.d_specialize(db));
         }
-        Self {
-            rows: new_cols,
-            db: self.db,
-        }
+        Self { rows: new_cols }
     }
 
     fn first_column_ty(&self) -> TypeId {
@@ -189,7 +181,7 @@ impl<'db> PatternMatrix<'db> {
         self.rows[0].first_column_ty()
     }
 
-    fn is_pattern_useful(&self, pat_vec: &PatternRowVec) -> bool {
+    fn is_pattern_useful(&self, db: &dyn AnalyzerDb, pat_vec: &PatternRowVec) -> bool {
         if self.nrows() == 0 {
             return true;
         }
@@ -198,18 +190,18 @@ impl<'db> PatternMatrix<'db> {
             return false;
         }
 
-        match &pat_vec.first_pat().unwrap().kind {
-            SimplifiedPatternKind::WildCard => self
-                .d_specialize()
-                .is_pattern_useful(&pat_vec.d_specialize()[0]),
+        match &pat_vec.head().unwrap().kind {
+            SimplifiedPatternKind::WildCard(_) => self
+                .d_specialize(db)
+                .is_pattern_useful(db, &pat_vec.d_specialize(db)[0]),
 
             SimplifiedPatternKind::Constructor { kind, .. } => self
-                .phi_specialize(*kind)
-                .is_pattern_useful(&pat_vec.phi_specialize(*kind)[0]),
+                .phi_specialize(db, *kind)
+                .is_pattern_useful(db, &pat_vec.phi_specialize(db, *kind)[0]),
 
             SimplifiedPatternKind::Or(pats) => {
                 for pat in pats {
-                    if self.is_pattern_useful(&PatternRowVec::new(vec![pat.clone()], self.db)) {
+                    if self.is_pattern_useful(db, &PatternRowVec::new(vec![pat.clone()])) {
                         return true;
                     }
                 }
@@ -219,10 +211,10 @@ impl<'db> PatternMatrix<'db> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SimplifiedPattern {
-    kind: SimplifiedPatternKind,
-    ty: TypeId,
+    pub kind: SimplifiedPatternKind,
+    pub ty: TypeId,
 }
 
 impl SimplifiedPattern {
@@ -230,15 +222,20 @@ impl SimplifiedPattern {
         Self { kind, ty }
     }
 
-    pub fn wild_card(ty: TypeId) -> Self {
-        Self::new(SimplifiedPatternKind::WildCard, ty)
+    pub fn wildcard(bind: Option<SmolStr>, ty: TypeId) -> Self {
+        Self::new(SimplifiedPatternKind::WildCard(bind), ty)
+    }
+
+    pub fn is_wildcard(&self) -> bool {
+        matches!(self.kind, SimplifiedPatternKind::WildCard(_))
     }
 }
 
 impl DisplayWithDb for SimplifiedPattern {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            SimplifiedPatternKind::WildCard => write!(f, "_"),
+            SimplifiedPatternKind::WildCard(None) => write!(f, "_"),
+            SimplifiedPatternKind::WildCard(Some(name)) => write!(f, "{name}"),
             SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Variant(id),
                 fields,
@@ -271,9 +268,9 @@ impl DisplayWithDb for SimplifiedPattern {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SimplifiedPatternKind {
-    WildCard,
+    WildCard(Option<SmolStr>),
     Constructor {
         kind: ConstructorKind,
         fields: Vec<SimplifiedPattern>,
@@ -284,7 +281,7 @@ pub enum SimplifiedPatternKind {
 impl SimplifiedPatternKind {
     pub fn collect_ctors(&self) -> Vec<ConstructorKind> {
         match self {
-            Self::WildCard => vec![],
+            Self::WildCard(_) => vec![],
             Self::Constructor { kind, .. } => vec![*kind],
             Self::Or(pats) => {
                 let mut ctors = vec![];
@@ -300,7 +297,7 @@ impl SimplifiedPatternKind {
         let fields = kind
             .field_types(db)
             .into_iter()
-            .map(SimplifiedPattern::wild_card)
+            .map(|ty| SimplifiedPattern::wildcard(None, ty))
             .collect();
         Self::Constructor { kind, fields }
     }
@@ -321,7 +318,7 @@ impl ConstructorKind {
         }
     }
 
-    pub fn field_len(&self, db: &dyn AnalyzerDb) -> usize {
+    pub fn arity(&self, db: &dyn AnalyzerDb) -> usize {
         match self {
             Self::Variant(id) => match id.kind(db).unwrap() {
                 EnumVariantKind::Unit => 0,
@@ -337,38 +334,110 @@ impl ConstructorKind {
     }
 }
 
-#[derive(Clone)]
-struct PatternRowVec<'db> {
-    inner: Vec<SimplifiedPattern>,
-    db: &'db dyn AnalyzerDb,
-}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SigmaSet(IndexSet<ConstructorKind>);
 
-impl<'db> PatternRowVec<'db> {
-    fn new(inner: Vec<SimplifiedPattern>, db: &'db dyn AnalyzerDb) -> Self {
-        Self { inner, db }
+impl SigmaSet {
+    pub fn from_rows<'a>(rows: impl Iterator<Item = &'a PatternRowVec>, column: usize) -> Self {
+        let mut ctor_set = IndexSet::new();
+        for row in rows {
+            for ctor in row.collect_column_ctors(column) {
+                ctor_set.insert(ctor);
+            }
+        }
+        Self(ctor_set)
     }
 
-    fn size(&self) -> usize {
+    pub fn complete_sigma(db: &dyn AnalyzerDb, ty: TypeId) -> Self {
+        match ty.typ(db) {
+            Type::Enum(id) => Self(
+                id.variants(db)
+                    .values()
+                    .map(|id| ConstructorKind::Variant(*id))
+                    .collect(),
+            ),
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+
+    pub fn is_complete(&self, db: &dyn AnalyzerDb) -> bool {
+        match self.0.first().map(|ctor| ctor.ty(db)) {
+            Some(ty) => {
+                let expected = ctor_variant_num(db, ty);
+                debug_assert!(self.len() <= expected);
+                self.len() == expected
+            }
+            None => false,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ConstructorKind> {
+        self.0.iter()
+    }
+
+    pub fn difference(&self, other: &Self) -> Self {
+        Self(self.0.difference(&other.0).cloned().collect())
+    }
+}
+
+impl IntoIterator for SigmaSet {
+    type Item = ConstructorKind;
+    type IntoIter = <IndexSet<ConstructorKind> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PatternRowVec {
+    pub inner: Vec<SimplifiedPattern>,
+}
+
+impl PatternRowVec {
+    pub fn new(inner: Vec<SimplifiedPattern>) -> Self {
+        Self { inner }
+    }
+
+    pub fn len(&self) -> usize {
         self.inner.len()
     }
 
-    fn first_pat(&self) -> Option<&SimplifiedPattern> {
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    pub fn pats(&self) -> &[SimplifiedPattern] {
+        &self.inner
+    }
+
+    pub fn head(&self) -> Option<&SimplifiedPattern> {
         self.inner.first()
     }
 
-    fn phi_specialize(&self, ctor: ConstructorKind) -> Vec<Self> {
+    pub fn phi_specialize(&self, db: &dyn AnalyzerDb, ctor: ConstructorKind) -> Vec<Self> {
         debug_assert!(!self.inner.is_empty());
 
         let first_pat = &self.inner[0];
-        let ctor_fields = ctor.field_types(self.db);
+        let ctor_fields = ctor.field_types(db);
         match &first_pat.kind {
-            SimplifiedPatternKind::WildCard => {
+            SimplifiedPatternKind::WildCard(bind) => {
                 let mut inner = Vec::with_capacity(self.inner.len() + ctor_fields.len() - 1);
                 for field_ty in ctor_fields {
-                    inner.push(SimplifiedPattern::wild_card(field_ty));
+                    inner.push(SimplifiedPattern::wildcard(bind.clone(), field_ty));
                 }
                 inner.extend_from_slice(&self.inner[1..]);
-                vec![Self::new(inner, self.db)]
+                vec![Self::new(inner)]
             }
 
             SimplifiedPatternKind::Constructor { kind, fields } => {
@@ -376,7 +445,7 @@ impl<'db> PatternRowVec<'db> {
                     let mut inner = Vec::with_capacity(self.inner.len() + ctor_fields.len() - 1);
                     inner.extend_from_slice(fields);
                     inner.extend_from_slice(&self.inner[1..]);
-                    vec![Self::new(inner, self.db)]
+                    vec![Self::new(inner)]
                 } else {
                     vec![]
                 }
@@ -388,8 +457,8 @@ impl<'db> PatternRowVec<'db> {
                     let mut tmp_inner = Vec::with_capacity(self.inner.len());
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
-                    let tmp = PatternRowVec::new(tmp_inner, self.db);
-                    for v in tmp.phi_specialize(ctor) {
+                    let tmp = PatternRowVec::new(tmp_inner);
+                    for v in tmp.phi_specialize(db, ctor) {
                         result.push(v);
                     }
                 }
@@ -398,14 +467,18 @@ impl<'db> PatternRowVec<'db> {
         }
     }
 
-    fn d_specialize(&self) -> Vec<Self> {
+    pub fn swap(&mut self, a: usize, b: usize) {
+        self.inner.swap(a, b);
+    }
+
+    pub fn d_specialize(&self, db: &dyn AnalyzerDb) -> Vec<Self> {
         debug_assert!(!self.inner.is_empty());
 
         let first_pat = &self.inner[0];
         match &first_pat.kind {
-            SimplifiedPatternKind::WildCard => {
+            SimplifiedPatternKind::WildCard(_) => {
                 let inner = self.inner[1..].to_vec();
-                vec![Self::new(inner, self.db)]
+                vec![Self::new(inner)]
             }
 
             SimplifiedPatternKind::Constructor { .. } => {
@@ -418,8 +491,8 @@ impl<'db> PatternRowVec<'db> {
                     let mut tmp_inner = Vec::with_capacity(self.inner.len());
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
-                    let tmp = PatternRowVec::new(tmp_inner, self.db);
-                    for v in tmp.d_specialize() {
+                    let tmp = PatternRowVec::new(tmp_inner);
+                    for v in tmp.d_specialize(db) {
                         result.push(v);
                     }
                 }
@@ -428,10 +501,10 @@ impl<'db> PatternRowVec<'db> {
         }
     }
 
-    fn collect_first_elem_ctors(&self) -> Vec<ConstructorKind> {
+    pub fn collect_column_ctors(&self, column: usize) -> Vec<ConstructorKind> {
         debug_assert!(!self.inner.is_empty());
 
-        let first_pat = &self.inner[0];
+        let first_pat = &self.inner[column];
         first_pat.kind.collect_ctors()
     }
 
@@ -451,29 +524,19 @@ fn ctor_variant_num(db: &dyn AnalyzerDb, ty: TypeId) -> usize {
     }
 }
 
-fn all_ctors(db: &dyn AnalyzerDb, ty: TypeId) -> IndexSet<ConstructorKind> {
-    match ty.typ(db) {
-        Type::Enum(id) => id
-            .variants(db)
-            .values()
-            .map(|id| ConstructorKind::Variant(*id))
-            .collect(),
-        _ => {
-            unimplemented!()
-        }
-    }
-}
-
 fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> SimplifiedPattern {
     let kind = match pat {
-        Pattern::WildCard => SimplifiedPatternKind::WildCard,
+        Pattern::WildCard => SimplifiedPatternKind::WildCard(None),
 
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Variant(variant),
                 fields: vec![],
             },
-            _ => SimplifiedPatternKind::WildCard,
+            _ => {
+                debug_assert!(path.kind.segments.len() == 1);
+                SimplifiedPatternKind::WildCard(Some(path.kind.segments[0].kind.clone()))
+            }
         },
 
         Pattern::PathTuple(path, elts) => {

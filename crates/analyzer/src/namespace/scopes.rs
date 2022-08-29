@@ -7,6 +7,7 @@ use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
 use crate::namespace::items::{EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
 use crate::namespace::types::{Type, TypeId};
+use crate::pattern_analysis::PatternMatrix;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -195,6 +196,7 @@ impl<'a> FunctionScope<'a> {
     ///
     /// Panics if an entry already exists for the node id.
     pub fn add_emit(&self, node: &Node<ast::FuncStmt>, event: EventId) {
+        debug_assert!(matches!(node.kind, ast::FuncStmt::Emit { .. }));
         self.add_node(node);
         self.body
             .borrow_mut()
@@ -210,6 +212,15 @@ impl<'a> FunctionScope<'a> {
             .var_types
             .insert(node.id, typ)
             .expect_none("variable has already registered")
+    }
+
+    pub fn map_pattern_matrix(&self, node: &Node<ast::FuncStmt>, matrix: PatternMatrix) {
+        debug_assert!(matches!(node.kind, ast::FuncStmt::Match { .. }));
+        self.body
+            .borrow_mut()
+            .matches
+            .insert(node.id, matrix)
+            .expect_none("match statement attributes already exists")
     }
 
     fn add_node<T>(&self, node: &Node<T>) {

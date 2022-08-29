@@ -1,6 +1,7 @@
 use crate::{
     display::Displayable,
     namespace::items::{EnumVariantId, TypeDef},
+    pattern_analysis::PatternMatrix,
 };
 
 use crate::namespace::items::{
@@ -403,6 +404,8 @@ impl Location {
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
     pub emits: IndexMap<NodeId, EventId>,
+    // Map match statements to the corresponding [`PatternMatrix`]
+    pub matches: IndexMap<NodeId, PatternMatrix>,
     // Map lhs of variable declaration to type.
     pub var_types: IndexMap<NodeId, TypeId>,
     pub calls: IndexMap<NodeId, CallType>,

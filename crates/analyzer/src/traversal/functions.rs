@@ -3,6 +3,7 @@ use crate::display::Displayable;
 use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{EventField, Type, TypeId};
+use crate::pattern_analysis::PatternMatrix;
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use crate::{
     errors::{self, FatalError},
@@ -164,7 +165,10 @@ fn match_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<
 
             err_in_pat_check?;
             matching_anomaly::check_match_exhaustiveness(scope, arms, stmt.span, expr_type)?;
-            matching_anomaly::check_unreachable_pattern(scope, arms, stmt.span, expr_type)
+            matching_anomaly::check_unreachable_pattern(scope, arms, stmt.span, expr_type)?;
+            let pattern_matrix = PatternMatrix::from_arms(scope, arms, expr_type);
+            scope.root.map_pattern_matrix(stmt, pattern_matrix);
+            Ok(())
         }
         _ => unreachable!(),
     }

@@ -746,6 +746,7 @@ dependencies = [
  "fe-test-files",
  "fxhash",
  "id-arena",
+ "indexmap",
  "num-bigint",
  "num-integer",
  "num-traits",
