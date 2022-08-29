@@ -217,6 +217,7 @@ test_ingot! { trait_not_in_scope }
 test_file! { bad_enums }
 test_file! { enum_match }
 test_file! { exhaustiveness }
+test_file! { unreachable_pattern }
 test_file! { bad_string }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }

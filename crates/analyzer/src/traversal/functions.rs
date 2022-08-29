@@ -15,7 +15,7 @@ use indexmap::map::Entry;
 use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
 
-use super::exhaustiveness;
+use super::matching_anomaly;
 
 pub fn traverse_statements(
     scope: &mut BlockScope,
@@ -163,7 +163,8 @@ fn match_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<
             }
 
             err_in_pat_check?;
-            exhaustiveness::check_match_exhaustiveness(scope, arms, stmt.span, expr_type)
+            matching_anomaly::check_match_exhaustiveness(scope, arms, stmt.span, expr_type)?;
+            matching_anomaly::check_unreachable_pattern(scope, arms, stmt.span, expr_type)
         }
         _ => unreachable!(),
     }

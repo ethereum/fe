@@ -1,19 +1,17 @@
-//! This module implements enum matching exhaustiveness check.  
+//! This module includes utility structs and its functions for pattern matching analysis.
 //! The algorithm here is based on [Warnings for pattern matching](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/warnings-for-pattern-matching/3165B75113781E2431E3856972940347)
-use std::fmt::{self, Write};
 
-use fe_common::Span;
+use std::fmt::{self};
+
 use fe_parser::{
     ast::{MatchArm, Pattern},
     node::Node,
-    Label,
 };
 use indexmap::IndexSet;
 
 use crate::{
     context::{AnalyzerContext, NamedThing},
     display::{DisplayWithDb, Displayable},
-    errors::FatalError,
     namespace::{
         items::{EnumVariantId, EnumVariantKind},
         scopes::BlockScope,
@@ -22,167 +20,18 @@ use crate::{
     AnalyzerDb,
 };
 
-pub(super) fn check_match_exhaustiveness(
-    scope: &mut BlockScope,
-    arms: &[Node<MatchArm>],
-    match_span: Span,
-    ty: TypeId,
-) -> Result<(), FatalError> {
-    if arms.is_empty() {
-        let err = scope.fancy_error(
-            "patterns is not exhaustive",
-            vec![Label::primary(
-                match_span,
-                "expected at least one match arm here",
-            )],
-            vec![],
-        );
-        return Err(FatalError::new(err));
-    }
-
-    let pattern_matrix = PatternMatrix::from_arms(scope, arms, ty);
-    match pattern_matrix.find_non_exhaustiveness() {
-        Some(pats) => {
-            let err = scope.fancy_error(
-                "patterns is not exhaustive",
-                vec![Label::primary(
-                    match_span,
-                    &format! {"`{}` not covered", display_non_exhaustive_patterns(scope.db(), &pats)},
-                )],
-                vec![],
-            );
-            Err(FatalError::new(err))
-        }
-        None => Ok(()),
-    }
-}
-
-#[derive(Clone, Debug)]
-struct SimplifiedPattern {
-    kind: SimplifiedPatternKind,
-    ty: TypeId,
-}
-
-impl SimplifiedPattern {
-    fn new(kind: SimplifiedPatternKind, ty: TypeId) -> Self {
-        Self { kind, ty }
-    }
-
-    fn wild_card(ty: TypeId) -> Self {
-        Self::new(SimplifiedPatternKind::WildCard, ty)
-    }
-}
-
-impl DisplayWithDb for SimplifiedPattern {
-    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            SimplifiedPatternKind::WildCard => write!(f, "_"),
-            SimplifiedPatternKind::Constructor {
-                kind: ConstructorKind::Variant(id),
-                fields,
-            } => {
-                let ctor_name = id.name_with_parent(db);
-                write!(f, "{ctor_name}")?;
-                if !id.kind(db).unwrap().is_unit() {
-                    write!(f, "(")?;
-                    let mut delim = "";
-                    for field in fields {
-                        let displayable = field.display(db);
-                        write!(f, "{delim}{displayable}")?;
-                        delim = ", ";
-                    }
-                    write!(f, ")")
-                } else {
-                    Ok(())
-                }
-            }
-            SimplifiedPatternKind::Or(pats) => {
-                let mut delim = "";
-                for pat in pats {
-                    let pat = pat.display(db);
-                    write!(f, "{delim}{pat}")?;
-                    delim = "| ";
-                }
-                Ok(())
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-enum SimplifiedPatternKind {
-    WildCard,
-    Constructor {
-        kind: ConstructorKind,
-        fields: Vec<SimplifiedPattern>,
-    },
-    Or(Vec<SimplifiedPattern>),
-}
-
-impl SimplifiedPatternKind {
-    fn collect_ctors(&self) -> Vec<ConstructorKind> {
-        match self {
-            Self::WildCard => vec![],
-            Self::Constructor { kind, .. } => vec![*kind],
-            Self::Or(pats) => {
-                let mut ctors = vec![];
-                for pat in pats {
-                    ctors.extend_from_slice(&pat.kind.collect_ctors());
-                }
-                ctors
-            }
-        }
-    }
-
-    fn ctor_with_wild_card_fields(db: &dyn AnalyzerDb, kind: ConstructorKind) -> Self {
-        let fields = kind
-            .field_types(db)
-            .into_iter()
-            .map(SimplifiedPattern::wild_card)
-            .collect();
-        Self::Constructor { kind, fields }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum ConstructorKind {
-    Variant(EnumVariantId),
-}
-
-impl ConstructorKind {
-    fn field_types(&self, db: &dyn AnalyzerDb) -> Vec<TypeId> {
-        match self {
-            Self::Variant(id) => match id.kind(db).unwrap() {
-                EnumVariantKind::Unit => vec![],
-                EnumVariantKind::Tuple(types) => types.to_vec(),
-            },
-        }
-    }
-
-    fn field_len(&self, db: &dyn AnalyzerDb) -> usize {
-        match self {
-            Self::Variant(id) => match id.kind(db).unwrap() {
-                EnumVariantKind::Unit => 0,
-                EnumVariantKind::Tuple(types) => types.len(),
-            },
-        }
-    }
-
-    fn ty(&self, db: &dyn AnalyzerDb) -> TypeId {
-        match self {
-            Self::Variant(id) => id.parent(db).as_type(db),
-        }
-    }
-}
-
 #[derive(Clone)]
-struct PatternMatrix<'db> {
+pub struct PatternMatrix<'db> {
     rows: Vec<PatternRowVec<'db>>,
     db: &'db dyn AnalyzerDb,
 }
 
 impl<'db> PatternMatrix<'db> {
-    fn from_arms(scope: &'db BlockScope<'db, 'db>, arms: &[Node<MatchArm>], ty: TypeId) -> Self {
+    pub fn from_arms(
+        scope: &'db BlockScope<'db, 'db>,
+        arms: &[Node<MatchArm>],
+        ty: TypeId,
+    ) -> Self {
         let mut rows = Vec::with_capacity(arms.len());
         for arm in arms {
             rows.push(PatternRowVec::new(
@@ -197,7 +46,7 @@ impl<'db> PatternMatrix<'db> {
         }
     }
 
-    fn find_non_exhaustiveness(&self) -> Option<Vec<SimplifiedPattern>> {
+    pub fn find_non_exhaustiveness(&self) -> Option<Vec<SimplifiedPattern>> {
         if self.nrows() == 0 {
             // Non Exhaustive!
             return Some(vec![]);
@@ -269,18 +118,28 @@ impl<'db> PatternMatrix<'db> {
         }
     }
 
-    fn nrows(&self) -> usize {
+    pub fn is_row_useful(&self, row: usize) -> bool {
+        debug_assert!(self.nrows() > row);
+
+        Self {
+            rows: self.rows[0..row].to_vec(),
+            db: self.db,
+        }
+        .is_pattern_useful(&self.rows[row])
+    }
+
+    pub fn nrows(&self) -> usize {
         self.rows.len()
     }
 
-    fn ncols(&self) -> usize {
+    pub fn ncols(&self) -> usize {
         debug_assert_ne!(self.nrows(), 0);
         let ncols = self.rows[0].size();
         debug_assert!(self.rows.iter().all(|row| row.size() == ncols));
         ncols
     }
 
-    fn is_complete(&self) -> bool {
+    pub fn is_complete(&self) -> bool {
         let sigma_set = self.sigma_set();
 
         match sigma_set.first().map(|ctor| ctor.ty(self.db)) {
@@ -293,7 +152,7 @@ impl<'db> PatternMatrix<'db> {
         }
     }
 
-    fn sigma_set(&self) -> IndexSet<ConstructorKind> {
+    pub fn sigma_set(&self) -> IndexSet<ConstructorKind> {
         let mut ctor_set = IndexSet::new();
         for col in &self.rows {
             for ctor in col.collect_first_elem_ctors() {
@@ -303,7 +162,7 @@ impl<'db> PatternMatrix<'db> {
         ctor_set
     }
 
-    fn phi_specialize(&self, ctor: ConstructorKind) -> Self {
+    pub fn phi_specialize(&self, ctor: ConstructorKind) -> Self {
         let mut new_cols = Vec::new();
         for col in &self.rows {
             new_cols.extend_from_slice(&col.phi_specialize(ctor));
@@ -314,7 +173,7 @@ impl<'db> PatternMatrix<'db> {
         }
     }
 
-    fn d_specialize(&self) -> Self {
+    pub fn d_specialize(&self) -> Self {
         let mut new_cols = Vec::new();
         for col in &self.rows {
             new_cols.extend_from_slice(&col.d_specialize());
@@ -328,6 +187,153 @@ impl<'db> PatternMatrix<'db> {
     fn first_column_ty(&self) -> TypeId {
         debug_assert_ne!(self.ncols(), 0);
         self.rows[0].first_column_ty()
+    }
+
+    fn is_pattern_useful(&self, pat_vec: &PatternRowVec) -> bool {
+        if self.nrows() == 0 {
+            return true;
+        }
+
+        if self.ncols() == 0 {
+            return false;
+        }
+
+        match &pat_vec.first_pat().unwrap().kind {
+            SimplifiedPatternKind::WildCard => self
+                .d_specialize()
+                .is_pattern_useful(&pat_vec.d_specialize()[0]),
+
+            SimplifiedPatternKind::Constructor { kind, .. } => self
+                .phi_specialize(*kind)
+                .is_pattern_useful(&pat_vec.phi_specialize(*kind)[0]),
+
+            SimplifiedPatternKind::Or(pats) => {
+                for pat in pats {
+                    if self.is_pattern_useful(&PatternRowVec::new(vec![pat.clone()], self.db)) {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SimplifiedPattern {
+    kind: SimplifiedPatternKind,
+    ty: TypeId,
+}
+
+impl SimplifiedPattern {
+    pub fn new(kind: SimplifiedPatternKind, ty: TypeId) -> Self {
+        Self { kind, ty }
+    }
+
+    pub fn wild_card(ty: TypeId) -> Self {
+        Self::new(SimplifiedPatternKind::WildCard, ty)
+    }
+}
+
+impl DisplayWithDb for SimplifiedPattern {
+    fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            SimplifiedPatternKind::WildCard => write!(f, "_"),
+            SimplifiedPatternKind::Constructor {
+                kind: ConstructorKind::Variant(id),
+                fields,
+            } => {
+                let ctor_name = id.name_with_parent(db);
+                write!(f, "{ctor_name}")?;
+                if !id.kind(db).unwrap().is_unit() {
+                    write!(f, "(")?;
+                    let mut delim = "";
+                    for field in fields {
+                        let displayable = field.display(db);
+                        write!(f, "{delim}{displayable}")?;
+                        delim = ", ";
+                    }
+                    write!(f, ")")
+                } else {
+                    Ok(())
+                }
+            }
+            SimplifiedPatternKind::Or(pats) => {
+                let mut delim = "";
+                for pat in pats {
+                    let pat = pat.display(db);
+                    write!(f, "{delim}{pat}")?;
+                    delim = "| ";
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum SimplifiedPatternKind {
+    WildCard,
+    Constructor {
+        kind: ConstructorKind,
+        fields: Vec<SimplifiedPattern>,
+    },
+    Or(Vec<SimplifiedPattern>),
+}
+
+impl SimplifiedPatternKind {
+    pub fn collect_ctors(&self) -> Vec<ConstructorKind> {
+        match self {
+            Self::WildCard => vec![],
+            Self::Constructor { kind, .. } => vec![*kind],
+            Self::Or(pats) => {
+                let mut ctors = vec![];
+                for pat in pats {
+                    ctors.extend_from_slice(&pat.kind.collect_ctors());
+                }
+                ctors
+            }
+        }
+    }
+
+    pub fn ctor_with_wild_card_fields(db: &dyn AnalyzerDb, kind: ConstructorKind) -> Self {
+        let fields = kind
+            .field_types(db)
+            .into_iter()
+            .map(SimplifiedPattern::wild_card)
+            .collect();
+        Self::Constructor { kind, fields }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ConstructorKind {
+    Variant(EnumVariantId),
+}
+
+impl ConstructorKind {
+    pub fn field_types(&self, db: &dyn AnalyzerDb) -> Vec<TypeId> {
+        match self {
+            Self::Variant(id) => match id.kind(db).unwrap() {
+                EnumVariantKind::Unit => vec![],
+                EnumVariantKind::Tuple(types) => types.to_vec(),
+            },
+        }
+    }
+
+    pub fn field_len(&self, db: &dyn AnalyzerDb) -> usize {
+        match self {
+            Self::Variant(id) => match id.kind(db).unwrap() {
+                EnumVariantKind::Unit => 0,
+                EnumVariantKind::Tuple(types) => types.len(),
+            },
+        }
+    }
+
+    pub fn ty(&self, db: &dyn AnalyzerDb) -> TypeId {
+        match self {
+            Self::Variant(id) => id.parent(db).as_type(db),
+        }
     }
 }
 
@@ -344,6 +350,10 @@ impl<'db> PatternRowVec<'db> {
 
     fn size(&self) -> usize {
         self.inner.len()
+    }
+
+    fn first_pat(&self) -> Option<&SimplifiedPattern> {
+        self.inner.first()
     }
 
     fn phi_specialize(&self, ctor: ConstructorKind) -> Vec<Self> {
@@ -493,20 +503,4 @@ fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> Simplified
     };
 
     SimplifiedPattern::new(kind, ty)
-}
-
-fn display_non_exhaustive_patterns(db: &dyn AnalyzerDb, pats: &[SimplifiedPattern]) -> String {
-    if pats.len() == 1 {
-        format!("{}", pats[0].display(db))
-    } else {
-        let mut s = "(".to_string();
-        let mut delim = "";
-        for pat in pats {
-            let pat = pat.display(db);
-            write!(s, "{delim}{pat}").unwrap();
-            delim = ", ";
-        }
-        s.push(')');
-        s
-    }
 }

@@ -11,10 +11,13 @@ pub mod db;
 pub mod display;
 pub mod errors;
 pub mod namespace;
+
 mod operations;
 mod traversal;
 
 pub use db::{AnalyzerDb, TestDb};
+pub use traversal::pattern_analysis;
+
 use fe_common::diagnostics::Diagnostic;
 use namespace::items::{IngotId, ModuleId};
 
