@@ -1,3 +1,8 @@
+//! This module contains the decision tree definition and its construction
+//! function.
+//! The algorithm for efficient decision tree construction is mainly based on [Compiling pattern matching to good decision trees](https://dl.acm.org/doi/10.1145/1411304.1411311).
+use std::io;
+
 use fe_analyzer::{
     pattern_analysis::{
         ConstructorKind, PatternMatrix, PatternRowVec, SigmaSet, SimplifiedPattern,
@@ -7,6 +12,8 @@ use fe_analyzer::{
 };
 use indexmap::IndexMap;
 use smol_str::SmolStr;
+
+use super::tree_vis::TreeRenderer;
 
 pub fn build_decision_tree(
     db: &dyn AnalyzerDb,
@@ -25,17 +32,30 @@ pub enum DecisionTree {
     Switch(SwitchNode),
 }
 
+impl DecisionTree {
+    pub fn dump_dot<W>(&self, db: &dyn AnalyzerDb, w: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let renderer = TreeRenderer::new(db, self);
+        dot2::render(&renderer, w).map_err(|err| match err {
+            dot2::Error::Io(err) => err,
+            _ => panic!("invalid graphviz id"),
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct LeafNode {
-    pub arm_index: usize,
+    pub arm_idx: usize,
     pub binds: IndexMap<SmolStr, Occurrence>,
 }
 
 impl LeafNode {
     fn new(arm: SimplifiedArm, occurrences: &[Occurrence]) -> Self {
-        let arm_index = arm.body;
+        let arm_idx = arm.body;
         let binds = arm.finalize_binds(occurrences);
-        Self { arm_index, binds }
+        Self { arm_idx, binds }
     }
 }
 
@@ -45,7 +65,7 @@ pub struct SwitchNode {
     pub arms: Vec<(Case, DecisionTree)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Case {
     Ctor(ConstructorKind),
     Default,
@@ -106,7 +126,7 @@ impl ColumnSelectionPolicy {
 
         // If there are more than one candidates remained, filter the columns with the
         // shortest occurrences among the candidates, then select the rightmost one.
-        // This heuristics is corresponding to the R pseudo heuristic in the paper.
+        // This heuristics corresponds to the R pseudo heuristic in the paper.
         let mut shortest_occurrences = usize::MAX;
         for col in std::mem::take(&mut candidates) {
             let occurrences = mat.occurrences[col].len();
@@ -138,6 +158,10 @@ pub struct Occurrence(Vec<usize>);
 impl Occurrence {
     pub fn new() -> Self {
         Self(vec![])
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &usize> {
+        self.0.iter()
     }
 
     fn phi_specialize(&self, db: &dyn AnalyzerDb, ctor: ConstructorKind) -> Vec<Self> {
