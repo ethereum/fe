@@ -1,7 +1,11 @@
 use dot2::{label::Text, GraphWalk, Id, Kind, Labeller};
 use fe_analyzer::namespace::items::ModuleId;
 
-use crate::db::MirDb;
+use crate::{
+    db::MirDb,
+    ir::{inst::BranchInfo, FunctionId},
+    pretty_print::PrettyPrint,
+};
 
 use super::{block::BlockNode, function::FunctionNode};
 
@@ -45,6 +49,7 @@ impl<'db> GraphWalk<'db> for ModuleGraph<'db> {
                     let edge = ModuleGraphEdge {
                         from: block,
                         to: succ,
+                        func: *func,
                     };
                     edges.push(edge);
                 }
@@ -98,6 +103,10 @@ impl<'db> Labeller<'db> for ModuleGraph<'db> {
         Ok(n.label(self.db))
     }
 
+    fn edge_label<'a>(&self, e: &Self::Edge) -> Text<'db> {
+        Text::LabelStr(e.label(self.db).into())
+    }
+
     fn subgraph_id(&self, s: &Self::Subgraph) -> Option<Id<'db>> {
         s.subgraph_id()
     }
@@ -115,4 +124,35 @@ impl<'db> Labeller<'db> for ModuleGraph<'db> {
 pub(super) struct ModuleGraphEdge {
     from: BlockNode,
     to: BlockNode,
+    func: FunctionId,
+}
+
+impl ModuleGraphEdge {
+    fn label(&self, db: &dyn MirDb) -> String {
+        let body = self.func.body(db);
+        let terminator = body.order.terminator(&body.store, self.from.block).unwrap();
+        let to = self.to.block;
+        match body.store.branch_info(terminator) {
+            BranchInfo::NotBranch => unreachable!(),
+            BranchInfo::Jump(_) => String::new(),
+            BranchInfo::Branch(_, true_bb, _) => {
+                format! {"{}", true_bb == to}
+            }
+            BranchInfo::Switch(_, table, default) => {
+                if default == Some(to) {
+                    return "*".to_string();
+                }
+
+                for (value, bb) in table.iter() {
+                    if bb == to {
+                        let mut s = String::new();
+                        value.pretty_print(db, &body.store, &mut s).unwrap();
+                        return s;
+                    }
+                }
+
+                unreachable!()
+            }
+        }
+    }
 }

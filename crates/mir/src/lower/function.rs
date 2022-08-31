@@ -106,8 +106,8 @@ pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
 }
 
 pub(super) struct BodyLowerHelper<'db, 'a> {
-    db: &'db dyn MirDb,
-    builder: BodyBuilder,
+    pub(super) db: &'db dyn MirDb,
+    pub(super) builder: BodyBuilder,
     ast: &'a Node<ast::Function>,
     func: FunctionId,
     analyzer_body: &'a fe_analyzer::context::FunctionBody,
@@ -116,10 +116,6 @@ pub(super) struct BodyLowerHelper<'db, 'a> {
 }
 
 impl<'db, 'a> BodyLowerHelper<'db, 'a> {
-    pub(super) fn db(&self) -> &'db dyn MirDb {
-        self.db
-    }
-
     pub(super) fn lower_stmt(&mut self, stmt: &Node<ast::FuncStmt>) {
         match &stmt.kind {
             ast::FuncStmt::Return { value } => {
@@ -185,7 +181,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder
                     .branch(cond, header_bb, exit_bb, SourceInfo::dummy());
 
-                self.exit_scope();
+                self.leave_scope();
 
                 // Move to while exit bb.
                 self.builder.move_to_block(exit_bb);
@@ -214,10 +210,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
                 let msg = match msg {
                     Some(msg) => self.lower_expr_to_value(msg),
-                    None => {
-                        let u256_ty = self.u256_ty();
-                        self.builder.make_imm(1.into(), u256_ty)
-                    }
+                    None => self.make_u256_imm(1),
                 };
                 self.builder.revert(Some(msg), stmt.into());
                 self.builder.move_to_block(then_bb);
@@ -257,8 +250,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::FuncStmt::Continue => {
                 let entry = self.scope().loop_entry(&self.scopes);
                 if let Some(loop_idx) = self.scope().loop_idx(&self.scopes) {
-                    let u256_ty = self.u256_ty();
-                    let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
+                    let imm_one = self.make_u256_imm(1u32);
                     let inc = self.builder.add(loop_idx, imm_one, SourceInfo::dummy());
                     self.builder.map_result(inc, loop_idx.into());
                     let maximum_iter_count = self.scope().maximum_iter_count(&self.scopes).unwrap();
@@ -283,7 +275,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 for stmt in stmts {
                     self.lower_stmt(stmt)
                 }
-                self.exit_scope()
+                self.leave_scope()
             }
         }
     }
@@ -297,13 +289,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
-                let local = Local::user_local(name.clone(), ty, var.into());
-
-                let value = self.builder.declare(local);
-                self.scope_mut().declare_var(name, value);
+                let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
-                    let rhs = self.lower_expr(init);
-                    self.builder.map_result(rhs, value.into());
+                    let init = self.lower_expr(init);
+                    self.builder.map_result(init, value.into());
                 }
             }
 
@@ -328,6 +317,18 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
+    pub(super) fn declare_var(
+        &mut self,
+        name: &SmolStr,
+        ty: TypeId,
+        source: SourceInfo,
+    ) -> ValueId {
+        let local = Local::user_local(name.clone(), ty, source);
+        let value = self.builder.declare(local);
+        self.scope_mut().declare_var(name, value);
+        value
+    }
+
     pub(super) fn lower_var_decl_unpack(
         &mut self,
         var: &Node<ast::VarDeclTarget>,
@@ -349,8 +350,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::VarDeclTarget::Tuple(decls) => {
                 for (index, decl) in decls.iter().enumerate() {
                     let elem_ty = init_ty.projection_ty_imm(self.db, index);
-                    let u256_ty = self.u256_ty();
-                    let index_value = self.builder.make_imm(index.into(), u256_ty);
+                    let index_value = self.make_u256_imm(index);
                     let elem_inst =
                         self.builder
                             .aggregate_access(init, vec![index_value], source.clone());
@@ -517,6 +517,43 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         self.map_to_tmp(inst, ty)
     }
 
+    pub(super) fn enter_scope(&mut self) {
+        let new_scope = Scope::with_parent(self.current_scope);
+        self.current_scope = self.scopes.alloc(new_scope);
+    }
+
+    pub(super) fn leave_scope(&mut self) {
+        self.current_scope = self.scopes[self.current_scope].parent.unwrap();
+    }
+
+    pub(super) fn make_imm(&mut self, imm: impl Into<BigInt>, ty: TypeId) -> ValueId {
+        self.builder.make_value(Value::Immediate {
+            imm: imm.into(),
+            ty,
+        })
+    }
+
+    pub(super) fn make_u256_imm(&mut self, value: impl Into<BigInt>) -> ValueId {
+        let u256_ty = self.u256_ty();
+        self.make_imm(value, u256_ty)
+    }
+
+    pub(super) fn map_to_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
+        match &self.builder.inst_data(inst).kind {
+            InstKind::Bind { src } => {
+                let value = *src;
+                self.builder.remove_inst(inst);
+                value
+            }
+            _ => {
+                let tmp = Value::Temporary { inst, ty };
+                let result = self.builder.make_value(tmp);
+                self.builder.map_result(inst, result.into());
+                result
+            }
+        }
+    }
+
     fn new(
         db: &'db dyn MirDb,
         func: FunctionId,
@@ -610,7 +647,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
             self.builder.jump(merge_bb, SourceInfo::dummy());
             self.builder.move_to_block(merge_bb);
-            self.exit_scope();
+            self.leave_scope();
         } else {
             let then_bb = self.builder.make_block();
             let else_bb = self.builder.make_block();
@@ -624,7 +661,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             for stmt in then {
                 self.lower_stmt(stmt);
             }
-            self.exit_scope();
+            self.leave_scope();
             let then_block_end_bb = self.builder.current_block();
 
             // Lower else_block.
@@ -633,7 +670,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             for stmt in else_ {
                 self.lower_stmt(stmt);
             }
-            self.exit_scope();
+            self.leave_scope();
             let else_block_end_bb = self.builder.current_block();
 
             let merge_bb = self.builder.make_block();
@@ -682,10 +719,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             .declare_var(&loop_variable.kind, loop_value);
 
         // Declare and initialize `loop_idx` to 0.
-        let u256_ty = self.u256_ty();
-        let loop_idx = Local::tmp_local("$loop_idx_tmp".into(), u256_ty);
+        let loop_idx = Local::tmp_local("$loop_idx_tmp".into(), self.u256_ty());
         let loop_idx = self.builder.declare(loop_idx);
-        let imm_zero = self.builder.make_imm(0u32.into(), u256_ty);
+        let imm_zero = self.make_u256_imm(0u32);
         let imm_zero = self.builder.bind(imm_zero, SourceInfo::dummy());
         self.builder.map_result(imm_zero, loop_idx.into());
 
@@ -698,7 +734,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ir::TypeKind::Array(ir::types::ArrayDef { len, .. }) => *len,
             _ => unreachable!(),
         };
-        let maximum_iter_count = self.builder.make_imm(maximum_iter_count.into(), u256_ty);
+        let maximum_iter_count = self.make_u256_imm(maximum_iter_count);
         self.branch_eq(
             loop_idx,
             maximum_iter_count,
@@ -724,7 +760,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
 
         // loop_idx += 1
-        let imm_one = self.builder.make_imm(1u32.into(), u256_ty);
+        let imm_one = self.make_u256_imm(1u32);
         let inc = self.builder.add(loop_idx, imm_one, SourceInfo::dummy());
         self.builder
             .map_result(inc, AssignableValue::Value(loop_idx));
@@ -737,16 +773,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         );
 
         /* Move to exit bb */
-        self.exit_scope();
+        self.leave_scope();
         self.builder.move_to_block(exit_bb);
     }
 
     fn lower_assignable_value(&mut self, expr: &Node<ast::Expr>) -> AssignableValue {
         match &expr.kind {
             ast::Expr::Attribute { value, attr } => {
-                let idx_ty = self.u256_ty();
                 let idx = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
-                let idx = self.make_imm(idx, idx_ty);
+                let idx = self.make_u256_imm(idx);
                 let lhs = self.lower_assignable_value(value).into();
                 AssignableValue::Aggregate { lhs, idx }
             }
@@ -992,10 +1027,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             AnalyzerCallType::EnumConstructor(variant) => {
                 let tag_type = ty.enum_disc_type(self.db);
-                let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
-                let data_ty = ty
-                    .enum_variant_type_by_name(self.db, &variant.name(self.db.upcast()))
-                    .unwrap();
+                let tag = self.make_imm(variant.disc(self.db.upcast()), tag_type);
+                let data_ty = ty.enum_variant_type(self.db, *variant);
                 let enum_args = if data_ty.is_unit(self.db) {
                     vec![tag, self.make_unit()]
                 } else {
@@ -1022,9 +1055,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         match &expr.kind {
             ast::Expr::Attribute { value, attr } => {
                 let index = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
-                let index_ty = self.u256_ty();
                 let value = self.lower_aggregate_access(value, indices);
-                indices.push(self.make_imm(index, index_ty));
+                indices.push(self.make_u256_imm(index));
                 value
             }
 
@@ -1038,33 +1070,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    fn map_to_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
-        match &self.builder.inst_data(inst).kind {
-            InstKind::Bind { src } => {
-                let value = *src;
-                self.builder.remove_inst(inst);
-                value
-            }
-            _ => {
-                let tmp = Value::Temporary { inst, ty };
-                let result = self.builder.make_value(tmp);
-                self.builder.map_result(inst, result.into());
-                result
-            }
-        }
-    }
-
     fn make_unit(&mut self) -> ValueId {
         let unit_ty = analyzer_types::TypeId::unit(self.db.upcast());
         let unit_ty = self.db.mir_lowered_type(unit_ty);
         self.builder.make_unit(unit_ty)
-    }
-
-    fn make_imm(&mut self, imm: impl Into<BigInt>, ty: TypeId) -> ValueId {
-        self.builder.make_value(Value::Immediate {
-            imm: imm.into(),
-            ty,
-        })
     }
 
     fn make_local_constant(
@@ -1097,18 +1106,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             .mir_intern_type(ir::Type::new(ir::TypeKind::Bool, None).into())
     }
 
-    fn enter_scope(&mut self) {
-        let new_scope = Scope::with_parent(self.current_scope);
-        self.current_scope = self.scopes.alloc(new_scope);
-    }
-
     fn enter_loop_scope(&mut self, entry: BasicBlockId, exit: BasicBlockId) {
         let new_scope = Scope::loop_scope(self.current_scope, entry, exit);
         self.current_scope = self.scopes.alloc(new_scope);
-    }
-
-    fn exit_scope(&mut self) {
-        self.current_scope = self.scopes[self.current_scope].parent.unwrap();
     }
 
     /// Resolve a name appeared in an expression.
@@ -1152,7 +1152,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .db
                     .mir_lowered_type(variant.parent(self.db.upcast()).as_type(self.db.upcast()));
                 let tag_type = enum_ty.enum_disc_type(self.db);
-                let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
+                let tag = self.make_imm(variant.disc(self.db.upcast()), tag_type);
                 let data = self.make_unit();
                 let enum_args = vec![tag, data];
                 let inst = self.builder.aggregate_construct(enum_ty, enum_args, source);

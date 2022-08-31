@@ -237,7 +237,7 @@ impl DisplayWithDb for SimplifiedPattern {
             SimplifiedPatternKind::WildCard(None) => write!(f, "_"),
             SimplifiedPatternKind::WildCard(Some(name)) => write!(f, "{name}"),
             SimplifiedPatternKind::Constructor {
-                kind: ConstructorKind::Variant(id),
+                kind: ConstructorKind::Enum(id),
                 fields,
             } => {
                 let ctor_name = id.name_with_parent(db);
@@ -305,13 +305,13 @@ impl SimplifiedPatternKind {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ConstructorKind {
-    Variant(EnumVariantId),
+    Enum(EnumVariantId),
 }
 
 impl ConstructorKind {
     pub fn field_types(&self, db: &dyn AnalyzerDb) -> Vec<TypeId> {
         match self {
-            Self::Variant(id) => match id.kind(db).unwrap() {
+            Self::Enum(id) => match id.kind(db).unwrap() {
                 EnumVariantKind::Unit => vec![],
                 EnumVariantKind::Tuple(types) => types.to_vec(),
             },
@@ -320,7 +320,7 @@ impl ConstructorKind {
 
     pub fn arity(&self, db: &dyn AnalyzerDb) -> usize {
         match self {
-            Self::Variant(id) => match id.kind(db).unwrap() {
+            Self::Enum(id) => match id.kind(db).unwrap() {
                 EnumVariantKind::Unit => 0,
                 EnumVariantKind::Tuple(types) => types.len(),
             },
@@ -329,7 +329,7 @@ impl ConstructorKind {
 
     pub fn ty(&self, db: &dyn AnalyzerDb) -> TypeId {
         match self {
-            Self::Variant(id) => id.parent(db).as_type(db),
+            Self::Enum(id) => id.parent(db).as_type(db),
         }
     }
 }
@@ -353,7 +353,7 @@ impl SigmaSet {
             Type::Enum(id) => Self(
                 id.variants(db)
                     .values()
-                    .map(|id| ConstructorKind::Variant(*id))
+                    .map(|id| ConstructorKind::Enum(*id))
                     .collect(),
             ),
             _ => {
@@ -530,7 +530,7 @@ fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> Simplified
 
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => SimplifiedPatternKind::Constructor {
-                kind: ConstructorKind::Variant(variant),
+                kind: ConstructorKind::Enum(variant),
                 fields: vec![],
             },
             _ => {
@@ -544,7 +544,7 @@ fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> Simplified
                 NamedThing::EnumVariant(variant) => variant,
                 _ => unreachable!(),
             };
-            let ctor_kind = ConstructorKind::Variant(variant);
+            let ctor_kind = ConstructorKind::Enum(variant);
             let fields = ctor_kind.field_types(scope.db());
             debug_assert_eq!(fields.len(), elts.len());
 

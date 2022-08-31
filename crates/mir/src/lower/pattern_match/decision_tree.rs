@@ -33,6 +33,7 @@ pub enum DecisionTree {
 }
 
 impl DecisionTree {
+    #[allow(unused)]
     pub fn dump_dot<W>(&self, db: &dyn AnalyzerDb, w: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -152,7 +153,7 @@ impl ColumnSelectionPolicy {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Occurrence(Vec<usize>);
 
 impl Occurrence {
@@ -162,6 +163,15 @@ impl Occurrence {
 
     pub fn iter(&self) -> impl Iterator<Item = &usize> {
         self.0.iter()
+    }
+
+    pub fn parent(&self) -> Option<Occurrence> {
+        let mut inner = self.0.clone();
+        inner.pop().map(|_| Occurrence(inner))
+    }
+
+    pub fn last_index(&self) -> Option<usize> {
+        self.0.last().cloned()
     }
 
     fn phi_specialize(&self, db: &dyn AnalyzerDb, ctor: ConstructorKind) -> Vec<Self> {

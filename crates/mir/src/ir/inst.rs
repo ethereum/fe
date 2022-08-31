@@ -136,15 +136,20 @@ pub enum InstKind {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct SwitchTable {
-    pub values: Vec<ValueId>,
-    pub blocks: Vec<BasicBlockId>,
+    values: Vec<ValueId>,
+    blocks: Vec<BasicBlockId>,
 }
 
 impl SwitchTable {
     pub fn iter(&self) -> impl Iterator<Item = (ValueId, BasicBlockId)> + '_ {
         self.values.iter().copied().zip(self.blocks.iter().copied())
+    }
+
+    pub fn add_arm(&mut self, value: ValueId, block: BasicBlockId) {
+        self.values.push(value);
+        self.blocks.push(block);
     }
 }
 
@@ -191,6 +196,11 @@ impl Inst {
         match self.kind {
             InstKind::Jump { dest } => BranchInfo::Jump(dest),
             InstKind::Branch { cond, then, else_ } => BranchInfo::Branch(cond, then, else_),
+            InstKind::Switch {
+                disc,
+                ref table,
+                default,
+            } => BranchInfo::Switch(disc, table, default),
             _ => BranchInfo::NotBranch,
         }
     }
@@ -637,7 +647,7 @@ pub enum BranchInfo<'a> {
     NotBranch,
     Jump(BasicBlockId),
     Branch(ValueId, BasicBlockId, BasicBlockId),
-    Switch(ValueId, &'a SwitchTable, BasicBlockId),
+    Switch(ValueId, &'a SwitchTable, Option<BasicBlockId>),
 }
 
 impl<'a> BranchInfo<'a> {
@@ -651,7 +661,7 @@ impl<'a> BranchInfo<'a> {
             Self::Jump(block) => BlockIter::one(*block),
             Self::Branch(_, then, else_) => BlockIter::one(*then).chain(BlockIter::one(*else_)),
             Self::Switch(_, table, default) => {
-                BlockIter::Slice(table.blocks.iter()).chain(BlockIter::one(*default))
+                BlockIter::Slice(table.blocks.iter()).chain(BlockIter::One(*default))
             }
         }
     }

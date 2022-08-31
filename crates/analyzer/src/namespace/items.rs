@@ -1557,7 +1557,7 @@ impl EnumVariantId {
         db.enum_variant_kind(self).value
     }
 
-    pub fn tag(self, db: &dyn AnalyzerDb) -> usize {
+    pub fn disc(self, db: &dyn AnalyzerDb) -> usize {
         self.data(db).tag
     }
 

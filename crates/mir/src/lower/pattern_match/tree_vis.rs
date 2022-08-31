@@ -15,6 +15,7 @@ pub(super) struct TreeRenderer<'db> {
 }
 
 impl<'db> TreeRenderer<'db> {
+    #[allow(unused)]
     pub(super) fn new(db: &'db dyn AnalyzerDb, tree: &DecisionTree) -> Self {
         let mut renderer = Self {
             nodes: Vec::new(),
@@ -89,7 +90,7 @@ impl<'db> dot2::Labeller<'db> for TreeRenderer<'db> {
 
     fn edge_label(&self, e: &Self::Edge) -> Text<'db> {
         let label = match &self.edges[e] {
-            Case::Ctor(ConstructorKind::Variant(variant)) => {
+            Case::Ctor(ConstructorKind::Enum(variant)) => {
                 variant.name_with_parent(self.db).to_string()
             }
             Case::Default => "_".into(),

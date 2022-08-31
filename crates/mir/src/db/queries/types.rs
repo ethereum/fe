@@ -1,6 +1,9 @@
 use std::{rc::Rc, str::FromStr};
 
-use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
+use fe_analyzer::namespace::{
+    items::{self as analyzer_items, EnumVariantId},
+    types as analyzer_types,
+};
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -122,14 +125,16 @@ impl TypeId {
         }
     }
 
-    pub fn enum_variant_type_by_name(self, db: &dyn MirDb, name: &str) -> Option<TypeId> {
+    pub fn enum_variant_type(self, db: &dyn MirDb, variant_id: EnumVariantId) -> TypeId {
+        let name = variant_id.name(db.upcast());
         match &self.data(db).kind {
             TypeKind::Enum(def) => def
                 .variants
                 .iter()
                 .find(|variant| variant.name == name)
-                .map(|variant| variant.ty),
-            _ => None,
+                .map(|variant| variant.ty)
+                .unwrap(),
+            _ => unreachable!(),
         }
     }
 

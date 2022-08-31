@@ -330,6 +330,11 @@ impl BodyBuilder {
         self.body.order.is_terminated(&self.body.store, block)
     }
 
+    pub fn is_current_block_terminated(&mut self) -> bool {
+        let current_block = self.current_block();
+        self.is_block_terminated(current_block)
+    }
+
     pub fn current_block(&mut self) -> BasicBlockId {
         self.cursor().expect_block()
     }
