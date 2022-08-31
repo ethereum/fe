@@ -90,6 +90,12 @@ pub enum InstKind {
         else_: BasicBlockId,
     },
 
+    Switch {
+        disc: ValueId,
+        table: SwitchTable,
+        default: Option<BasicBlockId>,
+    },
+
     Revert {
         arg: Option<ValueId>,
     },
@@ -129,6 +135,18 @@ pub enum InstKind {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SwitchTable {
+    pub values: Vec<ValueId>,
+    pub blocks: Vec<BasicBlockId>,
+}
+
+impl SwitchTable {
+    pub fn iter(&self) -> impl Iterator<Item = (ValueId, BasicBlockId)> + '_ {
+        self.values.iter().copied().zip(self.blocks.iter().copied())
+    }
+}
+
 impl Inst {
     pub fn new(kind: InstKind, source: SourceInfo) -> Self {
         Self { kind, source }
@@ -160,6 +178,7 @@ impl Inst {
         match self.kind {
             InstKind::Jump { .. }
             | InstKind::Branch { .. }
+            | InstKind::Switch { .. }
             | InstKind::Revert { .. }
             | InstKind::Return { .. } => true,
             InstKind::YulIntrinsic { op, .. } => op.is_terminator(),
@@ -175,7 +194,7 @@ impl Inst {
         }
     }
 
-    pub fn args(&self) -> ArgIter {
+    pub fn args(&self) -> ValueIter {
         use InstKind::*;
         match &self.kind {
             Declare { local: arg }
@@ -187,7 +206,11 @@ impl Inst {
             | Keccak256 { arg }
             | AbiEncode { arg }
             | Create { value: arg, .. }
-            | Branch { cond: arg, .. } => ArgIter::One(Some(*arg)),
+            | Branch { cond: arg, .. } => ValueIter::one(*arg),
+
+            Switch { disc, table, .. } => {
+                ValueIter::one(*disc).chain(ValueIter::Slice(table.values.iter()))
+            }
 
             Binary { lhs, rhs, .. }
             | MapAccess {
@@ -198,23 +221,23 @@ impl Inst {
                 value: lhs,
                 salt: rhs,
                 ..
-            } => ArgIter::One(Some(*lhs)).chain(ArgIter::One(Some(*rhs))),
+            } => ValueIter::one(*lhs).chain(ValueIter::one(*rhs)),
 
-            Revert { arg } | Return { arg } => ArgIter::One(*arg),
+            Revert { arg } | Return { arg } => ValueIter::One(*arg),
 
-            Nop | Jump { .. } => ArgIter::Zero,
+            Nop | Jump { .. } => ValueIter::Zero,
 
             AggregateAccess { value, indices } => {
-                ArgIter::One(Some(*value)).chain(ArgIter::Slice(indices.iter()))
+                ValueIter::one(*value).chain(ValueIter::Slice(indices.iter()))
             }
 
             AggregateConstruct { args, .. } | Call { args, .. } | YulIntrinsic { args, .. } => {
-                ArgIter::Slice(args.iter())
+                ValueIter::Slice(args.iter())
             }
         }
     }
 
-    pub fn args_mut(&mut self) -> ArgMutIter {
+    pub fn args_mut(&mut self) -> ValueIterMut {
         use InstKind::*;
         match &mut self.kind {
             Declare { local: arg }
@@ -226,7 +249,11 @@ impl Inst {
             | Keccak256 { arg }
             | AbiEncode { arg }
             | Create { value: arg, .. }
-            | Branch { cond: arg, .. } => ArgMutIter::One(Some(arg)),
+            | Branch { cond: arg, .. } => ValueIterMut::one(arg),
+
+            Switch { disc, table, .. } => {
+                ValueIterMut::one(disc).chain(ValueIterMut::Slice(table.values.iter_mut()))
+            }
 
             Binary { lhs, rhs, .. }
             | MapAccess {
@@ -237,18 +264,18 @@ impl Inst {
                 value: lhs,
                 salt: rhs,
                 ..
-            } => ArgMutIter::One(Some(lhs)).chain(ArgMutIter::One(Some(rhs))),
+            } => ValueIterMut::one(lhs).chain(ValueIterMut::one(rhs)),
 
-            Revert { arg } | Return { arg } => ArgMutIter::One(arg.as_mut()),
+            Revert { arg } | Return { arg } => ValueIterMut::One(arg.as_mut()),
 
-            Nop | Jump { .. } => ArgMutIter::Zero,
+            Nop | Jump { .. } => ValueIterMut::Zero,
 
             AggregateAccess { value, indices } => {
-                ArgMutIter::One(Some(value)).chain(ArgMutIter::Slice(indices.iter_mut()))
+                ValueIterMut::one(value).chain(ValueIterMut::Slice(indices.iter_mut()))
             }
 
             AggregateConstruct { args, .. } | Call { args, .. } | YulIntrinsic { args, .. } => {
-                ArgMutIter::Slice(args.iter_mut())
+                ValueIterMut::Slice(args.iter_mut())
             }
         }
     }
@@ -596,28 +623,56 @@ impl From<fe_analyzer::builtins::Intrinsic> for YulIntrinsicOp {
     }
 }
 
-pub enum BranchInfo {
+pub enum BranchInfo<'a> {
     NotBranch,
     Jump(BasicBlockId),
     Branch(ValueId, BasicBlockId, BasicBlockId),
+    Switch(ValueId, &'a SwitchTable, BasicBlockId),
 }
 
-#[derive(Debug)]
-pub enum ArgIter<'a> {
+impl<'a> BranchInfo<'a> {
+    pub fn is_not_a_branch(&self) -> bool {
+        matches!(self, BranchInfo::NotBranch)
+    }
+
+    pub fn block_iter(&self) -> BlockIter {
+        match self {
+            Self::NotBranch => BlockIter::Zero,
+            Self::Jump(block) => BlockIter::one(*block),
+            Self::Branch(_, then, else_) => BlockIter::one(*then).chain(BlockIter::one(*else_)),
+            Self::Switch(_, table, default) => {
+                BlockIter::Slice(table.blocks.iter()).chain(BlockIter::one(*default))
+            }
+        }
+    }
+}
+
+pub type BlockIter<'a> = IterBase<'a, BasicBlockId>;
+pub type ValueIter<'a> = IterBase<'a, ValueId>;
+pub type ValueIterMut<'a> = IterMutBase<'a, ValueId>;
+
+pub enum IterBase<'a, T> {
     Zero,
-    One(Option<ValueId>),
-    Slice(std::slice::Iter<'a, ValueId>),
-    Chain(Box<ArgIter<'a>>, Box<ArgIter<'a>>),
+    One(Option<T>),
+    Slice(std::slice::Iter<'a, T>),
+    Chain(Box<IterBase<'a, T>>, Box<IterBase<'a, T>>),
 }
 
-impl<'a> ArgIter<'a> {
+impl<'a, T> IterBase<'a, T> {
+    fn one(value: T) -> Self {
+        Self::One(Some(value))
+    }
+
     fn chain(self, rhs: Self) -> Self {
         Self::Chain(self.into(), rhs.into())
     }
 }
 
-impl<'a> Iterator for ArgIter<'a> {
-    type Item = ValueId;
+impl<'a, T> Iterator for IterBase<'a, T>
+where
+    T: Copy,
+{
+    type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -635,22 +690,25 @@ impl<'a> Iterator for ArgIter<'a> {
     }
 }
 
-#[derive(Debug)]
-pub enum ArgMutIter<'a> {
+pub enum IterMutBase<'a, T> {
     Zero,
-    One(Option<&'a mut ValueId>),
-    Slice(std::slice::IterMut<'a, ValueId>),
-    Chain(Box<ArgMutIter<'a>>, Box<ArgMutIter<'a>>),
+    One(Option<&'a mut T>),
+    Slice(std::slice::IterMut<'a, T>),
+    Chain(Box<IterMutBase<'a, T>>, Box<IterMutBase<'a, T>>),
 }
 
-impl<'a> ArgMutIter<'a> {
+impl<'a, T> IterMutBase<'a, T> {
+    fn one(value: &'a mut T) -> Self {
+        Self::One(Some(value))
+    }
+
     fn chain(self, rhs: Self) -> Self {
         Self::Chain(self.into(), rhs.into())
     }
 }
 
-impl<'a> Iterator for ArgMutIter<'a> {
-    type Item = &'a mut ValueId;
+impl<'a, T> Iterator for IterMutBase<'a, T> {
+    type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

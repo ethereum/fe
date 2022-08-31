@@ -244,6 +244,9 @@ impl<'a> InstSerializer<'a> {
             BranchInfo::Branch(cond, then, else_) => {
                 self.analyze_branch(self.body.order.inst_block(inst), cond, then, else_)
             }
+            BranchInfo::Switch(..) => {
+                todo!()
+            }
             BranchInfo::NotBranch => TerminatorInfo::NormalInst(inst),
         }
     }

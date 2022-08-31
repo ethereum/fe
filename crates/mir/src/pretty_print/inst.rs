@@ -115,6 +115,26 @@ impl PrettyPrint for InstId {
                 write!(w, " then: BB{} else: BB{}", then.index(), else_.index())
             }
 
+            InstKind::Switch {
+                disc,
+                table,
+                default,
+            } => {
+                write!(w, "switch ")?;
+                disc.pretty_print(db, store, w)?;
+                for (value, block) in table.iter() {
+                    write!(w, " ")?;
+                    value.pretty_print(db, store, w)?;
+                    write!(w, ": BB{}", block.index())?;
+                }
+
+                if let Some(default) = default {
+                    write!(w, " default: BB{}", default.index())
+                } else {
+                    Ok(())
+                }
+            }
+
             InstKind::Revert { arg } => {
                 write!(w, "revert ")?;
                 if let Some(arg) = arg {

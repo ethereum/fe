@@ -407,7 +407,8 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             InstKind::Nop => {}
 
-            InstKind::Jump { .. } | InstKind::Branch { .. } => {
+            // These flow control instructions are already legalized.
+            InstKind::Jump { .. } | InstKind::Branch { .. } | InstKind::Switch { .. } => {
                 unreachable!()
             }
         }
@@ -731,8 +732,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
             Value::Constant { constant, .. } => match &constant.data(self.db.upcast()).value {
                 ConstantValue::Immediate(imm) => {
-                    // YUL does not support representing negative integers with leading minus (e.g. `-1` in YUL would lead to an ICE).
-                    // To mitigate that we convert all numeric values into hexadecimal representation.
+                    // YUL does not support representing negative integers with leading minus (e.g.
+                    // `-1` in YUL would lead to an ICE). To mitigate that we
+                    // convert all numeric values into hexadecimal representation.
                     literal_expression! {(to_hex_str(imm))}
                 }
                 ConstantValue::Str(s) => {
