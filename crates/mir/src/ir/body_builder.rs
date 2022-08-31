@@ -9,7 +9,7 @@ use crate::ir::{
 };
 
 use super::{
-    inst::{CallType, YulIntrinsicOp},
+    inst::{CallType, CastKind, SwitchTable, YulIntrinsicOp},
     ConstantId, Value, ValueId,
 };
 
@@ -134,8 +134,24 @@ impl BodyBuilder {
     impl_binary_inst!(le, BinOp::Le);
     impl_binary_inst!(lt, BinOp::Lt);
 
-    pub fn cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+    pub fn primitive_cast(
+        &mut self,
+        value: ValueId,
+        result_ty: TypeId,
+        source: SourceInfo,
+    ) -> InstId {
         let kind = InstKind::Cast {
+            kind: CastKind::Primitive,
+            value,
+            to: result_ty,
+        };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
+    pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+        let kind = InstKind::Cast {
+            kind: CastKind::Primitive,
             value,
             to: result_ty,
         };
@@ -257,6 +273,22 @@ impl BodyBuilder {
         source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Branch { cond, then, else_ };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
+    pub fn switch(
+        &mut self,
+        disc: ValueId,
+        table: SwitchTable,
+        default: Option<BasicBlockId>,
+        source: SourceInfo,
+    ) -> InstId {
+        let kind = InstKind::Switch {
+            disc,
+            table,
+            default,
+        };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst)
     }

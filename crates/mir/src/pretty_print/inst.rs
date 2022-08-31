@@ -42,7 +42,7 @@ impl PrettyPrint for InstId {
                 rhs.pretty_print(db, store, w)
             }
 
-            InstKind::Cast { value, to } => {
+            InstKind::Cast { value, to, .. } => {
                 value.pretty_print(db, store, w)?;
                 write!(w, " as ")?;
                 to.pretty_print(db, store, w)

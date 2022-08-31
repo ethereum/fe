@@ -88,7 +88,7 @@ impl TypeId {
         }
     }
 
-    pub fn enum_tag_type(self, db: &dyn MirDb) -> TypeId {
+    pub fn enum_disc_type(self, db: &dyn MirDb) -> TypeId {
         let kind = match &self.data(db).kind {
             TypeKind::Enum(def) => def.tag_type(),
             _ => unreachable!(),
@@ -110,13 +110,13 @@ impl TypeId {
     pub fn enum_data_offset(self, db: &dyn MirDb, slot_size: usize) -> usize {
         match &self.data(db).kind {
             TypeKind::Enum(def) => {
-                let tag_size = self.enum_tag_type(db).size_of(db, slot_size);
+                let disc_size = self.enum_disc_type(db).size_of(db, slot_size);
                 let mut align = 1;
                 for variant in def.variants.iter() {
                     let variant_align = variant.ty.align_of(db, slot_size);
                     align = num_integer::lcm(align, variant_align);
                 }
-                round_up(tag_size, align)
+                round_up(disc_size, align)
             }
             _ => unreachable!(),
         }

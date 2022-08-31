@@ -981,7 +981,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     if arg_ty == ty {
                         self.builder.bind(arg, source)
                     } else {
-                        self.builder.cast(arg, ty, source)
+                        self.builder.primitive_cast(arg, ty, source)
                     }
                 } else if ty.is_aggregate(self.db) {
                     self.builder.aggregate_construct(ty, args, source)
@@ -991,7 +991,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             AnalyzerCallType::EnumConstructor(variant) => {
-                let tag_type = ty.enum_tag_type(self.db);
+                let tag_type = ty.enum_disc_type(self.db);
                 let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
                 let data_ty = ty
                     .enum_variant_type_by_name(self.db, &variant.name(self.db.upcast()))
@@ -1151,7 +1151,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let enum_ty = self
                     .db
                     .mir_lowered_type(variant.parent(self.db.upcast()).as_type(self.db.upcast()));
-                let tag_type = enum_ty.enum_tag_type(self.db);
+                let tag_type = enum_ty.enum_disc_type(self.db);
                 let tag = self.make_imm(variant.tag(self.db.upcast()), tag_type);
                 let data = self.make_unit();
                 let enum_args = vec![tag, data];

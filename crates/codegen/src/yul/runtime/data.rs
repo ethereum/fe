@@ -299,8 +299,8 @@ pub(super) fn make_enum_init(
     let func_name = YulVariable::new(func_name);
     let is_sptr = legalized_ty.is_sptr(db.upcast());
     let ptr = YulVariable::new("ptr");
-    let tag = YulVariable::new("tag");
-    let tag_ty = arg_tys[0];
+    let disc = YulVariable::new("disc");
+    let disc_ty = arg_tys[0];
     let enum_data = || {
         (0..arg_tys.len() - 1)
             .into_iter()
@@ -332,8 +332,8 @@ pub(super) fn make_enum_init(
 
     let enum_data_args: Vec<_> = enum_data().map(|var| var.ident()).collect();
     let func_def = function_definition! {
-        function [func_name.ident()]([ptr.ident()], [tag.ident()], [enum_data_args...]) {
-            [yul::Statement::Expression(provider.ptr_store(db, ptr.expr(), tag.expr(), make_ptr(db, tag_ty, is_sptr)))]
+        function [func_name.ident()]([ptr.ident()], [disc.ident()], [enum_data_args...]) {
+            [yul::Statement::Expression(provider.ptr_store(db, ptr.expr(), disc.expr(), make_ptr(db, disc_ty, is_sptr)))]
             [enum_data_init...]
         }
     };

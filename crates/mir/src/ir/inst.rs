@@ -35,6 +35,7 @@ pub enum InstKind {
     },
 
     Cast {
+        kind: CastKind,
         value: ValueId,
         to: TypeId,
     },
@@ -363,6 +364,15 @@ impl fmt::Display for CallType {
             Self::External => write!(w, "external"),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CastKind {
+    /// A cast from a primitive type to a primitive type.
+    Primitive,
+
+    /// A cast from an enum type to its underlying type.
+    Untag,
 }
 
 // TODO: We don't need all yul intrinsics.

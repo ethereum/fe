@@ -7,7 +7,7 @@ use fe_common::db::Upcast;
 use fe_mir::ir::{
     self,
     constant::ConstantValue,
-    inst::{BinOp, CallType, InstKind, UnOp},
+    inst::{BinOp, CallType, CastKind, InstKind, UnOp},
     value::AssignableValue,
     Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind, Value,
     ValueId,
@@ -166,10 +166,25 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 self.assign_inst_result(inst, result, inst_result_ty.deref(self.db.upcast()))
             }
 
-            InstKind::Cast { value, to } => {
+            InstKind::Cast { kind, value, to } => {
                 let from_ty = self.body.store.value_ty(*value);
-                let value = self.value_expr(*value);
-                let result = self.ctx.runtime.primitive_cast(self.db, value, from_ty);
+                let result = match kind {
+                    CastKind::Primitive => {
+                        debug_assert!(
+                            from_ty.is_primitive(self.db.upcast())
+                                && to.is_primitive(self.db.upcast())
+                        );
+                        let value = self.value_expr(*value);
+                        self.ctx.runtime.primitive_cast(self.db, value, from_ty)
+                    }
+                    CastKind::Untag => {
+                        debug_assert!(from_ty.is_enum(self.db.upcast()));
+                        let value = self.value_expr(*value);
+                        let offset = literal_expression! {(from_ty.enum_data_offset(self.db.upcast(), SLOT_SIZE))};
+                        expression! {add([value], [offset])}
+                    }
+                };
+
                 self.assign_inst_result(inst, result, *to)
             }
 
