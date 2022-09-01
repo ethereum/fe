@@ -3,7 +3,10 @@ use fe_mir::{
         domtree::DFSet, loop_tree::LoopId, post_domtree::PostIDom, ControlFlowGraph, DomTree,
         LoopTree, PostDomTree,
     },
-    ir::{inst::BranchInfo, BasicBlockId, FunctionBody, InstId, ValueId},
+    ir::{
+        inst::{BranchInfo, SwitchTable},
+        BasicBlockId, FunctionBody, InstId, ValueId,
+    },
 };
 use fxhash::FxHashSet;
 
@@ -15,10 +18,19 @@ pub(super) enum StructuralInst {
         then: Vec<StructuralInst>,
         else_: Vec<StructuralInst>,
     },
+
+    Switch {
+        scrutinee: ValueId,
+        table: Vec<(ValueId, Vec<StructuralInst>)>,
+        default: Option<Vec<StructuralInst>>,
+    },
+
     For {
         body: Vec<StructuralInst>,
     },
+
     Break,
+
     Continue,
 }
 
@@ -77,7 +89,7 @@ impl<'a> InstSerializer<'a> {
                         if self
                             .scope
                             .as_ref()
-                            .map(|scope| scope.if_merge_block() != Some(exit))
+                            .map(|scope| scope.branch_merge_block() != Some(exit))
                             .unwrap_or(true) =>
                     {
                         self.serialize_block(exit, order);
@@ -107,6 +119,20 @@ impl<'a> InstSerializer<'a> {
                 else_,
                 merge_block,
             } => self.serialize_if_terminator(cond, *then, *else_, merge_block, order),
+
+            TerminatorInfo::Switch {
+                scrutinee,
+                table,
+                default,
+                merge_block,
+            } => self.serialize_switch_terminator(
+                scrutinee,
+                table,
+                default.map(|value| *value),
+                merge_block,
+                order,
+            ),
+
             TerminatorInfo::ToMergeBlock => {}
             TerminatorInfo::Continue => order.push(StructuralInst::Continue),
             TerminatorInfo::Break => order.push(StructuralInst::Break),
@@ -126,21 +152,9 @@ impl<'a> InstSerializer<'a> {
         let mut then_body = vec![];
         let mut else_body = vec![];
 
-        self.enter_if_scope(merge_block);
-        let mut serialize_dest =
-            |dest_info, body: &mut Vec<StructuralInst>, merge_block| match dest_info {
-                TerminatorInfo::Break => body.push(StructuralInst::Break),
-                TerminatorInfo::Continue => body.push(StructuralInst::Continue),
-                TerminatorInfo::ToMergeBlock => {}
-                TerminatorInfo::FallThrough(dest) => {
-                    if Some(dest) != merge_block {
-                        self.serialize_block(dest, body);
-                    }
-                }
-                _ => unreachable!(),
-            };
-        serialize_dest(then, &mut then_body, merge_block);
-        serialize_dest(else_, &mut else_body, merge_block);
+        self.enter_branch_scope(merge_block);
+        self.serialize_branch_dest(then, &mut then_body, merge_block);
+        self.serialize_branch_dest(else_, &mut else_body, merge_block);
         self.exit_scope();
 
         order.push(StructuralInst::If {
@@ -153,6 +167,61 @@ impl<'a> InstSerializer<'a> {
         }
     }
 
+    fn serialize_switch_terminator(
+        &mut self,
+        scrutinee: ValueId,
+        table: Vec<(ValueId, TerminatorInfo)>,
+        default: Option<TerminatorInfo>,
+        merge_block: Option<BasicBlockId>,
+        order: &mut Vec<StructuralInst>,
+    ) {
+        self.enter_branch_scope(merge_block);
+
+        let mut serialized_table = Vec::with_capacity(table.len());
+        for (value, dest) in table {
+            let mut body = vec![];
+            self.serialize_branch_dest(dest, &mut body, merge_block);
+            serialized_table.push((value, body));
+        }
+
+        let serialized_default = default.map(|dest| {
+            let mut body = vec![];
+            self.serialize_branch_dest(dest, &mut body, merge_block);
+            body
+        });
+
+        order.push(StructuralInst::Switch {
+            scrutinee,
+            table: serialized_table,
+            default: serialized_default,
+        });
+
+        self.exit_scope();
+
+        if let Some(merge_block) = merge_block {
+            self.serialize_block(merge_block, order);
+        }
+    }
+
+    fn serialize_branch_dest(
+        &mut self,
+        dest: TerminatorInfo,
+        body: &mut Vec<StructuralInst>,
+        merge_block: Option<BasicBlockId>,
+    ) {
+        match dest {
+            TerminatorInfo::Break => body.push(StructuralInst::Break),
+            TerminatorInfo::Continue => body.push(StructuralInst::Continue),
+            TerminatorInfo::ToMergeBlock => {}
+            TerminatorInfo::FallThrough(dest) => {
+                if Some(dest) != merge_block {
+                    self.serialize_block(dest, body);
+                }
+            }
+            _ => unreachable!(),
+        };
+    }
+
     fn enter_loop_scope(&mut self, lp: LoopId, header: BasicBlockId, exit: Option<BasicBlockId>) {
         let kind = ScopeKind::Loop { lp, header, exit };
         let current_scope = std::mem::take(&mut self.scope);
@@ -162,8 +231,8 @@ impl<'a> InstSerializer<'a> {
         });
     }
 
-    fn enter_if_scope(&mut self, merge_block: Option<BasicBlockId>) {
-        let kind = ScopeKind::If { merge_block };
+    fn enter_branch_scope(&mut self, merge_block: Option<BasicBlockId>) {
+        let kind = ScopeKind::Branch { merge_block };
         let current_scope = std::mem::take(&mut self.scope);
         self.scope = Some(Scope {
             kind,
@@ -239,19 +308,21 @@ impl<'a> InstSerializer<'a> {
     fn analyze_terminator(&self, inst: InstId) -> TerminatorInfo {
         debug_assert!(self.body.store.is_terminator(inst));
 
+        let inst_block = self.body.order.inst_block(inst);
         match self.body.store.branch_info(inst) {
             BranchInfo::Jump(dest) => self.analyze_jump(dest),
-            BranchInfo::Branch(cond, then, else_) => {
-                self.analyze_branch(self.body.order.inst_block(inst), cond, then, else_)
+
+            BranchInfo::Branch(cond, then, else_) => self.analyze_if(inst_block, cond, then, else_),
+
+            BranchInfo::Switch(scrutinee, table, default) => {
+                self.analyze_switch(inst_block, scrutinee, table, default)
             }
-            BranchInfo::Switch(..) => {
-                todo!()
-            }
+
             BranchInfo::NotBranch => TerminatorInfo::NormalInst(inst),
         }
     }
 
-    fn analyze_branch(
+    fn analyze_if(
         &self,
         block: BasicBlockId,
         cond: ValueId,
@@ -261,34 +332,13 @@ impl<'a> InstSerializer<'a> {
         let then = Box::new(self.analyze_dest(then_bb));
         let else_ = Box::new(self.analyze_dest(else_bb));
 
-        let cand_for_merge_bb = |bb| {
-            if self.domtree.dominates(bb, block) {
-                return None;
-            }
+        let then_cands = self.find_merge_block_candidates(block, then_bb);
+        let else_cands = self.find_merge_block_candidates(block, else_bb);
+        debug_assert!(then_cands.len() < 2);
+        debug_assert!(else_cands.len() < 2);
 
-            // a block `cand` can be a candidate of a `merge` block iff
-            // 1. `cand` is a dominance frontier of `bb`.
-            // 2. `cand` is NOT a dominator of `bb`.
-            // 3. `cand` is NOT a "merge" block of parent `if`.
-            // 4. `cand` is NOT a "loop_exit" block of parent `loop`.
-            let mut cands = self.df.frontiers(bb)?.filter(|cand| {
-                !self.domtree.dominates(*cand, bb)
-                    && Some(*cand)
-                        != self
-                            .scope
-                            .as_ref()
-                            .and_then(Scope::if_merge_block_recursive)
-                    && Some(*cand) != self.scope.as_ref().and_then(Scope::loop_exit_recursive)
-            });
-
-            let cand = cands.next();
-            // Assert the number of candidates is at most one.
-            debug_assert!(cands.next().is_none());
-            cand
-        };
-
-        let merge_block = match (cand_for_merge_bb(then_bb), cand_for_merge_bb(else_bb)) {
-            (Some(then_cand), Some(else_cand)) => {
+        let merge_block = match (then_cands.as_slice(), else_cands.as_slice()) {
+            (&[then_cand], &[else_cand]) => {
                 if then_cand == else_cand {
                     Some(then_cand)
                 } else {
@@ -296,7 +346,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (Some(cand), None) => {
+            (&[cand], []) => {
                 if cand == else_bb {
                     Some(cand)
                 } else {
@@ -304,7 +354,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (None, Some(cand)) => {
+            ([], &[cand]) => {
                 if cand == then_bb {
                     Some(cand)
                 } else {
@@ -312,7 +362,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (None, None) => match self.pd_tree.post_idom(block) {
+            ([], []) => match self.pd_tree.post_idom(block) {
                 PostIDom::Block(block) => {
                     if let Some(lp) = self.scope.as_ref().and_then(Scope::loop_recursive) {
                         if self.loop_tree.is_block_in_loop(block, lp) {
@@ -326,6 +376,8 @@ impl<'a> InstSerializer<'a> {
                 }
                 _ => None,
             },
+
+            (_, _) => unreachable!(),
         };
 
         TerminatorInfo::If {
@@ -333,6 +385,68 @@ impl<'a> InstSerializer<'a> {
             then,
             else_,
             merge_block,
+        }
+    }
+
+    fn analyze_switch(
+        &self,
+        block: BasicBlockId,
+        scrutinee: ValueId,
+        table: &SwitchTable,
+        default: Option<BasicBlockId>,
+    ) -> TerminatorInfo {
+        let mut cands = FxHashSet::default();
+        let mut analyzed_table = Vec::with_capacity(table.len());
+        for (value, dest) in table.iter() {
+            analyzed_table.push((value, self.analyze_dest(dest)));
+            cands.extend(self.find_merge_block_candidates(block, dest));
+        }
+
+        let analyzed_default = default.map(|dest| {
+            cands.extend(self.find_merge_block_candidates(block, dest));
+            Box::new(self.analyze_dest(dest))
+        });
+
+        let merge_block = cands
+            .iter()
+            .max_by_key(|&cand| self.cfg.preds(*cand).len())
+            .copied();
+
+        TerminatorInfo::Switch {
+            scrutinee,
+            table: analyzed_table,
+            default: analyzed_default,
+            merge_block,
+        }
+    }
+
+    fn find_merge_block_candidates(
+        &self,
+        branch_inst_bb: BasicBlockId,
+        branch_dest_bb: BasicBlockId,
+    ) -> Vec<BasicBlockId> {
+        if self.domtree.dominates(branch_dest_bb, branch_inst_bb) {
+            return vec![];
+        }
+
+        // a block `cand` can be a candidate of a `merge` block iff
+        // 1. `cand` is a dominance frontier of `branch_dest_bb`.
+        // 2. `cand` is NOT a dominator of `branch_dest_bb`.
+        // 3. `cand` is NOT a "merge" block of parent `if` or `switch`.
+        // 4. `cand` is NOT a "loop_exit" block of parent `loop`.
+        match self.df.frontiers(branch_dest_bb) {
+            Some(cands) => cands
+                .filter(|cand| {
+                    !self.domtree.dominates(*cand, branch_dest_bb)
+                        && Some(*cand)
+                            != self
+                                .scope
+                                .as_ref()
+                                .and_then(Scope::branch_merge_block_recursive)
+                        && Some(*cand) != self.scope.as_ref().and_then(Scope::loop_exit_recursive)
+                })
+                .collect(),
+            None => vec![],
         }
     }
 
@@ -347,7 +461,7 @@ impl<'a> InstSerializer<'a> {
                     TerminatorInfo::Continue
                 } else if Some(dest) == scope.loop_exit_recursive() {
                     TerminatorInfo::Break
-                } else if Some(dest) == scope.if_merge_block_recursive() {
+                } else if Some(dest) == scope.branch_merge_block_recursive() {
                     TerminatorInfo::ToMergeBlock
                 } else {
                     TerminatorInfo::FallThrough(dest)
@@ -371,7 +485,7 @@ enum ScopeKind {
         header: BasicBlockId,
         exit: Option<BasicBlockId>,
     },
-    If {
+    Branch {
         merge_block: Option<BasicBlockId>,
     },
 }
@@ -405,19 +519,19 @@ impl Scope {
         }
     }
 
-    fn if_merge_block(&self) -> Option<BasicBlockId> {
+    fn branch_merge_block(&self) -> Option<BasicBlockId> {
         match self.kind {
-            ScopeKind::If { merge_block } => merge_block,
+            ScopeKind::Branch { merge_block } => merge_block,
             _ => None,
         }
     }
 
-    fn if_merge_block_recursive(&self) -> Option<BasicBlockId> {
+    fn branch_merge_block_recursive(&self) -> Option<BasicBlockId> {
         match self.kind {
-            ScopeKind::If {
+            ScopeKind::Branch {
                 merge_block: Some(merge_block),
             } => Some(merge_block),
-            _ => self.parent.as_ref()?.if_merge_block_recursive(),
+            _ => self.parent.as_ref()?.branch_merge_block_recursive(),
         }
     }
 }
@@ -430,6 +544,14 @@ enum TerminatorInfo {
         else_: Box<TerminatorInfo>,
         merge_block: Option<BasicBlockId>,
     },
+
+    Switch {
+        scrutinee: ValueId,
+        table: Vec<(ValueId, TerminatorInfo)>,
+        default: Option<Box<TerminatorInfo>>,
+        merge_block: Option<BasicBlockId>,
+    },
+
     ToMergeBlock,
     Continue,
     Break,

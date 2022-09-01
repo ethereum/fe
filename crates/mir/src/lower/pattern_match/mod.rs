@@ -209,7 +209,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
         match value_ty {
             _ if value_ty.is_enum(self.helper.db) => {
                 let disc_ty = value_ty.enum_disc_type(self.helper.db);
-                let disc_index = self.helper.make_u256_imm(1);
+                let disc_index = self.helper.make_u256_imm(0);
                 let inst =
                     self.builder()
                         .aggregate_access(value, vec![disc_index], SourceInfo::dummy());

@@ -147,6 +147,16 @@ impl SwitchTable {
         self.values.iter().copied().zip(self.blocks.iter().copied())
     }
 
+    pub fn len(&self) -> usize {
+        debug_assert!(self.values.len() == self.blocks.len());
+        self.values.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        debug_assert!(self.values.len() == self.blocks.len());
+        self.values.is_empty()
+    }
+
     pub fn add_arm(&mut self, value: ValueId, block: BasicBlockId) {
         self.values.push(value);
         self.blocks.push(block);

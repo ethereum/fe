@@ -151,7 +151,7 @@ impl BodyBuilder {
 
     pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
         let kind = InstKind::Cast {
-            kind: CastKind::Primitive,
+            kind: CastKind::Untag,
             value,
             to: result_ty,
         };

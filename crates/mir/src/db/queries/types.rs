@@ -50,6 +50,11 @@ impl TypeId {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
+            TypeKind::Enum(_) => {
+                let index = expect_projection_index(access);
+                debug_assert_eq!(index, 0);
+                self.projection_ty_imm(db, 0)
+            }
             other => panic!("{:?} can't project onto the `access`", other),
         }
     }
@@ -76,6 +81,10 @@ impl TypeId {
             TypeKind::Tuple(def) => def.items[index],
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
             TypeKind::Event(def) => def.fields[index].1,
+            TypeKind::Enum(_) => {
+                debug_assert_eq!(index, 0);
+                self.enum_disc_type(db)
+            }
             other => panic!("{:?} can't project onto the `index`", other),
         }
     }

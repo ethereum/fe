@@ -4,13 +4,16 @@ use fe_common::numeric::to_hex_str;
 
 use fe_abi::function::{AbiFunction, AbiFunctionType};
 use fe_common::db::Upcast;
-use fe_mir::ir::{
-    self,
-    constant::ConstantValue,
-    inst::{BinOp, CallType, CastKind, InstKind, UnOp},
-    value::AssignableValue,
-    Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind, Value,
-    ValueId,
+use fe_mir::{
+    ir::{
+        self,
+        constant::ConstantValue,
+        inst::{BinOp, CallType, CastKind, InstKind, UnOp},
+        value::AssignableValue,
+        Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind,
+        Value, ValueId,
+    },
+    pretty_print::PrettyPrint,
 };
 use fxhash::FxHashMap;
 use smol_str::SmolStr;
@@ -135,6 +138,14 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 let if_block = self.lower_if(cond, then, else_);
                 self.sink.push(if_block)
             }
+            StructuralInst::Switch {
+                scrutinee,
+                table,
+                default,
+            } => {
+                let switch_block = self.lower_switch(scrutinee, table, default);
+                self.sink.push(switch_block)
+            }
             StructuralInst::For { body } => {
                 let for_block = self.lower_for(body);
                 self.sink.push(for_block)
@@ -178,6 +189,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                         self.ctx.runtime.primitive_cast(self.db, value, from_ty)
                     }
                     CastKind::Untag => {
+                        let from_ty = from_ty.deref(self.db.upcast());
                         debug_assert!(from_ty.is_enum(self.db.upcast()));
                         let value = self.value_expr(*value);
                         let offset = literal_expression! {(from_ty.enum_data_offset(self.db.upcast(), SLOT_SIZE))};
@@ -436,25 +448,60 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         else_: Vec<StructuralInst>,
     ) -> yul::Statement {
         let cond = self.value_expr(cond);
-        let mut then_stmts = vec![];
-        let mut else_stmts = vec![];
-
-        for inst in then {
-            std::mem::swap(&mut self.sink, &mut then_stmts);
-            self.lower_structural_inst(inst);
-            std::mem::swap(&mut self.sink, &mut then_stmts);
-        }
-        for inst in else_ {
-            std::mem::swap(&mut self.sink, &mut else_stmts);
-            self.lower_structural_inst(inst);
-            std::mem::swap(&mut self.sink, &mut else_stmts);
-        }
+        let then_body = self.lower_branch_body(then);
+        let else_body = self.lower_branch_body(else_);
 
         switch! {
             switch ([cond])
-            (case 1 {[then_stmts...]})
-            (case 0 {[else_stmts...]})
+            (case 1 {[then_body...]})
+            (case 0 {[else_body...]})
         }
+    }
+
+    fn lower_switch(
+        &mut self,
+        scrutinee: ValueId,
+        table: Vec<(ValueId, Vec<StructuralInst>)>,
+        default: Option<Vec<StructuralInst>>,
+    ) -> yul::Statement {
+        let scrutinee = self.value_expr(scrutinee);
+
+        let mut cases = vec![];
+        for (value, insts) in table {
+            let value = self.value_expr(value);
+            let value = match value {
+                yul::Expression::Literal(lit) => lit,
+                _ => panic!("switch table values must be literal"),
+            };
+
+            let body = self.lower_branch_body(insts);
+            cases.push(yul::Case {
+                literal: Some(value),
+                block: block! { [body...] },
+            })
+        }
+
+        if let Some(insts) = default {
+            let block = self.lower_branch_body(insts);
+            cases.push(case! {
+                default {[block...]}
+            });
+        }
+
+        switch! {
+            switch ([scrutinee])
+            [cases...]
+        }
+    }
+
+    fn lower_branch_body(&mut self, insts: Vec<StructuralInst>) -> Vec<yul::Statement> {
+        let mut body = vec![];
+        std::mem::swap(&mut self.sink, &mut body);
+        for inst in insts {
+            self.lower_structural_inst(inst);
+        }
+        std::mem::swap(&mut self.sink, &mut body);
+        body
     }
 
     fn lower_for(&mut self, body: Vec<StructuralInst>) -> yul::Statement {
