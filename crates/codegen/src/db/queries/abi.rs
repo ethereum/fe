@@ -54,7 +54,14 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
         AbiFunctionType::Function
     };
 
-    AbiFunction::new(func_type, name.to_string(), args, ret_ty, sig.has_self, sig.has_ctx)
+    AbiFunction::new(
+        func_type,
+        name.to_string(),
+        args,
+        ret_ty,
+        sig.has_self,
+        sig.has_ctx,
+    )
 }
 
 pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {

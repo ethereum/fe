@@ -90,7 +90,7 @@ pub fn lower_monomorphized_func_signature(
         analyzer_func_id: func,
         linkage,
         has_self,
-        has_ctx
+        has_ctx,
     };
 
     db.mir_intern_function(sig.into())

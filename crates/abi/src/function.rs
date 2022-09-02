@@ -150,7 +150,7 @@ mod tests {
             vec![("arg1".into(), i32_ty), ("arg2".into(), tuple_ty)],
             Some(u64_ty),
             has_self,
-            has_ctx
+            has_ctx,
         )
     }
 
@@ -221,17 +221,15 @@ mod tests {
         )
     }
 
-
-    #[test] 
+    #[test]
     fn test_state_mutability() {
         let pure_func = test_func(false, false);
-        assert_eq!(pure_func.state_mutability, StateMutability::Pure);   
+        assert_eq!(pure_func.state_mutability, StateMutability::Pure);
 
         let impure_func = test_func(true, false);
-        assert_eq!(impure_func.state_mutability, StateMutability::Payable); 
+        assert_eq!(impure_func.state_mutability, StateMutability::Payable);
     }
 
-    
     #[test]
     fn func_selector() {
         let func = test_func(true, true);

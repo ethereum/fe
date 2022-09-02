@@ -28,7 +28,7 @@ pub struct FunctionSignature {
     pub analyzer_func_id: analyzer_items::FunctionId,
     pub linkage: Linkage,
     pub has_self: bool,
-    pub has_ctx: bool
+    pub has_ctx: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
