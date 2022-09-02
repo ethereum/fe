@@ -53,7 +53,7 @@ fn legalize_unit_construct(db: &dyn CodegenDb, cursor: &mut BodyCursor, inst: In
     let should_remove = match &cursor.body().store.inst_data(inst).kind {
         InstKind::Declare { local } => is_value_zst(db, cursor.body(), *local),
         InstKind::AggregateConstruct { ty, .. } => ty.deref(db.upcast()).is_zero_sized(db.upcast()),
-        InstKind::AggregateAccess { .. } | InstKind::MapAccess { .. } => {
+        InstKind::AggregateAccess { .. } | InstKind::MapAccess { .. } | InstKind::Cast { .. } => {
             let result_value = cursor.body().store.inst_result(inst).unwrap();
             is_lvalue_zst(db, cursor.body(), result_value)
         }

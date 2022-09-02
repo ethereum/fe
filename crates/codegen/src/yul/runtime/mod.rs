@@ -386,7 +386,10 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         let args = std::iter::once(ptr).chain(args.into_iter()).collect();
         let legalized_ty = db.codegen_legalized_type(ptr_ty);
         if deref_ty.is_enum(db.upcast()) {
-            let name = format!("enum_init_{}_{}", ptr_ty.0, arg_tys[1].0);
+            let mut name = format!("enum_init_{}", ptr_ty.0);
+            for ty in &arg_tys {
+                write!(&mut name, "_{}", ty.0).unwrap();
+            }
             self.create_then_call(&name, args, |provider| {
                 data::make_enum_init(provider, db, &name, legalized_ty, arg_tys)
             })

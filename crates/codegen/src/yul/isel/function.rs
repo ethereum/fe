@@ -1,4 +1,6 @@
 #![allow(unused)]
+use std::thread::Scope;
+
 use super::{context::Context, inst_order::InstSerializer};
 use fe_common::numeric::to_hex_str;
 
@@ -47,7 +49,7 @@ pub fn lower_function(
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
     ctx: &'a mut Context,
-    value_map: FxHashMap<ValueId, yul::Identifier>,
+    value_map: ScopedValueMap,
     func: FunctionId,
     sig: &'a FunctionSignature,
     body: &'a FunctionBody,
@@ -63,7 +65,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,
     ) -> Self {
-        let mut value_map = FxHashMap::default();
+        let mut value_map = ScopedValueMap::default();
         // Register arguments to value_map.
         for &value in body.store.locals() {
             match body.store.value_data(value) {
@@ -448,8 +450,14 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         else_: Vec<StructuralInst>,
     ) -> yul::Statement {
         let cond = self.value_expr(cond);
+
+        self.enter_scope();
         let then_body = self.lower_branch_body(then);
+        self.leave_scope();
+
+        self.enter_scope();
         let else_body = self.lower_branch_body(else_);
+        self.leave_scope();
 
         switch! {
             switch ([cond])
@@ -474,7 +482,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 _ => panic!("switch table values must be literal"),
             };
 
+            self.enter_scope();
             let body = self.lower_branch_body(insts);
+            self.leave_scope();
             cases.push(yul::Case {
                 literal: Some(value),
                 block: block! { [body...] },
@@ -742,7 +752,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
     fn declare_assignable_value(&mut self, value: &AssignableValue) {
         match value {
-            AssignableValue::Value(value) if !self.value_map.contains_key(value) => {
+            AssignableValue::Value(value) if !self.value_map.contains(*value) => {
                 self.declare_value(*value);
             }
             _ => {}
@@ -750,18 +760,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn declare_value(&mut self, value: ValueId) {
-        let var = match self.body.store.value_data(value) {
-            Value::Local(local) => {
-                if local.is_tmp {
-                    YulVariable::new(format! {
-                    "$tmp_{}", value.index()})
-                } else {
-                    YulVariable::new(local.name.as_str())
-                }
-            }
-            Value::Temporary { .. } => YulVariable::new(format!("$tmp_{}", value.index())),
-            _ => unreachable!(),
-        };
+        let var = YulVariable::new(format!("$tmp_{}", value.index()));
         self.value_map.insert(value, var.ident());
         let value_ty = self.body.store.value_ty(value);
 
@@ -786,7 +785,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn value_expr(&mut self, value: ValueId) -> yul::Expression {
         match self.body.store.value_data(value) {
             Value::Local(_) | Value::Temporary { .. } => {
-                let ident = &self.value_map[&value];
+                let ident = self.value_map.lookup(value).unwrap();
                 literal_expression! {(ident)}
             }
             Value::Immediate { imm, .. } => {
@@ -815,7 +814,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn value_ident(&self, value: ValueId) -> yul::Identifier {
-        self.value_map[&value].clone()
+        self.value_map.lookup(value).unwrap().clone()
     }
 
     fn make_tmp(&mut self, tmp: ValueId) -> yul::Identifier {
@@ -940,6 +939,50 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             .value_ty(value)
             .deref(self.db.upcast())
             .size_of(self.db.upcast(), SLOT_SIZE)
+    }
+
+    fn enter_scope(&mut self) {
+        let value_map = std::mem::take(&mut self.value_map);
+        self.value_map = ScopedValueMap::with_parent(value_map);
+    }
+
+    fn leave_scope(&mut self) {
+        let value_map = std::mem::take(&mut self.value_map);
+        self.value_map = value_map.into_parent();
+    }
+}
+
+#[derive(Debug, Default)]
+struct ScopedValueMap {
+    parent: Option<Box<ScopedValueMap>>,
+    map: FxHashMap<ValueId, yul::Identifier>,
+}
+
+impl ScopedValueMap {
+    fn lookup(&self, value: ValueId) -> Option<&yul::Identifier> {
+        match self.map.get(&value) {
+            Some(ident) => Some(ident),
+            None => self.parent.as_ref().and_then(|p| p.lookup(value)),
+        }
+    }
+
+    fn with_parent(parent: ScopedValueMap) -> Self {
+        Self {
+            parent: Some(parent.into()),
+            ..Self::default()
+        }
+    }
+
+    fn into_parent(self) -> Self {
+        *self.parent.unwrap()
+    }
+
+    fn insert(&mut self, value: ValueId, ident: yul::Identifier) {
+        self.map.insert(value, ident);
+    }
+
+    fn contains(&self, value: ValueId) -> bool {
+        self.lookup(value).is_some()
     }
 }
 

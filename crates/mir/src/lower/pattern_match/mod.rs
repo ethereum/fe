@@ -5,6 +5,7 @@ use fe_parser::{
 };
 use fxhash::FxHashMap;
 use id_arena::{Arena, Id};
+use smol_str::SmolStr;
 
 use crate::ir::{
     body_builder::BodyBuilder, inst::SwitchTable, BasicBlockId, SourceInfo, TypeId, ValueId,
@@ -39,6 +40,8 @@ struct DecisionTreeLowerHelper<'db, 'a, 'b> {
     helper: &'b mut BodyLowerHelper<'db, 'a>,
     scopes: Arena<Scope>,
     current_scope: ScopeId,
+    root_block: BasicBlockId,
+    declared_vars: FxHashMap<(SmolStr, usize), ValueId>,
     arms: &'b [Node<MatchArm>],
     lowered_arms: FxHashMap<usize, BasicBlockId>,
     match_exit: BasicBlockId,
@@ -57,10 +60,14 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
         let mut scopes = Arena::new();
         let current_scope = scopes.alloc(scope);
 
+        let root_block = helper.builder.current_block();
+
         DecisionTreeLowerHelper {
             helper,
             scopes,
             current_scope,
+            root_block,
+            declared_vars: FxHashMap::default(),
             arms,
             lowered_arms: FxHashMap::default(),
             match_exit,
@@ -85,7 +92,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
         for (var, occurrence) in leaf.binds {
             let occurrence_value = self.resolve_occurrence(&occurrence);
             let ty = self.builder().value_ty(occurrence_value);
-            let var_value = self.helper.declare_var(&var, ty, SourceInfo::dummy());
+            let var_value = self.declare_or_use_var(&var, ty);
 
             let inst = self.builder().bind(occurrence_value, SourceInfo::dummy());
             self.builder().map_result(inst, var_value.into());
@@ -217,6 +224,20 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
             }
 
             _ => unreachable!(),
+        }
+    }
+
+    fn declare_or_use_var(&mut self, var: &(SmolStr, usize), ty: TypeId) -> ValueId {
+        if let Some(value) = self.declared_vars.get(var) {
+            *value
+        } else {
+            let current_block = self.builder().current_block();
+            let root_block = self.root_block;
+            self.builder().move_to_block_top(root_block);
+            let value = self.helper.declare_var(&var.0, ty, SourceInfo::dummy());
+            self.builder().move_to_block(current_block);
+            self.declared_vars.insert(var.clone(), value);
+            value
         }
     }
 

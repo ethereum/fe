@@ -37,10 +37,11 @@ impl PatternMatrix {
         ty: TypeId,
     ) -> Self {
         let mut rows = Vec::with_capacity(arms.len());
-        for arm in arms {
+        for (i, arm) in arms.iter().enumerate() {
             rows.push(PatternRowVec::new(vec![simplify_pattern(
                 scope,
                 &arm.kind.pat.kind,
+                i,
                 ty,
             )]));
         }
@@ -222,7 +223,7 @@ impl SimplifiedPattern {
         Self { kind, ty }
     }
 
-    pub fn wildcard(bind: Option<SmolStr>, ty: TypeId) -> Self {
+    pub fn wildcard(bind: Option<(SmolStr, usize)>, ty: TypeId) -> Self {
         Self::new(SimplifiedPatternKind::WildCard(bind), ty)
     }
 
@@ -235,7 +236,7 @@ impl DisplayWithDb for SimplifiedPattern {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             SimplifiedPatternKind::WildCard(None) => write!(f, "_"),
-            SimplifiedPatternKind::WildCard(Some(name)) => write!(f, "{name}"),
+            SimplifiedPatternKind::WildCard(Some((name, _))) => write!(f, "{name}"),
             SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Enum(id),
                 fields,
@@ -270,7 +271,7 @@ impl DisplayWithDb for SimplifiedPattern {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SimplifiedPatternKind {
-    WildCard(Option<SmolStr>),
+    WildCard(Option<(SmolStr, usize)>),
     Constructor {
         kind: ConstructorKind,
         fields: Vec<SimplifiedPattern>,
@@ -524,7 +525,12 @@ fn ctor_variant_num(db: &dyn AnalyzerDb, ty: TypeId) -> usize {
     }
 }
 
-fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> SimplifiedPattern {
+fn simplify_pattern(
+    scope: &BlockScope,
+    pat: &Pattern,
+    arm_idx: usize,
+    ty: TypeId,
+) -> SimplifiedPattern {
     let kind = match pat {
         Pattern::WildCard => SimplifiedPatternKind::WildCard(None),
 
@@ -535,7 +541,7 @@ fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> Simplified
             },
             _ => {
                 debug_assert!(path.kind.segments.len() == 1);
-                SimplifiedPatternKind::WildCard(Some(path.kind.segments[0].kind.clone()))
+                SimplifiedPatternKind::WildCard(Some((path.kind.segments[0].kind.clone(), arm_idx)))
             }
         },
 
@@ -553,14 +559,14 @@ fn simplify_pattern(scope: &BlockScope, pat: &Pattern, ty: TypeId) -> Simplified
                 fields: elts
                     .iter()
                     .zip(fields.into_iter())
-                    .map(|(pat, ty)| simplify_pattern(scope, &pat.kind, ty))
+                    .map(|(pat, ty)| simplify_pattern(scope, &pat.kind, arm_idx, ty))
                     .collect(),
             }
         }
 
         Pattern::Or(pats) => SimplifiedPatternKind::Or(
             pats.iter()
-                .map(|pat| simplify_pattern(scope, &pat.kind, ty))
+                .map(|pat| simplify_pattern(scope, &pat.kind, arm_idx, ty))
                 .collect(),
         ),
     };

@@ -49,7 +49,7 @@ impl DecisionTree {
 #[derive(Debug)]
 pub struct LeafNode {
     pub arm_idx: usize,
-    pub binds: IndexMap<SmolStr, Occurrence>,
+    pub binds: IndexMap<(SmolStr, usize), Occurrence>,
 }
 
 impl LeafNode {
@@ -342,7 +342,7 @@ impl SimplifiedArmMatrix {
 struct SimplifiedArm {
     pat_vec: PatternRowVec,
     body: usize,
-    binds: IndexMap<SmolStr, Occurrence>,
+    binds: IndexMap<(SmolStr, usize), Occurrence>,
 }
 
 impl SimplifiedArm {
@@ -398,7 +398,7 @@ impl SimplifiedArm {
             .collect()
     }
 
-    fn new_binds(&self, occurrence: &Occurrence) -> IndexMap<SmolStr, Occurrence> {
+    fn new_binds(&self, occurrence: &Occurrence) -> IndexMap<(SmolStr, usize), Occurrence> {
         let mut binds = self.binds.clone();
         if let Some(SimplifiedPatternKind::WildCard(Some(bind))) =
             self.pat_vec.head().map(|pat| &pat.kind)
@@ -408,7 +408,7 @@ impl SimplifiedArm {
         binds
     }
 
-    fn finalize_binds(self, occurrences: &[Occurrence]) -> IndexMap<SmolStr, Occurrence> {
+    fn finalize_binds(self, occurrences: &[Occurrence]) -> IndexMap<(SmolStr, usize), Occurrence> {
         debug_assert!(self.len() == occurrences.len());
 
         let mut binds = self.binds;

@@ -74,6 +74,10 @@ impl BodyBuilder {
         self.loc = CursorLocation::BlockBottom(block)
     }
 
+    pub fn move_to_block_top(&mut self, block: BasicBlockId) {
+        self.loc = CursorLocation::BlockTop(block)
+    }
+
     pub fn make_unit(&mut self, unit_ty: TypeId) -> ValueId {
         self.body.store.store_value(Value::Unit { ty: unit_ty })
     }

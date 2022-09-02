@@ -247,7 +247,9 @@ pub(super) fn make_aggregate_init(
     let mut body = vec![];
     for (idx, field_arg) in iter_field_args().enumerate() {
         let field_arg_ty = arg_tys[idx];
-        let field_ty = inner_ty.projection_ty_imm(db.upcast(), idx);
+        let field_ty = inner_ty
+            .projection_ty_imm(db.upcast(), idx)
+            .deref(db.upcast());
         let field_ty_size = field_ty.size_of(db.upcast(), SLOT_SIZE);
         let field_ptr_ty = make_ptr(db, field_ty, is_sptr);
         let elem_offset =
@@ -327,7 +329,7 @@ pub(super) fn make_enum_init(
         db,
         ptr.expr(),
         enum_data().map(|arg| arg.expr()).collect(),
-        data_ptr_ty, arg_tys.iter().copied().skip(1).collect()))]
+        data_ptr_ty, arg_tys.iter().skip(1).copied().collect()))]
     };
 
     let enum_data_args: Vec<_> = enum_data().map(|var| var.ident()).collect();

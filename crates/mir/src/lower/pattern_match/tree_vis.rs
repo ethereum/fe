@@ -126,7 +126,7 @@ enum Node {
     Leaf {
         arm_idx: usize,
         #[allow(unused)]
-        binds: IndexMap<SmolStr, Occurrence>,
+        binds: IndexMap<(SmolStr, usize), Occurrence>,
     },
     Switch(Occurrence),
 }
