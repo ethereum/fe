@@ -482,7 +482,7 @@ impl<'a> InstSerializer<'a> {
         let parent_merge = self
             .scope
             .as_ref()
-            .and_then(|s| s.branch_merge_block_recursive());
+            .and_then(Scope::branch_merge_block_recursive);
         for dest in dests {
             if self
                 .df

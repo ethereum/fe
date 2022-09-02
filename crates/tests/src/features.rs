@@ -439,7 +439,6 @@ fn test_arrays() {
     case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
     case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
     case("for_loop_with_complex_elem_array.fe", &[], int_token(222)),
-    case("enum_match.fe", &[uint_token(1), uint_token(2)], uint_token(3)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
@@ -758,6 +757,55 @@ fn events() {
                 ("Addresses", &[addr_array]),
             ],
         );
+        assert_harness_gas_report!(harness);
+    })
+}
+
+#[test]
+fn enum_match() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "enum_match.fe",
+            "Foo",
+            &[uint_token(26), uint_token(42)],
+        );
+
+        harness.test_function(
+            &mut executor,
+            "simple_match",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "nested_match",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(&mut executor, "nested_match2", &[], Some(&uint_token(3)));
+
+        harness.test_function(&mut executor, "wild_card", &[], Some(&uint_token(0)));
+
+        harness.test_function(&mut executor, "match_in_if", &[], Some(&uint_token(3)));
+
+        harness.test_function(&mut executor, "match_in_loop", &[], Some(&uint_token(15)));
+
+        harness.test_function(
+            &mut executor,
+            "enum_storage",
+            &[uint_token(1), uint_token(2), bool_token(true)],
+            Some(&uint_token(3)),
+        );
+        // harness.test_function(
+        //     &mut executor,
+        //     "enum_storage",
+        //     &[uint_token(1), uint_token(2), bool_token(false)],
+        //     Some(&uint_token(100)),
+        // );
+
         assert_harness_gas_report!(harness);
     })
 }

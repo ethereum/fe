@@ -252,24 +252,24 @@ pub(super) fn make_aggregate_init(
             .deref(db.upcast());
         let field_ty_size = field_ty.size_of(db.upcast(), SLOT_SIZE);
         let field_ptr_ty = make_ptr(db, field_ty, is_sptr);
-        let elem_offset =
+        let field_offset =
             literal_expression! {(inner_ty.aggregate_elem_offset(db.upcast(), idx, SLOT_SIZE))};
 
-        let elem_ptr = expression! { add([ptr.expr()], [elem_offset] )};
+        let field_ptr = expression! { add([ptr.expr()], [field_offset] )};
         let copy_expr = if field_ty.is_aggregate(db.upcast()) || field_ty.is_string(db.upcast()) {
             // Call ptr copy function if field type is aggregate.
             debug_assert!(field_arg_ty.is_ptr(db.upcast()));
             provider.ptr_copy(
                 db,
                 field_arg.expr(),
-                elem_ptr,
+                field_ptr,
                 literal_expression! {(field_ty_size)},
                 field_arg_ty.is_sptr(db.upcast()),
                 is_sptr,
             )
         } else {
             // Call store function if field type is not aggregate.
-            provider.ptr_store(db, elem_ptr, field_arg.expr(), field_ptr_ty)
+            provider.ptr_store(db, field_ptr, field_arg.expr(), field_ptr_ty)
         };
         body.push(yul::Statement::Expression(copy_expr));
     }
@@ -310,7 +310,11 @@ pub(super) fn make_enum_init(
     };
 
     let tuple_def = TupleDef {
-        items: arg_tys.iter().copied().skip(1).collect(),
+        items: arg_tys
+            .iter()
+            .map(|ty| ty.deref(db.upcast()))
+            .skip(1)
+            .collect(),
     };
     let tuple_ty = db.mir_intern_type(
         Type {
