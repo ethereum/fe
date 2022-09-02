@@ -41,6 +41,7 @@ pub fn lower_monomorphized_func_signature(
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
     let has_self = func.takes_self(db.upcast());
+    let has_ctx = func.takes_ctx(db.upcast());
 
     if has_self {
         let self_ty = func.self_type(db.upcast()).unwrap();
@@ -89,6 +90,7 @@ pub fn lower_monomorphized_func_signature(
         analyzer_func_id: func,
         linkage,
         has_self,
+        has_ctx
     };
 
     db.mir_intern_function(sig.into())

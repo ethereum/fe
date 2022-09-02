@@ -1112,6 +1112,10 @@ impl FunctionSigId {
         self.signature(db).self_decl.is_some()
     }
 
+    pub fn takes_ctx(&self, db: &dyn AnalyzerDb) -> bool {
+        self.signature(db).ctx_decl.is_some()
+    }
+
     pub fn self_type(&self, db: &dyn AnalyzerDb) -> Option<types::TypeId> {
         match self.parent(db) {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
@@ -1274,6 +1278,11 @@ impl FunctionId {
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).takes_self(db)
     }
+
+    pub fn takes_ctx(&self, db: &dyn AnalyzerDb) -> bool {
+        self.sig(db).takes_ctx(db)
+    }
+
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.sig(db).self_span(db)
     }
