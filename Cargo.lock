@@ -636,6 +636,7 @@ dependencies = [
  "fe-common",
  "fe-mir",
  "fxhash",
+ "indexmap",
  "num-bigint",
  "salsa",
  "smol_str",
