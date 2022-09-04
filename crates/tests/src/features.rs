@@ -822,6 +822,25 @@ fn enum_match() {
 
         harness.test_function(
             &mut executor,
+            "rest_pattern_head",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+        harness.test_function(
+            &mut executor,
+            "rest_pattern_tail",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+        harness.test_function(
+            &mut executor,
+            "rest_pattern_middle",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(6)),
+        );
+
+        harness.test_function(
+            &mut executor,
             "enum_storage",
             &[uint_token(1), uint_token(2), bool_token(true)],
             Some(&uint_token(3)),

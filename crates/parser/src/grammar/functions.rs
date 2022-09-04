@@ -731,17 +731,26 @@ pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 }
 
 fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
-    if let Some(TokenKind::ParenOpen) = par.peek() {
-        let (elts, span) = parse_pattern_tuple(par)?;
-        return Ok(Node::new(Pattern::Tuple(elts), span));
-    } else if let Some(TokenKind::True) = par.peek() {
-        let span = par.next().unwrap().span;
-        let literal_pat = Node::new(LiteralPattern::Bool(true), span);
-        return Ok(Node::new(Pattern::Literal(literal_pat), span));
-    } else if let Some(TokenKind::False) = par.peek() {
-        let span = par.next().unwrap().span;
-        let literal_pat = Node::new(LiteralPattern::Bool(false), span);
-        return Ok(Node::new(Pattern::Literal(literal_pat), span));
+    match par.peek() {
+        Some(TokenKind::ParenOpen) => {
+            let (elts, span) = parse_pattern_tuple(par)?;
+            return Ok(Node::new(Pattern::Tuple(elts), span));
+        }
+        Some(TokenKind::True) => {
+            let span = par.next().unwrap().span;
+            let literal_pat = Node::new(LiteralPattern::Bool(true), span);
+            return Ok(Node::new(Pattern::Literal(literal_pat), span));
+        }
+        Some(TokenKind::False) => {
+            let span = par.next().unwrap().span;
+            let literal_pat = Node::new(LiteralPattern::Bool(false), span);
+            return Ok(Node::new(Pattern::Literal(literal_pat), span));
+        }
+        Some(TokenKind::DotDot) => {
+            let span = par.next().unwrap().span;
+            return Ok(Node::new(Pattern::Rest, span));
+        }
+        _ => {}
     }
 
     let mut pattern = parse_path_pattern_segment(par)?;

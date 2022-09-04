@@ -367,6 +367,8 @@ pub struct MatchArm {
 pub enum Pattern {
     /// Represents a wildcard pattern `_`.
     WildCard,
+    /// Rest pattern. e.g., `..`
+    Rest,
     /// Represents a literal pattern. e.g., `true`.
     Literal(Node<LiteralPattern>),
     /// Represents tuple destructuring pattern. e.g., `(x, y, z)`.
@@ -377,6 +379,12 @@ pub enum Pattern {
     PathTuple(Node<Path>, Vec<Node<Pattern>>),
     /// Represents or pattern. e.g., `EnumUnit | EnumTuple(_, _, _)`
     Or(Vec<Node<Pattern>>),
+}
+
+impl Pattern {
+    pub fn is_rest(&self) -> bool {
+        matches!(self, Pattern::Rest)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -1211,6 +1219,7 @@ impl fmt::Display for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::WildCard => write!(f, "_"),
+            Self::Rest => write!(f, ".."),
             Self::Literal(pat) => write!(f, "{}", pat.kind),
             Self::Path(path) => write!(f, "{}", path.kind),
             Self::PathTuple(path, elts) => {

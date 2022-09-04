@@ -544,88 +544,308 @@ note:
 note: 
     ┌─ enum_match.fe:150:5
     │  
-150 │ ╭     pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
-151 │ │         if b {
-152 │ │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
-153 │ │         } else {
+150 │ ╭     pub fn rest_pattern_head(x: u32, y: u256) -> u256 {
+151 │ │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+152 │ │         match pat {
+153 │ │             (.., MyEnum::Tuple(x1, y1)) => {
     · │
-164 │ │         }
-165 │ │     }
+159 │ │         }
+160 │ │     }
+    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+    ┌─ enum_match.fe:151:13
+    │
+151 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │             ^^^ (MyEnum, MyEnum, MyEnum, MyEnum)
+
+note: 
+    ┌─ enum_match.fe:151:54
+    │
+151 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                      ^^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^^                ^  ^ u256: Value
+    │                                                      │             │             │                           │   
+    │                                                      │             │             │                           u32: Value
+    │                                                      │             │             MyEnum: Memory
+    │                                                      │             MyEnum: Memory
+    │                                                      MyEnum: Memory
+
+note: 
+    ┌─ enum_match.fe:151:96
+    │
+151 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                                                                ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+    ┌─ enum_match.fe:151:53
+    │
+151 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+152 │         match pat {
+    │               ^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+153 │             (.., MyEnum::Tuple(x1, y1)) => {
+154 │                 return u256(x1) + y1
+    │                             ^^ u32: Value
+
+note: 
+    ┌─ enum_match.fe:154:24
+    │
+154 │                 return u256(x1) + y1
+    │                        ^^^^^^^^   ^^ u256: Value
+    │                        │           
+    │                        u256: Value
+
+note: 
+    ┌─ enum_match.fe:154:24
+    │
+154 │                 return u256(x1) + y1
+    │                        ^^^^^^^^^^^^^ u256: Value
+    ·
+157 │                 return 0
+    │                        ^ u256: Value
+
+note: 
+    ┌─ enum_match.fe:162:5
+    │  
+162 │ ╭     pub fn rest_pattern_tail(x: u32, y: u256) -> u256 {
+163 │ │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+164 │ │         match pat {
+165 │ │             (MyEnum::Tuple(x1, y1), ..) => {
+    · │
+171 │ │         }
+172 │ │     }
+    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+    ┌─ enum_match.fe:163:13
+    │
+163 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+    │             ^^^ (MyEnum, MyEnum, MyEnum, MyEnum)
+
+note: 
+    ┌─ enum_match.fe:163:68
+    │
+163 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+    │                                                                    ^  ^ u256: Value
+    │                                                                    │   
+    │                                                                    u32: Value
+
+note: 
+    ┌─ enum_match.fe:163:54
+    │
+163 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+    │                                                      ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^^ MyEnum: Memory
+    │                                                      │                    │             │              
+    │                                                      │                    │             MyEnum: Memory
+    │                                                      │                    MyEnum: Memory
+    │                                                      MyEnum: Memory
+
+note: 
+    ┌─ enum_match.fe:163:53
+    │
+163 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+    │                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+164 │         match pat {
+    │               ^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+165 │             (MyEnum::Tuple(x1, y1), ..) => {
+166 │                 return u256(x1) + y1
+    │                             ^^ u32: Value
+
+note: 
+    ┌─ enum_match.fe:166:24
+    │
+166 │                 return u256(x1) + y1
+    │                        ^^^^^^^^   ^^ u256: Value
+    │                        │           
+    │                        u256: Value
+
+note: 
+    ┌─ enum_match.fe:166:24
+    │
+166 │                 return u256(x1) + y1
+    │                        ^^^^^^^^^^^^^ u256: Value
+    ·
+169 │                 return 0
+    │                        ^ u256: Value
+
+note: 
+    ┌─ enum_match.fe:174:5
+    │  
+174 │ ╭     pub fn rest_pattern_middle(x: u32, y: u256) -> u256 {
+175 │ │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+176 │ │         match pat {
+177 │ │             (MyEnum::Tuple(x1, y1), .., MyEnum::Tuple(x2, y2)) => {
+    · │
+183 │ │         }
+184 │ │     }
+    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+    ┌─ enum_match.fe:175:13
+    │
+175 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │             ^^^ (MyEnum, MyEnum, MyEnum, MyEnum)
+
+note: 
+    ┌─ enum_match.fe:175:68
+    │
+175 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                                    ^  ^ u256: Value
+    │                                                                    │   
+    │                                                                    u32: Value
+
+note: 
+    ┌─ enum_match.fe:175:54
+    │
+175 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                      ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^^                ^  ^ u256: Value
+    │                                                      │                    │             │                           │   
+    │                                                      │                    │             │                           u32: Value
+    │                                                      │                    │             MyEnum: Memory
+    │                                                      │                    MyEnum: Memory
+    │                                                      MyEnum: Memory
+
+note: 
+    ┌─ enum_match.fe:175:103
+    │
+175 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                                                                       ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+    ┌─ enum_match.fe:175:53
+    │
+175 │         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+    │                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+176 │         match pat {
+    │               ^^^ (MyEnum, MyEnum, MyEnum, MyEnum): Memory
+177 │             (MyEnum::Tuple(x1, y1), .., MyEnum::Tuple(x2, y2)) => {
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                             ^^ u32: Value
+
+note: 
+    ┌─ enum_match.fe:178:24
+    │
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                        ^^^^^^^^   ^^ u256: Value
+    │                        │           
+    │                        u256: Value
+
+note: 
+    ┌─ enum_match.fe:178:24
+    │
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                        ^^^^^^^^^^^^^        ^^ u32: Value
+    │                        │                     
+    │                        u256: Value
+
+note: 
+    ┌─ enum_match.fe:178:40
+    │
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                                        ^^^^^^^^ u256: Value
+
+note: 
+    ┌─ enum_match.fe:178:24
+    │
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                        ^^^^^^^^^^^^^^^^^^^^^^^^   ^^ u256: Value
+    │                        │                           
+    │                        u256: Value
+
+note: 
+    ┌─ enum_match.fe:178:24
+    │
+178 │                 return u256(x1) + y1 + u256(x2) + y2
+    │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+    ·
+181 │                 return 0
+    │                        ^ u256: Value
+
+note: 
+    ┌─ enum_match.fe:186:5
+    │  
+186 │ ╭     pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
+187 │ │         if b {
+188 │ │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+189 │ │         } else {
+    · │
+200 │ │         }
+201 │ │     }
     │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }, { label: None, name: b, typ: bool }] -> u256
 
 note: 
-    ┌─ enum_match.fe:151:12
+    ┌─ enum_match.fe:187:12
     │
-151 │         if b {
+187 │         if b {
     │            ^ bool: Value
-152 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+188 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
     │             ^^^^ Foo: Value
 
 note: 
-    ┌─ enum_match.fe:152:13
+    ┌─ enum_match.fe:188:13
     │
-152 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+188 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
     │             ^^^^^^^^^^^^                                      ^  ^ u256: Value
     │             │                                                 │   
     │             │                                                 u32: Value
     │             MyEnumNested: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ enum_match.fe:152:49
+    ┌─ enum_match.fe:188:49
     │
-152 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+188 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
     │                                                 ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
 
 note: 
-    ┌─ enum_match.fe:152:28
+    ┌─ enum_match.fe:188:28
     │
-152 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
+188 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEnumNested: Memory
-153 │         } else {
-154 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
+189 │         } else {
+190 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
     │             ^^^^ Foo: Value
 
 note: 
-    ┌─ enum_match.fe:154:13
+    ┌─ enum_match.fe:190:13
     │
-154 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
+190 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
     │             ^^^^^^^^^^^^                        ^^^^^^^^^^^^ MyEnum: Memory
     │             │                                    
     │             MyEnumNested: Storage { nonce: Some(0) }
 
 note: 
-    ┌─ enum_match.fe:154:28
+    ┌─ enum_match.fe:190:28
     │
-154 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
+190 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEnumNested: Memory
     ·
-157 │         match self.my_enum {
+193 │         match self.my_enum {
     │               ^^^^ Foo: Value
 
 note: 
-    ┌─ enum_match.fe:157:15
+    ┌─ enum_match.fe:193:15
     │
-157 │         match self.my_enum {
+193 │         match self.my_enum {
     │               ^^^^^^^^^^^^ MyEnumNested: Storage { nonce: Some(0) }
-158 │             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
-159 │                 return u256(x1) + y1
+194 │             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
+195 │                 return u256(x1) + y1
     │                             ^^ u32: Value
 
 note: 
-    ┌─ enum_match.fe:159:24
+    ┌─ enum_match.fe:195:24
     │
-159 │                 return u256(x1) + y1
+195 │                 return u256(x1) + y1
     │                        ^^^^^^^^   ^^ u256: Value
     │                        │           
     │                        u256: Value
 
 note: 
-    ┌─ enum_match.fe:159:24
+    ┌─ enum_match.fe:195:24
     │
-159 │                 return u256(x1) + y1
+195 │                 return u256(x1) + y1
     │                        ^^^^^^^^^^^^^ u256: Value
     ·
-162 │                 return 100
+198 │                 return 100
     │                        ^^^ u256: Value
 
 

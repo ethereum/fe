@@ -176,6 +176,12 @@ fn match_pattern(
     match &pat.kind {
         Pattern::WildCard => Ok(IndexMap::new()),
 
+        Pattern::Rest => Err(FatalError::new(scope.error(
+            "`..` is not allowed here",
+            pat.span,
+            "rest pattern is only allowed in tuple pattern",
+        ))),
+
         Pattern::Literal(lit_pat) => {
             let lit_ty = match lit_pat.kind {
                 LiteralPattern::Bool(_) => TypeId::bool(scope.db()),
@@ -406,10 +412,29 @@ fn match_tuple_pattern(
     pat_span: Span,
     variant: Option<EnumVariantId>,
 ) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
-    if tuple_elts.len() != expected_elts.len() {
+    let mut rest_pat_pos: Option<(usize, Span)> = None;
+    for (i, pat) in tuple_elts.iter().enumerate() {
+        if pat.kind.is_rest() {
+            if rest_pat_pos.is_some() {
+                let err = scope.fancy_error(
+                    "multiple rest patterns are not allowed",
+                    vec![
+                        Label::primary(pat.span, "multiple rest patterns are not allowed"),
+                        Label::secondary(rest_pat_pos.unwrap().1, "first rest pattern is here"),
+                    ],
+                    vec![],
+                );
+                return Err(FatalError::new(err));
+            } else {
+                rest_pat_pos = Some((i, pat.span));
+            }
+        }
+    }
+
+    let emit_len_error = |actual, expected| {
         let mut labels = vec![Label::primary(
             pat_span,
-            &format! {"expected {} elements, but {}", expected_elts.len(), tuple_elts.len()},
+            &format! {"expected {expected} elements, but {actual}"},
         )];
         if let Some(variant) = variant {
             labels.push(Label::secondary(
@@ -419,12 +444,29 @@ fn match_tuple_pattern(
         }
 
         let err = scope.fancy_error("the number of tuple variant mismatch", labels, vec![]);
-        return Err(FatalError::new(err));
-    }
+        Err(FatalError::new(err))
+    };
+
+    if rest_pat_pos.is_some() && tuple_elts.len() - 1 > expected_elts.len() {
+        return emit_len_error(tuple_elts.len() - 1, expected_elts.len());
+    } else if rest_pat_pos.is_none() && tuple_elts.len() != expected_elts.len() {
+        return emit_len_error(tuple_elts.len(), expected_elts.len());
+    };
 
     let mut binds: IndexMap<SmolStr, Bind> = IndexMap::new();
-    for (pat, &ty) in tuple_elts.iter().zip(expected_elts) {
-        for (name, bind) in match_pattern(scope, pat, ty)?.into_iter() {
+    let mut expected_elts_iter = expected_elts.iter();
+    for pat in tuple_elts.iter() {
+        if pat.kind.is_rest() {
+            let pat_num_in_rest = expected_elts.len() - (tuple_elts.len() - 1);
+            for _ in 0..pat_num_in_rest {
+                expected_elts_iter.next();
+            }
+            continue;
+        }
+
+        for (name, bind) in
+            match_pattern(scope, pat, *expected_elts_iter.next().unwrap())?.into_iter()
+        {
             match binds.entry(name) {
                 Entry::Occupied(entry) => {
                     let original = entry.get();

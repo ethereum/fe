@@ -167,6 +167,8 @@ pub enum TokenKind {
     Eq,
     #[token(".")]
     Dot,
+    #[token("..")]
+    DotDot,
     #[token("%")]
     Percent,
     #[token("==")]
@@ -282,6 +284,7 @@ impl TokenKind {
             GtGt => "symbol `>>`",
             Eq => "symbol `=`",
             Dot => "symbol `.`",
+            DotDot => "symbol `..`",
             Percent => "symbol `%`",
             EqEq => "symbol `==`",
             NotEq => "symbol `!=`",

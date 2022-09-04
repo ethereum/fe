@@ -72,4 +72,11 @@ contract Foo {
             }
         }
     }
+    
+    pub fn multiple_rest() {
+        let my_enum: (MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit)
+        match my_enum {
+            (.., ..) => {}
+        }
+    }
 }

@@ -65,4 +65,12 @@ error: mismatched type for `y1` between sub patterns
 70 │             MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) | MyEnumNested::Tuple(y1, x1) => {
    │                                                                               ^^ this has type `u32`; expected type `u256`
 
+error: multiple rest patterns are not allowed
+   ┌─ compile_errors/enum_match.fe:79:18
+   │
+79 │             (.., ..) => {}
+   │              --  ^^ multiple rest patterns are not allowed
+   │              │    
+   │              first rest pattern is here
+
 

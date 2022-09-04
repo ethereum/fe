@@ -41,8 +41,8 @@ impl PatternMatrix {
             rows.push(PatternRowVec::new(vec![simplify_pattern(
                 scope,
                 &arm.kind.pat.kind,
-                i,
                 ty,
+                i,
             )]));
         }
 
@@ -284,7 +284,7 @@ impl DisplayWithDb for SimplifiedPattern {
                 for pat in pats {
                     let pat = pat.display(db);
                     write!(f, "{delim}{pat}")?;
-                    delim = "| ";
+                    delim = " | ";
                 }
                 Ok(())
             }
@@ -577,11 +577,16 @@ fn ctor_variant_num(db: &dyn AnalyzerDb, ctor: ConstructorKind) -> usize {
 fn simplify_pattern(
     scope: &BlockScope,
     pat: &Pattern,
-    arm_idx: usize,
     ty: TypeId,
+    arm_idx: usize,
 ) -> SimplifiedPattern {
     let kind = match pat {
         Pattern::WildCard => SimplifiedPatternKind::WildCard(None),
+
+        Pattern::Rest => {
+            // Rest is only allowed in the tuple pattern.
+            unreachable!()
+        }
 
         Pattern::Literal(lit) => {
             let ctor_kind = ConstructorKind::Literal((lit.kind, ty));
@@ -597,11 +602,7 @@ fn simplify_pattern(
 
             SimplifiedPatternKind::Constructor {
                 kind: ctor_kind,
-                fields: elts
-                    .iter()
-                    .zip(elts_tys.into_iter())
-                    .map(|(pat, ty)| simplify_pattern(scope, &pat.kind, arm_idx, ty))
-                    .collect(),
+                fields: simplify_tuple_pattern(scope, elts, &elts_tys, arm_idx),
             }
         }
 
@@ -622,27 +623,54 @@ fn simplify_pattern(
                 _ => unreachable!(),
             };
             let ctor_kind = ConstructorKind::Enum(variant);
-            let fields = ctor_kind.field_types(scope.db());
-            debug_assert_eq!(fields.len(), elts.len());
+            let elts_tys = ctor_kind.field_types(scope.db());
 
             SimplifiedPatternKind::Constructor {
                 kind: ctor_kind,
-                fields: elts
-                    .iter()
-                    .zip(fields.into_iter())
-                    .map(|(pat, ty)| simplify_pattern(scope, &pat.kind, arm_idx, ty))
-                    .collect(),
+                fields: simplify_tuple_pattern(scope, elts, &elts_tys, arm_idx),
             }
         }
 
         Pattern::Or(pats) => SimplifiedPatternKind::Or(
             pats.iter()
-                .map(|pat| simplify_pattern(scope, &pat.kind, arm_idx, ty))
+                .map(|pat| simplify_pattern(scope, &pat.kind, ty, arm_idx))
                 .collect(),
         ),
     };
 
     SimplifiedPattern::new(kind, ty)
+}
+
+fn simplify_tuple_pattern(
+    scope: &BlockScope,
+    elts: &[Node<Pattern>],
+    elts_tys: &[TypeId],
+    arm_idx: usize,
+) -> Vec<SimplifiedPattern> {
+    let mut simplified_elts = vec![];
+    let mut tys_iter = elts_tys.iter();
+
+    for pat in elts {
+        if pat.kind.is_rest() {
+            for _ in 0..(elts_tys.len() - (elts.len() - 1)) {
+                let ty = tys_iter.next().unwrap();
+                simplified_elts.push(SimplifiedPattern::new(
+                    SimplifiedPatternKind::WildCard(None),
+                    *ty,
+                ));
+            }
+        } else {
+            simplified_elts.push(simplify_pattern(
+                scope,
+                &pat.kind,
+                *tys_iter.next().unwrap(),
+                arm_idx,
+            ));
+        }
+    }
+
+    debug_assert!(tys_iter.next().is_none());
+    simplified_elts
 }
 
 impl TypeId {

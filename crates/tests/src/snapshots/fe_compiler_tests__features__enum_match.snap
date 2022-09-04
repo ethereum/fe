@@ -5,7 +5,7 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 simple_match([Uint(1), Uint(2)]) used 573 gas
 nested_match([Uint(1), Uint(2)]) used 1502 gas
 nested_match2([]) used 1885 gas
-tuple_match([]) used 1764 gas
+tuple_match([]) used 1765 gas
 boolean_literal_match([Bool(true), Bool(true)]) used 585 gas
 boolean_literal_match([Bool(true), Bool(false)]) used 611 gas
 boolean_literal_match([Bool(false), Bool(true)]) used 600 gas
@@ -13,5 +13,8 @@ boolean_literal_match([Bool(false), Bool(false)]) used 596 gas
 wild_card([]) used 1127 gas
 match_in_if([]) used 647 gas
 match_in_loop([]) used 1567 gas
-enum_storage([Uint(1), Uint(2), Bool(true)]) used 90729 gas
+rest_pattern_head([Uint(1), Uint(2)]) used 2765 gas
+rest_pattern_tail([Uint(1), Uint(2)]) used 2778 gas
+rest_pattern_middle([Uint(1), Uint(2)]) used 3234 gas
+enum_storage([Uint(1), Uint(2), Bool(true)]) used 90794 gas
 

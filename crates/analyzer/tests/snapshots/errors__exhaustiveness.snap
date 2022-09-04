@@ -18,7 +18,7 @@ error: patterns is not exhaustive
 25 │ │             MyEnumNested::Tuple(_, _) => {}
 26 │ │             MyEnumNested::Nested(MyEnum::Unit) => {}
 27 │ │         }
-   │ ╰─────────^ `MyEnumNested::Nested(MyEnum::UnitTuple()| MyEnum::Tuple(_, _))` not covered
+   │ ╰─────────^ `MyEnumNested::Nested(MyEnum::UnitTuple() | MyEnum::Tuple(_, _))` not covered
 
 error: patterns is not exhaustive
    ┌─ compile_errors/exhaustiveness.fe:33:9

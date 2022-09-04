@@ -146,6 +146,42 @@ contract Foo {
 
         return res
     }
+    
+    pub fn rest_pattern_head(x: u32, y: u256) -> u256 {
+        let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+        match pat {
+            (.., MyEnum::Tuple(x1, y1)) => {
+                return u256(x1) + y1
+            }
+            _ => {
+                return 0
+            }
+        }
+    }
+
+    pub fn rest_pattern_tail(x: u32, y: u256) -> u256 {
+        let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Unit)
+        match pat {
+            (MyEnum::Tuple(x1, y1), ..) => {
+                return u256(x1) + y1
+            }
+            _ => {
+                return 0
+            }
+        }
+    }
+
+    pub fn rest_pattern_middle(x: u32, y: u256) -> u256 {
+        let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Tuple(x, y), MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
+        match pat {
+            (MyEnum::Tuple(x1, y1), .., MyEnum::Tuple(x2, y2)) => {
+                return u256(x1) + y1 + u256(x2) + y2
+            }
+            _ => {
+                return 0
+            }
+        }
+    }
 
     pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
         if b {
