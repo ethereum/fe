@@ -3,7 +3,7 @@ use super::types::parse_type_desc;
 
 use crate::ast::{
     BinOperator, Expr, FuncStmt, Function, FunctionArg, FunctionSignature, GenericParameter,
-    MatchArm, Path, Pattern, RegularFunctionArg, TypeDesc, VarDeclTarget,
+    LiteralPattern, MatchArm, Path, Pattern, RegularFunctionArg, TypeDesc, VarDeclTarget,
 };
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
@@ -734,6 +734,14 @@ fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
     if let Some(TokenKind::ParenOpen) = par.peek() {
         let (elts, span) = parse_pattern_tuple(par)?;
         return Ok(Node::new(Pattern::Tuple(elts), span));
+    } else if let Some(TokenKind::True) = par.peek() {
+        let span = par.next().unwrap().span;
+        let literal_pat = Node::new(LiteralPattern::Bool(true), span);
+        return Ok(Node::new(Pattern::Literal(literal_pat), span));
+    } else if let Some(TokenKind::False) = par.peek() {
+        let span = par.next().unwrap().span;
+        let literal_pat = Node::new(LiteralPattern::Bool(false), span);
+        return Ok(Node::new(Pattern::Literal(literal_pat), span));
     }
 
     let mut pattern = parse_path_pattern_segment(par)?;

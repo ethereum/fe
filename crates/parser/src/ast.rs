@@ -367,6 +367,8 @@ pub struct MatchArm {
 pub enum Pattern {
     /// Represents a wildcard pattern `_`.
     WildCard,
+    /// Represents a literal pattern. e.g., `true`.
+    Literal(Node<LiteralPattern>),
     /// Represents tuple destructuring pattern. e.g., `(x, y, z)`.
     Tuple(Vec<Node<Pattern>>),
     /// Represents unit variant pattern. e.g., `Enum::Unit`.
@@ -375,6 +377,11 @@ pub enum Pattern {
     PathTuple(Node<Path>, Vec<Node<Pattern>>),
     /// Represents or pattern. e.g., `EnumUnit | EnumTuple(_, _, _)`
     Or(Vec<Node<Pattern>>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum LiteralPattern {
+    Bool(bool),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -1204,6 +1211,7 @@ impl fmt::Display for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::WildCard => write!(f, "_"),
+            Self::Literal(pat) => write!(f, "{}", pat.kind),
             Self::Path(path) => write!(f, "{}", path.kind),
             Self::PathTuple(path, elts) => {
                 write!(f, "{}", path.kind)?;
@@ -1215,6 +1223,14 @@ impl fmt::Display for Pattern {
             Self::Or(pats) => {
                 write!(f, "{}", node_delim_joined(pats, "| "))
             }
+        }
+    }
+}
+
+impl fmt::Display for LiteralPattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bool(b) => write!(f, "{b}"),
         }
     }
 }

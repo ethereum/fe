@@ -59,7 +59,7 @@ contract Foo {
         
         return res
     }
-
+    
     pub fn tuple_match() -> u256 {
         let tup: (MyEnum, MyEnum) = (MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
         match tup {
@@ -68,6 +68,20 @@ contract Foo {
             }
 
             _ => {
+                return 0
+            }
+        }
+    }
+
+    pub fn boolean_literal_match(b1: bool, b2: bool) -> u256 {
+        match (b1, b2) {
+            (true, true) => {
+                return 2
+            }
+            (true, false) | (false, true) => {
+                return 1
+            }
+            (false, false) => {
                 return 0
             }
         }

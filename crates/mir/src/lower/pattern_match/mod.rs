@@ -1,6 +1,6 @@
 use fe_analyzer::pattern_analysis::{ConstructorKind, PatternMatrix};
 use fe_parser::{
-    ast::{Expr, MatchArm},
+    ast::{Expr, LiteralPattern, MatchArm},
     node::Node,
 };
 use fxhash::FxHashMap;
@@ -187,6 +187,11 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                 Some(self.helper.make_imm(disc, disc_ty))
             }
 
+            Case::Ctor(ConstructorKind::Literal((LiteralPattern::Bool(b), ty))) => {
+                let ty = self.helper.db.mir_lowered_type(*ty);
+                Some(self.builder().make_imm_from_bool(*b, ty))
+            }
+
             Case::Ctor(ConstructorKind::Tuple(_)) | Case::Default => None,
         }
     }
@@ -202,6 +207,12 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                     .builder()
                     .untag_cast(old_value, new_ty, SourceInfo::dummy());
                 let value = self.helper.map_to_tmp(cast, new_ty);
+                self.current_scope_mut()
+                    .register_occurrence(occurrence.clone(), value)
+            }
+
+            Case::Ctor(ConstructorKind::Literal((LiteralPattern::Bool(b), _))) => {
+                let value = self.builder().make_imm_from_bool(*b, old_ty);
                 self.current_scope_mut()
                     .register_occurrence(occurrence.clone(), value)
             }
@@ -223,7 +234,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                 self.helper.map_to_tmp(inst, disc_ty)
             }
 
-            _ => unreachable!(),
+            _ => value,
         }
     }
 

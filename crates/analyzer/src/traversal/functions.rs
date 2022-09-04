@@ -10,7 +10,7 @@ use crate::{
     namespace::items::EnumVariantKind,
 };
 use fe_common::diagnostics::Label;
-use fe_parser::ast::{self as fe, Pattern};
+use fe_parser::ast::{self as fe, LiteralPattern, Pattern};
 use fe_parser::node::{Node, Span};
 use indexmap::map::Entry;
 use indexmap::{IndexMap, IndexSet};
@@ -175,6 +175,19 @@ fn match_pattern(
 ) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
     match &pat.kind {
         Pattern::WildCard => Ok(IndexMap::new()),
+
+        Pattern::Literal(lit_pat) => {
+            let lit_ty = match lit_pat.kind {
+                LiteralPattern::Bool(_) => TypeId::bool(scope.db()),
+            };
+            if expected_type == lit_ty {
+                Ok(IndexMap::new())
+            } else {
+                let err = scope.type_error("", pat.span, expected_type, lit_ty);
+                Err(FatalError::new(err))
+            }
+        }
+
         Pattern::Tuple(elts) => {
             let expected_elts = if let Type::Tuple(tup) = expected_type.typ(scope.db()) {
                 tup.items
@@ -192,6 +205,7 @@ fn match_pattern(
 
             match_tuple_pattern(scope, elts, &expected_elts, pat.span, None)
         }
+
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => {
                 let db = scope.db();
