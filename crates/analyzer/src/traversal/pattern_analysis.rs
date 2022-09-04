@@ -4,7 +4,7 @@
 use std::fmt::{self};
 
 use fe_parser::{
-    ast::{MatchArm, Pattern},
+    ast::{LiteralPattern, MatchArm, Pattern},
     node::Node,
 };
 use indexmap::IndexSet;
@@ -237,6 +237,7 @@ impl DisplayWithDb for SimplifiedPattern {
         match &self.kind {
             SimplifiedPatternKind::WildCard(None) => write!(f, "_"),
             SimplifiedPatternKind::WildCard(Some((name, _))) => write!(f, "{name}"),
+
             SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Enum(id),
                 fields,
@@ -270,6 +271,14 @@ impl DisplayWithDb for SimplifiedPattern {
                 }
                 write!(f, ")")
             }
+
+            SimplifiedPatternKind::Constructor {
+                kind: ConstructorKind::Literal((lit, _)),
+                ..
+            } => {
+                write!(f, "{lit}")
+            }
+
             SimplifiedPatternKind::Or(pats) => {
                 let mut delim = "";
                 for pat in pats {
@@ -322,6 +331,12 @@ impl SimplifiedPatternKind {
 pub enum ConstructorKind {
     Enum(EnumVariantId),
     Tuple(TypeId),
+    Literal((LiteralPattern, TypeId)),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LiteralConstructor {
+    Bool(bool),
 }
 
 impl ConstructorKind {
@@ -332,6 +347,7 @@ impl ConstructorKind {
                 EnumVariantKind::Tuple(types) => types.to_vec(),
             },
             Self::Tuple(ty) => ty.tuple_elts(db),
+            Self::Literal(_) => vec![],
         }
     }
 
@@ -342,6 +358,7 @@ impl ConstructorKind {
                 EnumVariantKind::Tuple(types) => types.len(),
             },
             Self::Tuple(ty) => ty.tuple_elts(db).len(),
+            Self::Literal(_) => 0,
         }
     }
 
@@ -349,6 +366,7 @@ impl ConstructorKind {
         match self {
             Self::Enum(id) => id.parent(db).as_type(db),
             Self::Tuple(ty) => *ty,
+            Self::Literal((_, ty)) => *ty,
         }
     }
 }
@@ -541,6 +559,7 @@ fn ctor_variant_num(db: &dyn AnalyzerDb, ctor: ConstructorKind) -> usize {
             enum_id.variants(db).len()
         }
         ConstructorKind::Tuple(_) => 1,
+        ConstructorKind::Literal((LiteralPattern::Bool(_), _)) => 2,
     }
 }
 
@@ -552,6 +571,14 @@ fn simplify_pattern(
 ) -> SimplifiedPattern {
     let kind = match pat {
         Pattern::WildCard => SimplifiedPatternKind::WildCard(None),
+
+        Pattern::Literal(lit) => {
+            let ctor_kind = ConstructorKind::Literal((lit.kind, ty));
+            SimplifiedPatternKind::Constructor {
+                kind: ctor_kind,
+                fields: vec![],
+            }
+        }
 
         Pattern::Tuple(elts) => {
             let ctor_kind = ConstructorKind::Tuple(ty);
