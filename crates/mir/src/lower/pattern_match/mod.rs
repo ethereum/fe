@@ -187,7 +187,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                 Some(self.helper.make_imm(disc, disc_ty))
             }
 
-            Case::Default => None,
+            Case::Ctor(ConstructorKind::Tuple(_)) | Case::Default => None,
         }
     }
 
@@ -206,7 +206,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                     .register_occurrence(occurrence.clone(), value)
             }
 
-            Case::Default => {}
+            Case::Ctor(ConstructorKind::Tuple(_)) | Case::Default => {}
         }
     }
 

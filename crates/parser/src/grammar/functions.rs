@@ -731,31 +731,24 @@ pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 }
 
 fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
-    let mut pattern = parse_pattern_segment(par)?;
+    if let Some(TokenKind::ParenOpen) = par.peek() {
+        let (elts, span) = parse_pattern_tuple(par)?;
+        return Ok(Node::new(Pattern::Tuple(elts), span));
+    }
+
+    let mut pattern = parse_path_pattern_segment(par)?;
 
     while let Some(TokenKind::ColonColon) = par.peek() {
         par.next().unwrap();
-        let right = parse_pattern_segment(par)?;
+        let right = parse_path_pattern_segment(par)?;
         pattern = try_merge_path_pattern(par, pattern, right)?;
     }
 
     if let Some(TokenKind::ParenOpen) = par.peek() {
-        par.next().unwrap();
-        let (args, last_span) = if let Some(TokenKind::ParenClose) = par.peek() {
-            (vec![], par.next().unwrap().span)
-        } else {
-            let mut args = vec![parse_pattern(par)?];
-            while let Some(TokenKind::Comma) = par.peek() {
-                par.next().unwrap();
-                args.push(parse_pattern(par)?);
-            }
-            let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
-            (args, last_span)
-        };
-
-        let span = pattern.span + last_span;
+        let (elts, tuple_span) = parse_pattern_tuple(par)?;
+        let span = pattern.span + tuple_span;
         match pattern.kind {
-            Pattern::Path(path) => Ok(Node::new(Pattern::PathTuple(path, args), span)),
+            Pattern::Path(path) => Ok(Node::new(Pattern::PathTuple(path, elts), span)),
             Pattern::WildCard => invalid_pattern(
                 par,
                 "can't mis wildcard with tuple constructed pattern",
@@ -765,6 +758,29 @@ fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
         }
     } else {
         Ok(pattern)
+    }
+}
+
+fn parse_pattern_tuple(par: &mut Parser) -> ParseResult<(Vec<Node<Pattern>>, Span)> {
+    if let Some(TokenKind::ParenOpen) = par.peek() {
+        let span = par.next().unwrap().span;
+
+        let (elts, last_span) = if let Some(TokenKind::ParenClose) = par.peek() {
+            (vec![], par.next().unwrap().span)
+        } else {
+            let mut elts = vec![parse_pattern(par)?];
+            while let Some(TokenKind::Comma) = par.peek() {
+                par.next().unwrap();
+                elts.push(parse_pattern(par)?);
+            }
+            let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
+            (elts, last_span)
+        };
+
+        let span = span + last_span;
+        Ok((elts, span))
+    } else {
+        unreachable!()
     }
 }
 
@@ -789,7 +805,7 @@ fn try_merge_path_pattern(
     }
 }
 
-fn parse_pattern_segment(par: &mut Parser) -> ParseResult<Node<Pattern>> {
+fn parse_path_pattern_segment(par: &mut Parser) -> ParseResult<Node<Pattern>> {
     let tok = par.expect(TokenKind::Name, "failed to parse pattern")?;
     let text = tok.text;
     if text == "_" {

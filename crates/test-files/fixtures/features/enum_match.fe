@@ -13,7 +13,6 @@ pub enum Tuple2{
     Value(MyEnum, MyEnum)
 }
 
-
 pub enum State {
     Continue
     Done
@@ -59,6 +58,19 @@ contract Foo {
         }
         
         return res
+    }
+
+    pub fn tuple_match() -> u256 {
+        let tup: (MyEnum, MyEnum) = (MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
+        match tup {
+            (MyEnum::Unit, MyEnum::Tuple(x, y)) | (MyEnum::Tuple(x, y), MyEnum::UnitTuple()) => {
+                return u256(x) + y
+            }
+
+            _ => {
+                return 0
+            }
+        }
     }
 
     pub fn wild_card() -> u256 {

@@ -5,8 +5,9 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 simple_match([Uint(1), Uint(2)]) used 573 gas
 nested_match([Uint(1), Uint(2)]) used 1502 gas
 nested_match2([]) used 1885 gas
-wild_card([]) used 1083 gas
-match_in_if([]) used 603 gas
-match_in_loop([]) used 1523 gas
-enum_storage([Uint(1), Uint(2), Bool(true)]) used 90684 gas
+tuple_match([]) used 1764 gas
+wild_card([]) used 1105 gas
+match_in_if([]) used 625 gas
+match_in_loop([]) used 1545 gas
+enum_storage([Uint(1), Uint(2), Bool(true)]) used 90706 gas
 

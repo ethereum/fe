@@ -93,6 +93,7 @@ impl<'db> dot2::Labeller<'db> for TreeRenderer<'db> {
             Case::Ctor(ConstructorKind::Enum(variant)) => {
                 variant.name_with_parent(self.db).to_string()
             }
+            Case::Ctor(ConstructorKind::Tuple(_)) => "()".to_string(),
             Case::Default => "_".into(),
         };
 

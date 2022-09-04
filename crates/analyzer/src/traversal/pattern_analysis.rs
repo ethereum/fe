@@ -256,6 +256,20 @@ impl DisplayWithDb for SimplifiedPattern {
                     Ok(())
                 }
             }
+
+            SimplifiedPatternKind::Constructor {
+                kind: ConstructorKind::Tuple(_),
+                fields,
+            } => {
+                write!(f, "(")?;
+                let mut delim = "";
+                for field in fields {
+                    let displayable = field.display(db);
+                    write!(f, "{delim}{displayable}")?;
+                    delim = ", ";
+                }
+                write!(f, ")")
+            }
             SimplifiedPatternKind::Or(pats) => {
                 let mut delim = "";
                 for pat in pats {
@@ -307,6 +321,7 @@ impl SimplifiedPatternKind {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ConstructorKind {
     Enum(EnumVariantId),
+    Tuple(TypeId),
 }
 
 impl ConstructorKind {
@@ -316,6 +331,7 @@ impl ConstructorKind {
                 EnumVariantKind::Unit => vec![],
                 EnumVariantKind::Tuple(types) => types.to_vec(),
             },
+            Self::Tuple(ty) => ty.tuple_elts(db),
         }
     }
 
@@ -325,12 +341,14 @@ impl ConstructorKind {
                 EnumVariantKind::Unit => 0,
                 EnumVariantKind::Tuple(types) => types.len(),
             },
+            Self::Tuple(ty) => ty.tuple_elts(db).len(),
         }
     }
 
     pub fn ty(&self, db: &dyn AnalyzerDb) -> TypeId {
         match self {
             Self::Enum(id) => id.parent(db).as_type(db),
+            Self::Tuple(ty) => *ty,
         }
     }
 }
@@ -364,9 +382,9 @@ impl SigmaSet {
     }
 
     pub fn is_complete(&self, db: &dyn AnalyzerDb) -> bool {
-        match self.0.first().map(|ctor| ctor.ty(db)) {
-            Some(ty) => {
-                let expected = ctor_variant_num(db, ty);
+        match self.0.first() {
+            Some(ctor) => {
+                let expected = ctor_variant_num(db, *ctor);
                 debug_assert!(self.len() <= expected);
                 self.len() == expected
             }
@@ -516,12 +534,13 @@ impl PatternRowVec {
     }
 }
 
-fn ctor_variant_num(db: &dyn AnalyzerDb, ty: TypeId) -> usize {
-    match ty.typ(db) {
-        Type::Enum(id) => id.variants(db).len(),
-        _ => {
-            unimplemented!()
+fn ctor_variant_num(db: &dyn AnalyzerDb, ctor: ConstructorKind) -> usize {
+    match ctor {
+        ConstructorKind::Enum(variant) => {
+            let enum_id = variant.parent(db);
+            enum_id.variants(db).len()
         }
+        ConstructorKind::Tuple(_) => 1,
     }
 }
 
@@ -533,6 +552,20 @@ fn simplify_pattern(
 ) -> SimplifiedPattern {
     let kind = match pat {
         Pattern::WildCard => SimplifiedPatternKind::WildCard(None),
+
+        Pattern::Tuple(elts) => {
+            let ctor_kind = ConstructorKind::Tuple(ty);
+            let elts_tys = ty.tuple_elts(scope.db());
+
+            SimplifiedPatternKind::Constructor {
+                kind: ctor_kind,
+                fields: elts
+                    .iter()
+                    .zip(elts_tys.into_iter())
+                    .map(|(pat, ty)| simplify_pattern(scope, &pat.kind, arm_idx, ty))
+                    .collect(),
+            }
+        }
 
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => SimplifiedPatternKind::Constructor {
@@ -572,4 +605,13 @@ fn simplify_pattern(
     };
 
     SimplifiedPattern::new(kind, ty)
+}
+
+impl TypeId {
+    fn tuple_elts(self, db: &dyn AnalyzerDb) -> Vec<TypeId> {
+        match self.typ(db) {
+            Type::Tuple(tup) => tup.items.to_vec(),
+            _ => unreachable!(),
+        }
+    }
 }

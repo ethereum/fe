@@ -367,6 +367,8 @@ pub struct MatchArm {
 pub enum Pattern {
     /// Represents a wildcard pattern `_`.
     WildCard,
+    /// Represents tuple destructuring pattern. e.g., `(x, y, z)`.
+    Tuple(Vec<Node<Pattern>>),
     /// Represents unit variant pattern. e.g., `Enum::Unit`.
     Path(Node<Path>),
     /// Represents tuple variant pattern. e.g., `Enum::Tuple(x, y, z)`.
@@ -1205,6 +1207,9 @@ impl fmt::Display for Pattern {
             Self::Path(path) => write!(f, "{}", path.kind),
             Self::PathTuple(path, elts) => {
                 write!(f, "{}", path.kind)?;
+                write!(f, "({})", node_comma_joined(elts))
+            }
+            Self::Tuple(elts) => {
                 write!(f, "({})", node_comma_joined(elts))
             }
             Self::Or(pats) => {

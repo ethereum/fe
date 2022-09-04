@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
 use crate::display::Displayable;
-use crate::namespace::items::Item;
+use crate::namespace::items::{EnumVariantId, Item};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{EventField, Type, TypeId};
 use crate::pattern_analysis::PatternMatrix;
@@ -126,13 +126,7 @@ fn match_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<
         fe::FuncStmt::Match { expr, arms } => {
             let expr_type = expressions::expr(scope, expr, None)?.typ;
 
-            let mut match_scope = scope.new_child(BlockScopeType::Match);
-            error_if_not_enum(
-                &mut match_scope,
-                expr_type,
-                expr.span,
-                "`match` scrutinee must be enum type",
-            );
+            let match_scope = scope.new_child(BlockScopeType::Match);
 
             // Do type check on pattern, then do analysis on arm body.
             let mut err_in_pat_check = Ok(());
@@ -181,6 +175,23 @@ fn match_pattern(
 ) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
     match &pat.kind {
         Pattern::WildCard => Ok(IndexMap::new()),
+        Pattern::Tuple(elts) => {
+            let expected_elts = if let Type::Tuple(tup) = expected_type.typ(scope.db()) {
+                tup.items
+            } else {
+                let label_msg = format!(
+                    "expected {}, but found tuple`",
+                    expected_type.display(scope.db())
+                );
+                return Err(FatalError::new(scope.fancy_error(
+                    "mismatched types",
+                    vec![Label::primary(pat.span, label_msg)],
+                    vec![],
+                )));
+            };
+
+            match_tuple_pattern(scope, elts, &expected_elts, pat.span, None)
+        }
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => {
                 let db = scope.db();
@@ -299,48 +310,7 @@ fn match_pattern(
                 }
             };
 
-            if ty_elts.len() != pat_elts.len() {
-                let err = scope.fancy_error(
-                        "the number of tuple variant mismatch",
-                        vec![
-                            Label::primary(pat.span,  &format!{"expected {} elements, but {}", ty_elts.len(), pat_elts.len()}), 
-                            Label::secondary(variant.span(scope.db()), &format!{"{} is defined here", variant.name(scope.db())})
-                        ],
-                        vec![]
-                );
-                return Err(FatalError::new(err));
-            }
-
-            let mut binds: IndexMap<SmolStr, Bind> = IndexMap::new();
-            for (pat, ty) in pat_elts.iter().zip(ty_elts) {
-                for (name, bind) in match_pattern(scope, pat, ty)?.into_iter() {
-                    match binds.entry(name) {
-                        Entry::Occupied(entry) => {
-                            let original = entry.get();
-                            let err = scope.fancy_error(
-                                "same variable appear in the same pattern",
-                                vec![
-                                    Label::primary(
-                                        bind.spans[0],
-                                        &format! {"{} is already defined", bind.name },
-                                    ),
-                                    Label::secondary(
-                                        original.spans[0],
-                                        &format! {"{} is originally defined here", original.name },
-                                    ),
-                                ],
-                                vec![],
-                            );
-                            return Err(FatalError::new(err));
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(bind);
-                        }
-                    }
-                }
-            }
-
-            Ok(binds)
+            match_tuple_pattern(scope, pat_elts, &ty_elts, pat.span, Some(variant))
         }
 
         Pattern::Or(sub_pats) => {
@@ -415,6 +385,61 @@ fn match_pattern(
     }
 }
 
+fn match_tuple_pattern(
+    scope: &mut BlockScope,
+    tuple_elts: &[Node<Pattern>],
+    expected_elts: &[TypeId],
+    pat_span: Span,
+    variant: Option<EnumVariantId>,
+) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
+    if tuple_elts.len() != expected_elts.len() {
+        let mut labels = vec![Label::primary(
+            pat_span,
+            &format! {"expected {} elements, but {}", expected_elts.len(), tuple_elts.len()},
+        )];
+        if let Some(variant) = variant {
+            labels.push(Label::secondary(
+                variant.span(scope.db()),
+                &format! {"{} is defined here", variant.name(scope.db())},
+            ));
+        }
+
+        let err = scope.fancy_error("the number of tuple variant mismatch", labels, vec![]);
+        return Err(FatalError::new(err));
+    }
+
+    let mut binds: IndexMap<SmolStr, Bind> = IndexMap::new();
+    for (pat, &ty) in tuple_elts.iter().zip(expected_elts) {
+        for (name, bind) in match_pattern(scope, pat, ty)?.into_iter() {
+            match binds.entry(name) {
+                Entry::Occupied(entry) => {
+                    let original = entry.get();
+                    let err = scope.fancy_error(
+                        "same variable appears in the same pattern",
+                        vec![
+                            Label::primary(
+                                bind.spans[0],
+                                &format! {"{} is already defined", bind.name },
+                            ),
+                            Label::secondary(
+                                original.spans[0],
+                                &format! {"{} is originally defined here", original.name },
+                            ),
+                        ],
+                        vec![],
+                    );
+                    return Err(FatalError::new(err));
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(bind);
+                }
+            }
+        }
+    }
+
+    Ok(binds)
+}
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct Bind {
     name: SmolStr,
@@ -428,25 +453,6 @@ impl Bind {
             name,
             ty,
             spans: vec![span],
-        }
-    }
-}
-
-fn error_if_not_enum(scope: &mut BlockScope, typ: TypeId, span: Span, msg: &str) {
-    match typ.typ(scope.db()) {
-        Type::Enum(_) => {}
-        _ => {
-            scope.fancy_error(
-                msg,
-                vec![Label::primary(
-                    span,
-                    format!(
-                        "this; has type `{}`; expected enum type",
-                        typ.display(scope.db())
-                    ),
-                )],
-                vec![],
-            );
         }
     }
 }

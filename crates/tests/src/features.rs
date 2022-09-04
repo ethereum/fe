@@ -787,6 +787,8 @@ fn enum_match() {
 
         harness.test_function(&mut executor, "nested_match2", &[], Some(&uint_token(3)));
 
+        harness.test_function(&mut executor, "tuple_match", &[], Some(&uint_token(3)));
+
         harness.test_function(&mut executor, "wild_card", &[], Some(&uint_token(0)));
 
         harness.test_function(&mut executor, "match_in_if", &[], Some(&uint_token(3)));
