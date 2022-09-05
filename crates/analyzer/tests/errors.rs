@@ -216,6 +216,7 @@ test_file! { ambiguous_traits2 }
 test_ingot! { trait_not_in_scope }
 test_file! { bad_enums }
 test_file! { enum_match }
+test_file! { enum_name_conflict }
 test_file! { exhaustiveness }
 test_file! { unreachable_pattern }
 test_file! { bad_string }

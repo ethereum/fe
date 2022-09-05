@@ -15,6 +15,7 @@ Node(
             ),
           ),
           variants: [],
+          functions: [],
           pub_qual: None,
         ),
         span: Span(

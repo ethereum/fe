@@ -385,6 +385,10 @@ fn expr_named_thing(
                         context.db().intern_type(Type::Struct(id)),
                         Location::Memory,
                     )),
+                    Item::Type(TypeDef::Enum(id)) => Ok(ExpressionAttributes::new(
+                        context.db().intern_type(Type::Enum(id)),
+                        Location::Memory,
+                    )),
                     Item::Impl(id) => Ok(ExpressionAttributes::new(
                         id.receiver(context.db()),
                         Location::Memory,

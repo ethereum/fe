@@ -832,6 +832,7 @@ impl TypeDef {
                 // static functions only.
                 val.pure_functions_as_items(db)
             }
+            TypeDef::Enum(val) => val.pure_functions_as_items(db),
             TypeDef::Contract(val) => val.pure_functions_as_items(db),
             _ => todo!("cannot access items in types yet"),
         }
@@ -1131,6 +1132,7 @@ impl FunctionSigId {
         match self.parent(db) {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
             Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
+            Item::Type(TypeDef::Enum(sid)) => Some(types::Type::Enum(sid).id(db)),
             Item::Impl(id) => Some(id.receiver(db)),
             Item::Type(TypeDef::Primitive(ty)) => Some(db.intern_type(Type::Base(ty))),
             _ => None,
@@ -1185,6 +1187,7 @@ impl FunctionSigId {
     pub fn function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
         match self.parent(db) {
             Item::Type(TypeDef::Struct(id)) => id.function(db, &self.name(db)),
+            Item::Type(TypeDef::Enum(id)) => id.function(db, &self.name(db)),
             Item::Impl(id) => id.function(db, &self.name(db)),
             Item::Type(TypeDef::Contract(id)) => id.function(db, &self.name(db)),
             _ => None,
@@ -1353,6 +1356,12 @@ impl FunctionsAsItems for StructId {
     }
 }
 
+impl FunctionsAsItems for EnumId {
+    fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
+        self.functions(db)
+    }
+}
+
 impl FunctionsAsItems for ContractId {
     fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         self.functions(db)
@@ -1430,6 +1439,7 @@ impl StructId {
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));
 
+        db.struct_function_map(*self).sink_diagnostics(sink);
         db.struct_all_functions(*self)
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));
@@ -1518,13 +1528,30 @@ impl EnumId {
         db.enum_dependency_graph(self).value.0
     }
 
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.enum_all_functions(*self)
+    }
+
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
+        db.enum_function_map(*self).value
+    }
+
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.functions(db).get(name).copied()
+    }
+
     pub fn sink_diagnostics(self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.enum_variant_map(self).diagnostics.iter());
         sink.push_all(db.enum_dependency_graph(self).diagnostics.iter());
 
         db.enum_all_variants(self)
             .iter()
-            .for_each(|variant| variant.sink_diagnostics(db, sink))
+            .for_each(|variant| variant.sink_diagnostics(db, sink));
+
+        db.enum_function_map(self).sink_diagnostics(sink);
+        db.enum_all_functions(self)
+            .iter()
+            .for_each(|id| id.sink_diagnostics(db, sink));
     }
 }
 

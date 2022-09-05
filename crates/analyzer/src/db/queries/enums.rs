@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, str::FromStr};
 
 use fe_parser::ast;
 use indexmap::{map::Entry, IndexMap};
@@ -6,12 +6,13 @@ use smallvec::SmallVec;
 use smol_str::SmolStr;
 
 use crate::{
+    builtins,
     context::{Analysis, AnalyzerContext},
     errors::TypeError,
     namespace::{
         items::{
-            DepGraph, DepGraphWrapper, DepLocality, EnumId, EnumVariant, EnumVariantId,
-            EnumVariantKind, Item, TypeDef,
+            self, DepGraph, DepGraphWrapper, DepLocality, EnumId, EnumVariant, EnumVariantId,
+            EnumVariantKind, FunctionId, Item, TypeDef,
         },
         scopes::ItemScope,
         types::Type,
@@ -51,7 +52,7 @@ pub fn enum_variant_map(
         match variants.entry(variant_name) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
-                    &format!("duplicate field names in `enum {}`", enum_.name(db)),
+                    &format!("duplicate variant names in `enum {}`", enum_.name(db)),
                     entry.key(),
                     entry.get().data(db).ast.span,
                     variant.span(db),
@@ -94,6 +95,86 @@ pub fn enum_variant_kind(
     };
 
     Analysis::new(kind, scope.diagnostics.take().into())
+}
+
+pub fn enum_all_functions(db: &dyn AnalyzerDb, enum_: EnumId) -> Rc<[FunctionId]> {
+    let enum_data = enum_.data(db);
+    enum_data
+        .ast
+        .kind
+        .functions
+        .iter()
+        .map(|node| {
+            db.intern_function(Rc::new(items::Function::new(
+                db,
+                node,
+                Some(Item::Type(TypeDef::Enum(enum_))),
+                enum_data.module,
+            )))
+        })
+        .collect()
+}
+
+pub fn enum_function_map(
+    db: &dyn AnalyzerDb,
+    enum_: EnumId,
+) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
+    let mut scope = ItemScope::new(db, enum_.module(db));
+    let mut map = IndexMap::<SmolStr, FunctionId>::new();
+    let variant_map = enum_.variants(db);
+
+    for func in db.enum_all_functions(enum_).iter() {
+        let def = &func.data(db).ast;
+        let def_name = def.name();
+
+        if let Ok(Some(named_item)) = scope.resolve_name(def_name, func.name_span(db)) {
+            scope.name_conflict_error(
+                "function",
+                def_name,
+                &named_item,
+                named_item.name_span(db),
+                func.name_span(db),
+            );
+            continue;
+        }
+
+        if builtins::ValueMethod::from_str(def_name).is_ok() {
+            scope.error(
+                &format!(
+                    "function name `{}` conflicts with built-in function",
+                    def_name
+                ),
+                func.name_span(db),
+                &format!("`{}` is a built-in function", def_name),
+            );
+            continue;
+        }
+
+        match map.entry(def_name.into()) {
+            Entry::Occupied(entry) => {
+                scope.duplicate_name_error(
+                    &format!("duplicate function names in `struct {}`", enum_.name(db)),
+                    entry.key(),
+                    entry.get().data(db).ast.span,
+                    def.span,
+                );
+            }
+
+            Entry::Vacant(entry) => {
+                if let Some(variant) = variant_map.get(def_name) {
+                    scope.duplicate_name_error(
+                        &format!("function name `{}` conflicts with enum variant", def_name),
+                        def_name,
+                        variant.span(db),
+                        func.name_span(db),
+                    );
+                    continue;
+                }
+                entry.insert(*func);
+            }
+        }
+    }
+    Analysis::new(Rc::new(map), scope.diagnostics.take().into())
 }
 
 pub fn enum_dependency_graph(db: &dyn AnalyzerDb, enum_: EnumId) -> Analysis<DepGraphWrapper> {

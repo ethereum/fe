@@ -270,14 +270,18 @@ impl NamedThing {
         db: &dyn AnalyzerDb,
         segment: &SmolStr,
     ) -> Option<NamedThing> {
-        match self {
-            Self::Item(Item::Type(TypeDef::Enum(enum_))) => {
-                enum_.variant(db, segment).map(NamedThing::EnumVariant)
+        if let Self::Item(Item::Type(TypeDef::Enum(enum_))) = self {
+            if let Some(variant) = enum_.variant(db, segment) {
+                return Some(NamedThing::EnumVariant(variant));
             }
+        }
+
+        match self {
             Self::Item(item) => item
                 .items(db)
                 .get(segment)
                 .map(|resolved| NamedThing::Item(*resolved)),
+
             _ => None,
         }
     }

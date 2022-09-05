@@ -169,6 +169,7 @@ Node(
               ),
             ),
           ],
+          functions: [],
           pub_qual: None,
         ),
         span: Span(

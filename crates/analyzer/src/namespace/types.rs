@@ -133,6 +133,7 @@ impl TypeId {
             Type::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::SelfContract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Type::Enum(id) => id.function(db, name).map(|fun| fun.sig(db)),
             // TODO: This won't hold when we support multiple bounds
             Type::Generic(inner) => inner
                 .bounds

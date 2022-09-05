@@ -182,6 +182,10 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn enum_all_variants(&self, id: EnumId) -> Rc<[EnumVariantId]>;
     #[salsa::invoke(queries::enums::enum_variant_map)]
     fn enum_variant_map(&self, id: EnumId) -> Analysis<Rc<IndexMap<SmolStr, EnumVariantId>>>;
+    #[salsa::invoke(queries::enums::enum_all_functions)]
+    fn enum_all_functions(&self, id: EnumId) -> Rc<[FunctionId]>;
+    #[salsa::invoke(queries::enums::enum_function_map)]
+    fn enum_function_map(&self, id: EnumId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
     #[salsa::cycle(queries::enums::enum_cycle)]
     #[salsa::invoke(queries::enums::enum_dependency_graph)]
     fn enum_dependency_graph(&self, id: EnumId) -> Analysis<DepGraphWrapper>;

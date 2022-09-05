@@ -9,45 +9,173 @@ note:
   │     ^^^^ unit
 3 │     UnitTuple()
   │     ^^^^^^^^^^^ ()
-4 │     Tuple(i32, u256)
-  │     ^^^^^^^^^^^^^^^^ (i32, u256)
+4 │     Tuple(u32, u256)
+  │     ^^^^^^^^^^^^^^^^ (u32, u256)
 
 note: 
-   ┌─ enums.fe:8:5
+  ┌─ enums.fe:6:5
+  │  
+6 │ ╭     pub fn tuple(x: u32, y: u256) -> MyEnum {
+7 │ │         return MyEnum::Tuple(x, y)
+8 │ │     }
+  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> MyEnum
+
+note: 
+  ┌─ enums.fe:7:30
+  │
+7 │         return MyEnum::Tuple(x, y)
+  │                              ^  ^ u256: Value
+  │                              │   
+  │                              u32: Value
+
+note: 
+  ┌─ enums.fe:7:16
+  │
+7 │         return MyEnum::Tuple(x, y)
+  │                ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+   ┌─ enums.fe:10:5
    │  
- 8 │ ╭     pub fn bar(x: i32, y: u256) {
- 9 │ │         let unit: MyEnum = MyEnum::Unit
-10 │ │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
-11 │ │         let tuple: MyEnum = MyEnum::Tuple(x, y)
-12 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i32 }, { label: None, name: y, typ: u256 }] -> ()
+10 │ ╭     pub fn fold(self) -> u256 {
+11 │ │         match self {
+12 │ │             MyEnum::Unit => {
+13 │ │                return 0
+   · │
+21 │ │         }
+22 │ │     }
+   │ ╰─────^ self: Some(Mutable), params: [] -> u256
 
 note: 
-   ┌─ enums.fe:9:13
+   ┌─ enums.fe:11:15
    │
- 9 │         let unit: MyEnum = MyEnum::Unit
+11 │         match self {
+   │               ^^^^ MyEnum: Memory
+12 │             MyEnum::Unit => {
+13 │                return 0
+   │                       ^ u256: Value
+   ·
+16 │                 return 1
+   │                        ^ u256: Value
+   ·
+19 │                 return u256(a) + b
+   │                             ^ u32: Value
+
+note: 
+   ┌─ enums.fe:19:24
+   │
+19 │                 return u256(a) + b
+   │                        ^^^^^^^   ^ u256: Value
+   │                        │          
+   │                        u256: Value
+
+note: 
+   ┌─ enums.fe:19:24
+   │
+19 │                 return u256(a) + b
+   │                        ^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ enums.fe:26:5
+   │  
+26 │ ╭     pub fn construct(x: u32, y: u256) {
+27 │ │         let unit: MyEnum = MyEnum::Unit
+28 │ │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
+29 │ │         let tuple: MyEnum = MyEnum::Tuple(x, y)
+30 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> ()
+
+note: 
+   ┌─ enums.fe:27:13
+   │
+27 │         let unit: MyEnum = MyEnum::Unit
    │             ^^^^ MyEnum
-10 │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
+28 │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
    │             ^^^^^^^^^^ MyEnum
-11 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
+29 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
    │             ^^^^^ MyEnum
 
 note: 
-   ┌─ enums.fe:9:28
+   ┌─ enums.fe:27:28
    │
- 9 │         let unit: MyEnum = MyEnum::Unit
+27 │         let unit: MyEnum = MyEnum::Unit
    │                            ^^^^^^^^^^^^ MyEnum: Memory
-10 │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
+28 │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
    │                                  ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
-11 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
+29 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
    │                                           ^  ^ u256: Value
    │                                           │   
-   │                                           i32: Value
+   │                                           u32: Value
 
 note: 
-   ┌─ enums.fe:11:29
+   ┌─ enums.fe:29:29
    │
-11 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
+29 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
    │                             ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+   ┌─ enums.fe:32:5
+   │  
+32 │ ╭     pub fn method(x: u32, y: u256) -> u256 {
+33 │ │         let tup: MyEnum = MyEnum::Tuple(x, y)
+34 │ │         return tup.fold()
+35 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+   ┌─ enums.fe:33:13
+   │
+33 │         let tup: MyEnum = MyEnum::Tuple(x, y)
+   │             ^^^ MyEnum
+
+note: 
+   ┌─ enums.fe:33:41
+   │
+33 │         let tup: MyEnum = MyEnum::Tuple(x, y)
+   │                                         ^  ^ u256: Value
+   │                                         │   
+   │                                         u32: Value
+
+note: 
+   ┌─ enums.fe:33:27
+   │
+33 │         let tup: MyEnum = MyEnum::Tuple(x, y)
+   │                           ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+34 │         return tup.fold()
+   │                ^^^ MyEnum: Memory
+
+note: 
+   ┌─ enums.fe:34:16
+   │
+34 │         return tup.fold()
+   │                ^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ enums.fe:37:5
+   │  
+37 │ ╭     pub fn associated_method(x: u32, y: u256) -> u256 {
+38 │ │         return MyEnum::tuple(x, y).fold()
+39 │ │     }
+   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+
+note: 
+   ┌─ enums.fe:38:30
+   │
+38 │         return MyEnum::tuple(x, y).fold()
+   │                              ^  ^ u256: Value
+   │                              │   
+   │                              u32: Value
+
+note: 
+   ┌─ enums.fe:38:16
+   │
+38 │         return MyEnum::tuple(x, y).fold()
+   │                ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+
+note: 
+   ┌─ enums.fe:38:16
+   │
+38 │         return MyEnum::tuple(x, y).fold()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

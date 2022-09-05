@@ -762,6 +762,41 @@ fn events() {
 }
 
 #[test]
+fn enums() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "enums.fe",
+            "Foo",
+            &[uint_token(26), uint_token(42)],
+        );
+
+        harness.test_function(
+            &mut executor,
+            "construct",
+            &[uint_token(1), uint_token(2)],
+            None,
+        );
+
+        harness.test_function(
+            &mut executor,
+            "method",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "associated_method",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        assert_harness_gas_report!(harness);
+    })
+}
+
+#[test]
 fn enum_match() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(

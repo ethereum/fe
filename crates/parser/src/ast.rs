@@ -94,6 +94,7 @@ pub struct Struct {
 pub struct Enum {
     pub name: Node<SmolStr>,
     pub variants: Vec<Node<Variant>>,
+    pub functions: Vec<Node<Function>>,
     pub pub_qual: Option<Span>,
 }
 
@@ -794,15 +795,21 @@ impl fmt::Display for Enum {
         let Enum {
             name,
             variants,
+            functions,
             pub_qual,
         } = self;
 
         if pub_qual.is_some() {
             write!(f, "pub ")?;
         }
+
         write!(f, "enum {} ", name.kind)?;
         write!(f, "{{")?;
         write_nodes_line_wrapped(&mut indented(f), variants)?;
+
+        if !functions.is_empty() {
+            writeln!(indented(f), "{}", double_line_joined(functions))?;
+        }
         write!(f, "}}")
     }
 }

@@ -80,13 +80,41 @@ pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<N
 
     let mut span = enum_tok.span + name.span;
     let mut variants = vec![];
+    let mut functions = vec![];
 
     par.enter_block(span, "enum definition")?;
     loop {
+        par.eat_newlines();
         match par.peek_or_err()? {
             TokenKind::Name => {
                 let variant = parse_variant(par)?;
+                if !functions.is_empty() {
+                    par.error(
+                        variant.span,
+                        "enum variant definitions must come before any function definitions",
+                    );
+                }
                 variants.push(variant);
+            }
+
+            TokenKind::Fn | TokenKind::Unsafe => {
+                functions.push(parse_fn_def(par, None)?);
+            }
+
+            TokenKind::Pub => {
+                let pub_qual = Some(par.next().unwrap().span);
+                match par.peek() {
+                    Some(TokenKind::Fn | TokenKind::Unsafe) => {
+                        functions.push(parse_fn_def(par, pub_qual)?);
+                    }
+
+                    _ => {
+                        par.error(
+                            pub_qual.unwrap(),
+                            "expected `fn` or `unsafe fn` after `pub`",
+                        );
+                    }
+                }
             }
 
             TokenKind::BraceClose => {
@@ -107,6 +135,7 @@ pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<N
         ast::Enum {
             name: name.into(),
             variants,
+            functions,
             pub_qual,
         },
         span,

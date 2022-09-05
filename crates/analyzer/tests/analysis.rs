@@ -326,14 +326,21 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     .collect(),
             ]
             .concat(),
-            Item::Type(TypeDef::Enum(enum_)) => [label_in_non_overlapping_groups(
-                db,
-                &enum_
-                    .variants(db)
+            Item::Type(TypeDef::Enum(enum_)) => [
+                label_in_non_overlapping_groups(
+                    db,
+                    &enum_
+                        .variants(db)
+                        .values()
+                        .map(|variant| (variant.data(db).ast.span, variant.kind(db).unwrap()))
+                        .collect::<Vec<_>>(),
+                ),
+                enum_
+                    .functions(db)
                     .values()
-                    .map(|variant| (variant.data(db).ast.span, variant.kind(db).unwrap()))
-                    .collect::<Vec<_>>(),
-            )]
+                    .flat_map(|id| function_diagnostics(*id, db))
+                    .collect(),
+            ]
             .concat(),
             Item::Type(TypeDef::Contract(contract)) => [
                 label_in_non_overlapping_groups(
