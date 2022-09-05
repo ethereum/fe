@@ -24,54 +24,106 @@ use smol_str::SmolStr;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 
+// TODO: don't fail fatally if expected type is provided
+
+pub fn expr_type(
+    context: &mut dyn AnalyzerContext,
+    exp: &Node<fe::Expr>,
+) -> Result<TypeId, FatalError> {
+    expr(context, exp, None).map(|attr| attr.typ)
+}
+
+pub fn expect_expr_type(context: &mut dyn AnalyzerContext, exp: &Node<fe::Expr>, expected: TypeId) -> Result<(), FatalError> {
+    let attr = expr(context, exp, Some(expected))?;
+
+    let actual = attr.adjusted_type();
+    if actual != expected {
+        eprintln!(
+            "{} != {}",
+            actual.display(context.db()),
+            expected.display(context.db())
+        ); // XXX
+        match try_coerce_type(context, Some(exp), actual, expected) {
+            Err(TypeCoercionError::RequiresToMem) => {
+                context.add_diagnostic(errors::to_mem_error(exp.span));
+            }
+            Err(TypeCoercionError::Incompatible) => {
+                eprintln!(
+                    "{} != {}",
+                    actual.display(context.db()),
+                    expected.display(context.db())
+                );
+                context.type_error("type mismatch", exp.span, expected, actual);
+            }
+            Err(TypeCoercionError::SelfContractType) => {
+                context.add_diagnostic(errors::self_contract_type_error(
+                    exp.span,
+                    &actual.display(context.db()),
+                ));
+            }
+            Ok(_) => {}
+        }
+    }
+    Ok(())
+}
+
+pub fn value_expr_type(
+    context: &mut dyn AnalyzerContext,
+    exp: &Node<fe::Expr>,
+    expected: Option<TypeId>,
+) -> Result<TypeId, FatalError> {
+    let attr = expr(context, exp, expected)?;
+    Ok(deref_type(context, exp, attr.typ))
+}
+
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
-    expected_type: Option<TypeId>,
+    expected: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    let attributes = match &exp.kind {
-        fe::Expr::Name(_) => expr_name(context, exp, expected_type),
-        fe::Expr::Path(_) => expr_path(context, exp, expected_type),
-        fe::Expr::Num(_) => Ok(expr_num(context, exp, expected_type)),
+    let attr = match &exp.kind {
+        fe::Expr::Name(_) => expr_name(context, exp, expected),
+        fe::Expr::Path(_) => expr_path(context, exp, expected),
+        fe::Expr::Num(_) => Ok(expr_num(context, exp, expected)),
 
-        fe::Expr::Subscript { .. } => expr_subscript(context, exp),
-        fe::Expr::Attribute { .. } => expr_attribute(context, exp),
-        fe::Expr::Ternary { .. } => expr_ternary(context, exp),
+        fe::Expr::Subscript { .. } => expr_subscript(context, exp, expected),
+        fe::Expr::Attribute { .. } => expr_attribute(context, exp, expected),
+        fe::Expr::Ternary { .. } => expr_ternary(context, exp, expected),
         fe::Expr::BoolOperation { .. } => expr_bool_operation(context, exp),
-        fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp, expected_type),
-        fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp, expected_type),
+        fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp, expected),
+        fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp, expected),
         fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
         fe::Expr::Call {
             func,
             generic_args,
             args,
-        } => expr_call(context, func, generic_args, args),
-        fe::Expr::List { elts } => expr_list(context, elts, expected_type),
-        fe::Expr::Repeat { .. } => expr_repeat(context, exp, expected_type),
-        fe::Expr::Tuple { .. } => expr_tuple(context, exp, expected_type),
-        fe::Expr::Str(_) => expr_str(context, exp, expected_type),
+        } => expr_call(context, func, generic_args, args, expected),
+        fe::Expr::List { elts } => expr_list(context, elts, expected),
+        fe::Expr::Repeat { .. } => expr_repeat(context, exp, expected),
+        fe::Expr::Tuple { .. } => expr_tuple(context, exp, expected),
+        fe::Expr::Str(_) => expr_str(context, exp, expected),
         fe::Expr::Bool(_) => Ok(ExpressionAttributes::new(TypeId::bool(context.db()))),
         fe::Expr::Unit => Ok(ExpressionAttributes::new(TypeId::unit(context.db()))),
     }?;
-
-    context.add_expression(exp, attributes.clone());
-    Ok(attributes)
+    context.add_expression(exp, attr.clone());
+    Ok(attr)
 }
 
-/// Gather context information for expressions and check for type errors.
-///
-/// Also ensures that the expression is on the stack.
-pub fn value_expr(
+pub fn error_if_not_bool(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
-    expected_type: Option<TypeId>,
-) -> Result<TypeId, FatalError> {
-    let attr = expr(context, exp, expected_type)?;
-    Ok(deref_type(context, exp, attr.typ))
+    msg: &str,
+) -> Result<(), FatalError> {
+    let bool_type = TypeId::bool(context.db());
+    let attr = expr(context, exp, Some(bool_type))?;
+    if try_coerce_type(context, Some(exp), attr.typ, bool_type).is_err() {
+        context.type_error(msg, exp.span, bool_type, attr.typ);
+    }
+    Ok(())
 }
 
-pub fn expr_list(
+fn expr_list(
     context: &mut dyn AnalyzerContext,
     elts: &[Node<fe::Expr>],
     expected_type: Option<TypeId>,
@@ -91,22 +143,7 @@ pub fn expr_list(
 
     let inner_type = if let Some(inner) = expected_inner {
         for elt in elts {
-            let element_attributes = expr(context, elt, Some(inner))?;
-            match try_coerce_type(context, Some(elt), element_attributes.typ, inner) {
-                Err(TypeCoercionError::RequiresToMem) => {
-                    context.add_diagnostic(errors::to_mem_error(elt.span));
-                }
-                Err(TypeCoercionError::Incompatible) => {
-                    context.type_error("type mismatch", elt.span, inner, element_attributes.typ);
-                }
-                Err(TypeCoercionError::SelfContractType) => {
-                    context.add_diagnostic(errors::self_contract_type_error(
-                        elt.span,
-                        &inner.display(context.db()),
-                    ));
-                }
-                Ok(_) => {}
-            }
+            expect_expr_type(context, elt, inner)?;
         }
         inner
     } else {
@@ -151,15 +188,16 @@ pub fn expr_list(
         first_attr.typ
     };
 
-    Ok(ExpressionAttributes::new(context.db().intern_type(
+    Ok(ExpressionAttributes::new(
         Type::Array(Array {
             size: elts.len(),
             inner: inner_type,
-        }),
-    )))
+        })
+        .id(context.db()),
+    ))
 }
 
-pub fn expr_repeat(
+fn expr_repeat(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
     expected_type: Option<TypeId>,
@@ -176,46 +214,43 @@ pub fn expr_repeat(
     let value = expr(context, value, expected_inner)?;
 
     let size = match &len.kind {
-        GenericArg::Int(size) => size.kind,
-        GenericArg::TypeDesc(_) => {
-            return Err(FatalError::new(context.fancy_error(
-                "expected a constant u256 value",
-                vec![Label::primary(len.span, "Array length")],
-                vec!["Note: Array length must be a constant u256".to_string()],
-            )));
-        }
+        GenericArg::Int(size) => Ok(size.kind),
+        GenericArg::TypeDesc(_) => Err(context.fancy_error(
+            "expected a constant u256 value",
+            vec![Label::primary(len.span, "Array length")],
+            vec!["Note: Array length must be a constant u256".to_string()],
+        )),
         GenericArg::ConstExpr(exp) => {
             expr(context, exp, None)?;
             if let Constant::Int(len) = eval_expr(context, exp)? {
-                len.to_usize().unwrap()
+                Ok(len.to_usize().unwrap())
             } else {
-                return Err(FatalError::new(context.fancy_error(
+                Err(context.fancy_error(
                     "expected a constant u256 value",
                     vec![Label::primary(len.span, "Array length")],
                     vec!["Note: Array length must be a constant u256".to_string()],
-                )));
+                ))
             }
         }
     };
 
-    let array_typ = Type::Array(Array {
-        size,
-        inner: value.typ,
-    })
-    .id(context.db());
+    match size {
+        Ok(size) => Ok(ExpressionAttributes::new(
+            Type::Array(Array {
+                size,
+                inner: value.typ,
+            })
+            .id(context.db()),
+        )),
 
-    if let Some(expected_typ) = expected_type {
-        if expected_typ != array_typ {
-            return Err(FatalError::new(context.type_error(
-                "type mismatch",
-                exp.span,
-                expected_typ,
-                array_typ,
-            )));
+        Err(diag) => {
+            if let Some(expected) = expected_type {
+                Ok(ExpressionAttributes::new(expected))
+            } else {
+                Err(FatalError::new(diag))
+            }
         }
     }
-
-    Ok(ExpressionAttributes::new(array_typ))
 }
 
 fn expr_tuple(
@@ -242,6 +277,7 @@ fn expr_tuple(
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // XXX don't fatal if expected.is_some()
         if !&types.iter().all(|id| id.has_fixed_size(context.db())) {
             return Err(FatalError::new(context.error(
                 "variable size types can not be part of tuples",
@@ -294,11 +330,8 @@ fn expr_named_thing(
     named_thing: Option<NamedThing>,
     expected_type: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    match named_thing {
-        Some(NamedThing::Variable { typ, .. }) => {
-            let typ_id = typ?;
-            Ok(ExpressionAttributes::new(typ_id))
-        }
+    let ty = match named_thing {
+        Some(NamedThing::Variable { typ, .. }) => Ok(typ?),
         Some(NamedThing::SelfValue { decl, parent, .. }) => {
             if let Some(target) = parent {
                 if decl.is_none() {
@@ -320,12 +353,10 @@ fn expr_named_thing(
                     );
                 }
                 match target {
-                    Item::Type(TypeDef::Struct(id)) => Ok(ExpressionAttributes::new(
-                        context.db().intern_type(Type::Struct(id)),
-                    )),
-                    Item::Impl(id) => Ok(ExpressionAttributes::new(id.receiver(context.db()))),
+                    Item::Type(TypeDef::Struct(s)) => Ok(Type::Struct(s).id(context.db())),
+                    Item::Impl(id) => Ok(id.receiver(context.db())),
                     // This can only happen when trait methods can implement a default body
-                    Item::Trait(id) => Err(FatalError::new(context.fancy_error(
+                    Item::Trait(id) => Err(context.fancy_error(
                         &format!(
                             "`{}` is a trait, and can't be used as an expression",
                             exp.kind
@@ -341,21 +372,19 @@ fn expr_named_thing(
                             ),
                         ],
                         vec![],
-                    ))),
-                    Item::Type(TypeDef::Contract(id)) => Ok(ExpressionAttributes::new(
-                        context.db().intern_type(Type::SelfContract(id)),
                     )),
+                    Item::Type(TypeDef::Contract(c)) => Ok(Type::SelfContract(c).id(context.db())),
                     _ => unreachable!(),
                 }
             } else {
-                Err(FatalError::new(context.fancy_error(
+                Err(context.fancy_error(
                     "`self` can only be used in contract, struct, trait or impl functions",
                     vec![Label::primary(
                         exp.span,
                         "not allowed in functions defined directly in a module",
                     )],
                     vec![],
-                )))
+                ))
             }
         }
         Some(NamedThing::Item(Item::Constant(id))) => {
@@ -388,7 +417,7 @@ fn expr_named_thing(
                 );
             }
 
-            Ok(ExpressionAttributes::new(typ))
+            Ok(typ)
         }
         Some(item) => {
             let item_kind = item.item_kind_display_name();
@@ -420,17 +449,21 @@ fn expr_named_thing(
                     &format!("`{}` is used here as a value", exp.kind),
                 )
             };
-            Err(FatalError::new(diag))
+            Err(diag)
         }
-        None => {
-            let diag = context.error(
-                &format!("cannot find value `{}` in this scope", exp.kind),
-                exp.span,
-                "undefined",
-            );
-            match expected_type {
-                Some(typ) => Ok(ExpressionAttributes::new(typ)),
-                None => Err(FatalError::new(diag)),
+        None => Err(context.error(
+            &format!("cannot find value `{}` in this scope", exp.kind),
+            exp.span,
+            "undefined",
+        )),
+    };
+    match ty {
+        Ok(ty) => Ok(ExpressionAttributes::new(ty)),
+        Err(diag) => {
+            if let Some(expected) = expected_type {
+                Ok(ExpressionAttributes::new(expected))
+            } else {
+                Err(FatalError::new(diag))
             }
         }
     }
@@ -468,9 +501,7 @@ fn expr_str(
         };
 
         return Ok(ExpressionAttributes::new(
-            context
-                .db()
-                .intern_type(Type::String(FeString { max_size })),
+            Type::String(FeString { max_size }).id(context.db()),
         ));
     }
 
@@ -507,7 +538,7 @@ fn expr_num(
     };
 
     let int_typ = expected_type
-        .and_then(|id| id.as_int(context.db()))
+        .and_then(|id| id.deref(context.db()).as_int(context.db()))
         .unwrap_or(Integer::U256);
     let num = to_bigint(num);
     validate_numeric_literal_fits_type(context, num, exp.span, int_typ);
@@ -517,37 +548,43 @@ fn expr_num(
 fn expr_subscript(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
+    expected_type: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Subscript { value, index } = &exp.kind {
-        let value_attributes = expr(context, value, None)?;
-        let index_attributes = expr(context, index, None)?;
+        let value_ty = expr_type(context, value)?;
+        let expected_index_ty = operations::expected_index_type(context, value_ty);
+        let index_ty = expr(context, index, expected_index_ty)?.typ;
 
         // performs type checking
-        let typ =
-            match operations::index(context, value_attributes.typ, index_attributes.typ, index) {
-                Err(IndexingError::NotSubscriptable) => {
-                    return Err(FatalError::new(context.fancy_error(
+        let typ = match operations::index(context, value_ty, index_ty, index) {
+            Err(err) => {
+                let diag = match err {
+                    IndexingError::NotSubscriptable => context.fancy_error(
                         &format!(
                             "`{}` type is not subscriptable",
-                            value_attributes.typ.display(context.db())
+                            value_ty.display(context.db())
                         ),
                         vec![Label::primary(value.span, "unsubscriptable type")],
                         vec!["Note: Only arrays and maps are subscriptable".into()],
-                    )));
-                }
-                Err(IndexingError::WrongIndexType) => {
-                    return Err(FatalError::new(context.fancy_error(
+                    ),
+                    IndexingError::WrongIndexType => context.fancy_error(
                         &format!(
                             "can not subscript {} with type {}",
-                            value_attributes.typ.display(context.db()),
-                            index_attributes.typ.display(context.db())
+                            value_ty.display(context.db()),
+                            index_ty.display(context.db())
                         ),
                         vec![Label::primary(index.span, "wrong index type")],
                         vec![],
-                    )));
+                    ),
+                };
+                if let Some(expected) = expected_type {
+                    expected
+                } else {
+                    return Err(FatalError::new(diag));
                 }
-                Ok(val) => val,
-            };
+            }
+            Ok(t) => t,
+        };
 
         return Ok(ExpressionAttributes::new(typ));
     }
@@ -558,6 +595,7 @@ fn expr_subscript(
 fn expr_attribute(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
+    expected_type: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
     let (target, field) = match &exp.kind {
         fe::Expr::Attribute { value, attr } => (value, attr),
@@ -565,8 +603,17 @@ fn expr_attribute(
     };
 
     let attrs = expr(context, target, None)?;
-    let field = field_type(context, attrs.typ, &field.kind, field.span)?;
-    Ok(ExpressionAttributes::new(field))
+    let typ = match field_type(context, attrs.typ, &field.kind, field.span) {
+        Ok(t) => t,
+        Err(err) => {
+            if let Some(expected) = expected_type {
+                expected
+            } else {
+                return Err(err);
+            }
+        }
+    };
+    Ok(ExpressionAttributes::new(typ))
 }
 
 fn field_type(
@@ -683,7 +730,7 @@ fn expr_bin_operation(
     let left_attributes = expr(context, left, left_expected)?;
     let right_attributes = expr(context, right, right_expected)?;
 
-    let typ = match operations::bin(
+    match operations::bin(
         context,
         left_attributes.typ,
         left,
@@ -692,7 +739,7 @@ fn expr_bin_operation(
         right,
     ) {
         Err(err) => {
-            return Err(FatalError::new(add_bin_operations_errors(
+            let diag = add_bin_operations_errors(
                 // XXX deref types?
                 context,
                 &op.kind,
@@ -701,12 +748,15 @@ fn expr_bin_operation(
                 right.span,
                 right_attributes.typ,
                 err,
-            )));
+            );
+            if let Some(expected) = expected_type {
+                Ok(ExpressionAttributes::new(expected))
+            } else {
+                Err(FatalError::new(diag))
+            }
         }
-        Ok(val) => val,
-    };
-
-    Ok(ExpressionAttributes::new(typ))
+        Ok(typ) => Ok(ExpressionAttributes::new(typ))
+    }
 }
 
 fn expr_unary_operation(
@@ -719,7 +769,7 @@ fn expr_unary_operation(
         _ => unreachable!(),
     };
 
-    let operand_ty = value_expr(context, operand, None)?;
+    let operand_ty = value_expr_type(context, operand, None)?;
 
     let emit_err = |context: &mut dyn AnalyzerContext, expected| {
         context.error(
@@ -787,6 +837,7 @@ fn expr_call(
     func: &Node<fe::Expr>,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
+    expected_type: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
     let (attributes, call_type) = match &func.kind {
         fe::Expr::Name(name) => expr_call_name(context, name, func, generic_args, args)?,
@@ -797,7 +848,7 @@ fn expr_call(
         }
         _ => {
             let expression = expr(context, func, None)?;
-            return Err(FatalError::new(context.fancy_error(
+            let diag = context.fancy_error(
                 &format!(
                     "`{}` type is not callable",
                     expression.typ.display(context.db())
@@ -807,7 +858,12 @@ fn expr_call(
                     format!("this has type `{}`", expression.typ.display(context.db())),
                 )],
                 vec![],
-            )));
+            );
+            return if let Some(expected) = expected_type {
+                Ok(ExpressionAttributes::new(expected))
+            } else {
+                Err(FatalError::new(diag))
+            };
         }
     };
 
@@ -822,10 +878,11 @@ fn expr_call(
                 format!("`{}` is defined here as unsafe", &fn_name),
             ))
         }
-        context.fancy_error(&format!("unsafe function `{}` can only be called in an unsafe function or block",
-                                   &fn_name),
-                          labels,
-                          vec!["Hint: put this call in an `unsafe` block if you're confident that it's safe to use here".into()],
+        context.fancy_error(
+            &format!("unsafe function `{}` can only be called in an unsafe function or block",
+                     &fn_name),
+            labels,
+            vec!["Hint: put this call in an `unsafe` block if you're confident that it's safe to use here".into()],
         );
     }
 
@@ -1911,30 +1968,12 @@ fn expr_comp_operation(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
+    if let fe::Expr::CompOperation { left, op: _, right } = &exp.kind {
         // comparison operands should be moved to the stack
-        let left_ty = value_expr(context, left, None)?;
-        let right_ty = value_expr(context, right, Some(left_ty))?;
+        let left_ty = value_expr_type(context, left, None)?;
+        expect_expr_type(context, right, left_ty)?;
 
-        if try_coerce_type(context, Some(right), right_ty, left_ty).is_err() {
-            context.fancy_error(
-                &format!("`{}` operands must have the same type", op.kind),
-                vec![
-                    Label::primary(
-                        left.span,
-                        format!("this has type `{}`", left_ty.display(context.db())),
-                    ),
-                    Label::secondary(
-                        right.span,
-                        format!(
-                            "this has incompatible type `{}`",
-                            right_ty.display(context.db())
-                        ),
-                    ),
-                ],
-                vec![],
-            );
-        }
+        // XXX test: struct < struct, array != array
 
         return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
     }
@@ -1945,6 +1984,7 @@ fn expr_comp_operation(
 fn expr_ternary(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
+    expected_type: Option<TypeId>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Ternary {
         if_expr,
@@ -1952,29 +1992,18 @@ fn expr_ternary(
         else_expr,
     } = &exp.kind
     {
-        let test_attr = expr(context, test, None)?;
-        let if_expr_attributes = expr(context, if_expr, None)?;
-        let else_expr_attributes = expr(context, else_expr, Some(if_expr_attributes.typ))?;
+        error_if_not_bool(context, test, "`if` test expression must be a `bool`")?;
+        let if_attr = expr(context, if_expr, expected_type)?;
+        let else_attr = expr(context, else_expr, expected_type.or(Some(if_attr.typ)))?;
 
-        // Make sure the `test` is a boolean type.
-        if !try_coerce_to_bool(context, test, test_attr.typ) {
-            context.error(
-                "`if` test expression must be a `bool`",
-                test.span,
-                &format!(
-                    "this has type `{}`; expected `bool`",
-                    test_attr.typ.deref(context.db()).display(context.db())
-                ),
-            );
-        }
-
+        // XXX expect_types_to_match(
         // Should have the same return Type
-        if if_expr_attributes.typ != else_expr_attributes.typ {
-            let if_expr_ty = deref_type(context, exp, if_expr_attributes.typ);
+        if if_attr.typ != else_attr.typ {
+            let if_expr_ty = deref_type(context, exp, if_attr.typ);
             if try_coerce_type(
                 context,
                 Some(else_expr),
-                else_expr_attributes.typ,
+                else_attr.typ,
                 if_expr_ty,
             )
             .is_err()
@@ -1986,14 +2015,14 @@ fn expr_ternary(
                             if_expr.span,
                             format!(
                                 "this has type `{}`",
-                                if_expr_attributes.typ.display(context.db())
+                                if_attr.typ.display(context.db())
                             ),
                         ),
                         Label::secondary(
                             else_expr.span,
                             format!(
                                 "this has type `{}`",
-                                else_expr_attributes.typ.display(context.db())
+                                else_attr.typ.display(context.db())
                             ),
                         ),
                     ],
@@ -2002,7 +2031,7 @@ fn expr_ternary(
             }
         }
 
-        return Ok(ExpressionAttributes::new(if_expr_attributes.typ));
+        return Ok(ExpressionAttributes::new(if_attr.typ));
     }
     unreachable!()
 }
@@ -2011,23 +2040,11 @@ fn expr_bool_operation(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
+    if let fe::Expr::BoolOperation { left, op: _, right } = &exp.kind {
         let bool_ty = TypeId::bool(context.db());
-        for operand in &[left, right] {
-            let attr = expr(context, operand, None)?;
-
-            if try_coerce_type(context, Some(operand), attr.typ, bool_ty).is_err() {
-                context.error(
-                    &format!("binary op `{}` operands must have type `bool`", op.kind),
-                    operand.span,
-                    &format!(
-                        "this has type `{}`; expected `bool`",
-                        attr.typ.deref(context.db()).display(context.db())
-                    ),
-                );
-            }
-        }
-        return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
+        expect_expr_type(context, left, bool_ty)?;
+        expect_expr_type(context, right, bool_ty)?;
+        return Ok(ExpressionAttributes::new(bool_ty));
     }
 
     unreachable!()
@@ -2049,13 +2066,4 @@ fn is_self_value(expr: &Node<fe::Expr>) -> bool {
     } else {
         false
     }
-}
-
-fn try_coerce_to_bool(
-    context: &mut dyn AnalyzerContext,
-    from_expr: &Node<fe::Expr>,
-    from: TypeId,
-) -> bool {
-    let into = TypeId::bool(context.db());
-    try_coerce_type(context, Some(from_expr), from, into).is_ok()
 }

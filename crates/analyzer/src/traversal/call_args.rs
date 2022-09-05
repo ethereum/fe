@@ -1,9 +1,9 @@
+use super::expressions::{expr, expr_type};
+use super::types::try_coerce_type;
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::display::Displayable;
 use crate::errors::{self, FatalError, TypeCoercionError, TypeError};
 use crate::namespace::types::{EventField, FunctionParam, Generic, Type, TypeId};
-use crate::traversal::expressions;
-use crate::traversal::types::try_coerce_type;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
@@ -152,11 +152,9 @@ pub fn validate_named_args(
         }
 
         let param_type = param.typ()?;
-        let arg_attrs = expressions::expr(context, &arg.kind.value, Some(param_type))?;
-        let arg_type = arg_attrs.typ;
-
         // Check arg type
         if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
+            let arg_type = expr_type(context, &arg.kind.value)?;
             for bound in bounds.iter() {
                 if !bound.is_implemented_for(context.db(), arg_type) {
                     context.error(
@@ -175,7 +173,8 @@ pub fn validate_named_args(
                 }
             }
         } else {
-            match try_coerce_type(context, Some(&arg.kind.value), arg_type, param_type) {
+            let arg_attr = expr(context, &arg.kind.value, Some(param_type))?;
+            match try_coerce_type(context, Some(&arg.kind.value), arg_attr.typ, param_type) {
                 Err(TypeCoercionError::Incompatible) => {
                     let msg = if let Some(label) = param.label() {
                         format!("incorrect type for `{}` argument `{}`", name, label)
@@ -185,7 +184,7 @@ pub fn validate_named_args(
                             name, index
                         )
                     };
-                    context.type_error(&msg, arg.kind.value.span, param_type, arg_type);
+                    context.type_error(&msg, arg.kind.value.span, param_type, arg_attr.typ);
                 }
                 Err(TypeCoercionError::RequiresToMem) => {
                     context.add_diagnostic(errors::to_mem_error(arg.span));

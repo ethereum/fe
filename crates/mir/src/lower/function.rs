@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
-    context::CallType as AnalyzerCallType,
+    context::{Adjustment, AdjustmentKind, CallType as AnalyzerCallType},
     namespace::{
         items as analyzer_items,
         types::{self as analyzer_types, Type},
@@ -729,17 +729,33 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
         };
 
-        for into_ty in &self.analyzer_body.expressions[&expr.id].type_coercion_chain {
-            let into_ty = self.lower_analyzer_type(*into_ty);
+        for Adjustment { into, kind } in &self.analyzer_body.expressions[&expr.id].type_adjustments
+        {
+            let into_ty = self.lower_analyzer_type(*into);
 
-            let tmp = self.map_to_tmp(inst, expr_ty);
-            if expr_ty.is_ptr(self.db) && !into_ty.is_ptr(self.db) {
-                inst = self.builder.load(tmp, expr.into());
-            } else if expr_ty.is_string(self.db) {
-                // XXX handle string size difference
-            } else {
-                dbg!(expr_ty.as_string(self.db), into_ty.as_string(self.db));
-                inst = self.builder.cast(tmp, into_ty, expr.into());
+            match kind {
+                AdjustmentKind::FromStorage => {
+                    // Moving non-primitives from storage requires a to_mem call (for now),
+                    // so this adjustment will only apply to primitive types.
+                    debug_assert!(into_ty.is_primitive(self.db));
+
+                    let val = self
+                        .builder
+                        .inst_result(inst)
+                        .and_then(|res| res.value_id())
+                        .unwrap_or_else(|| self.map_to_tmp(inst, expr_ty));
+                    inst = self.builder.load(val, expr.into());
+                }
+                AdjustmentKind::IntSizeIncrease => {
+                    let val = self
+                        .builder
+                        .inst_result(inst)
+                        .and_then(|res| res.value_id())
+                        .unwrap_or_else(|| self.map_to_tmp(inst, expr_ty));
+
+                    inst = self.builder.cast(val, into_ty, expr.into())
+                }
+                AdjustmentKind::StringSizeIncrease => {} // XXX
             }
             expr_ty = into_ty;
         }

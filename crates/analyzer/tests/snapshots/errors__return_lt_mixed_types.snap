@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: `<` operands must have the same type
-  ┌─ compile_errors/return_lt_mixed_types.fe:3:16
+error: type mismatch
+  ┌─ compile_errors/return_lt_mixed_types.fe:3:20
   │
 3 │         return x < y
-  │                ^   - this has incompatible type `u256`
-  │                │    
-  │                this has type `u128`
+  │                    ^ this has type `u256`; expected type `u128`
 
 

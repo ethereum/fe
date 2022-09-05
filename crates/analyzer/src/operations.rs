@@ -29,6 +29,21 @@ pub fn index(
     }
 }
 
+pub fn expected_index_type(context: &mut dyn AnalyzerContext, obj: TypeId) -> Option<TypeId> {
+    match obj.typ(context.db()) {
+        Type::Array(_) => Some(Type::u256().id(context.db())),
+        Type::Map(Map { key, .. }) => Some(key),
+        Type::SPtr(inner) => expected_index_type(context, inner),
+        Type::Base(_)
+        | Type::Tuple(_)
+        | Type::String(_)
+        | Type::Contract(_)
+        | Type::SelfContract(_)
+        | Type::Generic(_)
+        | Type::Struct(_) => None,
+    }
+}
+
 fn index_array(
     context: &mut dyn AnalyzerContext,
     array: &Array,

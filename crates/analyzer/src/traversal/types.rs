@@ -1,4 +1,6 @@
-use crate::context::{AnalyzerContext, Constant, ExpressionAttributes, NamedThing};
+use crate::context::{
+    Adjustment, AdjustmentKind, AnalyzerContext, Constant, ExpressionAttributes, NamedThing,
+};
 use crate::display::Displayable;
 use crate::errors::{TypeCoercionError, TypeError};
 use crate::namespace::items::{Item, TraitId};
@@ -103,12 +105,25 @@ pub fn try_cast_type(
 
 pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty: TypeId) -> TypeId {
     match ty.typ(context.db()) {
-        Type::SPtr(inner) => {
-            context.update_expression(expr, &|attr| attr.type_coercion_chain.push(inner));
-            inner
-        }
+        Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::FromStorage),
+        // Type::Mut(inner) => {
+        //     adjust_type(context, expr, inner, AdjustmentKind::DeMut);
+        //     deref_type(context, expr, inner)
+        // }
         _ => ty,
     }
+}
+
+fn adjust_type(
+    context: &mut dyn AnalyzerContext,
+    expr: &Node<ast::Expr>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> TypeId {
+    context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
+        attr.type_adjustments.push(Adjustment { into, kind });
+    });
+    into
 }
 
 pub fn try_coerce_type(
@@ -120,14 +135,18 @@ pub fn try_coerce_type(
     let chain = coerce(context, from_expr, from, into, vec![])?;
     if let Some(expr) = from_expr {
         context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
-            attr.type_coercion_chain.extend(chain.iter())
+            attr.type_adjustments.extend(chain.iter())
         });
     }
     Ok(into)
 }
 
-fn add_coercion(mut chain: Vec<TypeId>, into: TypeId) -> Vec<TypeId> {
-    chain.push(into);
+fn add_adjustment(
+    mut chain: Vec<Adjustment>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> Vec<Adjustment> {
+    chain.push(Adjustment { into, kind });
     chain
 }
 
@@ -136,8 +155,8 @@ fn coerce(
     from_expr: Option<&Node<ast::Expr>>,
     from: TypeId,
     into: TypeId,
-    chain: Vec<TypeId>,
-) -> Result<Vec<TypeId>, TypeCoercionError> {
+    chain: Vec<Adjustment>,
+) -> Result<Vec<Adjustment>, TypeCoercionError> {
     if from == into {
         return Ok(chain);
     }
@@ -145,6 +164,7 @@ fn coerce(
     match (from.typ(context.db()), into.typ(context.db())) {
         (Type::SPtr(from), Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
 
+        // XXX LOAD_PRIMITIVE_FROM_STO
         // Primitive types can be moved from storage implicitly.
         // Contract type is also a primitive.
         (Type::SPtr(from_inner), Type::Base(_) | Type::Contract(_)) => coerce(
@@ -152,9 +172,10 @@ fn coerce(
             from_expr,
             from_inner,
             into,
-            add_coercion(chain, into),
+            add_adjustment(chain, into, AdjustmentKind::FromStorage),
         ),
 
+        // XXX STO_TO_MEM?
         // complex types require .to_mem()
         (Type::SPtr(from), _) => {
             // If the inner types are incompatible, report that error instead
@@ -162,7 +183,8 @@ fn coerce(
             Err(TypeCoercionError::RequiresToMem)
         }
 
-        // all types can be moved into storage implicitly
+        // All types can be moved into storage implicitly.
+        // Note that no `Adjustment` is added here.
         (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
 
         (
@@ -170,7 +192,11 @@ fn coerce(
             Type::String(FeString { max_size: into_sz }),
         ) => {
             if into_sz >= from_sz {
-                Ok(add_coercion(chain, into))
+                Ok(add_adjustment(
+                    chain,
+                    into,
+                    AdjustmentKind::StringSizeIncrease,
+                ))
             } else {
                 Err(TypeCoercionError::Incompatible)
             }
@@ -209,9 +235,10 @@ fn coerce(
             Err(TypeCoercionError::Incompatible)
         }
 
+        // XXX
         (Type::Base(Base::Numeric(f)), Type::Base(Base::Numeric(i))) => {
             if f.is_signed() == i.is_signed() && i.size() > f.size() {
-                Ok(add_coercion(chain, into))
+                Ok(add_adjustment(chain, into, AdjustmentKind::IntSizeIncrease))
             } else {
                 Err(TypeCoercionError::Incompatible)
             }

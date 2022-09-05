@@ -70,6 +70,10 @@ impl BodyBuilder {
         self.body.store.map_result(inst, result)
     }
 
+    pub fn inst_result(&mut self, inst: InstId) -> Option<&AssignableValue> {
+        self.body.store.inst_result(inst)
+    }
+
     pub fn move_to_block(&mut self, block: BasicBlockId) {
         self.loc = CursorLocation::BlockBottom(block)
     }

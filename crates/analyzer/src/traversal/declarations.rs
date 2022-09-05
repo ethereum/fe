@@ -1,6 +1,6 @@
 use crate::context::AnalyzerContext;
 use crate::display::Displayable;
-use crate::errors::{self, FatalError, TypeCoercionError};
+use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{Type, TypeId};
 use crate::traversal::{const_expr, expressions, types};
@@ -21,28 +21,7 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
         }
 
         if let Some(value) = value {
-            let value_attributes = expressions::expr(scope, value, Some(declared_type))?;
-
-            match types::try_coerce_type(scope, Some(value), value_attributes.typ, declared_type) {
-                Err(TypeCoercionError::RequiresToMem) => {
-                    scope.add_diagnostic(errors::to_mem_error(value.span));
-                }
-                Err(TypeCoercionError::Incompatible) => {
-                    scope.type_error(
-                        "type mismatch",
-                        value.span,
-                        declared_type,
-                        value_attributes.typ,
-                    );
-                }
-                Err(TypeCoercionError::SelfContractType) => {
-                    scope.add_diagnostic(errors::self_contract_type_error(
-                        value.span,
-                        &declared_type.display(scope.db()),
-                    ));
-                }
-                Ok(_) => {}
-            }
+            expressions::expect_expr_type(scope, value, declared_type)?;
         } else if matches!(declared_type.typ(scope.db()), Type::Array(_)) {
             scope.error(
                 "uninitialized variable",

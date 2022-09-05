@@ -3,16 +3,16 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: binary op `or` operands must have type `bool`
+error: type mismatch
   ┌─ [snippet]:3:3
   │
 3 │   1 or 2
-  │   ^ this has type `u256`; expected `bool`
+  │   ^ this has type `u256`; expected type `bool`
 
-error: binary op `or` operands must have type `bool`
+error: type mismatch
   ┌─ [snippet]:3:8
   │
 3 │   1 or 2
-  │        ^ this has type `u256`; expected `bool`
+  │        ^ this has type `u256`; expected type `bool`
 
 

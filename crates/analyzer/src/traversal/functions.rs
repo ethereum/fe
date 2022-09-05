@@ -103,25 +103,12 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             body,
             or_else,
         } => {
-            let test_type = expressions::expr(scope, test, None)?.typ;
-            error_if_not_bool(
-                scope,
-                test,
-                test_type,
-                "`if` statement condition is not bool",
-            );
+            expressions::error_if_not_bool(scope, test, "`if` statement condition is not bool")?;
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), body)?;
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), or_else)?;
             Ok(())
         }
         _ => unreachable!(),
-    }
-}
-
-fn error_if_not_bool(scope: &mut BlockScope, expr: &Node<fe::Expr>, typ: TypeId, msg: &str) {
-    let bool_type = TypeId::bool(scope.db());
-    if types::try_coerce_type(scope, Some(expr), typ, bool_type).is_err() {
-        scope.type_error(msg, expr.span, bool_type, typ);
     }
 }
 
@@ -144,8 +131,7 @@ fn unsafe_block(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
 fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
-            let test_type = expressions::expr(scope, test, None)?.typ;
-            error_if_not_bool(scope, test, test_type, "`while` loop condition is not bool");
+            expressions::error_if_not_bool(scope, test, "`while` loop condition is not bool")?;
             traverse_statements(&mut scope.new_child(BlockScopeType::Loop), body)?;
             Ok(())
         }
@@ -245,8 +231,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
 
 fn assert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
-        let test_type = expressions::expr(scope, test, None)?.typ;
-        error_if_not_bool(scope, test, test_type, "`assert` condition is not bool");
+        expressions::error_if_not_bool(scope, test, "`assert` condition is not bool")?;
 
         if let Some(msg) = msg {
             let msg_attributes = expressions::expr(scope, msg, None)?;

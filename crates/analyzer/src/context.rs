@@ -356,7 +356,33 @@ pub struct ExpressionAttributes {
     pub typ: TypeId,
     // Evaluated constant value of const local definition.
     pub const_value: Option<Constant>,
-    pub type_coercion_chain: Vec<TypeId>,
+    pub type_adjustments: Vec<Adjustment>,
+}
+impl ExpressionAttributes {
+    pub fn original_type(&self) -> TypeId {
+        self.typ
+    }
+    pub fn adjusted_type(&self) -> TypeId {
+        if let Some(adj) = self.type_adjustments.last() {
+            adj.into
+        } else {
+            self.typ
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Adjustment {
+    pub into: TypeId,
+    pub kind: AdjustmentKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AdjustmentKind {
+    FromStorage,
+    // DeMut,
+    IntSizeIncrease,
+    StringSizeIncrease,
 }
 
 impl ExpressionAttributes {
@@ -364,7 +390,7 @@ impl ExpressionAttributes {
         Self {
             typ,
             const_value: None,
-            type_coercion_chain: vec![],
+            type_adjustments: vec![],
         }
     }
 }
@@ -374,14 +400,14 @@ impl crate::display::DisplayWithDb for ExpressionAttributes {
         let ExpressionAttributes {
             typ,
             const_value,
-            type_coercion_chain,
+            type_adjustments,
         } = self;
         write!(f, "{}", typ.display(db))?;
         if let Some(val) = &const_value {
             write!(f, " = {:?}", val)?;
         }
-        for into_type in type_coercion_chain {
-            write!(f, " -> {}", into_type.display(db))?;
+        for adj in type_adjustments {
+            write!(f, " -> {}", adj.into.display(db))?;
         }
         Ok(())
     }
