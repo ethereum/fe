@@ -15,7 +15,6 @@ Example:
 
 ```fe
 contract Foo {
-
     pub fn bar(val: u256) -> u256 {
         if val > 5 {
             return 1
@@ -33,4 +32,3 @@ The `if` statement is used for conditional execution.
 [_Expression_]: ../expressions/index.md
 [_Statement_]: ./index.md
 [struct]: ../items/structs.md
-[EIP-838]: https://github.com/ethereum/EIPs/issues/838

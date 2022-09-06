@@ -4,6 +4,6 @@
 * [Functions](./functions.md)
 * [Structs](./structs.md)
 * [Events](./events.md)
-* [Enumeration](./enum.md)
+* [Enums](./enums.md)
 * [Type Aliases](./type_aliases.md)
 * [Contracts](./contracts.md)

@@ -7,6 +7,7 @@
 * [Index expressions](./indexing.md)
 * [Attribute expressions](./attribute.md)
 * [Name expressions](./name.md)
+* [Name expressions](./path.md)
 * [Literal expressions](./literal.md)
 * [Arithmetic Operators](./arithmetic_operators.md)
 * [Comparison Operators](./comparison_operators.md)

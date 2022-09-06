@@ -13,4 +13,5 @@
 * [while Statement](./while.md)
 * [break Statement](./break.md)
 * [continue Statement](./continue.md)
+* [match Statement](./match.md)
 * [assert Statement](./assert.md)
