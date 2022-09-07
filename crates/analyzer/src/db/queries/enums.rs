@@ -119,7 +119,7 @@ pub fn enum_function_map(
     db: &dyn AnalyzerDb,
     enum_: EnumId,
 ) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
-    let mut scope = ItemScope::new(db, enum_.module(db));
+    let scope = ItemScope::new(db, enum_.module(db));
     let mut map = IndexMap::<SmolStr, FunctionId>::new();
     let variant_map = enum_.variants(db);
 
@@ -226,7 +226,7 @@ pub fn enum_cycle(
     _cycle: &[String],
     enum_: &EnumId,
 ) -> Analysis<DepGraphWrapper> {
-    let mut scope = ItemScope::new(db, enum_.module(db));
+    let scope = ItemScope::new(db, enum_.module(db));
     let enum_name = enum_.name(db);
     let enum_span = enum_.span(db);
     scope.error(

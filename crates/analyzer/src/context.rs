@@ -1,5 +1,6 @@
 use crate::{
     display::Displayable,
+    errors::FatalError,
     namespace::items::{EnumVariantId, TypeDef},
     pattern_analysis::PatternMatrix,
 };
@@ -48,12 +49,12 @@ impl<T> Analysis<T> {
 
 pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing>;
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError>;
     fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing>;
     fn add_diagnostic(&self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
 
-    fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
+    fn error(&self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
         self.register_diag(errors::error(message, label_span, label))
     }
 
@@ -310,7 +311,7 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't resolve names")
     }
 
-    fn resolve_path(&self, _path: &ast::Path, _span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, _path: &ast::Path, _span: Span) -> Result<NamedThing, FatalError> {
         panic!("TempContext can't resolve paths")
     }
 

@@ -3,7 +3,7 @@
 use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
-use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
+use crate::errors::{AlreadyDefined, FatalError, IncompleteItem, TypeError};
 use crate::namespace::items::{EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
 use crate::namespace::types::{Type, TypeId};
@@ -120,18 +120,25 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         Ok(resolved)
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
         let resolved = self.module.resolve_path_internal(self.db(), path);
 
+        let mut err = None;
         for diagnostic in resolved.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.clone())
+            err = Some(self.register_diag(diagnostic.clone()));
         }
 
-        if let Some(named_thing) = &resolved.value {
-            check_visibility(self, named_thing, span);
+        if let Some(err) = err {
+            return Err(FatalError::new(err));
         }
 
-        resolved.value
+        if let Some(named_thing) = resolved.value {
+            check_visibility(self, &named_thing, span);
+            Ok(named_thing)
+        } else {
+            let err = self.error("unresolved path item", span, "not found");
+            Err(FatalError::new(err))
+        }
     }
 
     fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
@@ -365,21 +372,28 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         }
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
         let resolved = self
             .function
             .module(self.db())
             .resolve_path_internal(self.db(), path);
 
+        let mut err = None;
         for diagnostic in resolved.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.clone())
+            err = Some(self.register_diag(diagnostic.clone()));
         }
 
-        if let Some(named_thing) = &resolved.value {
-            check_visibility(self, named_thing, span);
+        if let Some(err) = err {
+            return Err(FatalError::new(err));
         }
 
-        resolved.value
+        if let Some(named_thing) = resolved.value {
+            check_visibility(self, &named_thing, span);
+            Ok(named_thing)
+        } else {
+            let err = self.error("unresolved path item", span, "not found");
+            Err(FatalError::new(err))
+        }
     }
 
     fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
@@ -520,7 +534,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
         self.root.resolve_path(path, span)
     }
 

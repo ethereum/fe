@@ -149,8 +149,8 @@ pub fn resolve_concrete_type_path<T: std::fmt::Display>(
     base_desc: &Node<T>,
     generic_args: Option<&Node<Vec<ast::GenericArg>>>,
 ) -> Result<TypeId, TypeError> {
-    let named_thing = context.resolve_path(path, base_desc.span);
-    resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
+    let named_thing = context.resolve_path(path, base_desc.span)?;
+    resolve_concrete_type_named_thing(context, Some(named_thing), base_desc, generic_args)
 }
 
 pub fn resolve_concrete_type_named_thing<T: std::fmt::Display>(
@@ -257,8 +257,8 @@ pub fn type_desc_to_trait(
             resolve_concrete_trait_named_thing(context, named_thing, desc)
         }
         ast::TypeDesc::Path(path) => {
-            let named_thing = context.resolve_path(path, desc.span);
-            resolve_concrete_trait_named_thing(context, named_thing, desc)
+            let named_thing = context.resolve_path(path, desc.span)?;
+            resolve_concrete_trait_named_thing(context, Some(named_thing), desc)
         }
         // generic will need to allow for paths too
         ast::TypeDesc::Generic { base, .. } => {

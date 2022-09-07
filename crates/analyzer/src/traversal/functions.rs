@@ -289,8 +289,8 @@ fn match_pattern(
         },
 
         Pattern::PathTuple(path, pat_elts) => {
-            let variant = match scope.resolve_path(&path.kind, path.span) {
-                Some(NamedThing::EnumVariant(variant)) => variant,
+            let variant = match scope.resolve_path(&path.kind, path.span)? {
+                NamedThing::EnumVariant(variant) => variant,
                 _ => {
                     let err = scope.fancy_error(
                         "expected enum variant",

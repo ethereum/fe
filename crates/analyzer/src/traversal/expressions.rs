@@ -344,8 +344,8 @@ fn expr_path(
         _ => unreachable!(),
     };
 
-    let named_thing = context.resolve_path(path, exp.span);
-    expr_named_thing(context, exp, named_thing, expected_type)
+    let named_thing = context.resolve_path(path, exp.span)?;
+    expr_named_thing(context, exp, Some(named_thing), expected_type)
 }
 
 fn expr_named_thing(
@@ -995,14 +995,7 @@ fn expr_call_path<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    let named_thing = context.resolve_path(path, func.span).ok_or_else(|| {
-        FatalError::new(context.error(
-            &format!("`{}` is not defined", func.kind),
-            func.span,
-            &format!("`{}` has not been defined in this context", func.kind),
-        ))
-    })?;
-
+    let named_thing = context.resolve_path(path, func.span)?;
     expr_call_named_thing(context, named_thing, func, generic_args, args)
 }
 

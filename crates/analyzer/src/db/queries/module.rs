@@ -355,7 +355,7 @@ pub fn module_constant_type_cycle(
     _cycle: &[String],
     constant: &ModuleConstantId,
 ) -> Analysis<Result<TypeId, TypeError>> {
-    let mut context = ItemScope::new(db, constant.data(db).module);
+    let context = ItemScope::new(db, constant.data(db).module);
     let err = Err(TypeError::new(context.error(
         "recursive constant value definition",
         constant.data(db).ast.span,
@@ -417,7 +417,7 @@ pub fn module_constant_value_cycle(
     _cycle: &[String],
     constant: &ModuleConstantId,
 ) -> Analysis<Result<Constant, ConstEvalError>> {
-    let mut context = ItemScope::new(db, constant.data(db).module);
+    let context = ItemScope::new(db, constant.data(db).module);
     let err = Err(ConstEvalError::new(context.error(
         "recursive constant value definition",
         constant.data(db).ast.span,
