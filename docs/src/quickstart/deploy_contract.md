@@ -52,7 +52,7 @@ If you haven't already, run `./fe build guest_book.fe --overwrite` to obtain the
 
 To make the deployment, we will need to send a transaction to a node that participates in the Görli network. We can run our own node, sign up at [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/) to use one of their nodes or find an open public node such as `https://goerli-light.eth.linkpool.io` which we will use to keep this tutorial as accessible as possible.
 
-Use the following command to deploy the contract. Please note that `<rpc-url>` needs to be replaced with the URL of the node that we connect to and `<our-eth-address>` needs to be replaced with the Ethereum address that we imported in the previous step.Adding `ETH_GAS=8000000` to provide enough gas to prevent the transaction from failing.
+Use the following command to deploy the contract. Please note that `<rpc-url>` needs to be replaced with the URL of the node that we connect to and `<our-eth-address>` needs to be replaced with the Ethereum address that we imported in the previous step. Adding `ETH_GAS=8000000` to provide enough gas to prevent the transaction from failing.
 
 ```
 $ ETH_RPC_URL=<rpc-url> ETH_GAS=8000000 ETH_FROM=<our-eth-address> seth send --create output/GuestBook/GuestBook.bin
