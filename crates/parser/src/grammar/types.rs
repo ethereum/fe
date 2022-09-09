@@ -25,6 +25,7 @@ pub fn parse_struct_def(
     let mut fields = vec![];
     let mut functions = vec![];
     par.enter_block(span, "struct body must start with `{`")?;
+
     loop {
         par.eat_newlines();
         let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
@@ -42,7 +43,7 @@ pub fn parse_struct_def(
             TokenKind::Fn | TokenKind::Unsafe => {
                 functions.push(parse_fn_def(par, pub_qual)?);
             }
-            TokenKind::BraceClose => {
+            TokenKind::BraceClose if pub_qual.is_none() => {
                 span += par.next()?.span;
                 break;
             }

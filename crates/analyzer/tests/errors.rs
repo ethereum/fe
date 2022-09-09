@@ -349,3 +349,4 @@ test_file! { ctx_undefined_create2 }
 test_file! { ctx_undefined_event }
 test_file! { uninit_values }
 test_file! { invalid_repeat_length }
+test_file! { invalid_struct_pub_qualifier }
