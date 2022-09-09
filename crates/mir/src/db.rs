@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::{
     db::AnalyzerDbStorage,
@@ -6,6 +6,7 @@ use fe_analyzer::{
     AnalyzerDb,
 };
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
+use smol_str::SmolStr;
 
 use crate::ir::{self, ConstantId, TypeId};
 
@@ -59,7 +60,7 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
     fn mir_lowered_monomorphized_func_signature(
         &self,
         analyzer_func: analyzer_items::FunctionId,
-        concrete_args: Vec<analyzer_types::TypeId>,
+        resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
     ) -> ir::FunctionId;
     #[salsa::invoke(queries::function::mir_lowered_pseudo_monomorphized_func_signature)]
     fn mir_lowered_pseudo_monomorphized_func_signature(
