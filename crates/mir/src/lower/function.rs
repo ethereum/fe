@@ -33,12 +33,12 @@ use crate::{
 type ScopeId = Id<Scope>;
 
 pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) -> FunctionId {
-    lower_monomorphized_func_signature(db, func, &[])
+    lower_monomorphized_func_signature(db, func, BTreeMap::new())
 }
 pub fn lower_monomorphized_func_signature(
     db: &dyn MirDb,
     func: analyzer_items::FunctionId,
-    mut concrete_args: &[analyzer_types::TypeId],
+    resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
 ) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
@@ -48,28 +48,20 @@ pub fn lower_monomorphized_func_signature(
         let self_ty = func.self_type(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
         params.push(make_param(db, "self", self_ty, source));
-        // similarly, when in the future analyzer params contain `self` we won't need to
-        // adjust the concrete args anymore
-        if !concrete_args.is_empty() {
-            concrete_args = &concrete_args[1..]
-        }
     }
     let analyzer_signature = func.signature(db.upcast());
-    let mut resolved_generics: BTreeMap<analyzer_types::Generic, analyzer_types::TypeId> =
-        BTreeMap::new();
 
-    for (index, param) in analyzer_signature.params.iter().enumerate() {
+    for param in analyzer_signature.params.iter() {
         let source = arg_source(db, func, &param.name);
-        let provided_type = concrete_args
-            .get(index)
-            .cloned()
-            .unwrap_or_else(|| param.typ.clone().unwrap());
 
-        params.push(make_param(db, param.clone().name, provided_type, source));
+        let param_type = if let Type::Generic(generic) = param.typ.clone().unwrap().typ(db.upcast())
+        {
+            *resolved_generics.get(&generic.name).unwrap()
+        } else {
+            param.typ.clone().unwrap()
+        };
 
-        if let Type::Generic(generic) = param.typ.clone().unwrap().typ(db.upcast()) {
-            resolved_generics.insert(generic, provided_type);
-        }
+        params.push(make_param(db, param.clone().name, param_type, source))
     }
 
     let return_type = db.mir_lowered_type(analyzer_signature.return_type.clone().unwrap());
@@ -567,7 +559,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 .func
                 .signature(self.db)
                 .resolved_generics
-                .get(&generic)
+                .get(&generic.name)
                 .cloned()
                 .expect("expected generic to be resolved");
 
@@ -879,6 +871,31 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
+    fn resolve_generics_args(
+        &mut self,
+        method: &analyzer_items::FunctionId,
+        args: &[Id<Value>],
+    ) -> BTreeMap<SmolStr, analyzer_types::TypeId> {
+        method
+            .signature(self.db.upcast())
+            .params
+            .iter()
+            .zip(args.iter().map(|val| {
+                self.builder
+                    .value_ty(*val)
+                    .analyzer_ty(self.db)
+                    .expect("invalid parameter")
+            }))
+            .filter_map(|(param, typ)| {
+                if let Type::Generic(generic) = param.typ.clone().unwrap().typ(self.db.upcast()) {
+                    Some((generic.name, typ))
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeMap<_, _>>()
+    }
+
     fn lower_call(
         &mut self,
         func: &Node<ast::Expr>,
@@ -927,21 +944,14 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             AnalyzerCallType::ValueMethod { method, .. } => {
+                let resolved_generics = self.resolve_generics_args(method, &args);
+
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
 
                 let func_id = if method.is_generic(self.db.upcast()) {
-                    let concrete_args = method_args
-                        .iter()
-                        .map(|val| {
-                            self.builder
-                                .value_ty(*val)
-                                .analyzer_ty(self.db)
-                                .expect("invalid parameter")
-                        })
-                        .collect::<Vec<_>>();
                     self.db
-                        .mir_lowered_monomorphized_func_signature(*method, concrete_args)
+                        .mir_lowered_monomorphized_func_signature(*method, resolved_generics)
                 } else {
                     self.db.mir_lowered_func_signature(*method)
                 };
@@ -970,7 +980,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .func
                     .signature(self.db)
                     .resolved_generics
-                    .get(generic_type)
+                    .get(&generic_type.name)
                     .cloned()
                     .expect("unresolved generic type");
 

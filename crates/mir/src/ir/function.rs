@@ -22,7 +22,7 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
-    pub resolved_generics: BTreeMap<analyzer_types::Generic, analyzer_types::TypeId>,
+    pub resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
     pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
     pub analyzer_func_id: analyzer_items::FunctionId,
