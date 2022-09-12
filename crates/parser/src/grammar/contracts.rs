@@ -45,9 +45,12 @@ pub fn parse_contract_def(
 
         match par.peek_or_err()? {
             TokenKind::Name => {
-                let field = parse_field(par, pub_qual, const_qual)?;
+                let field = parse_field(par, vec![], pub_qual, const_qual)?;
                 if !defs.is_empty() {
-                    par.error(field.span, "contract field definitions must come before any function or event definitions");
+                    par.error(
+                        field.span,
+                        "contract field definitions must come before any function definitions",
+                    );
                 }
                 fields.push(field);
             }

@@ -30,10 +30,22 @@ pub fn parse_struct_def(
 
     loop {
         par.eat_newlines();
+
+        let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
+            let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
+                vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
+            // This hints to a future where we would support multiple attributes per field. For now we don't need it.
+            vec![Node::new(attr_name.text.into(), attr.span + attr_name.span)]
+        } else {
+            vec![]
+        };
+
+        par.eat_newlines();
+
         let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
         match par.peek_or_err()? {
             TokenKind::Name => {
-                let field = parse_field(par, pub_qual, None)?;
+                let field = parse_field(par, attributes, pub_qual, None)?;
                 if !functions.is_empty() {
                     par.error(
                         field.span,
@@ -278,6 +290,7 @@ pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult
 /// `const` qualifiers must be parsed by the caller, and passed in.
 pub fn parse_field(
     par: &mut Parser,
+    attributes: Vec<Node<SmolStr>>,
     pub_qual: Option<Span>,
     const_qual: Option<Span>,
 ) -> ParseResult<Node<Field>> {
@@ -320,6 +333,7 @@ pub fn parse_field(
         Field {
             is_pub: pub_qual.is_some(),
             is_const: const_qual.is_some(),
+            attributes,
             name: name.into(),
             typ,
             value,
