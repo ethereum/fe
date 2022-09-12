@@ -83,7 +83,7 @@ test_parse_err! { fn_invalid_bound, module::parse_module, "pub fn f<T:(u8, u8)>(
 test_parse_err! { use_bad_name, module::parse_use, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, "if x { y }" }
 test_parse_err! { module_nonsense, module::parse_module, "))" }
-test_parse_err! { struct_bad_field_name, module::parse_module, "struct f {\n pub event }" }
+test_parse_err! { struct_bad_field_name, module::parse_module, "struct f {\n pub type }" }
 test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, "(a, ()) : u256" }

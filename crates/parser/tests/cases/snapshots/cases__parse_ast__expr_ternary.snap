@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(expr_ternary), expressions::parse_expr,\n           \"x + 1 if y + 2 else z + 3\")"
+expression: "ast_string(stringify!(expr_ternary), expressions::parse_expr,\n    \"x + 1 if y + 2 else z + 3\")"
 
 ---
 Node(

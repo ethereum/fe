@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_3d), types::parse_type_desc,\n           \"Array<Array<Array<u256, 4>, 4>, 4>\")"
+expression: "ast_string(stringify!(type_3d), types::parse_type_desc,\n    \"Array<Array<Array<u256, 4>, 4>, 4>\")"
 
 ---
 Node(

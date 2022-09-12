@@ -4,37 +4,23 @@ expression: "error_string(&path, test_files::fixture(path))"
 
 ---
 error: `Barn` expects 1 argument, but 2 were provided
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:11:35
-   │
-11 │         let existing_barn: Barn = Barn("hello world", address(0))
-   │                                   ^^^^ -------------  ---------- supplied 2 arguments
-   │                                   │                    
-   │                                   expects 1 argument
+  ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:7:35
+  │
+7 │         let existing_barn: Barn = Barn("hello world", address(0))
+  │                                   ^^^^ -------------  ---------- supplied 2 arguments
+  │                                   │                    
+  │                                   expects 1 argument
 
 error: type mismatch
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:11:40
-   │
-11 │         let existing_barn: Barn = Barn("hello world", address(0))
-   │                                        ^^^^^^^^^^^^^ this has type `String<11>`; expected type `address`
+  ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:7:40
+  │
+7 │         let existing_barn: Barn = Barn("hello world", address(0))
+  │                                        ^^^^^^^^^^^^^ this has type `String<11>`; expected type `address`
 
 error: incorrect type for argument to `Barn.create`
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:12:46
-   │
-12 │         let created_barn: Barn = Barn.create(address(26), 0)
-   │                                              ^^^^^^^^^^^ this has type `address`; expected `Context`
-
-error: missing argument label
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:13:27
-   │
-13 │         emit WorldMessage(42, message: "hello world")
-   │                           ^ add `ctx:` here
-   │
-   = Note: this label is optional if the argument is a variable named `ctx`.
-
-error: incorrect type for `WorldMessage` argument `ctx`
-   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:13:27
-   │
-13 │         emit WorldMessage(42, message: "hello world")
-   │                           ^^ this has type `u256`; expected type `Context`
+  ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:8:46
+  │
+8 │         let created_barn: Barn = Barn.create(address(26), 0)
+  │                                              ^^^^^^^^^^^ this has type `address`; expected `Context`
 
 

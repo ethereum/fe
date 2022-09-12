@@ -1,4 +1,4 @@
-use foo::{MyInt, MY_CONST, MyEvent, MyStruct, MyTrait, my_func, MyContract}
+use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
 
 struct SomeThing {}
 impl MyTrait for SomeThing {}
@@ -11,10 +11,6 @@ contract Main {
 
     pub fn priv_const() -> i32 {
         return MY_CONST
-    }
-
-    pub fn priv_event() {
-        emit MyEvent(ctx, x: 1)
     }
 
     pub fn priv_struct() {

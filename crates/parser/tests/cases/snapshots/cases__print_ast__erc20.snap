@@ -3,6 +3,18 @@ source: crates/parser/tests/cases/print_ast.rs
 expression: "parse_and_print(\"demos/erc20_token.fe\", src)"
 
 ---
+struct Approval {
+    pub owner: address
+    pub spender: address
+    pub value: u256
+}
+
+struct Transfer {
+    pub from: address
+    pub to: address
+    pub value: u256
+}
+
 contract ERC20 {
     _balances: Map<address, u256>
     _allowances: Map<address, Map<address, u256>>
@@ -10,18 +22,6 @@ contract ERC20 {
     _name: String<100>
     _symbol: String<100>
     _decimals: u8
-
-    event Approval {
-        idx owner: address
-        idx spender: address
-        value: u256
-    }
-
-    event Transfer {
-        idx from: address
-        idx to: address
-        value: u256
-    }
 
     pub fn __init__(self, ctx: Context, name: String<100>, symbol: String<100>) {
         self._name = name
@@ -87,7 +87,7 @@ contract ERC20 {
         _before_token_transfer(from: sender, to: recipient, value)
         self._balances[sender] = self._balances[sender] - value
         self._balances[recipient] = self._balances[recipient] + value
-        emit Transfer(ctx, from: sender, to: recipient, value)
+        ctx.emit(Transfer(from: sender, to: recipient, value))
     }
 
     fn _mint(self, ctx: Context, account: address, value: u256) {
@@ -95,7 +95,7 @@ contract ERC20 {
         _before_token_transfer(from: address(0), to: account, value)
         self._total_supply = self._total_supply + value
         self._balances[account] = self._balances[account] + value
-        emit Transfer(ctx, from: address(0), to: account, value)
+        ctx.emit(Transfer(from: address(0), to: account, value))
     }
 
     fn _burn(self, ctx: Context, account: address, value: u256) {
@@ -103,14 +103,14 @@ contract ERC20 {
         _before_token_transfer(from: account, to: address(0), value)
         self._balances[account] = self._balances[account] - value
         self._total_supply = self._total_supply - value
-        emit Transfer(ctx, from: account, to: address(0), value)
+        ctx.emit(Transfer(from: account, to: address(0), value))
     }
 
     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
         assert owner != address(0)
         assert spender != address(0)
         self._allowances[owner][spender] = value
-        emit Approval(ctx, owner, spender, value)
+        ctx.emit(Approval(owner, spender, value))
     }
 
     fn _setup_decimals(self, _ decimals_: u8) {

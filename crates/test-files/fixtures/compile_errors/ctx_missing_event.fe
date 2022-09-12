@@ -1,9 +1,0 @@
-event HelloWorld {
-    message: String<26>
-}
-
-contract Bar {
-    pub fn say_hello(ctx: Context) {
-        emit HelloWorld(message: "hello world")
-    }
-}

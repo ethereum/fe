@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_semicolons), functions::parse_stmt,\n           \"if a { b; c; d; for x in y {}; }\")"
+expression: "ast_string(stringify!(stmt_semicolons), functions::parse_stmt,\n    \"if a { b; c; d; for x in y {}; }\")"
 
 ---
 Node(

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(expr_dotted_number), expressions::parse_expr, true,\n           \"3.14\")"
+expression: "err_string(stringify!(expr_dotted_number), expressions::parse_expr, \"3.14\")"
 
 ---
 error: floats not supported

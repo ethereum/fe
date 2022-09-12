@@ -6,26 +6,26 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ data_copying_stress.fe:2:5
   │
-2 │     my_string: String<42>
-  │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
-3 │     my_other_string: String<42>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
-4 │     my_u256: u256
-  │     ^^^^^^^^^^^^^ u256
-5 │     my_other_u256: u256
-  │     ^^^^^^^^^^^^^^^^^^^ u256
-6 │     my_nums: Array<u256, 5>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
-7 │     my_addrs: Array<address, 3>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
+2 │     pub my_string: String<42>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
+3 │     pub my_u256: u256
+  │     ^^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ data_copying_stress.fe:10:9
+   ┌─ data_copying_stress.fe:7:5
    │
-10 │         my_string: String<42>
-   │         ^^^^^^^^^^^^^^^^^^^^^ String<42>
-11 │         my_u256: u256
-   │         ^^^^^^^^^^^^^ u256
+ 7 │     my_string: String<42>
+   │     ^^^^^^^^^^^^^^^^^^^^^ String<42>
+ 8 │     my_other_string: String<42>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<42>
+ 9 │     my_u256: u256
+   │     ^^^^^^^^^^^^^ u256
+10 │     my_other_u256: u256
+   │     ^^^^^^^^^^^^^^^^^^^ u256
+11 │     my_nums: Array<u256, 5>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
+12 │     my_addrs: Array<address, 3>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 3>
 
 note: 
    ┌─ data_copying_stress.fe:14:5
@@ -571,18 +571,30 @@ note:
    ┌─ data_copying_stress.fe:69:5
    │  
 69 │ ╭     fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
-70 │ │         emit MyEvent(ctx, my_string, my_u256)
+70 │ │         ctx.emit(MyEvent(my_string, my_u256))
 71 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: Some("_"), name: my_string, typ: String<42> }, { label: Some("_"), name: my_u256, typ: u256 }] -> ()
 
 note: 
-   ┌─ data_copying_stress.fe:70:22
+   ┌─ data_copying_stress.fe:70:9
    │
-70 │         emit MyEvent(ctx, my_string, my_u256)
-   │                      ^^^  ^^^^^^^^^  ^^^^^^^ u256: Value
-   │                      │    │           
-   │                      │    String<42>: Memory
-   │                      Context: Memory
+70 │         ctx.emit(MyEvent(my_string, my_u256))
+   │         ^^^              ^^^^^^^^^  ^^^^^^^ u256: Value
+   │         │                │           
+   │         │                String<42>: Memory
+   │         Context: Memory
+
+note: 
+   ┌─ data_copying_stress.fe:70:18
+   │
+70 │         ctx.emit(MyEvent(my_string, my_u256))
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent: Memory
+
+note: 
+   ┌─ data_copying_stress.fe:70:9
+   │
+70 │         ctx.emit(MyEvent(my_string, my_u256))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ data_copying_stress.fe:73:5

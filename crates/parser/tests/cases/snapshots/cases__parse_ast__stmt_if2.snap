@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_if2), functions::parse_stmt,\n           \"if a { b } else if c { d } else if e { \\n f } \\n else {\\n g }\")"
+expression: "ast_string(stringify!(stmt_if2), functions::parse_stmt,\n    \"if a { b } else if c { d } else if e { \\n f } \\n else {\\n g }\")"
 
 ---
 Node(

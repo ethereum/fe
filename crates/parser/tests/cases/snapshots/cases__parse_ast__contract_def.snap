@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(contract_def), try_parse_module,\n    r#\"contract Foo {\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n\n  pub fn foo() -> u8 {\n    return 10\n  }\n  event Bar {\n    idx from: address\n  }\n}\n\"#)"
+expression: "ast_string(stringify!(contract_def), try_parse_module,\n    r#\"contract Foo {\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n\n  pub fn foo() -> u8 {\n    return 10\n  }\n}\n\"#)"
 
 ---
 Node(
@@ -196,61 +196,18 @@ Node(
                 end: 113,
               ),
             )),
-            Event(Node(
-              kind: Event(
-                name: Node(
-                  kind: "Bar",
-                  span: Span(
-                    start: 122,
-                    end: 125,
-                  ),
-                ),
-                fields: [
-                  Node(
-                    kind: EventField(
-                      is_idx: true,
-                      name: Node(
-                        kind: "from",
-                        span: Span(
-                          start: 136,
-                          end: 140,
-                        ),
-                      ),
-                      typ: Node(
-                        kind: Base(
-                          base: "address",
-                        ),
-                        span: Span(
-                          start: 142,
-                          end: 149,
-                        ),
-                      ),
-                    ),
-                    span: Span(
-                      start: 132,
-                      end: 149,
-                    ),
-                  ),
-                ],
-                pub_qual: None,
-              ),
-              span: Span(
-                start: 116,
-                end: 153,
-              ),
-            )),
           ],
           pub_qual: None,
         ),
         span: Span(
           start: 0,
-          end: 155,
+          end: 115,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 155,
+    end: 115,
   ),
 )

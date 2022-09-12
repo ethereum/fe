@@ -2043,7 +2043,6 @@ fn abi_decode_complex() {
 
         let dynamic_complex_array =
             ethabi::Token::FixedArray(std::iter::repeat(nested_dynamic_complex).take(3).collect());
-        dbg!(ethabi::encode(&[dynamic_complex_array.clone()]).len());
         harness.test_function(
             &mut executor,
             "decode_dynamic_complex_elem_array",

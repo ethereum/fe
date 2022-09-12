@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_var_decl_tuples), functions::parse_stmt,\n           \"let (a, (b, (c, d))): x\")"
+expression: "ast_string(stringify!(stmt_var_decl_tuples), functions::parse_stmt,\n    \"let (a, (b, (c, d))): x\")"
 
 ---
 Node(

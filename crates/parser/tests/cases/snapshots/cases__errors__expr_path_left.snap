@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(expr_path_left), expressions::parse_expr, true,\n           \"(1 + 2)::foo::bar\")"
+expression: "err_string(stringify!(expr_path_left), expressions::parse_expr,\n    \"(1 + 2)::foo::bar\")"
 
 ---
 error: failed to parse path expression

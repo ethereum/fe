@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_const_pub), contracts::parse_contract_def,\n           false, \"contract C:\\n const pub x: u8\")"
+expression: "err_string(stringify!(contract_const_pub), module::parse_module,\n    \"contract C {\\n const pub x: u8\\n}\")"
 
 ---
 error: `const pub` should be written `pub const`

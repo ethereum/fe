@@ -1,9 +1,9 @@
+struct MyEvent {
+    pub my_tuple: (u256, bool, address)
+}
+
 contract Foo {
     my_sto_tuple: (u256, i32)
-
-    event MyEvent {
-        my_tuple: (u256, bool, address)
-    }
 
     pub fn build_my_tuple(my_num: u256, my_bool: bool, my_address: address) -> (u256, bool, address) {
         return (my_num, my_bool, my_address)
@@ -26,7 +26,7 @@ contract Foo {
     }
 
     pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)) {
-        emit MyEvent(ctx, my_tuple)
+        ctx.emit(MyEvent(my_tuple))
     }
 
     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32) {

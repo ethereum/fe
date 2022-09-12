@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(struct_def), try_parse_module,\n    r#\"struct S {\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8 {\n    return self.z + self.y\n  }\n  unsafe fn bar() {}\n}\"#)"
+expression: "ast_string(stringify!(struct_def), try_parse_module,\n    r#\"struct S {\n  #indexed\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8 {\n    return self.z + self.y\n  }\n  unsafe fn bar() {}\n}\"#)"
 
 ---
 Node(
@@ -125,8 +125,8 @@ Node(
                     base: Node(
                       kind: "Map",
                       span: Span(
-                        start: 53,
-                        end: 56,
+                        start: 64,
+                        end: 67,
                       ),
                     ),
                     args: Node(
@@ -136,8 +136,8 @@ Node(
                             base: "u8",
                           ),
                           span: Span(
-                            start: 57,
-                            end: 59,
+                            start: 68,
+                            end: 70,
                           ),
                         )),
                         TypeDesc(Node(
@@ -145,27 +145,27 @@ Node(
                             base: "foo",
                           ),
                           span: Span(
-                            start: 61,
-                            end: 64,
+                            start: 72,
+                            end: 75,
                           ),
                         )),
                       ],
                       span: Span(
-                        start: 56,
-                        end: 65,
+                        start: 67,
+                        end: 76,
                       ),
                     ),
                   ),
                   span: Span(
-                    start: 53,
-                    end: 65,
+                    start: 64,
+                    end: 76,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 46,
-                end: 65,
+                start: 57,
+                end: 76,
               ),
             ),
           ],
@@ -175,30 +175,30 @@ Node(
                 sig: Node(
                   kind: FunctionSignature(
                     pub_: Some(Span(
-                      start: 69,
-                      end: 72,
+                      start: 80,
+                      end: 83,
                     )),
                     unsafe_: None,
                     name: Node(
                       kind: "foo",
                       span: Span(
-                        start: 76,
-                        end: 79,
+                        start: 87,
+                        end: 90,
                       ),
                     ),
                     generic_params: Node(
                       kind: [],
                       span: Span(
-                        start: 76,
-                        end: 79,
+                        start: 87,
+                        end: 90,
                       ),
                     ),
                     args: [
                       Node(
                         kind: Self_,
                         span: Span(
-                          start: 80,
-                          end: 84,
+                          start: 91,
+                          end: 95,
                         ),
                       ),
                     ],
@@ -207,14 +207,14 @@ Node(
                         base: "u8",
                       ),
                       span: Span(
-                        start: 89,
-                        end: 91,
+                        start: 100,
+                        end: 102,
                       ),
                     )),
                   ),
                   span: Span(
-                    start: 69,
-                    end: 91,
+                    start: 80,
+                    end: 102,
                   ),
                 ),
                 body: [
@@ -227,28 +227,28 @@ Node(
                               value: Node(
                                 kind: Name("self"),
                                 span: Span(
-                                  start: 105,
-                                  end: 109,
+                                  start: 116,
+                                  end: 120,
                                 ),
                               ),
                               attr: Node(
                                 kind: "z",
                                 span: Span(
-                                  start: 110,
-                                  end: 111,
+                                  start: 121,
+                                  end: 122,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 105,
-                              end: 111,
+                              start: 116,
+                              end: 122,
                             ),
                           ),
                           op: Node(
                             kind: Add,
                             span: Span(
-                              start: 112,
-                              end: 113,
+                              start: 123,
+                              end: 124,
                             ),
                           ),
                           right: Node(
@@ -256,40 +256,40 @@ Node(
                               value: Node(
                                 kind: Name("self"),
                                 span: Span(
-                                  start: 114,
-                                  end: 118,
+                                  start: 125,
+                                  end: 129,
                                 ),
                               ),
                               attr: Node(
                                 kind: "y",
                                 span: Span(
-                                  start: 119,
-                                  end: 120,
+                                  start: 130,
+                                  end: 131,
                                 ),
                               ),
                             ),
                             span: Span(
-                              start: 114,
-                              end: 120,
+                              start: 125,
+                              end: 131,
                             ),
                           ),
                         ),
                         span: Span(
-                          start: 105,
-                          end: 120,
+                          start: 116,
+                          end: 131,
                         ),
                       )),
                     ),
                     span: Span(
-                      start: 98,
-                      end: 120,
+                      start: 109,
+                      end: 131,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 69,
-                end: 124,
+                start: 80,
+                end: 135,
               ),
             ),
             Node(
@@ -298,36 +298,36 @@ Node(
                   kind: FunctionSignature(
                     pub_: None,
                     unsafe_: Some(Span(
-                      start: 127,
-                      end: 133,
+                      start: 138,
+                      end: 144,
                     )),
                     name: Node(
                       kind: "bar",
                       span: Span(
-                        start: 137,
-                        end: 140,
+                        start: 148,
+                        end: 151,
                       ),
                     ),
                     generic_params: Node(
                       kind: [],
                       span: Span(
-                        start: 137,
-                        end: 140,
+                        start: 148,
+                        end: 151,
                       ),
                     ),
                     args: [],
                     return_type: None,
                   ),
                   span: Span(
-                    start: 127,
-                    end: 142,
+                    start: 138,
+                    end: 153,
                   ),
                 ),
                 body: [],
               ),
               span: Span(
-                start: 127,
-                end: 145,
+                start: 138,
+                end: 156,
               ),
             ),
           ],
@@ -335,13 +335,13 @@ Node(
         ),
         span: Span(
           start: 0,
-          end: 147,
+          end: 158,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 147,
+    end: 158,
   ),
 )

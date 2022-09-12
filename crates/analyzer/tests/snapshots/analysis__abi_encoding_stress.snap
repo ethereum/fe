@@ -18,34 +18,34 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:9:5
    │
- 9 │     my_addrs: Array<address, 5>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
-10 │     my_u128: u128
-   │     ^^^^^^^^^^^^^ u128
-11 │     my_string: String<10>
-   │     ^^^^^^^^^^^^^^^^^^^^^ String<10>
-12 │     my_u16s: Array<u16, 255>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>
-13 │     my_bool: bool
-   │     ^^^^^^^^^^^^^ bool
-14 │     my_bytes: Array<u8, 100>
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
+ 9 │     pub my_addrs: Array<address, 5>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
+10 │     pub my_u128: u128
+   │     ^^^^^^^^^^^^^^^^^ u128
+11 │     pub my_string: String<10>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ String<10>
+12 │     pub my_u16s: Array<u16, 255>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>
+13 │     pub my_bool: bool
+   │     ^^^^^^^^^^^^^^^^^ bool
+14 │     pub my_bytes: Array<u8, 100>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
-   ┌─ abi_encoding_stress.fe:17:9
+   ┌─ abi_encoding_stress.fe:18:5
    │
-17 │         my_addrs: Array<address, 5>
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
-18 │         my_u128: u128
-   │         ^^^^^^^^^^^^^ u128
-19 │         my_string: String<10>
-   │         ^^^^^^^^^^^^^^^^^^^^^ String<10>
-20 │         my_u16s: Array<u16, 255>
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>
-21 │         my_bool: bool
-   │         ^^^^^^^^^^^^^ bool
-22 │         my_bytes: Array<u8, 100>
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
+18 │     my_addrs: Array<address, 5>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
+19 │     my_u128: u128
+   │     ^^^^^^^^^^^^^ u128
+20 │     my_string: String<10>
+   │     ^^^^^^^^^^^^^^^^^^^^^ String<10>
+21 │     my_u16s: Array<u16, 255>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u16, 255>
+22 │     my_bool: bool
+   │     ^^^^^^^^^^^^^ bool
+23 │     my_bytes: Array<u8, 100>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:25:5
@@ -434,86 +434,98 @@ note:
    ┌─ abi_encoding_stress.fe:85:5
    │  
 85 │ ╭     pub fn emit_my_event(self, ctx: Context) {
-86 │ │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
+86 │ │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
 87 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:22
+   ┌─ abi_encoding_stress.fe:86:9
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                      ^^^            ^^^^ Foo: Value
-   │                      │               
-   │                      Context: Memory
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │         ^^^                        ^^^^ Foo: Value
+   │         │                           
+   │         Context: Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:37
+   ┌─ abi_encoding_stress.fe:86:36
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                     ^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) }
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                    ^^^^^^^^^^^^^ Array<address, 5>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:37
+   ┌─ abi_encoding_stress.fe:86:36
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                     ^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                     │                                 
-   │                                     Array<address, 5>: Storage { nonce: Some(0) } => Memory
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                    ^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
+   │                                    │                                 
+   │                                    Array<address, 5>: Storage { nonce: Some(0) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:70
+   ┌─ abi_encoding_stress.fe:86:69
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                      ^^^^^^^^^^^^             ^^^^ Foo: Value
-   │                                                                      │                         
-   │                                                                      u128: Storage { nonce: Some(1) } => Value
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                     ^^^^^^^^^^^^             ^^^^ Foo: Value
+   │                                                                     │                         
+   │                                                                     u128: Storage { nonce: Some(1) } => Value
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:95
+   ┌─ abi_encoding_stress.fe:86:94
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                               ^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) }
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                              ^^^^^^^^^^^^^^ String<10>: Storage { nonce: Some(2) }
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:95
+   ┌─ abi_encoding_stress.fe:86:94
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                               ^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                                                                               │                                  
-   │                                                                                               String<10>: Storage { nonce: Some(2) } => Memory
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                              ^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
+   │                                                                                              │                                  
+   │                                                                                              String<10>: Storage { nonce: Some(2) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:129
+   ┌─ abi_encoding_stress.fe:86:128
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                 ^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) }
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                                                                ^^^^^^^^^^^^ Array<u16, 255>: Storage { nonce: Some(3) }
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:129
+   ┌─ abi_encoding_stress.fe:86:128
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                 ^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
-   │                                                                                                                                 │                                
-   │                                                                                                                                 Array<u16, 255>: Storage { nonce: Some(3) } => Memory
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                                                                ^^^^^^^^^^^^^^^^^^^^^           ^^^^ Foo: Value
+   │                                                                                                                                │                                
+   │                                                                                                                                Array<u16, 255>: Storage { nonce: Some(3) } => Memory
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:161
+   ┌─ abi_encoding_stress.fe:86:160
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                 ^^^^^^^^^^^^            ^^^^ Foo: Value
-   │                                                                                                                                                                 │                        
-   │                                                                                                                                                                 bool: Storage { nonce: Some(4) } => Value
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                                                                                                ^^^^^^^^^^^^            ^^^^ Foo: Value
+   │                                                                                                                                                                │                        
+   │                                                                                                                                                                bool: Storage { nonce: Some(4) } => Value
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:185
+   ┌─ abi_encoding_stress.fe:86:184
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                                         ^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) }
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                                                                                                                        ^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) }
 
 note: 
-   ┌─ abi_encoding_stress.fe:86:185
+   ┌─ abi_encoding_stress.fe:86:184
    │
-86 │         emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
-   │                                                                                                                                                                                         ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                                                                                                                                                                                        ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>: Storage { nonce: Some(5) } => Memory
+
+note: 
+   ┌─ abi_encoding_stress.fe:86:18
+   │
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent: Memory
+
+note: 
+   ┌─ abi_encoding_stress.fe:86:9
+   │
+86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 
