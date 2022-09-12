@@ -37,7 +37,7 @@ impl TypeId {
             }
             TypeKind::Struct(def) | TypeKind::Contract(def) => {
                 let index = expect_projection_index(access);
-                def.fields[index].1
+                def.fields[index].2
             }
             TypeKind::Enum(_) => {
                 let index = expect_projection_index(access);
@@ -68,7 +68,7 @@ impl TypeId {
         match &self.data(db).as_ref().kind {
             TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
             TypeKind::Tuple(def) => def.items[index],
-            TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
+            TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].2,
             TypeKind::Enum(_) => {
                 debug_assert_eq!(index, 0);
                 self.enum_disc_type(db)
@@ -251,7 +251,7 @@ impl TypeId {
                 }
                 let last_idx = def.fields.len() - 1;
                 self.aggregate_elem_offset(db, last_idx, slot_size)
-                    + def.fields[last_idx].1.size_of(db, slot_size)
+                    + def.fields[last_idx].2.size_of(db, slot_size)
             }
 
             TypeKind::Enum(def) => {
@@ -324,6 +324,10 @@ impl TypeId {
                 | TypeKind::Enum(_)
                 | TypeKind::Contract(_)
         )
+    }
+
+    pub fn is_struct(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).as_ref().kind, TypeKind::Struct(_))
     }
 
     pub fn is_array(self, db: &dyn MirDb) -> bool {
@@ -459,11 +463,11 @@ mod tests {
         let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields = vec![
-            ("".into(), i64),
-            ("".into(), i64),
-            ("".into(), i8),
-            ("".into(), i128),
-            ("".into(), i8),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i8),
+            ("".into(), vec![], i128),
+            ("".into(), vec![], i8),
         ];
 
         let struct_def = StructDef {
@@ -502,11 +506,11 @@ mod tests {
         let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields = vec![
-            ("".into(), i64),
-            ("".into(), i64),
-            ("".into(), i8),
-            ("".into(), i128),
-            ("".into(), i8),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i8),
+            ("".into(), vec![], i128),
+            ("".into(), vec![], i8),
         ];
 
         let struct_def = StructDef {
@@ -539,11 +543,11 @@ mod tests {
         let i128 = db.mir_intern_type(Type::new(TypeKind::I128, None).into());
 
         let fields_inner = vec![
-            ("".into(), i64),
-            ("".into(), i64),
-            ("".into(), i8),
-            ("".into(), i128),
-            ("".into(), i8),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i64),
+            ("".into(), vec![], i8),
+            ("".into(), vec![], i128),
+            ("".into(), vec![], i8),
         ];
 
         let struct_def_inner = StructDef {
@@ -555,7 +559,10 @@ mod tests {
         let aggregate_inner =
             db.mir_intern_type(Type::new(TypeKind::Struct(struct_def_inner), None).into());
 
-        let fields = vec![("".into(), i8), ("".into(), aggregate_inner)];
+        let fields = vec![
+            ("".into(), vec![], i8),
+            ("".into(), vec![], aggregate_inner),
+        ];
         let struct_def = StructDef {
             name: "".into(),
             fields,

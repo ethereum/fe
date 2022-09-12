@@ -61,6 +61,11 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
         analyzer_func: analyzer_items::FunctionId,
         concrete_args: Vec<analyzer_types::TypeId>,
     ) -> ir::FunctionId;
+    #[salsa::invoke(queries::function::mir_lowered_pseudo_monomorphized_func_signature)]
+    fn mir_lowered_pseudo_monomorphized_func_signature(
+        &self,
+        analyzer_func: analyzer_items::FunctionId,
+    ) -> ir::FunctionId;
     #[salsa::invoke(queries::function::mir_lowered_func_body)]
     fn mir_lowered_func_body(&self, func: ir::FunctionId) -> Rc<ir::FunctionBody>;
 }

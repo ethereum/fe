@@ -99,6 +99,9 @@ impl TypeId {
     pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
         self.typ(db).as_string().is_some()
     }
+    pub fn is_struct(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Struct(_))
+    }
     pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
         self.typ(db).as_struct()
     }
