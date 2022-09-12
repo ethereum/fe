@@ -30,9 +30,6 @@ pub enum Item {
     // Any of the items inside TypeDef (struct, alias, etc)
     // could be optionally generic.
     GenericType(GenericType),
-    // Events aren't normal types; they *could* be moved into
-    // TypeDef, but it would have consequences.
-    Event(EventId),
     Trait(TraitId),
     Impl(ImplId),
     Function(FunctionId),
@@ -50,7 +47,6 @@ impl Item {
             Item::Trait(id) => id.name(db),
             Item::Impl(id) => id.name(db),
             Item::GenericType(id) => id.name(),
-            Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
             Item::BuiltinFunction(id) => id.as_ref().into(),
             Item::Intrinsic(id) => id.as_ref().into(),
@@ -65,7 +61,6 @@ impl Item {
             Item::Type(id) => id.name_span(db),
             Item::Trait(id) => Some(id.name_span(db)),
             Item::GenericType(_) => None,
-            Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
             Item::Constant(id) => Some(id.name_span(db)),
             Item::BuiltinFunction(_)
@@ -87,7 +82,6 @@ impl Item {
             | Self::GenericType(_) => true,
             Self::Type(id) => id.is_public(db),
             Self::Trait(id) => id.is_public(db),
-            Self::Event(id) => id.is_public(db),
             Self::Function(id) => id.is_public(db),
             Self::Constant(id) => id.is_public(db),
         }
@@ -102,7 +96,6 @@ impl Item {
             Item::Type(_)
             | Item::Trait(_)
             | Item::Impl(_)
-            | Item::Event(_)
             | Item::Function(_)
             | Item::Constant(_)
             | Item::Ingot(_)
@@ -124,7 +117,6 @@ impl Item {
             Item::Type(_) | Item::GenericType(_) => "type",
             Item::Trait(_) => "trait",
             Item::Impl(_) => "impl",
-            Item::Event(_) => "event",
             Item::Function(_) | Item::BuiltinFunction(_) => "function",
             Item::Intrinsic(_) => "intrinsic function",
             Item::Constant(_) => "constant",
@@ -139,7 +131,6 @@ impl Item {
             Item::Module(module) => module.items(db),
             Item::Type(val) => val.items(db),
             Item::GenericType(_)
-            | Item::Event(_)
             | Item::Trait(_)
             | Item::Impl(_)
             | Item::Function(_)
@@ -155,7 +146,6 @@ impl Item {
             Item::Trait(id) => Some(id.parent(db)),
             Item::Impl(id) => Some(id.parent(db)),
             Item::GenericType(_) => None,
-            Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
             Item::Constant(id) => Some(id.parent(db)),
             Item::Module(id) => Some(id.parent(db)),
@@ -250,7 +240,6 @@ impl Item {
             Item::Type(id) => id.sink_diagnostics(db, sink),
             Item::Trait(id) => id.sink_diagnostics(db, sink),
             Item::Impl(id) => id.sink_diagnostics(db, sink),
-            Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
             Item::GenericType(_) | Item::BuiltinFunction(_) | Item::Intrinsic(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
@@ -997,7 +986,6 @@ impl ContractId {
             .function(db, name)
             .filter(|f| !f.takes_self(db))
             .map(Item::Function)
-            .or_else(|| self.event(db, name).map(Item::Event))
         {
             Ok(Some(NamedThing::Item(item)))
         } else {
@@ -1033,16 +1021,6 @@ impl ContractId {
         db.contract_public_function_map(*self)
     }
 
-    /// Lookup an event by name.
-    pub fn event(&self, db: &dyn AnalyzerDb, name: &str) -> Option<EventId> {
-        self.events(db).get(name).copied()
-    }
-
-    /// A map of events defined within the contract.
-    pub fn events(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, EventId>> {
-        db.contract_event_map(*self).value
-    }
-
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
     }
@@ -1067,12 +1045,6 @@ impl ContractId {
         db.contract_all_fields(*self)
             .iter()
             .for_each(|field| field.sink_diagnostics(db, sink));
-
-        // events
-        db.contract_event_map(*self).sink_diagnostics(sink);
-        db.contract_all_events(*self)
-            .iter()
-            .for_each(|event| event.sink_diagnostics(db, sink));
 
         // functions
         db.contract_init_function(*self).sink_diagnostics(sink);
@@ -1929,51 +1901,6 @@ impl TraitId {
             }
             id.sink_diagnostics(db, sink)
         });
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Event {
-    pub ast: Node<ast::Event>,
-    pub module: ModuleId,
-    pub contract: Option<ContractId>,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-pub struct EventId(pub(crate) u32);
-impl_intern_key!(EventId);
-
-impl EventId {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
-        self.data(db).ast.name().into()
-    }
-    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
-        self.data(db).ast.span
-    }
-    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
-        self.data(db).ast.kind.name.span
-    }
-    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Event> {
-        db.lookup_intern_event(*self)
-    }
-    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
-        self.data(db).ast.kind.pub_qual.is_some()
-    }
-    pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Event> {
-        db.event_type(*self).value
-    }
-    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
-        self.data(db).module
-    }
-    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
-        if let Some(contract_id) = self.data(db).contract {
-            Item::Type(TypeDef::Contract(contract_id))
-        } else {
-            Item::Module(self.module(db))
-        }
-    }
-    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        sink.push_all(db.event_type(*self).diagnostics.iter());
     }
 }
 

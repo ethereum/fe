@@ -450,19 +450,6 @@ impl Integer {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Event {
-    pub name: SmolStr,
-    pub fields: Vec<EventField>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EventField {
-    pub name: SmolStr,
-    pub typ: Result<TypeId, TypeError>,
-    pub is_indexed: bool,
-}
-
 impl Type {
     pub fn id(&self, db: &dyn AnalyzerDb) -> TypeId {
         db.intern_type(self.clone())

@@ -1044,20 +1044,6 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 id.typ(context.db())?.display(context.db()),
             ),
         ))),
-        NamedThing::Item(Item::Event(_)) => Err(FatalError::new(context.fancy_error(
-            &format!("`{}` is not callable", func.kind),
-            vec![Label::primary(
-                func.span,
-                &format!(
-                    "`{}` is an event, and can't be constructed in this context",
-                    func.kind
-                ),
-            )],
-            vec![format!(
-                "Hint: to emit an event, use `emit {}(..)`",
-                func.kind
-            )],
-        ))),
         NamedThing::Item(Item::Trait(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,

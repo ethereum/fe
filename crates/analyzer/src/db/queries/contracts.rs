@@ -1,16 +1,13 @@
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, EventId, FunctionId,
-    Item, TypeDef,
+    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item,
+    TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
 use crate::traversal::types::type_desc;
-use crate::{
-    context::{AnalyzerContext, NamedThing},
-    namespace::types::TypeId,
-};
+use crate::{context::AnalyzerContext, namespace::types::TypeId};
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
@@ -23,16 +20,13 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[
     let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
     body.iter()
-        .filter_map(|stmt| match stmt {
-            ast::ContractStmt::Event(_) => None,
-            ast::ContractStmt::Function(node) => {
-                Some(db.intern_function(Rc::new(items::Function::new(
-                    db,
-                    node,
-                    Some(Item::Type(TypeDef::Contract(contract))),
-                    module,
-                ))))
-            }
+        .map(|stmt| match stmt {
+            ast::ContractStmt::Function(node) => db.intern_function(Rc::new(items::Function::new(
+                db,
+                node,
+                Some(Item::Type(TypeDef::Contract(contract))),
+                module,
+            ))),
         })
         .collect()
 }
@@ -48,17 +42,6 @@ pub fn contract_function_map(
         let def = &func.data(db).ast;
         let def_name = def.name();
         if def_name == "__init__" || def_name == "__call__" {
-            continue;
-        }
-
-        if let Some(event) = contract.event(db, def_name) {
-            scope.name_conflict_error(
-                "function",
-                def_name,
-                &NamedThing::Item(Item::Event(event)),
-                Some(event.name_span(db)),
-                def.kind.sig.kind.name.span,
-            );
             continue;
         }
 
@@ -266,54 +249,6 @@ pub fn contract_call_function(
     Analysis {
         value: first_def.map(|(id, _span)| *id),
         diagnostics: diagnostics.into(),
-    }
-}
-
-/// A `Vec` of all events defined within the contract, including those with
-/// duplicate names.
-pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[EventId]> {
-    let body = &contract.data(db).ast.kind.body;
-    body.iter()
-        .filter_map(|stmt| match stmt {
-            ast::ContractStmt::Function(_) => None,
-            ast::ContractStmt::Event(node) => Some(db.intern_event(Rc::new(items::Event {
-                ast: node.clone(),
-                module: contract.module(db),
-                contract: Some(contract),
-            }))),
-        })
-        .collect()
-}
-
-pub fn contract_event_map(
-    db: &dyn AnalyzerDb,
-    contract: ContractId,
-) -> Analysis<Rc<IndexMap<SmolStr, EventId>>> {
-    let scope = ItemScope::new(db, contract.module(db));
-    let mut map = IndexMap::<SmolStr, EventId>::new();
-
-    let contract_name = contract.name(db);
-    for event in db.contract_all_events(contract).iter() {
-        let node = &event.data(db).ast;
-
-        match map.entry(node.name().into()) {
-            Entry::Occupied(entry) => {
-                scope.duplicate_name_error(
-                    &format!("duplicate event names in `contract {}`", contract_name,),
-                    entry.key(),
-                    entry.get().data(db).ast.span,
-                    node.span,
-                );
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(*event);
-            }
-        }
-    }
-
-    Analysis {
-        value: Rc::new(map),
-        diagnostics: scope.diagnostics.take().into(),
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
 };
 
 use crate::namespace::items::{
-    ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
+    ContractId, DiagnosticSink, FunctionId, FunctionSigId, Item, TraitId,
 };
 use crate::namespace::types::{Generic, SelfDecl, Type, TypeId};
 use crate::AnalyzerDb;
@@ -408,7 +408,6 @@ impl Location {
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
-    pub emits: IndexMap<NodeId, EventId>,
     // Map match statements to the corresponding [`PatternMatrix`]
     pub matches: IndexMap<NodeId, PatternMatrix>,
     // Map lhs of variable declaration to type.

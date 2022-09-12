@@ -131,9 +131,6 @@ test_stmt! { call_balance_with_arg, "unsafe { std::evm::balance(address(0)) }" }
 test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true { continue }" }
-test_stmt! { emit_undefined_event, "emit MyEvent()" }
-test_stmt! { emit_type_name, "emit u8()" }
-test_stmt! { emit_variable, "let x: u8 = 10\nemit x()" }
 test_stmt! { int_type_generic_arg_list, "let x: u256<>" }
 test_stmt! { int_type_generic_arg, "let x: u256<10>" }
 test_stmt! { int_type_constructor_generic_arg_list, "u256<>(10)" }
@@ -227,7 +224,6 @@ test_file! { call_generic_function_with_unsatisfied_bound}
 test_file! { call_builtin_object }
 test_file! { call_create_with_wrong_type }
 test_file! { call_create2_with_wrong_type }
-test_file! { call_event_with_wrong_types }
 test_file! { call_static_function_without_double_colon }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
@@ -245,7 +241,6 @@ test_file! { const_generics_param }
 test_file! { const_local }
 test_file! { duplicate_arg_in_contract_method }
 test_file! { duplicate_contract_in_module }
-test_file! { duplicate_event_in_contract }
 test_file! { duplicate_field_in_contract }
 test_file! { duplicate_field_in_struct }
 test_file! { duplicate_method_in_contract }
@@ -255,7 +250,6 @@ test_file! { duplicate_var_in_child_scope }
 test_file! { duplicate_var_in_contract_method }
 test_file! { duplicate_var_in_for_loop }
 test_file! { duplicate_generic_params }
-test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
 test_file! { contract_function_with_generic_params }
@@ -348,11 +342,9 @@ test_file! { ctx_undeclared }
 test_file! { ctx_missing_internal_call }
 test_file! { ctx_missing_create }
 test_file! { ctx_missing_load }
-test_file! { ctx_missing_event }
 test_file! { ctx_builtins_param_incorrect_type }
 test_file! { ctx_undefined_create }
 test_file! { ctx_undefined_create2 }
-test_file! { ctx_undefined_event }
 test_file! { uninit_values }
 test_file! { invalid_repeat_length }
 test_file! { invalid_struct_pub_qualifier }

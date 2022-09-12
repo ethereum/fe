@@ -1,10 +1,10 @@
 use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
 use crate::display::Displayable;
-use crate::namespace::items::{EnumVariantId, Item};
+use crate::namespace::items::EnumVariantId;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{EventField, Type, TypeId};
+use crate::namespace::types::{Type, TypeId};
 use crate::pattern_analysis::PatternMatrix;
-use crate::traversal::{assignments, call_args, declarations, expressions};
+use crate::traversal::{assignments, declarations, expressions};
 use crate::{
     errors::{self, FatalError},
     namespace::items::EnumVariantKind,
@@ -35,7 +35,6 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
         VarDecl { .. } => declarations::var_decl(scope, stmt),
         ConstantDecl { .. } => declarations::const_decl(scope, stmt),
         Assign { .. } => assignments::assign(scope, stmt),
-        Emit { .. } => emit(scope, stmt),
         AugAssign { .. } => assignments::aug_assign(scope, stmt),
         For { .. } => for_loop(scope, stmt),
         While { .. } => while_loop(scope, stmt),
@@ -550,97 +549,6 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
         }
         _ => unreachable!(),
     }
-}
-
-fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        match scope.resolve_name(&name.kind, name.span)? {
-            None => {
-                scope.error(
-                    &format!("undefined event: `{}`", name.kind),
-                    name.span,
-                    "undefined event",
-                );
-            }
-            Some(NamedThing::Item(Item::Event(event))) => {
-                scope.root.add_emit(stmt, event);
-
-                // Check visibility of event.
-                if !event.is_public(scope.db()) && event.module(scope.db()) != scope.module() {
-                    let module_name = event.module(scope.db()).name(scope.db());
-                    scope.fancy_error(
-                             &format!(
-                                 "the event `{}` is private",
-                                 name.kind,
-                             ),
-                             vec![
-                                 Label::primary(name.span, "this event is not `pub`"),
-                                 Label::secondary(
-                                     event.data(scope.db()).ast.span,
-                                     format!("`{}` is defined here", name.kind)
-                                 ),
-                             ],
-                             vec![
-                                 format!("`{}` can only be used within `{}`", name.kind, module_name),
-                                 format!("Hint: use `pub event {event}` to make `{event}` visible from outside of `{module}`", event=name.kind, module=module_name),
-                             ],
-                         );
-                }
-
-                if let Some(context_type) = scope.get_context_type() {
-                    // we add ctx to the list of expected params
-                    let params_with_ctx = [
-                        vec![EventField {
-                            name: "ctx".into(),
-                            typ: Ok(context_type),
-                            is_indexed: false,
-                        }],
-                        event.typ(scope.db()).fields.clone(),
-                    ]
-                    .concat();
-                    call_args::validate_named_args(
-                        scope,
-                        &name.kind,
-                        name.span,
-                        args,
-                        &params_with_ctx,
-                    )?;
-                } else {
-                    scope.fancy_error(
-                        "`Context` is not defined",
-                        vec![
-                            Label::primary(
-                                stmt.span,
-                                "`ctx` must be defined and passed into the event",
-                            ),
-                            Label::secondary(
-                                scope.parent_function().name_span(scope.db()),
-                                "Note: declare `ctx` in this function signature",
-                            ),
-                            Label::secondary(
-                                scope.parent_function().name_span(scope.db()),
-                                "Example: `pub fn foo(ctx: Context, ...)`",
-                            ),
-                        ],
-                        vec!["Example: emit MyEvent(ctx, ...)".into()],
-                    );
-                }
-            }
-            Some(named_thing) => {
-                scope.error(
-                    "`emit` expects an event",
-                    name.span,
-                    &format!(
-                        "`{}` is a {} name; expected an event",
-                        &name.kind,
-                        named_thing.item_kind_display_name(),
-                    ),
-                );
-            }
-        }
-        return Ok(());
-    }
-    unreachable!()
 }
 
 fn assert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {

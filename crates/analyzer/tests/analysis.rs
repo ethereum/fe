@@ -1,6 +1,5 @@
 use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::namespace::types::TypeId;
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::{FileKind, Utf8Path};
@@ -352,11 +351,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                         .collect::<Vec<_>>(),
                 ),
                 contract
-                    .events(db)
-                    .values()
-                    .flat_map(|id| event_diagnostics(*id, db))
-                    .collect(),
-                contract
                     .functions(db)
                     .values()
                     .flat_map(|id| function_diagnostics(*id, db))
@@ -382,7 +376,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 id.span(db),
                 &id.typ(db).unwrap().display(db),
             )],
-            Item::Event(id) => event_diagnostics(*id, db),
             // Built-in stuff
             Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
@@ -461,38 +454,12 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
         label_in_non_overlapping_groups(db, &lookup_spans(&body.var_types, &body.spans)),
         // expressions
         label_in_non_overlapping_groups(db, &lookup_spans(&body.expressions, &body.spans)),
-        // emits
-        // TODO: log fully qualified path to event type
-        //  eg foo::bar::MyEvent
-
         // CallType includes FunctionId,ContractId,StructId, so the debug output
         // may change when we add something to the std lib.
         // Disabling until we come up with a better label to use here.
         // label_in_non_overlapping_groups(db, &lookup_spans(&body.calls, &body.spans)),
     ]
     .concat()
-}
-
-fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-    // Event field spans are a bit of a hassle right now
-    label_in_non_overlapping_groups(
-        db,
-        &event
-            .data(db)
-            .ast
-            .kind
-            .fields
-            .iter()
-            .map(|node| node.span)
-            .zip(
-                event
-                    .typ(db)
-                    .fields
-                    .iter()
-                    .map(|field| field.typ.clone().unwrap()),
-            )
-            .collect::<Vec<(Span, TypeId)>>(),
-    )
 }
 
 fn lookup_spans<T: Clone>(

@@ -15,6 +15,6 @@ error: failed to parse module
 1 │ ))
   │ ^ unexpected token
   │
-  = Note: expected import, contract, struct, type, const or event
+  = Note: expected import, contract, struct, type or const
 
 

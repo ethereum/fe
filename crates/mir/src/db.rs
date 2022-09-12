@@ -46,8 +46,6 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
 
     #[salsa::invoke(queries::types::mir_lowered_type)]
     fn mir_lowered_type(&self, analyzer_type: analyzer_types::TypeId) -> TypeId;
-    #[salsa::invoke(queries::types::mir_lowered_event_type)]
-    fn mir_lowered_event_type(&self, analyzer_type: analyzer_items::EventId) -> TypeId;
 
     #[salsa::invoke(queries::constant::mir_lowered_constant)]
     fn mir_lowered_constant(&self, analyzer_const: analyzer_items::ModuleConstantId) -> ConstantId;

@@ -1,7 +1,7 @@
 use crate::{
     db::MirDb,
     ir::{
-        types::{ArrayDef, EnumDef, EnumVariant, EventDef, MapDef, StructDef, TupleDef},
+        types::{ArrayDef, EnumDef, EnumVariant, MapDef, StructDef, TupleDef},
         Type, TypeId, TypeKind,
     },
 };
@@ -25,35 +25,6 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeI
     };
 
     intern_type(db, ty_kind, Some(*analyzer_ty))
-}
-
-pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
-    let name = event.name(db.upcast());
-
-    let analyzer_ty = event.typ(db.upcast());
-    // Lower event fields.
-    let fields = analyzer_ty
-        .fields
-        .iter()
-        .map(|field| {
-            let ty = db.mir_lowered_type(field.typ.clone().unwrap());
-            (field.name.clone(), ty, field.is_indexed)
-        })
-        .collect();
-
-    // Obtain span.
-    let span = event.span(db.upcast());
-
-    let module_id = event.module(db.upcast());
-
-    let def = EventDef {
-        name,
-        fields,
-        span,
-        module_id,
-    };
-    let ty = TypeKind::Event(def);
-    intern_type(db, ty, None)
 }
 
 fn lower_base(base: &analyzer_types::Base) -> TypeKind {

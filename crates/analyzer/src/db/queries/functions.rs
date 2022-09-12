@@ -437,11 +437,6 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
     }
 
     directs.extend(
-        body.emits
-            .values()
-            .map(|event| (root, Item::Event(*event), DepLocality::Local)),
-    );
-    directs.extend(
         body.var_types
             .values()
             .filter_map(|typid| match typid.typ(db) {

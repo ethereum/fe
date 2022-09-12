@@ -4,7 +4,7 @@ use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
 use crate::errors::{AlreadyDefined, FatalError, IncompleteItem, TypeError};
-use crate::namespace::items::{EventId, FunctionId, ModuleId};
+use crate::namespace::items::{FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
 use crate::namespace::types::{Type, TypeId};
 use crate::pattern_analysis::PatternMatrix;
@@ -195,21 +195,6 @@ impl<'a> FunctionScope<'a> {
 
     pub fn function_return_type(&self) -> Result<TypeId, TypeError> {
         self.function.signature(self.db).return_type.clone()
-    }
-
-    /// Attribute contextual information to an emit statement node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if an entry already exists for the node id.
-    pub fn add_emit(&self, node: &Node<ast::FuncStmt>, event: EventId) {
-        debug_assert!(matches!(node.kind, ast::FuncStmt::Emit { .. }));
-        self.add_node(node);
-        self.body
-            .borrow_mut()
-            .emits
-            .insert(node.id, event)
-            .expect_none("emit statement attributes already exist");
     }
 
     pub fn map_variable_type<T>(&self, node: &Node<T>, typ: TypeId) {

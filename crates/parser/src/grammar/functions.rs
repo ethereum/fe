@@ -1,4 +1,4 @@
-use super::expressions::{parse_call_args, parse_expr};
+use super::expressions::parse_expr;
 use super::types::parse_type_desc;
 
 use crate::ast::{
@@ -335,7 +335,6 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Assert => parse_assert_stmt(par),
         Revert => parse_revert_stmt(par),
         Continue | Break => parse_single_word_stmt(par),
-        Emit => parse_emit_statement(par),
         Let => parse_var_decl(par),
         Const => parse_const_decl(par),
         Unsafe => parse_unsafe_block(par),
@@ -685,35 +684,6 @@ pub fn parse_revert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     par.expect_stmt_end("revert statement")?;
     let span = revert_tok.span + error.as_ref();
     Ok(Node::new(FuncStmt::Revert { error }, span))
-}
-
-/// Parse an `emit` statement
-///
-/// # Panics
-/// Panics if the next token isn't `emit`
-pub fn parse_emit_statement(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
-    let emit_tok = par.assert(TokenKind::Emit);
-    let event_name = par.expect(TokenKind::Name, "failed to parse emit statement")?;
-
-    if let Some(TokenKind::ParenOpen) = par.peek() {
-        let args = parse_call_args(par)?;
-        par.expect_stmt_end("emit statement")?;
-        let span = emit_tok.span + args.span;
-        return Ok(Node::new(
-            FuncStmt::Emit {
-                name: event_name.into(),
-                args,
-            },
-            span,
-        ));
-    } else {
-        par.expect(
-            TokenKind::ParenOpen,
-            "failed to parse event invocation parameter list",
-        )?;
-    }
-
-    Err(ParseFailed)
 }
 
 /// Parse an `unsafe` block.

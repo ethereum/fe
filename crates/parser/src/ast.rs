@@ -25,7 +25,6 @@ pub enum ModuleStmt {
     Trait(Node<Trait>),
     Impl(Node<Impl>),
     Function(Node<Function>),
-    Event(Node<Event>),
     ParseError(Span),
 }
 
@@ -225,15 +224,7 @@ pub enum VariantKind {
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum ContractStmt {
-    Event(Node<Event>),
     Function(Node<Function>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Event {
-    pub name: Node<SmolStr>,
-    pub fields: Vec<Node<EventField>>,
-    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -251,13 +242,6 @@ pub struct FunctionSignature {
 pub struct Function {
     pub sig: Node<FunctionSignature>,
     pub body: Vec<Node<FuncStmt>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct EventField {
-    pub is_idx: bool,
-    pub name: Node<SmolStr>,
-    pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -342,10 +326,6 @@ pub enum FuncStmt {
     Assert {
         test: Node<Expr>,
         msg: Option<Node<Expr>>,
-    },
-    Emit {
-        name: Node<SmolStr>,
-        args: Node<Vec<Node<CallArg>>>,
     },
     Expr {
         value: Node<Expr>,
@@ -530,12 +510,6 @@ impl Node<Trait> {
     }
 }
 
-impl Node<Event> {
-    pub fn name(&self) -> &str {
-        &self.kind.name.kind
-    }
-}
-
 impl Node<Field> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
@@ -583,7 +557,6 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Enum(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
-            ModuleStmt::Event(inner) => inner.span,
             ModuleStmt::ParseError(span) => *span,
         }
     }
@@ -592,7 +565,6 @@ impl Spanned for ModuleStmt {
 impl Spanned for ContractStmt {
     fn span(&self) -> Span {
         match self {
-            ContractStmt::Event(inner) => inner.span,
             ContractStmt::Function(inner) => inner.span,
         }
     }
@@ -632,7 +604,6 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Enum(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
-            ModuleStmt::Event(node) => write!(f, "{}", node.kind),
             ModuleStmt::ParseError(span) => {
                 write!(f, "# PARSE ERROR: {}..{}", span.start, span.end)
             }
@@ -880,21 +851,7 @@ impl fmt::Display for Variant {
 impl fmt::Display for ContractStmt {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            ContractStmt::Event(node) => write!(f, "{}", node.kind),
             ContractStmt::Function(node) => write!(f, "{}", node.kind),
-        }
-    }
-}
-
-impl fmt::Display for Event {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "event {} ", self.name.kind)?;
-        if self.fields.is_empty() {
-            write!(f, "{{}}")
-        } else {
-            writeln!(f, "{{")?;
-            writeln!(indented(f), "{}", node_line_joined(&self.fields))?;
-            write!(f, "}}")
         }
     }
 }
@@ -934,15 +891,6 @@ impl fmt::Display for Function {
         write!(f, " {{")?;
         write_nodes_line_wrapped(&mut indented(f), &self.body)?;
         write!(f, "}}")
-    }
-}
-
-impl fmt::Display for EventField {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_idx {
-            write!(f, "idx ")?;
-        }
-        write!(f, "{}: {}", self.name.kind, self.typ.kind)
     }
 }
 
@@ -1040,9 +988,6 @@ impl fmt::Display for FuncStmt {
                 } else {
                     write!(f, "assert {}", test.kind)
                 }
-            }
-            FuncStmt::Emit { name, args } => {
-                write!(f, "emit {}({})", name.kind, node_comma_joined(&args.kind))
             }
             FuncStmt::Expr { value } => write!(f, "{}", value.kind),
             FuncStmt::Break => write!(f, "break"),
@@ -1284,18 +1229,6 @@ fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>
         writeln!(f, "{}", n.kind)?;
     }
     Ok(())
-}
-
-fn node_line_joined(nodes: &[Node<impl fmt::Display>]) -> String {
-    line_joined(&nodes.iter().map(|node| &node.kind).collect::<Vec<_>>())
-}
-
-fn line_joined(items: &[impl fmt::Display]) -> String {
-    items
-        .iter()
-        .map(|item| format!("{}", item))
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 fn double_line_joined(items: &[impl fmt::Display]) -> String {

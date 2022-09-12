@@ -66,13 +66,8 @@ contract C {
 }
 
 test_parse_err! { type_desc_path_number, module::parse_module, "type Foo = some::mod::Foo::5000" }
-test_parse_err! { module_pub_event, module::parse_module, "pub event E{\n  x: u8}" }
-test_parse_err! { contract_pub_event, module::parse_module, "contract C {\n pub event E{\n  x: u8 \n}}" }
 test_parse_err! { contract_const_pub, module::parse_module, "contract C {\n const pub x: u8\n}" }
 test_parse_err! { contract_const_fn, module::parse_module, "contract C {\n const fn f() {}\n}" }
-test_parse_err! { emit_no_args, functions::parse_stmt, "emit x" }
-test_parse_err! { emit_expr, functions::parse_stmt, "emit x + 1" }
-test_parse_err! { emit_bad_call, functions::parse_stmt, "emit MyEvent(1)()" }
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, "*x + 1" }
 test_parse_err! { expr_path_left, expressions::parse_expr, "(1 + 2)::foo::bar" }
 test_parse_err! { expr_path_right, expressions::parse_expr, "foo::10::bar" }

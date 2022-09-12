@@ -1,6 +1,6 @@
 use fe_abi::{
     contract::AbiContract,
-    event::{AbiEvent, AbiEventField},
+    event::AbiEvent,
     function::{AbiFunction, AbiFunctionType},
     types::{AbiTupleField, AbiType},
 };
@@ -26,12 +26,12 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
         }
     }
 
-    let mut events = vec![];
-    for &event in db.contract_all_events(contract).as_ref() {
-        let mir_event = db.mir_lowered_event_type(event);
-        let event = db.codegen_abi_event(mir_event);
-        events.push(event);
-    }
+    let events = vec![];
+    // for &event in db.contract_all_events(contract).as_ref() {
+    //     let mir_event = db.mir_lowered_event_type(event);
+    //     let event = db.codegen_abi_event(mir_event);
+    //     events.push(event);
+    // }
 
     AbiContract::new(funcs, events)
 }
@@ -197,8 +197,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
             AbiType::Tuple(fields)
         }
 
-        ir::TypeKind::Event(_)
-        | ir::TypeKind::Contract(_)
+        ir::TypeKind::Contract(_)
         | ir::TypeKind::Map(_)
         | ir::TypeKind::MPtr(_)
         | ir::TypeKind::Enum(_)
@@ -207,23 +206,22 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 }
 
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
-    debug_assert!(ty.is_event(db.upcast()));
     let legalized_ty = db.codegen_legalized_type(ty);
 
     let legalized_ty_data = legalized_ty.data(db.upcast());
     let event_def = match &legalized_ty_data.kind {
-        ir::TypeKind::Event(def) => def,
+        ir::TypeKind::Struct(def) => def,
         _ => unreachable!(),
     };
-
-    let fields = event_def
-        .fields
-        .iter()
-        .map(|(name, ty, indexed)| {
-            let ty = db.codegen_abi_type(*ty);
-            AbiEventField::new(name.to_string(), ty, *indexed)
-        })
-        .collect();
+    let fields = vec![];
+    // let fields = event_def
+    //     .fields
+    //     .iter()
+    //     .map(|(name, ty, indexed)| {
+    //         let ty = db.codegen_abi_type(*ty);
+    //         AbiEventField::new(name.to_string(), ty, *indexed)
+    //     })
+    //     .collect();
 
     AbiEvent::new(event_def.name.to_string(), fields, false)
 }

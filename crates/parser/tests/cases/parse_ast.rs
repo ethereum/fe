@@ -114,8 +114,6 @@ test_parse! { stmt_aug_xor, functions::parse_stmt, "x ^= y" }
 test_parse! { stmt_aug_lsh, functions::parse_stmt, "x <<= y" }
 test_parse! { stmt_aug_rsh, functions::parse_stmt, "x >>= y" }
 test_parse! { stmt_aug_exp, functions::parse_stmt, "x **= y" }
-test_parse! { stmt_emit1, functions::parse_stmt, "emit Foo()" }
-test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x: y)" }
 test_parse! { stmt_path_type, functions::parse_stmt, "let x: foo::Bar = foo::Bar(1, 2)" }
 test_parse! { stmt_return1, functions::parse_stmt, "return" }
 test_parse! { stmt_return2, functions::parse_stmt, "return x" }
@@ -172,9 +170,6 @@ test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, th
 test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool { x }"}
 test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool {\n x\n}"}
 test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool{x}"}
-test_parse! { event_def, try_parse_module, "event Foo {\n  x: address\n  idx y: u8\n}" }
-test_parse! { empty_event_def, try_parse_module, "event Foo {}" }
-test_parse! { pub_event_def, try_parse_module, "pub event Foo {\nx: address\nidx y: u8\n}" }
 test_parse! { const_def, try_parse_module, "const FOO: i32 = 1" }
 test_parse! { pub_const_def, try_parse_module, "pub const FOO: i32 = 1" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
