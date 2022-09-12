@@ -70,6 +70,7 @@ pub fn struct_field_type(
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
 
     let ast::Field {
+        attributes: _,
         is_pub: _,
         is_const,
         name: _,

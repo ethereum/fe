@@ -137,6 +137,8 @@ pub enum TokenKind {
     ColonColon,
     #[token(",")]
     Comma,
+    #[token("#")]
+    Hash,
     #[token(";")]
     Semi,
     #[token("+")]
@@ -265,6 +267,7 @@ impl TokenKind {
             Colon => "symbol `:`",
             ColonColon => "symbol `::`",
             Comma => "symbol `,`",
+            Hash => "symbol `#`",
             Semi => "symbol `;`",
             Plus => "symbol `+`",
             Minus => "symbol `-`",

@@ -1,3 +1,4 @@
+use crate::constants::INDEXED;
 use crate::context::{self, Analysis, Constant, NamedThing};
 use crate::display::{DisplayWithDb, Displayable};
 use crate::errors::{self, IncompleteItem, TypeError};
@@ -1437,6 +1438,20 @@ impl StructFieldId {
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
     }
+    pub fn attributes(&self, db: &dyn AnalyzerDb) -> Vec<SmolStr> {
+        self.data(db)
+            .ast
+            .kind
+            .attributes
+            .iter()
+            .map(|node| node.kind.clone())
+            .collect()
+    }
+
+    pub fn is_indexed(&self, db: &dyn AnalyzerDb) -> bool {
+        self.attributes(db).contains(&INDEXED.into())
+    }
+
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::TypeId, TypeError> {
         db.struct_field_type(*self).value
     }

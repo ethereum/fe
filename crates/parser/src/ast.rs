@@ -183,6 +183,7 @@ impl Spanned for GenericParameter {
 pub struct Field {
     pub is_pub: bool,
     pub is_const: bool,
+    pub attributes: Vec<Node<SmolStr>>,
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
