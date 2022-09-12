@@ -636,6 +636,7 @@ dependencies = [
  "fe-common",
  "fe-mir",
  "fxhash",
+ "indexmap",
  "num-bigint",
  "salsa",
  "smol_str",
@@ -746,7 +747,9 @@ dependencies = [
  "fe-test-files",
  "fxhash",
  "id-arena",
+ "indexmap",
  "num-bigint",
+ "num-integer",
  "num-traits",
  "salsa",
  "smol_str",
@@ -1159,9 +1162,9 @@ dependencies = [
 
 [[package]]
 name = "num-integer"
-version = "0.1.44"
+version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
+checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
 dependencies = [
  "autocfg",
  "num-traits",

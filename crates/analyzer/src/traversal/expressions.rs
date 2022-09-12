@@ -1,7 +1,3 @@
-use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
-use crate::context::{
-    AnalyzerContext, CallType, Constant, ExpressionAttributes, Location, NamedThing,
-};
 use crate::display::Displayable;
 use crate::errors::{FatalError, IndexingError};
 use crate::namespace::items::{FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef};
@@ -12,6 +8,14 @@ use crate::traversal::call_args::{validate_arg_count, validate_named_args};
 use crate::traversal::const_expr::eval_expr;
 use crate::traversal::types::apply_generic_type_args;
 use crate::traversal::utils::add_bin_operations_errors;
+use crate::{
+    builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
+    namespace::items::EnumVariantId,
+};
+use crate::{
+    context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, Location, NamedThing},
+    namespace::items::EnumVariantKind,
+};
 
 use fe_common::diagnostics::Label;
 use fe_common::{numeric, Span};
@@ -241,7 +245,7 @@ pub fn assignable_expr(
                 attributes.move_location = Some(Location::Value);
             }
         }
-        Array(_) | Tuple(_) | String(_) | Struct(_) | Generic(_) => {
+        Array(_) | Tuple(_) | String(_) | Struct(_) | Enum(_) | Generic(_) => {
             if attributes.final_location() != Location::Memory {
                 context.fancy_error(
                     "value must be copied to memory",
@@ -340,8 +344,8 @@ fn expr_path(
         _ => unreachable!(),
     };
 
-    let named_thing = context.resolve_path(path, exp.span);
-    expr_named_thing(context, exp, named_thing, expected_type)
+    let named_thing = context.resolve_path(path, exp.span)?;
+    expr_named_thing(context, exp, Some(named_thing), expected_type)
 }
 
 fn expr_named_thing(
@@ -379,6 +383,10 @@ fn expr_named_thing(
                 match target {
                     Item::Type(TypeDef::Struct(id)) => Ok(ExpressionAttributes::new(
                         context.db().intern_type(Type::Struct(id)),
+                        Location::Memory,
+                    )),
+                    Item::Type(TypeDef::Enum(id)) => Ok(ExpressionAttributes::new(
+                        context.db().intern_type(Type::Enum(id)),
                         Location::Memory,
                     )),
                     Item::Impl(id) => Ok(ExpressionAttributes::new(
@@ -427,32 +435,34 @@ fn expr_named_thing(
                 panic!("const type must be fixed size")
             }
 
-            // Check visibility of constant.
-            if !id.is_public(context.db()) && id.module(context.db()) != context.module() {
-                let module_name = id.module(context.db()).name(context.db());
-                let name = id.name(context.db());
-                context.fancy_error(
-                    &format!(
-                        "the constant `{}` is private",
-                        exp.kind,
-                    ),
-                    vec![
-                        Label::primary(exp.span, "this constant is not `pub`"),
-                        Label::secondary(
-                            id.data(context.db()).ast.span,
-                            format!("`{}` is defined here", name)
-                        ),
-                    ],
-                    vec![
-                        format!("`{}` can only be used within `{}`", name, module_name),
-                        format!("Hint: use `pub const {constant}` to make `{constant}` visible from outside of `{module}`", constant=name, module=module_name),
-                    ],
-                );
-            }
-
             let location = Location::assign_location(&typ.typ(context.db()));
             Ok(ExpressionAttributes::new(typ, location))
         }
+        Some(NamedThing::EnumVariant(variant)) => {
+            if let Ok(EnumVariantKind::Tuple(_)) = variant.kind(context.db()) {
+                let name = variant.name_with_parent(context.db());
+                context.fancy_error(
+                    &format!(
+                        "`{}` is not a unit variant",
+                        variant.name_with_parent(context.db()),
+                    ),
+                    vec![
+                        Label::primary(exp.span, format! {"`{name}` is not a unit variant"}),
+                        Label::secondary(
+                            variant.data(context.db()).ast.span,
+                            format!("`{}` is defined here", variant.name(context.db())),
+                        ),
+                    ],
+                    vec![],
+                );
+            }
+
+            Ok(ExpressionAttributes::new(
+                variant.parent(context.db()).as_type(context.db()),
+                Location::Memory,
+            ))
+        }
+
         Some(item) => {
             let item_kind = item.item_kind_display_name();
             let diag = if let Some(def_span) = item.name_span(context.db()) {
@@ -985,14 +995,7 @@ fn expr_call_path<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    let named_thing = context.resolve_path(path, func.span).ok_or_else(|| {
-        FatalError::new(context.error(
-            &format!("`{}` is not defined", func.kind),
-            func.span,
-            &format!("`{}` has not been defined in this context", func.kind),
-        ))
-    })?;
-
+    let named_thing = context.resolve_path(path, func.span)?;
     expr_call_named_thing(context, named_thing, func, generic_args, args)
 }
 
@@ -1032,27 +1035,6 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 apply_generic_type_args(context, generic, func.span, generic_args.as_ref())?;
             expr_call_type_constructor(context, concrete_type, func.span, args)
         }
-
-        // Nothing else is callable (for now at least)
-        NamedThing::SelfValue { .. } => Err(FatalError::new(context.error(
-            "`self` is not callable",
-            func.span,
-            "can't be used as a function",
-        ))),
-        NamedThing::Variable { typ, span, .. } => Err(FatalError::new(context.fancy_error(
-            &format!("`{}` is not callable", func.kind),
-            vec![
-                Label::secondary(
-                    span,
-                    format!("`{}` has type `{}`", func.kind, typ?.display(context.db())),
-                ),
-                Label::primary(
-                    func.span,
-                    format!("`{}` can't be used as a function", func.kind),
-                ),
-            ],
-            vec![],
-        ))),
         NamedThing::Item(Item::Constant(id)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,
@@ -1100,6 +1082,32 @@ fn expr_call_named_thing<T: std::fmt::Display>(
                 "`{}` is a module, and can't be used as a function",
                 func.kind
             ),
+        ))),
+
+        NamedThing::EnumVariant(variant) => {
+            expr_call_enum_constructor(context, func.span, variant, args)
+        }
+
+        // Nothing else is callable (for now at least)
+        NamedThing::SelfValue { .. } => Err(FatalError::new(context.error(
+            "`self` is not callable",
+            func.span,
+            "can't be used as a function",
+        ))),
+
+        NamedThing::Variable { typ, span, .. } => Err(FatalError::new(context.fancy_error(
+            &format!("`{}` is not callable", func.kind),
+            vec![
+                Label::secondary(
+                    span,
+                    format!("`{}` has type `{}`", func.kind, typ?.display(context.db())),
+                ),
+                Label::primary(
+                    func.span,
+                    format!("`{}` can't be used as a function", func.kind),
+                ),
+            ],
+            vec![],
         ))),
     }
 }
@@ -1293,7 +1301,11 @@ fn expr_call_type_constructor(
         Type::Struct(struct_type) => {
             return expr_call_struct_constructor(context, name_span, struct_type, args)
         }
-        Type::Base(Base::Bool) | Type::Array(_) | Type::Map(_) | Type::Generic(_) => {
+        Type::Base(Base::Bool)
+        | Type::Enum(_)
+        | Type::Array(_)
+        | Type::Map(_)
+        | Type::Generic(_) => {
             return Err(FatalError::new(context.error(
                 &format!("`{}` type is not callable", typ.display(context.db())),
                 name_span,
@@ -1385,6 +1397,7 @@ fn expr_call_type_constructor(
         Type::Base(Base::Bool) => unreachable!(), // handled above
         Type::Tuple(_) => unreachable!(),         // rejected in expr_call_type
         Type::Struct(_) => unreachable!(),        // handled above
+        Type::Enum(_) => unreachable!(),          // handled above
         Type::Map(_) => unreachable!(),           // handled above
         Type::Array(_) => unreachable!(),         // handled above
         Type::Generic(_) => unreachable!(),       // handled above
@@ -1444,6 +1457,40 @@ fn expr_call_struct_constructor(
     Ok((
         ExpressionAttributes::new(struct_type, Location::Memory),
         CallType::TypeConstructor(struct_type),
+    ))
+}
+
+fn expr_call_enum_constructor(
+    context: &mut dyn AnalyzerContext,
+    name_span: Span,
+    variant: EnumVariantId,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let name = &variant.name_with_parent(context.db());
+    match variant.kind(context.db())? {
+        EnumVariantKind::Unit => {
+            let name = variant.name_with_parent(context.db());
+            let label = Label::primary(name_span, format! {"`{name}` is a unit variant"});
+            context.fancy_error(
+                &format!("Can not call a unit variant `{name}`",),
+                vec![label],
+                vec![format!(
+                    "Suggestion: remove the parentheses to construct the unit variant `{name}`",
+                )],
+            );
+        }
+        EnumVariantKind::Tuple(elts) => {
+            let params: Vec<_> = elts.iter().map(|ty| (None, Ok(*ty))).collect();
+            validate_named_args(context, name, name_span, args, &params)?;
+        }
+    }
+
+    Ok((
+        ExpressionAttributes::new(
+            variant.parent(context.db()).as_type(context.db()),
+            Location::Memory,
+        ),
+        CallType::EnumConstructor(variant),
     ))
 }
 

@@ -762,6 +762,136 @@ fn events() {
 }
 
 #[test]
+fn enums() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "enums.fe",
+            "Foo",
+            &[uint_token(26), uint_token(42)],
+        );
+
+        harness.test_function(
+            &mut executor,
+            "construct",
+            &[uint_token(1), uint_token(2)],
+            None,
+        );
+
+        harness.test_function(
+            &mut executor,
+            "method",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "associated_method",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        assert_harness_gas_report!(harness);
+    })
+}
+
+#[test]
+fn enum_match() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "enum_match.fe",
+            "Foo",
+            &[uint_token(26), uint_token(42)],
+        );
+
+        harness.test_function(
+            &mut executor,
+            "simple_match",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "nested_match",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+
+        harness.test_function(&mut executor, "nested_match2", &[], Some(&uint_token(3)));
+
+        harness.test_function(&mut executor, "tuple_match", &[], Some(&uint_token(3)));
+
+        harness.test_function(
+            &mut executor,
+            "boolean_literal_match",
+            &[bool_token(true), bool_token(true)],
+            Some(&uint_token(2)),
+        );
+        harness.test_function(
+            &mut executor,
+            "boolean_literal_match",
+            &[bool_token(true), bool_token(false)],
+            Some(&uint_token(1)),
+        );
+        harness.test_function(
+            &mut executor,
+            "boolean_literal_match",
+            &[bool_token(false), bool_token(true)],
+            Some(&uint_token(1)),
+        );
+        harness.test_function(
+            &mut executor,
+            "boolean_literal_match",
+            &[bool_token(false), bool_token(false)],
+            Some(&uint_token(0)),
+        );
+
+        harness.test_function(&mut executor, "wild_card", &[], Some(&uint_token(0)));
+
+        harness.test_function(&mut executor, "match_in_if", &[], Some(&uint_token(3)));
+
+        harness.test_function(&mut executor, "match_in_loop", &[], Some(&uint_token(15)));
+
+        harness.test_function(
+            &mut executor,
+            "rest_pattern_head",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+        harness.test_function(
+            &mut executor,
+            "rest_pattern_tail",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(3)),
+        );
+        harness.test_function(
+            &mut executor,
+            "rest_pattern_middle",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(6)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "enum_storage",
+            &[uint_token(1), uint_token(2), bool_token(true)],
+            Some(&uint_token(3)),
+        );
+        // harness.test_function(
+        //     &mut executor,
+        //     "enum_storage",
+        //     &[uint_token(1), uint_token(2), bool_token(false)],
+        //     Some(&uint_token(100)),
+        // );
+
+        assert_harness_gas_report!(harness);
+    })
+}
+
+#[test]
 fn constructor() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(

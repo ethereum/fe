@@ -1,0 +1,16 @@
+pub enum MyEnum1 {
+    UnitTuple()
+    Tuple(i32, u256)
+    Tuple()
+}
+
+pub enum MyEnum2 {
+    UnitTuple()
+    Tuple(i32, u256)
+    
+    pub fn Tuple() {}
+}
+
+pub enum MyEnum3 {
+    pub Unit
+}

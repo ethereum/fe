@@ -3,13 +3,14 @@ use super::types::parse_type_desc;
 
 use crate::ast::{
     BinOperator, Expr, FuncStmt, Function, FunctionArg, FunctionSignature, GenericParameter,
-    RegularFunctionArg, TypeDesc, VarDeclTarget,
+    LiteralPattern, MatchArm, Path, Pattern, RegularFunctionArg, TypeDesc, VarDeclTarget,
 };
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
-/// Parse a function definition without a body. The optional `pub` qualifier must be parsed by
-/// the caller, and passed in. Next token must be `unsafe` or `fn`.
+/// Parse a function definition without a body. The optional `pub` qualifier
+/// must be parsed by the caller, and passed in. Next token must be `unsafe` or
+/// `fn`.
 pub fn parse_fn_sig(
     par: &mut Parser,
     mut pub_qual: Option<Span>,
@@ -119,8 +120,8 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
     ))
 }
 
-/// Parse a single generic function parameter (eg. `T:SomeTrait` in `fn foo<T: SomeTrait>(some_arg: u256) -> bool`).
-/// # Panics
+/// Parse a single generic function parameter (eg. `T:SomeTrait` in `fn foo<T:
+/// SomeTrait>(some_arg: u256) -> bool`). # Panics
 /// Panics if the first token isn't `Name`.
 pub fn parse_generic_param(par: &mut Parser) -> ParseResult<GenericParameter> {
     use TokenKind::*;
@@ -146,8 +147,8 @@ pub fn parse_generic_param(par: &mut Parser) -> ParseResult<GenericParameter> {
     }
 }
 
-/// Parse an angle-bracket-wrapped list of generic arguments (eg. `<T, R: SomeTrait>` in `fn foo<T, R: SomeTrait>(some_arg: u256) -> bool`).
-/// # Panics
+/// Parse an angle-bracket-wrapped list of generic arguments (eg. `<T, R:
+/// SomeTrait>` in `fn foo<T, R: SomeTrait>(some_arg: u256) -> bool`). # Panics
 /// Panics if the first token isn't `<`.
 pub fn parse_generic_params(par: &mut Parser) -> ParseResult<Node<Vec<GenericParameter>>> {
     use TokenKind::*;
@@ -328,6 +329,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     match par.peek_or_err()? {
         For => parse_for_stmt(par),
         If => parse_if_stmt(par),
+        Match => parse_match_stmt(par),
         While => parse_while_stmt(par),
         Return => parse_return_stmt(par),
         Assert => parse_assert_stmt(par),
@@ -537,6 +539,63 @@ pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
+/// Parse an `match` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `match`.
+pub fn parse_match_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let match_tok = par.assert(TokenKind::Match);
+    let expr = parse_expr(par)?;
+    par.enter_block(match_tok.span + expr.span, "`match` statement")?;
+    let arms = parse_match_arms(par)?;
+    let end = par.expect(TokenKind::BraceClose, "`match` statement")?;
+
+    let span = match_tok.span + end.span;
+    Ok(Node::new(FuncStmt::Match { expr, arms }, span))
+}
+
+pub fn parse_match_arms(par: &mut Parser) -> ParseResult<Vec<Node<MatchArm>>> {
+    let mut arms = vec![];
+    par.eat_newlines();
+    while par.peek_or_err()? != TokenKind::BraceClose {
+        let pat = parse_pattern(par)?;
+
+        par.expect(TokenKind::FatArrow, "`match arm`")?;
+
+        par.enter_block(pat.span, "`match` arm")?;
+        let body = parse_block_stmts(par)?;
+        let end = par.expect(TokenKind::BraceClose, "`match` arm")?;
+
+        let span = pat.span + end.span;
+        arms.push(Node::new(MatchArm { pat, body }, span));
+        par.eat_newlines();
+    }
+
+    Ok(arms)
+}
+
+pub fn parse_pattern(par: &mut Parser) -> ParseResult<Node<Pattern>> {
+    let mut left_pat = parse_pattern_atom(par)?;
+    let mut span = left_pat.span;
+    while let Some(TokenKind::Pipe) = par.peek() {
+        par.next().unwrap();
+        let right_pat = parse_pattern_atom(par)?;
+        span += right_pat.span;
+        let patterns = match left_pat.kind {
+            Pattern::Or(mut patterns) => {
+                patterns.push(right_pat);
+                patterns
+            }
+            _ => {
+                vec![left_pat, right_pat]
+            }
+        };
+        left_pat = Node::new(Pattern::Or(patterns), span);
+    }
+
+    Ok(left_pat)
+}
+
 /// Parse a `while` statement.
 ///
 /// # Panics
@@ -669,4 +728,121 @@ pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let span = kw_tok.span + end.span;
 
     Ok(Node::new(FuncStmt::Unsafe(body), span))
+}
+
+fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
+    match par.peek() {
+        Some(TokenKind::ParenOpen) => {
+            let (elts, span) = parse_pattern_tuple(par)?;
+            return Ok(Node::new(Pattern::Tuple(elts), span));
+        }
+        Some(TokenKind::True) => {
+            let span = par.next().unwrap().span;
+            let literal_pat = Node::new(LiteralPattern::Bool(true), span);
+            return Ok(Node::new(Pattern::Literal(literal_pat), span));
+        }
+        Some(TokenKind::False) => {
+            let span = par.next().unwrap().span;
+            let literal_pat = Node::new(LiteralPattern::Bool(false), span);
+            return Ok(Node::new(Pattern::Literal(literal_pat), span));
+        }
+        Some(TokenKind::DotDot) => {
+            let span = par.next().unwrap().span;
+            return Ok(Node::new(Pattern::Rest, span));
+        }
+        _ => {}
+    }
+
+    let mut pattern = parse_path_pattern_segment(par)?;
+
+    while let Some(TokenKind::ColonColon) = par.peek() {
+        par.next().unwrap();
+        let right = parse_path_pattern_segment(par)?;
+        pattern = try_merge_path_pattern(par, pattern, right)?;
+    }
+
+    if let Some(TokenKind::ParenOpen) = par.peek() {
+        let (elts, tuple_span) = parse_pattern_tuple(par)?;
+        let span = pattern.span + tuple_span;
+        match pattern.kind {
+            Pattern::Path(path) => Ok(Node::new(Pattern::PathTuple(path, elts), span)),
+            Pattern::WildCard => invalid_pattern(
+                par,
+                "can't mis wildcard with tuple constructed pattern",
+                span,
+            ),
+            _ => unreachable!(),
+        }
+    } else {
+        Ok(pattern)
+    }
+}
+
+fn parse_pattern_tuple(par: &mut Parser) -> ParseResult<(Vec<Node<Pattern>>, Span)> {
+    if let Some(TokenKind::ParenOpen) = par.peek() {
+        let span = par.next().unwrap().span;
+
+        let (elts, last_span) = if let Some(TokenKind::ParenClose) = par.peek() {
+            (vec![], par.next().unwrap().span)
+        } else {
+            let mut elts = vec![parse_pattern(par)?];
+            while let Some(TokenKind::Comma) = par.peek() {
+                par.next().unwrap();
+                elts.push(parse_pattern(par)?);
+            }
+            let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
+            (elts, last_span)
+        };
+
+        let span = span + last_span;
+        Ok((elts, span))
+    } else {
+        unreachable!()
+    }
+}
+
+fn try_merge_path_pattern(
+    par: &mut Parser,
+    left: Node<Pattern>,
+    right: Node<Pattern>,
+) -> ParseResult<Node<Pattern>> {
+    let span = left.span + right.span;
+
+    match (left.kind, right.kind) {
+        (Pattern::Path(mut left_path), Pattern::Path(right_path)) => {
+            left_path
+                .kind
+                .segments
+                .extend_from_slice(&right_path.kind.segments);
+            left_path.span = span;
+            let span = left.span + right.span;
+            Ok(Node::new(Pattern::Path(left_path), span))
+        }
+        _ => invalid_pattern(par, "invalid pattern here", span),
+    }
+}
+
+fn parse_path_pattern_segment(par: &mut Parser) -> ParseResult<Node<Pattern>> {
+    let tok = par.expect(TokenKind::Name, "failed to parse pattern")?;
+    let text = tok.text;
+    if text == "_" {
+        Ok(Node::new(Pattern::WildCard, tok.span))
+    } else {
+        let path = Path {
+            segments: vec![Node::new(text.into(), tok.span)],
+        };
+        Ok(Node::new(
+            Pattern::Path(Node::new(path, tok.span)),
+            tok.span,
+        ))
+    }
+}
+
+fn invalid_pattern(par: &mut Parser, message: &str, span: Span) -> ParseResult<Node<Pattern>> {
+    par.fancy_error(
+        "invalid pattern",
+        vec![Label::primary(span, message)],
+        vec![],
+    );
+    Err(ParseFailed)
 }

@@ -46,6 +46,11 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 
 `*` All number literals allow `_` as a visual separator: `1_234`
 
+### Boolean literals
+> **<sup>Lexer</sup>**\
+> BOOLEAN_LITERAL :\
+> &nbsp;&nbsp; `true` | `false`
+
 ### String literals
 
 > **<sup>Lexer</sup>**\

@@ -17,7 +17,8 @@ pub fn index(db: &dyn AnalyzerDb, value: TypeId, index: TypeId) -> Result<TypeId
         | Type::Contract(_)
         | Type::SelfContract(_)
         | Type::Generic(_)
-        | Type::Struct(_) => Err(IndexingError::NotSubscriptable),
+        | Type::Struct(_)
+        | Type::Enum(_) => Err(IndexingError::NotSubscriptable),
     }
 }
 

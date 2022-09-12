@@ -25,6 +25,7 @@ be used as the [identifiers](./identifiers.md).
 > KW_FOR            : `for`\
 > KW_IDX             : `idx`\
 > KW_IF             : `if`\
+> KW_MATCH          : `match`\
 > KW_IN             : `in`\
 > KW_LET            : `let`\
 > KW_NONPAYABLE     : `nonpayable`\
@@ -55,7 +56,6 @@ them to use these keywords.
 > KW_FINAL          : `final`\
 > KW_IMPL           : `impl`\
 > KW_MACRO          : `macro`\
-> KW_MATCH          : `match`\
 > KW_MUT            : `mut`\
 > KW_OVERRIDE       : `override`\
 > KW_PURE           : `pure`\

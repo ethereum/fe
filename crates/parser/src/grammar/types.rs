@@ -1,4 +1,7 @@
-use crate::ast::{self, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc};
+use crate::ast::{
+    self, Enum, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant,
+    VariantKind,
+};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
 use crate::node::{Node, Span};
@@ -14,7 +17,7 @@ use vec1::Vec1;
 /// Panics if the next token isn't `struct`.
 pub fn parse_struct_def(
     par: &mut Parser,
-    struct_pub_qual: Option<Span>,
+    pub_qual: Option<Span>,
 ) -> ParseResult<Node<ast::Struct>> {
     let struct_tok = par.assert(TokenKind::Struct);
     let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
@@ -59,7 +62,82 @@ pub fn parse_struct_def(
             name: name.into(),
             fields,
             functions,
-            pub_qual: struct_pub_qual,
+            pub_qual,
+        },
+        span,
+    ))
+}
+
+/// Parse a [`ModuleStmt::Enum`].
+/// # Panics
+/// Panics if the next token isn't [`TokenKind::Enum`].
+pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Enum>> {
+    let enum_tok = par.assert(TokenKind::Enum);
+    let name = par.expect_with_notes(
+        TokenKind::Name,
+        "failed to parse enum definition",
+        |_| vec!["Note: `enum` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
+    )?;
+
+    let mut span = enum_tok.span + name.span;
+    let mut variants = vec![];
+    let mut functions = vec![];
+
+    par.enter_block(span, "enum definition")?;
+    loop {
+        par.eat_newlines();
+        match par.peek_or_err()? {
+            TokenKind::Name => {
+                let variant = parse_variant(par)?;
+                if !functions.is_empty() {
+                    par.error(
+                        variant.span,
+                        "enum variant definitions must come before any function definitions",
+                    );
+                }
+                variants.push(variant);
+            }
+
+            TokenKind::Fn | TokenKind::Unsafe => {
+                functions.push(parse_fn_def(par, None)?);
+            }
+
+            TokenKind::Pub => {
+                let pub_qual = Some(par.next().unwrap().span);
+                match par.peek() {
+                    Some(TokenKind::Fn | TokenKind::Unsafe) => {
+                        functions.push(parse_fn_def(par, pub_qual)?);
+                    }
+
+                    _ => {
+                        par.error(
+                            pub_qual.unwrap(),
+                            "expected `fn` or `unsafe fn` after `pub`",
+                        );
+                    }
+                }
+            }
+
+            TokenKind::BraceClose => {
+                span += par.next()?.span;
+                break;
+            }
+
+            _ => {
+                let tok = par.next()?;
+                dbg!(&tok);
+                par.unexpected_token_error(&tok, "failed to parse enum definition body", vec![]);
+                return Err(ParseFailed);
+            }
+        };
+    }
+
+    Ok(Node::new(
+        ast::Enum {
+            name: name.into(),
+            variants,
+            functions,
+            pub_qual,
         },
         span,
     ))
@@ -68,7 +146,7 @@ pub fn parse_struct_def(
 /// Parse a trait definition.
 /// # Panics
 /// Panics if the next token isn't `trait`.
-pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseResult<Node<Trait>> {
+pub fn parse_trait_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Trait>> {
     let trait_tok = par.assert(TokenKind::Trait);
 
     // trait Event {}
@@ -106,12 +184,12 @@ pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseR
         };
     }
 
-    let span = header_span + trait_pub_qual;
+    let span = header_span + pub_qual;
     Ok(Node::new(
         Trait {
             name: Node::new(trait_name.text.into(), trait_name.span),
             functions,
-            pub_qual: trait_pub_qual,
+            pub_qual,
         },
         span,
     ))
@@ -313,6 +391,59 @@ pub fn parse_field(
             name: name.into(),
             typ,
             value,
+        },
+        span,
+    ))
+}
+
+/// Parse a variant for a enum definition.
+/// # Panics
+/// Panics if the next token isn't [`TokenKind::Name`].
+pub fn parse_variant(par: &mut Parser) -> ParseResult<Node<Variant>> {
+    let name = par.expect(TokenKind::Name, "failed to parse enum variant")?;
+    let mut span = name.span;
+
+    let kind = match par.peek_or_err()? {
+        TokenKind::ParenOpen => {
+            span += par.next().unwrap().span;
+            let mut tys = vec![];
+            loop {
+                match par.peek_or_err()? {
+                    TokenKind::ParenClose => {
+                        span += par.next().unwrap().span;
+                        break;
+                    }
+
+                    _ => {
+                        let ty = parse_type_desc(par)?;
+                        span += ty.span;
+                        tys.push(ty);
+                        if par.peek_or_err()? == TokenKind::Comma {
+                            par.next()?;
+                        } else {
+                            span += par
+                                .expect(
+                                    TokenKind::ParenClose,
+                                    "unexpected token while parsing enum variant",
+                                )?
+                                .span;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            VariantKind::Tuple(tys)
+        }
+
+        _ => VariantKind::Unit,
+    };
+
+    par.expect_stmt_end("enum variant")?;
+    Ok(Node::new(
+        Variant {
+            name: name.into(),
+            kind,
         },
         span,
     ))

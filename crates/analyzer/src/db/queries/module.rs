@@ -1,9 +1,9 @@
-use crate::context::{Analysis, AnalyzerContext, Constant};
+use crate::context::{Analysis, AnalyzerContext, Constant, NamedThing};
 use crate::display::Displayable;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Event, Function, Impl, ImplId, Item, ModuleConstant, ModuleConstantId,
-    ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
+    Contract, ContractId, Enum, Event, Function, Impl, ImplId, Item, ModuleConstant,
+    ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, TypeId};
@@ -81,6 +81,12 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
                     module,
                 }),
             )))),
+            ast::ModuleStmt::Enum(node) => {
+                Some(Item::Type(TypeDef::Enum(db.intern_enum(Rc::new(Enum {
+                    ast: node.clone(),
+                    module,
+                })))))
+            }
             ast::ModuleStmt::Constant(node) => Some(Item::Constant(db.intern_module_const(
                 Rc::new(ModuleConstant {
                     ast: node.clone(),
@@ -349,7 +355,7 @@ pub fn module_constant_type_cycle(
     _cycle: &[String],
     constant: &ModuleConstantId,
 ) -> Analysis<Result<TypeId, TypeError>> {
-    let mut context = ItemScope::new(db, constant.data(db).module);
+    let context = ItemScope::new(db, constant.data(db).module);
     let err = Err(TypeError::new(context.error(
         "recursive constant value definition",
         constant.data(db).ast.span,
@@ -411,7 +417,7 @@ pub fn module_constant_value_cycle(
     _cycle: &[String],
     constant: &ModuleConstantId,
 ) -> Analysis<Result<Constant, ConstEvalError>> {
-    let mut context = ItemScope::new(db, constant.data(db).module);
+    let context = ItemScope::new(db, constant.data(db).module);
     let err = Err(ConstEvalError::new(context.error(
         "recursive constant value definition",
         constant.data(db).ast.span,
@@ -597,14 +603,17 @@ fn resolve_use_tree(
             diagnostics.extend(prefix_module.diagnostics.iter().cloned());
 
             let items = match prefix_module.value {
-                Some(Item::Module(module)) => module
+                Some(NamedThing::Item(Item::Module(module))) => module
                     .items(db)
                     .iter()
                     .map(|(name, item)| (name.clone(), (tree.span, *item)))
                     .collect(),
-                Some(item) => {
+                Some(named_thing) => {
                     diagnostics.push(errors::error(
-                        format!("cannot glob import from {}", item.item_kind_display_name()),
+                        format!(
+                            "cannot glob import from {}",
+                            named_thing.item_kind_display_name()
+                        ),
                         prefix.segments.last().expect("path is empty").span,
                         "prefix item must be a module",
                     ));
@@ -620,7 +629,7 @@ fn resolve_use_tree(
             diagnostics.extend(prefix_module.diagnostics.iter().cloned());
 
             let items = match prefix_module.value {
-                Some(Item::Module(module)) => {
+                Some(NamedThing::Item(Item::Module(module))) => {
                     children.iter().fold(indexmap! {}, |mut accum, node| {
                         let child_items = resolve_use_tree(db, module, node, false);
                         diagnostics.extend(child_items.diagnostics.iter().cloned());
@@ -661,7 +670,7 @@ fn resolve_use_tree(
             let item = resolve_path(module, db, path);
 
             let items = match item.value {
-                Some(item) => {
+                Some(NamedThing::Item(item)) => {
                     let (item_name, item_name_span) = if let Some(name) = rename {
                         (name.kind.clone(), name.span)
                     } else {
@@ -670,6 +679,17 @@ fn resolve_use_tree(
                     };
 
                     indexmap! { item_name => (item_name_span, item) }
+                }
+                Some(named_thing) => {
+                    diagnostics.push(errors::error(
+                        format!(
+                            "cannot import non-item {}",
+                            named_thing.item_kind_display_name(),
+                        ),
+                        tree.span,
+                        &format!("{} is not an item", named_thing.item_kind_display_name()),
+                    ));
+                    indexmap! {}
                 }
                 None => indexmap! {},
             };

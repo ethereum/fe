@@ -1,6 +1,9 @@
 use std::{rc::Rc, str::FromStr};
 
-use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
+use fe_analyzer::namespace::{
+    items::{self as analyzer_items, EnumVariantId},
+    types as analyzer_types,
+};
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -47,7 +50,12 @@ impl TypeId {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
-            other => unreachable!("{:?} is not an aggregate type", other),
+            TypeKind::Enum(_) => {
+                let index = expect_projection_index(access);
+                debug_assert_eq!(index, 0);
+                self.projection_ty_imm(db, 0)
+            }
+            other => panic!("{:?} can't project onto the `access`", other),
         }
     }
 
@@ -68,14 +76,16 @@ impl TypeId {
     }
 
     pub fn projection_ty_imm(self, db: &dyn MirDb, index: usize) -> TypeId {
-        debug_assert!(self.is_aggregate(db));
-
         match &self.data(db).as_ref().kind {
             TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
             TypeKind::Tuple(def) => def.items[index],
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
             TypeKind::Event(def) => def.fields[index].1,
-            _ => unreachable!(),
+            TypeKind::Enum(_) => {
+                debug_assert_eq!(index, 0);
+                self.enum_disc_type(db)
+            }
+            other => panic!("{:?} can't project onto the `index`", other),
         }
     }
 
@@ -85,13 +95,61 @@ impl TypeId {
             TypeKind::Tuple(def) => def.items.len(),
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields.len(),
             TypeKind::Event(def) => def.fields.len(),
+            TypeKind::Enum(_) => 2,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn enum_disc_type(self, db: &dyn MirDb) -> TypeId {
+        let kind = match &self.data(db).kind {
+            TypeKind::Enum(def) => def.tag_type(),
+            _ => unreachable!(),
+        };
+        let analyzer_type = match kind {
+            TypeKind::U8 => Some(analyzer_types::Integer::U8),
+            TypeKind::U16 => Some(analyzer_types::Integer::U16),
+            TypeKind::U32 => Some(analyzer_types::Integer::U32),
+            TypeKind::U64 => Some(analyzer_types::Integer::U64),
+            TypeKind::U128 => Some(analyzer_types::Integer::U128),
+            TypeKind::U256 => Some(analyzer_types::Integer::U256),
+            _ => None,
+        }
+        .map(|int| analyzer_types::TypeId::int(db.upcast(), int));
+
+        db.mir_intern_type(Type::new(kind, analyzer_type).into())
+    }
+
+    pub fn enum_data_offset(self, db: &dyn MirDb, slot_size: usize) -> usize {
+        match &self.data(db).kind {
+            TypeKind::Enum(def) => {
+                let disc_size = self.enum_disc_type(db).size_of(db, slot_size);
+                let mut align = 1;
+                for variant in def.variants.iter() {
+                    let variant_align = variant.ty.align_of(db, slot_size);
+                    align = num_integer::lcm(align, variant_align);
+                }
+                round_up(disc_size, align)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn enum_variant_type(self, db: &dyn MirDb, variant_id: EnumVariantId) -> TypeId {
+        let name = variant_id.name(db.upcast());
+        match &self.data(db).kind {
+            TypeKind::Enum(def) => def
+                .variants
+                .iter()
+                .find(|variant| variant.name == name)
+                .map(|variant| variant.ty)
+                .unwrap(),
             _ => unreachable!(),
         }
     }
 
     pub fn index_from_fname(self, db: &dyn MirDb, fname: &str) -> BigInt {
         let ty = self.deref(db);
-        match &ty.data(db).as_ref().kind {
+        match &ty.data(db).kind {
             TypeKind::Tuple(_) => {
                 // TODO: Fix this when the syntax for tuple access changes.
                 let index_str = &fname[4..];
@@ -159,6 +217,14 @@ impl TypeId {
         matches!(&self.data(db).as_ref().kind, TypeKind::Address)
     }
 
+    pub fn is_unit(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).as_ref().kind, TypeKind::Unit)
+    }
+
+    pub fn is_enum(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).as_ref().kind, TypeKind::Enum(_))
+    }
+
     pub fn is_signed(self, db: &dyn MirDb) -> bool {
         matches!(
             &self.data(db).kind,
@@ -188,7 +254,7 @@ impl TypeId {
             TypeKind::Address => 20,
             TypeKind::Unit => 0,
 
-            TypeKind::Array(def) => array_elem_size_imp(def, db, slot_size) * def.len,
+            TypeKind::Array(def) => array_elem_size_imp(db, def, slot_size) * def.len,
 
             TypeKind::Tuple(def) => {
                 if def.items.is_empty() {
@@ -206,6 +272,17 @@ impl TypeId {
                 let last_idx = def.fields.len() - 1;
                 self.aggregate_elem_offset(db, last_idx, slot_size)
                     + def.fields[last_idx].1.size_of(db, slot_size)
+            }
+
+            TypeKind::Enum(def) => {
+                let data_offset = self.enum_data_offset(db, slot_size);
+                let maximum_data_size = def
+                    .variants
+                    .iter()
+                    .map(|variant| variant.ty.size_of(db, slot_size))
+                    .max()
+                    .unwrap_or(0);
+                data_offset + maximum_data_size
             }
 
             TypeKind::Event(def) => {
@@ -241,27 +318,30 @@ impl TypeId {
         T: num_traits::ToPrimitive,
     {
         debug_assert!(self.is_aggregate(db));
+        debug_assert!(elem_idx.to_usize().unwrap() < self.aggregate_field_num(db));
         let elem_idx = elem_idx.to_usize().unwrap();
 
         if elem_idx == 0 {
             return 0;
         }
 
-        if let TypeKind::Array(def) = &self.data(db).kind {
-            return array_elem_size_imp(def, db, slot_size) * elem_idx;
+        match &self.data(db).kind {
+            TypeKind::Array(def) => array_elem_size_imp(db, def, slot_size) * elem_idx,
+            TypeKind::Enum(_) => self.enum_data_offset(db, slot_size),
+            _ => {
+                let mut offset = self.aggregate_elem_offset(db, elem_idx - 1, slot_size)
+                    + self
+                        .projection_ty_imm(db, elem_idx - 1)
+                        .size_of(db, slot_size);
+
+                let elem_ty = self.projection_ty_imm(db, elem_idx);
+                if (offset % slot_size + elem_ty.size_of(db, slot_size)) > slot_size {
+                    offset = round_up(offset, slot_size);
+                }
+
+                round_up(offset, elem_ty.align_of(db, slot_size))
+            }
         }
-
-        let mut offset = self.aggregate_elem_offset(db, elem_idx - 1, slot_size)
-            + self
-                .projection_ty_imm(db, elem_idx - 1)
-                .size_of(db, slot_size);
-
-        let elem_ty = self.projection_ty_imm(db, elem_idx);
-        if (offset % slot_size + elem_ty.size_of(db, slot_size)) > slot_size {
-            offset = round_up(offset, slot_size);
-        }
-
-        round_up(offset, elem_ty.align_of(db, slot_size))
     }
 
     pub fn is_aggregate(self, db: &dyn MirDb) -> bool {
@@ -270,6 +350,7 @@ impl TypeId {
             TypeKind::Array(_)
                 | TypeKind::Tuple(_)
                 | TypeKind::Struct(_)
+                | TypeKind::Enum(_)
                 | TypeKind::Contract(_)
                 | TypeKind::Event(_)
         )
@@ -313,14 +394,14 @@ impl TypeId {
     pub fn array_elem_size(self, db: &dyn MirDb, slot_size: usize) -> usize {
         let data = self.data(db);
         if let TypeKind::Array(def) = &data.kind {
-            array_elem_size_imp(def, db, slot_size)
+            array_elem_size_imp(db, def, slot_size)
         } else {
             panic!("expected `Array` type; but got {:?}", data.as_ref())
         }
     }
 }
 
-fn array_elem_size_imp(arr: &ArrayDef, db: &dyn MirDb, slot_size: usize) -> usize {
+fn array_elem_size_imp(db: &dyn MirDb, arr: &ArrayDef, slot_size: usize) -> usize {
     let elem_ty = arr.elem_ty;
     let elem = elem_ty.size_of(db, slot_size);
     let align = if elem_ty.is_address(db) {

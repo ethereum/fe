@@ -53,7 +53,7 @@ fn legalize_unit_construct(db: &dyn CodegenDb, cursor: &mut BodyCursor, inst: In
     let should_remove = match &cursor.body().store.inst_data(inst).kind {
         InstKind::Declare { local } => is_value_zst(db, cursor.body(), *local),
         InstKind::AggregateConstruct { ty, .. } => ty.deref(db.upcast()).is_zero_sized(db.upcast()),
-        InstKind::AggregateAccess { .. } | InstKind::MapAccess { .. } => {
+        InstKind::AggregateAccess { .. } | InstKind::MapAccess { .. } | InstKind::Cast { .. } => {
             let result_value = cursor.body().store.inst_result(inst).unwrap();
             is_lvalue_zst(db, cursor.body(), result_value)
         }
@@ -114,6 +114,19 @@ fn legalize_inst_arg(db: &dyn CodegenDb, body: &mut FunctionBody, inst_id: InstI
             let arg_ty = body.store.value_ty(*arg);
             if arg_ty.is_zero_sized(db.upcast()) {
                 *arg = body.store.store_value(make_zst_ptr(db, arg_ty));
+            }
+        }
+
+        InstKind::Cast { value, to, .. } => {
+            if to.is_aggregate(db.upcast()) && !to.is_zero_sized(db.upcast()) {
+                let value_ty = body.store.value_ty(*value);
+                if value_ty.is_mptr(db.upcast()) {
+                    *to = to.make_mptr(db.upcast());
+                } else if value_ty.is_sptr(db.upcast()) {
+                    *to = to.make_sptr(db.upcast());
+                } else {
+                    unreachable!()
+                }
             }
         }
 

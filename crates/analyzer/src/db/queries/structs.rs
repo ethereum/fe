@@ -127,7 +127,7 @@ pub fn struct_function_map(
     db: &dyn AnalyzerDb,
     struct_: StructId,
 ) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
-    let mut scope = ItemScope::new(db, struct_.module(db));
+    let scope = ItemScope::new(db, struct_.module(db));
     let mut map = IndexMap::<SmolStr, FunctionId>::new();
 
     for func in db.struct_all_functions(struct_).iter() {
@@ -199,6 +199,7 @@ pub fn struct_dependency_graph(
             )),
             // Not possible yet, but it will be soon
             Type::Struct(id) => Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local)),
+            Type::Enum(id) => Some((root, Item::Type(TypeDef::Enum(id)), DepLocality::Local)),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -221,7 +222,7 @@ pub fn struct_cycle(
     _cycle: &[String],
     struct_: &StructId,
 ) -> Analysis<DepGraphWrapper> {
-    let mut scope = ItemScope::new(db, struct_.module(db));
+    let scope = ItemScope::new(db, struct_.module(db));
     let struct_data = &struct_.data(db).ast;
     scope.error(
         &format!("recursive struct `{}`", struct_data.name()),

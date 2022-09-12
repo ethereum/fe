@@ -1,0 +1,28 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: expected `fn` or `unsafe fn` after `pub`
+   ┌─ compile_errors/enum_name_conflict.fe:15:5
+   │
+15 │     pub Unit
+   │     ^^^
+
+error: duplicate variant names in `enum MyEnum1`
+  ┌─ compile_errors/enum_name_conflict.fe:3:5
+  │
+3 │     Tuple(i32, u256)
+  │     ^^^^^^^^^^^^^^^^ `Tuple` first defined here
+4 │     Tuple()
+  │     ------- `Tuple` redefined here
+
+error: function name `Tuple` conflicts with enum variant
+   ┌─ compile_errors/enum_name_conflict.fe:9:5
+   │
+ 9 │     Tuple(i32, u256)
+   │     ^^^^^^^^^^^^^^^^ `Tuple` first defined here
+10 │     
+11 │     pub fn Tuple() {}
+   │            ----- `Tuple` redefined here
+
+

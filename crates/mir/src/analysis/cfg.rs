@@ -1,6 +1,6 @@
 use fxhash::FxHashMap;
 
-use crate::ir::{inst::BranchInfo, BasicBlockId, FunctionBody, InstId};
+use crate::ir::{BasicBlockId, FunctionBody, InstId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ControlFlowGraph {
@@ -61,15 +61,13 @@ impl ControlFlowGraph {
 
     fn analyze_terminator(&mut self, func: &FunctionBody, terminator: InstId) {
         let block = func.order.inst_block(terminator);
-        match func.store.branch_info(terminator) {
-            BranchInfo::NotBranch => {
-                self.node_mut(block);
-                self.exits.push(block)
-            }
-            BranchInfo::Jump(dest) => self.add_edge(block, dest),
-            BranchInfo::Branch(_, then, else_) => {
-                self.add_edge(block, then);
-                self.add_edge(block, else_);
+        let branch_info = func.store.branch_info(terminator);
+        if branch_info.is_not_a_branch() {
+            self.node_mut(block);
+            self.exits.push(block)
+        } else {
+            for dest in branch_info.block_iter() {
+                self.add_edge(block, dest)
             }
         }
     }

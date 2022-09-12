@@ -1,0 +1,8 @@
+---
+source: crates/tests/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+construct([Uint(1), Uint(2)]) used 572 gas
+method([Uint(1), Uint(2)]) used 707 gas
+associated_method([Uint(1), Uint(2)]) used 760 gas
+

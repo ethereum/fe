@@ -24,6 +24,10 @@ pub fn mir_lower_module_all_functions(
             functions.extend_from_slice(&db.mir_lower_struct_all_functions(*struct_))
         }
 
+        analyzer_items::Item::Type(TypeDef::Enum(enum_)) => {
+            functions.extend_from_slice(&db.mir_lower_enum_all_functions(*enum_))
+        }
+
         _ => {}
     });
 

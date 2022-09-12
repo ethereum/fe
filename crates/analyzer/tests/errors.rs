@@ -214,6 +214,11 @@ test_stmt! { invert_non_numeric, "~true" }
 test_file! { ambiguous_traits }
 test_file! { ambiguous_traits2 }
 test_ingot! { trait_not_in_scope }
+test_file! { bad_enums }
+test_file! { enum_match }
+test_file! { enum_name_conflict }
+test_file! { exhaustiveness }
+test_file! { unreachable_pattern }
 test_file! { bad_string }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
@@ -294,6 +299,7 @@ test_file! { return_type_undefined }
 test_file! { return_type_not_fixedsize }
 test_file! { undefined_type_param }
 
+test_file! { enum_in_public_contract_sig }
 test_file! { strict_boolean_if_else }
 test_file! { struct_private_constructor }
 test_file! { struct_call_bad_args }

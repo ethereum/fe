@@ -3,10 +3,11 @@
 use crate::context::{
     AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
 };
-use crate::errors::{AlreadyDefined, IncompleteItem, TypeError};
+use crate::errors::{AlreadyDefined, FatalError, IncompleteItem, TypeError};
 use crate::namespace::items::{EventId, FunctionId, ModuleId};
 use crate::namespace::items::{Item, TypeDef};
 use crate::namespace::types::{Type, TypeId};
+use crate::pattern_analysis::PatternMatrix;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -110,27 +111,49 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem> {
-        let item = self.module.resolve_name(self.db, name)?;
+        let resolved = self.module.resolve_name(self.db, name)?;
 
-        if let Some(item) = item {
-            check_item_visibility(self, item, span);
+        if let Some(named_thing) = &resolved {
+            check_visibility(self, named_thing, span);
         }
 
-        Ok(item.map(NamedThing::Item))
+        Ok(resolved)
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
-        let item = self.module.resolve_path_internal(self.db(), path);
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
+        let resolved = self.module.resolve_path_internal(self.db(), path);
 
-        for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.clone())
+        let mut err = None;
+        for diagnostic in resolved.diagnostics.iter() {
+            err = Some(self.register_diag(diagnostic.clone()));
         }
 
-        if let Some(item) = item.value {
-            check_item_visibility(self, item, span);
+        if let Some(err) = err {
+            return Err(FatalError::new(err));
         }
 
-        item.value.map(NamedThing::Item)
+        if let Some(named_thing) = resolved.value {
+            check_visibility(self, &named_thing, span);
+            Ok(named_thing)
+        } else {
+            let err = self.error("unresolved path item", span, "not found");
+            Err(FatalError::new(err))
+        }
+    }
+
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self.module.resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        let named_thing = resolved.value?;
+        if is_visible(self, &named_thing) {
+            Some(named_thing)
+        } else {
+            None
+        }
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -180,6 +203,7 @@ impl<'a> FunctionScope<'a> {
     ///
     /// Panics if an entry already exists for the node id.
     pub fn add_emit(&self, node: &Node<ast::FuncStmt>, event: EventId) {
+        debug_assert!(matches!(node.kind, ast::FuncStmt::Emit { .. }));
         self.add_node(node);
         self.body
             .borrow_mut()
@@ -195,6 +219,15 @@ impl<'a> FunctionScope<'a> {
             .var_types
             .insert(node.id, typ)
             .expect_none("variable has already registered")
+    }
+
+    pub fn map_pattern_matrix(&self, node: &Node<ast::FuncStmt>, matrix: PatternMatrix) {
+        debug_assert!(matches!(node.kind, ast::FuncStmt::Match { .. }));
+        self.body
+            .borrow_mut()
+            .matches
+            .insert(node.id, matrix)
+            .expect_none("match statement attributes already exists")
     }
 
     fn add_node<T>(&self, node: &Node<T>) {
@@ -324,36 +357,61 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if let Some(param) = param {
             Ok(Some(param))
         } else {
-            let item =
+            let resolved =
                 if let Item::Type(TypeDef::Contract(contract)) = self.function.parent(self.db) {
                     contract.resolve_name(self.db, name)
                 } else {
                     self.function.module(self.db).resolve_name(self.db, name)
                 }?;
 
-            if let Some(item) = item {
-                check_item_visibility(self, item, span);
+            if let Some(named_thing) = &resolved {
+                check_visibility(self, named_thing, span);
             }
 
-            Ok(item.map(NamedThing::Item))
+            Ok(resolved)
         }
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
-        let item = self
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
+        let resolved = self
             .function
             .module(self.db())
             .resolve_path_internal(self.db(), path);
 
-        for diagnostic in item.diagnostics.iter() {
-            self.add_diagnostic(diagnostic.clone())
+        let mut err = None;
+        for diagnostic in resolved.diagnostics.iter() {
+            err = Some(self.register_diag(diagnostic.clone()));
         }
 
-        if let Some(item) = item.value {
-            check_item_visibility(self, item, span);
+        if let Some(err) = err {
+            return Err(FatalError::new(err));
         }
 
-        item.value.map(NamedThing::Item)
+        if let Some(named_thing) = resolved.value {
+            check_visibility(self, &named_thing, span);
+            Ok(named_thing)
+        } else {
+            let err = self.error("unresolved path item", span, "not found");
+            Err(FatalError::new(err))
+        }
+    }
+
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self
+            .function
+            .module(self.db())
+            .resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        let named_thing = resolved.value?;
+        if is_visible(self, &named_thing) {
+            Some(named_thing)
+        } else {
+            None
+        }
     }
 
     fn get_context_type(&self) -> Option<TypeId> {
@@ -382,6 +440,8 @@ pub struct BlockScope<'a, 'b> {
 pub enum BlockScopeType {
     Function,
     IfElse,
+    Match,
+    MatchArm,
     Loop,
     Unsafe,
 }
@@ -474,8 +534,12 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
     }
 
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {
         self.root.resolve_path(path, span)
+    }
+
+    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        self.root.maybe_resolve_path(path)
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -518,17 +582,17 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     ) -> Result<(), AlreadyDefined> {
         match self.resolve_name(name, span) {
             Ok(Some(NamedThing::SelfValue { .. })) => {
-                self.error(
+                let err = self.error(
                     "`self` can't be used as a variable name",
                     span,
                     "expected a name, found keyword `self`",
                 );
-                Err(AlreadyDefined)
+                Err(AlreadyDefined::new(err))
             }
 
             Ok(Some(named_item)) => {
                 if named_item.is_builtin() {
-                    self.error(
+                    let err = self.error(
                         &format!(
                             "variable name conflicts with built-in {}",
                             named_item.item_kind_display_name(),
@@ -540,10 +604,10 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                             named_item.item_kind_display_name()
                         ),
                     );
-                    return Err(AlreadyDefined);
+                    Err(AlreadyDefined::new(err))
                 } else {
                     // It's (currently) an error to shadow a variable in a nested scope
-                    self.duplicate_name_error(
+                    let err = self.duplicate_name_error(
                         &format!("duplicate definition of variable `{}`", name),
                         name,
                         named_item
@@ -551,8 +615,8 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                             .expect("missing name_span of non-builtin"),
                         span,
                     );
+                    Err(AlreadyDefined::new(err))
                 }
-                Err(AlreadyDefined)
             }
             _ => {
                 self.variable_defs
@@ -578,28 +642,41 @@ impl<T> OptionExt for Option<T> {
 
 /// Check an item visibility and sink diagnostics if an item is invisible from
 /// the scope.
-fn check_item_visibility(context: &dyn AnalyzerContext, item: Item, span: Span) {
-    let item_module = item
-        .module(context.db())
-        .unwrap_or_else(|| context.module());
-    if !item.is_public(context.db()) && item_module != context.module() {
-        let module_name = item_module.name(context.db());
-        let item_name = item.name(context.db());
-        let item_span = item.name_span(context.db()).unwrap_or(span);
-        let item_kind_name = item.item_kind_display_name();
-        context.fancy_error(
-            &format!("the {} `{}` is private", item_kind_name, item_name,),
-            vec![
-                Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
-                Label::secondary(item_span, format!("`{}` is defined here", item_name)),
-            ],
-            vec![
-                format!("`{}` can only be used within `{}`", item_name, module_name),
-                format!(
-                    "Hint: use `pub` to make `{}` visible from outside of `{}`",
-                    item_name, module_name,
-                ),
-            ],
-        );
+fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing, span: Span) {
+    if let NamedThing::Item(item) = named_thing {
+        let item_module = item
+            .module(context.db())
+            .unwrap_or_else(|| context.module());
+        if !item.is_public(context.db()) && item_module != context.module() {
+            let module_name = item_module.name(context.db());
+            let item_name = item.name(context.db());
+            let item_span = item.name_span(context.db()).unwrap_or(span);
+            let item_kind_name = item.item_kind_display_name();
+            context.fancy_error(
+                &format!("the {} `{}` is private", item_kind_name, item_name,),
+                vec![
+                    Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
+                    Label::secondary(item_span, format!("`{}` is defined here", item_name)),
+                ],
+                vec![
+                    format!("`{}` can only be used within `{}`", item_name, module_name),
+                    format!(
+                        "Hint: use `pub` to make `{}` visible from outside of `{}`",
+                        item_name, module_name,
+                    ),
+                ],
+            );
+        }
+    }
+}
+
+fn is_visible(context: &dyn AnalyzerContext, named_thing: &NamedThing) -> bool {
+    if let NamedThing::Item(item) = named_thing {
+        let item_module = item
+            .module(context.db())
+            .unwrap_or_else(|| context.module());
+        item.is_public(context.db()) || item_module == context.module()
+    } else {
+        true
     }
 }

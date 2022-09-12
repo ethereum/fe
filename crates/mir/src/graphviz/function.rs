@@ -8,7 +8,7 @@ use super::block::BlockNode;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct FunctionNode {
-    func: FunctionId,
+    pub(super) func: FunctionId,
 }
 
 impl FunctionNode {

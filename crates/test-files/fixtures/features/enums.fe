@@ -1,0 +1,40 @@
+pub enum MyEnum {
+    Unit
+    UnitTuple()
+    Tuple(u32, u256)
+
+    pub fn tuple(x: u32, y: u256) -> MyEnum {
+        return MyEnum::Tuple(x, y)
+    }
+    
+    pub fn fold(self) -> u256 {
+        match self {
+            MyEnum::Unit => {
+               return 0
+            }
+            MyEnum::UnitTuple() => {
+                return 1
+            }
+            MyEnum::Tuple(a, b) => {
+                return u256(a) + b
+            }
+        }
+    }
+}
+
+contract Foo {
+    pub fn construct(x: u32, y: u256) {
+        let unit: MyEnum = MyEnum::Unit
+        let unit_tuple: MyEnum = MyEnum::UnitTuple()
+        let tuple: MyEnum = MyEnum::Tuple(x, y)
+    }
+    
+    pub fn method(x: u32, y: u256) -> u256 {
+        let tup: MyEnum = MyEnum::Tuple(x, y)
+        return tup.fold()
+    }
+    
+    pub fn associated_method(x: u32, y: u256) -> u256 {
+        return MyEnum::tuple(x, y).fold()
+    }
+}

@@ -79,6 +79,8 @@ pub enum TokenKind {
     Idx,
     #[token("if")]
     If,
+    #[token("match")]
+    Match,
     #[token("impl")]
     Impl,
     #[token("pragma")]
@@ -95,6 +97,8 @@ pub enum TokenKind {
     SelfValue,
     #[token("struct")]
     Struct,
+    #[token("enum")]
+    Enum,
     #[token("trait")]
     Trait,
     #[token("type")]
@@ -163,6 +167,8 @@ pub enum TokenKind {
     Eq,
     #[token(".")]
     Dot,
+    #[token("..")]
+    DotDot,
     #[token("%")]
     Percent,
     #[token("==")]
@@ -203,6 +209,8 @@ pub enum TokenKind {
     GtGtEq,
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
 }
 
 impl TokenKind {
@@ -234,6 +242,7 @@ impl TokenKind {
             Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
+            Match => "keyword `match`",
             Impl => "keyword `impl`",
             Pragma => "keyword `pragma`",
             For => "keyword `for`",
@@ -242,6 +251,7 @@ impl TokenKind {
             Revert => "keyword `revert`",
             SelfValue => "keyword `self`",
             Struct => "keyword `struct`",
+            Enum => "keyword `enum`",
             Trait => "keyword `trait`",
             Type => "keyword `type`",
             Unsafe => "keyword `unsafe`",
@@ -274,6 +284,7 @@ impl TokenKind {
             GtGt => "symbol `>>`",
             Eq => "symbol `=`",
             Dot => "symbol `.`",
+            DotDot => "symbol `..`",
             Percent => "symbol `%`",
             EqEq => "symbol `==`",
             NotEq => "symbol `!=`",
@@ -294,6 +305,7 @@ impl TokenKind {
             LtLtEq => "symbol `<<=`",
             GtGtEq => "symbol `>>=`",
             Arrow => "symbol `->`",
+            FatArrow => "symbol `=>`",
 
             Error => unreachable!(), // TODO this is reachable
         }

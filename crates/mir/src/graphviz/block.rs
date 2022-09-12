@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug, Clone, Copy)]
 pub(super) struct BlockNode {
     func: FunctionId,
-    block: BasicBlockId,
+    pub block: BasicBlockId,
 }
 
 impl BlockNode {

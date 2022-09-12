@@ -11,7 +11,8 @@ use crate::namespace::types::{self, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 
-/// Returns all `impl` for the given type from the current ingot as well as dependency ingots
+/// Returns all `impl` for the given type from the current ingot as well as
+/// dependency ingots
 pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
     let ingot_modules = db
         .root_ingot()
@@ -60,7 +61,7 @@ pub fn type_alias_type_cycle(
     _cycle: &[String],
     alias: &TypeAliasId,
 ) -> Analysis<Result<types::TypeId, TypeError>> {
-    let mut context = TempContext::default();
+    let context = TempContext::default();
     let err = Err(TypeError::new(context.error(
         "recursive type definition",
         alias.data(db).ast.span,

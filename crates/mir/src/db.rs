@@ -38,6 +38,12 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
         struct_: analyzer_items::StructId,
     ) -> Rc<Vec<ir::FunctionId>>;
 
+    #[salsa::invoke(queries::enums::mir_lower_enum_all_functions)]
+    fn mir_lower_enum_all_functions(
+        &self,
+        enum_: analyzer_items::EnumId,
+    ) -> Rc<Vec<ir::FunctionId>>;
+
     #[salsa::invoke(queries::types::mir_lowered_type)]
     fn mir_lowered_type(&self, analyzer_type: analyzer_types::TypeId) -> TypeId;
     #[salsa::invoke(queries::types::mir_lowered_event_type)]

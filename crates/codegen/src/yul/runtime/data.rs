@@ -9,7 +9,7 @@ use crate::{
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
-use fe_mir::ir::TypeId;
+use fe_mir::ir::{types::TupleDef, Type, TypeId, TypeKind};
 
 use yultsur::*;
 
@@ -247,27 +247,29 @@ pub(super) fn make_aggregate_init(
     let mut body = vec![];
     for (idx, field_arg) in iter_field_args().enumerate() {
         let field_arg_ty = arg_tys[idx];
-        let field_ty = inner_ty.projection_ty_imm(db.upcast(), idx);
+        let field_ty = inner_ty
+            .projection_ty_imm(db.upcast(), idx)
+            .deref(db.upcast());
         let field_ty_size = field_ty.size_of(db.upcast(), SLOT_SIZE);
         let field_ptr_ty = make_ptr(db, field_ty, is_sptr);
-        let elem_offset =
+        let field_offset =
             literal_expression! {(inner_ty.aggregate_elem_offset(db.upcast(), idx, SLOT_SIZE))};
 
-        let elem_ptr = expression! { add([ptr.expr()], [elem_offset] )};
+        let field_ptr = expression! { add([ptr.expr()], [field_offset] )};
         let copy_expr = if field_ty.is_aggregate(db.upcast()) || field_ty.is_string(db.upcast()) {
             // Call ptr copy function if field type is aggregate.
             debug_assert!(field_arg_ty.is_ptr(db.upcast()));
             provider.ptr_copy(
                 db,
                 field_arg.expr(),
-                elem_ptr,
+                field_ptr,
                 literal_expression! {(field_ty_size)},
                 field_arg_ty.is_sptr(db.upcast()),
                 is_sptr,
             )
         } else {
             // Call store function if field type is not aggregate.
-            provider.ptr_store(db, elem_ptr, field_arg.expr(), field_ptr_ty)
+            provider.ptr_store(db, field_ptr, field_arg.expr(), field_ptr_ty)
         };
         body.push(yul::Statement::Expression(copy_expr));
     }
@@ -285,6 +287,63 @@ pub(super) fn make_aggregate_init(
     };
 
     RuntimeFunction(func_def)
+}
+
+pub(super) fn make_enum_init(
+    provider: &mut DefaultRuntimeProvider,
+    db: &dyn CodegenDb,
+    func_name: &str,
+    legalized_ty: TypeId,
+    arg_tys: Vec<TypeId>,
+) -> RuntimeFunction {
+    debug_assert!(arg_tys.len() > 1);
+
+    let func_name = YulVariable::new(func_name);
+    let is_sptr = legalized_ty.is_sptr(db.upcast());
+    let ptr = YulVariable::new("ptr");
+    let disc = YulVariable::new("disc");
+    let disc_ty = arg_tys[0];
+    let enum_data = || {
+        (0..arg_tys.len() - 1)
+            .into_iter()
+            .map(|i| YulVariable::new(format! {"arg{}", i}))
+    };
+
+    let tuple_def = TupleDef {
+        items: arg_tys
+            .iter()
+            .map(|ty| ty.deref(db.upcast()))
+            .skip(1)
+            .collect(),
+    };
+    let tuple_ty = db.mir_intern_type(
+        Type {
+            kind: TypeKind::Tuple(tuple_def),
+            analyzer_ty: None,
+        }
+        .into(),
+    );
+    let data_ptr_ty = make_ptr(db, tuple_ty, is_sptr);
+    let data_offset = legalized_ty
+        .deref(db.upcast())
+        .enum_data_offset(db.upcast(), SLOT_SIZE);
+    let enum_data_init = statements! {
+        [statement! {[ptr.ident()] := add([ptr.expr()], [literal_expression!{(data_offset)}])}]
+        [yul::Statement::Expression(provider.aggregate_init(
+        db,
+        ptr.expr(),
+        enum_data().map(|arg| arg.expr()).collect(),
+        data_ptr_ty, arg_tys.iter().skip(1).copied().collect()))]
+    };
+
+    let enum_data_args: Vec<_> = enum_data().map(|var| var.ident()).collect();
+    let func_def = function_definition! {
+        function [func_name.ident()]([ptr.ident()], [disc.ident()], [enum_data_args...]) {
+            [yul::Statement::Expression(provider.ptr_store(db, ptr.expr(), disc.expr(), make_ptr(db, disc_ty, is_sptr)))]
+            [enum_data_init...]
+        }
+    };
+    RuntimeFunction::from_statement(func_def)
 }
 
 pub(super) fn make_string_copy(

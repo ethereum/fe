@@ -9,7 +9,7 @@ use crate::ir::{
 };
 
 use super::{
-    inst::{CallType, YulIntrinsicOp},
+    inst::{CallType, CastKind, SwitchTable, YulIntrinsicOp},
     ConstantId, Value, ValueId,
 };
 
@@ -74,6 +74,10 @@ impl BodyBuilder {
         self.loc = CursorLocation::BlockBottom(block)
     }
 
+    pub fn move_to_block_top(&mut self, block: BasicBlockId) {
+        self.loc = CursorLocation::BlockTop(block)
+    }
+
     pub fn make_unit(&mut self, unit_ty: TypeId) -> ValueId {
         self.body.store.store_value(Value::Unit { ty: unit_ty })
     }
@@ -134,8 +138,24 @@ impl BodyBuilder {
     impl_binary_inst!(le, BinOp::Le);
     impl_binary_inst!(lt, BinOp::Lt);
 
-    pub fn cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+    pub fn primitive_cast(
+        &mut self,
+        value: ValueId,
+        result_ty: TypeId,
+        source: SourceInfo,
+    ) -> InstId {
         let kind = InstKind::Cast {
+            kind: CastKind::Primitive,
+            value,
+            to: result_ty,
+        };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
+    pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+        let kind = InstKind::Cast {
+            kind: CastKind::Untag,
             value,
             to: result_ty,
         };
@@ -261,6 +281,22 @@ impl BodyBuilder {
         self.insert_inst(inst)
     }
 
+    pub fn switch(
+        &mut self,
+        disc: ValueId,
+        table: SwitchTable,
+        default: Option<BasicBlockId>,
+        source: SourceInfo,
+    ) -> InstId {
+        let kind = InstKind::Switch {
+            disc,
+            table,
+            default,
+        };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
     pub fn revert(&mut self, arg: Option<ValueId>, source: SourceInfo) -> InstId {
         let kind = InstKind::Revert { arg };
         let inst = Inst::new(kind, source);
@@ -296,6 +332,11 @@ impl BodyBuilder {
     /// Returns `true` if current block is terminated.
     pub fn is_block_terminated(&mut self, block: BasicBlockId) -> bool {
         self.body.order.is_terminated(&self.body.store, block)
+    }
+
+    pub fn is_current_block_terminated(&mut self) -> bool {
+        let current_block = self.current_block();
+        self.is_block_terminated(current_block)
     }
 
     pub fn current_block(&mut self) -> BasicBlockId {

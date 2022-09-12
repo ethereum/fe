@@ -37,6 +37,7 @@ pub enum TypeKind {
     String(usize),
     Tuple(TupleDef),
     Struct(StructDef),
+    Enum(EnumDef),
     Event(EventDef),
     Contract(StructDef),
     Map(MapDef),
@@ -69,6 +70,38 @@ pub struct StructDef {
     pub fields: Vec<(SmolStr, TypeId)>,
     pub span: Span,
     pub module_id: analyzer_items::ModuleId,
+}
+
+/// A user defined struct type definition.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EnumDef {
+    pub name: SmolStr,
+    pub variants: Vec<EnumVariant>,
+    pub span: Span,
+    pub module_id: analyzer_items::ModuleId,
+}
+
+impl EnumDef {
+    pub fn tag_type(&self) -> TypeKind {
+        let variant_num = self.variants.len() as u64;
+        if variant_num <= u8::MAX as u64 {
+            TypeKind::U8
+        } else if variant_num <= u16::MAX as u64 {
+            TypeKind::U16
+        } else if variant_num <= u32::MAX as u64 {
+            TypeKind::U32
+        } else {
+            TypeKind::U64
+        }
+    }
+}
+
+/// A user defined struct type definition.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EnumVariant {
+    pub name: SmolStr,
+    pub span: Span,
+    pub ty: TypeId,
 }
 
 /// A user defined struct type definition.

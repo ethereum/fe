@@ -125,6 +125,26 @@ test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
 
 test_parse! { stmt_if, functions::parse_stmt, "if a { \n b }" }
 test_parse! { stmt_if2, functions::parse_stmt, "if a { b } else if c { d } else if e { \n f } \n else {\n g }" }
+test_parse! { stmt_match, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit => {
+        return 0
+    }
+    MyEnum::Tuple(x, y) => {
+        let sum: i32 = x + y;
+        return sum
+    }
+    _ => {
+        return -1
+    }
+}"# }
+test_parse! { stmt_match2, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit | MyEnum::Tuple(_, _) => {
+        return 0
+    }
+    _ => {
+        return -1
+    }
+}"# }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
@@ -183,6 +203,14 @@ test_parse! { struct_def, try_parse_module, r#"struct S {
   unsafe fn bar() {}
 }"# }
 test_parse! { empty_struct_def, try_parse_module, "struct S {}" }
+
+test_parse! { enum_def, try_parse_module, r#"enum E {
+    Unit1
+    Tuple1(i32, String<10>)
+    Unit2
+    Tuple2(Array<u32, 10>, u256)
+}"# }
+test_parse! { enum_enum_def, try_parse_module, r#"enum E {}"# }
 
 test_parse! { contract_def, try_parse_module, r#"contract Foo {
   x: address
