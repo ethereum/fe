@@ -1,7 +1,7 @@
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, EventId, FunctionId,
-    FunctionSigId, ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId,
-    TraitId, TypeAliasId,
+    self, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId, FunctionSigId,
+    ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId,
+    TypeAliasId,
 };
 use crate::namespace::types::{self, Type, TypeId};
 use crate::{
@@ -50,8 +50,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn intern_function_sig(&self, data: Rc<items::FunctionSig>) -> FunctionSigId;
     #[salsa::interned]
     fn intern_function(&self, data: Rc<items::Function>) -> FunctionId;
-    #[salsa::interned]
-    fn intern_event(&self, data: Rc<items::Event>) -> EventId;
     #[salsa::interned]
     fn intern_type(&self, data: Type) -> TypeId;
 
@@ -132,11 +130,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::contracts::contract_call_function)]
     fn contract_call_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 
-    #[salsa::invoke(queries::contracts::contract_all_events)]
-    fn contract_all_events(&self, id: ContractId) -> Rc<[EventId]>;
-    #[salsa::invoke(queries::contracts::contract_event_map)]
-    fn contract_event_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<SmolStr, EventId>>>;
-
     #[salsa::invoke(queries::contracts::contract_all_fields)]
     fn contract_all_fields(&self, id: ContractId) -> Rc<[ContractFieldId]>;
     #[salsa::invoke(queries::contracts::contract_field_map)]
@@ -205,10 +198,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn impl_all_functions(&self, id: ImplId) -> Rc<[FunctionId]>;
     #[salsa::invoke(queries::impls::impl_function_map)]
     fn impl_function_map(&self, id: ImplId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
-
-    // Event
-    #[salsa::invoke(queries::events::event_type)]
-    fn event_type(&self, event: EventId) -> Analysis<Rc<types::Event>>;
 
     // Type
     #[salsa::invoke(queries::types::all_impls)]

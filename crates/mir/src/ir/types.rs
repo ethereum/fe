@@ -38,7 +38,6 @@ pub enum TypeKind {
     Tuple(TupleDef),
     Struct(StructDef),
     Enum(EnumDef),
-    Event(EventDef),
     Contract(StructDef),
     Map(MapDef),
     MPtr(TypeId),

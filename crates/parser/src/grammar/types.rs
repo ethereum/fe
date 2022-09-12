@@ -1,6 +1,5 @@
 use crate::ast::{
-    self, Enum, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant,
-    VariantKind,
+    self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
 };
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
@@ -275,75 +274,8 @@ pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult
     ))
 }
 
-/// Parse an event definition.
-/// # Panics
-/// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ast::Event>> {
-    use TokenKind::*;
-
-    let event_tok = par.assert(Event);
-    let name = par.expect(Name, "failed to parse event definition")?;
-    par.enter_block(event_tok.span + name.span, "event definition")?;
-
-    let mut span = event_tok.span;
-    let mut fields = vec![];
-    loop {
-        match par.peek_or_err()? {
-            Name | Idx => {
-                fields.push(parse_event_field(par)?);
-            }
-            BraceClose => {
-                span += par.next()?.span;
-                break;
-            }
-            _ => {
-                let tok = par.next()?;
-                par.unexpected_token_error(&tok, "failed to parse event definition", vec![]);
-                return Err(ParseFailed);
-            }
-        }
-    }
-    Ok(Node::new(
-        ast::Event {
-            name: name.into(),
-            fields,
-            pub_qual,
-        },
-        span,
-    ))
-}
-
-/// Parse an event field, e.g. `foo: u8` or `idx from: address`.
-pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
-    let idx_qual = parse_opt_qualifier(par, TokenKind::Idx);
-    let name = par.expect(TokenKind::Name, "failed to parse event field")?;
-    par.expect_with_notes(TokenKind::Colon, "failed to parse event field", |_| {
-        vec![
-            "Note: event field name must be followed by a colon and a type description".into(),
-            format!(
-                "Example: `{}{}: address`",
-                if idx_qual.is_some() { "idx " } else { "" },
-                name.text
-            ),
-        ]
-    })?;
-
-    let typ = parse_type_desc(par)?;
-    par.expect_stmt_end("event field")?;
-    let span = name.span + idx_qual + &typ;
-    Ok(Node::new(
-        EventField {
-            is_idx: idx_qual.is_some(),
-            name: name.into(),
-            typ,
-        },
-        span,
-    ))
-}
-
 /// Parse a field for a struct or contract. The leading optional `pub` and
 /// `const` qualifiers must be parsed by the caller, and passed in.
-/// Note that `event` fields are handled in [`parse_event_field`].
 pub fn parse_field(
     par: &mut Parser,
     pub_qual: Option<Span>,

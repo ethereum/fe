@@ -60,9 +60,6 @@ impl PrettyPrint for TypeId {
             TypeKind::Enum(def) => {
                 write!(w, "{}", def.name)
             }
-            TypeKind::Event(def) => {
-                write!(w, "{}", def.name)
-            }
             TypeKind::Contract(def) => {
                 write!(w, "{}", def.name)
             }

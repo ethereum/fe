@@ -71,10 +71,6 @@ pub enum TokenKind {
     Const,
     #[token("else")]
     Else,
-    #[token("emit")]
-    Emit,
-    #[token("event")]
-    Event,
     #[token("idx")]
     Idx,
     #[token("if")]
@@ -238,8 +234,6 @@ impl TokenKind {
             Const => "keyword `const`",
             Let => "keyword `let`",
             Else => "keyword `else`",
-            Emit => "keyword `emit`",
-            Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
             Match => "keyword `match`",

@@ -1,7 +1,7 @@
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::display::Displayable;
 use crate::errors::{FatalError, TypeError};
-use crate::namespace::types::{EventField, FunctionParam, Generic, Type, TypeId};
+use crate::namespace::types::{FunctionParam, Generic, Type, TypeId};
 use crate::traversal::expressions::assignable_expr;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
@@ -17,15 +17,6 @@ pub trait LabeledParameter {
 impl LabeledParameter for FunctionParam {
     fn label(&self) -> Option<&str> {
         self.label()
-    }
-    fn typ(&self) -> Result<TypeId, TypeError> {
-        self.typ.clone()
-    }
-}
-
-impl LabeledParameter for EventField {
-    fn label(&self) -> Option<&str> {
-        Some(&self.name)
     }
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.typ.clone()

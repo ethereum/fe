@@ -25,11 +25,8 @@ type_def: 'type' NAME '=' type_desc NEWLINE
 ########################### contract_def #############################
 
 contract_def: 'contract' NAME '{' contract_stmt* '}'
-contract_stmt: contract_field | event_def | func_def
+contract_stmt: contract_field | func_def
 contract_field: [contract_field_qual] NAME ':' type_desc NEWLINE
-
-event_def: 'event' NAME '{' event_field* '}'
-event_field: [event_field_qual] NAME ':' type_desc NEWLINE
 
 func_def:
     [func_qual] 'fn' NAME '(' [arg_list] ')' ['->' base_type] ':' block
@@ -45,7 +42,6 @@ base_type: NAME arr_list
 arr_list: ('[' NUMBER ']')*
 
 contract_field_qual: 'const' | 'pub'
-event_field_qual: 'idx'
 func_qual: 'pub'
 
 ########################### func_stmt ###############################

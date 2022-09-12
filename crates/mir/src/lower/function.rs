@@ -216,26 +216,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.move_to_block(then_bb);
             }
 
-            ast::FuncStmt::Emit { args, .. } => {
-                let event_id = self.analyzer_body.emits[&stmt.id];
-                let event_type = self.db.mir_lowered_event_type(event_id);
-                // NOTE: Event arguments are guaranteed to be in the same order with
-                // the definition.
-                let lowered_args = args
-                    .kind
-                    .iter()
-                    .map(|arg| self.lower_expr_to_value(&arg.kind.value))
-                    .collect();
-
-                let event = Local::tmp_local("$event".into(), event_type);
-                let event = self.builder.declare(event);
-                let inst = self
-                    .builder
-                    .aggregate_construct(event_type, lowered_args, args.into());
-                self.builder.map_result(inst, event.into());
-                self.builder.emit(event, stmt.into());
-            }
-
             ast::FuncStmt::Expr { value } => {
                 self.lower_expr_to_value(value);
             }

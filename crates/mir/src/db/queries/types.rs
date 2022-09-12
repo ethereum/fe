@@ -1,9 +1,6 @@
 use std::{rc::Rc, str::FromStr};
 
-use fe_analyzer::namespace::{
-    items::{self as analyzer_items, EnumVariantId},
-    types as analyzer_types,
-};
+use fe_analyzer::namespace::{items::EnumVariantId, types as analyzer_types};
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -14,15 +11,11 @@ use crate::{
         types::{ArrayDef, TypeKind},
         Type, TypeId, Value,
     },
-    lower::types::{lower_event_type, lower_type},
+    lower::types::lower_type,
 };
 
 pub fn mir_lowered_type(db: &dyn MirDb, analyzer_type: analyzer_types::TypeId) -> TypeId {
     lower_type(db, &analyzer_type)
-}
-
-pub fn mir_lowered_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
-    lower_event_type(db, event)
 }
 
 impl TypeId {
@@ -43,10 +36,6 @@ impl TypeId {
                 def.items[index]
             }
             TypeKind::Struct(def) | TypeKind::Contract(def) => {
-                let index = expect_projection_index(access);
-                def.fields[index].1
-            }
-            TypeKind::Event(def) => {
                 let index = expect_projection_index(access);
                 def.fields[index].1
             }
@@ -80,7 +69,6 @@ impl TypeId {
             TypeKind::Array(ArrayDef { elem_ty, .. }) => *elem_ty,
             TypeKind::Tuple(def) => def.items[index],
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields[index].1,
-            TypeKind::Event(def) => def.fields[index].1,
             TypeKind::Enum(_) => {
                 debug_assert_eq!(index, 0);
                 self.enum_disc_type(db)
@@ -94,7 +82,6 @@ impl TypeId {
             TypeKind::Array(ArrayDef { len, .. }) => *len,
             TypeKind::Tuple(def) => def.items.len(),
             TypeKind::Struct(def) | TypeKind::Contract(def) => def.fields.len(),
-            TypeKind::Event(def) => def.fields.len(),
             TypeKind::Enum(_) => 2,
             _ => unreachable!(),
         }
@@ -157,13 +144,6 @@ impl TypeId {
             }
 
             TypeKind::Struct(def) | TypeKind::Contract(def) => def
-                .fields
-                .iter()
-                .enumerate()
-                .find_map(|(i, field)| (field.0 == fname).then(|| i.into()))
-                .unwrap(),
-
-            TypeKind::Event(def) => def
                 .fields
                 .iter()
                 .enumerate()
@@ -284,15 +264,6 @@ impl TypeId {
                     .unwrap_or(0);
                 data_offset + maximum_data_size
             }
-
-            TypeKind::Event(def) => {
-                if def.fields.is_empty() {
-                    return 0;
-                }
-                let last_idx = def.fields.len() - 1;
-                self.aggregate_elem_offset(db, last_idx, slot_size)
-                    + def.fields[last_idx].1.size_of(db, slot_size)
-            }
         }
     }
 
@@ -352,7 +323,6 @@ impl TypeId {
                 | TypeKind::Struct(_)
                 | TypeKind::Enum(_)
                 | TypeKind::Contract(_)
-                | TypeKind::Event(_)
         )
     }
 
@@ -385,10 +355,6 @@ impl TypeId {
 
     pub fn is_contract(self, db: &dyn MirDb) -> bool {
         matches!(self.data(db).kind, TypeKind::Contract(_))
-    }
-
-    pub fn is_event(self, db: &dyn MirDb) -> bool {
-        matches!(self.data(db).kind, TypeKind::Event(_))
     }
 
     pub fn array_elem_size(self, db: &dyn MirDb, slot_size: usize) -> usize {
