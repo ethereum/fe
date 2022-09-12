@@ -20,7 +20,6 @@ pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
         .iter()
         .flat_map(|module_id| module_id.all_impls(db).to_vec())
         .collect::<Vec<_>>();
-
     db.ingot_external_ingots(db.root_ingot())
         .values()
         .flat_map(|ingot| ingot.all_modules(db).to_vec())

@@ -1,4 +1,4 @@
-use crate::constants::INDEXED;
+use crate::constants::{EMITTABLE_TRAIT_NAME, INDEXED};
 use crate::context::{self, Analysis, Constant, NamedThing};
 use crate::display::{DisplayWithDb, Displayable};
 use crate::errors::{self, IncompleteItem, TypeError};
@@ -1878,6 +1878,11 @@ impl TraitId {
     }
 
     pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: TypeId) -> bool {
+        // All structs automagically implement the Emittable trait
+        if self.is_std_trait(db, EMITTABLE_TRAIT_NAME) && ty.is_struct(db) {
+            return true;
+        }
+
         ty.get_all_impls(db)
             .iter()
             .any(|val| &val.trait_id(db) == self)
@@ -1885,6 +1890,10 @@ impl TraitId {
 
     pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {
         self.module(db).is_in_std(db)
+    }
+
+    pub fn is_std_trait(&self, db: &dyn AnalyzerDb, name: &str) -> bool {
+        self.is_in_std(db) && self.name(db).to_lowercase() == name.to_lowercase()
     }
 
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {

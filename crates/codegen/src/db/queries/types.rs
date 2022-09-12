@@ -37,11 +37,11 @@ pub fn legalized_type(db: &dyn CodegenDb, ty: TypeId) -> TypeId {
                 .fields
                 .iter()
                 .cloned()
-                .filter_map(|(name, ty)| {
+                .filter_map(|(name, attrs, ty)| {
                     if ty.is_zero_sized(db.upcast()) {
                         None
                     } else {
-                        Some((name, legalized_type(db, ty)))
+                        Some((name, attrs, legalized_type(db, ty)))
                     }
                 })
                 .collect();
@@ -59,11 +59,11 @@ pub fn legalized_type(db: &dyn CodegenDb, ty: TypeId) -> TypeId {
                 .fields
                 .iter()
                 .cloned()
-                .filter_map(|(name, ty)| {
+                .filter_map(|(name, attrs, ty)| {
                     if ty.is_zero_sized(db.upcast()) {
                         None
                     } else {
-                        Some((name, legalized_type(db, ty)))
+                        Some((name, attrs, legalized_type(db, ty)))
                     }
                 })
                 .collect();

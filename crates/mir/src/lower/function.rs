@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, rc::Rc, vec};
 
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
+    constants::{EMITTABLE_TRAIT_NAME, EMIT_FN_NAME},
     context::{CallType as AnalyzerCallType, NamedThing},
     namespace::{
         items::{self as analyzer_items},
@@ -947,6 +948,14 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
                 self.builder
                     .call(func_id, method_args, CallType::Internal, source)
+            }
+            AnalyzerCallType::TraitValueMethod {
+                trait_id, method, ..
+            } if trait_id.is_std_trait(self.db.upcast(), EMITTABLE_TRAIT_NAME)
+                && method.name(self.db.upcast()) == EMIT_FN_NAME =>
+            {
+                let event = self.lower_method_receiver(func);
+                self.builder.emit(event, source)
             }
             AnalyzerCallType::TraitValueMethod {
                 method,

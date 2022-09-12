@@ -68,7 +68,7 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
         ir::TypeKind::Struct(def) => def
             .fields
             .iter()
-            .map(|(_, ty)| ("".to_string(), db.codegen_abi_type(*ty)))
+            .map(|(_, _, ty)| ("".to_string(), db.codegen_abi_type(*ty)))
             .collect(),
         _ => {
             let abi_ty = db.codegen_abi_type(deref_ty);

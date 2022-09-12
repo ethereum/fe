@@ -1,10 +1,10 @@
 use fe_abi::{
     contract::AbiContract,
-    event::AbiEvent,
+    event::{AbiEvent, AbiEventField},
     function::{AbiFunction, AbiFunctionType},
     types::{AbiTupleField, AbiType},
 };
-use fe_analyzer::namespace::items::ContractId;
+use fe_analyzer::{constants::INDEXED, namespace::items::ContractId};
 use fe_mir::ir::{self, FunctionId, TypeId};
 
 use crate::db::CodegenDb;
@@ -26,12 +26,13 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
         }
     }
 
-    let events = vec![];
-    // for &event in db.contract_all_events(contract).as_ref() {
-    //     let mir_event = db.mir_lowered_event_type(event);
-    //     let event = db.codegen_abi_event(mir_event);
-    //     events.push(event);
-    // }
+    let mut events = vec![];
+    // We consider all structs that are defined or imported in the scope of the contract as possible events
+    for &event in db.module_structs(contract.module(db.upcast())).as_ref() {
+        let mir_event = db.mir_lowered_type(event.as_type(db.upcast()));
+        let event = db.codegen_abi_event(mir_event);
+        events.push(event);
+    }
 
     AbiContract::new(funcs, events)
 }
@@ -188,7 +189,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
             let fields = def
                 .fields
                 .iter()
-                .map(|(name, ty)| {
+                .map(|(name, _, ty)| {
                     let ty = db.codegen_abi_type(*ty);
                     AbiTupleField::new(name.to_string(), ty)
                 })
@@ -206,6 +207,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 }
 
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
+    debug_assert!(ty.is_struct(db.upcast()));
     let legalized_ty = db.codegen_legalized_type(ty);
 
     let legalized_ty_data = legalized_ty.data(db.upcast());
@@ -213,15 +215,16 @@ pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
         ir::TypeKind::Struct(def) => def,
         _ => unreachable!(),
     };
-    let fields = vec![];
-    // let fields = event_def
-    //     .fields
-    //     .iter()
-    //     .map(|(name, ty, indexed)| {
-    //         let ty = db.codegen_abi_type(*ty);
-    //         AbiEventField::new(name.to_string(), ty, *indexed)
-    //     })
-    //     .collect();
+
+    let fields = event_def
+        .fields
+        .iter()
+        .map(|(name, attr, ty)| {
+            let ty = db.codegen_abi_type(*ty);
+            let indexed = attr.iter().any(|attr| attr == INDEXED);
+            AbiEventField::new(name.to_string(), ty, indexed)
+        })
+        .collect();
 
     AbiEvent::new(event_def.name.to_string(), fields, false)
 }

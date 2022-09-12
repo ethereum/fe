@@ -28,6 +28,25 @@ pub fn mir_lowered_monomorphized_func_signature(
     lower_monomorphized_func_signature(db, analyzer_func, &concrete_args)
 }
 
+/// Generate MIR function and monomorphize generic parameters as if they were called with unit type
+/// NOTE: THIS SHOULD ONLY BE USED IN TEST CODE
+pub fn mir_lowered_pseudo_monomorphized_func_signature(
+    db: &dyn MirDb,
+    analyzer_func: analyzer_items::FunctionId,
+) -> ir::FunctionId {
+    let mut dummy_args = analyzer_func
+        .signature(db.upcast())
+        .params
+        .iter()
+        .map(|_| analyzer_types::TypeId::unit(db.upcast()))
+        .collect::<Vec<_>>();
+    if analyzer_func.takes_self(db.upcast()) {
+        dummy_args.insert(0, analyzer_types::TypeId::unit(db.upcast()))
+    }
+
+    lower_monomorphized_func_signature(db, analyzer_func, &dummy_args)
+}
+
 pub fn mir_lowered_func_body(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ir::FunctionBody> {
     lower_func_body(db, func)
 }

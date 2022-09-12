@@ -11,7 +11,7 @@ pub fn mir_lower_struct_all_functions(
     struct_
         .all_functions(db.upcast())
         .iter()
-        .map(|func| db.mir_lowered_func_signature(*func))
+        .map(|func| db.mir_lowered_pseudo_monomorphized_func_signature(*func))
         .collect::<Vec<_>>()
         .into()
 }

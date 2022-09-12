@@ -1,0 +1,20 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+
+---
+error: the struct `OutOfReachMarker` is private
+  ┌─ compile_errors/emittable_not_implementable.fe:6:24
+  │
+6 │   fn emit(self, _ val: OutOfReachMarker) {
+  │                        ^^^^^^^^^^^^^^^^ this struct is not `pub`
+  │
+  ┌─ src/context.fe:8:8
+  │
+8 │ struct OutOfReachMarker {}
+  │        ---------------- `OutOfReachMarker` is defined here
+  │
+  = `OutOfReachMarker` can only be used within `context`
+  = Hint: use `pub` to make `OutOfReachMarker` visible from outside of `context`
+
+

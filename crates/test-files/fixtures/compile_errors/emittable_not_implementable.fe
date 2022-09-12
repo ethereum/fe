@@ -1,0 +1,9 @@
+use std::context::{Emittable, OutOfReachMarker}
+
+struct Custom {}
+
+impl Emittable for Custom {
+  fn emit(self, _ val: OutOfReachMarker) {
+
+  }
+}

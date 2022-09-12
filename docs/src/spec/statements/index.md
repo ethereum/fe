@@ -7,7 +7,6 @@
 * [Augmenting Assignment Statement](./augassign.md)
 * [revert Statement](./revert.md)
 * [return Statemetn](./return.md)
-* [emit Statement](./emit.md)
 * [if Statement](./if.md)
 * [for Statement](./for.md)
 * [while Statement](./while.md)
