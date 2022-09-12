@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(self_contract), module::parse_module,\n           \"contract self {}\")"
+expression: "err_string(stringify!(self_contract), module::parse_module,\n    \"contract self {}\")"
 
 ---
 error: failed to parse contract definition

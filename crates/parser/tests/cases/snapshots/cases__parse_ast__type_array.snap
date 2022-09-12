@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_array), types::parse_type_desc,\n           \"Array<address, 25>\")"
+expression: "ast_string(stringify!(type_array), types::parse_type_desc,\n    \"Array<address, 25>\")"
 
 ---
 Node(

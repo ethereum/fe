@@ -4,16 +4,16 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ guest_book.fe:5:5
+  ┌─ guest_book.fe:3:5
   │
-5 │     messages: Map<address, String<100>>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
+3 │     pub book_msg: String<100>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
-  ┌─ guest_book.fe:9:9
-  │
-9 │         book_msg: String<100>
-  │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
+   ┌─ guest_book.fe:10:5
+   │
+10 │     messages: Map<address, String<100>>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
    ┌─ guest_book.fe:14:5
@@ -22,9 +22,9 @@ note:
 15 │ │         // All storage access is explicit using `self.<some-key>`
 16 │ │         self.messages[ctx.msg_sender()] = book_msg
 17 │ │ 
-   · │
-20 │ │         emit Signed(ctx, book_msg)
-21 │ │     }
+18 │ │         // Emit the `Signed` event.
+19 │ │         ctx.emit(Signed(book_msg))
+20 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
 
 note: 
@@ -55,45 +55,57 @@ note:
    │         │                                  
    │         String<100>: Storage { nonce: None }
    ·
-20 │         emit Signed(ctx, book_msg)
-   │                     ^^^  ^^^^^^^^ String<100>: Memory
-   │                     │     
-   │                     Context: Memory
+19 │         ctx.emit(Signed(book_msg))
+   │         ^^^             ^^^^^^^^ String<100>: Memory
+   │         │                
+   │         Context: Memory
 
 note: 
-   ┌─ guest_book.fe:23:5
+   ┌─ guest_book.fe:19:18
+   │
+19 │         ctx.emit(Signed(book_msg))
+   │                  ^^^^^^^^^^^^^^^^ Signed: Memory
+
+note: 
+   ┌─ guest_book.fe:19:9
+   │
+19 │         ctx.emit(Signed(book_msg))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+
+note: 
+   ┌─ guest_book.fe:22:5
    │  
-23 │ ╭     pub fn get_msg(self, addr: address) -> String<100> {
-24 │ │         // Copying data from storage to memory
-25 │ │         // has to be done explicitly via `to_mem()`
-26 │ │         return self.messages[addr].to_mem()
-27 │ │     }
+22 │ ╭     pub fn get_msg(self, addr: address) -> String<100> {
+23 │ │         // Copying data from storage to memory
+24 │ │         // has to be done explicitly via `to_mem()`
+25 │ │         return self.messages[addr].to_mem()
+26 │ │     }
    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: addr, typ: address }] -> String<100>
 
 note: 
-   ┌─ guest_book.fe:26:16
+   ┌─ guest_book.fe:25:16
    │
-26 │         return self.messages[addr].to_mem()
+25 │         return self.messages[addr].to_mem()
    │                ^^^^ GuestBook: Value
 
 note: 
-   ┌─ guest_book.fe:26:16
+   ┌─ guest_book.fe:25:16
    │
-26 │         return self.messages[addr].to_mem()
+25 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^ ^^^^ address: Value
    │                │              
    │                Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
-   ┌─ guest_book.fe:26:16
+   ┌─ guest_book.fe:25:16
    │
-26 │         return self.messages[addr].to_mem()
+25 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
 
 note: 
-   ┌─ guest_book.fe:26:16
+   ┌─ guest_book.fe:25:16
    │
-26 │         return self.messages[addr].to_mem()
+25 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
 

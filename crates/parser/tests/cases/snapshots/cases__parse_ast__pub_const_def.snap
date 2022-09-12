@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_const_def), try_parse_module,\n           \"pub const FOO: i32 = 1\")"
+expression: "ast_string(stringify!(pub_const_def), try_parse_module,\n    \"pub const FOO: i32 = 1\")"
 
 ---
 Node(

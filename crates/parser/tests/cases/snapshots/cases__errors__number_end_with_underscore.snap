@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(number_end_with_underscore), functions::parse_stmt,\n           \"42_42_\")"
+expression: "err_string(stringify!(number_end_with_underscore), functions::parse_stmt,\n    \"42_42_\")"
 
 ---
 error: invalid syntax in function body

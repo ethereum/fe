@@ -6,14 +6,14 @@ expression: "build_snapshot(&db, module)"
 note: 
   ┌─ tuple_stress.fe:2:5
   │
-2 │     my_sto_tuple: (u256, i32)
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32)
+2 │     pub my_tuple: (u256, bool, address)
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool, address)
 
 note: 
-  ┌─ tuple_stress.fe:5:9
+  ┌─ tuple_stress.fe:6:5
   │
-5 │         my_tuple: (u256, bool, address)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool, address)
+6 │     my_sto_tuple: (u256, i32)
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32)
 
 note: 
    ┌─ tuple_stress.fe:8:5
@@ -122,17 +122,29 @@ note:
    ┌─ tuple_stress.fe:28:5
    │  
 28 │ ╭     pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)) {
-29 │ │         emit MyEvent(ctx, my_tuple)
+29 │ │         ctx.emit(MyEvent(my_tuple))
 30 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: my_tuple, typ: (u256, bool, address) }] -> ()
 
 note: 
-   ┌─ tuple_stress.fe:29:22
+   ┌─ tuple_stress.fe:29:9
    │
-29 │         emit MyEvent(ctx, my_tuple)
-   │                      ^^^  ^^^^^^^^ (u256, bool, address): Memory
-   │                      │     
-   │                      Context: Memory
+29 │         ctx.emit(MyEvent(my_tuple))
+   │         ^^^              ^^^^^^^^ (u256, bool, address): Memory
+   │         │                 
+   │         Context: Memory
+
+note: 
+   ┌─ tuple_stress.fe:29:18
+   │
+29 │         ctx.emit(MyEvent(my_tuple))
+   │                  ^^^^^^^^^^^^^^^^^ MyEvent: Memory
+
+note: 
+   ┌─ tuple_stress.fe:29:9
+   │
+29 │         ctx.emit(MyEvent(my_tuple))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ tuple_stress.fe:32:5

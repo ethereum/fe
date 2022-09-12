@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(self_use2), module::parse_module, true,\n           \"use bar as self\")"
+expression: "err_string(stringify!(self_use2), module::parse_module, \"use bar as self\")"
 
 ---
 error: failed to parse `use` tree

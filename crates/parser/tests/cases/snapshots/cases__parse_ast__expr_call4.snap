@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(expr_call4), expressions::parse_expr,\n           \"bang.bing.foo<Bar, Baz>(26, 42)\")"
+expression: "ast_string(stringify!(expr_call4), expressions::parse_expr,\n    \"bang.bing.foo<Bar, Baz>(26, 42)\")"
 
 ---
 Node(

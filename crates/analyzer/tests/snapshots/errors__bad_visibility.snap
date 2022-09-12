@@ -1,7 +1,14 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
+
 ---
+error: unresolved path item
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:68
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                                                                    ^^^^^^ not found
+
 error: the type `MyInt` is private
   ┌─ compile_errors/bad_visibility/src/main.fe:7:33
   │
@@ -44,129 +51,93 @@ error: the constant `MY_CONST` is private
    = `MY_CONST` can only be used within `foo`
    = Hint: use `pub` to make `MY_CONST` visible from outside of `foo`
 
-error: the event `MyEvent` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:17:14
-   │
-17 │         emit MyEvent(ctx, x: 1)
-   │              ^^^^^^^ this event is not `pub`
-   │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:7:7
-   │
- 7 │ event MyEvent {
-   │       ------- `MyEvent` is defined here
-   │
-   = `MyEvent` can only be used within `foo`
-   = Hint: use `pub` to make `MyEvent` visible from outside of `foo`
-
-error: the event `MyEvent` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:17:14
-   │
-17 │         emit MyEvent(ctx, x: 1)
-   │              ^^^^^^^ this event is not `pub`
-   │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:7:1
-   │  
- 7 │ ╭ event MyEvent {
- 8 │ │     x: i32
- 9 │ │ }
-   │ ╰─' `MyEvent` is defined here
-   │  
-   = `MyEvent` can only be used within `foo`
-   = Hint: use `pub event MyEvent` to make `MyEvent` visible from outside of `foo`
-
-error: cannot find value `ctx` in this scope
-   ┌─ compile_errors/bad_visibility/src/main.fe:17:22
-   │
-17 │         emit MyEvent(ctx, x: 1)
-   │                      ^^^ undefined
-
 error: the struct `MyStruct` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:21:16
+   ┌─ compile_errors/bad_visibility/src/main.fe:17:16
    │
-21 │         let s: MyStruct = MyStruct(x: 1)
+17 │         let s: MyStruct = MyStruct(x: 1)
    │                ^^^^^^^^ this struct is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:11:8
+   ┌─ compile_errors/bad_visibility/src/foo.fe:7:8
    │
-11 │ struct MyStruct {
+ 7 │ struct MyStruct {
    │        -------- `MyStruct` is defined here
    │
    = `MyStruct` can only be used within `foo`
    = Hint: use `pub` to make `MyStruct` visible from outside of `foo`
 
 error: the struct `MyStruct` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:21:27
+   ┌─ compile_errors/bad_visibility/src/main.fe:17:27
    │
-21 │         let s: MyStruct = MyStruct(x: 1)
+17 │         let s: MyStruct = MyStruct(x: 1)
    │                           ^^^^^^^^ this struct is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:11:8
+   ┌─ compile_errors/bad_visibility/src/foo.fe:7:8
    │
-11 │ struct MyStruct {
+ 7 │ struct MyStruct {
    │        -------- `MyStruct` is defined here
    │
    = `MyStruct` can only be used within `foo`
    = Hint: use `pub` to make `MyStruct` visible from outside of `foo`
 
 error: Can not call private constructor of struct `MyStruct` 
-   ┌─ compile_errors/bad_visibility/src/foo.fe:12:5
-   │
-12 │     x: i32
-   │     ^^^^^^ Field `x` is private
-   │
-   = Suggestion: implement a method `new(...)` on struct `MyStruct` to call the constructor and return the struct
+  ┌─ compile_errors/bad_visibility/src/foo.fe:8:5
+  │
+8 │     x: i32
+  │     ^^^^^^ Field `x` is private
+  │
+  = Suggestion: implement a method `new(...)` on struct `MyStruct` to call the constructor and return the struct
 
 error: the function `my_func` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:25:9
+   ┌─ compile_errors/bad_visibility/src/main.fe:21:9
    │
-25 │         my_func()
+21 │         my_func()
    │         ^^^^^^^ this function is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:15:4
+   ┌─ compile_errors/bad_visibility/src/foo.fe:11:4
    │
-15 │ fn my_func() {}
+11 │ fn my_func() {}
    │    ------- `my_func` is defined here
    │
    = `my_func` can only be used within `foo`
    = Hint: use `pub` to make `my_func` visible from outside of `foo`
 
 error: the type `MyContract` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:29:16
+   ┌─ compile_errors/bad_visibility/src/main.fe:25:16
    │
-29 │         let _: MyContract = MyContract(addr)
+25 │         let _: MyContract = MyContract(addr)
    │                ^^^^^^^^^^ this type is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:17:10
+   ┌─ compile_errors/bad_visibility/src/foo.fe:13:10
    │
-17 │ contract MyContract {
+13 │ contract MyContract {
    │          ---------- `MyContract` is defined here
    │
    = `MyContract` can only be used within `foo`
    = Hint: use `pub` to make `MyContract` visible from outside of `foo`
 
 error: the type `MyContract` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:29:29
+   ┌─ compile_errors/bad_visibility/src/main.fe:25:29
    │
-29 │         let _: MyContract = MyContract(addr)
+25 │         let _: MyContract = MyContract(addr)
    │                             ^^^^^^^^^^ this type is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:17:10
+   ┌─ compile_errors/bad_visibility/src/foo.fe:13:10
    │
-17 │ contract MyContract {
+13 │ contract MyContract {
    │          ---------- `MyContract` is defined here
    │
    = `MyContract` can only be used within `foo`
    = Hint: use `pub` to make `MyContract` visible from outside of `foo`
 
 error: the type `MyContract` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:30:9
+   ┌─ compile_errors/bad_visibility/src/main.fe:26:9
    │
-30 │         MyContract.create(ctx, 1)
+26 │         MyContract.create(ctx, 1)
    │         ^^^^^^^^^^ this type is not `pub`
    │
-   ┌─ compile_errors/bad_visibility/src/foo.fe:17:10
+   ┌─ compile_errors/bad_visibility/src/foo.fe:13:10
    │
-17 │ contract MyContract {
+13 │ contract MyContract {
    │          ---------- `MyContract` is defined here
    │
    = `MyContract` can only be used within `foo`

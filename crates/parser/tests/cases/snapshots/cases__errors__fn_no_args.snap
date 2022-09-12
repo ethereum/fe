@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(fn_no_args), module::parse_module,\n           \"fn f {\\n  return 5\\n}\")"
+expression: "err_string(stringify!(fn_no_args), module::parse_module,\n    \"fn f {\\n  return 5\\n}\")"
 
 ---
 error: function definition requires a list of parameters

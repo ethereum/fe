@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_def), module::parse_module,\n           \"type X = Map<address, u256>\")"
+expression: "ast_string(stringify!(type_def), try_parse_module,\n    \"type X = Map<address, u256>\")"
 
 ---
 Node(

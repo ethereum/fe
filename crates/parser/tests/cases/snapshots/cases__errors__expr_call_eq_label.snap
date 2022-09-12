@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(expr_call_eq_label), expressions::parse_expr,\n           \"foo(bar=1, baz = 2)\")"
+expression: "err_string(stringify!(expr_call_eq_label), expressions::parse_expr,\n    \"foo(bar=1, baz = 2)\")"
 
 ---
 error: Syntax error in argument list

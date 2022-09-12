@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(use_nested2), module::parse_use,\n           r#\"use std::bar::{\n    bing::*,\n    bad::{food as burger, barge::*, bill::bob::{jkl::*}},\n    evm as mve\n}\"#)"
+expression: "ast_string(stringify!(use_nested2), module::parse_use,\n    r#\"use std::bar::{\n    bing::*,\n    bad::{food as burger, barge::*, bill::bob::{jkl::*}},\n    evm as mve\n}\"#)"
 
 ---
 Node(

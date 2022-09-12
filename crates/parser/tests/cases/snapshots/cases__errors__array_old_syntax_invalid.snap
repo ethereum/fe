@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(array_old_syntax_invalid), functions::parse_stmt, true,\n           \"let x: u8[10\")"
+expression: "err_string(stringify!(array_old_syntax_invalid), functions::parse_stmt,\n    \"let x: u8[10\")"
 
 ---
 error: Unexpected token while parsing type description

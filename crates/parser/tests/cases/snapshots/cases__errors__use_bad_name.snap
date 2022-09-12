@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(use_bad_name), module::parse_use, true, \"use x as 123\")"
+expression: "err_string(stringify!(use_bad_name), module::parse_use, \"use x as 123\")"
 
 ---
 error: failed to parse `use` tree

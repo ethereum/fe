@@ -1,13 +1,13 @@
+struct MyEvent {
+    pub num: u256
+    pub nums: Array<u256, 42>
+    pub str: String<26>
+}
+
 contract Foo {
     num: u256
     nums: Array<u256, 42>
     str: String<26>
-
-    event MyEvent {
-        num: u256
-        nums: Array<u256, 42>
-        str: String<26>
-    }
 
     pub fn write_num(self, x: u256) {
         self.num = x
@@ -34,6 +34,6 @@ contract Foo {
     }
 
     pub fn emit_event(self, ctx: Context) {
-        emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+        ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
     }
 }

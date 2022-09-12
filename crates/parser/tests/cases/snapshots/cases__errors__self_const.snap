@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(self_const), module::parse_module, true,\n           \"const self: u8 = 10\")"
+expression: "err_string(stringify!(self_const), module::parse_module,\n    \"const self: u8 = 10\")"
 
 ---
 error: failed to parse constant declaration

@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_while), functions::parse_stmt,\n           \"while a > 5 { \\n a -= 1 }\")"
+expression: "ast_string(stringify!(stmt_while), functions::parse_stmt,\n    \"while a > 5 { \\n a -= 1 }\")"
 
 ---
 Node(

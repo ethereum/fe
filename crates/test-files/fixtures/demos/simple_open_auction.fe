@@ -7,6 +7,19 @@ struct BidNotHighEnough {
     pub highest_bid: u256
 }
 
+// events
+struct HighestBidIncreased {
+    #indexed
+    pub bidder: address
+    pub amount: u256
+}
+
+struct AuctionEnded {
+    #indexed
+    pub winner: address
+    pub amount: u256
+}
+
 contract SimpleOpenAuction {
     // states
     auction_end_time: u256
@@ -18,17 +31,6 @@ contract SimpleOpenAuction {
     pending_returns: Map<address, u256>
 
     ended: bool
-
-    // events
-    event HighestBidIncreased {
-        idx bidder: address
-        amount: u256
-    }
-
-    event AuctionEnded {
-        idx winner: address
-        amount: u256
-    }
 
     // constructor
     pub fn __init__(self, ctx: Context, bidding_time: u256, beneficiary_addr: address) {
@@ -50,7 +52,7 @@ contract SimpleOpenAuction {
         self.highest_bidder = ctx.msg_sender()
         self.highest_bid = ctx.msg_value()
 
-        emit HighestBidIncreased(ctx, bidder: ctx.msg_sender(), amount: ctx.msg_value())
+        ctx.emit(HighestBidIncreased(bidder: ctx.msg_sender(), amount: ctx.msg_value()))
     }
 
     pub fn withdraw(self, ctx: Context) -> bool {
@@ -71,7 +73,7 @@ contract SimpleOpenAuction {
             revert AuctionEndAlreadyCalled()
         }
         self.ended = true
-        emit AuctionEnded(ctx, winner: self.highest_bidder, amount: self.highest_bid)
+        ctx.emit(AuctionEnded(winner: self.highest_bidder, amount: self.highest_bid))
 
         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
     }

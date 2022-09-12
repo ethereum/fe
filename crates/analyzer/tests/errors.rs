@@ -264,6 +264,7 @@ test_file! { invalid_impl_type }
 test_file! { invalid_impl_location }
 test_file! { invalid_msg_field }
 test_file! { invalid_string_field }
+test_file! { invalid_struct_attribute }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }

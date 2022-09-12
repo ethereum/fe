@@ -5,6 +5,15 @@ struct MyStruct {
     pub my_addr: address
 }
 
+struct MyEvent {
+    pub my_addrs: Array<address, 5>
+    pub my_u128: u128
+    pub my_string: String<10>
+    pub my_u16s: Array<u16, 255>
+    pub my_bool: bool
+    pub my_bytes: Array<u8, 100>
+}
+
 contract Foo {
     my_addrs: Array<address, 5>
     my_u128: u128
@@ -12,15 +21,6 @@ contract Foo {
     my_u16s: Array<u16, 255>
     my_bool: bool
     my_bytes: Array<u8, 100>
-
-    event MyEvent {
-        my_addrs: Array<address, 5>
-        my_u128: u128
-        my_string: String<10>
-        my_u16s: Array<u16, 255>
-        my_bool: bool
-        my_bytes: Array<u8, 100>
-    }
 
     pub fn set_my_addrs(self, my_addrs: Array<address, 5>) {
         self.my_addrs = my_addrs
@@ -83,6 +83,6 @@ contract Foo {
     }
 
     pub fn emit_my_event(self, ctx: Context) {
-        emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
+        ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
     }
 }

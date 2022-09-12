@@ -1,12 +1,13 @@
+struct MyEvent {
+    pub my_num: u256
+    pub my_addrs: Array<address, 5>
+    pub my_string: String<11>
+}
+
 contract Foo {
-    event MyEvent {
-        my_num: u256
-        my_addrs: Array<address, 5>
-        my_string: String<11>
-    }
 
     pub fn emit_event(self, ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
-        emit MyEvent(ctx, my_num, my_addrs, my_string)
+        ctx.emit(MyEvent(my_num, my_addrs, my_string))
     }
 
     pub fn build_array(self, a: u256, b: u256) -> Array<u256, 3> {

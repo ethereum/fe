@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(empty_contract_def), try_parse_module,\n           \"contract Foo {}\")"
+expression: "ast_string(stringify!(empty_contract_def), try_parse_module,\n    \"contract Foo {}\")"
 
 ---
 Node(

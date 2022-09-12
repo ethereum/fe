@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(stmt_vardecl_invalid_name), functions::parse_stmt, true,\n           \"let x + y: u8\")"
+expression: "err_string(stringify!(stmt_vardecl_invalid_name), functions::parse_stmt,\n    \"let x + y: u8\")"
 
 ---
 error: failed to parse variable declaration

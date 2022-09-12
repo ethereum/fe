@@ -8,6 +8,54 @@ contract ERC20 {
     }
 }
 
+struct Approval {
+    #indexed
+    pub owner: address
+    #indexed
+    pub spender: address
+    pub value: u256
+}
+
+struct Transfer {
+    #indexed
+    pub from: address
+    #indexed
+    pub to: address
+    pub value: u256
+}
+
+struct Mint {
+    #indexed
+    pub sender: address
+    pub amount0: u256
+    pub amount1: u256
+}
+
+struct Burn {
+    #indexed
+    pub sender: address
+    pub amount0: u256
+    pub amount1: u256
+    #indexed
+    pub to: address
+}
+
+struct Swap {
+    #indexed
+    pub sender: address
+    pub amount0_in: u256
+    pub amount1_in: u256
+    pub amount0_out: u256
+    pub amount1_out: u256
+    #indexed
+    pub to: address
+}
+
+struct Sync {
+    pub reserve0: u256
+    pub reserve1: u256
+}
+
 contract UniswapV2Pair {
     // TODO: const support (https://github.com/ethereum/fe/issues/192)
     // const MINIMUM_LIQUIDITY: u256 = 1000
@@ -30,45 +78,6 @@ contract UniswapV2Pair {
     price1_cumulative_last: u256
     k_last: u256
 
-    event Approval {
-        idx owner: address
-        idx spender: address
-        value: u256
-    }
-
-    event Transfer {
-        idx from: address
-        idx to: address
-        value: u256
-    }
-
-    event Mint {
-        idx sender: address
-        amount0: u256
-        amount1: u256
-    }
-
-    event Burn {
-        idx sender: address
-        amount0: u256
-        amount1: u256
-        idx to: address
-    }
-
-    event Swap {
-        idx sender: address
-        amount0_in: u256
-        amount1_in: u256
-        amount0_out: u256
-        amount1_out: u256
-        idx to: address
-    }
-
-    event Sync {
-        reserve0: u256
-        reserve1: u256
-    }
-
     pub fn __init__(self, ctx: Context) {
         self.factory = ctx.msg_sender()
     }
@@ -88,24 +97,24 @@ contract UniswapV2Pair {
     fn _mint(self, ctx: Context, to: address, value: u256) {
         self.total_supply = self.total_supply + value
         self.balances[to] = self.balances[to] + value
-        emit Transfer(ctx, from: address(0), to, value)
+        ctx.emit(Transfer(from: address(0), to, value))
     }
 
     fn _burn(self, ctx: Context, from: address, value: u256) {
         self.balances[from] = self.balances[from] - value
         self.total_supply = self.total_supply - value
-        emit Transfer(ctx, from, to: address(0), value)
+        ctx.emit(Transfer(from, to: address(0), value))
     }
 
     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
         self.allowances[owner][spender] = value
-        emit Approval(ctx, owner, spender, value)
+        ctx.emit(Approval(owner, spender, value))
     }
 
     fn _transfer(self, ctx: Context, from: address, to: address, value: u256) {
         self.balances[from] = self.balances[from] - value
         self.balances[to] = self.balances[to] + value
-        emit Transfer(ctx, from, to, value)
+        ctx.emit(Transfer(from, to, value))
     }
 
     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
@@ -153,7 +162,7 @@ contract UniswapV2Pair {
         self.reserve0 = balance0
         self.reserve1 = balance1
         self.block_timestamp_last = block_timestamp
-        emit Sync(ctx, reserve0: self.reserve0, reserve1: self.reserve1)
+        ctx.emit(Sync(reserve0: self.reserve0, reserve1: self.reserve1))
     }
 
     fn _mint_fee(self, ctx: Context, reserve0: u256, reserve1: u256) -> bool {
@@ -203,7 +212,7 @@ contract UniswapV2Pair {
         if fee_on {
             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
         }
-        emit Mint(ctx, sender: ctx.msg_sender(), amount0, amount1)
+        ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
         return liquidity
     }
 
@@ -231,7 +240,7 @@ contract UniswapV2Pair {
         if fee_on {
             self.k_last = reserve0 * reserve1
         }
-        emit Burn(ctx, sender: ctx.msg_sender(), amount0, amount1, to)
+        ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
         return (amount0, amount1)
     }
 
@@ -274,7 +283,7 @@ contract UniswapV2Pair {
         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
 
         self._update(ctx, balance0, balance1, reserve0, reserve1)
-        emit Swap(ctx, sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to)
+        ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
     }
 
     // force balances to match reserves
@@ -297,6 +306,15 @@ contract UniswapV2Pair {
     }
 }
 
+struct PairCreated {
+    #indexed
+    pub token0: address
+    #indexed
+    pub token1: address
+    pub pair: address
+    pub index: u256
+}
+
 contract UniswapV2Factory {
     fee_to: address
     fee_to_setter: address
@@ -305,13 +323,6 @@ contract UniswapV2Factory {
 
     all_pairs: Array<address, 100>
     pair_counter: u256
-
-    event PairCreated {
-        idx token0: address
-        idx token1: address
-        pair: address
-        index: u256
-    }
 
     pub fn __init__(self, _ fee_to_setter: address) {
         self.fee_to_setter = fee_to_setter
@@ -346,7 +357,7 @@ contract UniswapV2Factory {
         self.all_pairs[self.pair_counter] = address(pair)
         self.pair_counter = self.pair_counter + 1
 
-        emit PairCreated(ctx, token0, token1, pair: address(pair), index: self.pair_counter)
+        ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
         return address(pair)
     }
 

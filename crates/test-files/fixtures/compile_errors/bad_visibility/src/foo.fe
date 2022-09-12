@@ -4,10 +4,6 @@ const MY_CONST: MyInt = 1
 
 trait MyTrait {}
 
-event MyEvent {
-    x: i32
-}
-
 struct MyStruct {
     x: i32
 }

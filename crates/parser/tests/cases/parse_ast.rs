@@ -216,9 +216,6 @@ test_parse! { contract_def, try_parse_module, r#"contract Foo {
   pub fn foo() -> u8 {
     return 10
   }
-  event Bar {
-    idx from: address
-  }
 }
 "# }
 
@@ -258,17 +255,18 @@ contract B {
 test_parse! { guest_book, try_parse_module, r#"
 type BookMsg = Array<bytes, 100>
 
+struct Signed {
+    #indexed
+    book_msg: BookMsg
+}
+
 contract GuestBook {
     pub guest_book: Map<address, BookMsg>
-
-    event Signed {
-        idx book_msg: BookMsg
-    }
 
     pub fn sign(self, book_msg: BookMsg) {
         self.guest_book[msg.sender] = book_msg
 
-        emit Signed(book_msg: book_msg)
+        ctx.emit(Signed(book_msg: book_msg))
     }
     pub fn get_msg(self, addr: address) -> BookMsg {
         return self.guest_book[addr]
@@ -276,14 +274,16 @@ contract GuestBook {
 }"# }
 
 test_parse! { module_level_events, try_parse_module, r#"
-event Transfer {
-    idx sender: address
-    idx receiver: address
+struct Transfer {
+    #indexed
+    sender: address
+    #indexed
+    receiver: address
     value: u256
 }
 contract Foo {
     fn transfer(ctx: Context, to: address, value: u256) {
-        emit Transfer(ctx, sender: msg.sender, receiver: to, value)
+        ctx.emit(Transfer(sender: msg.sender, receiver: to, value))
     }
 }
 "# }

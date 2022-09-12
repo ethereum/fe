@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_bad_name), module::parse_module,\n           \"contract 1X {\\n x: u8 \\n}\")"
+expression: "err_string(stringify!(contract_bad_name), module::parse_module,\n    \"contract 1X {\\n x: u8 \\n}\")"
 
 ---
 error: failed to parse contract definition
