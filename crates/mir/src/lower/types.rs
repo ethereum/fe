@@ -89,7 +89,7 @@ fn lower_contract(db: &dyn MirDb, contract: analyzer_items::ContractId) -> TypeK
         .map(|(fname, fid)| {
             let analyzer_types = fid.typ(db.upcast()).unwrap();
             let ty = db.mir_lowered_type(analyzer_types);
-            (fname.clone(), vec![], ty)
+            (fname.clone(), ty)
         })
         .collect();
 
@@ -117,8 +117,7 @@ fn lower_struct(db: &dyn MirDb, id: analyzer_items::StructId) -> TypeKind {
         .map(|(fname, fid)| {
             let analyzer_types = fid.typ(db.upcast()).unwrap();
             let ty = db.mir_lowered_type(analyzer_types);
-            let attrs = fid.attributes(db.upcast());
-            (fname.clone(), attrs, ty)
+            (fname.clone(), ty)
         })
         .collect();
 

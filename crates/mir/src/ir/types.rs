@@ -66,7 +66,7 @@ pub struct TupleDef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructDef {
     pub name: SmolStr,
-    pub fields: Vec<(SmolStr, Vec<SmolStr>, TypeId)>,
+    pub fields: Vec<(SmolStr, TypeId)>,
     pub span: Span,
     pub module_id: analyzer_items::ModuleId,
 }
