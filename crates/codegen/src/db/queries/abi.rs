@@ -189,7 +189,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
             let fields = def
                 .fields
                 .iter()
-                .map(|(name, _, ty)| {
+                .map(|(name, ty)| {
                     let ty = db.codegen_abi_type(*ty);
                     AbiTupleField::new(name.to_string(), ty)
                 })
@@ -209,7 +209,10 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
     debug_assert!(ty.is_struct(db.upcast()));
     let legalized_ty = db.codegen_legalized_type(ty);
-
+    let analyzer_struct = ty
+        .analyzer_ty(db.upcast())
+        .and_then(|val| val.as_struct(db.upcast()))
+        .unwrap();
     let legalized_ty_data = legalized_ty.data(db.upcast());
     let event_def = match &legalized_ty_data.kind {
         ir::TypeKind::Struct(def) => def,
@@ -219,7 +222,12 @@ pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
     let fields = event_def
         .fields
         .iter()
-        .map(|(name, attr, ty)| {
+        .map(|(name, ty)| {
+            let attr = analyzer_struct
+                .field(db.upcast(), name)
+                .unwrap()
+                .attributes(db.upcast());
+
             let ty = db.codegen_abi_type(*ty);
             let indexed = attr.iter().any(|attr| attr == INDEXED);
             AbiEventField::new(name.to_string(), ty, indexed)
