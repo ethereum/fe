@@ -157,6 +157,42 @@ impl TypeId {
         let fun = self.function_sig(db, name)?;
         fun.takes_self(db).then(|| fun)
     }
+
+    /// Returns `true` if the type is encodable in Solidity ABI.
+    /// TODO: This function must be removed when we add `Encode`/`Decode` trait.
+    pub fn is_encodable(self, db: &dyn AnalyzerDb) -> Result<bool, TypeError> {
+        match self.typ(db) {
+            Type::Base(_) | Type::String(_) | Type::Contract(_) => Ok(true),
+            Type::Array(arr) => arr.inner.is_encodable(db),
+            Type::Struct(sid) => {
+                // Returns `false` if diagnostics is not empty.
+                // The diagnostics is properly emitted in struct definition site, so there is no
+                // need to emit the diagnostics here.
+                if !db.struct_dependency_graph(sid).diagnostics.is_empty() {
+                    return Ok(false);
+                };
+                let mut res = true;
+                // We have to continue the iteration even if an item is NOT encodable so that we
+                // could propagate an error which returned from `item.is_encodable()` for
+                // keeping consistency.
+                for (_, &fid) in sid.fields(db).iter() {
+                    res &= fid.typ(db)?.is_encodable(db)?;
+                }
+                Ok(res)
+            }
+            Type::Tuple(tup) => {
+                let mut res = true;
+                // We have to continue the iteration even if an item is NOT encodable so that we
+                // could propagate an error which returned from `item.is_encodable()` for
+                // keeping consistency.
+                for item in tup.items.iter() {
+                    res &= item.is_encodable(db)?;
+                }
+                Ok(res)
+            }
+            Type::Map(_) | Type::SelfContract(_) | Type::Generic(_) | Type::Enum(_) => Ok(false),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

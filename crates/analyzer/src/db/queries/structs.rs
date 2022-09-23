@@ -50,7 +50,8 @@ pub fn struct_field_map(
             indexed_count += 1;
         }
 
-        // Multiple attributes are currently still rejected by the parser so we only need to check the name here
+        // Multiple attributes are currently still rejected by the parser so we only
+        // need to check the name here
         if !field.attributes(db).is_empty() && !field.is_indexed(db) {
             let span = field.data(db).ast.kind.attributes.first().unwrap().span;
             scope.error(

@@ -1,3 +1,4 @@
+use crate::context::AnalyzerContext;
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
 use crate::namespace::items::{
@@ -7,7 +8,6 @@ use crate::namespace::items::{
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
 use crate::traversal::types::type_desc;
-use crate::{context::AnalyzerContext, namespace::types::TypeId};
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
@@ -56,13 +56,11 @@ pub fn contract_function_map(
             continue;
         }
 
-        let is_enum_in_public_contract =
-            |ty: TypeId| func.is_public(db) && matches!(ty.typ(db), Type::Enum(_));
         let func_sig = func.sig(db);
         if let Ok(ret_ty) = func_sig.signature(db).return_type {
-            if is_enum_in_public_contract(ret_ty) {
+            if func.is_public(db) && !ret_ty.is_encodable(db).unwrap_or(false) {
                 scope.fancy_error(
-                    "can't return enum type from public contract function",
+                    "can't return unencodable type from public contract function",
                     vec![Label::primary(
                         func_sig
                             .data(db)
@@ -80,9 +78,9 @@ pub fn contract_function_map(
         }
         for (i, param) in func_sig.signature(db).params.iter().enumerate() {
             if let Ok(param_ty) = param.typ {
-                if is_enum_in_public_contract(param_ty) {
+                if func.is_public(db) && !param_ty.is_encodable(db).unwrap_or(false) {
                     scope.fancy_error(
-                        "can't use enum type as a public contract function argument",
+                        "can't use unencodable type as a public contract function argument",
                         vec![Label::primary(
                             func_sig.data(db).ast.kind.args[i].kind.typ_span().unwrap(),
                             format! {"can't use `{}` here", param_ty.name(db)},

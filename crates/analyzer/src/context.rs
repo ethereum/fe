@@ -45,6 +45,9 @@ impl<T> Analysis<T> {
     pub fn sink_diagnostics(&self, sink: &mut impl DiagnosticSink) {
         self.diagnostics.iter().for_each(|diag| sink.push(diag))
     }
+    pub fn has_diag(&self) -> bool {
+        !self.diagnostics.is_empty()
+    }
 }
 
 pub trait AnalyzerContext {
