@@ -134,7 +134,7 @@ pub fn contract_init_function(
     let all_fns = db.contract_all_functions(contract);
     let mut init_fns = all_fns.iter().filter_map(|func| {
         let def = &func.data(db).ast;
-        (def.name() == "__init__").then(|| (func, def.span))
+        (def.name() == "__init__").then_some((func, def.span))
     });
 
     let mut diagnostics = vec![];
@@ -186,7 +186,7 @@ pub fn contract_call_function(
     let all_fns = db.contract_all_functions(contract);
     let mut call_fns = all_fns.iter().filter_map(|func| {
         let def = &func.data(db).ast;
-        (def.name() == "__call__").then(|| (func, def.span))
+        (def.name() == "__call__").then_some((func, def.span))
     });
 
     let mut diagnostics = vec![];

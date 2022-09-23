@@ -155,7 +155,7 @@ impl TypeId {
 
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         let fun = self.function_sig(db, name)?;
-        fun.takes_self(db).then(|| fun)
+        fun.takes_self(db).then_some(fun)
     }
 
     /// Returns `true` if the type is encodable in Solidity ABI.
