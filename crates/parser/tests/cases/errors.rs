@@ -102,6 +102,11 @@ test_parse_err! { self_struct, module::parse_module, "struct self {}" }
 test_parse_err! { self_fn, module::parse_module, "pub fn self() {}" }
 test_parse_err! { self_use1, module::parse_module, "use self as bar" }
 test_parse_err! { self_use2, module::parse_module, "use bar as self" }
+test_parse_err! { stmt_match1, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {.., x: x, y: true}  => {
+        return x
+    }
+}"# }
 
 // assert_snapshot! doesn't like the invalid escape code
 #[test]

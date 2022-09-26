@@ -538,7 +538,7 @@ pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
-/// Parse an `match` statement.
+/// Parse a `match` statement.
 ///
 /// # Panics
 /// Panics if the next token isn't `match`.
@@ -702,10 +702,7 @@ pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 
 fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
     match par.peek() {
-        Some(TokenKind::ParenOpen) => {
-            let (elts, span) = parse_pattern_tuple(par)?;
-            return Ok(Node::new(Pattern::Tuple(elts), span));
-        }
+        Some(TokenKind::ParenOpen) => return parse_tuple_pattern(par, None),
         Some(TokenKind::True) => {
             let span = par.next().unwrap().span;
             let literal_pat = Node::new(LiteralPattern::Bool(true), span);
@@ -732,15 +729,19 @@ fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
     }
 
     if let Some(TokenKind::ParenOpen) = par.peek() {
-        let (elts, tuple_span) = parse_pattern_tuple(par)?;
-        let span = pattern.span + tuple_span;
         match pattern.kind {
-            Pattern::Path(path) => Ok(Node::new(Pattern::PathTuple(path, elts), span)),
-            Pattern::WildCard => invalid_pattern(
-                par,
-                "can't mis wildcard with tuple constructed pattern",
-                span,
-            ),
+            Pattern::Path(path) => parse_tuple_pattern(par, Some(path)),
+            Pattern::WildCard => {
+                invalid_pattern(par, "can't use wildcard with tuple pattern", pattern.span)
+            }
+            _ => unreachable!(),
+        }
+    } else if let Some(TokenKind::BraceOpen) = par.peek() {
+        match pattern.kind {
+            Pattern::Path(path) => parse_struct_pattern(par, path),
+            Pattern::WildCard => {
+                invalid_pattern(par, "can't use wildcard with struct pattern", pattern.span)
+            }
             _ => unreachable!(),
         }
     } else {
@@ -748,24 +749,97 @@ fn parse_pattern_atom(par: &mut Parser) -> ParseResult<Node<Pattern>> {
     }
 }
 
-fn parse_pattern_tuple(par: &mut Parser) -> ParseResult<(Vec<Node<Pattern>>, Span)> {
+fn parse_tuple_pattern(par: &mut Parser, path: Option<Node<Path>>) -> ParseResult<Node<Pattern>> {
     if let Some(TokenKind::ParenOpen) = par.peek() {
-        let span = par.next().unwrap().span;
+        par.eat_newlines();
+        let paren_span = par.next().unwrap().span;
 
         let (elts, last_span) = if let Some(TokenKind::ParenClose) = par.peek() {
             (vec![], par.next().unwrap().span)
         } else {
+            par.eat_newlines();
             let mut elts = vec![parse_pattern(par)?];
             while let Some(TokenKind::Comma) = par.peek() {
                 par.next().unwrap();
                 elts.push(parse_pattern(par)?);
+                par.eat_newlines();
             }
             let last_span = par.expect(TokenKind::ParenClose, "pattern")?.span;
             (elts, last_span)
         };
 
-        let span = span + last_span;
-        Ok((elts, span))
+        if let Some(path) = path {
+            let span = path.span + last_span;
+            Ok(Node::new(Pattern::PathTuple(path, elts), span))
+        } else {
+            let span = paren_span + last_span;
+            Ok(Node::new(Pattern::Tuple(elts), span))
+        }
+    } else {
+        unreachable!()
+    }
+}
+
+fn parse_struct_pattern(par: &mut Parser, path: Node<Path>) -> ParseResult<Node<Pattern>> {
+    if let Some(TokenKind::BraceOpen) = par.peek() {
+        par.eat_newlines();
+        let mut span = par.next().unwrap().span;
+
+        let mut fields = vec![];
+        let mut has_rest = false;
+        loop {
+            par.eat_newlines();
+            match par.peek_or_err()? {
+                TokenKind::Name => {
+                    let name = par.next().unwrap();
+                    let field_name = Node::new(name.text.into(), name.span);
+                    par.expect(TokenKind::Colon, "failed to parse struct pattern")?;
+                    let pat = parse_pattern(par)?;
+                    fields.push((field_name, pat));
+                    if par.peek() == Some(TokenKind::Comma) {
+                        par.next()?;
+                    } else {
+                        span += par
+                            .expect(TokenKind::BraceClose, "failed to parse struct pattern")?
+                            .span;
+                        break;
+                    }
+                }
+
+                TokenKind::DotDot => {
+                    par.next().unwrap();
+                    has_rest = true;
+                    par.eat_newlines();
+                    span += par
+                        .expect(
+                            TokenKind::BraceClose,
+                            "`..` pattern should be the last position in the struct pattern",
+                        )?
+                        .span;
+                    break;
+                }
+
+                TokenKind::BraceClose => {
+                    span += par.next().unwrap().span;
+                    break;
+                }
+
+                _ => {
+                    let tok = par.next()?;
+                    par.unexpected_token_error(&tok, "failed to parse struct pattern", vec![]);
+                    return Err(ParseFailed);
+                }
+            }
+        }
+
+        Ok(Node::new(
+            Pattern::PathStruct {
+                path,
+                fields,
+                has_rest,
+            },
+            span,
+        ))
     } else {
         unreachable!()
     }

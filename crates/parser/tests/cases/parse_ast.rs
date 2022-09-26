@@ -143,6 +143,22 @@ test_parse! { stmt_match2, functions::parse_stmt, r#"match my_enum {
         return -1
     }
 }"# }
+test_parse! { stmt_match3, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {x: x, y: true}  => {
+        return x
+    }
+    mymod::MyS {x: _, y: false} => {
+        return 0
+    }
+    mymod::MyS {x: x, ..} => {
+        return x - 1
+    }
+}"# }
+test_parse! { stmt_match4, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {}  => {
+        return 1
+    }
+}"# }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }

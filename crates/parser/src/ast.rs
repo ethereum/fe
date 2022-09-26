@@ -359,6 +359,13 @@ pub enum Pattern {
     Path(Node<Path>),
     /// Represents tuple variant pattern. e.g., `Enum::Tuple(x, y, z)`.
     PathTuple(Node<Path>, Vec<Node<Pattern>>),
+    /// Represents struct or struct variant destructuring pattern. e.g.,
+    /// `MyStruct {x: pat1, y: pat2}}`.
+    PathStruct {
+        path: Node<Path>,
+        fields: Vec<(Node<SmolStr>, Node<Pattern>)>,
+        has_rest: bool,
+    },
     /// Represents or pattern. e.g., `EnumUnit | EnumTuple(_, _, _)`
     Or(Vec<Node<Pattern>>),
 }
@@ -1181,6 +1188,22 @@ impl fmt::Display for Pattern {
             }
             Self::Tuple(elts) => {
                 write!(f, "({})", node_comma_joined(elts))
+            }
+            Self::PathStruct {
+                path,
+                fields,
+                has_rest: is_rest,
+            } => {
+                write!(f, "{}", path.kind)?;
+                let fields = fields
+                    .iter()
+                    .map(|(name, pat)| format!("{}: {}", name.kind, pat.kind));
+                let fields = comma_joined(fields);
+                if *is_rest {
+                    write!(f, "{{{}, ..}}", fields)
+                } else {
+                    write!(f, "{{{}}}", fields)
+                }
             }
             Self::Or(pats) => {
                 write!(f, "{}", node_delim_joined(pats, "| "))
