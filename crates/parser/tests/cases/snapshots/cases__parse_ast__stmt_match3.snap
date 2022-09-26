@@ -1,0 +1,332 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_match3), functions::parse_stmt,\n    r#\"match my_enum {\n    mymod::MyS {x: x, y: true}  => {\n        return x\n    }\n    mymod::MyS {x: _, y: false} => {\n        return 0\n    }\n    mymod::MyS {x: x, ..} => {\n        return x - 1\n    }\n}\"#)"
+---
+Node(
+  kind: Match(
+    expr: Node(
+      kind: Name("my_enum"),
+      span: Span(
+        start: 6,
+        end: 13,
+      ),
+    ),
+    arms: [
+      Node(
+        kind: MatchArm(
+          pat: Node(
+            kind: PathStruct(
+              path: Node(
+                kind: Path(
+                  segments: [
+                    Node(
+                      kind: "mymod",
+                      span: Span(
+                        start: 20,
+                        end: 25,
+                      ),
+                    ),
+                    Node(
+                      kind: "MyS",
+                      span: Span(
+                        start: 27,
+                        end: 30,
+                      ),
+                    ),
+                  ],
+                ),
+                span: Span(
+                  start: 20,
+                  end: 30,
+                ),
+              ),
+              fields: [
+                (Node(
+                  kind: "x",
+                  span: Span(
+                    start: 32,
+                    end: 33,
+                  ),
+                ), Node(
+                  kind: Path(Node(
+                    kind: Path(
+                      segments: [
+                        Node(
+                          kind: "x",
+                          span: Span(
+                            start: 35,
+                            end: 36,
+                          ),
+                        ),
+                      ],
+                    ),
+                    span: Span(
+                      start: 35,
+                      end: 36,
+                    ),
+                  )),
+                  span: Span(
+                    start: 35,
+                    end: 36,
+                  ),
+                )),
+                (Node(
+                  kind: "y",
+                  span: Span(
+                    start: 38,
+                    end: 39,
+                  ),
+                ), Node(
+                  kind: Literal(Node(
+                    kind: Bool(true),
+                    span: Span(
+                      start: 41,
+                      end: 45,
+                    ),
+                  )),
+                  span: Span(
+                    start: 41,
+                    end: 45,
+                  ),
+                )),
+              ],
+              has_rest: false,
+            ),
+            span: Span(
+              start: 31,
+              end: 46,
+            ),
+          ),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: Name("x"),
+                  span: Span(
+                    start: 68,
+                    end: 69,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 61,
+                end: 69,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 31,
+          end: 75,
+        ),
+      ),
+      Node(
+        kind: MatchArm(
+          pat: Node(
+            kind: PathStruct(
+              path: Node(
+                kind: Path(
+                  segments: [
+                    Node(
+                      kind: "mymod",
+                      span: Span(
+                        start: 80,
+                        end: 85,
+                      ),
+                    ),
+                    Node(
+                      kind: "MyS",
+                      span: Span(
+                        start: 87,
+                        end: 90,
+                      ),
+                    ),
+                  ],
+                ),
+                span: Span(
+                  start: 80,
+                  end: 90,
+                ),
+              ),
+              fields: [
+                (Node(
+                  kind: "x",
+                  span: Span(
+                    start: 92,
+                    end: 93,
+                  ),
+                ), Node(
+                  kind: WildCard,
+                  span: Span(
+                    start: 95,
+                    end: 96,
+                  ),
+                )),
+                (Node(
+                  kind: "y",
+                  span: Span(
+                    start: 98,
+                    end: 99,
+                  ),
+                ), Node(
+                  kind: Literal(Node(
+                    kind: Bool(false),
+                    span: Span(
+                      start: 101,
+                      end: 106,
+                    ),
+                  )),
+                  span: Span(
+                    start: 101,
+                    end: 106,
+                  ),
+                )),
+              ],
+              has_rest: false,
+            ),
+            span: Span(
+              start: 91,
+              end: 107,
+            ),
+          ),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: Num("0"),
+                  span: Span(
+                    start: 128,
+                    end: 129,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 121,
+                end: 129,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 91,
+          end: 135,
+        ),
+      ),
+      Node(
+        kind: MatchArm(
+          pat: Node(
+            kind: PathStruct(
+              path: Node(
+                kind: Path(
+                  segments: [
+                    Node(
+                      kind: "mymod",
+                      span: Span(
+                        start: 140,
+                        end: 145,
+                      ),
+                    ),
+                    Node(
+                      kind: "MyS",
+                      span: Span(
+                        start: 147,
+                        end: 150,
+                      ),
+                    ),
+                  ],
+                ),
+                span: Span(
+                  start: 140,
+                  end: 150,
+                ),
+              ),
+              fields: [
+                (Node(
+                  kind: "x",
+                  span: Span(
+                    start: 152,
+                    end: 153,
+                  ),
+                ), Node(
+                  kind: Path(Node(
+                    kind: Path(
+                      segments: [
+                        Node(
+                          kind: "x",
+                          span: Span(
+                            start: 155,
+                            end: 156,
+                          ),
+                        ),
+                      ],
+                    ),
+                    span: Span(
+                      start: 155,
+                      end: 156,
+                    ),
+                  )),
+                  span: Span(
+                    start: 155,
+                    end: 156,
+                  ),
+                )),
+              ],
+              has_rest: true,
+            ),
+            span: Span(
+              start: 151,
+              end: 161,
+            ),
+          ),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: BinOperation(
+                    left: Node(
+                      kind: Name("x"),
+                      span: Span(
+                        start: 182,
+                        end: 183,
+                      ),
+                    ),
+                    op: Node(
+                      kind: Sub,
+                      span: Span(
+                        start: 184,
+                        end: 185,
+                      ),
+                    ),
+                    right: Node(
+                      kind: Num("1"),
+                      span: Span(
+                        start: 186,
+                        end: 187,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 182,
+                    end: 187,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 175,
+                end: 187,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 151,
+          end: 193,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 195,
+  ),
+)
