@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
 use crate::display::Displayable;
-use crate::namespace::items::EnumVariantId;
+use crate::namespace::items::{EnumVariantId, Item, StructId, TypeDef};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Type, TypeId};
 use crate::pattern_analysis::PatternMatrix;
@@ -208,7 +208,7 @@ fn match_pattern(
                 )));
             };
 
-            match_tuple_pattern(scope, elts, &expected_elts, pat.span, None)
+            tuple_pattern(scope, elts, &expected_elts, pat.span, None)
         }
 
         Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
@@ -329,7 +329,37 @@ fn match_pattern(
                 }
             };
 
-            match_tuple_pattern(scope, pat_elts, &ty_elts, pat.span, Some(variant))
+            tuple_pattern(scope, pat_elts, &ty_elts, pat.span, Some(variant))
+        }
+
+        Pattern::PathStruct {
+            path,
+            fields,
+            has_rest,
+        } => {
+            let (sid, ty) = match scope.resolve_path(&path.kind, path.span)? {
+                NamedThing::Item(Item::Type(TypeDef::Struct(sid))) => {
+                    (sid, sid.as_type(scope.db()))
+                }
+                _ => {
+                    let err = scope.fancy_error(
+                        "expected struct type",
+                        vec![Label::primary(
+                            pat.span,
+                            &format!("`{}` is not a struct name", path.kind),
+                        )],
+                        vec![],
+                    );
+                    return Err(FatalError::new(err));
+                }
+            };
+
+            if ty != expected_type {
+                let err = scope.type_error("", pat.span, expected_type, ty);
+                return Err(FatalError::new(err));
+            }
+
+            struct_pattern(scope, fields, *has_rest, sid, pat.span)
         }
 
         Pattern::Or(sub_pats) => {
@@ -404,10 +434,93 @@ fn match_pattern(
     }
 }
 
-fn match_tuple_pattern(
+fn struct_pattern(
+    scope: &mut BlockScope,
+    fields: &[(Node<SmolStr>, Node<Pattern>)],
+    has_rest: bool,
+    sid: StructId,
+    pat_span: Span,
+) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
+    let mut pat_fields: IndexMap<SmolStr, (Node<Pattern>, Span)> = IndexMap::new();
+    let mut maybe_err = Ok(());
+    for (name, pat) in fields.iter() {
+        match pat_fields.entry(name.kind.clone()) {
+            Entry::Occupied(entry) => {
+                let err = scope.fancy_error(
+                    &format!("duplicate field `{}` bound in the pattern", name.kind),
+                    vec![
+                        Label::primary(name.span, "multiple uses here"),
+                        Label::secondary(entry.get().1, "first binding of the field"),
+                    ],
+                    vec![],
+                );
+                maybe_err = Err(FatalError::new(err));
+            }
+            Entry::Vacant(entry) => {
+                entry.insert((pat.clone(), name.span));
+            }
+        }
+    }
+
+    maybe_err?;
+    let mut maybe_err = Ok(());
+
+    let fields_def = sid.fields(scope.db());
+    let mut ordered_patterns = Vec::with_capacity(fields_def.len());
+    let mut expected_types = Vec::with_capacity(fields_def.len());
+
+    for (f_name, field) in sid.fields(scope.db()).iter() {
+        let ty = match field.typ(scope.db()) {
+            Ok(ty) => ty,
+            Err(err) => {
+                maybe_err = Err(err.into());
+                continue;
+            }
+        };
+
+        let pat = match pat_fields.remove(f_name) {
+            Some((_, span)) if !field.is_public(scope.db()) => {
+                let err = scope.fancy_error(
+                    &format!("field `{}` is not public field", f_name),
+                    vec![
+                        Label::primary(span, "missing field"),
+                        Label::secondary(field.span(scope.db()), "field is defined here"),
+                    ],
+                    vec![],
+                );
+                maybe_err = Err(FatalError::new(err));
+                continue;
+            }
+            Some((pat, _)) => pat,
+            None => {
+                if has_rest {
+                    let dummy_span = Span::dummy();
+                    Node::new(Pattern::WildCard, dummy_span)
+                } else {
+                    let err = scope.fancy_error(
+                        &format!("missing field `{}` in the pattern", f_name),
+                        vec![Label::primary(pat_span, "missing field")],
+                        vec![],
+                    );
+                    maybe_err = Err(FatalError::new(err));
+                    continue;
+                }
+            }
+        };
+
+        ordered_patterns.push(pat);
+        expected_types.push(ty);
+    }
+
+    maybe_err?;
+
+    collect_binds_from_pat_vec(scope, &ordered_patterns, &expected_types)
+}
+
+fn tuple_pattern(
     scope: &mut BlockScope,
     tuple_elts: &[Node<Pattern>],
-    expected_elts: &[TypeId],
+    expected_tys: &[TypeId],
     pat_span: Span,
     variant: Option<EnumVariantId>,
 ) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
@@ -446,26 +559,32 @@ fn match_tuple_pattern(
         Err(FatalError::new(err))
     };
 
-    if rest_pat_pos.is_some() && tuple_elts.len() - 1 > expected_elts.len() {
-        return emit_len_error(tuple_elts.len() - 1, expected_elts.len());
-    } else if rest_pat_pos.is_none() && tuple_elts.len() != expected_elts.len() {
-        return emit_len_error(tuple_elts.len(), expected_elts.len());
+    if rest_pat_pos.is_some() && tuple_elts.len() - 1 > expected_tys.len() {
+        return emit_len_error(tuple_elts.len() - 1, expected_tys.len());
+    } else if rest_pat_pos.is_none() && tuple_elts.len() != expected_tys.len() {
+        return emit_len_error(tuple_elts.len(), expected_tys.len());
     };
 
+    collect_binds_from_pat_vec(scope, tuple_elts, expected_tys)
+}
+
+fn collect_binds_from_pat_vec(
+    scope: &mut BlockScope,
+    pats: &[Node<Pattern>],
+    expected_types: &[TypeId],
+) -> Result<IndexMap<SmolStr, Bind>, FatalError> {
     let mut binds: IndexMap<SmolStr, Bind> = IndexMap::new();
-    let mut expected_elts_iter = expected_elts.iter();
-    for pat in tuple_elts.iter() {
+    let mut types_iter = expected_types.iter();
+    for pat in pats.iter() {
         if pat.kind.is_rest() {
-            let pat_num_in_rest = expected_elts.len() - (tuple_elts.len() - 1);
+            let pat_num_in_rest = expected_types.len() - (pats.len() - 1);
             for _ in 0..pat_num_in_rest {
-                expected_elts_iter.next();
+                types_iter.next();
             }
             continue;
         }
 
-        for (name, bind) in
-            match_pattern(scope, pat, *expected_elts_iter.next().unwrap())?.into_iter()
-        {
+        for (name, bind) in match_pattern(scope, pat, *types_iter.next().unwrap())?.into_iter() {
             match binds.entry(name) {
                 Entry::Occupied(entry) => {
                     let original = entry.get();

@@ -1,5 +1,8 @@
 //! This module includes utility structs and its functions for pattern matching
 //! analysis. The algorithm here is based on [Warnings for pattern matching](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/warnings-for-pattern-matching/3165B75113781E2431E3856972940347)
+//!
+//! In this module, we assume all types are well-typed, so we can rely on the
+//! type information without checking it.
 
 use std::fmt::{self};
 
@@ -7,14 +10,14 @@ use fe_parser::{
     ast::{LiteralPattern, MatchArm, Pattern},
     node::Node,
 };
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
 
 use crate::{
     context::{AnalyzerContext, NamedThing},
     display::{DisplayWithDb, Displayable},
     namespace::{
-        items::{EnumVariantId, EnumVariantKind},
+        items::{EnumVariantId, EnumVariantKind, Item, StructId, TypeDef},
         scopes::BlockScope,
         types::{Base, Type, TypeId},
     },
@@ -273,6 +276,27 @@ impl DisplayWithDb for SimplifiedPattern {
             }
 
             SimplifiedPatternKind::Constructor {
+                kind: ConstructorKind::Struct(sid),
+                fields,
+            } => {
+                let struct_name = sid.name(db);
+                write!(f, "{struct_name} {{ ")?;
+                let mut delim = "";
+
+                for (field_name, field_pat) in sid
+                    .fields(db)
+                    .iter()
+                    .map(|(field_name, _)| field_name)
+                    .zip(fields.iter())
+                {
+                    let displayable = field_pat.display(db);
+                    write!(f, "{delim}{field_name}: {displayable}")?;
+                    delim = ", ";
+                }
+                write!(f, "}}")
+            }
+
+            SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Literal((lit, _)),
                 ..
             } => {
@@ -331,6 +355,7 @@ impl SimplifiedPatternKind {
 pub enum ConstructorKind {
     Enum(EnumVariantId),
     Tuple(TypeId),
+    Struct(StructId),
     Literal((LiteralPattern, TypeId)),
 }
 
@@ -347,6 +372,11 @@ impl ConstructorKind {
                 EnumVariantKind::Tuple(types) => types.to_vec(),
             },
             Self::Tuple(ty) => ty.tuple_elts(db),
+            Self::Struct(sid) => sid
+                .fields(db)
+                .iter()
+                .map(|(_, fid)| fid.typ(db).unwrap())
+                .collect(),
             Self::Literal(_) => vec![],
         }
     }
@@ -358,6 +388,7 @@ impl ConstructorKind {
                 EnumVariantKind::Tuple(types) => types.len(),
             },
             Self::Tuple(ty) => ty.tuple_elts(db).len(),
+            Self::Struct(sid) => sid.fields(db).len(),
             Self::Literal(_) => 0,
         }
     }
@@ -366,6 +397,7 @@ impl ConstructorKind {
         match self {
             Self::Enum(id) => id.parent(db).as_type(db),
             Self::Tuple(ty) => *ty,
+            Self::Struct(sid) => sid.as_type(db),
             Self::Literal((_, ty)) => *ty,
         }
     }
@@ -569,7 +601,7 @@ fn ctor_variant_num(db: &dyn AnalyzerDb, ctor: ConstructorKind) -> usize {
             let enum_id = variant.parent(db);
             enum_id.variants(db).len()
         }
-        ConstructorKind::Tuple(_) => 1,
+        ConstructorKind::Tuple(_) | ConstructorKind::Struct(_) => 1,
         ConstructorKind::Literal((LiteralPattern::Bool(_), _)) => 2,
     }
 }
@@ -628,6 +660,44 @@ fn simplify_pattern(
             SimplifiedPatternKind::Constructor {
                 kind: ctor_kind,
                 fields: simplify_tuple_pattern(scope, elts, &elts_tys, arm_idx),
+            }
+        }
+
+        Pattern::PathStruct {
+            path,
+            fields: pat_fields,
+            ..
+        } => {
+            let (sid, ctor_kind) = match scope.maybe_resolve_path(&path.kind).unwrap() {
+                NamedThing::Item(Item::Type(TypeDef::Struct(sid))) => {
+                    (sid, ConstructorKind::Struct(sid))
+                }
+                // Implement this when struct variant is supported.
+                NamedThing::EnumVariant(_) => todo!(),
+                _ => unreachable!(),
+            };
+
+            // Canonicalize the fields order so that the order is the same as the
+            // struct fields.
+            let pat_fields: IndexMap<_, _> = pat_fields
+                .iter()
+                .map(|field_pat| (field_pat.0.kind.clone(), field_pat.1.clone()))
+                .collect();
+            let fields_def = sid.fields(scope.db());
+            let mut canonicalized_fields = Vec::with_capacity(fields_def.len());
+            for (field_name, fid) in fields_def.iter() {
+                let field_ty = fid.typ(scope.db()).unwrap();
+                if let Some(pat) = pat_fields.get(field_name) {
+                    let pat = simplify_pattern(scope, &pat.kind, field_ty, arm_idx);
+                    canonicalized_fields.push(pat);
+                } else {
+                    canonicalized_fields.push(SimplifiedPattern::wildcard(None, field_ty));
+                }
+            }
+
+            SimplifiedPatternKind::Constructor {
+                kind: ctor_kind,
+                fields: canonicalized_fields,
             }
         }
 
