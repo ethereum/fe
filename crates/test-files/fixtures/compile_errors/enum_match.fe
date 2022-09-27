@@ -9,6 +9,16 @@ pub enum MyEnumNested  {
     Nested(MyEnum)
 }
 
+struct MyS {
+    x: i32
+    pub y: i32
+    
+    pub fn new() -> MyS {
+        MyS(x: 0, y: 0)
+    }
+}
+
+
 contract Foo {
     pub fn variant_type_mismatch(x: u32, y: u256) -> u256 {
         let my_enum: MyEnum = MyEnum::Tuple(x, y);
@@ -77,6 +87,15 @@ contract Foo {
         let my_enum: (MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit)
         match my_enum {
             (.., ..) => {}
+        }
+    }
+    
+    pub fn private_field() {
+        let s: MyS = MyS::new()
+        match s {
+            MyS{x: x1, y: y1} => {
+                return x1 + y1
+            }
         }
     }
 }

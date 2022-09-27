@@ -18,6 +18,18 @@ pub enum State {
     Done
 }
 
+pub struct SimpleStruct {
+    pub x: i32
+    pub y: i32
+    pub b: bool
+}
+
+pub struct NestedStruct {
+    pub x: u256
+    pub y: u256
+    pub e: MyEnum
+}
+
 contract Foo {
     my_enum: MyEnumNested
     
@@ -183,6 +195,33 @@ contract Foo {
         }
     }
 
+    pub fn simple_struct(x: i32, y: i32, b: bool) -> i32 {
+        let s: SimpleStruct = SimpleStruct(x, y, b)
+        match s {
+            SimpleStruct{x: x1, y: y1, b: true} => {
+                return x1 + y1
+            }
+
+            SimpleStruct{x: x1, y: y1, b: false} => {
+                return x1 - y1
+            }
+        }
+    }
+    
+    pub fn nested_struct() -> u256 {
+        let e: MyEnum = MyEnum::Tuple(1, 2)
+        let s: NestedStruct = NestedStruct(x: 3, y: 4, e)
+        match s {
+            NestedStruct{e: MyEnum::Unit | MyEnum::UnitTuple(), ..} => {
+                return 0
+            }
+
+            NestedStruct{x: x1, y: y1, e: MyEnum::Tuple(x2, y2)} => {
+                return x1 + y1 + u256(x2) + y2
+            }
+        }
+    }
+
     pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
         if b {
             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
@@ -199,4 +238,5 @@ contract Foo {
             }
         }
     }
+    
 }
