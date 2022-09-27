@@ -192,7 +192,9 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                 Some(self.builder().make_imm_from_bool(*b, ty))
             }
 
-            Case::Ctor(ConstructorKind::Tuple(_)) | Case::Default => None,
+            Case::Ctor(ConstructorKind::Tuple(_))
+            | Case::Ctor(ConstructorKind::Struct(_))
+            | Case::Default => None,
         }
     }
 
@@ -217,13 +219,14 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
                     .register_occurrence(occurrence.clone(), value)
             }
 
-            Case::Ctor(ConstructorKind::Tuple(_)) | Case::Default => {}
+            Case::Ctor(ConstructorKind::Tuple(_))
+            | Case::Ctor(ConstructorKind::Struct(_))
+            | Case::Default => {}
         }
     }
 
     fn extract_disc(&mut self, value: ValueId) -> ValueId {
         let value_ty = self.builder().value_ty(value);
-
         match value_ty {
             _ if value_ty.is_enum(self.helper.db) => {
                 let disc_ty = value_ty.enum_disc_type(self.helper.db);

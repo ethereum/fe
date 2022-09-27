@@ -876,6 +876,21 @@ fn enum_match() {
 
         harness.test_function(
             &mut executor,
+            "simple_struct",
+            &[int_token(1), int_token(2), bool_token(true)],
+            Some(&int_token(3)),
+        );
+        harness.test_function(
+            &mut executor,
+            "simple_struct",
+            &[int_token(1), int_token(2), bool_token(false)],
+            Some(&int_token(-1)),
+        );
+
+        harness.test_function(&mut executor, "nested_struct", &[], Some(&uint_token(10)));
+
+        harness.test_function(
+            &mut executor,
             "enum_storage",
             &[uint_token(1), uint_token(2), bool_token(true)],
             Some(&uint_token(3)),

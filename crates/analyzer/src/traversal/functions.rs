@@ -483,7 +483,7 @@ fn struct_pattern(
                 let err = scope.fancy_error(
                     &format!("field `{}` is not public field", f_name),
                     vec![
-                        Label::primary(span, "missing field"),
+                        Label::primary(span, format!("`{}` is not public", f_name)),
                         Label::secondary(field.span(scope.db()), "field is defined here"),
                     ],
                     vec![],
