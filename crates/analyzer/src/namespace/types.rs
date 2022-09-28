@@ -159,8 +159,9 @@ impl TypeId {
     }
 
     /// Returns `true` if the type qualifies to implement the `Emittable` trait
-    /// TODO: This function should be removed when we add `Encode / Decode` trait
-    pub fn is_emitable(self, db: &dyn AnalyzerDb) -> bool {
+    /// TODO: This function should be removed when we add `Encode / Decode`
+    /// trait
+    pub fn is_emittable(self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Struct(_)) && self.is_encodable(db).unwrap_or(false)
     }
 
