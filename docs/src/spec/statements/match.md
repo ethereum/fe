@@ -11,10 +11,18 @@
 > &nbsp;&nbsp; _PatternElem_ ( `|` _PatternElem_ )<sup>*</sup>\
 >
 > _PatternElem_ : \
-> &nbsp;&nbsp; [_IDENTIFIER_] | [_BOOLEAN_LITERAL_] | `_` |  `..` | [_Path_] | [_Path_]`(` _TuplePatterns_<sup>?</sup> `)` | `(` _TuplePatterns_<sup>?</sup> `)`\
+> &nbsp;&nbsp; [_IDENTIFIER_] | [_BOOLEAN_LITERAL_] | `_` |  `..` | [_Path_] \|\
+> &nbsp;&nbsp; [_Path_]`(` _TuplePatterns_<sup>?</sup> `)` |`(` _TuplePatterns_<sup>?</sup> `)` \|\
+> &nbsp;&nbsp; [_Path_]`{` _StructPatterns_<sup>?</sup> `}`\
 > 
-> _TuplePatterns_ :\
-> &nbsp;&nbsp; _Pattern_ ( `,` _Pattern_ )<sup>\*</sup>
+> _TuplePatterns_ : \
+> &nbsp;&nbsp; _Pattern_ ( `,` _Pattern_ )<sup>\*</sup>\
+>
+> _StructPatterns_ : \
+> &nbsp;&nbsp; _Field_ ( `,` _Field_)<sup>\*</sup>(`,` `..`)<sup>?</sup>\
+>
+> _Field_ : \
+> &nbsp;&nbsp; [_IDENTIFIER_] `:` _Pattern_\
 
 
 A `match` statements compares `expression` with patterns, then executes body of the matched arm.
