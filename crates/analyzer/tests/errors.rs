@@ -283,6 +283,7 @@ test_file! { module_const_non_base_type }
 test_file! { module_const_call }
 test_file! { needs_mem_copy }
 test_file! { not_callable }
+test_file! { not_emittable }
 test_file! { not_in_scope }
 test_file! { not_in_scope_2 }
 test_file! { private_struct_field }

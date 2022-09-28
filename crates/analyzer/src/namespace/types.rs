@@ -158,6 +158,12 @@ impl TypeId {
         fun.takes_self(db).then_some(fun)
     }
 
+    /// Returns `true` if the type qualifies to implement the `Emittable` trait
+    /// TODO: This function should be removed when we add `Encode / Decode` trait
+    pub fn is_emitable(self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Struct(_)) && self.is_encodable(db).unwrap_or(false)
+    }
+
     /// Returns `true` if the type is encodable in Solidity ABI.
     /// TODO: This function must be removed when we add `Encode`/`Decode` trait.
     pub fn is_encodable(self, db: &dyn AnalyzerDb) -> Result<bool, TypeError> {
