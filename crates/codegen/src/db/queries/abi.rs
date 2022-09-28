@@ -27,11 +27,14 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     }
 
     let mut events = vec![];
-    // We consider all structs that are defined or imported in the scope of the contract as possible events
-    for &event in db.module_structs(contract.module(db.upcast())).as_ref() {
-        let mir_event = db.mir_lowered_type(event.as_type(db.upcast()));
-        let event = db.codegen_abi_event(mir_event);
-        events.push(event);
+    for &s in db.module_structs(contract.module(db.upcast())).as_ref() {
+        let struct_ty = s.as_type(db.upcast());
+        // TODO: This is a hack to avoid generating an ABI for non-`emittable` structs.
+        if struct_ty.is_emittable(db.upcast()) {
+            let mir_event = db.mir_lowered_type(struct_ty);
+            let event = db.codegen_abi_event(mir_event);
+            events.push(event);
+        }
     }
 
     AbiContract::new(funcs, events)

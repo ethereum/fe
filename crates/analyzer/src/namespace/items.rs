@@ -1880,7 +1880,7 @@ impl TraitId {
     pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: TypeId) -> bool {
         // All encodable structs automagically implement the Emittable trait
         // TODO: Remove this when we have the `Encode / Decode` trait.
-        if self.is_std_trait(db, EMITTABLE_TRAIT_NAME) && ty.is_emitable(db) {
+        if self.is_std_trait(db, EMITTABLE_TRAIT_NAME) && ty.is_emittable(db) {
             return true;
         }
 
