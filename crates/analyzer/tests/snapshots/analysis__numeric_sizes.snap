@@ -153,7 +153,7 @@ note:
 33 │ ╭     pub fn get_u8_min() -> u8 {
 34 │ │         return u8(0)
 35 │ │     }
-   │ ╰─────^ self: None, params: [] -> u8
+   │ ╰─────^ params: [] -> u8
 
 note: 
    ┌─ numeric_sizes.fe:34:19
@@ -173,7 +173,7 @@ note:
 36 │ ╭     pub fn get_u8_const_min() -> u8 {
 37 │ │         return U8_MIN
 38 │ │     }
-   │ ╰─────^ self: None, params: [] -> u8
+   │ ╰─────^ params: [] -> u8
 
 note: 
    ┌─ numeric_sizes.fe:37:16
@@ -187,7 +187,7 @@ note:
 40 │ ╭     pub fn get_u16_min() -> u16 {
 41 │ │         return u16(0)
 42 │ │     }
-   │ ╰─────^ self: None, params: [] -> u16
+   │ ╰─────^ params: [] -> u16
 
 note: 
    ┌─ numeric_sizes.fe:41:20
@@ -207,7 +207,7 @@ note:
 44 │ ╭     pub fn get_u16_const_min() -> u16 {
 45 │ │         return U16_MIN
 46 │ │     }
-   │ ╰─────^ self: None, params: [] -> u16
+   │ ╰─────^ params: [] -> u16
 
 note: 
    ┌─ numeric_sizes.fe:45:16
@@ -221,7 +221,7 @@ note:
 48 │ ╭     pub fn get_u32_min() -> u32 {
 49 │ │         return u32(0)
 50 │ │     }
-   │ ╰─────^ self: None, params: [] -> u32
+   │ ╰─────^ params: [] -> u32
 
 note: 
    ┌─ numeric_sizes.fe:49:20
@@ -241,7 +241,7 @@ note:
 52 │ ╭     pub fn get_u32_const_min() -> u32 {
 53 │ │         return U32_MIN
 54 │ │     }
-   │ ╰─────^ self: None, params: [] -> u32
+   │ ╰─────^ params: [] -> u32
 
 note: 
    ┌─ numeric_sizes.fe:53:16
@@ -255,7 +255,7 @@ note:
 56 │ ╭     pub fn get_u64_min() -> u64 {
 57 │ │         return u64(0)
 58 │ │     }
-   │ ╰─────^ self: None, params: [] -> u64
+   │ ╰─────^ params: [] -> u64
 
 note: 
    ┌─ numeric_sizes.fe:57:20
@@ -275,7 +275,7 @@ note:
 60 │ ╭     pub fn get_u64_const_min() -> u64 {
 61 │ │         return U64_MIN
 62 │ │     }
-   │ ╰─────^ self: None, params: [] -> u64
+   │ ╰─────^ params: [] -> u64
 
 note: 
    ┌─ numeric_sizes.fe:61:16
@@ -289,7 +289,7 @@ note:
 64 │ ╭     pub fn get_u128_min() -> u128 {
 65 │ │         return u128(0)
 66 │ │     }
-   │ ╰─────^ self: None, params: [] -> u128
+   │ ╰─────^ params: [] -> u128
 
 note: 
    ┌─ numeric_sizes.fe:65:21
@@ -309,7 +309,7 @@ note:
 68 │ ╭     pub fn get_u128_const_min() -> u128 {
 69 │ │         return U128_MIN
 70 │ │     }
-   │ ╰─────^ self: None, params: [] -> u128
+   │ ╰─────^ params: [] -> u128
 
 note: 
    ┌─ numeric_sizes.fe:69:16
@@ -323,7 +323,7 @@ note:
 72 │ ╭     pub fn get_u256_min() -> u256 {
 73 │ │         return u256(0)
 74 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ numeric_sizes.fe:73:21
@@ -343,7 +343,7 @@ note:
 76 │ ╭     pub fn get_u256_const_min() -> u256 {
 77 │ │         return U256_MIN
 78 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ numeric_sizes.fe:77:16
@@ -357,7 +357,7 @@ note:
 80 │ ╭     pub fn get_i8_min() -> i8 {
 81 │ │         return i8(-128)
 82 │ │     }
-   │ ╰─────^ self: None, params: [] -> i8
+   │ ╰─────^ params: [] -> i8
 
 note: 
    ┌─ numeric_sizes.fe:81:20
@@ -383,7 +383,7 @@ note:
 84 │ ╭     pub fn get_i8_const_min() -> i8 {
 85 │ │         return I8_MIN
 86 │ │     }
-   │ ╰─────^ self: None, params: [] -> i8
+   │ ╰─────^ params: [] -> i8
 
 note: 
    ┌─ numeric_sizes.fe:85:16
@@ -397,7 +397,7 @@ note:
 88 │ ╭     pub fn get_i16_min() -> i16 {
 89 │ │         return i16(-32768)
 90 │ │     }
-   │ ╰─────^ self: None, params: [] -> i16
+   │ ╰─────^ params: [] -> i16
 
 note: 
    ┌─ numeric_sizes.fe:89:21
@@ -423,7 +423,7 @@ note:
 92 │ ╭     pub fn get_i16_const_min() -> i16 {
 93 │ │         return I16_MIN
 94 │ │     }
-   │ ╰─────^ self: None, params: [] -> i16
+   │ ╰─────^ params: [] -> i16
 
 note: 
    ┌─ numeric_sizes.fe:93:16
@@ -437,7 +437,7 @@ note:
 96 │ ╭     pub fn get_i32_min() -> i32 {
 97 │ │         return i32(-2147483648)
 98 │ │     }
-   │ ╰─────^ self: None, params: [] -> i32
+   │ ╰─────^ params: [] -> i32
 
 note: 
    ┌─ numeric_sizes.fe:97:21
@@ -463,7 +463,7 @@ note:
 100 │ ╭     pub fn get_i32_const_min() -> i32 {
 101 │ │         return I32_MIN
 102 │ │     }
-    │ ╰─────^ self: None, params: [] -> i32
+    │ ╰─────^ params: [] -> i32
 
 note: 
     ┌─ numeric_sizes.fe:101:16
@@ -477,7 +477,7 @@ note:
 104 │ ╭     pub fn get_i64_min() -> i64 {
 105 │ │         return i64(-9223372036854775808)
 106 │ │     }
-    │ ╰─────^ self: None, params: [] -> i64
+    │ ╰─────^ params: [] -> i64
 
 note: 
     ┌─ numeric_sizes.fe:105:21
@@ -503,7 +503,7 @@ note:
 108 │ ╭     pub fn get_i64_const_min() -> i64 {
 109 │ │         return I64_MIN
 110 │ │     }
-    │ ╰─────^ self: None, params: [] -> i64
+    │ ╰─────^ params: [] -> i64
 
 note: 
     ┌─ numeric_sizes.fe:109:16
@@ -517,7 +517,7 @@ note:
 112 │ ╭     pub fn get_i128_min() -> i128 {
 113 │ │         return i128(-170141183460469231731687303715884105728)
 114 │ │     }
-    │ ╰─────^ self: None, params: [] -> i128
+    │ ╰─────^ params: [] -> i128
 
 note: 
     ┌─ numeric_sizes.fe:113:22
@@ -543,7 +543,7 @@ note:
 116 │ ╭     pub fn get_i128_const_min() -> i128 {
 117 │ │         return I128_MIN
 118 │ │     }
-    │ ╰─────^ self: None, params: [] -> i128
+    │ ╰─────^ params: [] -> i128
 
 note: 
     ┌─ numeric_sizes.fe:117:16
@@ -557,7 +557,7 @@ note:
 120 │ ╭     pub fn get_i256_min() -> i256 {
 121 │ │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
 122 │ │     }
-    │ ╰─────^ self: None, params: [] -> i256
+    │ ╰─────^ params: [] -> i256
 
 note: 
     ┌─ numeric_sizes.fe:121:22
@@ -583,7 +583,7 @@ note:
 124 │ ╭     pub fn get_i256_const_min() -> i256 {
 125 │ │         return I256_MIN
 126 │ │     }
-    │ ╰─────^ self: None, params: [] -> i256
+    │ ╰─────^ params: [] -> i256
 
 note: 
     ┌─ numeric_sizes.fe:125:16
@@ -597,7 +597,7 @@ note:
 128 │ ╭     pub fn get_u8_max() -> u8 {
 129 │ │         return u8(255)
 130 │ │     }
-    │ ╰─────^ self: None, params: [] -> u8
+    │ ╰─────^ params: [] -> u8
 
 note: 
     ┌─ numeric_sizes.fe:129:19
@@ -617,7 +617,7 @@ note:
 132 │ ╭     pub fn get_u8_const_max() -> u8 {
 133 │ │         return U8_MAX
 134 │ │     }
-    │ ╰─────^ self: None, params: [] -> u8
+    │ ╰─────^ params: [] -> u8
 
 note: 
     ┌─ numeric_sizes.fe:133:16
@@ -631,7 +631,7 @@ note:
 136 │ ╭     pub fn get_u16_max() -> u16 {
 137 │ │         return u16(65535)
 138 │ │     }
-    │ ╰─────^ self: None, params: [] -> u16
+    │ ╰─────^ params: [] -> u16
 
 note: 
     ┌─ numeric_sizes.fe:137:20
@@ -651,7 +651,7 @@ note:
 140 │ ╭     pub fn get_u16_const_max() -> u16 {
 141 │ │         return U16_MAX
 142 │ │     }
-    │ ╰─────^ self: None, params: [] -> u16
+    │ ╰─────^ params: [] -> u16
 
 note: 
     ┌─ numeric_sizes.fe:141:16
@@ -665,7 +665,7 @@ note:
 144 │ ╭     pub fn get_u32_max() -> u32 {
 145 │ │         return u32(4294967295)
 146 │ │     }
-    │ ╰─────^ self: None, params: [] -> u32
+    │ ╰─────^ params: [] -> u32
 
 note: 
     ┌─ numeric_sizes.fe:145:20
@@ -685,7 +685,7 @@ note:
 148 │ ╭     pub fn get_u32_const_max() -> u32 {
 149 │ │         return U32_MAX
 150 │ │     }
-    │ ╰─────^ self: None, params: [] -> u32
+    │ ╰─────^ params: [] -> u32
 
 note: 
     ┌─ numeric_sizes.fe:149:16
@@ -699,7 +699,7 @@ note:
 152 │ ╭     pub fn get_u64_max() -> u64 {
 153 │ │         return u64(18446744073709551615)
 154 │ │     }
-    │ ╰─────^ self: None, params: [] -> u64
+    │ ╰─────^ params: [] -> u64
 
 note: 
     ┌─ numeric_sizes.fe:153:20
@@ -719,7 +719,7 @@ note:
 156 │ ╭     pub fn get_u64_const_max() -> u64 {
 157 │ │         return U64_MAX
 158 │ │     }
-    │ ╰─────^ self: None, params: [] -> u64
+    │ ╰─────^ params: [] -> u64
 
 note: 
     ┌─ numeric_sizes.fe:157:16
@@ -733,7 +733,7 @@ note:
 160 │ ╭     pub fn get_u128_max() -> u128 {
 161 │ │         return u128(340282366920938463463374607431768211455)
 162 │ │     }
-    │ ╰─────^ self: None, params: [] -> u128
+    │ ╰─────^ params: [] -> u128
 
 note: 
     ┌─ numeric_sizes.fe:161:21
@@ -753,7 +753,7 @@ note:
 164 │ ╭     pub fn get_u128_const_max() -> u128 {
 165 │ │         return U128_MAX
 166 │ │     }
-    │ ╰─────^ self: None, params: [] -> u128
+    │ ╰─────^ params: [] -> u128
 
 note: 
     ┌─ numeric_sizes.fe:165:16
@@ -767,7 +767,7 @@ note:
 168 │ ╭     pub fn get_u256_max() -> u256 {
 169 │ │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
 170 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
     ┌─ numeric_sizes.fe:169:21
@@ -787,7 +787,7 @@ note:
 172 │ ╭     pub fn get_u256_const_max() -> u256 {
 173 │ │         return U256_MAX
 174 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
     ┌─ numeric_sizes.fe:173:16
@@ -801,7 +801,7 @@ note:
 176 │ ╭     pub fn get_i8_max() -> i8 {
 177 │ │         return i8(127)
 178 │ │     }
-    │ ╰─────^ self: None, params: [] -> i8
+    │ ╰─────^ params: [] -> i8
 
 note: 
     ┌─ numeric_sizes.fe:177:19
@@ -821,7 +821,7 @@ note:
 180 │ ╭     pub fn get_i8_const_max() -> i8 {
 181 │ │         return I8_MAX
 182 │ │     }
-    │ ╰─────^ self: None, params: [] -> i8
+    │ ╰─────^ params: [] -> i8
 
 note: 
     ┌─ numeric_sizes.fe:181:16
@@ -835,7 +835,7 @@ note:
 184 │ ╭     pub fn get_i16_max() -> i16 {
 185 │ │         return i16(32767)
 186 │ │     }
-    │ ╰─────^ self: None, params: [] -> i16
+    │ ╰─────^ params: [] -> i16
 
 note: 
     ┌─ numeric_sizes.fe:185:20
@@ -855,7 +855,7 @@ note:
 188 │ ╭     pub fn get_i16_const_max() -> i16 {
 189 │ │         return I16_MAX
 190 │ │     }
-    │ ╰─────^ self: None, params: [] -> i16
+    │ ╰─────^ params: [] -> i16
 
 note: 
     ┌─ numeric_sizes.fe:189:16
@@ -869,7 +869,7 @@ note:
 192 │ ╭     pub fn get_i32_max() -> i32 {
 193 │ │         return i32(2147483647)
 194 │ │     }
-    │ ╰─────^ self: None, params: [] -> i32
+    │ ╰─────^ params: [] -> i32
 
 note: 
     ┌─ numeric_sizes.fe:193:20
@@ -889,7 +889,7 @@ note:
 196 │ ╭     pub fn get_i32_const_max() -> i32 {
 197 │ │         return I32_MAX
 198 │ │     }
-    │ ╰─────^ self: None, params: [] -> i32
+    │ ╰─────^ params: [] -> i32
 
 note: 
     ┌─ numeric_sizes.fe:197:16
@@ -903,7 +903,7 @@ note:
 200 │ ╭     pub fn get_i64_max() -> i64 {
 201 │ │         return i64(9223372036854775807)
 202 │ │     }
-    │ ╰─────^ self: None, params: [] -> i64
+    │ ╰─────^ params: [] -> i64
 
 note: 
     ┌─ numeric_sizes.fe:201:20
@@ -923,7 +923,7 @@ note:
 204 │ ╭     pub fn get_i64_const_max() -> i64 {
 205 │ │         return I64_MAX
 206 │ │     }
-    │ ╰─────^ self: None, params: [] -> i64
+    │ ╰─────^ params: [] -> i64
 
 note: 
     ┌─ numeric_sizes.fe:205:16
@@ -937,7 +937,7 @@ note:
 208 │ ╭     pub fn get_i128_max() -> i128 {
 209 │ │         return i128(170141183460469231731687303715884105727)
 210 │ │     }
-    │ ╰─────^ self: None, params: [] -> i128
+    │ ╰─────^ params: [] -> i128
 
 note: 
     ┌─ numeric_sizes.fe:209:21
@@ -957,7 +957,7 @@ note:
 212 │ ╭     pub fn get_i128_const_max() -> i128 {
 213 │ │         return I128_MAX
 214 │ │     }
-    │ ╰─────^ self: None, params: [] -> i128
+    │ ╰─────^ params: [] -> i128
 
 note: 
     ┌─ numeric_sizes.fe:213:16
@@ -971,7 +971,7 @@ note:
 216 │ ╭     pub fn get_i256_max() -> i256 {
 217 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
 218 │ │     }
-    │ ╰─────^ self: None, params: [] -> i256
+    │ ╰─────^ params: [] -> i256
 
 note: 
     ┌─ numeric_sizes.fe:217:21
@@ -991,7 +991,7 @@ note:
 220 │ ╭     pub fn get_i256_const_max() -> i256 {
 221 │ │         return I256_MAX
 222 │ │     }
-    │ ╰─────^ self: None, params: [] -> i256
+    │ ╰─────^ params: [] -> i256
 
 note: 
     ┌─ numeric_sizes.fe:221:16

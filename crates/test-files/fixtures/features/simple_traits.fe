@@ -31,7 +31,7 @@ impl Double for Array<u256, 2> {
 contract Example {
   my_array: Array<u256, 2>
 
-  pub fn __init__(self) {
+  pub fn __init__(mut self) {
     self.my_array = [1, 0]
   }
 

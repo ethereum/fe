@@ -15,7 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10> {
 5 │ │         return self.bar[key].to_mem()
 6 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: address }] -> Array<u8, 10>
+  │ ╰─────^ params: [self, { label: None, name: key, typ: address }] -> Array<u8, 10>
 
 note: 
   ┌─ address_bytes10_map.fe:5:16
@@ -46,16 +46,16 @@ note:
 note: 
    ┌─ address_bytes10_map.fe:8:5
    │  
- 8 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>) {
+ 8 │ ╭     pub fn write_bar(mut self, key: address, value: Array<u8, 10>) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: address }, { label: None, name: value, typ: Array<u8, 10> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: key, typ: address }, { label: None, name: value, typ: Array<u8, 10> }] -> ()
 
 note: 
   ┌─ address_bytes10_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ address_bytes10_map.fe:9:9
@@ -63,7 +63,7 @@ note:
 9 │         self.bar[key] = value
   │         ^^^^^^^^ ^^^ address
   │         │         
-  │         SPtr<Map<address, Array<u8, 10>>>
+  │         mut SPtr<Map<address, Array<u8, 10>>>
 
 note: 
   ┌─ address_bytes10_map.fe:9:9
@@ -71,6 +71,6 @@ note:
 9 │         self.bar[key] = value
   │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>
   │         │                
-  │         SPtr<Array<u8, 10>>
+  │         mut SPtr<Array<u8, 10>>
 
 

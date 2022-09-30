@@ -7,42 +7,42 @@ note:
    ┌─ for_loop_with_static_array.fe:2:5
    │  
  2 │ ╭     pub fn bar() -> u256 {
- 3 │ │         let my_array: Array<u256, 3> = [0; 3]
+ 3 │ │         let mut my_array: Array<u256, 3> = [0; 3]
  4 │ │         my_array[0] = 5
  5 │ │         my_array[1] = 10
    · │
 11 │ │         return sum
 12 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
-  ┌─ for_loop_with_static_array.fe:3:13
+  ┌─ for_loop_with_static_array.fe:3:17
   │
-3 │         let my_array: Array<u256, 3> = [0; 3]
-  │             ^^^^^^^^ Array<u256, 3>
+3 │         let mut my_array: Array<u256, 3> = [0; 3]
+  │                 ^^^^^^^^ mut Array<u256, 3>
   ·
-7 │         let sum: u256 = 0
-  │             ^^^ u256
+7 │         let mut sum: u256 = 0
+  │                 ^^^ mut u256
 8 │         for i in my_array {
   │             ^ u256
 
 note: 
-  ┌─ for_loop_with_static_array.fe:3:41
+  ┌─ for_loop_with_static_array.fe:3:45
   │
-3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                         ^  ^ u256
-  │                                         │   
-  │                                         u256
+3 │         let mut my_array: Array<u256, 3> = [0; 3]
+  │                                             ^  ^ u256
+  │                                             │   
+  │                                             u256
 
 note: 
-  ┌─ for_loop_with_static_array.fe:3:40
+  ┌─ for_loop_with_static_array.fe:3:44
   │
-3 │         let my_array: Array<u256, 3> = [0; 3]
-  │                                        ^^^^^^ Array<u256, 3>
+3 │         let mut my_array: Array<u256, 3> = [0; 3]
+  │                                            ^^^^^^ Array<u256, 3>
 4 │         my_array[0] = 5
   │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>
+  │         mut Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:4:9
@@ -50,11 +50,11 @@ note:
 4 │         my_array[0] = 5
   │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256
+  │         mut u256
 5 │         my_array[1] = 10
   │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>
+  │         mut Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:5:9
@@ -62,11 +62,11 @@ note:
 5 │         my_array[1] = 10
   │         ^^^^^^^^^^^   ^^ u256
   │         │              
-  │         u256
+  │         mut u256
 6 │         my_array[2] = 15
   │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 3>
+  │         mut Array<u256, 3>
 
 note: 
   ┌─ for_loop_with_static_array.fe:6:9
@@ -74,16 +74,16 @@ note:
 6 │         my_array[2] = 15
   │         ^^^^^^^^^^^   ^^ u256
   │         │              
-  │         u256
-7 │         let sum: u256 = 0
-  │                         ^ u256
+  │         mut u256
+7 │         let mut sum: u256 = 0
+  │                             ^ u256
 8 │         for i in my_array {
-  │                  ^^^^^^^^ Array<u256, 3>
+  │                  ^^^^^^^^ mut Array<u256, 3>
 9 │             sum = sum + i
   │             ^^^   ^^^   ^ u256
   │             │     │      
-  │             │     u256
-  │             u256
+  │             │     mut u256
+  │             mut u256
 
 note: 
    ┌─ for_loop_with_static_array.fe:9:19
@@ -92,6 +92,6 @@ note:
    │                   ^^^^^^^ u256
 10 │         }
 11 │         return sum
-   │                ^^^ u256
+   │                ^^^ mut u256
 
 

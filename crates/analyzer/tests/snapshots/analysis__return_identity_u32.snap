@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: u32) -> u32 {
 3 │ │         return x
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }] -> u32
+  │ ╰─────^ params: [{ label: None, name: x, typ: u32 }] -> u32
 
 note: 
   ┌─ return_identity_u32.fe:3:16

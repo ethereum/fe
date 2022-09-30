@@ -15,7 +15,7 @@ note:
 4 │ ╭     pub fn foo(_ v1: u256, _ v2: u256, _ v3: u256, _ v4: u256, _ v5: u256) -> u256 {
 5 │ │         return v1 + v2 + v3 + v4 + v5
 6 │ │     }
-  │ ╰─────^ self: None, params: [{ label: Some("_"), name: v1, typ: u256 }, { label: Some("_"), name: v2, typ: u256 }, { label: Some("_"), name: v3, typ: u256 }, { label: Some("_"), name: v4, typ: u256 }, { label: Some("_"), name: v5, typ: u256 }] -> u256
+  │ ╰─────^ params: [{ label: Some("_"), name: v1, typ: u256 }, { label: Some("_"), name: v2, typ: u256 }, { label: Some("_"), name: v3, typ: u256 }, { label: Some("_"), name: v4, typ: u256 }, { label: Some("_"), name: v5, typ: u256 }] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:5:16
@@ -61,7 +61,7 @@ note:
  8 │ ╭     pub fn cem() -> u256 {
  9 │ │         return 100
 10 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn_with_args.fe:9:16
@@ -72,17 +72,17 @@ note:
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:12:5
    │  
-12 │ ╭     pub fn bar(self) -> u256 {
+12 │ ╭     pub fn bar(mut self) -> u256 {
 13 │ │         self.baz[0] = 43
 14 │ │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
 15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [mut self] -> u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
    │
 13 │         self.baz[0] = 43
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
@@ -90,7 +90,7 @@ note:
 13 │         self.baz[0] = 43
    │         ^^^^^^^^ ^ u256
    │         │         
-   │         SPtr<Map<u256, u256>>
+   │         mut SPtr<Map<u256, u256>>
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:13:9
@@ -98,7 +98,7 @@ note:
 13 │         self.baz[0] = 43
    │         ^^^^^^^^^^^   ^^ u256
    │         │              
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
    │                    ^  ^  ^^^^^  ^^   ^^ u256
    │                    │  │  │      │     
@@ -111,7 +111,7 @@ note:
    ┌─ return_u256_from_called_fn_with_args.fe:14:33
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                 ^^^^^^^  ^^^^ Foo
+   │                                 ^^^^^^^  ^^^^ mut Foo
    │                                 │         
    │                                 u256
 
@@ -121,13 +121,13 @@ note:
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
    │                                          ^^^^^^^^ ^ u256
    │                                          │         
-   │                                          SPtr<Map<u256, u256>>
+   │                                          mut SPtr<Map<u256, u256>>
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:42
    │
 14 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                                          ^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                          ^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ return_u256_from_called_fn_with_args.fe:14:16

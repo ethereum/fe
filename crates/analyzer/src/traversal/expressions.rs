@@ -39,40 +39,34 @@ pub fn expect_expr_type(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
     expected: TypeId,
-) -> Result<(), FatalError> {
+    sink: bool,
+) -> Result<ExpressionAttributes, FatalError> {
     let attr = expr(context, exp, Some(expected))?;
 
-    let actual = attr.adjusted_type();
-    if actual != expected {
-        eprintln!(
-            "{} != {}",
-            actual.display(context.db()),
-            expected.display(context.db())
-        ); // XXX
-        match try_coerce_type(context, Some(exp), actual, expected) {
-            Err(TypeCoercionError::RequiresToMem) => {
-                context.add_diagnostic(errors::to_mem_error(exp.span));
-            }
-            Err(TypeCoercionError::Incompatible) => {
-                eprintln!(
-                    "{} != {}",
-                    actual.display(context.db()),
-                    expected.display(context.db())
-                );
-                context.type_error("type mismatch", exp.span, expected, actual);
-            }
-            Err(TypeCoercionError::SelfContractType) => {
-                context.add_diagnostic(errors::self_contract_type_error(
-                    exp.span,
-                    &actual.display(context.db()),
-                ));
-            }
-            Ok(_) => {}
+    match try_coerce_type(context, Some(exp), attr.typ, expected, sink) {
+        Err(TypeCoercionError::RequiresToMem) => {
+            context.add_diagnostic(errors::to_mem_error(exp.span));
         }
+        Err(TypeCoercionError::Incompatible) => {
+            context.type_error(
+                "type mismatch",
+                exp.span,
+                expected.deref(context.db()),
+                attr.typ.deref(context.db()),
+            );
+        }
+        Err(TypeCoercionError::SelfContractType) => {
+            context.add_diagnostic(errors::self_contract_type_error(
+                exp.span,
+                &attr.typ.display(context.db()),
+            ));
+        }
+        Ok(_) => {}
     }
-    Ok(())
+    Ok(attr)
 }
 
+// XXX remove?
 pub fn value_expr_type(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
@@ -123,7 +117,7 @@ pub fn error_if_not_bool(
 ) -> Result<(), FatalError> {
     let bool_type = TypeId::bool(context.db());
     let attr = expr(context, exp, Some(bool_type))?;
-    if try_coerce_type(context, Some(exp), attr.typ, bool_type).is_err() {
+    if try_coerce_type(context, Some(exp), attr.typ, bool_type, false).is_err() {
         context.type_error(msg, exp.span, bool_type, attr.typ);
     }
     Ok(())
@@ -149,7 +143,7 @@ fn expr_list(
 
     let inner_type = if let Some(inner) = expected_inner {
         for elt in elts {
-            expect_expr_type(context, elt, inner)?;
+            expect_expr_type(context, elt, inner, true)?;
         }
         inner
     } else {
@@ -159,7 +153,14 @@ fn expr_list(
         // of list.
         for elt in &elts[1..] {
             let element_attributes = expr(context, elt, Some(first_attr.typ))?;
-            match try_coerce_type(context, Some(elt), element_attributes.typ, first_attr.typ) {
+
+            match try_coerce_type(
+                context,
+                Some(elt),
+                element_attributes.typ,
+                first_attr.typ,
+                true,
+            ) {
                 Err(TypeCoercionError::RequiresToMem) => {
                     context.add_diagnostic(errors::to_mem_error(elt.span));
                 }
@@ -358,31 +359,40 @@ fn expr_named_thing(
                         },
                     );
                 }
-                match target {
-                    Item::Type(TypeDef::Struct(s)) => Ok(Type::Struct(s).id(context.db())),
-                    Item::Type(TypeDef::Enum(e)) => Ok(Type::Enum(e).id(context.db())),
-                    Item::Impl(id) => Ok(id.receiver(context.db())),
+
+                let mut self_typ = match target {
+                    Item::Type(TypeDef::Struct(s)) => Type::Struct(s).id(context.db()),
+                    Item::Type(TypeDef::Enum(e)) => Type::Enum(e).id(context.db()),
+                    Item::Impl(id) => id.receiver(context.db()),
+
                     // This can only happen when trait methods can implement a default body
-                    Item::Trait(id) => Err(context.fancy_error(
-                        &format!(
-                            "`{}` is a trait, and can't be used as an expression",
-                            exp.kind
-                        ),
-                        vec![
-                            Label::primary(
-                                id.name_span(context.db()),
-                                &format!("`{}` is defined here as a trait", exp.kind),
+                    Item::Trait(id) => {
+                        return Err(FatalError::new(context.fancy_error(
+                            &format!(
+                                "`{}` is a trait, and can't be used as an expression",
+                                exp.kind
                             ),
-                            Label::primary(
-                                exp.span,
-                                &format!("`{}` is used here as a value", exp.kind),
-                            ),
-                        ],
-                        vec![],
-                    )),
-                    Item::Type(TypeDef::Contract(c)) => Ok(Type::SelfContract(c).id(context.db())),
+                            vec![
+                                Label::primary(
+                                    id.name_span(context.db()),
+                                    &format!("`{}` is defined here as a trait", exp.kind),
+                                ),
+                                Label::primary(
+                                    exp.span,
+                                    &format!("`{}` is used here as a value", exp.kind),
+                                ),
+                            ],
+                            vec![],
+                        )))
+                    }
+                    Item::Type(TypeDef::Contract(c)) => Type::SelfContract(c).id(context.db()),
                     _ => unreachable!(),
+                };
+                // If there's no `self` param, let it be mut to avoid confusing errors
+                if decl.map(|d| d.mut_.is_some()).unwrap_or(true) {
+                    self_typ = Type::Mut(self_typ).id(context.db());
                 }
+                Ok(self_typ)
             } else {
                 Err(context.fancy_error(
                     "`self` can only be used in contract, struct, trait or impl functions",
@@ -629,6 +639,9 @@ fn field_type(
     field_span: Span,
 ) -> Result<TypeId, FatalError> {
     match obj.typ(context.db()) {
+        Type::Mut(inner) => {
+            Ok(Type::Mut(field_type(context, inner, field_name, field_span)?).id(context.db()))
+        }
         Type::SPtr(inner) => {
             Ok(Type::SPtr(field_type(context, inner, field_name, field_span)?).id(context.db()))
         }
@@ -1329,8 +1342,9 @@ fn expr_call_struct_constructor(
     let fields = struct_
         .fields(db)
         .iter()
-        .map(|(name, field)| (name.clone(), field.typ(db)))
+        .map(|(name, field)| (name.clone(), field.typ(db), true))
         .collect::<Vec<_>>();
+
     validate_named_args(context, name, name_span, args, &fields)?;
 
     let struct_type = struct_.as_type(context.db());
@@ -1595,116 +1609,60 @@ fn expr_call_builtin_value_method(
         "argument",
     );
 
+    let ty = value_attrs.typ;
     let calltype = CallType::BuiltinValueMethod {
         method,
         typ: value_attrs.typ,
     };
     match method {
-        ValueMethod::Clone => {
-            match value_attrs.typ.typ(context.db()) {
-                typ if typ.is_base() => {
-                    context.fancy_error(
-                        "`clone()` called on primitive type",
-                        vec![
-                            Label::primary(value.span, "this value does not need to be cloned"),
-                            Label::secondary(method_name.span, "hint: remove `.clone()`"),
-                        ],
-                        vec![],
-                    );
-                }
-
-                Type::SPtr(inner) => {
-                    if inner.is_map(context.db()) {
-                        context.fancy_error(
-                            "`clone()` called on a Map",
-                            vec![
-                                Label::primary(value.span, "Maps can not be cloned"),
-                                Label::secondary(method_name.span, "hint: remove `.clone()`"),
-                            ],
-                            vec![],
-                        );
-                    } else {
-                        context.fancy_error(
-                            "`clone()` called on value in storage",
-                            vec![
-                                Label::primary(value.span, "this value is in storage"),
-                                Label::secondary(method_name.span, "hint: try `to_mem()` here"),
-                            ],
-                            vec![],
-                        );
-                    }
-                    value_attrs.typ = inner;
-                    return Ok((value_attrs, calltype));
-                }
-
-                Type::Generic(_) => {
-                    context.fancy_error(
-                        "`clone()` called on generic type",
-                        vec![
-                            Label::primary(value.span, "this value can not be cloned"),
-                            Label::secondary(method_name.span, "hint: remove `.clone()`"),
-                        ],
-                        vec![],
-                    );
-                }
-                _ => {}
-            }
-            Ok((value_attrs, calltype))
-        }
         ValueMethod::ToMem => {
-            match value_attrs.typ.typ(context.db()) {
-                typ if typ.is_base() => {
+            if ty.is_base(context.db()) {
+                context.fancy_error(
+                    "`to_mem()` called on primitive type",
+                    vec![
+                        Label::primary(
+                            value.span,
+                            "this value does not need to be explicitly copied to memory",
+                        ),
+                        Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                    ],
+                    vec![],
+                );
+            } else if ty.is_sptr(context.db()) {
+                let inner = ty.deref(context.db());
+                if inner.is_map(context.db()) {
                     context.fancy_error(
-                        "`to_mem()` called on primitive type",
+                        "`to_mem()` called on a Map",
                         vec![
-                            Label::primary(
-                                value.span,
-                                "this value does not need to be explicitly copied to memory",
-                            ),
+                            Label::primary(value.span, "Maps can not be copied to memory"),
                             Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
                         ],
                         vec![],
                     );
                 }
-
-                Type::SPtr(inner) => {
-                    if inner.is_map(context.db()) {
-                        context.fancy_error(
-                            "`to_mem()` called on a Map",
-                            vec![
-                                Label::primary(value.span, "Maps can not be copied to memory"),
-                                Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
-                            ],
-                            vec![],
-                        );
-                    }
-                    value_attrs.typ = inner;
-                    return Ok((value_attrs, calltype));
-                }
-
-                Type::Generic(_) => {
-                    context.fancy_error(
-                        "`to_mem()` called on generic type",
-                        vec![
-                            Label::primary(value.span, "this value can not be copied to memory"),
-                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
-                        ],
-                        vec![],
-                    );
-                }
-                _ => {
-                    context.fancy_error(
-                        "`to_mem()` called on value in memory",
-                        vec![
-                            Label::primary(value.span, "this value is already in memory"),
-                            Label::secondary(
-                                method_name.span,
-                                "hint: to make a copy, use `.clone()` here",
-                            ),
-                        ],
-                        vec![],
-                    );
-                }
+                value_attrs.typ = inner;
+                return Ok((value_attrs, calltype));
+            } else if ty.is_generic(context.db()) {
+                context.fancy_error(
+                    "`to_mem()` called on generic type",
+                    vec![
+                        Label::primary(value.span, "this value can not be copied to memory"),
+                        Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                    ],
+                    vec![],
+                );
+            } else {
+                context.fancy_error(
+                    "`to_mem()` called on value in memory",
+                    vec![
+                        Label::primary(value.span, "this value is already in memory"),
+                        Label::secondary(
+                            method_name.span,
+                            "hint: to make a copy, use `.clone()` here",
+                        ),
+                    ],
+                    vec![],
+                );
             }
             Ok((value_attrs, calltype))
         }
@@ -1802,8 +1760,9 @@ fn expr_call_type_attribute(
             for i in 0..arg_count {
                 if let Some(attrs) = arg_attributes.get(i) {
                     if i == 0 {
-                        if let Some(context_type) = context.get_context_type() {
-                            if attrs.typ != context_type {
+                        if let Some(ctx_type) = context.get_context_type() {
+                            // XXX require mut ctx
+                            if attrs.typ != Type::Mut(ctx_type).id(context.db()) {
                                 context.fancy_error(
                                     &format!(
                                         "incorrect type for argument to `{}.{}`",
@@ -1813,7 +1772,7 @@ fn expr_call_type_attribute(
                                     vec![Label::primary(
                                         args.kind[i].span,
                                         format!(
-                                            "this has type `{}`; expected `Context`",
+                                            "this has type `{}`; expected `mut Context`",
                                             &attrs.typ.display(context.db())
                                         ),
                                     )],
@@ -1995,7 +1954,7 @@ fn expr_comp_operation(
     if let fe::Expr::CompOperation { left, op: _, right } = &exp.kind {
         // comparison operands should be moved to the stack
         let left_ty = value_expr_type(context, left, None)?;
-        expect_expr_type(context, right, left_ty)?;
+        expect_expr_type(context, right, left_ty, false)?;
 
         // XXX test: struct < struct, array != array
 
@@ -2024,7 +1983,9 @@ fn expr_ternary(
         // Should have the same return Type
         if if_attr.typ != else_attr.typ {
             let if_expr_ty = deref_type(context, exp, if_attr.typ);
-            if try_coerce_type(context, Some(else_expr), else_attr.typ, if_expr_ty).is_err() {
+
+            if try_coerce_type(context, Some(else_expr), else_attr.typ, if_expr_ty, false).is_err()
+            {
                 context.fancy_error(
                     "`if` and `else` values must have same type",
                     vec![
@@ -2053,8 +2014,8 @@ fn expr_bool_operation(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::BoolOperation { left, op: _, right } = &exp.kind {
         let bool_ty = TypeId::bool(context.db());
-        expect_expr_type(context, left, bool_ty)?;
-        expect_expr_type(context, right, bool_ty)?;
+        expect_expr_type(context, left, bool_ty, false)?;
+        expect_expr_type(context, right, bool_ty, false)?;
         return Ok(ExpressionAttributes::new(bool_ty));
     }
 

@@ -1,5 +1,7 @@
+use crate::builtins::ValueMethod;
 use crate::context::{
-    Adjustment, AdjustmentKind, AnalyzerContext, Constant, ExpressionAttributes, NamedThing,
+    Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
+    NamedThing,
 };
 use crate::display::Displayable;
 use crate::errors::{TypeCoercionError, TypeError};
@@ -14,6 +16,8 @@ use fe_common::Spanned;
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
 
+/// Try to perform an explicit type cast, eg `u256(my_address)` or `address(my_contract)`.
+/// Returns nothing. Emits an error if the cast fails; explicit cast failures are not fatal.
 pub fn try_cast_type(
     context: &mut dyn AnalyzerContext,
     from: TypeId,
@@ -24,22 +28,27 @@ pub fn try_cast_type(
     if into == from {
         return;
     }
-    if from.is_sptr(context.db()) {
-        let from = deref_type(context, from_expr, from);
-        return try_cast_type(context, from, from_expr, into, into_span);
-    }
-
     match (from.typ(context.db()), into.typ(context.db())) {
-        (Type::String(from), Type::String(into)) => {
-            if from.max_size > into.max_size {
+        (Type::SPtr(inner), _) => {
+            adjust_type(context, from_expr, inner, AdjustmentKind::Load);
+            try_cast_type(context, inner, from_expr, into, into_span)
+        }
+
+        (Type::Mut(inner), _) => try_cast_type(context, inner, from_expr, into, into_span),
+
+        (Type::String(from_str), Type::String(into_str)) => {
+            if from_str.max_size > into_str.max_size {
                 context.error(
                     "string capacity exceeded",
                     from_expr.span,
                     &format!(
                         "this string has length {}; expected length <= {}",
-                        from.max_size, into.max_size
+                        from_str.max_size, into_str.max_size
                     ),
                 );
+            } else {
+                // XXX should this be here?
+                adjust_type(context, from_expr, into, AdjustmentKind::StringSizeIncrease);
             }
         }
 
@@ -103,18 +112,16 @@ pub fn try_cast_type(
     };
 }
 
+// XXX assert inner is_primitive?
 pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty: TypeId) -> TypeId {
     match ty.typ(context.db()) {
-        Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::FromStorage),
-        // Type::Mut(inner) => {
-        //     adjust_type(context, expr, inner, AdjustmentKind::DeMut);
-        //     deref_type(context, expr, inner)
-        // }
+        Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::Load),
+        Type::Mut(inner) => deref_type(context, expr, inner),
         _ => ty,
     }
 }
 
-fn adjust_type(
+pub fn adjust_type(
     context: &mut dyn AnalyzerContext,
     expr: &Node<ast::Expr>,
     into: TypeId,
@@ -131,8 +138,9 @@ pub fn try_coerce_type(
     from_expr: Option<&Node<ast::Expr>>,
     from: TypeId,
     into: TypeId,
+    should_copy: bool,
 ) -> Result<TypeId, TypeCoercionError> {
-    let chain = coerce(context, from_expr, from, into, vec![])?;
+    let chain = coerce(context, from_expr, from, into, should_copy, vec![])?;
     if let Some(expr) = from_expr {
         context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
             attr.type_adjustments.extend(chain.iter())
@@ -141,30 +149,49 @@ pub fn try_coerce_type(
     Ok(into)
 }
 
-fn add_adjustment(
-    mut chain: Vec<Adjustment>,
-    into: TypeId,
-    kind: AdjustmentKind,
-) -> Vec<Adjustment> {
-    chain.push(Adjustment { into, kind });
-    chain
-}
-
 fn coerce(
     context: &mut dyn AnalyzerContext,
     from_expr: Option<&Node<ast::Expr>>,
     from: TypeId,
     into: TypeId,
+    should_copy: bool,
     chain: Vec<Adjustment>,
 ) -> Result<Vec<Adjustment>, TypeCoercionError> {
+    let should_copy = should_copy
+        && !into.is_sptr(context.db())
+        && !into.deref(context.db()).is_primitive(context.db())
+        && !from_expr.map(|e| is_temporary(context, e)).unwrap_or(false);
+
     if from == into {
+        let chain = add_adjustment_if(
+            should_copy,
+            chain,
+            from.deref(context.db()),
+            AdjustmentKind::Copy,
+        );
         return Ok(chain);
     }
 
     match (from.typ(context.db()), into.typ(context.db())) {
-        (Type::SPtr(from), Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
+        // XXX insert copy, deref rhs, rm assignment heuristic in codegen?
+        (Type::SPtr(from), Type::SPtr(into)) => {
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        // Strip off any `mut`s.
+        // Fn call `mut` is checked in `fn validate_arg_type`.
+        (Type::Mut(from), Type::Mut(into)) => {
+            let chain = add_adjustment_if(should_copy, chain, into, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (Type::Mut(from), _) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (_, Type::Mut(into)) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
 
-        // XXX LOAD_PRIMITIVE_FROM_STO
         // Primitive types can be moved from storage implicitly.
         // Contract type is also a primitive.
         (Type::SPtr(from_inner), Type::Base(_) | Type::Contract(_)) => coerce(
@@ -172,21 +199,22 @@ fn coerce(
             from_expr,
             from_inner,
             into,
-            add_adjustment(chain, into, AdjustmentKind::FromStorage),
+            false,
+            add_adjustment(chain, from_inner, AdjustmentKind::Load),
         ),
 
-        // XXX STO_TO_MEM?
         // complex types require .to_mem()
         (Type::SPtr(from), _) => {
             // If the inner types are incompatible, report that error instead
-            try_coerce_type(context, from_expr, from, into)?;
+            try_coerce_type(context, from_expr, from, into, false)?;
             Err(TypeCoercionError::RequiresToMem)
         }
 
         // All types can be moved into storage implicitly.
         // Note that no `Adjustment` is added here.
-        (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, chain),
+        (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, false, chain),
 
+        // XXX handle should_copy
         (
             Type::String(FeString { max_size: from_sz }),
             Type::String(FeString { max_size: into_sz }),
@@ -222,7 +250,7 @@ fn coerce(
                         .iter()
                         .zip(ftup.items.iter().zip(itup.items.iter()))
                         .map(|(elt, (from, into))| {
-                            try_coerce_type(context, Some(elt), *from, *into).is_ok()
+                            try_coerce_type(context, Some(elt), *from, *into, should_copy).is_ok()
                         })
                         .all(|x| x)
                 {
@@ -235,7 +263,7 @@ fn coerce(
             Err(TypeCoercionError::Incompatible)
         }
 
-        // XXX
+        // XXX check?
         (Type::Base(Base::Numeric(f)), Type::Base(Base::Numeric(i))) => {
             if f.is_signed() == i.is_signed() && i.size() > f.size() {
                 Ok(add_adjustment(chain, into, AdjustmentKind::IntSizeIncrease))
@@ -244,6 +272,44 @@ fn coerce(
             }
         }
         (_, _) => Err(TypeCoercionError::Incompatible),
+    }
+}
+
+#[must_use]
+fn add_adjustment(
+    mut chain: Vec<Adjustment>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> Vec<Adjustment> {
+    chain.push(Adjustment { into, kind });
+    chain
+}
+
+#[must_use]
+fn add_adjustment_if(
+    test: bool,
+    mut chain: Vec<Adjustment>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> Vec<Adjustment> {
+    if test {
+        chain.push(Adjustment { into, kind });
+    }
+    chain
+}
+
+fn is_temporary(context: &dyn AnalyzerContext, expr: &Node<ast::Expr>) -> bool {
+    match &expr.kind {
+        ast::Expr::Tuple { .. } | ast::Expr::List { .. } | ast::Expr::Repeat { .. } => true,
+        ast::Expr::Call { func, .. } => matches!(
+            context.get_call(func),
+            Some(CallType::TypeConstructor(_))
+                | Some(CallType::BuiltinValueMethod {
+                    method: ValueMethod::ToMem | ValueMethod::AbiEncode,
+                    ..
+                })
+        ),
+        _ => false,
     }
 }
 

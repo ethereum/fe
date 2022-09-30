@@ -50,16 +50,16 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:25:5
    │  
-25 │ ╭     pub fn set_my_addrs(self, my_addrs: Array<address, 5>) {
+25 │ ╭     pub fn set_my_addrs(mut self, my_addrs: Array<address, 5>) {
 26 │ │         self.my_addrs = my_addrs
 27 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_addrs, typ: Array<address, 5> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_addrs, typ: Array<address, 5> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:26:9
    │
 26 │         self.my_addrs = my_addrs
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:26:9
@@ -67,7 +67,7 @@ note:
 26 │         self.my_addrs = my_addrs
    │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<address, 5>
    │         │                
-   │         SPtr<Array<address, 5>>
+   │         mut SPtr<Array<address, 5>>
 
 note: 
    ┌─ abi_encoding_stress.fe:29:5
@@ -75,7 +75,7 @@ note:
 29 │ ╭     pub fn get_my_addrs(self) -> Array<address, 5> {
 30 │ │         return self.my_addrs.to_mem()
 31 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> Array<address, 5>
+   │ ╰─────^ params: [self] -> Array<address, 5>
 
 note: 
    ┌─ abi_encoding_stress.fe:30:16
@@ -98,16 +98,16 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:33:5
    │  
-33 │ ╭     pub fn set_my_u128(self, my_u128: u128) {
+33 │ ╭     pub fn set_my_u128(mut self, my_u128: u128) {
 34 │ │         self.my_u128 = my_u128
 35 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_u128, typ: u128 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_u128, typ: u128 }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:34:9
    │
 34 │         self.my_u128 = my_u128
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:34:9
@@ -115,7 +115,7 @@ note:
 34 │         self.my_u128 = my_u128
    │         ^^^^^^^^^^^^   ^^^^^^^ u128
    │         │               
-   │         SPtr<u128>
+   │         mut SPtr<u128>
 
 note: 
    ┌─ abi_encoding_stress.fe:37:5
@@ -123,7 +123,7 @@ note:
 37 │ ╭     pub fn get_my_u128(self) -> u128 {
 38 │ │         return self.my_u128
 39 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u128
+   │ ╰─────^ params: [self] -> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:38:16
@@ -135,21 +135,21 @@ note:
    ┌─ abi_encoding_stress.fe:38:16
    │
 38 │         return self.my_u128
-   │                ^^^^^^^^^^^^ SPtr<u128> -> u128
+   │                ^^^^^^^^^^^^ SPtr<u128> -Load-> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:41:5
    │  
-41 │ ╭     pub fn set_my_string(self, my_string: String<10>) {
+41 │ ╭     pub fn set_my_string(mut self, my_string: String<10>) {
 42 │ │         self.my_string = my_string
 43 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_string, typ: String<10> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_string, typ: String<10> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:42:9
    │
 42 │         self.my_string = my_string
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:42:9
@@ -157,7 +157,7 @@ note:
 42 │         self.my_string = my_string
    │         ^^^^^^^^^^^^^^   ^^^^^^^^^ String<10>
    │         │                 
-   │         SPtr<String<10>>
+   │         mut SPtr<String<10>>
 
 note: 
    ┌─ abi_encoding_stress.fe:45:5
@@ -165,7 +165,7 @@ note:
 45 │ ╭     pub fn get_my_string(self) -> String<10> {
 46 │ │         return self.my_string.to_mem()
 47 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> String<10>
+   │ ╰─────^ params: [self] -> String<10>
 
 note: 
    ┌─ abi_encoding_stress.fe:46:16
@@ -188,16 +188,16 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:49:5
    │  
-49 │ ╭     pub fn set_my_u16s(self, my_u16s: Array<u16, 255>) {
+49 │ ╭     pub fn set_my_u16s(mut self, my_u16s: Array<u16, 255>) {
 50 │ │         self.my_u16s = my_u16s
 51 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_u16s, typ: Array<u16, 255> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_u16s, typ: Array<u16, 255> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:50:9
    │
 50 │         self.my_u16s = my_u16s
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:50:9
@@ -205,7 +205,7 @@ note:
 50 │         self.my_u16s = my_u16s
    │         ^^^^^^^^^^^^   ^^^^^^^ Array<u16, 255>
    │         │               
-   │         SPtr<Array<u16, 255>>
+   │         mut SPtr<Array<u16, 255>>
 
 note: 
    ┌─ abi_encoding_stress.fe:53:5
@@ -213,7 +213,7 @@ note:
 53 │ ╭     pub fn get_my_u16s(self) -> Array<u16, 255> {
 54 │ │         return self.my_u16s.to_mem()
 55 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u16, 255>
+   │ ╰─────^ params: [self] -> Array<u16, 255>
 
 note: 
    ┌─ abi_encoding_stress.fe:54:16
@@ -236,16 +236,16 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:57:5
    │  
-57 │ ╭     pub fn set_my_bool(self, my_bool: bool) {
+57 │ ╭     pub fn set_my_bool(mut self, my_bool: bool) {
 58 │ │         self.my_bool = my_bool
 59 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_bool, typ: bool }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_bool, typ: bool }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:58:9
    │
 58 │         self.my_bool = my_bool
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:58:9
@@ -253,7 +253,7 @@ note:
 58 │         self.my_bool = my_bool
    │         ^^^^^^^^^^^^   ^^^^^^^ bool
    │         │               
-   │         SPtr<bool>
+   │         mut SPtr<bool>
 
 note: 
    ┌─ abi_encoding_stress.fe:61:5
@@ -261,7 +261,7 @@ note:
 61 │ ╭     pub fn get_my_bool(self) -> bool {
 62 │ │         return self.my_bool
 63 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> bool
+   │ ╰─────^ params: [self] -> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:62:16
@@ -273,21 +273,21 @@ note:
    ┌─ abi_encoding_stress.fe:62:16
    │
 62 │         return self.my_bool
-   │                ^^^^^^^^^^^^ SPtr<bool> -> bool
+   │                ^^^^^^^^^^^^ SPtr<bool> -Load-> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:65:5
    │  
-65 │ ╭     pub fn set_my_bytes(self, my_bytes: Array<u8, 100>) {
+65 │ ╭     pub fn set_my_bytes(mut self, my_bytes: Array<u8, 100>) {
 66 │ │         self.my_bytes = my_bytes
 67 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:66:9
    │
 66 │         self.my_bytes = my_bytes
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ abi_encoding_stress.fe:66:9
@@ -295,7 +295,7 @@ note:
 66 │         self.my_bytes = my_bytes
    │         ^^^^^^^^^^^^^   ^^^^^^^^ Array<u8, 100>
    │         │                
-   │         SPtr<Array<u8, 100>>
+   │         mut SPtr<Array<u8, 100>>
 
 note: 
    ┌─ abi_encoding_stress.fe:69:5
@@ -303,7 +303,7 @@ note:
 69 │ ╭     pub fn get_my_bytes(self) -> Array<u8, 100> {
 70 │ │         return self.my_bytes.to_mem()
 71 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u8, 100>
+   │ ╰─────^ params: [self] -> Array<u8, 100>
 
 note: 
    ┌─ abi_encoding_stress.fe:70:16
@@ -329,7 +329,7 @@ note:
 73 │ ╭     pub fn get_my_struct() -> MyStruct {
 74 │ │         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
 75 │ │     }
-   │ ╰─────^ self: None, params: [] -> MyStruct
+   │ ╰─────^ params: [] -> MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:74:33
@@ -363,20 +363,20 @@ note:
 note: 
    ┌─ abi_encoding_stress.fe:77:5
    │  
-77 │ ╭     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct {
+77 │ ╭     pub fn mod_my_struct(mut my_struct: MyStruct) -> MyStruct {
 78 │ │         my_struct.my_num = 12341234
 79 │ │         my_struct.my_num2 = u8(42)
 80 │ │         my_struct.my_bool = false
 81 │ │         my_struct.my_addr = address(9999)
 82 │ │         return my_struct
 83 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: my_struct, typ: MyStruct }] -> MyStruct
+   │ ╰─────^ params: [{ label: None, name: my_struct, typ: mut MyStruct }] -> MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:78:9
    │
 78 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^ MyStruct
+   │         ^^^^^^^^^ mut MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:78:9
@@ -384,9 +384,9 @@ note:
 78 │         my_struct.my_num = 12341234
    │         ^^^^^^^^^^^^^^^^   ^^^^^^^^ u256
    │         │                   
-   │         u256
+   │         mut u256
 79 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^ MyStruct
+   │         ^^^^^^^^^ mut MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:79:9
@@ -394,7 +394,7 @@ note:
 79 │         my_struct.my_num2 = u8(42)
    │         ^^^^^^^^^^^^^^^^^      ^^ u8
    │         │                       
-   │         u8
+   │         mut u8
 
 note: 
    ┌─ abi_encoding_stress.fe:79:29
@@ -402,7 +402,7 @@ note:
 79 │         my_struct.my_num2 = u8(42)
    │                             ^^^^^^ u8
 80 │         my_struct.my_bool = false
-   │         ^^^^^^^^^ MyStruct
+   │         ^^^^^^^^^ mut MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:80:9
@@ -410,9 +410,9 @@ note:
 80 │         my_struct.my_bool = false
    │         ^^^^^^^^^^^^^^^^^   ^^^^^ bool
    │         │                    
-   │         bool
+   │         mut bool
 81 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^ MyStruct
+   │         ^^^^^^^^^ mut MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:81:9
@@ -420,7 +420,7 @@ note:
 81 │         my_struct.my_addr = address(9999)
    │         ^^^^^^^^^^^^^^^^^           ^^^^ u256
    │         │                            
-   │         address
+   │         mut address
 
 note: 
    ┌─ abi_encoding_stress.fe:81:29
@@ -428,15 +428,15 @@ note:
 81 │         my_struct.my_addr = address(9999)
    │                             ^^^^^^^^^^^^^ address
 82 │         return my_struct
-   │                ^^^^^^^^^ MyStruct
+   │                ^^^^^^^^^ mut MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:85:5
    │  
-85 │ ╭     pub fn emit_my_event(self, ctx: Context) {
+85 │ ╭     pub fn emit_my_event(self, mut ctx: Context) {
 86 │ │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
 87 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [self, { label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ abi_encoding_stress.fe:86:9
@@ -444,7 +444,7 @@ note:
 86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
    │         ^^^                        ^^^^ Foo
    │         │                           
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ abi_encoding_stress.fe:86:36
@@ -466,7 +466,7 @@ note:
 86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
    │                                                                     ^^^^^^^^^^^^             ^^^^ Foo
    │                                                                     │                         
-   │                                                                     SPtr<u128> -> u128
+   │                                                                     SPtr<u128> -Load-> u128
 
 note: 
    ┌─ abi_encoding_stress.fe:86:94
@@ -502,7 +502,7 @@ note:
 86 │         ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
    │                                                                                                                                                                ^^^^^^^^^^^^            ^^^^ Foo
    │                                                                                                                                                                │                        
-   │                                                                                                                                                                SPtr<bool> -> bool
+   │                                                                                                                                                                SPtr<bool> -Load-> bool
 
 note: 
    ┌─ abi_encoding_stress.fe:86:184

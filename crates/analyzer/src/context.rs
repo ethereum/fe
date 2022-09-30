@@ -146,6 +146,7 @@ pub trait AnalyzerContext {
     /// Panics if a context is not in a function. Use [`Self::is_in_function`]
     /// to determine whether a context is in a function.
     fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType);
+    fn get_call(&self, node: &Node<ast::Expr>) -> Option<CallType>;
 
     /// Returns `true` if the context is in function scope.
     fn is_in_function(&self) -> bool;
@@ -362,6 +363,10 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't add call");
     }
 
+    fn get_call(&self, _node: &Node<ast::Expr>) -> Option<CallType> {
+        panic!("TempContext can't have calls");
+    }
+
     fn is_in_function(&self) -> bool {
         false
     }
@@ -419,8 +424,9 @@ pub struct Adjustment {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AdjustmentKind {
-    FromStorage,
-    // DeMut,
+    Copy,
+    /// Load from storage ptr
+    Load,
     IntSizeIncrease,
     StringSizeIncrease,
 }
@@ -447,7 +453,7 @@ impl crate::display::DisplayWithDb for ExpressionAttributes {
             write!(f, " = {:?}", val)?;
         }
         for adj in type_adjustments {
-            write!(f, " -> {}", adj.into.display(db))?;
+            write!(f, " -{:?}-> {}", adj.kind, adj.into.display(db))?;
         }
         Ok(())
     }

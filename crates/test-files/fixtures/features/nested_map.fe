@@ -6,7 +6,7 @@ contract Foo {
         return self.bar[a][b]
     }
 
-    pub fn write_bar(self, a: address, b: address, value: u256) {
+    pub fn write_bar(mut self, a: address, b: address, value: u256) {
         self.bar[a][b] = value
     }
 
@@ -14,7 +14,7 @@ contract Foo {
         return self.baz[a][b]
     }
 
-    pub fn write_baz(self, a: address, b: u256, value: bool) {
+    pub fn write_baz(mut self, a: address, b: u256, value: bool) {
         self.baz[a][b] = value
     }
 }

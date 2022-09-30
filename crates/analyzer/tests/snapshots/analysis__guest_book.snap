@@ -18,20 +18,20 @@ note:
 note: 
    ┌─ guest_book.fe:14:5
    │  
-14 │ ╭     pub fn sign(self, ctx: Context, book_msg: String<100>) {
+14 │ ╭     pub fn sign(mut self, ctx: Context, book_msg: String<100>) {
 15 │ │         // All storage access is explicit using `self.<some-key>`
 16 │ │         self.messages[ctx.msg_sender()] = book_msg
 17 │ │ 
 18 │ │         // Emit the `Signed` event.
 19 │ │         ctx.emit(Signed(book_msg))
 20 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
 
 note: 
    ┌─ guest_book.fe:16:9
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │         ^^^^ GuestBook
+   │         ^^^^ mut GuestBook
 
 note: 
    ┌─ guest_book.fe:16:9
@@ -39,7 +39,7 @@ note:
 16 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^^^^^^^^^^ ^^^ Context
    │         │              
-   │         SPtr<Map<address, String<100>>>
+   │         mut SPtr<Map<address, String<100>>>
 
 note: 
    ┌─ guest_book.fe:16:23
@@ -53,10 +53,10 @@ note:
 16 │         self.messages[ctx.msg_sender()] = book_msg
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>
    │         │                                  
-   │         SPtr<String<100>>
+   │         mut SPtr<String<100>>
    ·
 19 │         ctx.emit(Signed(book_msg))
-   │         ^^^             ^^^^^^^^ String<100>
+   │         ^^^             ^^^^^^^^ String<100> -Copy-> String<100>
    │         │                
    │         Context
 
@@ -80,7 +80,7 @@ note:
 24 │ │         // has to be done explicitly via `to_mem()`
 25 │ │         return self.messages[addr].to_mem()
 26 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: addr, typ: address }] -> String<100>
+   │ ╰─────^ params: [self, { label: None, name: addr, typ: address }] -> String<100>
 
 note: 
    ┌─ guest_book.fe:25:16

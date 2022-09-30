@@ -1,6 +1,7 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(stmt_match), functions::parse_stmt,\n    r#\"match my_enum {\n    MyEnum::Unit => {\n        return 0\n    }\n    MyEnum::Tuple(x, y) => {\n        let sum: i32 = x + y;\n        return sum\n    }\n    _ => {\n        return -1\n    }\n}\"#)"
+
 ---
 Node(
   kind: Match(
@@ -149,6 +150,7 @@ Node(
           body: [
             Node(
               kind: VarDecl(
+                mut_: None,
                 target: Node(
                   kind: Name("sum"),
                   span: Span(

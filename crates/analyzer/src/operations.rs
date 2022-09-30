@@ -1,6 +1,7 @@
 use crate::context::AnalyzerContext;
 use crate::errors::{BinaryOperationError, IndexingError};
 use crate::namespace::types::{Array, Integer, Map, Type, TypeDowncast, TypeId};
+
 use crate::traversal::types::{deref_type, try_coerce_type};
 use fe_parser::{ast as fe, node::Node};
 
@@ -56,7 +57,7 @@ fn index_array(
     index_expr: &Node<fe::Expr>,
 ) -> Result<TypeId, IndexingError> {
     let u256 = Type::u256().id(context.db());
-    if try_coerce_type(context, Some(index_expr), index, u256).is_err() {
+    if try_coerce_type(context, Some(index_expr), index, u256, false).is_err() {
         return Err(IndexingError::WrongIndexType);
     }
 
@@ -70,7 +71,8 @@ fn index_map(
     index_expr: &Node<fe::Expr>,
 ) -> Result<TypeId, IndexingError> {
     let Map { key, value } = map;
-    if try_coerce_type(context, Some(index_expr), index, *key).is_err() {
+
+    if try_coerce_type(context, Some(index_expr), index, *key, false).is_err() {
         return Err(IndexingError::WrongIndexType);
     }
     Ok(*value)
@@ -120,7 +122,7 @@ fn bin_arithmetic(
 ) -> Result<TypeId, BinaryOperationError> {
     // For now, we require that the types be numeric, have the same signedness,
     // and that left.size() >= right.size(). (The rules imposed by try_coerce_type)
-    if try_coerce_type(context, Some(right_expr), right, left).is_ok() {
+    if try_coerce_type(context, Some(right_expr), right, left, false).is_ok() {
         // TODO: loosen up arightmetic type rules.
         // The rules should be:
         // - Any combination of numeric types can be operated on.

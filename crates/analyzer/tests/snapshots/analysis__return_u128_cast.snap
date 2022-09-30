@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> u128 {
 3 │ │         return u128(42)
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> u128
+  │ ╰─────^ params: [] -> u128
 
 note: 
   ┌─ return_u128_cast.fe:3:21

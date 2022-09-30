@@ -7,6 +7,6 @@ error: incorrect type for argument to `Barn.create`
   ┌─ compile_errors/ctx_builtins_param_incorrect_type.fe:7:46
   │
 7 │         let created_barn: Barn = Barn.create(address(26), 0)
-  │                                              ^^^^^^^^^^^ this has type `address`; expected `Context`
+  │                                              ^^^^^^^^^^^ this has type `address`; expected `mut Context`
 
 

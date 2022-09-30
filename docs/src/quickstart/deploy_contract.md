@@ -38,7 +38,7 @@ Let's recall that we finished our guest book in the previous chapter with the fo
 contract GuestBook {
   messages: Map<address, String<100>>
 
-  pub fn sign(self, ctx: Context, book_msg: String<100>) {
+  pub fn sign(mut self, ctx: Context, book_msg: String<100>) {
     self.messages[ctx.msg_sender()] = book_msg
   }
 

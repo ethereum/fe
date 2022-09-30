@@ -47,7 +47,7 @@ note:
 32 │ ╭     pub fn name(self) -> String<100> {
 33 │ │         return self._name.to_mem()
 34 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> String<100>
+   │ ╰─────^ params: [self] -> String<100>
 
 note: 
    ┌─ erc20_token.fe:33:16
@@ -73,7 +73,7 @@ note:
 36 │ ╭     pub fn symbol(self) -> String<100> {
 37 │ │         return self._symbol.to_mem()
 38 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> String<100>
+   │ ╰─────^ params: [self] -> String<100>
 
 note: 
    ┌─ erc20_token.fe:37:16
@@ -99,7 +99,7 @@ note:
 40 │ ╭     pub fn decimals(self) -> u8 {
 41 │ │         return self._decimals
 42 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u8
+   │ ╰─────^ params: [self] -> u8
 
 note: 
    ┌─ erc20_token.fe:41:16
@@ -111,7 +111,7 @@ note:
    ┌─ erc20_token.fe:41:16
    │
 41 │         return self._decimals
-   │                ^^^^^^^^^^^^^^ SPtr<u8> -> u8
+   │                ^^^^^^^^^^^^^^ SPtr<u8> -Load-> u8
 
 note: 
    ┌─ erc20_token.fe:44:5
@@ -119,7 +119,7 @@ note:
 44 │ ╭     pub fn totalSupply(self) -> u256 {
 45 │ │         return self._total_supply
 46 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
    ┌─ erc20_token.fe:45:16
@@ -131,7 +131,7 @@ note:
    ┌─ erc20_token.fe:45:16
    │
 45 │         return self._total_supply
-   │                ^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                ^^^^^^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:48:5
@@ -139,7 +139,7 @@ note:
 48 │ ╭     pub fn balanceOf(self, _ account: address) -> u256 {
 49 │ │         return self._balances[account]
 50 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: account, typ: address }] -> u256
+   │ ╰─────^ params: [self, { label: Some("_"), name: account, typ: address }] -> u256
 
 note: 
    ┌─ erc20_token.fe:49:16
@@ -159,25 +159,25 @@ note:
    ┌─ erc20_token.fe:49:16
    │
 49 │         return self._balances[account]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:52:5
    │  
-52 │ ╭     pub fn transfer(self, ctx: Context, recipient: address, value: u256) -> bool {
+52 │ ╭     pub fn transfer(mut self, mut ctx: Context, recipient: address, value: u256) -> bool {
 53 │ │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
 54 │ │         return true
 55 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:53:9
    │
 53 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
-   │         ^^^^           ^^^          ^^^ Context
+   │         ^^^^           ^^^          ^^^ mut Context
    │         │              │             
-   │         │              Context
-   │         ERC20
+   │         │              mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:53:37
@@ -202,7 +202,7 @@ note:
 57 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256 {
 58 │ │         return self._allowances[owner][spender]
 59 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }] -> u256
+   │ ╰─────^ params: [self, { label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }] -> u256
 
 note: 
    ┌─ erc20_token.fe:58:16
@@ -230,25 +230,25 @@ note:
    ┌─ erc20_token.fe:58:16
    │
 58 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:61:5
    │  
-61 │ ╭     pub fn approve(self, ctx: Context, spender: address, value: u256) -> bool {
+61 │ ╭     pub fn approve(mut self, mut ctx: Context, spender: address, value: u256) -> bool {
 62 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
 63 │ │         return true
 64 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:62:9
    │
 62 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
-   │         ^^^^          ^^^         ^^^ Context
+   │         ^^^^          ^^^         ^^^ mut Context
    │         │             │            
-   │         │             Context
-   │         ERC20
+   │         │             mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:62:35
@@ -270,19 +270,19 @@ note:
 note: 
    ┌─ erc20_token.fe:66:5
    │  
-66 │ ╭     pub fn transferFrom(self, ctx: Context, sender: address, recipient: address, value: u256) -> bool {
+66 │ ╭     pub fn transferFrom(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) -> bool {
 67 │ │         assert self._allowances[sender][ctx.msg_sender()] >= value
 68 │ │         self._transfer(ctx, sender, recipient, value)
 69 │ │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
 70 │ │         return true
 71 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^ ERC20
+   │                ^^^^ mut ERC20
 
 note: 
    ┌─ erc20_token.fe:67:16
@@ -290,15 +290,15 @@ note:
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
    │                ^^^^^^^^^^^^^^^^ ^^^^^^ address
    │                │                 
-   │                SPtr<Map<address, Map<address, u256>>>
+   │                mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ mut Context
    │                │                         
-   │                SPtr<Map<address, u256>>
+   │                mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:67:41
@@ -312,7 +312,7 @@ note:
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^ u256
    │                │                                              
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:67:16
@@ -324,8 +324,8 @@ note:
    │         │              │    │       │           
    │         │              │    │       address
    │         │              │    address
-   │         │              Context
-   │         ERC20
+   │         │              mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:68:9
@@ -333,17 +333,17 @@ note:
 68 │         self._transfer(ctx, sender, recipient, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │         ^^^^          ^^^         ^^^^^^           ^^^ Context
+   │         ^^^^          ^^^         ^^^^^^           ^^^ mut Context
    │         │             │           │                 
    │         │             │           address
-   │         │             Context
-   │         ERC20
+   │         │             mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:69:52
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                    ^^^^^^^^^^^^^^^^         ^^^^ ERC20
+   │                                                    ^^^^^^^^^^^^^^^^         ^^^^ mut ERC20
    │                                                    │                         
    │                                                    address
 
@@ -353,15 +353,15 @@ note:
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
    │                                                                             ^^^^^^^^^^^^^^^^ ^^^^^^ address
    │                                                                             │                 
-   │                                                                             SPtr<Map<address, Map<address, u256>>>
+   │                                                                             mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:69:77
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ mut Context
    │                                                                             │                         
-   │                                                                             SPtr<Map<address, u256>>
+   │                                                                             mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:69:102
@@ -375,7 +375,7 @@ note:
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
    │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                                                             │                                             
-   │                                                                             SPtr<u256> -> u256
+   │                                                                             mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:69:77
@@ -394,26 +394,26 @@ note:
 note: 
    ┌─ erc20_token.fe:73:5
    │  
-73 │ ╭     pub fn increaseAllowance(self, ctx: Context, spender: address, addedValue: u256) -> bool {
+73 │ ╭     pub fn increaseAllowance(mut self, mut ctx: Context, spender: address, addedValue: u256) -> bool {
 74 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
 75 │ │         return true
 76 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: addedValue, typ: u256 }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: spender, typ: address }, { label: None, name: addedValue, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:74:9
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │         ^^^^          ^^^         ^^^ Context
+   │         ^^^^          ^^^         ^^^ mut Context
    │         │             │            
-   │         │             Context
-   │         ERC20
+   │         │             mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:74:35
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ mut ERC20
    │                                   │                 │                
    │                                   │                 address
    │                                   address
@@ -422,9 +422,9 @@ note:
    ┌─ erc20_token.fe:74:69
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ mut Context
    │                                                                     │                 
-   │                                                                     SPtr<Map<address, Map<address, u256>>>
+   │                                                                     mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:74:86
@@ -438,7 +438,7 @@ note:
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                                                     │                                   
-   │                                                                     SPtr<Map<address, u256>>
+   │                                                                     mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:74:69
@@ -446,7 +446,7 @@ note:
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     SPtr<u256> -> u256
+   │                                                                     mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:74:69
@@ -465,26 +465,26 @@ note:
 note: 
    ┌─ erc20_token.fe:78:5
    │  
-78 │ ╭     pub fn decreaseAllowance(self, ctx: Context, spender: address, subtractedValue: u256) -> bool {
+78 │ ╭     pub fn decreaseAllowance(mut self, mut ctx: Context, spender: address, subtractedValue: u256) -> bool {
 79 │ │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
 80 │ │         return true
 81 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: spender, typ: address }, { label: None, name: subtractedValue, typ: u256 }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: spender, typ: address }, { label: None, name: subtractedValue, typ: u256 }] -> bool
 
 note: 
    ┌─ erc20_token.fe:79:9
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │         ^^^^          ^^^         ^^^ Context
+   │         ^^^^          ^^^         ^^^ mut Context
    │         │             │            
-   │         │             Context
-   │         ERC20
+   │         │             mut Context
+   │         mut ERC20
 
 note: 
    ┌─ erc20_token.fe:79:35
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ mut ERC20
    │                                   │                 │                
    │                                   │                 address
    │                                   address
@@ -493,9 +493,9 @@ note:
    ┌─ erc20_token.fe:79:69
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ mut Context
    │                                                                     │                 
-   │                                                                     SPtr<Map<address, Map<address, u256>>>
+   │                                                                     mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:79:86
@@ -509,7 +509,7 @@ note:
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                                                     │                                   
-   │                                                                     SPtr<Map<address, u256>>
+   │                                                                     mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:79:69
@@ -517,7 +517,7 @@ note:
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
    │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     SPtr<u256> -> u256
+   │                                                                     mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:79:69
@@ -536,14 +536,14 @@ note:
 note: 
    ┌─ erc20_token.fe:83:5
    │  
-83 │ ╭     fn _transfer(self, ctx: Context, sender: address, recipient: address, value: u256) {
+83 │ ╭     fn _transfer(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) {
 84 │ │         assert sender != address(0)
 85 │ │         assert recipient != address(0)
 86 │ │         _before_token_transfer(from: sender, to: recipient, value)
    · │
 89 │ │         ctx.emit(Transfer(from: sender, to: recipient, value))
 90 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: sender, typ: address }, { label: None, name: recipient, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ erc20_token.fe:84:16
@@ -592,7 +592,7 @@ note:
 86 │         _before_token_transfer(from: sender, to: recipient, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 87 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^ ERC20
+   │         ^^^^ mut ERC20
 
 note: 
    ┌─ erc20_token.fe:87:9
@@ -600,15 +600,15 @@ note:
 87 │         self._balances[sender] = self._balances[sender] - value
    │         ^^^^^^^^^^^^^^ ^^^^^^ address
    │         │               
-   │         SPtr<Map<address, u256>>
+   │         mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:87:9
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+   │         ^^^^^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
    │         │                         
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:87:34
@@ -616,7 +616,7 @@ note:
 87 │         self._balances[sender] = self._balances[sender] - value
    │                                  ^^^^^^^^^^^^^^ ^^^^^^ address
    │                                  │               
-   │                                  SPtr<Map<address, u256>>
+   │                                  mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:87:34
@@ -624,7 +624,7 @@ note:
 87 │         self._balances[sender] = self._balances[sender] - value
    │                                  ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                  │                         
-   │                                  SPtr<u256> -> u256
+   │                                  mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:87:34
@@ -632,7 +632,7 @@ note:
 87 │         self._balances[sender] = self._balances[sender] - value
    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^ ERC20
+   │         ^^^^ mut ERC20
 
 note: 
    ┌─ erc20_token.fe:88:9
@@ -640,15 +640,15 @@ note:
 88 │         self._balances[recipient] = self._balances[recipient] + value
    │         ^^^^^^^^^^^^^^ ^^^^^^^^^ address
    │         │               
-   │         SPtr<Map<address, u256>>
+   │         mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:88:9
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
    │         │                            
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:88:37
@@ -656,7 +656,7 @@ note:
 88 │         self._balances[recipient] = self._balances[recipient] + value
    │                                     ^^^^^^^^^^^^^^ ^^^^^^^^^ address
    │                                     │               
-   │                                     SPtr<Map<address, u256>>
+   │                                     mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:88:37
@@ -664,7 +664,7 @@ note:
 88 │         self._balances[recipient] = self._balances[recipient] + value
    │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                     │                            
-   │                                     SPtr<u256> -> u256
+   │                                     mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:88:37
@@ -676,7 +676,7 @@ note:
    │         │                       │           │           
    │         │                       │           address
    │         │                       address
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ erc20_token.fe:89:18
@@ -693,14 +693,14 @@ note:
 note: 
    ┌─ erc20_token.fe:92:5
    │  
-92 │ ╭     fn _mint(self, ctx: Context, account: address, value: u256) {
+92 │ ╭     fn _mint(mut self, mut ctx: Context, account: address, value: u256) {
 93 │ │         assert account != address(0)
 94 │ │         _before_token_transfer(from: address(0), to: account, value)
 95 │ │         self._total_supply = self._total_supply + value
 96 │ │         self._balances[account] = self._balances[account] + value
 97 │ │         ctx.emit(Transfer(from: address(0), to: account, value))
 98 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ erc20_token.fe:93:16
@@ -739,15 +739,15 @@ note:
 94 │         _before_token_transfer(from: address(0), to: account, value)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 95 │         self._total_supply = self._total_supply + value
-   │         ^^^^ ERC20
+   │         ^^^^ mut ERC20
 
 note: 
    ┌─ erc20_token.fe:95:9
    │
 95 │         self._total_supply = self._total_supply + value
-   │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+   │         ^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
    │         │                     
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:95:30
@@ -755,7 +755,7 @@ note:
 95 │         self._total_supply = self._total_supply + value
    │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                              │                     
-   │                              SPtr<u256> -> u256
+   │                              mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:95:30
@@ -763,7 +763,7 @@ note:
 95 │         self._total_supply = self._total_supply + value
    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 96 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^ ERC20
+   │         ^^^^ mut ERC20
 
 note: 
    ┌─ erc20_token.fe:96:9
@@ -771,15 +771,15 @@ note:
 96 │         self._balances[account] = self._balances[account] + value
    │         ^^^^^^^^^^^^^^ ^^^^^^^ address
    │         │               
-   │         SPtr<Map<address, u256>>
+   │         mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:96:9
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+   │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
    │         │                          
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:96:35
@@ -787,7 +787,7 @@ note:
 96 │         self._balances[account] = self._balances[account] + value
    │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                   │               
-   │                                   SPtr<Map<address, u256>>
+   │                                   mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:96:35
@@ -795,7 +795,7 @@ note:
 96 │         self._balances[account] = self._balances[account] + value
    │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                   │                          
-   │                                   SPtr<u256> -> u256
+   │                                   mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ erc20_token.fe:96:35
@@ -805,7 +805,7 @@ note:
 97 │         ctx.emit(Transfer(from: address(0), to: account, value))
    │         ^^^                             ^ u256
    │         │                                
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ erc20_token.fe:97:33
@@ -831,14 +831,14 @@ note:
 note: 
     ┌─ erc20_token.fe:100:5
     │  
-100 │ ╭     fn _burn(self, ctx: Context, account: address, value: u256) {
+100 │ ╭     fn _burn(mut self, mut ctx: Context, account: address, value: u256) {
 101 │ │         assert account != address(0)
 102 │ │         _before_token_transfer(from: account, to: address(0), value)
 103 │ │         self._balances[account] = self._balances[account] - value
 104 │ │         self._total_supply = self._total_supply - value
 105 │ │         ctx.emit(Transfer(from: account, to: address(0), value))
 106 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+    │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: account, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
     ┌─ erc20_token.fe:101:16
@@ -878,7 +878,7 @@ note:
 102 │         _before_token_transfer(from: account, to: address(0), value)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 103 │         self._balances[account] = self._balances[account] - value
-    │         ^^^^ ERC20
+    │         ^^^^ mut ERC20
 
 note: 
     ┌─ erc20_token.fe:103:9
@@ -886,15 +886,15 @@ note:
 103 │         self._balances[account] = self._balances[account] - value
     │         ^^^^^^^^^^^^^^ ^^^^^^^ address
     │         │               
-    │         SPtr<Map<address, u256>>
+    │         mut SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:103:9
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+    │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
     │         │                          
-    │         SPtr<u256>
+    │         mut SPtr<u256>
 
 note: 
     ┌─ erc20_token.fe:103:35
@@ -902,7 +902,7 @@ note:
 103 │         self._balances[account] = self._balances[account] - value
     │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address
     │                                   │               
-    │                                   SPtr<Map<address, u256>>
+    │                                   mut SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:103:35
@@ -910,7 +910,7 @@ note:
 103 │         self._balances[account] = self._balances[account] - value
     │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                                   │                          
-    │                                   SPtr<u256> -> u256
+    │                                   mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ erc20_token.fe:103:35
@@ -918,15 +918,15 @@ note:
 103 │         self._balances[account] = self._balances[account] - value
     │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 104 │         self._total_supply = self._total_supply - value
-    │         ^^^^ ERC20
+    │         ^^^^ mut ERC20
 
 note: 
     ┌─ erc20_token.fe:104:9
     │
 104 │         self._total_supply = self._total_supply - value
-    │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
+    │         ^^^^^^^^^^^^^^^^^^   ^^^^ mut ERC20
     │         │                     
-    │         SPtr<u256>
+    │         mut SPtr<u256>
 
 note: 
     ┌─ erc20_token.fe:104:30
@@ -934,7 +934,7 @@ note:
 104 │         self._total_supply = self._total_supply - value
     │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                              │                     
-    │                              SPtr<u256> -> u256
+    │                              mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ erc20_token.fe:104:30
@@ -945,7 +945,7 @@ note:
     │         ^^^                     ^^^^^^^              ^ u256
     │         │                       │                     
     │         │                       address
-    │         Context
+    │         mut Context
 
 note: 
     ┌─ erc20_token.fe:105:46
@@ -970,13 +970,13 @@ note:
 note: 
     ┌─ erc20_token.fe:108:5
     │  
-108 │ ╭     fn _approve(self, ctx: Context, owner: address, spender: address, value: u256) {
+108 │ ╭     fn _approve(mut self, mut ctx: Context, owner: address, spender: address, value: u256) {
 109 │ │         assert owner != address(0)
 110 │ │         assert spender != address(0)
 111 │ │         self._allowances[owner][spender] = value
 112 │ │         ctx.emit(Approval(owner, spender, value))
 113 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+    │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: owner, typ: address }, { label: None, name: spender, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
     ┌─ erc20_token.fe:109:16
@@ -1014,7 +1014,7 @@ note:
 110 │         assert spender != address(0)
     │                ^^^^^^^^^^^^^^^^^^^^^ bool
 111 │         self._allowances[owner][spender] = value
-    │         ^^^^ ERC20
+    │         ^^^^ mut ERC20
 
 note: 
     ┌─ erc20_token.fe:111:9
@@ -1022,7 +1022,7 @@ note:
 111 │         self._allowances[owner][spender] = value
     │         ^^^^^^^^^^^^^^^^ ^^^^^ address
     │         │                 
-    │         SPtr<Map<address, Map<address, u256>>>
+    │         mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
     ┌─ erc20_token.fe:111:9
@@ -1030,7 +1030,7 @@ note:
 111 │         self._allowances[owner][spender] = value
     │         ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
     │         │                        
-    │         SPtr<Map<address, u256>>
+    │         mut SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:111:9
@@ -1038,13 +1038,13 @@ note:
 111 │         self._allowances[owner][spender] = value
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │         │                                   
-    │         SPtr<u256>
+    │         mut SPtr<u256>
 112 │         ctx.emit(Approval(owner, spender, value))
     │         ^^^               ^^^^^  ^^^^^^^  ^^^^^ u256
     │         │                 │      │         
     │         │                 │      address
     │         │                 address
-    │         Context
+    │         mut Context
 
 note: 
     ┌─ erc20_token.fe:112:18
@@ -1061,16 +1061,16 @@ note:
 note: 
     ┌─ erc20_token.fe:115:5
     │  
-115 │ ╭     fn _setup_decimals(self, _ decimals_: u8) {
+115 │ ╭     fn _setup_decimals(mut self, _ decimals_: u8) {
 116 │ │         self._decimals = decimals_
 117 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: decimals_, typ: u8 }] -> ()
+    │ ╰─────^ params: [mut self, { label: Some("_"), name: decimals_, typ: u8 }] -> ()
 
 note: 
     ┌─ erc20_token.fe:116:9
     │
 116 │         self._decimals = decimals_
-    │         ^^^^ ERC20
+    │         ^^^^ mut ERC20
 
 note: 
     ┌─ erc20_token.fe:116:9
@@ -1078,12 +1078,12 @@ note:
 116 │         self._decimals = decimals_
     │         ^^^^^^^^^^^^^^   ^^^^^^^^^ u8
     │         │                 
-    │         SPtr<u8>
+    │         mut SPtr<u8>
 
 note: 
     ┌─ erc20_token.fe:119:5
     │
 119 │     fn _before_token_transfer(from: address, to: address, _ value: u256) {}
-    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ self: None, params: [{ label: None, name: from, typ: address }, { label: None, name: to, typ: address }, { label: Some("_"), name: value, typ: u256 }] -> ()
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ params: [{ label: None, name: from, typ: address }, { label: None, name: to, typ: address }, { label: Some("_"), name: value, typ: u256 }] -> ()
 
 

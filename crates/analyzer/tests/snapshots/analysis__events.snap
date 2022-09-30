@@ -44,7 +44,7 @@ note:
 26 │ ╭     pub fn emit_nums(ctx: Context) {
 27 │ │         ctx.emit(Nums(num1: 26, num2: 42))
 28 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }] -> ()
 
 note: 
    ┌─ events.fe:27:9
@@ -73,7 +73,7 @@ note:
 30 │ ╭     pub fn emit_bases(ctx: Context, addr: address) {
 31 │ │         ctx.emit(Bases(num: 26, addr))
 32 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }] -> ()
 
 note: 
    ┌─ events.fe:31:9
@@ -102,13 +102,13 @@ note:
 34 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
 35 │ │         ctx.emit(Mix(num1: 26, addr, num2: 42, my_bytes))
 36 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
 
 note: 
    ┌─ events.fe:35:9
    │
 35 │         ctx.emit(Mix(num1: 26, addr, num2: 42, my_bytes))
-   │         ^^^                ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100>
+   │         ^^^                ^^  ^^^^        ^^  ^^^^^^^^ Array<u8, 100> -Copy-> Array<u8, 100>
    │         │                  │   │           │    
    │         │                  │   │           u256
    │         │                  │   address
@@ -131,42 +131,42 @@ note:
    ┌─ events.fe:38:5
    │  
 38 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
-39 │ │         let addrs: Array<address, 2> = [address(0); 2]
+39 │ │         let mut addrs: Array<address, 2> = [address(0); 2]
 40 │ │         addrs[0] = addr1
 41 │ │         addrs[1] = addr2
 42 │ │         ctx.emit(Addresses(addrs))
 43 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr1, typ: address }, { label: None, name: addr2, typ: address }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr1, typ: address }, { label: None, name: addr2, typ: address }] -> ()
 
 note: 
-   ┌─ events.fe:39:13
+   ┌─ events.fe:39:17
    │
-39 │         let addrs: Array<address, 2> = [address(0); 2]
-   │             ^^^^^ Array<address, 2>
+39 │         let mut addrs: Array<address, 2> = [address(0); 2]
+   │                 ^^^^^ mut Array<address, 2>
 
 note: 
-   ┌─ events.fe:39:49
+   ┌─ events.fe:39:53
    │
-39 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                                 ^ u256
+39 │         let mut addrs: Array<address, 2> = [address(0); 2]
+   │                                                     ^ u256
 
 note: 
-   ┌─ events.fe:39:41
+   ┌─ events.fe:39:45
    │
-39 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                         ^^^^^^^^^^  ^ u256
-   │                                         │            
-   │                                         address
+39 │         let mut addrs: Array<address, 2> = [address(0); 2]
+   │                                             ^^^^^^^^^^  ^ u256
+   │                                             │            
+   │                                             address
 
 note: 
-   ┌─ events.fe:39:40
+   ┌─ events.fe:39:44
    │
-39 │         let addrs: Array<address, 2> = [address(0); 2]
-   │                                        ^^^^^^^^^^^^^^^ Array<address, 2>
+39 │         let mut addrs: Array<address, 2> = [address(0); 2]
+   │                                            ^^^^^^^^^^^^^^^ Array<address, 2>
 40 │         addrs[0] = addr1
    │         ^^^^^ ^ u256
    │         │      
-   │         Array<address, 2>
+   │         mut Array<address, 2>
 
 note: 
    ┌─ events.fe:40:9
@@ -174,11 +174,11 @@ note:
 40 │         addrs[0] = addr1
    │         ^^^^^^^^   ^^^^^ address
    │         │           
-   │         address
+   │         mut address
 41 │         addrs[1] = addr2
    │         ^^^^^ ^ u256
    │         │      
-   │         Array<address, 2>
+   │         mut Array<address, 2>
 
 note: 
    ┌─ events.fe:41:9
@@ -186,9 +186,9 @@ note:
 41 │         addrs[1] = addr2
    │         ^^^^^^^^   ^^^^^ address
    │         │           
-   │         address
+   │         mut address
 42 │         ctx.emit(Addresses(addrs))
-   │         ^^^                ^^^^^ Array<address, 2>
+   │         ^^^                ^^^^^ mut Array<address, 2> -Copy-> Array<address, 2>
    │         │                   
    │         Context
 

@@ -5,7 +5,7 @@ contract Foo {
 }
 
 contract FooFactory {
-    pub fn create_foo(ctx: Context) -> address {
+    pub fn create_foo(mut ctx: Context) -> address {
         let foo: Foo = Foo.create(ctx, 0)
         return address(foo)
     }

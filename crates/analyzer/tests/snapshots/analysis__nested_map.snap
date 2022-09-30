@@ -17,7 +17,7 @@ note:
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256 {
 6 │ │         return self.bar[a][b]
 7 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: address }] -> u256
+  │ ╰─────^ params: [self, { label: None, name: a, typ: address }, { label: None, name: b, typ: address }] -> u256
 
 note: 
   ┌─ nested_map.fe:6:16
@@ -45,21 +45,21 @@ note:
   ┌─ nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^^^^ SPtr<u256> -> u256
+  │                ^^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
    ┌─ nested_map.fe:9:5
    │  
- 9 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256) {
+ 9 │ ╭     pub fn write_bar(mut self, a: address, b: address, value: u256) {
 10 │ │         self.bar[a][b] = value
 11 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: a, typ: address }, { label: None, name: b, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ nested_map.fe:10:9
    │
 10 │         self.bar[a][b] = value
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ nested_map.fe:10:9
@@ -67,7 +67,7 @@ note:
 10 │         self.bar[a][b] = value
    │         ^^^^^^^^ ^ address
    │         │         
-   │         SPtr<Map<address, Map<address, u256>>>
+   │         mut SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ nested_map.fe:10:9
@@ -75,7 +75,7 @@ note:
 10 │         self.bar[a][b] = value
    │         ^^^^^^^^^^^ ^ address
    │         │            
-   │         SPtr<Map<address, u256>>
+   │         mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ nested_map.fe:10:9
@@ -83,7 +83,7 @@ note:
 10 │         self.bar[a][b] = value
    │         ^^^^^^^^^^^^^^   ^^^^^ u256
    │         │                 
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ nested_map.fe:13:5
@@ -91,7 +91,7 @@ note:
 13 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool {
 14 │ │         return self.baz[a][b]
 15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }] -> bool
+   │ ╰─────^ params: [self, { label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }] -> bool
 
 note: 
    ┌─ nested_map.fe:14:16
@@ -119,21 +119,21 @@ note:
    ┌─ nested_map.fe:14:16
    │
 14 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^^^^ SPtr<bool> -> bool
+   │                ^^^^^^^^^^^^^^ SPtr<bool> -Load-> bool
 
 note: 
    ┌─ nested_map.fe:17:5
    │  
-17 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool) {
+17 │ ╭     pub fn write_baz(mut self, a: address, b: u256, value: bool) {
 18 │ │         self.baz[a][b] = value
 19 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }, { label: None, name: value, typ: bool }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: a, typ: address }, { label: None, name: b, typ: u256 }, { label: None, name: value, typ: bool }] -> ()
 
 note: 
    ┌─ nested_map.fe:18:9
    │
 18 │         self.baz[a][b] = value
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ nested_map.fe:18:9
@@ -141,7 +141,7 @@ note:
 18 │         self.baz[a][b] = value
    │         ^^^^^^^^ ^ address
    │         │         
-   │         SPtr<Map<address, Map<u256, bool>>>
+   │         mut SPtr<Map<address, Map<u256, bool>>>
 
 note: 
    ┌─ nested_map.fe:18:9
@@ -149,7 +149,7 @@ note:
 18 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^ ^ u256
    │         │            
-   │         SPtr<Map<u256, bool>>
+   │         mut SPtr<Map<u256, bool>>
 
 note: 
    ┌─ nested_map.fe:18:9
@@ -157,6 +157,6 @@ note:
 18 │         self.baz[a][b] = value
    │         ^^^^^^^^^^^^^^   ^^^^^ bool
    │         │                 
-   │         SPtr<bool>
+   │         mut SPtr<bool>
 
 

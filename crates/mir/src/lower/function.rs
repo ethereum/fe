@@ -262,11 +262,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
+                // XXX use lower_expr ty if available
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
-                    let (init, init_ty) = self.lower_expr(init);
-                    debug_assert_eq!(ty.deref(self.db), init_ty);
+                    let (init, _) = self.lower_expr(init);
+                    // XXX debug_assert_eq!(ty.deref(self.db), init_ty);
                     self.builder.map_result(init, value.into());
                 }
             }
@@ -495,11 +496,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             let into_ty = self.lower_analyzer_type(*into);
 
             match kind {
-                AdjustmentKind::FromStorage => {
-                    // Moving non-primitives from storage requires a to_mem call (for now),
-                    // so this adjustment will only apply to primitive types.
-                    debug_assert!(into_ty.is_primitive(self.db));
-
+                AdjustmentKind::Copy => {
+                    let val = self
+                        .builder
+                        .inst_result(inst)
+                        .and_then(|res| res.value_id())
+                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
+                    inst = self.builder.mem_copy(val, expr.into());
+                }
+                AdjustmentKind::Load => {
                     let val = self
                         .builder
                         .inst_result(inst)
@@ -966,7 +971,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             AnalyzerCallType::BuiltinValueMethod { method, .. } => {
                 let arg = self.lower_method_receiver(func);
                 match method {
-                    ValueMethod::ToMem | ValueMethod::Clone => self.builder.mem_copy(arg, source),
+                    ValueMethod::ToMem => self.builder.mem_copy(arg, source),
                     ValueMethod::AbiEncode => self.builder.abi_encode(arg, source),
                 }
             }
@@ -1315,7 +1320,6 @@ impl Scope {
 }
 
 fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceInfo {
-    // XXX use self_span
     func.data(db.upcast())
         .ast
         .kind

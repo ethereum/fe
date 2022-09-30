@@ -1,7 +1,7 @@
 contract Foo {
     is_true: bool
 
-    pub fn bar(self, ctx: Context) -> u256 {
+    pub fn bar(mut self, ctx: Context) -> u256 {
         self.is_true = false
         return baz(ctx)
     }

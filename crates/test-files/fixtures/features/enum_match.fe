@@ -32,7 +32,7 @@ pub struct NestedStruct {
 
 contract Foo {
     my_enum: MyEnumNested
-    
+
     pub fn simple_match(x: u32, y: u256) -> u256 {
         let my_enum: MyEnum = MyEnum::Tuple(x, y);
         match my_enum {
@@ -44,7 +44,7 @@ contract Foo {
             }
         }
     }
-    
+
     pub fn nested_match(x: u32, y: u256) -> u256 {
         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
         match nested {
@@ -59,7 +59,7 @@ contract Foo {
 
     pub fn nested_match2() -> u256 {
         let tup: Tuple2 = Tuple2::Value(MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
-        let res: u256 = 0
+        let mut res: u256 = 0
         match tup {
             Tuple2::Value(MyEnum::Unit, MyEnum::Tuple(x, y)) | Tuple2::Value(MyEnum::Tuple(x, y), MyEnum::UnitTuple()) => {
                 res = u256(x) + y
@@ -68,10 +68,10 @@ contract Foo {
                 return 0
             }
         }
-        
+
         return res
     }
-    
+
     pub fn tuple_match() -> u256 {
         let tup: (MyEnum, MyEnum) = (MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
         match tup {
@@ -110,9 +110,9 @@ contract Foo {
             }
         }
     }
-    
+
     pub fn match_in_if() -> u256 {
-        let res: u256 = 0
+        let mut res: u256 = 0
         let my_enum: MyEnum = MyEnum::Tuple(1, 2);
 
         if true {
@@ -132,12 +132,12 @@ contract Foo {
         return res
 
     }
-    
-    pub fn match_in_loop() -> u256 {
-        let res: u256 = 0
-        let state: State = State::Continue 
 
-        let my_array: Array<u256, 3> = [0; 3]
+    pub fn match_in_loop() -> u256 {
+        let mut res: u256 = 0
+        let mut state: State = State::Continue
+
+        let mut my_array: Array<u256, 3> = [0; 3]
         my_array[0] = 5
         my_array[1] = 10
         my_array[2] = 15
@@ -158,7 +158,7 @@ contract Foo {
 
         return res
     }
-    
+
     pub fn rest_pattern_head(x: u32, y: u256) -> u256 {
         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
         match pat {
@@ -207,7 +207,7 @@ contract Foo {
             }
         }
     }
-    
+
     pub fn nested_struct() -> u256 {
         let e: MyEnum = MyEnum::Tuple(1, 2)
         let s: NestedStruct = NestedStruct(x: 3, y: 4, e)
@@ -222,13 +222,13 @@ contract Foo {
         }
     }
 
-    pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
+    pub fn enum_storage(mut self, x:u32, y: u256, b: bool) -> u256 {
         if b {
             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
         } else {
             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
         }
-        
+
         match self.my_enum {
             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
                 return u256(x1) + y1
@@ -238,5 +238,5 @@ contract Foo {
             }
         }
     }
-    
+
 }

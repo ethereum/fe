@@ -54,9 +54,9 @@ impl TypeId {
     }
 
     pub fn deref(self, db: &dyn MirDb) -> TypeId {
-        match &self.data(db).kind {
-            TypeKind::SPtr(inner) => *inner,
-            TypeKind::MPtr(inner) => *inner,
+        match self.data(db).kind {
+            TypeKind::SPtr(inner) => inner,
+            TypeKind::MPtr(inner) => inner.deref(db),
             _ => self,
         }
     }

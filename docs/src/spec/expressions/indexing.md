@@ -14,7 +14,8 @@ contract Foo {
 
     balances: Map<address, u256>
 
-    pub fn baz(self, values: Array<u256, 10>) {
+
+    pub fn baz(mut self, mut values: Array<u256, 10>) {
         // Assign value at slot 5
         values[5] = 1000
         // Read value at slot 5

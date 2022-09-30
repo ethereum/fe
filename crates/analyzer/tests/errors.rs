@@ -102,8 +102,8 @@ test_stmt! { array_constructor_call, "u8[3]([1, 2, 3])" }
 test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
-test_stmt! { assign_type_mismatch, "let x: u256 = 10\nx = address(0)" }
-test_stmt! { aug_assign_non_numeric, "let a: u256 = 1\nlet b: bool = true\na += b" }
+test_stmt! { assign_type_mismatch, "let mut x: u256 = 10\nx = address(0)" }
+test_stmt! { aug_assign_non_numeric, "let mut a: u256 = 1\nlet b: bool = true\na += b" }
 test_stmt! { binary_op_add_sign_mismatch, "let a: u256 = 1\nlet b: i256 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "let a: bool = true\nlet b: i256\na << b" }
 test_stmt! { binary_op_lshift_with_int, "let a: u256 = 1\nlet b: i256 = 2\na << b" }
@@ -128,7 +128,6 @@ test_stmt! { call_balance_of_without_parameter, "unsafe { std::evm::balance_of()
 test_stmt! { call_balance_of_with_wrong_type, "unsafe { std::evm::balance_of(true) }" }
 test_stmt! { call_balance_of_with_2_args, "unsafe { std::evm::balance_of(address(0), 2) }" }
 test_stmt! { call_balance_with_arg, "unsafe { std::evm::balance(address(0)) }" }
-test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true { continue }" }
 test_stmt! { int_type_generic_arg_list, "let x: u256<>" }
@@ -143,8 +142,8 @@ test_stmt! { map_no_type_arg_list, "let x: Map" }
 test_stmt! { map_one_type_arg, "let x: Map<y>" }
 test_stmt! { map_map_key_type, "let x: Map<Map<u8, u8>, address>" }
 test_stmt! { map_constructor, "Map<u8, u8>()" }
-test_stmt! { non_bool_and, "let x: bool = true\nlet y: u256 = 1\nx = x and y" }
-test_stmt! { non_bool_or, "let x: bool = true\nlet y: u256 = 1\nx = x or y" }
+test_stmt! { non_bool_and, "let mut x: bool = true\nlet y: u256 = 1\nx = x and y" }
+test_stmt! { non_bool_or, "let mut x: bool = true\nlet y: u256 = 1\nx = x or y" }
 test_stmt! { overflow_i128_neg, "i128(-170141183460469231731687303715884105729)" }
 test_stmt! { overflow_i128_pos, "i128(170141183460469231731687303715884105728)" }
 test_stmt! { overflow_i16_neg, "i16(-32769)" }
@@ -343,10 +342,10 @@ test_file! { ctx_init }
 test_file! { ctx_undeclared }
 test_file! { ctx_missing_internal_call }
 test_file! { ctx_missing_create }
-test_file! { ctx_missing_load }
 test_file! { ctx_builtins_param_incorrect_type }
 test_file! { ctx_undefined_create }
 test_file! { ctx_undefined_create2 }
 test_file! { uninit_values }
 test_file! { invalid_repeat_length }
 test_file! { invalid_struct_pub_qualifier }
+test_file! { mut_mistakes }

@@ -13,12 +13,13 @@ Example:
 contract Foo {
   some_array: Array<u256, 10>
 
+
   pub fn bar(self) {
-    let val1: u256 = 10
+    let mut val1: u256 = 10
     // Assignment of stack variable
     val1 = 10
 
-    let values: (u256, u256) = (1, 2)
+    let mut values: (u256, u256) = (1, 2)
     // Assignment of tuple item
     values.item0 = 3
 

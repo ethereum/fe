@@ -7,5 +7,5 @@ bid([]) used 46237 gas
 bid([]) used 25163 gas
 withdraw([]) used 15382 gas
 withdraw([]) used 2429 gas
-action_end([]) used 31546 gas
+action_end([]) used 31535 gas
 

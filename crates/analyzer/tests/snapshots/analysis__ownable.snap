@@ -24,7 +24,7 @@ note:
 15 │ ╭     pub fn owner(self) -> address {
 16 │ │         return self._owner
 17 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> address
+   │ ╰─────^ params: [self] -> address
 
 note: 
    ┌─ ownable.fe:16:16
@@ -36,29 +36,29 @@ note:
    ┌─ ownable.fe:16:16
    │
 16 │         return self._owner
-   │                ^^^^^^^^^^^ SPtr<address> -> address
+   │                ^^^^^^^^^^^ SPtr<address> -Load-> address
 
 note: 
    ┌─ ownable.fe:19:5
    │  
-19 │ ╭     pub fn renounceOwnership(self, ctx: Context) {
+19 │ ╭     pub fn renounceOwnership(mut self, mut ctx: Context) {
 20 │ │         assert ctx.msg_sender() == self._owner
 21 │ │         self._owner = address(0)
 22 │ │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
 23 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ ownable.fe:20:16
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context
+   │                ^^^ mut Context
 
 note: 
    ┌─ ownable.fe:20:16
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
+   │                ^^^^^^^^^^^^^^^^    ^^^^ mut Ownable
    │                │                    
    │                address
 
@@ -66,7 +66,7 @@ note:
    ┌─ ownable.fe:20:36
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ SPtr<address> -> address
+   │                                    ^^^^^^^^^^^ mut SPtr<address> -Load-> address
 
 note: 
    ┌─ ownable.fe:20:16
@@ -74,7 +74,7 @@ note:
 20 │         assert ctx.msg_sender() == self._owner
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 21 │         self._owner = address(0)
-   │         ^^^^ Ownable
+   │         ^^^^ mut Ownable
 
 note: 
    ┌─ ownable.fe:21:9
@@ -82,7 +82,7 @@ note:
 21 │         self._owner = address(0)
    │         ^^^^^^^^^^^           ^ u256
    │         │                      
-   │         SPtr<address>
+   │         mut SPtr<address>
 
 note: 
    ┌─ ownable.fe:21:23
@@ -90,9 +90,9 @@ note:
 21 │         self._owner = address(0)
    │                       ^^^^^^^^^^ address
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │         ^^^                                          ^^^ Context
+   │         ^^^                                          ^^^ mut Context
    │         │                                             
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ ownable.fe:22:54
@@ -123,25 +123,25 @@ note:
 note: 
    ┌─ ownable.fe:25:5
    │  
-25 │ ╭     pub fn transferOwnership(self, ctx: Context, newOwner: address) {
+25 │ ╭     pub fn transferOwnership(mut self, mut ctx: Context, newOwner: address) {
 26 │ │         assert ctx.msg_sender() == self._owner
 27 │ │         assert newOwner != address(0)
 28 │ │         self._owner = newOwner
 29 │ │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
 30 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }, { label: None, name: newOwner, typ: address }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: newOwner, typ: address }] -> ()
 
 note: 
    ┌─ ownable.fe:26:16
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context
+   │                ^^^ mut Context
 
 note: 
    ┌─ ownable.fe:26:16
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
+   │                ^^^^^^^^^^^^^^^^    ^^^^ mut Ownable
    │                │                    
    │                address
 
@@ -149,7 +149,7 @@ note:
    ┌─ ownable.fe:26:36
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ SPtr<address> -> address
+   │                                    ^^^^^^^^^^^ mut SPtr<address> -Load-> address
 
 note: 
    ┌─ ownable.fe:26:16
@@ -173,7 +173,7 @@ note:
 27 │         assert newOwner != address(0)
    │                ^^^^^^^^^^^^^^^^^^^^^^ bool
 28 │         self._owner = newOwner
-   │         ^^^^ Ownable
+   │         ^^^^ mut Ownable
 
 note: 
    ┌─ ownable.fe:28:9
@@ -181,11 +181,11 @@ note:
 28 │         self._owner = newOwner
    │         ^^^^^^^^^^^   ^^^^^^^^ address
    │         │              
-   │         SPtr<address>
+   │         mut SPtr<address>
 29 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
-   │         ^^^                                          ^^^ Context
+   │         ^^^                                          ^^^ mut Context
    │         │                                             
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ ownable.fe:29:54

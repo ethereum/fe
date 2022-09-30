@@ -13,7 +13,7 @@ note:
    · │
  9 │ │         }
 10 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ if_statement_with_block_declaration.fe:4:17

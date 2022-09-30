@@ -200,7 +200,10 @@ fn make_zst_ptr(db: &dyn CodegenDb, ty: TypeId) -> Value {
 
 /// Returns `true` if a value has a zero sized type.
 fn is_value_zst(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) -> bool {
-    body.store.value_ty(value).is_zero_sized(db.upcast())
+    body.store
+        .value_ty(value)
+        .deref(db.upcast())
+        .is_zero_sized(db.upcast()) // XXX deref?
 }
 
 fn is_value_contract(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) -> bool {
@@ -211,5 +214,6 @@ fn is_value_contract(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) ->
 fn is_lvalue_zst(db: &dyn CodegenDb, body: &FunctionBody, lvalue: &AssignableValue) -> bool {
     lvalue
         .ty(db.upcast(), &body.store)
+        .deref(db.upcast())
         .is_zero_sized(db.upcast())
 }

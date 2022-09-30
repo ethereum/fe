@@ -10,7 +10,7 @@ note:
 10 │ │         assert file_items_work()
 11 │ │         return Baz(my_bool: true, my_u256: 26)
 12 │ │     }
-   │ ╰─────^ self: None, params: [] -> Baz
+   │ ╰─────^ params: [] -> Baz
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:10:16
@@ -34,7 +34,7 @@ note:
 14 │ ╭     pub fn get_my_bing() -> Bong {
 15 │ │         return Bong(my_address: address(42))
 16 │ │     }
-   │ ╰─────^ self: None, params: [] -> Bing
+   │ ╰─────^ params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:15:41
@@ -60,7 +60,7 @@ note:
 18 │ ╭     pub fn get_42() -> u256 {
 19 │ │         return get_42_backend()
 20 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:19:16
@@ -74,7 +74,7 @@ note:
 22 │ ╭     pub fn get_26() -> u256 {
 23 │ │         return std::evm::add(13, 13)
 24 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:30
@@ -97,7 +97,7 @@ note:
 27 │ │         assert bar::mee::Mee::kawum() == 1
 28 │ │         assert bar::mee::Mee().rums() == 1
 29 │ │     }
-   │ ╰─────^ self: None, params: [] -> ()
+   │ ╰─────^ params: [] -> ()
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:27:16
@@ -135,7 +135,7 @@ note:
 31 │ ╭     pub fn get_my_dyng() -> dong::Dyng {
 32 │ │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
 33 │ │     }
-   │ ╰─────^ self: None, params: [] -> Dyng
+   │ ╰─────^ params: [] -> Dyng
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:32:47
@@ -167,11 +167,11 @@ note:
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:35:5
    │  
-35 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256 {
+35 │ ╭     pub fn create_bing_contract(mut ctx: Context) -> u256 {
 36 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
 37 │ │         return bing_contract.add(40, 50)
 38 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:13
@@ -185,7 +185,7 @@ note:
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                                                               ^^^  ^ u256
    │                                                               │     
-   │                                                               Context
+   │                                                               mut Context
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:43
@@ -211,7 +211,7 @@ note:
 1 │ ╭ pub fn file_items_work() -> bool {
 2 │ │     return true
 3 │ │ }
-  │ ╰─^ self: None, params: [] -> bool
+  │ ╰─^ params: [] -> bool
 
 note: 
   ┌─ ingots/basic_ingot/src/bar.fe:2:12
@@ -232,7 +232,7 @@ note:
 7 │ ╭ pub fn get_42_backend() -> u256 {
 8 │ │     return std::evm::add(21, 21)
 9 │ │ }
-  │ ╰─^ self: None, params: [] -> u256
+  │ ╰─^ params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bing.fe:8:26
@@ -254,7 +254,7 @@ note:
 12 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 13 │ │         return x + y
 14 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:13:16
@@ -287,7 +287,7 @@ note:
 2 │ ╭     pub fn kawum() -> u256 {
 3 │ │         return 1
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> u256
+  │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:3:16
@@ -301,7 +301,7 @@ note:
 6 │ ╭     pub fn rums(self) -> u256 {
 7 │ │         return 1
 8 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [] -> u256
+  │ ╰─────^ params: [self] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:7:16
@@ -333,7 +333,7 @@ note:
  9 │ ╭ fn get_bing() -> Bing {
 10 │ │     return Bing(my_address: address(0))
 11 │ │ }
-   │ ╰─^ self: None, params: [] -> Bing
+   │ ╰─^ params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/ding/dong.fe:10:37

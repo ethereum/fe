@@ -86,6 +86,7 @@ impl TypeId {
     pub fn deref(self, db: &dyn AnalyzerDb) -> TypeId {
         match self.typ(db) {
             Type::SPtr(inner) => inner,
+            Type::Mut(inner) => inner.deref(db),
             _ => self,
         }
     }
@@ -95,6 +96,11 @@ impl TypeId {
 
     pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
         self.typ(db).has_fixed_size(db)
+    }
+
+    /// `true` if Type::Base or Type::Contract (which is just an Address)
+    pub fn is_primitive(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Base(_) | Type::Contract(_))
     }
     pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(_))
@@ -125,7 +131,18 @@ impl TypeId {
         matches!(self.typ(db), Type::Struct(_))
     }
     pub fn is_sptr(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.typ(db), Type::SPtr(_))
+        match self.typ(db) {
+            Type::SPtr(_) => true,
+            Type::Mut(inner) => inner.is_sptr(db),
+            _ => false,
+        }
+    }
+    pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.deref(db).typ(db), Type::Generic(_))
+    }
+
+    pub fn is_mut(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Mut(_))
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -305,9 +322,15 @@ pub struct FunctionSignature {
     pub return_type: Result<TypeId, TypeError>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub enum SelfDecl {
-    Mutable,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SelfDecl {
+    pub span: Span,
+    pub mut_: Option<Span>,
+}
+impl SelfDecl {
+    pub fn is_mut(&self) -> bool {
+        self.mut_.is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -718,9 +741,13 @@ impl DisplayWithDb for FunctionSignature {
             return_type,
         } = self;
 
-        write!(f, "self: {:?}, ", self_decl)?;
         write!(f, "params: [")?;
         let mut delim = "";
+        if let Some(s) = self_decl {
+            write!(f, "{}self", if s.mut_.is_some() { "mut " } else { "" },)?;
+            delim = ", ";
+        }
+
         for p in params {
             write!(
                 f,

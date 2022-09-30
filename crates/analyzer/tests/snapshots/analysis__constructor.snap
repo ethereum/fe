@@ -15,7 +15,7 @@ note:
  8 │ ╭     pub fn read_bar(self) -> u256 {
  9 │ │         return self.bar[42]
 10 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
   ┌─ constructor.fe:9:16
@@ -35,6 +35,6 @@ note:
   ┌─ constructor.fe:9:16
   │
 9 │         return self.bar[42]
-  │                ^^^^^^^^^^^^ SPtr<u256> -> u256
+  │                ^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 

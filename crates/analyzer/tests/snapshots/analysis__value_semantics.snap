@@ -1,0 +1,474 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&db, module)"
+
+---
+note: 
+  ┌─ value_semantics.fe:3:5
+  │
+3 │     my_array: Array<u8, 3>
+  │     ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 3>
+
+note: 
+   ┌─ value_semantics.fe:5:5
+   │  
+ 5 │ ╭     pub fn bar(self) -> bool {
+ 6 │ │         self.set_array()
+ 7 │ │         tuple_of_primitive()
+ 8 │ │ 
+ 9 │ │         return true
+10 │ │     }
+   │ ╰─────^ params: [self] -> bool
+
+note: 
+  ┌─ value_semantics.fe:6:9
+  │
+6 │         self.set_array()
+  │         ^^^^ Foo
+
+note: 
+  ┌─ value_semantics.fe:6:9
+  │
+6 │         self.set_array()
+  │         ^^^^^^^^^^^^^^^^ ()
+7 │         tuple_of_primitive()
+  │         ^^^^^^^^^^^^^^^^^^^^ ()
+8 │ 
+9 │         return true
+  │                ^^^^ bool
+
+note: 
+   ┌─ value_semantics.fe:12:5
+   │  
+12 │ ╭     pub fn set_array(mut self) {
+13 │ │         self.my_array = [42; 3]
+14 │ │     }
+   │ ╰─────^ params: [mut self] -> ()
+
+note: 
+   ┌─ value_semantics.fe:13:9
+   │
+13 │         self.my_array = [42; 3]
+   │         ^^^^ mut Foo
+
+note: 
+   ┌─ value_semantics.fe:13:9
+   │
+13 │         self.my_array = [42; 3]
+   │         ^^^^^^^^^^^^^    ^^  ^ u256
+   │         │                │    
+   │         │                u8
+   │         mut SPtr<Array<u8, 3>>
+
+note: 
+   ┌─ value_semantics.fe:13:25
+   │
+13 │         self.my_array = [42; 3]
+   │                         ^^^^^^^ Array<u8, 3>
+
+note: 
+   ┌─ value_semantics.fe:19:1
+   │  
+19 │ ╭ fn tuple_of_primitive() {
+20 │ │     let mut tup_a: (u8, u8) = (1, 2);
+21 │ │     let mut tup_b: (u8, u8) = tup_a
+22 │ │     tup_a.item0 = 5
+   · │
+35 │ │     assert tup_imm.item0 == 1
+36 │ │ }
+   │ ╰─^ params: [] -> ()
+
+note: 
+   ┌─ value_semantics.fe:20:13
+   │
+20 │     let mut tup_a: (u8, u8) = (1, 2);
+   │             ^^^^^ mut (u8, u8)
+21 │     let mut tup_b: (u8, u8) = tup_a
+   │             ^^^^^ mut (u8, u8)
+   ·
+25 │     let tup_imm: (u8, u8) = (1, 2)
+   │         ^^^^^^^ (u8, u8)
+26 │     let mut tup_c: (u8, u8) = tup_imm
+   │             ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:20:32
+   │
+20 │     let mut tup_a: (u8, u8) = (1, 2);
+   │                                ^  ^ u8
+   │                                │   
+   │                                u8
+
+note: 
+   ┌─ value_semantics.fe:20:31
+   │
+20 │     let mut tup_a: (u8, u8) = (1, 2);
+   │                               ^^^^^^ (u8, u8)
+21 │     let mut tup_b: (u8, u8) = tup_a
+   │                               ^^^^^ mut (u8, u8) -Copy-> (u8, u8)
+22 │     tup_a.item0 = 5
+   │     ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:22:5
+   │
+22 │     tup_a.item0 = 5
+   │     ^^^^^^^^^^^   ^ u8
+   │     │              
+   │     mut u8
+23 │     assert tup_b.item0 == 1
+   │            ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:23:12
+   │
+23 │     assert tup_b.item0 == 1
+   │            ^^^^^^^^^^^    ^ u8
+   │            │               
+   │            mut u8
+
+note: 
+   ┌─ value_semantics.fe:23:12
+   │
+23 │     assert tup_b.item0 == 1
+   │            ^^^^^^^^^^^^^^^^ bool
+24 │ 
+25 │     let tup_imm: (u8, u8) = (1, 2)
+   │                              ^  ^ u8
+   │                              │   
+   │                              u8
+
+note: 
+   ┌─ value_semantics.fe:25:29
+   │
+25 │     let tup_imm: (u8, u8) = (1, 2)
+   │                             ^^^^^^ (u8, u8)
+26 │     let mut tup_c: (u8, u8) = tup_imm
+   │                               ^^^^^^^ (u8, u8) -Copy-> (u8, u8)
+27 │ 
+28 │     tup_c.item0 = 10
+   │     ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:28:5
+   │
+28 │     tup_c.item0 = 10
+   │     ^^^^^^^^^^^   ^^ u8
+   │     │              
+   │     mut u8
+29 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^ (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:29:12
+   │
+29 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^^^^^^^    ^ u8
+   │            │                 
+   │            u8
+
+note: 
+   ┌─ value_semantics.fe:29:12
+   │
+29 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^^^^^^^^^^^^ bool
+30 │ 
+31 │     tup_c = tup_imm
+   │     ^^^^^   ^^^^^^^ (u8, u8) -Copy-> (u8, u8)
+   │     │        
+   │     mut (u8, u8)
+32 │     assert tup_c.item0 == 1
+   │            ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:32:12
+   │
+32 │     assert tup_c.item0 == 1
+   │            ^^^^^^^^^^^    ^ u8
+   │            │               
+   │            mut u8
+
+note: 
+   ┌─ value_semantics.fe:32:12
+   │
+32 │     assert tup_c.item0 == 1
+   │            ^^^^^^^^^^^^^^^^ bool
+33 │     tup_c.item0 = 10
+   │     ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:33:5
+   │
+33 │     tup_c.item0 = 10
+   │     ^^^^^^^^^^^   ^^ u8
+   │     │              
+   │     mut u8
+34 │     assert tup_c.item0 == 10
+   │            ^^^^^ mut (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:34:12
+   │
+34 │     assert tup_c.item0 == 10
+   │            ^^^^^^^^^^^    ^^ u8
+   │            │               
+   │            mut u8
+
+note: 
+   ┌─ value_semantics.fe:34:12
+   │
+34 │     assert tup_c.item0 == 10
+   │            ^^^^^^^^^^^^^^^^^ bool
+35 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^ (u8, u8)
+
+note: 
+   ┌─ value_semantics.fe:35:12
+   │
+35 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^^^^^^^    ^ u8
+   │            │                 
+   │            u8
+
+note: 
+   ┌─ value_semantics.fe:35:12
+   │
+35 │     assert tup_imm.item0 == 1
+   │            ^^^^^^^^^^^^^^^^^^ bool
+
+note: 
+   ┌─ value_semantics.fe:39:5
+   │
+39 │     pub x: u64
+   │     ^^^^^^^^^^ u64
+40 │     pub y: u64
+   │     ^^^^^^^^^^ u64
+
+note: 
+   ┌─ value_semantics.fe:43:5
+   │
+43 │     pub a: Point
+   │     ^^^^^^^^^^^^ Point
+44 │     pub b: Point
+   │     ^^^^^^^^^^^^ Point
+
+note: 
+   ┌─ value_semantics.fe:46:5
+   │  
+46 │ ╭     pub fn from_origin_to(b: Point) -> Line {
+47 │ │         return Line(a: Point(x: 0, y: 0), b)
+48 │ │     }
+   │ ╰─────^ params: [{ label: None, name: b, typ: Point }] -> Line
+
+note: 
+   ┌─ value_semantics.fe:47:33
+   │
+47 │         return Line(a: Point(x: 0, y: 0), b)
+   │                                 ^     ^ u64
+   │                                 │      
+   │                                 u64
+
+note: 
+   ┌─ value_semantics.fe:47:24
+   │
+47 │         return Line(a: Point(x: 0, y: 0), b)
+   │                        ^^^^^^^^^^^^^^^^^  ^ Point -Copy-> Point
+   │                        │                   
+   │                        Point
+
+note: 
+   ┌─ value_semantics.fe:47:16
+   │
+47 │         return Line(a: Point(x: 0, y: 0), b)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Line
+
+note: 
+   ┌─ value_semantics.fe:51:1
+   │  
+51 │ ╭ fn struct_constructor() {
+52 │ │     let mut a: Point = Point(x: 0, y: 0)
+53 │ │     let mut b: Point = Point(x: 10, y: 10)
+54 │ │ 
+   · │
+60 │ │     assert b.x == 10
+61 │ │ }
+   │ ╰─^ params: [] -> ()
+
+note: 
+   ┌─ value_semantics.fe:52:13
+   │
+52 │     let mut a: Point = Point(x: 0, y: 0)
+   │             ^ mut Point
+53 │     let mut b: Point = Point(x: 10, y: 10)
+   │             ^ mut Point
+54 │ 
+55 │     let mut line: Line = Line(a, b)
+   │             ^^^^ mut Line
+
+note: 
+   ┌─ value_semantics.fe:52:33
+   │
+52 │     let mut a: Point = Point(x: 0, y: 0)
+   │                                 ^     ^ u64
+   │                                 │      
+   │                                 u64
+
+note: 
+   ┌─ value_semantics.fe:52:24
+   │
+52 │     let mut a: Point = Point(x: 0, y: 0)
+   │                        ^^^^^^^^^^^^^^^^^ Point
+53 │     let mut b: Point = Point(x: 10, y: 10)
+   │                                 ^^     ^^ u64
+   │                                 │       
+   │                                 u64
+
+note: 
+   ┌─ value_semantics.fe:53:24
+   │
+53 │     let mut b: Point = Point(x: 10, y: 10)
+   │                        ^^^^^^^^^^^^^^^^^^^ Point
+54 │ 
+55 │     let mut line: Line = Line(a, b)
+   │                               ^  ^ mut Point -Copy-> Point
+   │                               │   
+   │                               mut Point -Copy-> Point
+
+note: 
+   ┌─ value_semantics.fe:55:26
+   │
+55 │     let mut line: Line = Line(a, b)
+   │                          ^^^^^^^^^^ Line
+56 │     a.x = 1
+   │     ^ mut Point
+
+note: 
+   ┌─ value_semantics.fe:56:5
+   │
+56 │     a.x = 1
+   │     ^^^   ^ u64
+   │     │      
+   │     mut u64
+57 │     assert line.a.x == 0
+   │            ^^^^ mut Line
+
+note: 
+   ┌─ value_semantics.fe:57:12
+   │
+57 │     assert line.a.x == 0
+   │            ^^^^^^ mut Point
+
+note: 
+   ┌─ value_semantics.fe:57:12
+   │
+57 │     assert line.a.x == 0
+   │            ^^^^^^^^    ^ u64
+   │            │            
+   │            mut u64
+
+note: 
+   ┌─ value_semantics.fe:57:12
+   │
+57 │     assert line.a.x == 0
+   │            ^^^^^^^^^^^^^ bool
+58 │ 
+59 │     line.b.x = 100
+   │     ^^^^ mut Line
+
+note: 
+   ┌─ value_semantics.fe:59:5
+   │
+59 │     line.b.x = 100
+   │     ^^^^^^ mut Point
+
+note: 
+   ┌─ value_semantics.fe:59:5
+   │
+59 │     line.b.x = 100
+   │     ^^^^^^^^   ^^^ u64
+   │     │           
+   │     mut u64
+60 │     assert b.x == 10
+   │            ^ mut Point
+
+note: 
+   ┌─ value_semantics.fe:60:12
+   │
+60 │     assert b.x == 10
+   │            ^^^    ^^ u64
+   │            │       
+   │            mut u64
+
+note: 
+   ┌─ value_semantics.fe:60:12
+   │
+60 │     assert b.x == 10
+   │            ^^^^^^^^^ bool
+
+note: 
+   ┌─ value_semantics.fe:63:1
+   │  
+63 │ ╭ fn copies() {
+64 │ │     let p: Point = Point(x: 0, y: 0)
+65 │ │     let mut a: Point = p // copy
+66 │ │     let b: Point = p     // no copy
+   · │
+70 │ │     let mut n: Line = Line::from_origin_to(b) // copy
+71 │ │ }
+   │ ╰─^ params: [] -> ()
+
+note: 
+   ┌─ value_semantics.fe:64:9
+   │
+64 │     let p: Point = Point(x: 0, y: 0)
+   │         ^ Point
+65 │     let mut a: Point = p // copy
+   │             ^ mut Point
+66 │     let b: Point = p     // no copy
+   │         ^ Point
+   ·
+69 │     let m: Line = Line::from_origin_to(b)     // no copy
+   │         ^ Line
+70 │     let mut n: Line = Line::from_origin_to(b) // copy
+   │             ^ mut Line
+
+note: 
+   ┌─ value_semantics.fe:64:29
+   │
+64 │     let p: Point = Point(x: 0, y: 0)
+   │                             ^     ^ u64
+   │                             │      
+   │                             u64
+
+note: 
+   ┌─ value_semantics.fe:64:20
+   │
+64 │     let p: Point = Point(x: 0, y: 0)
+   │                    ^^^^^^^^^^^^^^^^^ Point
+65 │     let mut a: Point = p // copy
+   │                        ^ Point -Copy-> Point
+66 │     let b: Point = p     // no copy
+   │                    ^ Point
+67 │     a = b                // copy
+   │     ^   ^ Point -Copy-> Point
+   │     │    
+   │     mut Point
+68 │ 
+69 │     let m: Line = Line::from_origin_to(b)     // no copy
+   │                                        ^ Point
+
+note: 
+   ┌─ value_semantics.fe:69:19
+   │
+69 │     let m: Line = Line::from_origin_to(b)     // no copy
+   │                   ^^^^^^^^^^^^^^^^^^^^^^^ Line
+70 │     let mut n: Line = Line::from_origin_to(b) // copy
+   │                                            ^ Point
+
+note: 
+   ┌─ value_semantics.fe:70:23
+   │
+70 │     let mut n: Line = Line::from_origin_to(b) // copy
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ Line -Copy-> Line
+
+

@@ -37,7 +37,7 @@ note:
 17 │ ╭     pub fn new(val: u256) -> Mixed {
 18 │ │         return Mixed(foo: val, bar: false)
 19 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> Mixed
+   │ ╰─────^ params: [{ label: None, name: val, typ: u256 }] -> Mixed
 
 note: 
    ┌─ structs.fe:18:27
@@ -71,7 +71,7 @@ note:
 28 │ ╭     pub fn encode(self) -> Array<u8, 128> {
 29 │ │         return self.abi_encode()
 30 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> Array<u8, 128>
+   │ ╰─────^ params: [self] -> Array<u8, 128>
 
 note: 
    ┌─ structs.fe:29:16
@@ -91,7 +91,7 @@ note:
 32 │ ╭     pub fn hash(self) -> u256 {
 33 │ │         return keccak256(self.encode())
 34 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
    ┌─ structs.fe:33:26
@@ -117,7 +117,7 @@ note:
 36 │ ╭     pub fn price_per_sqft(self) -> u256 {
 37 │ │         return self.price / self.size
 38 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
    ┌─ structs.fe:37:16
@@ -148,17 +148,17 @@ note:
 note: 
    ┌─ structs.fe:40:5
    │  
-40 │ ╭     pub fn expand(self) {
+40 │ ╭     pub fn expand(mut self) {
 41 │ │         self.rooms += 1
 42 │ │         self.size += 100
 43 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [mut self] -> ()
 
 note: 
    ┌─ structs.fe:41:9
    │
 41 │         self.rooms += 1
-   │         ^^^^ House
+   │         ^^^^ mut House
 
 note: 
    ┌─ structs.fe:41:9
@@ -166,9 +166,9 @@ note:
 41 │         self.rooms += 1
    │         ^^^^^^^^^^    ^ u8
    │         │              
-   │         u8
+   │         mut u8
 42 │         self.size += 100
-   │         ^^^^ House
+   │         ^^^^ mut House
 
 note: 
    ┌─ structs.fe:42:9
@@ -176,7 +176,7 @@ note:
 42 │         self.size += 100
    │         ^^^^^^^^^    ^^^ u256
    │         │             
-   │         u256
+   │         mut u256
 
 note: 
    ┌─ structs.fe:47:5
@@ -189,20 +189,20 @@ note:
 note: 
    ┌─ structs.fe:50:5
    │  
-50 │ ╭     pub fn complex_struct_in_storage(self) -> String<3> {
+50 │ ╭     pub fn complex_struct_in_storage(mut self) -> String<3> {
 51 │ │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
 52 │ │         assert self.my_bar.numbers[0] == 1
 53 │ │         assert self.my_bar.numbers[1] == 2
    · │
 79 │ │         return self.my_bar.name.to_mem()
 80 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> String<3>
+   │ ╰─────^ params: [mut self] -> String<3>
 
 note: 
    ┌─ structs.fe:51:9
    │
 51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:51:9
@@ -211,8 +211,8 @@ note:
    │         ^^^^^^^^^^^             ^^^^^            ^  ^ u256
    │         │                       │                │   
    │         │                       │                u256
-   │         │                       String<3>
-   │         SPtr<Bar>
+   │         │                       String<3> -Copy-> String<3>
+   │         mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:51:49
@@ -244,13 +244,13 @@ note:
 51 │         self.my_bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
    │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar
 52 │         assert self.my_bar.numbers[0] == 1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:52:16
    │
 52 │         assert self.my_bar.numbers[0] == 1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:52:16
@@ -258,7 +258,7 @@ note:
 52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:52:16
@@ -266,7 +266,7 @@ note:
 52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:52:16
@@ -274,13 +274,13 @@ note:
 52 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 53 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:53:16
    │
 53 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:53:16
@@ -288,7 +288,7 @@ note:
 53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:53:16
@@ -296,7 +296,7 @@ note:
 53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:53:16
@@ -304,19 +304,19 @@ note:
 53 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 54 │         assert self.my_bar.point.x == 100
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:54:16
    │
 54 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:54:16
    │
 54 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:54:16
@@ -324,7 +324,7 @@ note:
 54 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:54:16
@@ -332,19 +332,19 @@ note:
 54 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 55 │         assert self.my_bar.point.y == 200
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:55:16
    │
 55 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:55:16
    │
 55 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:55:16
@@ -352,7 +352,7 @@ note:
 55 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:55:16
@@ -360,19 +360,19 @@ note:
 55 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 56 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:56:16
    │
 56 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:56:16
    │
 56 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:56:16
@@ -380,7 +380,7 @@ note:
 56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                               
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:56:16
@@ -388,33 +388,33 @@ note:
 56 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 57 │         assert self.my_bar.something.item1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:57:16
    │
 57 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:57:16
    │
 57 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:57:16
    │
 57 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 58 │         self.my_bar.numbers[0] = 10
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:58:9
    │
 58 │         self.my_bar.numbers[0] = 10
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:58:9
@@ -422,7 +422,7 @@ note:
 58 │         self.my_bar.numbers[0] = 10
    │         ^^^^^^^^^^^^^^^^^^^ ^ u256
    │         │                    
-   │         SPtr<Array<u256, 2>>
+   │         mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:58:9
@@ -430,15 +430,15 @@ note:
 58 │         self.my_bar.numbers[0] = 10
    │         ^^^^^^^^^^^^^^^^^^^^^^   ^^ u256
    │         │                         
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 59 │         self.my_bar.numbers[1] = 20
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:59:9
    │
 59 │         self.my_bar.numbers[1] = 20
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:59:9
@@ -446,7 +446,7 @@ note:
 59 │         self.my_bar.numbers[1] = 20
    │         ^^^^^^^^^^^^^^^^^^^ ^ u256
    │         │                    
-   │         SPtr<Array<u256, 2>>
+   │         mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:59:9
@@ -454,15 +454,15 @@ note:
 59 │         self.my_bar.numbers[1] = 20
    │         ^^^^^^^^^^^^^^^^^^^^^^   ^^ u256
    │         │                         
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 60 │         assert self.my_bar.numbers[0] == 10
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:60:16
    │
 60 │         assert self.my_bar.numbers[0] == 10
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:60:16
@@ -470,7 +470,7 @@ note:
 60 │         assert self.my_bar.numbers[0] == 10
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:60:16
@@ -478,7 +478,7 @@ note:
 60 │         assert self.my_bar.numbers[0] == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:60:16
@@ -486,13 +486,13 @@ note:
 60 │         assert self.my_bar.numbers[0] == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 61 │         assert self.my_bar.numbers[1] == 20
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:61:16
    │
 61 │         assert self.my_bar.numbers[1] == 20
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:61:16
@@ -500,7 +500,7 @@ note:
 61 │         assert self.my_bar.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:61:16
@@ -508,7 +508,7 @@ note:
 61 │         assert self.my_bar.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:61:16
@@ -516,13 +516,13 @@ note:
 61 │         assert self.my_bar.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 62 │         self.my_bar.numbers = [1, 2]
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:62:9
    │
 62 │         self.my_bar.numbers = [1, 2]
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:62:9
@@ -531,7 +531,7 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^    ^  ^ u256
    │         │                      │   
    │         │                      u256
-   │         SPtr<Array<u256, 2>>
+   │         mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:62:31
@@ -539,13 +539,13 @@ note:
 62 │         self.my_bar.numbers = [1, 2]
    │                               ^^^^^^ Array<u256, 2>
 63 │         assert self.my_bar.numbers[0] == 1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:63:16
    │
 63 │         assert self.my_bar.numbers[0] == 1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:63:16
@@ -553,7 +553,7 @@ note:
 63 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:63:16
@@ -561,7 +561,7 @@ note:
 63 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:63:16
@@ -569,13 +569,13 @@ note:
 63 │         assert self.my_bar.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 64 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:64:16
    │
 64 │         assert self.my_bar.numbers[1] == 2
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:64:16
@@ -583,7 +583,7 @@ note:
 64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ ^ u256
    │                │                    
-   │                SPtr<Array<u256, 2>>
+   │                mut SPtr<Array<u256, 2>>
 
 note: 
    ┌─ structs.fe:64:16
@@ -591,7 +591,7 @@ note:
 64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:64:16
@@ -599,19 +599,19 @@ note:
 64 │         assert self.my_bar.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 65 │         self.my_bar.point.x = 1000
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:65:9
    │
 65 │         self.my_bar.point.x = 1000
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:65:9
    │
 65 │         self.my_bar.point.x = 1000
-   │         ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │         ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:65:9
@@ -619,21 +619,21 @@ note:
 65 │         self.my_bar.point.x = 1000
    │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256
    │         │                      
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 66 │         self.my_bar.point.y = 2000
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:66:9
    │
 66 │         self.my_bar.point.y = 2000
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:66:9
    │
 66 │         self.my_bar.point.y = 2000
-   │         ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │         ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:66:9
@@ -641,21 +641,21 @@ note:
 66 │         self.my_bar.point.y = 2000
    │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256
    │         │                      
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 67 │         assert self.my_bar.point.x == 1000
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:67:16
    │
 67 │         assert self.my_bar.point.x == 1000
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:67:16
    │
 67 │         assert self.my_bar.point.x == 1000
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:67:16
@@ -663,7 +663,7 @@ note:
 67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:67:16
@@ -671,19 +671,19 @@ note:
 67 │         assert self.my_bar.point.x == 1000
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 68 │         assert self.my_bar.point.y == 2000
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:68:16
    │
 68 │         assert self.my_bar.point.y == 2000
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:68:16
    │
 68 │         assert self.my_bar.point.y == 2000
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:68:16
@@ -691,7 +691,7 @@ note:
 68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:68:16
@@ -699,13 +699,13 @@ note:
 68 │         assert self.my_bar.point.y == 2000
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 69 │         self.my_bar.point = Point(x: 100, y: 200)
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:69:9
    │
 69 │         self.my_bar.point = Point(x: 100, y: 200)
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:69:9
@@ -714,7 +714,7 @@ note:
    │         ^^^^^^^^^^^^^^^^^            ^^^     ^^^ u256
    │         │                            │        
    │         │                            u256
-   │         SPtr<Point>
+   │         mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:69:29
@@ -722,19 +722,19 @@ note:
 69 │         self.my_bar.point = Point(x: 100, y: 200)
    │                             ^^^^^^^^^^^^^^^^^^^^^ Point
 70 │         assert self.my_bar.point.x == 100
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:70:16
    │
 70 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:70:16
    │
 70 │         assert self.my_bar.point.x == 100
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:70:16
@@ -742,7 +742,7 @@ note:
 70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:70:16
@@ -750,19 +750,19 @@ note:
 70 │         assert self.my_bar.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 71 │         assert self.my_bar.point.y == 200
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:71:16
    │
 71 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:71:16
    │
 71 │         assert self.my_bar.point.y == 200
-   │                ^^^^^^^^^^^^^^^^^ SPtr<Point>
+   │                ^^^^^^^^^^^^^^^^^ mut SPtr<Point>
 
 note: 
    ┌─ structs.fe:71:16
@@ -770,7 +770,7 @@ note:
 71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^    ^^^ u256
    │                │                       
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:71:16
@@ -778,19 +778,19 @@ note:
 71 │         assert self.my_bar.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 72 │         self.my_bar.something.item0 = 10
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:72:9
    │
 72 │         self.my_bar.something.item0 = 10
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:72:9
    │
 72 │         self.my_bar.something.item0 = 10
-   │         ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │         ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:72:9
@@ -798,21 +798,21 @@ note:
 72 │         self.my_bar.something.item0 = 10
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^ u256
    │         │                              
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 73 │         self.my_bar.something.item1 = false
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:73:9
    │
 73 │         self.my_bar.something.item1 = false
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:73:9
    │
 73 │         self.my_bar.something.item1 = false
-   │         ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │         ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:73:9
@@ -820,21 +820,21 @@ note:
 73 │         self.my_bar.something.item1 = false
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ bool
    │         │                              
-   │         SPtr<bool>
+   │         mut SPtr<bool>
 74 │         assert self.my_bar.something.item0 == 10
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:74:16
    │
 74 │         assert self.my_bar.something.item0 == 10
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:74:16
    │
 74 │         assert self.my_bar.something.item0 == 10
-   │                ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:74:16
@@ -842,7 +842,7 @@ note:
 74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
    │                │                               
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:74:16
@@ -850,25 +850,25 @@ note:
 74 │         assert self.my_bar.something.item0 == 10
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 75 │         assert not self.my_bar.something.item1
-   │                    ^^^^ Foo
+   │                    ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:75:20
    │
 75 │         assert not self.my_bar.something.item1
-   │                    ^^^^^^^^^^^ SPtr<Bar>
+   │                    ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:75:20
    │
 75 │         assert not self.my_bar.something.item1
-   │                    ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                    ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:75:20
    │
 75 │         assert not self.my_bar.something.item1
-   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 
 note: 
    ┌─ structs.fe:75:16
@@ -876,13 +876,13 @@ note:
 75 │         assert not self.my_bar.something.item1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 76 │         self.my_bar.something = (1, true)
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:76:9
    │
 76 │         self.my_bar.something = (1, true)
-   │         ^^^^^^^^^^^ SPtr<Bar>
+   │         ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:76:9
@@ -891,7 +891,7 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^    ^  ^^^^ bool
    │         │                        │   
    │         │                        u256
-   │         SPtr<(u256, bool)>
+   │         mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:76:33
@@ -899,19 +899,19 @@ note:
 76 │         self.my_bar.something = (1, true)
    │                                 ^^^^^^^^^ (u256, bool)
 77 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:77:16
    │
 77 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:77:16
    │
 77 │         assert self.my_bar.something.item0 == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:77:16
@@ -919,7 +919,7 @@ note:
 77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                               
-   │                SPtr<u256> -> u256
+   │                mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ structs.fe:77:16
@@ -927,39 +927,39 @@ note:
 77 │         assert self.my_bar.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 78 │         assert self.my_bar.something.item1
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:78:16
    │
 78 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:78:16
    │
 78 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^ SPtr<(u256, bool)>
+   │                ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<(u256, bool)>
 
 note: 
    ┌─ structs.fe:78:16
    │
 78 │         assert self.my_bar.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 79 │         return self.my_bar.name.to_mem()
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ structs.fe:79:16
    │
 79 │         return self.my_bar.name.to_mem()
-   │                ^^^^^^^^^^^ SPtr<Bar>
+   │                ^^^^^^^^^^^ mut SPtr<Bar>
 
 note: 
    ┌─ structs.fe:79:16
    │
 79 │         return self.my_bar.name.to_mem()
-   │                ^^^^^^^^^^^^^^^^ SPtr<String<3>>
+   │                ^^^^^^^^^^^^^^^^ mut SPtr<String<3>>
 
 note: 
    ┌─ structs.fe:79:16
@@ -970,61 +970,61 @@ note:
 note: 
     ┌─ structs.fe:82:5
     │  
- 82 │ ╭     pub fn complex_struct_in_memory(self) -> String<3> {
- 83 │ │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+ 82 │ ╭     pub fn complex_struct_in_memory() -> String<3> {
+ 83 │ │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
  84 │ │         assert val.numbers[0] == 1
  85 │ │         assert val.numbers[1] == 2
     · │
 111 │ │         return val.name
 112 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [] -> String<3>
+    │ ╰─────^ params: [] -> String<3>
 
 note: 
-   ┌─ structs.fe:83:13
+   ┌─ structs.fe:83:17
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │             ^^^ Bar
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                 ^^^ mut Bar
 
 note: 
-   ┌─ structs.fe:83:34
+   ┌─ structs.fe:83:38
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                  ^^^^^            ^  ^ u256
-   │                                  │                │   
-   │                                  │                u256
-   │                                  String<3>
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                      ^^^^^            ^  ^ u256
+   │                                      │                │   
+   │                                      │                u256
+   │                                      String<3> -Copy-> String<3>
 
 note: 
-   ┌─ structs.fe:83:50
+   ┌─ structs.fe:83:54
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                  ^^^^^^                  ^^^     ^^^ u256
-   │                                                  │                       │        
-   │                                                  │                       u256
-   │                                                  Array<u256, 2>
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                      ^^^^^^                  ^^^     ^^^ u256
+   │                                                      │                       │        
+   │                                                      │                       u256
+   │                                                      Array<u256, 2>
 
 note: 
-   ┌─ structs.fe:83:65
+   ┌─ structs.fe:83:69
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                                 ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool
-   │                                                                 │                                  │   
-   │                                                                 │                                  u256
-   │                                                                 Point
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^ bool
+   │                                                                     │                                  │   
+   │                                                                     │                                  u256
+   │                                                                     Point
 
 note: 
-   ┌─ structs.fe:83:99
+   ┌─ structs.fe:83:103
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                                                                                                   ^^^^^^^^^ (u256, bool)
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                                                                                                       ^^^^^^^^^ (u256, bool)
 
 note: 
-   ┌─ structs.fe:83:24
+   ┌─ structs.fe:83:28
    │
-83 │         let val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar
+83 │         let mut val: Bar = Bar(name: "foo", numbers: [1, 2], point: Point(x: 100, y: 200), something: (1, true))
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bar
 84 │         assert val.numbers[0] == 1
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:84:16
@@ -1032,7 +1032,7 @@ note:
 84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:84:16
@@ -1040,7 +1040,7 @@ note:
 84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^    ^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:84:16
@@ -1048,7 +1048,7 @@ note:
 84 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ bool
 85 │         assert val.numbers[1] == 2
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:85:16
@@ -1056,7 +1056,7 @@ note:
 85 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:85:16
@@ -1064,7 +1064,7 @@ note:
 85 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^^^^    ^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:85:16
@@ -1072,13 +1072,13 @@ note:
 85 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ bool
 86 │         assert val.point.x == 100
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:86:16
    │
 86 │         assert val.point.x == 100
-   │                ^^^^^^^^^ Point
+   │                ^^^^^^^^^ mut Point
 
 note: 
    ┌─ structs.fe:86:16
@@ -1086,7 +1086,7 @@ note:
 86 │         assert val.point.x == 100
    │                ^^^^^^^^^^^    ^^^ u256
    │                │               
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:86:16
@@ -1094,13 +1094,13 @@ note:
 86 │         assert val.point.x == 100
    │                ^^^^^^^^^^^^^^^^^^ bool
 87 │         assert val.point.y == 200
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:87:16
    │
 87 │         assert val.point.y == 200
-   │                ^^^^^^^^^ Point
+   │                ^^^^^^^^^ mut Point
 
 note: 
    ┌─ structs.fe:87:16
@@ -1108,7 +1108,7 @@ note:
 87 │         assert val.point.y == 200
    │                ^^^^^^^^^^^    ^^^ u256
    │                │               
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:87:16
@@ -1116,13 +1116,13 @@ note:
 87 │         assert val.point.y == 200
    │                ^^^^^^^^^^^^^^^^^^ bool
 88 │         assert val.something.item0 == 1
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:88:16
    │
 88 │         assert val.something.item0 == 1
-   │                ^^^^^^^^^^^^^ (u256, bool)
+   │                ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
    ┌─ structs.fe:88:16
@@ -1130,7 +1130,7 @@ note:
 88 │         assert val.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                       
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:88:16
@@ -1138,21 +1138,21 @@ note:
 88 │         assert val.something.item0 == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 89 │         assert val.something.item1
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:89:16
    │
 89 │         assert val.something.item1
-   │                ^^^^^^^^^^^^^ (u256, bool)
+   │                ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
    ┌─ structs.fe:89:16
    │
 89 │         assert val.something.item1
-   │                ^^^^^^^^^^^^^^^^^^^ bool
+   │                ^^^^^^^^^^^^^^^^^^^ mut bool
 90 │         val.numbers[0] = 10
-   │         ^^^ Bar
+   │         ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:90:9
@@ -1160,7 +1160,7 @@ note:
 90 │         val.numbers[0] = 10
    │         ^^^^^^^^^^^ ^ u256
    │         │            
-   │         Array<u256, 2>
+   │         mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:90:9
@@ -1168,9 +1168,9 @@ note:
 90 │         val.numbers[0] = 10
    │         ^^^^^^^^^^^^^^   ^^ u256
    │         │                 
-   │         u256
+   │         mut u256
 91 │         val.numbers[1] = 20
-   │         ^^^ Bar
+   │         ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:91:9
@@ -1178,7 +1178,7 @@ note:
 91 │         val.numbers[1] = 20
    │         ^^^^^^^^^^^ ^ u256
    │         │            
-   │         Array<u256, 2>
+   │         mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:91:9
@@ -1186,9 +1186,9 @@ note:
 91 │         val.numbers[1] = 20
    │         ^^^^^^^^^^^^^^   ^^ u256
    │         │                 
-   │         u256
+   │         mut u256
 92 │         assert val.numbers[0] == 10
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:92:16
@@ -1196,7 +1196,7 @@ note:
 92 │         assert val.numbers[0] == 10
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:92:16
@@ -1204,7 +1204,7 @@ note:
 92 │         assert val.numbers[0] == 10
    │                ^^^^^^^^^^^^^^    ^^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:92:16
@@ -1212,7 +1212,7 @@ note:
 92 │         assert val.numbers[0] == 10
    │                ^^^^^^^^^^^^^^^^^^^^ bool
 93 │         assert val.numbers[1] == 20
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:93:16
@@ -1220,7 +1220,7 @@ note:
 93 │         assert val.numbers[1] == 20
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:93:16
@@ -1228,7 +1228,7 @@ note:
 93 │         assert val.numbers[1] == 20
    │                ^^^^^^^^^^^^^^    ^^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:93:16
@@ -1236,7 +1236,7 @@ note:
 93 │         assert val.numbers[1] == 20
    │                ^^^^^^^^^^^^^^^^^^^^ bool
 94 │         val.numbers = [1, 2]
-   │         ^^^ Bar
+   │         ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:94:9
@@ -1245,7 +1245,7 @@ note:
    │         ^^^^^^^^^^^    ^  ^ u256
    │         │              │   
    │         │              u256
-   │         Array<u256, 2>
+   │         mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:94:23
@@ -1253,7 +1253,7 @@ note:
 94 │         val.numbers = [1, 2]
    │                       ^^^^^^ Array<u256, 2>
 95 │         assert val.numbers[0] == 1
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:95:16
@@ -1261,7 +1261,7 @@ note:
 95 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:95:16
@@ -1269,7 +1269,7 @@ note:
 95 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^    ^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:95:16
@@ -1277,7 +1277,7 @@ note:
 95 │         assert val.numbers[0] == 1
    │                ^^^^^^^^^^^^^^^^^^^ bool
 96 │         assert val.numbers[1] == 2
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:96:16
@@ -1285,7 +1285,7 @@ note:
 96 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^ ^ u256
    │                │            
-   │                Array<u256, 2>
+   │                mut Array<u256, 2>
 
 note: 
    ┌─ structs.fe:96:16
@@ -1293,7 +1293,7 @@ note:
 96 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^^^^    ^ u256
    │                │                  
-   │                u256
+   │                mut u256
 
 note: 
    ┌─ structs.fe:96:16
@@ -1301,13 +1301,13 @@ note:
 96 │         assert val.numbers[1] == 2
    │                ^^^^^^^^^^^^^^^^^^^ bool
 97 │         val.point.x = 1000
-   │         ^^^ Bar
+   │         ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:97:9
    │
 97 │         val.point.x = 1000
-   │         ^^^^^^^^^ Point
+   │         ^^^^^^^^^ mut Point
 
 note: 
    ┌─ structs.fe:97:9
@@ -1315,15 +1315,15 @@ note:
 97 │         val.point.x = 1000
    │         ^^^^^^^^^^^   ^^^^ u256
    │         │              
-   │         u256
+   │         mut u256
 98 │         val.point.y = 2000
-   │         ^^^ Bar
+   │         ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:98:9
    │
 98 │         val.point.y = 2000
-   │         ^^^^^^^^^ Point
+   │         ^^^^^^^^^ mut Point
 
 note: 
    ┌─ structs.fe:98:9
@@ -1331,15 +1331,15 @@ note:
 98 │         val.point.y = 2000
    │         ^^^^^^^^^^^   ^^^^ u256
    │         │              
-   │         u256
+   │         mut u256
 99 │         assert val.point.x == 1000
-   │                ^^^ Bar
+   │                ^^^ mut Bar
 
 note: 
    ┌─ structs.fe:99:16
    │
 99 │         assert val.point.x == 1000
-   │                ^^^^^^^^^ Point
+   │                ^^^^^^^^^ mut Point
 
 note: 
    ┌─ structs.fe:99:16
@@ -1347,7 +1347,7 @@ note:
 99 │         assert val.point.x == 1000
    │                ^^^^^^^^^^^    ^^^^ u256
    │                │               
-   │                u256
+   │                mut u256
 
 note: 
     ┌─ structs.fe:99:16
@@ -1355,13 +1355,13 @@ note:
  99 │         assert val.point.x == 1000
     │                ^^^^^^^^^^^^^^^^^^^ bool
 100 │         assert val.point.y == 2000
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:100:16
     │
 100 │         assert val.point.y == 2000
-    │                ^^^^^^^^^ Point
+    │                ^^^^^^^^^ mut Point
 
 note: 
     ┌─ structs.fe:100:16
@@ -1369,7 +1369,7 @@ note:
 100 │         assert val.point.y == 2000
     │                ^^^^^^^^^^^    ^^^^ u256
     │                │               
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:100:16
@@ -1377,7 +1377,7 @@ note:
 100 │         assert val.point.y == 2000
     │                ^^^^^^^^^^^^^^^^^^^ bool
 101 │         val.point = Point(x: 100, y: 200)
-    │         ^^^ Bar
+    │         ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:101:9
@@ -1386,7 +1386,7 @@ note:
     │         ^^^^^^^^^            ^^^     ^^^ u256
     │         │                    │        
     │         │                    u256
-    │         Point
+    │         mut Point
 
 note: 
     ┌─ structs.fe:101:21
@@ -1394,13 +1394,13 @@ note:
 101 │         val.point = Point(x: 100, y: 200)
     │                     ^^^^^^^^^^^^^^^^^^^^^ Point
 102 │         assert val.point.x == 100
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:102:16
     │
 102 │         assert val.point.x == 100
-    │                ^^^^^^^^^ Point
+    │                ^^^^^^^^^ mut Point
 
 note: 
     ┌─ structs.fe:102:16
@@ -1408,7 +1408,7 @@ note:
 102 │         assert val.point.x == 100
     │                ^^^^^^^^^^^    ^^^ u256
     │                │               
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:102:16
@@ -1416,13 +1416,13 @@ note:
 102 │         assert val.point.x == 100
     │                ^^^^^^^^^^^^^^^^^^ bool
 103 │         assert val.point.y == 200
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:103:16
     │
 103 │         assert val.point.y == 200
-    │                ^^^^^^^^^ Point
+    │                ^^^^^^^^^ mut Point
 
 note: 
     ┌─ structs.fe:103:16
@@ -1430,7 +1430,7 @@ note:
 103 │         assert val.point.y == 200
     │                ^^^^^^^^^^^    ^^^ u256
     │                │               
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:103:16
@@ -1438,13 +1438,13 @@ note:
 103 │         assert val.point.y == 200
     │                ^^^^^^^^^^^^^^^^^^ bool
 104 │         val.something.item0 = 10
-    │         ^^^ Bar
+    │         ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:104:9
     │
 104 │         val.something.item0 = 10
-    │         ^^^^^^^^^^^^^ (u256, bool)
+    │         ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:104:9
@@ -1452,15 +1452,15 @@ note:
 104 │         val.something.item0 = 10
     │         ^^^^^^^^^^^^^^^^^^^   ^^ u256
     │         │                      
-    │         u256
+    │         mut u256
 105 │         val.something.item1 = false
-    │         ^^^ Bar
+    │         ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:105:9
     │
 105 │         val.something.item1 = false
-    │         ^^^^^^^^^^^^^ (u256, bool)
+    │         ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:105:9
@@ -1468,15 +1468,15 @@ note:
 105 │         val.something.item1 = false
     │         ^^^^^^^^^^^^^^^^^^^   ^^^^^ bool
     │         │                      
-    │         bool
+    │         mut bool
 106 │         assert val.something.item0 == 10
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:106:16
     │
 106 │         assert val.something.item0 == 10
-    │                ^^^^^^^^^^^^^ (u256, bool)
+    │                ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:106:16
@@ -1484,7 +1484,7 @@ note:
 106 │         assert val.something.item0 == 10
     │                ^^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                       
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:106:16
@@ -1492,19 +1492,19 @@ note:
 106 │         assert val.something.item0 == 10
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 107 │         assert not val.something.item1
-    │                    ^^^ Bar
+    │                    ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:107:20
     │
 107 │         assert not val.something.item1
-    │                    ^^^^^^^^^^^^^ (u256, bool)
+    │                    ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:107:20
     │
 107 │         assert not val.something.item1
-    │                    ^^^^^^^^^^^^^^^^^^^ bool
+    │                    ^^^^^^^^^^^^^^^^^^^ mut bool
 
 note: 
     ┌─ structs.fe:107:16
@@ -1512,7 +1512,7 @@ note:
 107 │         assert not val.something.item1
     │                ^^^^^^^^^^^^^^^^^^^^^^^ bool
 108 │         val.something = (1, true)
-    │         ^^^ Bar
+    │         ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:108:9
@@ -1521,7 +1521,7 @@ note:
     │         ^^^^^^^^^^^^^    ^  ^^^^ bool
     │         │                │   
     │         │                u256
-    │         (u256, bool)
+    │         mut (u256, bool)
 
 note: 
     ┌─ structs.fe:108:25
@@ -1529,13 +1529,13 @@ note:
 108 │         val.something = (1, true)
     │                         ^^^^^^^^^ (u256, bool)
 109 │         assert val.something.item0 == 1
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:109:16
     │
 109 │         assert val.something.item0 == 1
-    │                ^^^^^^^^^^^^^ (u256, bool)
+    │                ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:109:16
@@ -1543,7 +1543,7 @@ note:
 109 │         assert val.something.item0 == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                       
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:109:16
@@ -1551,27 +1551,27 @@ note:
 109 │         assert val.something.item0 == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 110 │         assert val.something.item1
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:110:16
     │
 110 │         assert val.something.item1
-    │                ^^^^^^^^^^^^^ (u256, bool)
+    │                ^^^^^^^^^^^^^ mut (u256, bool)
 
 note: 
     ┌─ structs.fe:110:16
     │
 110 │         assert val.something.item1
-    │                ^^^^^^^^^^^^^^^^^^^ bool
+    │                ^^^^^^^^^^^^^^^^^^^ mut bool
 111 │         return val.name
-    │                ^^^ Bar
+    │                ^^^ mut Bar
 
 note: 
     ┌─ structs.fe:111:16
     │
 111 │         return val.name
-    │                ^^^^^^^^ String<3>
+    │                ^^^^^^^^ mut String<3>
 
 note: 
     ┌─ structs.fe:114:5
@@ -1580,7 +1580,7 @@ note:
 115 │ │         let mixed: Mixed = Mixed::new(val: 1)
 116 │ │         return mixed.foo
 117 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [] -> u256
+    │ ╰─────^ params: [self] -> u256
 
 note: 
     ┌─ structs.fe:115:13
@@ -1611,16 +1611,16 @@ note:
 note: 
     ┌─ structs.fe:119:5
     │  
-119 │ ╭     pub fn set_house(self, data: House) {
+119 │ ╭     pub fn set_house(mut self, data: House) {
 120 │ │         self.my_house = data
 121 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: data, typ: House }] -> ()
+    │ ╰─────^ params: [mut self, { label: None, name: data, typ: House }] -> ()
 
 note: 
     ┌─ structs.fe:120:9
     │
 120 │         self.my_house = data
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:120:9
@@ -1628,7 +1628,7 @@ note:
 120 │         self.my_house = data
     │         ^^^^^^^^^^^^^   ^^^^ House
     │         │                
-    │         SPtr<House>
+    │         mut SPtr<House>
 
 note: 
     ┌─ structs.fe:123:5
@@ -1636,7 +1636,7 @@ note:
 123 │ ╭     pub fn get_house(self) -> House {
 124 │ │         return self.my_house.to_mem()
 125 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [] -> House
+    │ ╰─────^ params: [self] -> House
 
 note: 
     ┌─ structs.fe:124:16
@@ -1659,20 +1659,20 @@ note:
 note: 
     ┌─ structs.fe:127:5
     │  
-127 │ ╭     pub fn create_house(self) {
+127 │ ╭     pub fn create_house(mut self) {
 128 │ │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
 129 │ │         assert self.my_house.price == 1
 130 │ │         assert self.my_house.size == 2
     · │
 152 │ │         assert self.my_house.vacant
 153 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [] -> ()
+    │ ╰─────^ params: [mut self] -> ()
 
 note: 
     ┌─ structs.fe:128:9
     │
 128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:128:9
@@ -1682,7 +1682,7 @@ note:
     │         │                            │        │             
     │         │                            │        u256
     │         │                            u256
-    │         SPtr<House>
+    │         mut SPtr<House>
 
 note: 
     ┌─ structs.fe:128:57
@@ -1698,13 +1698,13 @@ note:
 128 │         self.my_house = House(price: 1, size: 2, rooms: u8(5), vacant: false)
     │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House
 129 │         assert self.my_house.price == 1
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:129:16
     │
 129 │         assert self.my_house.price == 1
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:129:16
@@ -1712,7 +1712,7 @@ note:
 129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                       
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:129:16
@@ -1720,13 +1720,13 @@ note:
 129 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 130 │         assert self.my_house.size == 2
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:130:16
     │
 130 │         assert self.my_house.size == 2
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:130:16
@@ -1734,7 +1734,7 @@ note:
 130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                      
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:130:16
@@ -1742,13 +1742,13 @@ note:
 130 │         assert self.my_house.size == 2
     │                ^^^^^^^^^^^^^^^^^^^^^^^ bool
 131 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:131:16
     │
 131 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:131:16
@@ -1756,7 +1756,7 @@ note:
 131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8> -> u8
+    │                mut SPtr<u8> -Load-> u8
 
 note: 
     ┌─ structs.fe:131:39
@@ -1770,13 +1770,13 @@ note:
 131 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 132 │         assert self.my_house.vacant == false
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:132:16
     │
 132 │         assert self.my_house.vacant == false
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:132:16
@@ -1784,7 +1784,7 @@ note:
 132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool> -> bool
+    │                mut SPtr<bool> -Load-> bool
 
 note: 
     ┌─ structs.fe:132:16
@@ -1792,13 +1792,13 @@ note:
 132 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 133 │         self.my_house.size = 50
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:133:9
     │
 133 │         self.my_house.size = 50
-    │         ^^^^^^^^^^^^^ SPtr<House>
+    │         ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:133:9
@@ -1806,15 +1806,15 @@ note:
 133 │         self.my_house.size = 50
     │         ^^^^^^^^^^^^^^^^^^   ^^ u256
     │         │                     
-    │         SPtr<u256>
+    │         mut SPtr<u256>
 134 │         assert self.my_house.size == 50
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:134:16
     │
 134 │         assert self.my_house.size == 50
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:134:16
@@ -1822,7 +1822,7 @@ note:
 134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:134:16
@@ -1830,13 +1830,13 @@ note:
 134 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 135 │         assert self.my_house.price == 1
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:135:16
     │
 135 │         assert self.my_house.price == 1
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:135:16
@@ -1844,7 +1844,7 @@ note:
 135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^    ^ u256
     │                │                       
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:135:16
@@ -1852,13 +1852,13 @@ note:
 135 │         assert self.my_house.price == 1
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 136 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:136:16
     │
 136 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:136:16
@@ -1866,7 +1866,7 @@ note:
 136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8> -> u8
+    │                mut SPtr<u8> -Load-> u8
 
 note: 
     ┌─ structs.fe:136:39
@@ -1880,13 +1880,13 @@ note:
 136 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 137 │         assert self.my_house.vacant == false
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:137:16
     │
 137 │         assert self.my_house.vacant == false
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:137:16
@@ -1894,7 +1894,7 @@ note:
 137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool> -> bool
+    │                mut SPtr<bool> -Load-> bool
 
 note: 
     ┌─ structs.fe:137:16
@@ -1902,13 +1902,13 @@ note:
 137 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 138 │         self.my_house.price = 1000
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:138:9
     │
 138 │         self.my_house.price = 1000
-    │         ^^^^^^^^^^^^^ SPtr<House>
+    │         ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:138:9
@@ -1916,15 +1916,15 @@ note:
 138 │         self.my_house.price = 1000
     │         ^^^^^^^^^^^^^^^^^^^   ^^^^ u256
     │         │                      
-    │         SPtr<u256>
+    │         mut SPtr<u256>
 139 │         assert self.my_house.size == 50
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:139:16
     │
 139 │         assert self.my_house.size == 50
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:139:16
@@ -1932,7 +1932,7 @@ note:
 139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:139:16
@@ -1940,13 +1940,13 @@ note:
 139 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 140 │         assert self.my_house.price == 1000
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:140:16
     │
 140 │         assert self.my_house.price == 1000
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:140:16
@@ -1954,7 +1954,7 @@ note:
 140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:140:16
@@ -1962,13 +1962,13 @@ note:
 140 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 141 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:141:16
     │
 141 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:141:16
@@ -1976,7 +1976,7 @@ note:
 141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8> -> u8
+    │                mut SPtr<u8> -Load-> u8
 
 note: 
     ┌─ structs.fe:141:39
@@ -1990,13 +1990,13 @@ note:
 141 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 142 │         assert self.my_house.vacant == false
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:142:16
     │
 142 │         assert self.my_house.vacant == false
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:142:16
@@ -2004,7 +2004,7 @@ note:
 142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                        
-    │                SPtr<bool> -> bool
+    │                mut SPtr<bool> -Load-> bool
 
 note: 
     ┌─ structs.fe:142:16
@@ -2012,13 +2012,13 @@ note:
 142 │         assert self.my_house.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 143 │         self.my_house.vacant = true
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:143:9
     │
 143 │         self.my_house.vacant = true
-    │         ^^^^^^^^^^^^^ SPtr<House>
+    │         ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:143:9
@@ -2026,15 +2026,15 @@ note:
 143 │         self.my_house.vacant = true
     │         ^^^^^^^^^^^^^^^^^^^^   ^^^^ bool
     │         │                       
-    │         SPtr<bool>
+    │         mut SPtr<bool>
 144 │         assert self.my_house.size == 50
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:144:16
     │
 144 │         assert self.my_house.size == 50
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:144:16
@@ -2042,7 +2042,7 @@ note:
 144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:144:16
@@ -2050,13 +2050,13 @@ note:
 144 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 145 │         assert self.my_house.price == 1000
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:145:16
     │
 145 │         assert self.my_house.price == 1000
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:145:16
@@ -2064,7 +2064,7 @@ note:
 145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:145:16
@@ -2072,13 +2072,13 @@ note:
 145 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 146 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:146:16
     │
 146 │         assert self.my_house.rooms == u8(5)
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:146:16
@@ -2086,7 +2086,7 @@ note:
 146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^       ^ u8
     │                │                          
-    │                SPtr<u8> -> u8
+    │                mut SPtr<u8> -Load-> u8
 
 note: 
     ┌─ structs.fe:146:39
@@ -2100,27 +2100,27 @@ note:
 146 │         assert self.my_house.rooms == u8(5)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 147 │         assert self.my_house.vacant
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:147:16
     │
 147 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:147:16
     │
 147 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+    │                ^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 148 │         self.my_house.rooms = u8(100)
-    │         ^^^^ Foo
+    │         ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:148:9
     │
 148 │         self.my_house.rooms = u8(100)
-    │         ^^^^^^^^^^^^^ SPtr<House>
+    │         ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:148:9
@@ -2128,7 +2128,7 @@ note:
 148 │         self.my_house.rooms = u8(100)
     │         ^^^^^^^^^^^^^^^^^^^      ^^^ u8
     │         │                         
-    │         SPtr<u8>
+    │         mut SPtr<u8>
 
 note: 
     ┌─ structs.fe:148:31
@@ -2136,13 +2136,13 @@ note:
 148 │         self.my_house.rooms = u8(100)
     │                               ^^^^^^^ u8
 149 │         assert self.my_house.size == 50
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:149:16
     │
 149 │         assert self.my_house.size == 50
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:149:16
@@ -2150,7 +2150,7 @@ note:
 149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^    ^^ u256
     │                │                      
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:149:16
@@ -2158,13 +2158,13 @@ note:
 149 │         assert self.my_house.size == 50
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 150 │         assert self.my_house.price == 1000
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:150:16
     │
 150 │         assert self.my_house.price == 1000
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:150:16
@@ -2172,7 +2172,7 @@ note:
 150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^    ^^^^ u256
     │                │                       
-    │                SPtr<u256> -> u256
+    │                mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ structs.fe:150:16
@@ -2180,13 +2180,13 @@ note:
 150 │         assert self.my_house.price == 1000
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 151 │         assert self.my_house.rooms == u8(100)
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:151:16
     │
 151 │         assert self.my_house.rooms == u8(100)
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:151:16
@@ -2194,7 +2194,7 @@ note:
 151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^^^^^^^       ^^^ u8
     │                │                          
-    │                SPtr<u8> -> u8
+    │                mut SPtr<u8> -Load-> u8
 
 note: 
     ┌─ structs.fe:151:39
@@ -2208,62 +2208,62 @@ note:
 151 │         assert self.my_house.rooms == u8(100)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 152 │         assert self.my_house.vacant
-    │                ^^^^ Foo
+    │                ^^^^ mut Foo
 
 note: 
     ┌─ structs.fe:152:16
     │
 152 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^ SPtr<House>
+    │                ^^^^^^^^^^^^^ mut SPtr<House>
 
 note: 
     ┌─ structs.fe:152:16
     │
 152 │         assert self.my_house.vacant
-    │                ^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+    │                ^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 
 note: 
     ┌─ structs.fe:155:5
     │  
 155 │ ╭     pub fn bar() -> u256 {
-156 │ │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+156 │ │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 157 │ │         assert building.size == 500
 158 │ │         assert building.price == 300
     · │
 172 │ │         return building.size
 173 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
-    ┌─ structs.fe:156:13
+    ┌─ structs.fe:156:17
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │             ^^^^^^^^ House
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                 ^^^^^^^^ mut House
 
 note: 
-    ┌─ structs.fe:156:44
+    ┌─ structs.fe:156:48
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                                            ^^^        ^^^            ^^ u8
-    │                                            │          │               
-    │                                            │          u256
-    │                                            u256
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                ^^^        ^^^            ^^ u8
+    │                                                │          │               
+    │                                                │          u256
+    │                                                u256
 
 note: 
-    ┌─ structs.fe:156:67
+    ┌─ structs.fe:156:71
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                                                                   ^^^^^^          ^^^^ bool
-    │                                                                   │                
-    │                                                                   u8
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                                                       ^^^^^^          ^^^^ bool
+    │                                                                       │                
+    │                                                                       u8
 
 note: 
-    ┌─ structs.fe:156:31
+    ┌─ structs.fe:156:35
     │
-156 │         let building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House
+156 │         let mut building: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ House
 157 │         assert building.size == 500
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:157:16
@@ -2271,7 +2271,7 @@ note:
 157 │         assert building.size == 500
     │                ^^^^^^^^^^^^^    ^^^ u256
     │                │                 
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:157:16
@@ -2279,7 +2279,7 @@ note:
 157 │         assert building.size == 500
     │                ^^^^^^^^^^^^^^^^^^^^ bool
 158 │         assert building.price == 300
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:158:16
@@ -2287,7 +2287,7 @@ note:
 158 │         assert building.price == 300
     │                ^^^^^^^^^^^^^^    ^^^ u256
     │                │                  
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:158:16
@@ -2295,7 +2295,7 @@ note:
 158 │         assert building.price == 300
     │                ^^^^^^^^^^^^^^^^^^^^^ bool
 159 │         assert building.rooms == u8(20)
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:159:16
@@ -2303,7 +2303,7 @@ note:
 159 │         assert building.rooms == u8(20)
     │                ^^^^^^^^^^^^^^       ^^ u8
     │                │                     
-    │                u8
+    │                mut u8
 
 note: 
     ┌─ structs.fe:159:34
@@ -2317,15 +2317,15 @@ note:
 159 │         assert building.rooms == u8(20)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 160 │         assert building.vacant
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:160:16
     │
 160 │         assert building.vacant
-    │                ^^^^^^^^^^^^^^^ bool
+    │                ^^^^^^^^^^^^^^^ mut bool
 161 │         building.vacant = false
-    │         ^^^^^^^^ House
+    │         ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:161:9
@@ -2333,9 +2333,9 @@ note:
 161 │         building.vacant = false
     │         ^^^^^^^^^^^^^^^   ^^^^^ bool
     │         │                  
-    │         bool
+    │         mut bool
 162 │         building.price = 1
-    │         ^^^^^^^^ House
+    │         ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:162:9
@@ -2343,9 +2343,9 @@ note:
 162 │         building.price = 1
     │         ^^^^^^^^^^^^^^   ^ u256
     │         │                 
-    │         u256
+    │         mut u256
 163 │         building.size = 2
-    │         ^^^^^^^^ House
+    │         ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:163:9
@@ -2353,9 +2353,9 @@ note:
 163 │         building.size = 2
     │         ^^^^^^^^^^^^^   ^ u256
     │         │                
-    │         u256
+    │         mut u256
 164 │         building.rooms = u8(10)
-    │         ^^^^^^^^ House
+    │         ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:164:9
@@ -2363,7 +2363,7 @@ note:
 164 │         building.rooms = u8(10)
     │         ^^^^^^^^^^^^^^      ^^ u8
     │         │                    
-    │         u8
+    │         mut u8
 
 note: 
     ┌─ structs.fe:164:26
@@ -2371,7 +2371,7 @@ note:
 164 │         building.rooms = u8(10)
     │                          ^^^^^^ u8
 165 │         assert building.vacant == false
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:165:16
@@ -2379,7 +2379,7 @@ note:
 165 │         assert building.vacant == false
     │                ^^^^^^^^^^^^^^^    ^^^^^ bool
     │                │                   
-    │                bool
+    │                mut bool
 
 note: 
     ┌─ structs.fe:165:16
@@ -2387,7 +2387,7 @@ note:
 165 │         assert building.vacant == false
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 166 │         assert building.price == 1
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:166:16
@@ -2395,7 +2395,7 @@ note:
 166 │         assert building.price == 1
     │                ^^^^^^^^^^^^^^    ^ u256
     │                │                  
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:166:16
@@ -2403,7 +2403,7 @@ note:
 166 │         assert building.price == 1
     │                ^^^^^^^^^^^^^^^^^^^ bool
 167 │         assert building.size == 2
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:167:16
@@ -2411,7 +2411,7 @@ note:
 167 │         assert building.size == 2
     │                ^^^^^^^^^^^^^    ^ u256
     │                │                 
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:167:16
@@ -2419,7 +2419,7 @@ note:
 167 │         assert building.size == 2
     │                ^^^^^^^^^^^^^^^^^^ bool
 168 │         assert building.rooms == u8(10)
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:168:16
@@ -2427,7 +2427,7 @@ note:
 168 │         assert building.rooms == u8(10)
     │                ^^^^^^^^^^^^^^       ^^ u8
     │                │                     
-    │                u8
+    │                mut u8
 
 note: 
     ┌─ structs.fe:168:34
@@ -2441,7 +2441,7 @@ note:
 168 │         assert building.rooms == u8(10)
     │                ^^^^^^^^^^^^^^^^^^^^^^^^ bool
 169 │         building.expand()
-    │         ^^^^^^^^ House
+    │         ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:169:9
@@ -2449,7 +2449,7 @@ note:
 169 │         building.expand()
     │         ^^^^^^^^^^^^^^^^^ ()
 170 │         assert building.size == 102
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:170:16
@@ -2457,7 +2457,7 @@ note:
 170 │         assert building.size == 102
     │                ^^^^^^^^^^^^^    ^^^ u256
     │                │                 
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ structs.fe:170:16
@@ -2465,7 +2465,7 @@ note:
 170 │         assert building.size == 102
     │                ^^^^^^^^^^^^^^^^^^^^ bool
 171 │         assert building.rooms == 11
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:171:16
@@ -2473,7 +2473,7 @@ note:
 171 │         assert building.rooms == 11
     │                ^^^^^^^^^^^^^^    ^^ u8
     │                │                  
-    │                u8
+    │                mut u8
 
 note: 
     ┌─ structs.fe:171:16
@@ -2481,13 +2481,13 @@ note:
 171 │         assert building.rooms == 11
     │                ^^^^^^^^^^^^^^^^^^^^ bool
 172 │         return building.size
-    │                ^^^^^^^^ House
+    │                ^^^^^^^^ mut House
 
 note: 
     ┌─ structs.fe:172:16
     │
 172 │         return building.size
-    │                ^^^^^^^^^^^^^ u256
+    │                ^^^^^^^^^^^^^ mut u256
 
 note: 
     ┌─ structs.fe:175:5
@@ -2496,7 +2496,7 @@ note:
 176 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 177 │ │         return house.encode()
 178 │ │     }
-    │ ╰─────^ self: None, params: [] -> Array<u8, 128>
+    │ ╰─────^ params: [] -> Array<u8, 128>
 
 note: 
     ┌─ structs.fe:176:13
@@ -2542,7 +2542,7 @@ note:
 181 │ │         let house: House = House(price: 300, size: 500, rooms: u8(20), vacant: true)
 182 │ │         return house.hash()
 183 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
     ┌─ structs.fe:181:13

@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> u256 {
 3 │ │         return 42
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> u256
+  │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ return_u256.fe:3:16

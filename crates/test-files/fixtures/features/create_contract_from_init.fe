@@ -7,7 +7,7 @@ contract Foo {
 contract FooFactory {
     foo_addr: address
 
-    pub fn __init__(self, ctx: Context) {
+    pub fn __init__(mut self, mut ctx: Context) {
         self.foo_addr = address(Foo.create(ctx, 0))
     }
 

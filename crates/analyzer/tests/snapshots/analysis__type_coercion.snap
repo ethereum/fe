@@ -18,7 +18,7 @@ note:
 6 │ │         let elem: i32 = self.s[index]
 7 │ │         return elem
 8 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: index, typ: u8 }] -> i32
+  │ ╰─────^ params: [self, { label: None, name: index, typ: u8 }] -> i32
 
 note: 
   ┌─ type_coercion.fe:6:13
@@ -36,7 +36,7 @@ note:
   ┌─ type_coercion.fe:6:25
   │
 6 │         let elem: i32 = self.s[index]
-  │                         ^^^^^^ ^^^^^ u8 -> u256
+  │                         ^^^^^^ ^^^^^ u8 -IntSizeIncrease-> u256
   │                         │       
   │                         SPtr<Array<i32, 20>>
 
@@ -44,7 +44,7 @@ note:
   ┌─ type_coercion.fe:6:25
   │
 6 │         let elem: i32 = self.s[index]
-  │                         ^^^^^^^^^^^^^ SPtr<i32> -> i32
+  │                         ^^^^^^^^^^^^^ SPtr<i32> -Load-> i32
 7 │         return elem
   │                ^^^^ i32
 
@@ -54,7 +54,7 @@ note:
 10 │ ╭     pub fn tuple(self) {
 11 │ │         let a: (i32, i32) = (self.x, self.x)
 12 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [self] -> ()
 
 note: 
    ┌─ type_coercion.fe:11:13
@@ -74,13 +74,13 @@ note:
 11 │         let a: (i32, i32) = (self.x, self.x)
    │                              ^^^^^^  ^^^^ Foo
    │                              │        
-   │                              SPtr<i32> -> i32
+   │                              SPtr<i32> -Load-> i32
 
 note: 
    ┌─ type_coercion.fe:11:38
    │
 11 │         let a: (i32, i32) = (self.x, self.x)
-   │                                      ^^^^^^ SPtr<i32> -> i32
+   │                                      ^^^^^^ SPtr<i32> -Load-> i32
 
 note: 
    ┌─ type_coercion.fe:11:29
