@@ -71,7 +71,7 @@ note:
    · │
 45 │ │         }
 46 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ enum_match.fe:37:13
@@ -125,7 +125,7 @@ note:
    · │
 57 │ │         }
 58 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ enum_match.fe:49:13
@@ -145,7 +145,7 @@ note:
    ┌─ enum_match.fe:49:57
    │
 49 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Tuple(x, y))
-   │                                                         ^^^^^^^^^^^^^^^^^^^ MyEnum
+   │                                                         ^^^^^^^^^^^^^^^^^^^ MyEnum -Copy-> MyEnum
 
 note: 
    ┌─ enum_match.fe:49:36
@@ -180,20 +180,20 @@ note:
    │  
 60 │ ╭     pub fn nested_match2() -> u256 {
 61 │ │         let tup: Tuple2 = Tuple2::Value(MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
-62 │ │         let res: u256 = 0
+62 │ │         let mut res: u256 = 0
 63 │ │         match tup {
    · │
 72 │ │         return res
 73 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ enum_match.fe:61:13
    │
 61 │         let tup: Tuple2 = Tuple2::Value(MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
    │             ^^^ Tuple2
-62 │         let res: u256 = 0
-   │             ^^^ u256
+62 │         let mut res: u256 = 0
+   │                 ^^^ mut u256
 
 note: 
    ┌─ enum_match.fe:61:55
@@ -207,24 +207,24 @@ note:
    ┌─ enum_match.fe:61:41
    │
 61 │         let tup: Tuple2 = Tuple2::Value(MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
-   │                                         ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^ MyEnum
+   │                                         ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^ MyEnum -Copy-> MyEnum
    │                                         │                     
-   │                                         MyEnum
+   │                                         MyEnum -Copy-> MyEnum
 
 note: 
    ┌─ enum_match.fe:61:27
    │
 61 │         let tup: Tuple2 = Tuple2::Value(MyEnum::Tuple(1, 2), MyEnum::UnitTuple())
    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Tuple2
-62 │         let res: u256 = 0
-   │                         ^ u256
+62 │         let mut res: u256 = 0
+   │                             ^ u256
 63 │         match tup {
    │               ^^^ Tuple2
 64 │             Tuple2::Value(MyEnum::Unit, MyEnum::Tuple(x, y)) | Tuple2::Value(MyEnum::Tuple(x, y), MyEnum::UnitTuple()) => {
 65 │                 res = u256(x) + y
    │                 ^^^        ^ u32
    │                 │           
-   │                 u256
+   │                 mut u256
 
 note: 
    ┌─ enum_match.fe:65:23
@@ -244,7 +244,7 @@ note:
    │                        ^ u256
    ·
 72 │         return res
-   │                ^^^ u256
+   │                ^^^ mut u256
 
 note: 
    ┌─ enum_match.fe:75:5
@@ -256,7 +256,7 @@ note:
    · │
 85 │ │         }
 86 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ enum_match.fe:76:13
@@ -318,7 +318,7 @@ note:
     · │
  99 │ │         }
 100 │ │     }
-    │ ╰─────^ self: None, params: [{ label: None, name: b1, typ: bool }, { label: None, name: b2, typ: bool }] -> u256
+    │ ╰─────^ params: [{ label: None, name: b1, typ: bool }, { label: None, name: b2, typ: bool }] -> u256
 
 note: 
    ┌─ enum_match.fe:89:16
@@ -353,7 +353,7 @@ note:
     · │
 111 │ │         }
 112 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
     ┌─ enum_match.fe:103:13
@@ -365,7 +365,7 @@ note:
     ┌─ enum_match.fe:103:57
     │
 103 │         let nested: MyEnumNested = MyEnumNested::Nested(MyEnum::Unit)
-    │                                                         ^^^^^^^^^^^^ MyEnum
+    │                                                         ^^^^^^^^^^^^ MyEnum -Copy-> MyEnum
 
 note: 
     ┌─ enum_match.fe:103:36
@@ -385,27 +385,27 @@ note:
     ┌─ enum_match.fe:114:5
     │  
 114 │ ╭     pub fn match_in_if() -> u256 {
-115 │ │         let res: u256 = 0
+115 │ │         let mut res: u256 = 0
 116 │ │         let my_enum: MyEnum = MyEnum::Tuple(1, 2);
 117 │ │ 
     · │
 133 │ │ 
 134 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
-    ┌─ enum_match.fe:115:13
+    ┌─ enum_match.fe:115:17
     │
-115 │         let res: u256 = 0
-    │             ^^^ u256
+115 │         let mut res: u256 = 0
+    │                 ^^^ mut u256
 116 │         let my_enum: MyEnum = MyEnum::Tuple(1, 2);
     │             ^^^^^^^ MyEnum
 
 note: 
-    ┌─ enum_match.fe:115:25
+    ┌─ enum_match.fe:115:29
     │
-115 │         let res: u256 = 0
-    │                         ^ u256
+115 │         let mut res: u256 = 0
+    │                             ^ u256
 116 │         let my_enum: MyEnum = MyEnum::Tuple(1, 2);
     │                                             ^  ^ u256
     │                                             │   
@@ -425,7 +425,7 @@ note:
 121 │                     res = u256(x) + y
     │                     ^^^        ^ u32
     │                     │           
-    │                     u256
+    │                     mut u256
 
 note: 
     ┌─ enum_match.fe:121:27
@@ -444,64 +444,64 @@ note:
 125 │                     res = 0
     │                     ^^^   ^ u256
     │                     │      
-    │                     u256
+    │                     mut u256
     ·
 129 │             res = 100
     │             ^^^   ^^^ u256
     │             │      
-    │             u256
+    │             mut u256
     ·
 132 │         return res
-    │                ^^^ u256
+    │                ^^^ mut u256
 
 note: 
     ┌─ enum_match.fe:136:5
     │  
 136 │ ╭     pub fn match_in_loop() -> u256 {
-137 │ │         let res: u256 = 0
-138 │ │         let state: State = State::Continue 
+137 │ │         let mut res: u256 = 0
+138 │ │         let mut state: State = State::Continue
 139 │ │ 
     · │
 159 │ │         return res
 160 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
-    ┌─ enum_match.fe:137:13
+    ┌─ enum_match.fe:137:17
     │
-137 │         let res: u256 = 0
-    │             ^^^ u256
-138 │         let state: State = State::Continue 
-    │             ^^^^^ State
+137 │         let mut res: u256 = 0
+    │                 ^^^ mut u256
+138 │         let mut state: State = State::Continue
+    │                 ^^^^^ mut State
 139 │ 
-140 │         let my_array: Array<u256, 3> = [0; 3]
-    │             ^^^^^^^^ Array<u256, 3>
+140 │         let mut my_array: Array<u256, 3> = [0; 3]
+    │                 ^^^^^^^^ mut Array<u256, 3>
     ·
 145 │         for i in my_array {
     │             ^ u256
 
 note: 
-    ┌─ enum_match.fe:137:25
+    ┌─ enum_match.fe:137:29
     │
-137 │         let res: u256 = 0
-    │                         ^ u256
-138 │         let state: State = State::Continue 
-    │                            ^^^^^^^^^^^^^^^ State
+137 │         let mut res: u256 = 0
+    │                             ^ u256
+138 │         let mut state: State = State::Continue
+    │                                ^^^^^^^^^^^^^^^ State -Copy-> State
 139 │ 
-140 │         let my_array: Array<u256, 3> = [0; 3]
-    │                                         ^  ^ u256
-    │                                         │   
-    │                                         u256
+140 │         let mut my_array: Array<u256, 3> = [0; 3]
+    │                                             ^  ^ u256
+    │                                             │   
+    │                                             u256
 
 note: 
-    ┌─ enum_match.fe:140:40
+    ┌─ enum_match.fe:140:44
     │
-140 │         let my_array: Array<u256, 3> = [0; 3]
-    │                                        ^^^^^^ Array<u256, 3>
+140 │         let mut my_array: Array<u256, 3> = [0; 3]
+    │                                            ^^^^^^ Array<u256, 3>
 141 │         my_array[0] = 5
     │         ^^^^^^^^ ^ u256
     │         │         
-    │         Array<u256, 3>
+    │         mut Array<u256, 3>
 
 note: 
     ┌─ enum_match.fe:141:9
@@ -509,11 +509,11 @@ note:
 141 │         my_array[0] = 5
     │         ^^^^^^^^^^^   ^ u256
     │         │              
-    │         u256
+    │         mut u256
 142 │         my_array[1] = 10
     │         ^^^^^^^^ ^ u256
     │         │         
-    │         Array<u256, 3>
+    │         mut Array<u256, 3>
 
 note: 
     ┌─ enum_match.fe:142:9
@@ -521,11 +521,11 @@ note:
 142 │         my_array[1] = 10
     │         ^^^^^^^^^^^   ^^ u256
     │         │              
-    │         u256
+    │         mut u256
 143 │         my_array[2] = 15
     │         ^^^^^^^^ ^ u256
     │         │         
-    │         Array<u256, 3>
+    │         mut Array<u256, 3>
 
 note: 
     ┌─ enum_match.fe:143:9
@@ -533,21 +533,21 @@ note:
 143 │         my_array[2] = 15
     │         ^^^^^^^^^^^   ^^ u256
     │         │              
-    │         u256
+    │         mut u256
 144 │ 
 145 │         for i in my_array {
-    │                  ^^^^^^^^ Array<u256, 3>
+    │                  ^^^^^^^^ mut Array<u256, 3>
 146 │             match state {
-    │                   ^^^^^ State
+    │                   ^^^^^ mut State
     ·
 153 │             res += i
     │             ^^^    ^ u256
     │             │       
-    │             u256
+    │             mut u256
 154 │             if res == 15 {
     │                ^^^    ^^ u256
     │                │       
-    │                u256
+    │                mut u256
 
 note: 
     ┌─ enum_match.fe:154:16
@@ -555,12 +555,12 @@ note:
 154 │             if res == 15 {
     │                ^^^^^^^^^ bool
 155 │                 state = State::Done
-    │                 ^^^^^   ^^^^^^^^^^^ State
+    │                 ^^^^^   ^^^^^^^^^^^ State -Copy-> State
     │                 │        
-    │                 State
+    │                 mut State
     ·
 159 │         return res
-    │                ^^^ u256
+    │                ^^^ mut u256
 
 note: 
     ┌─ enum_match.fe:162:5
@@ -572,7 +572,7 @@ note:
     · │
 171 │ │         }
 172 │ │     }
-    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+    │ ╰─────^ params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
     ┌─ enum_match.fe:163:13
@@ -635,7 +635,7 @@ note:
     · │
 183 │ │         }
 184 │ │     }
-    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+    │ ╰─────^ params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
     ┌─ enum_match.fe:175:13
@@ -699,7 +699,7 @@ note:
     · │
 195 │ │         }
 196 │ │     }
-    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
+    │ ╰─────^ params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
     ┌─ enum_match.fe:187:13
@@ -792,7 +792,7 @@ note:
     · │
 208 │ │         }
 209 │ │     }
-    │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i32 }, { label: None, name: y, typ: i32 }, { label: None, name: b, typ: bool }] -> i32
+    │ ╰─────^ params: [{ label: None, name: x, typ: i32 }, { label: None, name: y, typ: i32 }, { label: None, name: b, typ: bool }] -> i32
 
 note: 
     ┌─ enum_match.fe:199:13
@@ -849,7 +849,7 @@ note:
     · │
 222 │ │         }
 223 │ │     }
-    │ ╰─────^ self: None, params: [] -> u256
+    │ ╰─────^ params: [] -> u256
 
 note: 
     ┌─ enum_match.fe:212:13
@@ -873,7 +873,7 @@ note:
 212 │         let e: MyEnum = MyEnum::Tuple(1, 2)
     │                         ^^^^^^^^^^^^^^^^^^^ MyEnum
 213 │         let s: NestedStruct = NestedStruct(x: 3, y: 4, e)
-    │                                               ^     ^  ^ MyEnum
+    │                                               ^     ^  ^ MyEnum -Copy-> MyEnum
     │                                               │     │   
     │                                               │     u256
     │                                               u256
@@ -925,14 +925,14 @@ note:
 note: 
     ┌─ enum_match.fe:225:5
     │  
-225 │ ╭     pub fn enum_storage(self, x:u32, y: u256, b: bool) -> u256 {
+225 │ ╭     pub fn enum_storage(mut self, x:u32, y: u256, b: bool) -> u256 {
 226 │ │         if b {
 227 │ │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
 228 │ │         } else {
     · │
 239 │ │         }
 240 │ │     }
-    │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }, { label: None, name: b, typ: bool }] -> u256
+    │ ╰─────^ params: [mut self, { label: None, name: x, typ: u32 }, { label: None, name: y, typ: u256 }, { label: None, name: b, typ: bool }] -> u256
 
 note: 
     ┌─ enum_match.fe:226:12
@@ -940,7 +940,7 @@ note:
 226 │         if b {
     │            ^ bool
 227 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
-    │             ^^^^ Foo
+    │             ^^^^ mut Foo
 
 note: 
     ┌─ enum_match.fe:227:13
@@ -949,13 +949,13 @@ note:
     │             ^^^^^^^^^^^^                                      ^  ^ u256
     │             │                                                 │   
     │             │                                                 u32
-    │             SPtr<MyEnumNested>
+    │             mut SPtr<MyEnumNested>
 
 note: 
     ┌─ enum_match.fe:227:49
     │
 227 │             self.my_enum = MyEnumNested::Nested(MyEnum::Tuple(x, y))
-    │                                                 ^^^^^^^^^^^^^^^^^^^ MyEnum
+    │                                                 ^^^^^^^^^^^^^^^^^^^ MyEnum -Copy-> MyEnum
 
 note: 
     ┌─ enum_match.fe:227:28
@@ -964,15 +964,15 @@ note:
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEnumNested
 228 │         } else {
 229 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
-    │             ^^^^ Foo
+    │             ^^^^ mut Foo
 
 note: 
     ┌─ enum_match.fe:229:13
     │
 229 │             self.my_enum = MyEnumNested::Nested(MyEnum::Unit)
-    │             ^^^^^^^^^^^^                        ^^^^^^^^^^^^ MyEnum
+    │             ^^^^^^^^^^^^                        ^^^^^^^^^^^^ MyEnum -Copy-> MyEnum
     │             │                                    
-    │             SPtr<MyEnumNested>
+    │             mut SPtr<MyEnumNested>
 
 note: 
     ┌─ enum_match.fe:229:28
@@ -981,13 +981,13 @@ note:
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEnumNested
     ·
 232 │         match self.my_enum {
-    │               ^^^^ Foo
+    │               ^^^^ mut Foo
 
 note: 
     ┌─ enum_match.fe:232:15
     │
 232 │         match self.my_enum {
-    │               ^^^^^^^^^^^^ SPtr<MyEnumNested>
+    │               ^^^^^^^^^^^^ mut SPtr<MyEnumNested>
 233 │             MyEnumNested::Tuple(x1, y1) | MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
 234 │                 return u256(x1) + y1
     │                             ^^ u32

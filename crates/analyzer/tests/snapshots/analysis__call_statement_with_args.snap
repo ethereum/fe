@@ -12,16 +12,16 @@ note:
 note: 
   ┌─ call_statement_with_args.fe:4:5
   │  
-4 │ ╭     fn assign(self, _ val: u256) {
+4 │ ╭     fn assign(mut self, _ val: u256) {
 5 │ │         self.baz[0] = val
 6 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: val, typ: u256 }] -> ()
+  │ ╰─────^ params: [mut self, { label: Some("_"), name: val, typ: u256 }] -> ()
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^ Foo
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
@@ -29,7 +29,7 @@ note:
 5 │         self.baz[0] = val
   │         ^^^^^^^^ ^ u256
   │         │         
-  │         SPtr<Map<u256, u256>>
+  │         mut SPtr<Map<u256, u256>>
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
@@ -37,16 +37,16 @@ note:
 5 │         self.baz[0] = val
   │         ^^^^^^^^^^^   ^^^ u256
   │         │              
-  │         SPtr<u256>
+  │         mut SPtr<u256>
 
 note: 
    ┌─ call_statement_with_args.fe:8:5
    │  
- 8 │ ╭     pub fn bar(self) -> u256 {
+ 8 │ ╭     pub fn bar(mut self) -> u256 {
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
 11 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [mut self] -> u256
 
 note: 
   ┌─ call_statement_with_args.fe:9:9
@@ -54,7 +54,7 @@ note:
 9 │         self.assign(100)
   │         ^^^^        ^^^ u256
   │         │            
-  │         Foo
+  │         mut Foo
 
 note: 
    ┌─ call_statement_with_args.fe:9:9
@@ -62,7 +62,7 @@ note:
  9 │         self.assign(100)
    │         ^^^^^^^^^^^^^^^^ ()
 10 │         return self.baz[0]
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ call_statement_with_args.fe:10:16
@@ -70,12 +70,12 @@ note:
 10 │         return self.baz[0]
    │                ^^^^^^^^ ^ u256
    │                │         
-   │                SPtr<Map<u256, u256>>
+   │                mut SPtr<Map<u256, u256>>
 
 note: 
    ┌─ call_statement_with_args.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^^^^ SPtr<u256> -> u256
+   │                ^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 

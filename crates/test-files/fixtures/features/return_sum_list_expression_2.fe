@@ -4,7 +4,7 @@ contract Foo {
     }
 
     fn count(_ values: Array<u256, 20>) -> u256 {
-        let sum: u256 = 0
+        let mut sum: u256 = 0
         for i in values {
             sum = sum + i
         }

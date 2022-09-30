@@ -36,7 +36,7 @@ contract Foo {
     }
 
     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
-        let addrs: Array<address, 2> = [address(0); 2]
+        let mut addrs: Array<address, 2> = [address(0); 2]
         addrs[0] = addr1
         addrs[1] = addr2
         ctx.emit(Addresses(addrs))

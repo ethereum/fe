@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn square(x: u256) -> u256 {
 3 │ │         return x * x
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }] -> u256
+  │ ╰─────^ params: [{ label: None, name: x, typ: u256 }] -> u256
 
 note: 
   ┌─ associated_fns.fe:3:16
@@ -37,7 +37,7 @@ note:
 10 │ ╭     pub fn new(x: u256) -> MyStruct {
 11 │ │         return MyStruct(x)
 12 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }] -> MyStruct
+   │ ╰─────^ params: [{ label: None, name: x, typ: u256 }] -> MyStruct
 
 note: 
    ┌─ associated_fns.fe:11:25
@@ -60,17 +60,17 @@ note:
 note: 
    ┌─ associated_fns.fe:18:5
    │  
-18 │ ╭     pub fn bar(self, val: u256) -> u256 {
+18 │ ╭     pub fn bar(mut self, val: u256) -> u256 {
 19 │ │         self.my_struct = MyStruct::new(x: val)
 20 │ │         return Lib::square(x: self.my_struct.x)
 21 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: val, typ: u256 }] -> u256
+   │ ╰─────^ params: [mut self, { label: None, name: val, typ: u256 }] -> u256
 
 note: 
    ┌─ associated_fns.fe:19:9
    │
 19 │         self.my_struct = MyStruct::new(x: val)
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ associated_fns.fe:19:9
@@ -78,7 +78,7 @@ note:
 19 │         self.my_struct = MyStruct::new(x: val)
    │         ^^^^^^^^^^^^^^                    ^^^ u256
    │         │                                  
-   │         SPtr<MyStruct>
+   │         mut SPtr<MyStruct>
 
 note: 
    ┌─ associated_fns.fe:19:26
@@ -86,19 +86,19 @@ note:
 19 │         self.my_struct = MyStruct::new(x: val)
    │                          ^^^^^^^^^^^^^^^^^^^^^ MyStruct
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^ Foo
+   │                               ^^^^ mut Foo
 
 note: 
    ┌─ associated_fns.fe:20:31
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^^^^^^^^^^^ SPtr<MyStruct>
+   │                               ^^^^^^^^^^^^^^ mut SPtr<MyStruct>
 
 note: 
    ┌─ associated_fns.fe:20:31
    │
 20 │         return Lib::square(x: self.my_struct.x)
-   │                               ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                               ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ associated_fns.fe:20:16

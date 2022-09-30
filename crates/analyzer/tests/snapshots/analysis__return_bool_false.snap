@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar() -> bool {
 3 │ │         return false
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> bool
+  │ ╰─────^ params: [] -> bool
 
 note: 
   ┌─ return_bool_false.fe:3:16

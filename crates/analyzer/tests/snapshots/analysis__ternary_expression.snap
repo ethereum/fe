@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar(input: u256) -> u256 {
 3 │ │         return 1 if input > 5 else 0
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: input, typ: u256 }] -> u256
+  │ ╰─────^ params: [{ label: None, name: input, typ: u256 }] -> u256
 
 note: 
   ┌─ ternary_expression.fe:3:21

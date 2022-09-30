@@ -3,7 +3,7 @@ use crate::display::Displayable;
 use crate::errors::{self, FatalError, TypeCoercionError};
 use crate::namespace::items::{EnumVariantId, EnumVariantKind, Item, StructId, TypeDef};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{Type, TypeDowncast, TypeId};
+use crate::namespace::types::{Type, TypeId};
 use crate::pattern_analysis::PatternMatrix;
 use crate::traversal::{assignments, declarations, expressions, types};
 use fe_common::diagnostics::Label;
@@ -53,13 +53,13 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
         fe::FuncStmt::For { target, iter, body } => {
             // Make sure iter is in the function scope & it should be an array.
             let iter_type = expressions::expr(scope, iter, None)?.typ;
-            let target_type = match iter_type.typ(scope.db()) {
-                Type::Array(array) => array.inner,
-                Type::SPtr(inner) if inner.as_array(scope.db()).is_some() => {
-                    scope.add_diagnostic(errors::to_mem_error(iter.span));
 
-                    // `if let` guards are experimental (rust issue #51114)
-                    inner.as_array(scope.db()).unwrap().inner
+            let target_type = match iter_type.deref(scope.db()).typ(scope.db()) {
+                Type::Array(array) => {
+                    if iter_type.is_sptr(scope.db()) {
+                        scope.add_diagnostic(errors::to_mem_error(iter.span));
+                    }
+                    array.inner
                 }
                 _ => {
                     return Err(FatalError::new(scope.register_diag(errors::type_error(
@@ -724,7 +724,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
             None => ExpressionAttributes::new(TypeId::unit(scope.db())),
         };
 
-        match types::try_coerce_type(scope, value.as_ref(), value_attr.typ, expected_type) {
+        match types::try_coerce_type(scope, value.as_ref(), value_attr.typ, expected_type, false) {
             Err(TypeCoercionError::RequiresToMem) => {
                 let value = value.clone().expect("to_mem required on unit type?");
                 scope.add_diagnostic(errors::to_mem_error(value.span));

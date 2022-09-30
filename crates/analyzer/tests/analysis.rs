@@ -288,6 +288,7 @@ test_analysis! { u32_u32_map, "features/u32_u32_map.fe"}
 test_analysis! { u64_u64_map, "features/u64_u64_map.fe"}
 test_analysis! { u128_u128_map, "features/u128_u128_map.fe"}
 test_analysis! { u256_u256_map, "features/u256_u256_map.fe"}
+test_analysis! { value_semantics, "features/value_semantics.fe"}
 test_analysis! { while_loop, "features/while_loop.fe"}
 test_analysis! { while_loop_with_break, "features/while_loop_with_break.fe"}
 test_analysis! { while_loop_with_break_2, "features/while_loop_with_break_2.fe"}
@@ -295,6 +296,7 @@ test_analysis! { while_loop_with_continue, "features/while_loop_with_continue.fe
 test_analysis! { abi_encoding_stress, "stress/abi_encoding_stress.fe"}
 test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
+test_analysis! { tuple_destructuring, "features/tuple_destructuring.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 test_analysis! { const_generics, "features/const_generics.fe" }
 test_analysis! { const_local, "features/const_local.fe" }

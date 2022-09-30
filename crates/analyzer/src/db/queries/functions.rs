@@ -85,7 +85,7 @@ pub fn function_signature(
         .iter()
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
-            ast::FunctionArg::Self_ { .. }=> {
+            ast::FunctionArg::Self_ { mut_ }=> {
                 if matches!(fn_parent, Item::Module(_)) {
                     scope.error(
                         "`self` can only be used in contract, struct, trait or impl functions",
@@ -93,7 +93,7 @@ pub fn function_signature(
                         "not allowed in functions defined directly in a module",
                     );
                 } else {
-                    self_decl = Some(SelfDecl::Mutable);
+                    self_decl = Some(SelfDecl { span: arg.span, mut_: *mut_ });
                     if index != 0 {
                         scope.error(
                             "`self` is not the first parameter",
@@ -104,9 +104,15 @@ pub fn function_signature(
                 }
                 None
             }
-            ast::FunctionArg::Regular { mut_: _, label, name, typ: typedesc } => {
-                let typ = resolve_function_param_type(db, function, &mut scope, &typedesc).and_then(|typ| match typ {
-                    typ if typ.has_fixed_size(db) => Ok(typ),
+            ast::FunctionArg::Regular { mut_, label, name, typ: typedesc } => {
+                let typ = resolve_function_param_type(db, function, &mut scope, typedesc).and_then(|typ| match typ {
+                    typ if typ.has_fixed_size(db) => {
+                        if mut_.is_some() {
+                            Ok(Type::Mut(typ).id(db))
+                        } else {
+                            Ok(typ)
+                        }
+                    }
                     _ => Err(TypeError::new(scope.error(
                         "function parameter types must have fixed size",
                         typedesc.span,
@@ -177,6 +183,7 @@ pub fn function_signature(
                     None
                 } else {
                     names.insert(&name.kind, index);
+
                     Some(types::FunctionParam::new(
                         label.as_ref().map(|s| s.kind.as_str()),
                         &name.kind,
@@ -229,7 +236,7 @@ pub fn function_signature(
     }
 }
 
-pub fn resolve_function_param_type(
+fn resolve_function_param_type(
     db: &dyn AnalyzerDb,
     function: FunctionSigId,
     context: &mut dyn AnalyzerContext,

@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn decode_static_complex(s: StaticComplex) -> StaticComplex {
 3 │ │         return s
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StaticComplex }] -> StaticComplex
+  │ ╰─────^ params: [{ label: None, name: s, typ: StaticComplex }] -> StaticComplex
 
 note: 
   ┌─ abi_decode_complex.fe:3:16
@@ -23,7 +23,7 @@ note:
 6 │ ╭     pub fn decode_string_complex(s: StringComplex) -> StringComplex {
 7 │ │         return s
 8 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StringComplex }] -> StringComplex
+  │ ╰─────^ params: [{ label: None, name: s, typ: StringComplex }] -> StringComplex
 
 note: 
   ┌─ abi_decode_complex.fe:7:16
@@ -37,7 +37,7 @@ note:
 10 │ ╭     pub fn decode_bytes_complex(s: BytesComplex) -> BytesComplex {
 11 │ │         return s
 12 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: BytesComplex }] -> BytesComplex
+   │ ╰─────^ params: [{ label: None, name: s, typ: BytesComplex }] -> BytesComplex
 
 note: 
    ┌─ abi_decode_complex.fe:11:16
@@ -51,7 +51,7 @@ note:
 14 │ ╭     pub fn decode_nested_dynamic_complex(s: NestedDynamicComplex) -> NestedDynamicComplex {
 15 │ │         return s
 16 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: NestedDynamicComplex }] -> NestedDynamicComplex
+   │ ╰─────^ params: [{ label: None, name: s, typ: NestedDynamicComplex }] -> NestedDynamicComplex
 
 note: 
    ┌─ abi_decode_complex.fe:15:16
@@ -65,7 +65,7 @@ note:
 18 │ ╭     pub fn decode_static_complex_elem_array(arr: Array<StaticComplex, 3>) -> Array<StaticComplex, 3> {
 19 │ │         return arr
 20 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<StaticComplex, 3> }] -> Array<StaticComplex, 3>
+   │ ╰─────^ params: [{ label: None, name: arr, typ: Array<StaticComplex, 3> }] -> Array<StaticComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:19:16
@@ -79,7 +79,7 @@ note:
 22 │ ╭     pub fn decode_dynamic_complex_elem_array(arr: Array<NestedDynamicComplex, 3>) -> Array<NestedDynamicComplex, 3> {
 23 │ │         return arr
 24 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<NestedDynamicComplex, 3> }] -> Array<NestedDynamicComplex, 3>
+   │ ╰─────^ params: [{ label: None, name: arr, typ: Array<NestedDynamicComplex, 3> }] -> Array<NestedDynamicComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:23:16

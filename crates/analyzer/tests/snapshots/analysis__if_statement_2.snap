@@ -13,7 +13,7 @@ note:
   · │
 8 │ │         return 0
 9 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> u256
+  │ ╰─────^ params: [{ label: None, name: val, typ: u256 }] -> u256
 
 note: 
   ┌─ if_statement_2.fe:3:12

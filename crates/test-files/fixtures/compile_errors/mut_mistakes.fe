@@ -1,0 +1,26 @@
+contract Foo {
+    x: u8
+
+    pub fn f(self) {
+        self.x = 10 // self not mut
+    }
+
+}
+
+struct Point {
+    pub x: u64
+    pub y: u64
+}
+
+fn borrow_checker() {
+    let mut p: Point = Point(x: 1, y: 2)
+    let mut q: Point = Point(x: 1, y: 2)
+
+    move_stuff(a: p, b: q) // OK
+    move_stuff(a: p, b: p) // XXX ERROR
+}
+
+fn move_stuff(mut a: Point, mut b: Point) {
+   a.x *= 10
+   b.x *= 10
+}

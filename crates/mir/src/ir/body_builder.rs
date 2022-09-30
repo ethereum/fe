@@ -15,7 +15,7 @@ use super::{
 
 #[derive(Debug)]
 pub struct BodyBuilder {
-    body: FunctionBody,
+    pub body: FunctionBody,
     loc: CursorLocation,
 }
 

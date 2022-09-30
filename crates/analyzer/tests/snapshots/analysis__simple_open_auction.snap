@@ -47,26 +47,26 @@ note:
 note: 
    ┌─ simple_open_auction.fe:42:5
    │  
-42 │ ╭     pub fn bid(self, ctx: Context) {
+42 │ ╭     pub fn bid(mut self, mut ctx: Context) {
 43 │ │         if ctx.block_timestamp() > self.auction_end_time {
 44 │ │             revert AuctionAlreadyEnded()
 45 │ │         }
    · │
 55 │ │         ctx.emit(HighestBidIncreased(bidder: ctx.msg_sender(), amount: ctx.msg_value()))
 56 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ simple_open_auction.fe:43:12
    │
 43 │         if ctx.block_timestamp() > self.auction_end_time {
-   │            ^^^ Context
+   │            ^^^ mut Context
 
 note: 
    ┌─ simple_open_auction.fe:43:12
    │
 43 │         if ctx.block_timestamp() > self.auction_end_time {
-   │            ^^^^^^^^^^^^^^^^^^^^^   ^^^^ SimpleOpenAuction
+   │            ^^^^^^^^^^^^^^^^^^^^^   ^^^^ mut SimpleOpenAuction
    │            │                        
    │            u256
 
@@ -74,7 +74,7 @@ note:
    ┌─ simple_open_auction.fe:43:36
    │
 43 │         if ctx.block_timestamp() > self.auction_end_time {
-   │                                    ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                    ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:43:12
@@ -85,13 +85,13 @@ note:
    │                    ^^^^^^^^^^^^^^^^^^^^^ AuctionAlreadyEnded
 45 │         }
 46 │         if ctx.msg_value() <= self.highest_bid {
-   │            ^^^ Context
+   │            ^^^ mut Context
 
 note: 
    ┌─ simple_open_auction.fe:46:12
    │
 46 │         if ctx.msg_value() <= self.highest_bid {
-   │            ^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction
+   │            ^^^^^^^^^^^^^^^    ^^^^ mut SimpleOpenAuction
    │            │                   
    │            u256
 
@@ -99,7 +99,7 @@ note:
    ┌─ simple_open_auction.fe:46:31
    │
 46 │         if ctx.msg_value() <= self.highest_bid {
-   │                               ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                               ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:46:12
@@ -107,13 +107,13 @@ note:
 46 │         if ctx.msg_value() <= self.highest_bid {
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 47 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
-   │                                                  ^^^^ SimpleOpenAuction
+   │                                                  ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:47:50
    │
 47 │             revert BidNotHighEnough(highest_bid: self.highest_bid)
-   │                                                  ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                                  ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:47:20
@@ -122,7 +122,7 @@ note:
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BidNotHighEnough
 48 │         }
 49 │         if self.highest_bid != 0 {
-   │            ^^^^ SimpleOpenAuction
+   │            ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:49:12
@@ -130,7 +130,7 @@ note:
 49 │         if self.highest_bid != 0 {
    │            ^^^^^^^^^^^^^^^^    ^ u256
    │            │                    
-   │            SPtr<u256> -> u256
+   │            mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:49:12
@@ -138,46 +138,46 @@ note:
 49 │         if self.highest_bid != 0 {
    │            ^^^^^^^^^^^^^^^^^^^^^ bool
 50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │             ^^^^ SimpleOpenAuction
+   │             ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:50:13
    │
 50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │             ^^^^^^^^^^^^^^^^^^^^ ^^^^ SimpleOpenAuction
+   │             ^^^^^^^^^^^^^^^^^^^^ ^^^^ mut SimpleOpenAuction
    │             │                     
-   │             SPtr<Map<address, u256>>
+   │             mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ simple_open_auction.fe:50:34
    │
 50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │                                  ^^^^^^^^^^^^^^^^^^^ SPtr<address> -> address
+   │                                  ^^^^^^^^^^^^^^^^^^^ mut SPtr<address> -Load-> address
 
 note: 
    ┌─ simple_open_auction.fe:50:13
    │
 50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^ mut SimpleOpenAuction
    │             │                                             
-   │             SPtr<u256> -> u256
+   │             mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:50:58
    │
 50 │             self.pending_returns[self.highest_bidder] += self.highest_bid
-   │                                                          ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                                          ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 51 │         }
 52 │         self.highest_bidder = ctx.msg_sender()
-   │         ^^^^ SimpleOpenAuction
+   │         ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:52:9
    │
 52 │         self.highest_bidder = ctx.msg_sender()
-   │         ^^^^^^^^^^^^^^^^^^^   ^^^ Context
+   │         ^^^^^^^^^^^^^^^^^^^   ^^^ mut Context
    │         │                      
-   │         SPtr<address>
+   │         mut SPtr<address>
 
 note: 
    ┌─ simple_open_auction.fe:52:31
@@ -185,15 +185,15 @@ note:
 52 │         self.highest_bidder = ctx.msg_sender()
    │                               ^^^^^^^^^^^^^^^^ address
 53 │         self.highest_bid = ctx.msg_value()
-   │         ^^^^ SimpleOpenAuction
+   │         ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:53:9
    │
 53 │         self.highest_bid = ctx.msg_value()
-   │         ^^^^^^^^^^^^^^^^   ^^^ Context
+   │         ^^^^^^^^^^^^^^^^   ^^^ mut Context
    │         │                   
-   │         SPtr<u256>
+   │         mut SPtr<u256>
 
 note: 
    ┌─ simple_open_auction.fe:53:28
@@ -202,15 +202,15 @@ note:
    │                            ^^^^^^^^^^^^^^^ u256
 54 │ 
 55 │         ctx.emit(HighestBidIncreased(bidder: ctx.msg_sender(), amount: ctx.msg_value()))
-   │         ^^^                                  ^^^ Context
+   │         ^^^                                  ^^^ mut Context
    │         │                                     
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ simple_open_auction.fe:55:46
    │
 55 │         ctx.emit(HighestBidIncreased(bidder: ctx.msg_sender(), amount: ctx.msg_value()))
-   │                                              ^^^^^^^^^^^^^^^^          ^^^ Context
+   │                                              ^^^^^^^^^^^^^^^^          ^^^ mut Context
    │                                              │                          
    │                                              address
 
@@ -235,14 +235,14 @@ note:
 note: 
    ┌─ simple_open_auction.fe:58:5
    │  
-58 │ ╭     pub fn withdraw(self, ctx: Context) -> bool {
+58 │ ╭     pub fn withdraw(mut self, ctx: Context) -> bool {
 59 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 60 │ │ 
 61 │ │         if amount > 0 {
    · │
 65 │ │         return true
 66 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }] -> bool
 
 note: 
    ┌─ simple_open_auction.fe:59:13
@@ -254,7 +254,7 @@ note:
    ┌─ simple_open_auction.fe:59:28
    │
 59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-   │                            ^^^^ SimpleOpenAuction
+   │                            ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:59:28
@@ -262,7 +262,7 @@ note:
 59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
    │                            ^^^^^^^^^^^^^^^^^^^^ ^^^ Context
    │                            │                     
-   │                            SPtr<Map<address, u256>>
+   │                            mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ simple_open_auction.fe:59:49
@@ -274,7 +274,7 @@ note:
    ┌─ simple_open_auction.fe:59:28
    │
 59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 60 │ 
 61 │         if amount > 0 {
    │            ^^^^^^   ^ u256
@@ -287,7 +287,7 @@ note:
 61 │         if amount > 0 {
    │            ^^^^^^^^^^ bool
 62 │             self.pending_returns[ctx.msg_sender()] = 0
-   │             ^^^^ SimpleOpenAuction
+   │             ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:62:13
@@ -295,7 +295,7 @@ note:
 62 │             self.pending_returns[ctx.msg_sender()] = 0
    │             ^^^^^^^^^^^^^^^^^^^^ ^^^ Context
    │             │                     
-   │             SPtr<Map<address, u256>>
+   │             mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ simple_open_auction.fe:62:34
@@ -309,7 +309,7 @@ note:
 62 │             self.pending_returns[ctx.msg_sender()] = 0
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^ u256
    │             │                                         
-   │             SPtr<u256>
+   │             mut SPtr<u256>
 63 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
    │             ^^^                ^^^ Context
    │             │                   
@@ -335,26 +335,26 @@ note:
 note: 
    ┌─ simple_open_auction.fe:68:5
    │  
-68 │ ╭     pub fn action_end(self, ctx: Context) {
+68 │ ╭     pub fn action_end(mut self, mut ctx: Context) {
 69 │ │         if ctx.block_timestamp() <= self.auction_end_time {
 70 │ │             revert AuctionNotYetEnded()
 71 │ │         }
    · │
 78 │ │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
 79 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ simple_open_auction.fe:69:12
    │
 69 │         if ctx.block_timestamp() <= self.auction_end_time {
-   │            ^^^ Context
+   │            ^^^ mut Context
 
 note: 
    ┌─ simple_open_auction.fe:69:12
    │
 69 │         if ctx.block_timestamp() <= self.auction_end_time {
-   │            ^^^^^^^^^^^^^^^^^^^^^    ^^^^ SimpleOpenAuction
+   │            ^^^^^^^^^^^^^^^^^^^^^    ^^^^ mut SimpleOpenAuction
    │            │                         
    │            u256
 
@@ -362,7 +362,7 @@ note:
    ┌─ simple_open_auction.fe:69:37
    │
 69 │         if ctx.block_timestamp() <= self.auction_end_time {
-   │                                     ^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                     ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:69:12
@@ -373,18 +373,18 @@ note:
    │                    ^^^^^^^^^^^^^^^^^^^^ AuctionNotYetEnded
 71 │         }
 72 │         if self.ended {
-   │            ^^^^ SimpleOpenAuction
+   │            ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:72:12
    │
 72 │         if self.ended {
-   │            ^^^^^^^^^^ SPtr<bool> -> bool
+   │            ^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 73 │             revert AuctionEndAlreadyCalled()
    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^ AuctionEndAlreadyCalled
 74 │         }
 75 │         self.ended = true
-   │         ^^^^ SimpleOpenAuction
+   │         ^^^^ mut SimpleOpenAuction
 
 note: 
    ┌─ simple_open_auction.fe:75:9
@@ -392,25 +392,25 @@ note:
 75 │         self.ended = true
    │         ^^^^^^^^^^   ^^^^ bool
    │         │             
-   │         SPtr<bool>
+   │         mut SPtr<bool>
 76 │         ctx.emit(AuctionEnded(winner: self.highest_bidder, amount: self.highest_bid))
-   │         ^^^                           ^^^^ SimpleOpenAuction
+   │         ^^^                           ^^^^ mut SimpleOpenAuction
    │         │                              
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ simple_open_auction.fe:76:39
    │
 76 │         ctx.emit(AuctionEnded(winner: self.highest_bidder, amount: self.highest_bid))
-   │                                       ^^^^^^^^^^^^^^^^^^^          ^^^^ SimpleOpenAuction
+   │                                       ^^^^^^^^^^^^^^^^^^^          ^^^^ mut SimpleOpenAuction
    │                                       │                             
-   │                                       SPtr<address> -> address
+   │                                       mut SPtr<address> -Load-> address
 
 note: 
    ┌─ simple_open_auction.fe:76:68
    │
 76 │         ctx.emit(AuctionEnded(winner: self.highest_bidder, amount: self.highest_bid))
-   │                                                                    ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                                                    ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:76:18
@@ -425,23 +425,23 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 77 │ 
 78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-   │         ^^^                ^^^^ SimpleOpenAuction
+   │         ^^^                ^^^^ mut SimpleOpenAuction
    │         │                   
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ simple_open_auction.fe:78:28
    │
 78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-   │                            ^^^^^^^^^^^^^^^^       ^^^^ SimpleOpenAuction
+   │                            ^^^^^^^^^^^^^^^^       ^^^^ mut SimpleOpenAuction
    │                            │                       
-   │                            SPtr<address> -> address
+   │                            mut SPtr<address> -Load-> address
 
 note: 
    ┌─ simple_open_auction.fe:78:51
    │
 78 │         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
-   │                                                   ^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                                                   ^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ simple_open_auction.fe:78:9

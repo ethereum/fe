@@ -200,10 +200,10 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 
             AbiType::Tuple(fields)
         }
+        ir::TypeKind::MPtr(inner) => db.codegen_abi_type(*inner),
 
         ir::TypeKind::Contract(_)
         | ir::TypeKind::Map(_)
-        | ir::TypeKind::MPtr(_)
         | ir::TypeKind::Enum(_)
         | ir::TypeKind::SPtr(_) => unreachable!(),
     }

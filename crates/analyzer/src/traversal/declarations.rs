@@ -1,6 +1,6 @@
 use crate::context::AnalyzerContext;
 use crate::display::Displayable;
-use crate::errors::FatalError;
+use crate::errors::{self, FatalError, TypeCoercionError};
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{Type, TypeId};
 use crate::traversal::{const_expr, expressions, types};
@@ -10,49 +10,68 @@ use fe_parser::node::Node;
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::VarDecl {
-        target,
-        typ,
-        value,
-        mut_: _,
-    } = &stmt.kind
-    {
-        let declared_type = types::type_desc(scope, typ)?;
-        if let Type::Map(_) = declared_type.typ(scope.db()) {
-            return Err(FatalError::new(scope.error(
-                "invalid variable type",
-                typ.span,
-                "`Map` type can only be used as a contract field",
-            )));
-        }
+    let (target, typ, value, mut_) = match &stmt.kind {
+        fe::FuncStmt::VarDecl {
+            target,
+            typ,
+            value,
+            mut_,
+        } => (target, typ, value, mut_),
+        _ => unreachable!(),
+    };
 
-        if let Some(value) = value {
-            expressions::expect_expr_type(scope, value, declared_type)?;
-        } else if matches!(declared_type.typ(scope.db()), Type::Array(_)) {
-            scope.error(
-                "uninitialized variable",
-                target.span,
-                "array types must be initialized at declaration site",
-            );
-        } else if matches!(declared_type.typ(scope.db()), Type::Struct(_)) {
-            scope.error(
-                "uninitialized variable",
-                target.span,
-                "struct types must be initialized at declaration site",
-            );
-        } else if matches!(declared_type.typ(scope.db()), Type::Tuple(_)) {
-            scope.error(
-                "uninitialized variable",
-                target.span,
-                "tuple types must be initialized at declaration site",
-            );
-        }
-
-        add_var(scope, target, declared_type)?;
-        return Ok(());
+    let declared_type = types::type_desc(scope, typ)?;
+    if let Type::Map(_) = declared_type.typ(scope.db()) {
+        return Err(FatalError::new(scope.error(
+            "invalid variable type",
+            typ.span,
+            "`Map` type can only be used as a contract field",
+        )));
     }
 
-    unreachable!()
+    if let Some(value) = value {
+        let rhs = expressions::expr(scope, value, Some(declared_type))?;
+        let should_copy = mut_.is_some() || rhs.typ.is_mut(scope.db());
+        match types::try_coerce_type(scope, Some(value), rhs.typ, declared_type, should_copy) {
+            Err(TypeCoercionError::RequiresToMem) => {
+                scope.add_diagnostic(errors::to_mem_error(value.span));
+            }
+            Err(TypeCoercionError::Incompatible) => {
+                scope.type_error(
+                    "type mismatch",
+                    value.span,
+                    declared_type,
+                    rhs.typ.deref(scope.db()),
+                );
+            }
+            Err(TypeCoercionError::SelfContractType) => {
+                scope.add_diagnostic(errors::self_contract_type_error(
+                    value.span,
+                    &rhs.typ.display(scope.db()),
+                ));
+            }
+            Ok(_) => {}
+        }
+    } else if matches!(
+        declared_type.typ(scope.db()),
+        Type::Array(_) | Type::Struct(_) | Type::Tuple(_)
+    ) {
+        scope.error(
+            "uninitialized variable",
+            target.span,
+            &format!(
+                "{} types must be initialized at declaration site",
+                declared_type.kind_display_name(scope.db())
+            ),
+        );
+    }
+
+    if mut_.is_some() {
+        add_var(scope, target, Type::Mut(declared_type).id(scope.db()))?;
+    } else {
+        add_var(scope, target, declared_type)?;
+    }
+    Ok(())
 }
 
 pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {

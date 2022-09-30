@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: i8, y: u8) -> i8 {
 3 │ │         return x ** y
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i8 }, { label: None, name: y, typ: u8 }] -> i8
+  │ ╰─────^ params: [{ label: None, name: x, typ: i8 }, { label: None, name: y, typ: u8 }] -> i8
 
 note: 
   ┌─ return_pow_i256.fe:3:16

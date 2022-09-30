@@ -1,0 +1,71 @@
+contract Foo {
+
+    my_array: Array<u8, 3>
+
+    pub fn bar(self) -> bool {
+        self.set_array()
+        tuple_of_primitive()
+
+        return true
+    }
+
+    pub fn set_array(mut self) {
+        self.my_array = [42; 3]
+    }
+
+}
+
+
+fn tuple_of_primitive() {
+    let mut tup_a: (u8, u8) = (1, 2);
+    let mut tup_b: (u8, u8) = tup_a
+    tup_a.item0 = 5
+    assert tup_b.item0 == 1
+
+    let tup_imm: (u8, u8) = (1, 2)
+    let mut tup_c: (u8, u8) = tup_imm
+
+    tup_c.item0 = 10
+    assert tup_imm.item0 == 1
+
+    tup_c = tup_imm
+    assert tup_c.item0 == 1
+    tup_c.item0 = 10
+    assert tup_c.item0 == 10
+    assert tup_imm.item0 == 1
+}
+
+struct Point {
+    pub x: u64
+    pub y: u64
+}
+struct Line {
+    pub a: Point
+    pub b: Point
+
+    pub fn from_origin_to(b: Point) -> Line {
+        return Line(a: Point(x: 0, y: 0), b)
+    }
+}
+
+fn struct_constructor() {
+    let mut a: Point = Point(x: 0, y: 0)
+    let mut b: Point = Point(x: 10, y: 10)
+
+    let mut line: Line = Line(a, b)
+    a.x = 1
+    assert line.a.x == 0
+
+    line.b.x = 100
+    assert b.x == 10
+}
+
+fn copies() {
+    let p: Point = Point(x: 0, y: 0)
+    let mut a: Point = p // copy
+    let b: Point = p     // no copy
+    a = b                // copy
+
+    let m: Line = Line::from_origin_to(b)     // no copy
+    let mut n: Line = Line::from_origin_to(b) // copy
+}

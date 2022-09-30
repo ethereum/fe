@@ -12,17 +12,17 @@ note:
 note: 
    ┌─ two_contracts.fe:8:5
    │  
- 8 │ ╭     pub fn foo(self, ctx: Context) -> u256 {
+ 8 │ ╭     pub fn foo(mut self, ctx: Context) -> u256 {
  9 │ │         self.other.set_foo_addr(ctx.self_address())
 10 │ │         return self.other.answer()
 11 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> u256
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }] -> u256
 
 note: 
   ┌─ two_contracts.fe:9:9
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │         ^^^^ Foo
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ two_contracts.fe:9:9
@@ -30,7 +30,7 @@ note:
 9 │         self.other.set_foo_addr(ctx.self_address())
   │         ^^^^^^^^^^              ^^^ Context
   │         │                        
-  │         SPtr<Bar> -> Bar
+  │         mut SPtr<Bar> -Load-> Bar
 
 note: 
   ┌─ two_contracts.fe:9:33
@@ -44,13 +44,13 @@ note:
  9 │         self.other.set_foo_addr(ctx.self_address())
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 10 │         return self.other.answer()
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ two_contracts.fe:10:16
    │
 10 │         return self.other.answer()
-   │                ^^^^^^^^^^ SPtr<Bar> -> Bar
+   │                ^^^^^^^^^^ mut SPtr<Bar> -Load-> Bar
 
 note: 
    ┌─ two_contracts.fe:10:16
@@ -64,7 +64,7 @@ note:
 13 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 14 │ │         return x + y
 15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ two_contracts.fe:14:16
@@ -89,16 +89,16 @@ note:
 note: 
    ┌─ two_contracts.fe:21:5
    │  
-21 │ ╭     pub fn set_foo_addr(self, _ addr: address) {
+21 │ ╭     pub fn set_foo_addr(mut self, _ addr: address) {
 22 │ │         self.other = Foo(addr)
 23 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: addr, typ: address }] -> ()
+   │ ╰─────^ params: [mut self, { label: Some("_"), name: addr, typ: address }] -> ()
 
 note: 
    ┌─ two_contracts.fe:22:9
    │
 22 │         self.other = Foo(addr)
-   │         ^^^^ Bar
+   │         ^^^^ mut Bar
 
 note: 
    ┌─ two_contracts.fe:22:9
@@ -106,7 +106,7 @@ note:
 22 │         self.other = Foo(addr)
    │         ^^^^^^^^^^       ^^^^ address
    │         │                 
-   │         SPtr<Foo>
+   │         mut SPtr<Foo>
 
 note: 
    ┌─ two_contracts.fe:22:22
@@ -120,7 +120,7 @@ note:
 25 │ ╭     pub fn answer(self) -> u256 {
 26 │ │         return self.other.add(20, 22)
 27 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
    ┌─ two_contracts.fe:26:16
@@ -135,7 +135,7 @@ note:
    │                ^^^^^^^^^^     ^^  ^^ u256
    │                │              │    
    │                │              u256
-   │                SPtr<Foo> -> Foo
+   │                SPtr<Foo> -Load-> Foo
 
 note: 
    ┌─ two_contracts.fe:26:16

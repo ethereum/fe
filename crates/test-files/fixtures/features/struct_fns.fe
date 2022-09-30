@@ -18,20 +18,20 @@ struct Point {
         return self.x
     }
 
-    pub fn set_x(self, _ x: u64) -> u64 {
+    pub fn set_x(mut self, _ x: u64) -> u64 {
         let old: u64 = self.x
         self.x = x
         return old
     }
 
-    pub fn reflect(self) {
+    pub fn reflect(mut self) {
         let x: u64 = self.x
         let y: u64 = self.y
         self.x = y
         self.y = x
     }
 
-    pub fn translate(self, x: u64, y: u64) {
+    pub fn translate(mut self, x: u64, y: u64) {
         self.x += x
         self.y += y
     }
@@ -44,7 +44,7 @@ struct Point {
 }
 
 pub fn do_pointy_things() {
-    let p1: Point = Point::origin()
+    let mut p1: Point = Point::origin()
     p1.translate(x: 5, y: 10)
     let p2: Point = Point(x: 1, y: 2)
     let p3: Point = p1.add(p2)
@@ -54,7 +54,7 @@ pub fn do_pointy_things() {
 contract Foo {
     pub fn bar(x: u64, y: u64) -> u64 {
         do_pointy_things()
-        let p: Point = Point::new(x, y)
+        let mut p: Point = Point::new(x, y)
         assert p.x == x and p.y == y
         p.set_x(100)
         p.reflect()

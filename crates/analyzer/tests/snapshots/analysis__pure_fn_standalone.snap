@@ -9,7 +9,7 @@ note:
 1 │ ╭ fn add_bonus(_ x: u256) -> u256 {
 2 │ │     return x + 10
 3 │ │ }
-  │ ╰─^ self: None, params: [{ label: Some("_"), name: x, typ: u256 }] -> u256
+  │ ╰─^ params: [{ label: Some("_"), name: x, typ: u256 }] -> u256
 
 note: 
   ┌─ pure_fn_standalone.fe:2:12
@@ -36,20 +36,20 @@ note:
 note: 
    ┌─ pure_fn_standalone.fe:9:5
    │  
- 9 │ ╭     fn add_points(self, _ user: address, _ val: u256) {
+ 9 │ ╭     fn add_points(mut self, _ user: address, _ val: u256) {
 10 │ │         if self.cool_users[user] {
 11 │ │             self.points[user] += add_bonus(val)
 12 │ │         } else {
 13 │ │             self.points[user] += val
 14 │ │         }
 15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: user, typ: address }, { label: Some("_"), name: val, typ: u256 }] -> ()
+   │ ╰─────^ params: [mut self, { label: Some("_"), name: user, typ: address }, { label: Some("_"), name: val, typ: u256 }] -> ()
 
 note: 
    ┌─ pure_fn_standalone.fe:10:12
    │
 10 │         if self.cool_users[user] {
-   │            ^^^^ Foo
+   │            ^^^^ mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:10:12
@@ -57,15 +57,15 @@ note:
 10 │         if self.cool_users[user] {
    │            ^^^^^^^^^^^^^^^ ^^^^ address
    │            │                
-   │            SPtr<Map<address, bool>>
+   │            mut SPtr<Map<address, bool>>
 
 note: 
    ┌─ pure_fn_standalone.fe:10:12
    │
 10 │         if self.cool_users[user] {
-   │            ^^^^^^^^^^^^^^^^^^^^^ SPtr<bool> -> bool
+   │            ^^^^^^^^^^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 11 │             self.points[user] += add_bonus(val)
-   │             ^^^^ Foo
+   │             ^^^^ mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:11:13
@@ -73,7 +73,7 @@ note:
 11 │             self.points[user] += add_bonus(val)
    │             ^^^^^^^^^^^ ^^^^ address
    │             │            
-   │             SPtr<Map<address, u256>>
+   │             mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ pure_fn_standalone.fe:11:13
@@ -81,7 +81,7 @@ note:
 11 │             self.points[user] += add_bonus(val)
    │             ^^^^^^^^^^^^^^^^^              ^^^ u256
    │             │                               
-   │             SPtr<u256> -> u256
+   │             mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:11:34
@@ -90,7 +90,7 @@ note:
    │                                  ^^^^^^^^^^^^^^ u256
 12 │         } else {
 13 │             self.points[user] += val
-   │             ^^^^ Foo
+   │             ^^^^ mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:13:13
@@ -98,7 +98,7 @@ note:
 13 │             self.points[user] += val
    │             ^^^^^^^^^^^ ^^^^ address
    │             │            
-   │             SPtr<Map<address, u256>>
+   │             mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ pure_fn_standalone.fe:13:13
@@ -106,19 +106,19 @@ note:
 13 │             self.points[user] += val
    │             ^^^^^^^^^^^^^^^^^    ^^^ u256
    │             │                     
-   │             SPtr<u256> -> u256
+   │             mut SPtr<u256> -Load-> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:17:5
    │  
-17 │ ╭     pub fn bar(self, _ x: u256) -> u256 {
+17 │ ╭     pub fn bar(mut self, _ x: u256) -> u256 {
 18 │ │         let a: address = address(x)
 19 │ │         self.add_points(a, 100)
 20 │ │         self.cool_users[a] = true
 21 │ │         self.add_points(a, 100)
 22 │ │         return self.points[a]
 23 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }] -> u256
+   │ ╰─────^ params: [mut self, { label: Some("_"), name: x, typ: u256 }] -> u256
 
 note: 
    ┌─ pure_fn_standalone.fe:18:13
@@ -141,7 +141,7 @@ note:
    │         ^^^^            ^  ^^^ u256
    │         │               │   
    │         │               address
-   │         Foo
+   │         mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:19:9
@@ -149,7 +149,7 @@ note:
 19 │         self.add_points(a, 100)
    │         ^^^^^^^^^^^^^^^^^^^^^^^ ()
 20 │         self.cool_users[a] = true
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:20:9
@@ -157,7 +157,7 @@ note:
 20 │         self.cool_users[a] = true
    │         ^^^^^^^^^^^^^^^ ^ address
    │         │                
-   │         SPtr<Map<address, bool>>
+   │         mut SPtr<Map<address, bool>>
 
 note: 
    ┌─ pure_fn_standalone.fe:20:9
@@ -165,12 +165,12 @@ note:
 20 │         self.cool_users[a] = true
    │         ^^^^^^^^^^^^^^^^^^   ^^^^ bool
    │         │                     
-   │         SPtr<bool>
+   │         mut SPtr<bool>
 21 │         self.add_points(a, 100)
    │         ^^^^            ^  ^^^ u256
    │         │               │   
    │         │               address
-   │         Foo
+   │         mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:21:9
@@ -178,7 +178,7 @@ note:
 21 │         self.add_points(a, 100)
    │         ^^^^^^^^^^^^^^^^^^^^^^^ ()
 22 │         return self.points[a]
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ pure_fn_standalone.fe:22:16
@@ -186,12 +186,12 @@ note:
 22 │         return self.points[a]
    │                ^^^^^^^^^^^ ^ address
    │                │            
-   │                SPtr<Map<address, u256>>
+   │                mut SPtr<Map<address, u256>>
 
 note: 
    ┌─ pure_fn_standalone.fe:22:16
    │
 22 │         return self.points[a]
-   │                ^^^^^^^^^^^^^^ SPtr<u256> -> u256
+   │                ^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 

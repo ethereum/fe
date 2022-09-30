@@ -4,7 +4,6 @@ use strum::{AsRefStr, EnumIter, EnumString};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, EnumString, AsRefStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum ValueMethod {
-    Clone,
     ToMem,
     AbiEncode,
 }

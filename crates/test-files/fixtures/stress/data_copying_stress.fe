@@ -11,48 +11,53 @@ contract Foo {
     my_nums: Array<u256, 5>
     my_addrs: Array<address, 3>
 
-    pub fn set_my_vals(self, my_string: String<42>, my_other_string: String<42>, my_u256: u256, my_other_u256: u256) {
+    pub fn set_my_vals(mut self, my_string: String<42>, my_other_string: String<42>, my_u256: u256, my_other_u256: u256) {
         self.my_string = my_string
         self.my_other_string = my_other_string
         self.my_u256 = my_u256
         self.my_other_u256 = my_other_u256
     }
 
-    pub fn set_to_my_other_vals(self) {
+    pub fn set_to_my_other_vals(mut self) {
         self.my_string = self.my_other_string
         self.my_u256 = self.my_other_u256
     }
 
-    pub fn multiple_references_shared_memory(my_array: Array<u256, 10>) {
-        let my_2nd_array: Array<u256, 10> = my_array
-        let my_3rd_array: Array<u256, 10> = my_2nd_array
-        assert my_array[3] != 5
-        my_array[3] = 5
-        assert my_array[3] == 5
-        assert my_2nd_array[3] == 5
-        assert my_3rd_array[3] == 5
-        my_3rd_array[3] = 50
-        assert my_array[3] == 50
-        assert my_2nd_array[3] == 50
-        assert my_3rd_array[3] == 50
+    pub fn multiple_references_shared_memory(mut x: Array<u256, 10>) {
+        let y: Array<u256, 10> = x
+        let mut z: Array<u256, 10> = y
+
+        assert x[3] != 5
+        x[3] = 5
+        assert x[3] == 5
+        assert y[3] != 5
+        assert z[3] != 5
+
+        z[3] = 50
+        assert x[3] == 5
+        assert y[3] != 50
+        assert z[3] == 50
     }
 
-    pub fn mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
+    pub fn mutate_and_return(mut my_array: Array<u256, 10>) -> Array<u256, 10> {
         my_array[3] = 5
         return my_array
     }
 
     pub fn clone_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
-        return my_array.clone()
+        let a: Array<u256, 10> = my_array
+        return a
     }
 
     pub fn clone_mutate_and_return(my_array: Array<u256, 10>) -> Array<u256, 10> {
-        my_array.clone()[3] = 5
+        let mut a: Array<u256, 10> = my_array
+        a[3] = 5
+        assert my_array[3] != 5
         return my_array
     }
 
-    pub fn assign_my_nums_and_return(self) -> Array<u256, 5> {
-        let my_nums_mem: Array<u256, 5> = [0; 5]
+    pub fn assign_my_nums_and_return(mut self) -> Array<u256, 5> {
+        let mut my_nums_mem: Array<u256, 5> = [0; 5]
         self.my_nums[0] = 42
         self.my_nums[1] = 26
         self.my_nums[2] = 0
@@ -62,15 +67,15 @@ contract Foo {
         return my_nums_mem
     }
 
-    pub fn emit_my_event(self, ctx: Context) {
+    pub fn emit_my_event(self, mut ctx: Context) {
         emit_my_event_internal(ctx, self.my_string.to_mem(), self.my_u256)
     }
 
-    fn emit_my_event_internal(ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
+    fn emit_my_event_internal(mut ctx: Context, _ my_string: String<42>, _ my_u256: u256) {
         ctx.emit(MyEvent(my_string, my_u256))
     }
 
-    pub fn set_my_addrs(self, my_addrs: Array<address, 3>) {
+    pub fn set_my_addrs(mut self, my_addrs: Array<address, 3>) {
         self.my_addrs = my_addrs
     }
 

@@ -24,57 +24,57 @@ Example:
 ```fe
 contract Foo {
 
-    pub fn add(a: u256, b: u256) -> u256 {
+    pub fn add(mut a: u256, b: u256) -> u256 {
         a += b
         return a
     }
 
-    pub fn sub(a: u256, b: u256) -> u256 {
+    pub fn sub(mut a: u256, b: u256) -> u256 {
         a -= b
         return a
     }
 
-    pub fn mul(a: u256, b: u256) -> u256 {
+    pub fn mul(mut a: u256, b: u256) -> u256 {
         a *= b
         return a
     }
 
-    pub fn div(a: u256, b: u256) -> u256 {
+    pub fn div(mut a: u256, b: u256) -> u256 {
         a /= b
         return a
     }
 
-    pub fn mod(a: u256, b: u256) -> u256 {
+    pub fn mod(mut a: u256, b: u256) -> u256 {
         a %= b
         return a
     }
 
-    pub fn pow(a: u256, b: u256) -> u256 {
+    pub fn pow(mut a: u256, b: u256) -> u256 {
         a **= b
         return a
     }
 
-    pub fn lshift(a: u8, b: u8) -> u8 {
+    pub fn lshift(mut a: u8, b: u8) -> u8 {
         a <<= b
         return a
     }
 
-    pub fn rshift(a: u8, b: u8) -> u8 {
+    pub fn rshift(mut a: u8, b: u8) -> u8 {
         a >>= b
         return a
     }
 
-    pub fn bit_or(a: u8, b: u8) -> u8 {
+    pub fn bit_or(mut a: u8, b: u8) -> u8 {
         a |= b
         return a
     }
 
-    pub fn bit_xor(a: u8, b: u8) -> u8 {
+    pub fn bit_xor(mut a: u8, b: u8) -> u8 {
         a ^= b
         return a
     }
 
-    pub fn bit_and(a: u8, b: u8) -> u8 {
+    pub fn bit_and(mut a: u8, b: u8) -> u8 {
         a &= b
         return a
     }

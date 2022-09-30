@@ -15,7 +15,7 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u256) -> u256 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u256 }] -> u256
+  │ ╰─────^ params: [self, { label: None, name: key, typ: u256 }] -> u256
 
 note: 
   ┌─ u256_u256_map.fe:5:16
@@ -35,21 +35,21 @@ note:
   ┌─ u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ SPtr<u256> -> u256
+  │                ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
    ┌─ u256_u256_map.fe:8:5
    │  
- 8 │ ╭     pub fn write_bar(self, key: u256, value: u256) {
+ 8 │ ╭     pub fn write_bar(mut self, key: u256, value: u256) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u256 }, { label: None, name: value, typ: u256 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: key, typ: u256 }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
   ┌─ u256_u256_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ u256_u256_map.fe:9:9
@@ -57,7 +57,7 @@ note:
 9 │         self.bar[key] = value
   │         ^^^^^^^^ ^^^ u256
   │         │         
-  │         SPtr<Map<u256, u256>>
+  │         mut SPtr<Map<u256, u256>>
 
 note: 
   ┌─ u256_u256_map.fe:9:9
@@ -65,6 +65,6 @@ note:
 9 │         self.bar[key] = value
   │         ^^^^^^^^^^^^^   ^^^^^ u256
   │         │                
-  │         SPtr<u256>
+  │         mut SPtr<u256>
 
 

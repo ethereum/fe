@@ -1,9 +1,9 @@
 contract Foo {
     pub fn bar() {
         let my_array: Array<u64, 3> = [u64(0); 3]
-        let sum: u256 = 0
+        let mut sum: u256 = 0
         for i in my_array {
-            let sum: u64 = 0
+            let mut sum: u64 = 0
             sum += i
         }
     }

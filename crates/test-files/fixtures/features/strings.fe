@@ -10,7 +10,7 @@ struct MyEvent {
 
 contract Foo {
 
-    pub fn __init__(ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>) {
+    pub fn __init__(mut ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>) {
         ctx.emit(MyEvent(s2, u, s1, s3, a, s4: "static string", s5: String<100>("foo")))
     }
 

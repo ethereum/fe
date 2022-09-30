@@ -25,11 +25,11 @@ contract Foo {
         return my_tuple.item10
     }
 
-    pub fn emit_my_event(ctx: Context, my_tuple: (u256, bool, address)) {
+    pub fn emit_my_event(mut ctx: Context, my_tuple: (u256, bool, address)) {
         ctx.emit(MyEvent(my_tuple))
     }
 
-    pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32) {
+    pub fn set_my_sto_tuple(mut self, my_u256: u256, my_i32: i32) {
         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
         self.my_sto_tuple = (my_u256, my_i32)
     }
@@ -38,7 +38,7 @@ contract Foo {
         return self.my_sto_tuple.to_mem()
     }
 
-    pub fn build_tuple_and_emit(self, ctx: Context) {
+    pub fn build_tuple_and_emit(self, mut ctx: Context) {
         let my_num: u256 = self.my_sto_tuple.item0
         let my_tuple: (u256, bool, address) = (self.my_sto_tuple.item0, true and false, address(26))
         emit_my_event(ctx, my_tuple)

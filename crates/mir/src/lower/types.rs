@@ -11,10 +11,16 @@ use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId {
     let ty_kind = match analyzer_ty.typ(db.upcast()) {
         analyzer_types::Type::SPtr(inner) => TypeKind::SPtr(lower_type(db, inner)),
-        analyzer_types::Type::Mut(inner) => {
-            // XXX lower to MPtr
-            return lower_type(db, inner);
-        }
+
+        // XXX this results in unexpected MIR TypeId inequalities
+        //  (when different analyzer types map to the same MIR type)
+        analyzer_types::Type::Mut(inner) => match inner.typ(db.upcast()) {
+            analyzer_types::Type::SPtr(t) => TypeKind::SPtr(lower_type(db, t)),
+            analyzer_types::Type::Base(t) => lower_base(t),
+            analyzer_types::Type::Contract(_) => TypeKind::Address,
+            _ => TypeKind::MPtr(lower_type(db, inner)),
+        },
+
         analyzer_types::Type::Base(base) => lower_base(base),
         analyzer_types::Type::Array(arr) => lower_array(db, &arr),
         analyzer_types::Type::Map(map) => lower_map(db, &map),

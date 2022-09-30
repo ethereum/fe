@@ -53,7 +53,7 @@ note:
 31 │ │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
 32 │ │         return complex
 33 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> StaticComplex
+   │ ╰─────^ params: [self] -> StaticComplex
 
 note: 
    ┌─ return_complex_struct.fe:30:13
@@ -79,7 +79,7 @@ note:
 31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
    │                                                    ^^^^^           ^^ i256
    │                                                    │                
-   │                                                    StaticInner
+   │                                                    StaticInner -Copy-> StaticInner
 
 note: 
    ┌─ return_complex_struct.fe:31:38
@@ -96,7 +96,7 @@ note:
 37 │ │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
 38 │ │         return complex
 39 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> StringComplex
+   │ ╰─────^ params: [self] -> StringComplex
 
 note: 
    ┌─ return_complex_struct.fe:37:13
@@ -110,7 +110,7 @@ note:
 37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
    │                                                            ^^^^^^^           ^^ i32
    │                                                            │                  
-   │                                                            String<8>
+   │                                                            String<8> -Copy-> String<8>
 
 note: 
    ┌─ return_complex_struct.fe:37:38
@@ -127,7 +127,7 @@ note:
 42 │ │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
 43 │ │         return complex
 44 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> BytesComplex
+   │ ╰─────^ params: [self] -> BytesComplex
 
 note: 
    ┌─ return_complex_struct.fe:42:13
@@ -175,7 +175,7 @@ note:
 50 │ │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
 51 │ │         return complex
 52 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> NestedDynamicComplex
+   │ ╰─────^ params: [self] -> NestedDynamicComplex
 
 note: 
    ┌─ return_complex_struct.fe:47:13
@@ -217,10 +217,10 @@ note:
 49 │         let string_complex: StringComplex = self.string_complex()
    │                                             ^^^^^^^^^^^^^^^^^^^^^ StringComplex
 50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
-   │                                                                  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ StringComplex
+   │                                                                  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ StringComplex -Copy-> StringComplex
    │                                                                  │              │                
-   │                                                                  │              StaticComplex
-   │                                                                  BytesComplex
+   │                                                                  │              StaticComplex -Copy-> StaticComplex
+   │                                                                  BytesComplex -Copy-> BytesComplex
 
 note: 
    ┌─ return_complex_struct.fe:50:45

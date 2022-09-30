@@ -5,7 +5,7 @@ contract FooBarBing {
         return Bar(my_u256: 24)
     }
 
-    pub fn create_foobar_contract(ctx: Context) -> u256 {
+    pub fn create_foobar_contract(mut ctx: Context) -> u256 {
         let foo_bar: FooBar = FooBar.create(ctx, 0)
         return FooBar::add(40, 50)
     }

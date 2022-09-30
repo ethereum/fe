@@ -6,14 +6,16 @@ Example:
 
 ```fe
 fn f() {
+
     // with clone
     let bar: Array<u256, 4> = [1, 2, 3, 4]
-    let foo: Array<u256, 4> = bar.clone() // `foo` points to a new segment of memory
+    let mut foo: Array<u256, 4> = bar.clone() // `foo` points to a new segment of memory
     assert foo[1] == bar[1]
     foo[1] = 42
     assert foo[1] != bar[1] // modifying `foo` does not modify bar
 }
 
+// XXX change or remove this
 fn g() {
     // without clone
     let bar: Array<u256, 4> = [1, 2, 3, 4]

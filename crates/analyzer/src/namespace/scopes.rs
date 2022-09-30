@@ -98,6 +98,9 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
         unreachable!("Can't call function outside of function")
     }
+    fn get_call(&self, _node: &Node<ast::Expr>) -> Option<CallType> {
+        unreachable!("Can't call function outside of function")
+    }
 
     fn is_in_function(&self) -> bool {
         false
@@ -285,13 +288,15 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
     fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
         // TODO: should probably take the Expr::Call node, rather than the function node
-
         self.add_node(node);
         self.body
             .borrow_mut()
             .calls
             .insert(node.id, call_type)
             .expect_none("call attributes already exist");
+    }
+    fn get_call(&self, node: &Node<ast::Expr>) -> Option<CallType> {
+        self.body.borrow().calls.get(&node.id).cloned()
     }
 
     fn is_in_function(&self) -> bool {
@@ -507,6 +512,10 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
         self.root.add_call(node, call_type)
+    }
+
+    fn get_call(&self, node: &Node<ast::Expr>) -> Option<CallType> {
+        self.root.get_call(node)
     }
 
     fn is_in_function(&self) -> bool {

@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: u256, y: u256) -> u256 {
 3 │ │         return x / y
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }] -> u256
+  │ ╰─────^ params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
   ┌─ return_division_u256.fe:3:16

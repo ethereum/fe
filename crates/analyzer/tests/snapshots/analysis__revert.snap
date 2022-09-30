@@ -23,15 +23,15 @@ note:
  9 │ ╭     pub fn bar() -> u256 {
 10 │ │         revert
 11 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ revert.fe:13:5
    │  
-13 │ ╭     pub fn revert_custom_error(ctx: Context) {
+13 │ ╭     pub fn revert_custom_error(mut ctx: Context) {
 14 │ │         ctx.send_value(to: address(0), wei: 100)
 15 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ revert.fe:14:9
@@ -39,7 +39,7 @@ note:
 14 │         ctx.send_value(to: address(0), wei: 100)
    │         ^^^                        ^ u256
    │         │                           
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ revert.fe:14:28
@@ -61,7 +61,7 @@ note:
 17 │ ╭     pub fn revert_other_error() {
 18 │ │         revert OtherError(msg: 1, val: true)
 19 │ │     }
-   │ ╰─────^ self: None, params: [] -> ()
+   │ ╰─────^ params: [] -> ()
 
 note: 
    ┌─ revert.fe:18:32
@@ -80,17 +80,17 @@ note:
 note: 
    ┌─ revert.fe:21:5
    │  
-21 │ ╭     pub fn revert_other_error_from_sto(self) {
+21 │ ╭     pub fn revert_other_error_from_sto(mut self) {
 22 │ │         self.my_other_error = OtherError(msg: 1, val: true)
 23 │ │         revert self.my_other_error.to_mem()
 24 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [mut self] -> ()
 
 note: 
    ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │         ^^^^ Foo
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ revert.fe:22:9
@@ -99,7 +99,7 @@ note:
    │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool
    │         │                                     │        
    │         │                                     u256
-   │         SPtr<OtherError>
+   │         mut SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:22:31
@@ -107,13 +107,13 @@ note:
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^ Foo
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ SPtr<OtherError>
+   │                ^^^^^^^^^^^^^^^^^^^ mut SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:23:16

@@ -1,7 +1,7 @@
 contract Foo {
     val: u8
 
-    fn do_private_thingz(self) {
+    fn do_private_thingz(mut self) {
         self.val = 100
     }
 }

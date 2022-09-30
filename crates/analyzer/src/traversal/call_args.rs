@@ -13,6 +13,7 @@ use smol_str::SmolStr;
 pub trait LabeledParameter {
     fn label(&self) -> Option<&str>;
     fn typ(&self) -> Result<TypeId, TypeError>;
+    fn is_sink(&self) -> bool;
 }
 
 impl LabeledParameter for FunctionParam {
@@ -22,14 +23,20 @@ impl LabeledParameter for FunctionParam {
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.typ.clone()
     }
+    fn is_sink(&self) -> bool {
+        false
+    }
 }
 
-impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>) {
+impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>, bool) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
     }
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.1.clone()
+    }
+    fn is_sink(&self) -> bool {
+        self.2
     }
 }
 
@@ -39,6 +46,9 @@ impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>) {
     }
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.1.clone()
+    }
+    fn is_sink(&self) -> bool { // XXX
+        true
     }
 }
 
@@ -154,7 +164,7 @@ pub fn validate_named_args(
 
         let param_type = param.typ()?;
         // Check arg type
-        if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
+        let arg_type = if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
             let arg_type = expr_type(context, &arg.kind.value)?;
             for bound in bounds.iter() {
                 if !bound.is_implemented_for(context.db(), arg_type) {
@@ -173,9 +183,16 @@ pub fn validate_named_args(
                     );
                 }
             }
+            arg_type
         } else {
             let arg_attr = expr(context, &arg.kind.value, Some(param_type))?;
-            match try_coerce_type(context, Some(&arg.kind.value), arg_attr.typ, param_type) {
+            match try_coerce_type(
+                context,
+                Some(&arg.kind.value),
+                arg_attr.typ,
+                param_type,
+                param.is_sink(),
+            ) {
                 Err(TypeCoercionError::Incompatible) => {
                     let msg = if let Some(label) = param.label() {
                         format!("incorrect type for `{}` argument `{}`", name, label)
@@ -198,6 +215,10 @@ pub fn validate_named_args(
                 }
                 Ok(_) => {}
             }
+            arg_attr.typ
+        };
+        if param_type.is_mut(context.db()) && !arg_type.is_mut(context.db()) {
+            context.error("XXX need mut", arg.span, "make this `mut`");
         }
     }
     Ok(())

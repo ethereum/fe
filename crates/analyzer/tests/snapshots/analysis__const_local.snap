@@ -13,7 +13,7 @@ note:
    · │
 15 │ │         return C10
 16 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ const_local.fe:3:15

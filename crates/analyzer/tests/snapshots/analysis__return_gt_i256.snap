@@ -9,7 +9,7 @@ note:
 2 │ ╭     pub fn bar(x: i256, y: i256) -> bool {
 3 │ │         return x > y
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: i256 }, { label: None, name: y, typ: i256 }] -> bool
+  │ ╰─────^ params: [{ label: None, name: x, typ: i256 }, { label: None, name: y, typ: i256 }] -> bool
 
 note: 
   ┌─ return_gt_i256.fe:3:16

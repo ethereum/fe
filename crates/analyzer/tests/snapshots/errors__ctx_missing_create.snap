@@ -15,6 +15,6 @@ error: incorrect type for argument to `Foo.create`
   ┌─ compile_errors/ctx_missing_create.fe:7:20
   │
 7 │         Foo.create(0)
-  │                    ^ this has type `u256`; expected `Context`
+  │                    ^ this has type `u256`; expected `mut Context`
 
 

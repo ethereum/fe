@@ -7,29 +7,29 @@ note:
    ┌─ while_loop.fe:2:5
    │  
  2 │ ╭     pub fn bar() -> u256 {
- 3 │ │         let val: u256 = 0
+ 3 │ │         let mut val: u256 = 0
  4 │ │         while val < 2 {
  5 │ │             val = val + 1
    · │
 10 │ │         return val
 11 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
-  ┌─ while_loop.fe:3:13
+  ┌─ while_loop.fe:3:17
   │
-3 │         let val: u256 = 0
-  │             ^^^ u256
+3 │         let mut val: u256 = 0
+  │                 ^^^ mut u256
 
 note: 
-  ┌─ while_loop.fe:3:25
+  ┌─ while_loop.fe:3:29
   │
-3 │         let val: u256 = 0
-  │                         ^ u256
+3 │         let mut val: u256 = 0
+  │                             ^ u256
 4 │         while val < 2 {
   │               ^^^   ^ u256
   │               │      
-  │               u256
+  │               mut u256
 
 note: 
   ┌─ while_loop.fe:4:15
@@ -39,8 +39,8 @@ note:
 5 │             val = val + 1
   │             ^^^   ^^^   ^ u256
   │             │     │      
-  │             │     u256
-  │             u256
+  │             │     mut u256
+  │             mut u256
 
 note: 
   ┌─ while_loop.fe:5:19
@@ -50,7 +50,7 @@ note:
 6 │             if val == 2 {
   │                ^^^    ^ u256
   │                │       
-  │                u256
+  │                mut u256
 
 note: 
    ┌─ while_loop.fe:6:16
@@ -60,9 +60,9 @@ note:
  7 │                 val = 3
    │                 ^^^   ^ u256
    │                 │      
-   │                 u256
+   │                 mut u256
    ·
 10 │         return val
-   │                ^^^ u256
+   │                ^^^ mut u256
 
 
