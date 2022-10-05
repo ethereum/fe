@@ -46,6 +46,22 @@ contract GuestBook {
 }
 ```
 
+Contract initialization may be configured using the `__init__` function.
+
+An Example of an `__init__` function:
+
+```fe
+contract NamedContract {
+    name: String<100>
+
+    // must be `pub`
+    pub fn __init__(self, name: String<100>) {
+        // modify the state of the contract
+        self.name = name
+    }
+}
+```
+
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [_Visibility_]: ./visibility_and_privacy.md
