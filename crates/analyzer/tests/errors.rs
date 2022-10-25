@@ -323,7 +323,7 @@ test_file! { abi_encode_from_storage }
 test_file! { assert_sto_msg_no_copy }
 test_file! { for_loop_sto_iter_no_copy }
 test_file! { revert_sto_error_no_copy }
-
+test_file! { call_to_mem_on_primitive }
 test_file! { call_to_mut_fn_without_self }
 test_file! { call_to_pure_fn_on_self }
 test_file! { call_to_pure_struct_fn_on_instance }

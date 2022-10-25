@@ -1767,7 +1767,23 @@ fn expr_call_builtin_value_method(
                         vec![],
                     );
                 }
-                Location::Storage { .. } => {}
+                Location::Storage { .. } => {
+                    if value_attrs.typ.is_base(context.db())
+                        || matches!(value_attrs.typ.typ(context.db()), Type::Contract(_))
+                    {
+                        context.fancy_error(
+                            "`to_mem()` called on primitive type",
+                            vec![
+                                Label::primary(
+                                    value.span,
+                                    "this value does not need to be copied to memory",
+                                ),
+                                Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                            ],
+                            vec![],
+                        );
+                    }
+                }
                 Location::Value => {
                     context.fancy_error(
                         "`to_mem()` called on primitive type",
