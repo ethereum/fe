@@ -76,7 +76,7 @@ contract GuestBook {
 
 A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/crates/test-files/fixtures/demos).
 
-The most advanced example that we can provide at this point is an implementation of the [Uniswap-V2 core contracts](https://github.com/ethereum/fe/blob/ec2ee41d16ec31ea0388d8fd7eb6266916d0e1f7/compiler/tests/fixtures/demos/uniswap.fe).
+The most advanced example that we can provide at this point is an implementation of the [Uniswap-V2 core contracts](https://github.com/ethereum/fe/blob/master/crates/test-files/fixtures/demos/uniswap.fe).
 
 ## Community
 
