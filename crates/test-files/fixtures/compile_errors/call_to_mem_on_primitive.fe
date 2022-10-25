@@ -1,0 +1,7 @@
+contract Foo {
+    bar: u256
+
+    fn call_me(self) -> u256 {
+        return self.bar.to_mem()
+    }
+}
