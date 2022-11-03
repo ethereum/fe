@@ -166,7 +166,7 @@ impl<'a> Parser<'a> {
 
     /// Returns `true` if the parser has reached the end of the file.
     pub fn done(&mut self) -> bool {
-        self.peek_raw() == None
+        self.peek_raw().is_none()
     }
 
     pub fn eat_newlines(&mut self) {

@@ -15,7 +15,7 @@ pub struct CheckArgs {
 }
 
 fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
-    let content = match std::fs::read_to_string(&input_path) {
+    let content = match std::fs::read_to_string(input_path) {
         Err(err) => {
             eprintln!("Failed to load file: `{}`. Error: {}", &input_path, err);
             std::process::exit(1)

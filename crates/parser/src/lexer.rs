@@ -81,7 +81,7 @@ mod tests {
         let lexedstr = lex.next().unwrap();
         assert!(lexedstr.kind == Text);
         assert!(lexedstr.text == rawstr);
-        assert!(lex.next() == None);
+        assert!(lex.next().is_none());
     }
 
     #[test]
