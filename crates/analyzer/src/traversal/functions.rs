@@ -62,7 +62,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                 return Err(FatalError::new(scope.register_diag(errors::type_error(
                     "invalid `for` loop iterator type",
                     iter.span,
-                    &"array",
+                    "array",
                     &iter_type.display(scope.db()),
                 ))));
             };

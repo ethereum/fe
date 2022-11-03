@@ -551,7 +551,7 @@ impl PatternRowVec {
         self.inner.swap(a, b);
     }
 
-    pub fn d_specialize(&self, db: &dyn AnalyzerDb) -> Vec<Self> {
+    pub fn d_specialize(&self, _db: &dyn AnalyzerDb) -> Vec<Self> {
         debug_assert!(!self.inner.is_empty());
 
         let first_pat = &self.inner[0];
@@ -572,7 +572,7 @@ impl PatternRowVec {
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
                     let tmp = PatternRowVec::new(tmp_inner);
-                    for v in tmp.d_specialize(db) {
+                    for v in tmp.d_specialize(_db) {
                         result.push(v);
                     }
                 }

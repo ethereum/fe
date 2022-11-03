@@ -38,7 +38,7 @@ pub fn ingot_modules(db: &dyn AnalyzerDb, ingot: IngotId) -> Rc<[ModuleId]> {
     let dirs = files
         .iter()
         .flat_map(|(_file, path)| {
-            path.strip_prefix(&file_path_prefix.as_str())
+            path.strip_prefix(file_path_prefix.as_str())
                 .unwrap_or(path)
                 .ancestors()
                 .skip(1) // first elem of .ancestors() is the path itself
@@ -51,7 +51,7 @@ pub fn ingot_modules(db: &dyn AnalyzerDb, ingot: IngotId) -> Rc<[ModuleId]> {
             &files
                 .iter()
                 .map(|(_file, path)| {
-                    path.strip_prefix(&file_path_prefix.as_str())
+                    path.strip_prefix(file_path_prefix.as_str())
                         .unwrap_or(path)
                         .as_str()
                         .trim_end_matches(".fe")

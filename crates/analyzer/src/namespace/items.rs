@@ -1974,7 +1974,7 @@ where
         &EdgeFiltered::from_fn(graph, |(_, _, loc)| *loc == DepLocality::Local),
         root,
     );
-    while let Some(node) = bfs.next(&graph) {
+    while let Some(node) = bfs.next(graph) {
         fun(node)
     }
 }
