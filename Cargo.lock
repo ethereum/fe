@@ -268,6 +268,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cranelift-entity"
+version = "0.89.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed8aa1104f54509dfb386520711cd8a6a0992ae42ce2df06fdebdfff4de2c2dd"
+
+[[package]]
 name = "criterion"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -435,6 +441,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f046ad836ddb46a42ae6219f11208b61ef9f1b96f105a88da4ae0dd5f1b89e6"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -476,7 +488,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11da94e443c60508eb62cf256243a64da87304c2802ac2528847f79d750007ef"
 dependencies = [
  "crunchy",
- "fixed-hash",
+ "fixed-hash 0.7.0",
  "impl-codec",
  "impl-rlp",
  "impl-serde",
@@ -510,11 +522,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2827b94c556145446fcce834ca86b7abf0c39a805883fe20e72c5bfdb5a0dc6"
 dependencies = [
  "ethbloom",
- "fixed-hash",
+ "fixed-hash 0.7.0",
  "impl-codec",
  "impl-rlp",
  "impl-serde",
- "primitive-types",
+ "primitive-types 0.11.1",
  "scale-info",
  "uint",
 ]
@@ -533,7 +545,7 @@ dependencies = [
  "evm-runtime",
  "log",
  "parity-scale-codec",
- "primitive-types",
+ "primitive-types 0.11.1",
  "rlp",
  "scale-info",
  "serde",
@@ -547,7 +559,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d4537041d3a3438d59b2d01bd950ce89fb1ccb3cf21d9331193c10be12e849f"
 dependencies = [
  "parity-scale-codec",
- "primitive-types",
+ "primitive-types 0.11.1",
  "scale-info",
  "serde",
 ]
@@ -561,7 +573,7 @@ dependencies = [
  "environmental",
  "evm-core",
  "evm-runtime",
- "primitive-types",
+ "primitive-types 0.11.1",
 ]
 
 [[package]]
@@ -573,7 +585,7 @@ dependencies = [
  "auto_impl",
  "environmental",
  "evm-core",
- "primitive-types",
+ "primitive-types 0.11.1",
  "sha3",
 ]
 
@@ -640,6 +652,8 @@ dependencies = [
  "num-bigint",
  "salsa",
  "smol_str",
+ "sonatina-codegen",
+ "sonatina-ir",
  "yultsur",
 ]
 
@@ -679,7 +693,7 @@ dependencies = [
  "hex",
  "indexmap",
  "insta",
- "primitive-types",
+ "primitive-types 0.11.1",
  "serde_json",
  "solc",
  "yultsur",
@@ -702,7 +716,7 @@ dependencies = [
  "hex",
  "insta",
  "pretty_assertions",
- "primitive-types",
+ "primitive-types 0.11.1",
  "proptest",
  "rand 0.7.3",
  "rstest",
@@ -806,6 +820,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixed-hash"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -895,9 +918,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.11.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "heck"
@@ -1006,9 +1029,9 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
-version = "1.7.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -1330,11 +1353,21 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
 dependencies = [
- "fixed-hash",
+ "fixed-hash 0.7.0",
  "impl-codec",
  "impl-rlp",
  "impl-serde",
  "scale-info",
+ "uint",
+]
+
+[[package]]
+name = "primitive-types"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f3486ccba82358b11a77516035647c34ba167dfa53312630de83b12bd4f3d66"
+dependencies = [
+ "fixed-hash 0.8.0",
  "uint",
 ]
 
@@ -1836,6 +1869,43 @@ source = "git+https://github.com/Y-Nak/solc-rust?rev=f18b1ce#f18b1cec1996feb2a36
 dependencies = [
  "cmake",
  "lazy_static",
+]
+
+[[package]]
+name = "sonatina-codegen"
+version = "0.0.3-alpha"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552b28f5500004da0ddb0d05c219051427bb61135f7ccb7e3f61cfafe40b3bd5"
+dependencies = [
+ "cranelift-entity",
+ "fxhash",
+ "smallvec",
+ "sonatina-ir",
+ "sonatina-triple",
+]
+
+[[package]]
+name = "sonatina-ir"
+version = "0.0.3-alpha"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3d400636de2f42cc6412637cd1ab8f19bd6095f8f1a9a88d12ddd564d4a9d90"
+dependencies = [
+ "cranelift-entity",
+ "dyn-clone",
+ "fxhash",
+ "indexmap",
+ "primitive-types 0.12.1",
+ "smallvec",
+ "sonatina-triple",
+]
+
+[[package]]
+name = "sonatina-triple"
+version = "0.0.3-alpha"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e43816491d2cce645e300cc57b9d2ad5758f536941e4061086e9a872d92690dd"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]
