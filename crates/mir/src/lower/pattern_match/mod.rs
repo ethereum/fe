@@ -228,7 +228,7 @@ impl<'db, 'a, 'b> DecisionTreeLowerHelper<'db, 'a, 'b> {
     fn extract_disc(&mut self, value: ValueId) -> ValueId {
         let value_ty = self.builder().value_ty(value);
         match value_ty {
-            _ if value_ty.is_enum(self.helper.db) => {
+            _ if value_ty.deref(self.helper.db).is_enum(self.helper.db) => {
                 let disc_ty = value_ty.enum_disc_type(self.helper.db);
                 let disc_index = self.helper.make_u256_imm(0);
                 let inst =

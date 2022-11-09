@@ -262,12 +262,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
-                // XXX use lower_expr ty if available
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
-                    let (init, _) = self.lower_expr(init);
-                    // XXX debug_assert_eq!(ty.deref(self.db), init_ty);
+                    let (init, _init_ty) = self.lower_expr(init);
+                    // debug_assert_eq!(ty.deref(self.db), init_ty, "vardecl init type mismatch: {} != {}",
+                    //                  ty.as_string(self.db),
+                    //                  init_ty.as_string(self.db));
                     self.builder.map_result(init, value.into());
                 }
             }
@@ -497,28 +498,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             match kind {
                 AdjustmentKind::Copy => {
-                    let val = self
-                        .builder
-                        .inst_result(inst)
-                        .and_then(|res| res.value_id())
-                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
+                    let val = self.inst_result_or_tmp(inst, ty);
                     inst = self.builder.mem_copy(val, expr.into());
                 }
                 AdjustmentKind::Load => {
-                    let val = self
-                        .builder
-                        .inst_result(inst)
-                        .and_then(|res| res.value_id())
-                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
+                    let val = self.inst_result_or_tmp(inst, ty);
                     inst = self.builder.load(val, expr.into());
                 }
                 AdjustmentKind::IntSizeIncrease => {
-                    let val = self
-                        .builder
-                        .inst_result(inst)
-                        .and_then(|res| res.value_id())
-                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
-
+                    let val = self.inst_result_or_tmp(inst, ty);
                     inst = self.builder.primitive_cast(val, into_ty, expr.into())
                 }
                 AdjustmentKind::StringSizeIncrease => {} // XXX
@@ -526,6 +514,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ty = into_ty;
         }
         (inst, ty)
+    }
+
+    fn inst_result_or_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
+        self.builder
+            .inst_result(inst)
+            .and_then(AssignableValue::value_id)
+            .unwrap_or_else(|| self.map_to_tmp(inst, ty))
     }
 
     pub(super) fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {

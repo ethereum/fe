@@ -32,7 +32,6 @@
         * [Augmenting Assignment Statement](spec/statements/augassign.md)
         * [`revert` Statement](spec/statements/revert.md)
         * [`return` Statement](spec/statements/return.md)
-        * [`emit` Statement](spec/statements/emit.md)
         * [`if` Statement](spec/statements/if.md)
         * [`for` Statement](spec/statements/for.md)
         * [`while` Statement](spec/statements/while.md)
@@ -77,7 +76,6 @@
             * [`to_mem()` function](spec/data_layout/storage/to_mem_function.md)
         * [Memory](spec/data_layout/memory/index.md)
             * [Sequence types in memory](spec/data_layout/memory/sequence_types_in_memory.md)
-            * [`clone()` function](spec/data_layout/memory/clone_function.md)
     * [Function calls](spec/function_calls.md)
 
 * [Release Notes](release_notes.md)

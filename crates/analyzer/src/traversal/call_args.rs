@@ -47,7 +47,8 @@ impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>) {
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.1.clone()
     }
-    fn is_sink(&self) -> bool { // XXX
+    fn is_sink(&self) -> bool {
+        // XXX
         true
     }
 }

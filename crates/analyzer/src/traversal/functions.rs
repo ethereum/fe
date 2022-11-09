@@ -734,7 +734,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
                     &format!(
                         "expected function to return `{}` but was `{}`",
                         expected_type.display(scope.db()),
-                        value_attr.typ.display(scope.db())
+                        value_attr.typ.deref(scope.db()).display(scope.db())
                     ),
                     stmt.span,
                     "",

@@ -159,6 +159,23 @@ contract Foo {
         return res
     }
 
+    pub fn match_in_loop_simple() -> u256 {
+        let mut state: State = State::Continue
+        let mut count: u256 = 0
+        while true {
+            match state {
+                State::Continue => {}
+                State::Done => {
+                    break
+                }
+            }
+            count += 1
+            state = State::Done
+        }
+        return count
+    }
+
+
     pub fn rest_pattern_head(x: u32, y: u256) -> u256 {
         let pat: (MyEnum, MyEnum, MyEnum, MyEnum) = (MyEnum::Unit, MyEnum::Unit, MyEnum::Unit, MyEnum::Tuple(x, y))
         match pat {

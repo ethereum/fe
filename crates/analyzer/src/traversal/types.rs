@@ -112,7 +112,6 @@ pub fn try_cast_type(
     };
 }
 
-// XXX assert inner is_primitive?
 pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty: TypeId) -> TypeId {
     match ty.typ(context.db()) {
         Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::Load),
@@ -157,6 +156,8 @@ fn coerce(
     should_copy: bool,
     chain: Vec<Adjustment>,
 ) -> Result<Vec<Adjustment>, TypeCoercionError> {
+    // Cut down on some obviously unnecessary copy operations,
+    // because we don't currently optimize MIR.
     let should_copy = should_copy
         && !into.is_sptr(context.db())
         && !into.deref(context.db()).is_primitive(context.db())
@@ -301,9 +302,16 @@ fn add_adjustment_if(
 fn is_temporary(context: &dyn AnalyzerContext, expr: &Node<ast::Expr>) -> bool {
     match &expr.kind {
         ast::Expr::Tuple { .. } | ast::Expr::List { .. } | ast::Expr::Repeat { .. } => true,
+        ast::Expr::Path(path) => {
+            matches!(
+                context.resolve_path(path, expr.span),
+                Ok(NamedThing::EnumVariant(_))
+            )
+        }
         ast::Expr::Call { func, .. } => matches!(
             context.get_call(func),
             Some(CallType::TypeConstructor(_))
+                | Some(CallType::EnumConstructor(_))
                 | Some(CallType::BuiltinValueMethod {
                     method: ValueMethod::ToMem | ValueMethod::AbiEncode,
                     ..

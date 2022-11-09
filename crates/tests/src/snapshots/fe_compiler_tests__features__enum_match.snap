@@ -4,19 +4,22 @@ expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
 simple_match([Uint(1), Uint(2)]) used 573 gas
-nested_match([Uint(1), Uint(2)]) used 1914 gas
-nested_match2([]) used 2710 gas
+nested_match([Uint(1), Uint(2)]) used 1502 gas
+nested_match2([]) used 1885 gas
 tuple_match([]) used 1765 gas
 boolean_literal_match([Bool(true), Bool(true)]) used 585 gas
 boolean_literal_match([Bool(true), Bool(false)]) used 611 gas
 boolean_literal_match([Bool(false), Bool(true)]) used 600 gas
 boolean_literal_match([Bool(false), Bool(false)]) used 596 gas
-wild_card([]) used 1539 gas
+wild_card([]) used 1127 gas
 match_in_if([]) used 647 gas
-rest_pattern_head([Uint(1), Uint(2)]) used 2765 gas
-rest_pattern_tail([Uint(1), Uint(2)]) used 2778 gas
-rest_pattern_middle([Uint(1), Uint(2)]) used 3234 gas
-simple_struct([Int(1), Int(2), Bool(true)]) used 1024 gas
-simple_struct([Int(1), Int(2), Bool(false)]) used 1038 gas
-nested_struct([]) used 1873 gas
+match_in_loop([]) used 1567 gas
+match_in_loop_simple([]) used 794 gas
+rest_pattern_head([Uint(1), Uint(2)]) used 2787 gas
+rest_pattern_tail([Uint(1), Uint(2)]) used 2800 gas
+rest_pattern_middle([Uint(1), Uint(2)]) used 3256 gas
+simple_struct([Int(1), Int(2), Bool(true)]) used 1046 gas
+simple_struct([Int(1), Int(2), Bool(false)]) used 1060 gas
+nested_struct([]) used 1895 gas
+enum_storage([Uint(1), Uint(2), Bool(true)]) used 90860 gas
 

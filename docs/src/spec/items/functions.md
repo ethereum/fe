@@ -21,7 +21,6 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_WhileStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_IfStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_AssertStatement_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; | [_EmitStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_BreakStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_ContinueStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_RevertStatement_]\
@@ -159,7 +158,6 @@ let ok: bool = self.transfer(from, to, value)
 [_WhileStatement_]: ../statements/for.md
 [_IfStatement_]: ../statements/if.md
 [_AssertStatement_]: ../statements/assert.md
-[_EmitStatement_]: ../statements/emit.md
 [_BreakStatement_]: ../statements/break.md
 [_ContinueStatement_]: ../statements/continue.md
 [_RevertStatement_]: ../statements/revert.md

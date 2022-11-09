@@ -349,3 +349,4 @@ test_file! { uninit_values }
 test_file! { invalid_repeat_length }
 test_file! { invalid_struct_pub_qualifier }
 test_file! { mut_mistakes }
+test_file! { invalid_comparisons }
