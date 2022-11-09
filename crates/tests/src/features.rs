@@ -855,11 +855,14 @@ fn enum_match() {
         );
 
         harness.test_function(&mut executor, "wild_card", &[], Some(&uint_token(0)));
-
         harness.test_function(&mut executor, "match_in_if", &[], Some(&uint_token(3)));
-
-        // XXX broken
-        // harness.test_function(&mut executor, "match_in_loop", &[], Some(&uint_token(15)));
+        harness.test_function(&mut executor, "match_in_loop", &[], Some(&uint_token(15)));
+        harness.test_function(
+            &mut executor,
+            "match_in_loop_simple",
+            &[],
+            Some(&uint_token(1)),
+        );
 
         harness.test_function(
             &mut executor,
@@ -895,12 +898,12 @@ fn enum_match() {
 
         harness.test_function(&mut executor, "nested_struct", &[], Some(&uint_token(10)));
 
-        // harness.test_function(
-        //     &mut executor,
-        //     "enum_storage",
-        //     &[uint_token(1), uint_token(2), bool_token(true)],
-        //     Some(&uint_token(3)),
-        // );
+        harness.test_function(
+            &mut executor,
+            "enum_storage",
+            &[uint_token(1), uint_token(2), bool_token(true)],
+            Some(&uint_token(3)),
+        );
         // harness.test_function(
         //     &mut executor,
         //     "enum_storage",

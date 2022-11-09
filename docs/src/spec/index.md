@@ -64,5 +64,4 @@
         * [`to_mem()` function](data_layout/storage/to_mem_function.md)
     * [Memory](data_layout/memory/index.md)
         * [Sequence types in memory](data_layout/memory/sequence_types_in_memory.md)
-        * [`clone()` function](data_layout/memory/clone_function.md)
 * [Function calls](function_calls.md)

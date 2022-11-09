@@ -18,7 +18,6 @@ be used as the [identifiers](./identifiers.md).
 > KW_CONST          : `contract`\
 > KW_FN             : `fn`\
 > KW_ELSE           : `else`\
-> KW_EMIT           : `emit`\
 > KW_ENUM           : `enum`\
 > KW_EVENT          : `event`\
 > KW_FALSE          : `false`\

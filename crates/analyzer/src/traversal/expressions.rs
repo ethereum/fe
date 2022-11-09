@@ -1616,21 +1616,21 @@ fn expr_call_builtin_value_method(
     };
     match method {
         ValueMethod::ToMem => {
-            if ty.is_base(context.db()) {
-                context.fancy_error(
-                    "`to_mem()` called on primitive type",
-                    vec![
-                        Label::primary(
-                            value.span,
-                            "this value does not need to be explicitly copied to memory",
-                        ),
-                        Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
-                    ],
-                    vec![],
-                );
-            } else if ty.is_sptr(context.db()) {
+            if ty.is_sptr(context.db()) {
                 let inner = ty.deref(context.db());
-                if inner.is_map(context.db()) {
+                if inner.is_primitive(context.db()) {
+                    context.fancy_error(
+                        "`to_mem()` called on primitive type",
+                        vec![
+                            Label::primary(
+                                value.span,
+                                "this value does not need to be explicitly copied to memory",
+                            ),
+                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                        ],
+                        vec![],
+                    );
+                } else if inner.is_map(context.db()) {
                     context.fancy_error(
                         "`to_mem()` called on a Map",
                         vec![
@@ -1639,18 +1639,21 @@ fn expr_call_builtin_value_method(
                         ],
                         vec![],
                     );
+
+                    // TODO: this restriction should be removed
+                } else if ty.is_generic(context.db()) {
+                    context.fancy_error(
+                        "`to_mem()` called on generic type",
+                        vec![
+                            Label::primary(value.span, "this value can not be copied to memory"),
+                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                        ],
+                        vec![],
+                    );
                 }
+
                 value_attrs.typ = inner;
                 return Ok((value_attrs, calltype));
-            } else if ty.is_generic(context.db()) {
-                context.fancy_error(
-                    "`to_mem()` called on generic type",
-                    vec![
-                        Label::primary(value.span, "this value can not be copied to memory"),
-                        Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
-                    ],
-                    vec![],
-                );
             } else {
                 context.fancy_error(
                     "`to_mem()` called on value in memory",
@@ -1951,13 +1954,22 @@ fn expr_comp_operation(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::CompOperation { left, op: _, right } = &exp.kind {
+    if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         // comparison operands should be moved to the stack
         let left_ty = value_expr_type(context, left, None)?;
-        expect_expr_type(context, right, left_ty, false)?;
-
-        // XXX test: struct < struct, array != array
-
+        if left_ty.is_primitive(context.db()) {
+            expect_expr_type(context, right, left_ty, false)?;
+        } else {
+            context.error(
+                &format!(
+                    "`{}` type can't be compared with the `{}` operator",
+                    left_ty.display(context.db()),
+                    op.kind
+                ),
+                exp.span,
+                "invalid comparison",
+            );
+        }
         return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
     }
 

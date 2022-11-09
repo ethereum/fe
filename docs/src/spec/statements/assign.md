@@ -14,7 +14,7 @@ contract Foo {
   some_array: Array<u256, 10>
 
 
-  pub fn bar(self) {
+  pub fn bar(mut self) {
     let mut val1: u256 = 10
     // Assignment of stack variable
     val1 = 10

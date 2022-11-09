@@ -1,0 +1,19 @@
+struct Point {
+  pub x: i32
+  pub y: i32
+}
+
+enum State {
+  Continue
+  Done
+}
+
+pub fn f() -> bool {
+  let p: Point = Point(x: 1, y: 2)
+  return p == Point(x: 10, y: 20)
+}
+
+pub fn g() -> bool {
+  let s: State = State::Continue
+  return s == State::Done
+}

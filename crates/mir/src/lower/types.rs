@@ -35,7 +35,7 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId
         }
     };
 
-    intern_type(db, ty_kind, Some(analyzer_ty))
+    intern_type(db, ty_kind, Some(analyzer_ty.deref(db.upcast())))
 }
 
 fn lower_base(base: analyzer_types::Base) -> TypeKind {
