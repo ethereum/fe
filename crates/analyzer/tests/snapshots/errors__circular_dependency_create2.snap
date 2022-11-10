@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `Foo.create2(...)` called within `Foo` creates an illegal circular dependency
   ┌─ compile_errors/circular_dependency_create2.fe:3:28

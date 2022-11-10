@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `__call__()` is not directly callable
    ┌─ compile_errors/call_call_on_external_contract.fe:10:13

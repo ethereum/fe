@@ -1173,6 +1173,7 @@ fn expr_call_named_thing<T: std::fmt::Display>(
             ),
         ))),
         NamedThing::Item(Item::Impl(_)) => unreachable!(),
+        NamedThing::Item(Item::Attribute(_)) => unreachable!(),
         NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,
@@ -1374,6 +1375,14 @@ fn expr_call_pure(
                 args.span,
                 "unexpected generic argument list",
             )],
+            vec![],
+        );
+    }
+
+    if function.is_test(context.db()) {
+        context.fancy_error(
+            &format!("`{}` is a test function", fn_name),
+            vec![Label::primary(call_span, "test functions are not callable")],
             vec![],
         );
     }

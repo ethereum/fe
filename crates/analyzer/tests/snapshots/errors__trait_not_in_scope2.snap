@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: Applicable items exist but are not in scope
    ┌─ compile_errors/trait_not_in_scope2/src/foo.fe:11:6

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: incorrect type for argument to `Bar.create`
   ┌─ compile_errors/call_create_with_wrong_type.fe:5:25

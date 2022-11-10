@@ -1,0 +1,29 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: generic function parameters are not supported on test functions
+  ┌─ compile_errors/test_params.fe:4:9
+  │
+4 │ fn test1<T: MyTrait>() { }
+  │         ^^^^^^^^^^^^ this cannot appear here
+  │
+  = Hint: remove the generic parameters
+
+error: function parameters are not supported on test functions
+  ┌─ compile_errors/test_params.fe:7:10
+  │
+7 │ fn test2(x: u256) { }
+  │          ^^^^^^^ this cannot appear here
+  │
+  = Hint: remove the parameters
+
+error: generic function parameters aren't yet supported outside of struct functions
+  ┌─ compile_errors/test_params.fe:4:9
+  │
+4 │ fn test1<T: MyTrait>() { }
+  │         ^^^^^^^^^^^^ this cannot appear here
+  │
+  = Hint: Struct functions can have generic parameters
+
+

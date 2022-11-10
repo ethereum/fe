@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: type name conflicts with the type named "u256"
   ┌─ compile_errors/shadow_builtin_type.fe:1:6

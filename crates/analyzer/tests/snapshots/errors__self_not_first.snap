@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `self` is not the first parameter
   ┌─ compile_errors/self_not_first.fe:2:28

@@ -1,7 +1,0 @@
----
-source: crates/tests/src/features.rs
-assertion_line: 1779
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-rshift([Uint(128), Uint(7)]) used 453 gas
-

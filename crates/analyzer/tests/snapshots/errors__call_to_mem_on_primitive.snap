@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `to_mem()` called on primitive type
   ┌─ compile_errors/call_to_mem_on_primitive.fe:5:16

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: Can not apply unary operator
   ┌─ [snippet]:4:16

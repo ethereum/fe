@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: the struct `Bar` is private
   ┌─ compile_errors/call_trait_assoc_fn_on_invisible_type/src/main.fe:5:5

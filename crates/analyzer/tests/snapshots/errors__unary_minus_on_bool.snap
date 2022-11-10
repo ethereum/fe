@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: cannot apply unary operator `-` to type `bool`
   ┌─ [snippet]:4:4

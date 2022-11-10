@@ -1,0 +1,6 @@
+fn my_func() {
+    my_test()
+}
+
+#test
+fn my_test() { }

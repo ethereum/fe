@@ -1,7 +1,0 @@
----
-source: crates/tests/src/features.rs
-assertion_line: 1779
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-mul([Uint(10), Uint(42)]) used 334 gas
-

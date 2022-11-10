@@ -19,7 +19,8 @@ fs_extra = "1.2.0"
 walkdir = "2"
 indexmap = "1.6.2"
 include_dir = "0.7.2"
-
+colored = "2.0.0"
+fe-test-runner = {path = "../test-runner", version = "^0.21.0-alpha"}
 fe-common = {path = "../common", version = "^0.21.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.21.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.21.0-alpha"}

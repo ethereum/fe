@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: cannot apply unary operator `not` to type `u256`
   ┌─ [snippet]:4:7

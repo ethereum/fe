@@ -1,0 +1,15 @@
+---
+source: crates/tests-legacy/src/stress.rs
+expression: "format!(\"{}\", proxy_harness.gas_reporter)"
+---
+call_set_my_string([String("hello world")]) used 52895 gas
+call_get_my_string([]) used 3845 gas
+call_set_my_tuple([Tuple([Uint(42), Address(0x0000000000000000000000000000000000000026)])]) used 45640 gas
+call_get_my_tuple([]) used 2044 gas
+call_set_my_string_and_tuple([String("foo"), Tuple([Uint(99), Address(0x00000000000000000000000000000000000000ab)])]) used 3896 gas
+call_get_my_tuple([]) used 2044 gas
+call_get_my_string([]) used 3845 gas
+call_get_tuple([]) used 2004 gas
+call_get_string([]) used 3136 gas
+call_get_array([]) used 2436 gas
+

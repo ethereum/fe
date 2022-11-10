@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `keccak256` function does not expect generic arguments
   ┌─ [snippet]:3:12

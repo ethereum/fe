@@ -1,0 +1,15 @@
+[package]
+name = "fe-test-runner"
+version = "0.21.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+hex="0.4"
+bytes = "1.3"
+colored = "2.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+revm = "3.0"

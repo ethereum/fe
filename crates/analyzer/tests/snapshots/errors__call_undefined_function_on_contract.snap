@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: No function `doesnt_exist` exists on type `C`
   ┌─ [snippet]:3:8

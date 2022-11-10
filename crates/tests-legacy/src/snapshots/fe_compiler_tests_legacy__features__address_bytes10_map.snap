@@ -1,0 +1,9 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+write_bar([Address(0x0000000000000000000000000000000000000001), Bytes([116, 101, 110, 32, 98, 121, 116, 101, 115, 49])]) used 22708 gas
+write_bar([Address(0x0000000000000000000000000000000000000002), Bytes([116, 101, 110, 32, 98, 121, 116, 101, 115, 50])]) used 22708 gas
+read_bar([Address(0x0000000000000000000000000000000000000001)]) used 628 gas
+read_bar([Address(0x0000000000000000000000000000000000000002)]) used 628 gas
+
