@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `bool` can not be used as a parameter to `address(..)`
+error: incorrect type for argument to `address`
   ┌─ [snippet]:3:11
   │
 3 │   address(true)
-  │           ^^^^ wrong type
-  │
-  = Note: address(..) expects a parameter of a contract type, numeric or address
+  │           ^^^^ cannot cast type `bool` to type `address`
 
 

@@ -10,6 +10,6 @@ error: value must be copied to memory
   │         ^^^^^^^^^^^^^ this value is in storage
   │
   = Hint: values located in storage can be copied to memory using the `to_mem` function.
-  = Example: `self.my_array.to_mem().abi_encode()`
+  = Example: `self.my_array.to_mem()`
 
 

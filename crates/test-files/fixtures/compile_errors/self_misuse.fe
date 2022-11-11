@@ -31,6 +31,7 @@ contract C {
     fn g(self) {}
 
     fn h(self) {
+        let x: address = address(self)
         g(self)
     }
 

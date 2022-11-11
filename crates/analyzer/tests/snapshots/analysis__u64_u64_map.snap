@@ -21,21 +21,21 @@ note:
   ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u64: Value
+  │                ^^^^^^^^ ^^^ u64
   │                │         
-  │                Map<u64, u64>: Storage { nonce: Some(0) }
+  │                SPtr<Map<u64, u64>>
 
 note: 
   ┌─ u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u64: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^ SPtr<u64> -> u64
 
 note: 
    ┌─ u64_u64_map.fe:8:5
@@ -49,22 +49,22 @@ note:
   ┌─ u64_u64_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ u64_u64_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u64: Value
+  │         ^^^^^^^^ ^^^ u64
   │         │         
-  │         Map<u64, u64>: Storage { nonce: Some(0) }
+  │         SPtr<Map<u64, u64>>
 
 note: 
   ┌─ u64_u64_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u64: Value
+  │         ^^^^^^^^^^^^^   ^^^^^ u64
   │         │                
-  │         u64: Storage { nonce: None }
+  │         SPtr<u64>
 
 

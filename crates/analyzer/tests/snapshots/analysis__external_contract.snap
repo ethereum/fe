@@ -25,23 +25,23 @@ note:
    ┌─ external_contract.fe:10:9
    │
 10 │         ctx.emit(MyEvent(my_num, my_addrs, my_string))
-   │         ^^^              ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
+   │         ^^^              ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>
    │         │                │       │          
-   │         │                │       Array<address, 5>: Memory
-   │         │                u256: Value
-   │         Context: Memory
+   │         │                │       Array<address, 5>
+   │         │                u256
+   │         Context
 
 note: 
    ┌─ external_contract.fe:10:18
    │
 10 │         ctx.emit(MyEvent(my_num, my_addrs, my_string))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent
 
 note: 
    ┌─ external_contract.fe:10:9
    │
 10 │         ctx.emit(MyEvent(my_num, my_addrs, my_string))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ external_contract.fe:13:5
@@ -65,60 +65,60 @@ note:
    ┌─ external_contract.fe:14:41
    │
 14 │         let my_array: Array<u256, 3> = [0; 3]
-   │                                         ^  ^ u256: Value
+   │                                         ^  ^ u256
    │                                         │   
-   │                                         u256: Value
+   │                                         u256
 
 note: 
    ┌─ external_contract.fe:14:40
    │
 14 │         let my_array: Array<u256, 3> = [0; 3]
-   │                                        ^^^^^^ Array<u256, 3>: Memory
+   │                                        ^^^^^^ Array<u256, 3>
 15 │         my_array[0] = a
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Array<u256, 3>: Memory
+   │         Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:15:9
    │
 15 │         my_array[0] = a
-   │         ^^^^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^^^^   ^ u256
    │         │              
-   │         u256: Memory
+   │         u256
 16 │         my_array[1] = a * b
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Array<u256, 3>: Memory
+   │         Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:16:9
    │
 16 │         my_array[1] = a * b
-   │         ^^^^^^^^^^^   ^   ^ u256: Value
+   │         ^^^^^^^^^^^   ^   ^ u256
    │         │             │    
-   │         │             u256: Value
-   │         u256: Memory
+   │         │             u256
+   │         u256
 
 note: 
    ┌─ external_contract.fe:16:23
    │
 16 │         my_array[1] = a * b
-   │                       ^^^^^ u256: Value
+   │                       ^^^^^ u256
 17 │         my_array[2] = b
-   │         ^^^^^^^^ ^ u256: Value
+   │         ^^^^^^^^ ^ u256
    │         │         
-   │         Array<u256, 3>: Memory
+   │         Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:17:9
    │
 17 │         my_array[2] = b
-   │         ^^^^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^^^^   ^ u256
    │         │              
-   │         u256: Memory
+   │         u256
 18 │         return my_array
-   │                ^^^^^^^^ Array<u256, 3>: Memory
+   │                ^^^^^^^^ Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:21:5
@@ -132,15 +132,15 @@ note:
    ┌─ external_contract.fe:22:16
    │
 22 │         return x + y
-   │                ^   ^ u256: Value
+   │                ^   ^ u256
    │                │    
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ external_contract.fe:22:16
    │
 22 │         return x + y
-   │                ^^^^^ u256: Value
+   │                ^^^^^ u256
 
 note: 
    ┌─ external_contract.fe:27:5
@@ -161,26 +161,26 @@ note:
    ┌─ external_contract.fe:28:28
    │
 28 │         let foo: Foo = Foo(foo_address)
-   │                            ^^^^^^^^^^^ address: Value
+   │                            ^^^^^^^^^^^ address
 
 note: 
    ┌─ external_contract.fe:28:24
    │
 28 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^^^^^^ Foo: Value
+   │                        ^^^^^^^^^^^^^^^^ Foo
 29 │         foo.emit_event(ctx, my_num, my_addrs, my_string)
-   │         ^^^            ^^^  ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
+   │         ^^^            ^^^  ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>
    │         │              │    │       │          
-   │         │              │    │       Array<address, 5>: Memory
-   │         │              │    u256: Value
-   │         │              Context: Memory
-   │         Foo: Value
+   │         │              │    │       Array<address, 5>
+   │         │              │    u256
+   │         │              Context
+   │         Foo
 
 note: 
    ┌─ external_contract.fe:29:9
    │
 29 │         foo.emit_event(ctx, my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ external_contract.fe:32:5
@@ -201,24 +201,24 @@ note:
    ┌─ external_contract.fe:33:28
    │
 33 │         let foo: Foo = Foo(foo_address)
-   │                            ^^^^^^^^^^^ address: Value
+   │                            ^^^^^^^^^^^ address
 
 note: 
    ┌─ external_contract.fe:33:24
    │
 33 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^^^^^^ Foo: Value
+   │                        ^^^^^^^^^^^^^^^^ Foo
 34 │         return foo.build_array(a, b)
-   │                ^^^             ^  ^ u256: Value
+   │                ^^^             ^  ^ u256
    │                │               │   
-   │                │               u256: Value
-   │                Foo: Value
+   │                │               u256
+   │                Foo
 
 note: 
    ┌─ external_contract.fe:34:16
    │
 34 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:37:5
@@ -232,14 +232,14 @@ note:
    ┌─ external_contract.fe:38:30
    │
 38 │         return Foo::pure_add(x, y)
-   │                              ^  ^ u256: Value
+   │                              ^  ^ u256
    │                              │   
-   │                              u256: Value
+   │                              u256
 
 note: 
    ┌─ external_contract.fe:38:16
    │
 38 │         return Foo::pure_add(x, y)
-   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^ u256
 
 

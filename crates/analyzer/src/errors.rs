@@ -132,10 +132,6 @@ impl AlreadyDefined {
     }
 }
 
-/// Error indicating that a value can not move between memory and storage
-#[derive(Debug)]
-pub struct CannotMove;
-
 /// Errors that can result from indexing
 #[derive(Debug, PartialEq, Eq)]
 pub enum IndexingError {
@@ -146,11 +142,22 @@ pub enum IndexingError {
 /// Errors that can result from a binary operation
 #[derive(Debug, PartialEq, Eq)]
 pub enum BinaryOperationError {
-    TypesNotEqual,
+    TypesNotCompatible,
     TypesNotNumeric,
     RightTooLarge,
     RightIsSigned,
     NotEqualAndUnsigned,
+}
+
+/// Errors that can result from an implicit type coercion
+#[derive(Debug, PartialEq, Eq)]
+pub enum TypeCoercionError {
+    /// Value is in storage and must be explicitly moved with .to_mem()
+    RequiresToMem,
+    /// Value type cannot be coerced to the expected type
+    Incompatible,
+    /// `self` contract used where an external contract value is expected
+    SelfContractType,
 }
 
 impl From<TypeError> for FatalError {
@@ -265,4 +272,30 @@ pub fn name_conflict_error(
             vec![],
         )
     }
+}
+
+pub fn to_mem_error(span: Span) -> Diagnostic {
+    fancy_error(
+        "value must be copied to memory",
+        vec![Label::primary(span, "this value is in storage")],
+        vec![
+            "Hint: values located in storage can be copied to memory using the `to_mem` function."
+                .into(),
+            "Example: `self.my_array.to_mem()`".into(),
+        ],
+    )
+}
+pub fn self_contract_type_error(span: Span, typ: &dyn Display) -> Diagnostic {
+    fancy_error(
+        &format!(
+            "`self` can't be used where a contract of type `{}` is expected",
+            typ,
+        ),
+        vec![Label::primary(span, "cannot use `self` here")],
+        vec![format!(
+            "Hint: Values of type `{t}` represent external contracts.\n\
+             To treat `self` as an external contract, use `{t}(ctx.self_address())`.",
+            t = typ
+        )],
+    )
 }

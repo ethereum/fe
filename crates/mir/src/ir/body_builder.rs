@@ -70,6 +70,10 @@ impl BodyBuilder {
         self.body.store.map_result(inst, result)
     }
 
+    pub fn inst_result(&mut self, inst: InstId) -> Option<&AssignableValue> {
+        self.body.store.inst_result(inst)
+    }
+
     pub fn move_to_block(&mut self, block: BasicBlockId) {
         self.loc = CursorLocation::BlockBottom(block)
     }
@@ -182,6 +186,12 @@ impl BodyBuilder {
 
     pub fn mem_copy(&mut self, src: ValueId, source: SourceInfo) -> InstId {
         let kind = InstKind::MemCopy { src };
+        let inst = Inst::new(kind, source);
+        self.insert_inst(inst)
+    }
+
+    pub fn load(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+        let kind = InstKind::Load { src };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst)
     }

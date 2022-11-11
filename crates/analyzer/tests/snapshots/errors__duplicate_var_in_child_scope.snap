@@ -12,12 +12,4 @@ error: duplicate definition of variable `sum`
 6 │             let sum: u64 = 0
   │                 --- `sum` redefined here
 
-error: `+` operand types must be equal
-  ┌─ compile_errors/duplicate_var_in_child_scope.fe:7:13
-  │
-7 │             sum += i
-  │             ^^^    ^ this has type `u64`
-  │             │       
-  │             this has type `u256`
-
 

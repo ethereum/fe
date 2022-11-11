@@ -21,23 +21,23 @@ note:
   ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Map<u256, u256>: Storage { nonce: Some(0) }
+  │         SPtr<Map<u256, u256>>
 
 note: 
   ┌─ call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^^^^   ^^^ u256: Value
+  │         ^^^^^^^^^^^   ^^^ u256
   │         │              
-  │         u256: Storage { nonce: None }
+  │         SPtr<u256>
 
 note: 
    ┌─ call_statement_with_args.fe:8:5
@@ -52,30 +52,30 @@ note:
   ┌─ call_statement_with_args.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^        ^^^ u256: Value
+  │         ^^^^        ^^^ u256
   │         │            
-  │         Foo: Value
+  │         Foo
 
 note: 
    ┌─ call_statement_with_args.fe:9:9
    │
  9 │         self.assign(100)
-   │         ^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^ ()
 10 │         return self.baz[0]
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ call_statement_with_args.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^ ^ u256: Value
+   │                ^^^^^^^^ ^ u256
    │                │         
-   │                Map<u256, u256>: Storage { nonce: Some(0) }
+   │                SPtr<Map<u256, u256>>
 
 note: 
    ┌─ call_statement_with_args.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+   │                ^^^^^^^^^^^ SPtr<u256> -> u256
 
 

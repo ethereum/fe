@@ -67,27 +67,27 @@ note:
    ┌─ return_complex_struct.fe:30:55
    │
 30 │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
-   │                                                       ^^           ^^ i32: Value
+   │                                                       ^^           ^^ i32
    │                                                       │             
-   │                                                       i32: Value
+   │                                                       i32
 
 note: 
    ┌─ return_complex_struct.fe:30:34
    │
 30 │         let inner: StaticInner = StaticInner(inner_x: 10, inner_y: 20)
-   │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticInner: Memory
+   │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticInner
 31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
-   │                                                    ^^^^^           ^^ i256: Value
+   │                                                    ^^^^^           ^^ i256
    │                                                    │                
-   │                                                    StaticInner: Memory
+   │                                                    StaticInner
 
 note: 
    ┌─ return_complex_struct.fe:31:38
    │
 31 │         let complex: StaticComplex = StaticComplex(inner, outer_x: 30)
-   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex: Memory
+   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StaticComplex
 32 │         return complex
-   │                ^^^^^^^ StaticComplex: Memory
+   │                ^^^^^^^ StaticComplex
 
 note: 
    ┌─ return_complex_struct.fe:36:5
@@ -108,17 +108,17 @@ note:
    ┌─ return_complex_struct.fe:37:60
    │
 37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
-   │                                                            ^^^^^^^           ^^ i32: Value
+   │                                                            ^^^^^^^           ^^ i32
    │                                                            │                  
-   │                                                            String<8>: Memory
+   │                                                            String<8>
 
 note: 
    ┌─ return_complex_struct.fe:37:38
    │
 37 │         let complex: StringComplex = StringComplex(string: "Hello", outer_x: 30)
-   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex: Memory
+   │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ StringComplex
 38 │         return complex
-   │                ^^^^^^^ StringComplex: Memory
+   │                ^^^^^^^ StringComplex
 
 note: 
    ┌─ return_complex_struct.fe:41:5
@@ -139,31 +139,31 @@ note:
    ┌─ return_complex_struct.fe:42:58
    │
 42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
-   │                                                          ^  ^  ^  ^  ^  ^  ^  ^ u8: Value
+   │                                                          ^  ^  ^  ^  ^  ^  ^  ^ u8
    │                                                          │  │  │  │  │  │  │   
-   │                                                          │  │  │  │  │  │  u8: Value
-   │                                                          │  │  │  │  │  u8: Value
-   │                                                          │  │  │  │  u8: Value
-   │                                                          │  │  │  u8: Value
-   │                                                          │  │  u8: Value
-   │                                                          │  u8: Value
-   │                                                          u8: Value
+   │                                                          │  │  │  │  │  │  u8
+   │                                                          │  │  │  │  │  u8
+   │                                                          │  │  │  │  u8
+   │                                                          │  │  │  u8
+   │                                                          │  │  u8
+   │                                                          │  u8
+   │                                                          u8
 
 note: 
    ┌─ return_complex_struct.fe:42:57
    │
 42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
-   │                                                         ^^^^^^^^^^^^^^^^^^^^^^^^           ^^ i32: Value
+   │                                                         ^^^^^^^^^^^^^^^^^^^^^^^^           ^^ i32
    │                                                         │                                   
-   │                                                         Array<u8, 8>: Memory
+   │                                                         Array<u8, 8>
 
 note: 
    ┌─ return_complex_struct.fe:42:37
    │
 42 │         let complex: BytesComplex = BytesComplex(bytes: [1, 2, 3, 4, 5, 6, 7, 8], outer_x: 30)
-   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex: Memory
+   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BytesComplex
 43 │         return complex
-   │                ^^^^^^^ BytesComplex: Memory
+   │                ^^^^^^^ BytesComplex
 
 note: 
    ┌─ return_complex_struct.fe:46:5
@@ -193,41 +193,41 @@ note:
    ┌─ return_complex_struct.fe:47:43
    │
 47 │         let bytes_complex: BytesComplex = self.bytes_complex()
-   │                                           ^^^^ Foo: Value
+   │                                           ^^^^ Foo
 
 note: 
    ┌─ return_complex_struct.fe:47:43
    │
 47 │         let bytes_complex: BytesComplex = self.bytes_complex()
-   │                                           ^^^^^^^^^^^^^^^^^^^^ BytesComplex: Memory
+   │                                           ^^^^^^^^^^^^^^^^^^^^ BytesComplex
 48 │         let static_complex: StaticComplex = self.static_complex()
-   │                                             ^^^^ Foo: Value
+   │                                             ^^^^ Foo
 
 note: 
    ┌─ return_complex_struct.fe:48:45
    │
 48 │         let static_complex: StaticComplex = self.static_complex()
-   │                                             ^^^^^^^^^^^^^^^^^^^^^ StaticComplex: Memory
+   │                                             ^^^^^^^^^^^^^^^^^^^^^ StaticComplex
 49 │         let string_complex: StringComplex = self.string_complex()
-   │                                             ^^^^ Foo: Value
+   │                                             ^^^^ Foo
 
 note: 
    ┌─ return_complex_struct.fe:49:45
    │
 49 │         let string_complex: StringComplex = self.string_complex()
-   │                                             ^^^^^^^^^^^^^^^^^^^^^ StringComplex: Memory
+   │                                             ^^^^^^^^^^^^^^^^^^^^^ StringComplex
 50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
-   │                                                                  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ StringComplex: Memory
+   │                                                                  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ StringComplex
    │                                                                  │              │                
-   │                                                                  │              StaticComplex: Memory
-   │                                                                  BytesComplex: Memory
+   │                                                                  │              StaticComplex
+   │                                                                  BytesComplex
 
 note: 
    ┌─ return_complex_struct.fe:50:45
    │
 50 │         let complex: NestedDynamicComplex = NestedDynamicComplex(bytes_complex, static_complex, string_complex)
-   │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NestedDynamicComplex: Memory
+   │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NestedDynamicComplex
 51 │         return complex
-   │                ^^^^^^^ NestedDynamicComplex: Memory
+   │                ^^^^^^^ NestedDynamicComplex
 
 

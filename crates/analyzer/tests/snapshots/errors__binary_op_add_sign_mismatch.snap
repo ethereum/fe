@@ -3,11 +3,11 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `+` operand types must be equal
+error: `+` operand types are not compatible
   ┌─ [snippet]:5:3
   │
 5 │   a + b
-  │   ^   ^ this has type `u8`
+  │   ^   ^ this has type `i256`
   │   │    
   │   this has type `u256`
 

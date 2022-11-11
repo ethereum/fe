@@ -972,10 +972,10 @@ impl ContractId {
         &self,
         db: &dyn AnalyzerDb,
         name: &str,
-    ) -> Option<(Result<types::TypeId, TypeError>, usize)> {
+    ) -> Option<Result<types::TypeId, TypeError>> {
+        // Note: contract field types are wrapped in SPtr in `fn expr_attribute`
         let fields = db.contract_field_map(*self).value;
-        let (index, _, field) = fields.get_full(name)?;
-        Some((field.typ(db), index))
+        Some(fields.get(name)?.typ(db))
     }
 
     pub fn resolve_name(
@@ -1736,6 +1736,7 @@ impl ImplId {
             Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, None)
             }
+            Type::SPtr(_) => unreachable!(),
         }
 
         if !self.trait_id(db).is_public(db) && self.trait_id(db).module(db) != self.module(db) {
@@ -1884,9 +1885,7 @@ impl TraitId {
             return true;
         }
 
-        ty.get_all_impls(db)
-            .iter()
-            .any(|val| &val.trait_id(db) == self)
+        db.all_impls(ty).iter().any(|val| &val.trait_id(db) == self)
     }
 
     pub fn is_in_std(&self, db: &dyn AnalyzerDb) -> bool {

@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: type mismatch
+error: incorrect type for argument to `Foo`
   ┌─ compile_errors/ctx_missing_load.fe:7:13
   │
 7 │         Foo(0)
-  │             ^ this has type `u256`; expected type `address`
+  │             ^ cannot cast type `u256` to type `Foo`
 
 

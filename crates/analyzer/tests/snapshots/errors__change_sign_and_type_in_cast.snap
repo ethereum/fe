@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: type mismatch
+error: incorrect type for argument to `u16`
   ┌─ [snippet]:4:20
   │
 4 │   let y: u16 = u16(x)
-  │                    ^ expected a numeric type but was `bool`
+  │                    ^ cannot cast type `bool` to type `u16`
 
 

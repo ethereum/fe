@@ -167,14 +167,14 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             InstKind::Unary { op, value } => {
                 let inst_result = self.body.store.inst_result(inst).unwrap();
-                let inst_result_ty = self.assignable_value_ty(inst_result);
+                let inst_result_ty = inst_result.ty(self.db.upcast(), &self.body.store);
                 let result = self.lower_unary(*op, *value);
                 self.assign_inst_result(inst, result, inst_result_ty.deref(self.db.upcast()))
             }
 
             InstKind::Binary { op, lhs, rhs } => {
                 let inst_result = self.body.store.inst_result(inst).unwrap();
-                let inst_result_ty = self.assignable_value_ty(inst_result);
+                let inst_result_ty = inst_result.ty(self.db.upcast(), &self.body.store);
                 let result = self.lower_binary(*op, *lhs, *rhs, inst);
                 self.assign_inst_result(inst, result, inst_result_ty.deref(self.db.upcast()))
             }
@@ -205,7 +205,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::AggregateConstruct { ty, args } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let ptr = self.lower_assignable_value(lhs);
-                let ptr_ty = self.assignable_value_ty(lhs);
+                let ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let arg_values = args.iter().map(|arg| self.value_expr(*arg)).collect();
                 let arg_tys = args
                     .iter()
@@ -228,7 +228,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                             let size = self.value_ty_size_deref(*src);
                             let lhs = self.body.store.inst_result(inst).unwrap();
                             let ptr = self.lower_assignable_value(lhs);
-                            let inst_result_ty = self.assignable_value_ty(lhs);
+                            let inst_result_ty = lhs.ty(self.db.upcast(), &self.body.store);
                             self.sink.push(yul::Statement::Expression(
                                 self.ctx.runtime.string_copy(
                                     self.db,
@@ -254,7 +254,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::MemCopy { src } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let dst_ptr = self.lower_assignable_value(lhs);
-                let dst_ptr_ty = self.assignable_value_ty(lhs);
+                let dst_ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_ptr = self.value_expr(*src);
                 let src_ptr_ty = self.body.store.value_ty(*src);
                 let ty_size = literal_expression! { (self.value_ty_size_deref(*src)) };
@@ -269,25 +269,30 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                     )))
             }
 
+            InstKind::Load { src } => {
+                let src_ty = self.body.store.value_ty(*src);
+                let src = self.value_expr(*src);
+                debug_assert!(src_ty.is_ptr(self.db.upcast()));
+
+                let result = self.body.store.inst_result(inst).unwrap();
+                debug_assert!(!result
+                    .ty(self.db.upcast(), &self.body.store)
+                    .is_ptr(self.db.upcast()));
+                self.assign_inst_result(inst, src, src_ty)
+            }
+
             InstKind::AggregateAccess { value, indices } => {
                 let base = self.value_expr(*value);
                 let mut ptr = base;
-                let ptr_ty = self.body.store.value_ty(*value);
-                let mut inner_ty = ptr_ty.deref(self.db.upcast());
+                let mut inner_ty = self.body.store.value_ty(*value);
                 for &idx in indices {
-                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty);
+                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty.deref(self.db.upcast()));
                     inner_ty =
                         inner_ty.projection_ty(self.db.upcast(), self.body.store.value_data(idx));
                 }
 
-                let elem_ptr_ty = if ptr_ty.is_mptr(self.db.upcast()) {
-                    inner_ty.make_mptr(self.db.upcast())
-                } else {
-                    inner_ty.make_sptr(self.db.upcast())
-                };
-
                 let result = self.body.store.inst_result(inst).unwrap();
-                self.assign_inst_result(inst, ptr, elem_ptr_ty)
+                self.assign_inst_result(inst, ptr, inner_ty)
             }
 
             InstKind::MapAccess { value, key } => {
@@ -382,7 +387,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::AbiEncode { arg } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let ptr = self.lower_assignable_value(lhs);
-                let ptr_ty = self.assignable_value_ty(lhs);
+                let ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_expr = self.value_expr(*arg);
                 let src_ty = self.body.store.value_ty(*arg);
 
@@ -538,7 +543,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 statement! { [lhs] := [rhs] }
             }
             AssignableValue::Aggregate { .. } | AssignableValue::Map { .. } => {
-                let dst_ty = self.assignable_value_ty(lhs);
+                let dst_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_ty = self.body.store.value_ty(rhs);
                 debug_assert_eq!(
                     dst_ty.deref(self.db.upcast()),
@@ -603,15 +608,15 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             .store
             .inst_result(inst)
             .map(|val| {
-                let ty = self.assignable_value_ty(val);
+                let ty = val.ty(self.db.upcast(), &self.body.store);
                 ty.is_signed(self.db.upcast())
             })
             .unwrap_or(false);
         let is_lhs_signed = self.body.store.value_ty(lhs).is_signed(self.db.upcast());
 
         let inst_result = self.body.store.inst_result(inst).unwrap();
-        let inst_result_ty = self
-            .assignable_value_ty(inst_result)
+        let inst_result_ty = inst_result
+            .ty(self.db.upcast(), &self.body.store)
             .deref(self.db.upcast());
         match op {
             BinOp::Add => self
@@ -671,7 +676,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         // assignment.
         let stmt = if let Some(result) = self.body.store.inst_result(inst) {
             let lhs = self.lower_assignable_value(result);
-            let lhs_ty = self.assignable_value_ty(result);
+            let lhs_ty = result.ty(self.db.upcast(), &self.body.store);
             match result {
                 AssignableValue::Value(value) => {
                     match (
@@ -841,7 +846,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             AssignableValue::Aggregate { lhs, idx } => {
                 let base_ptr = self.lower_assignable_value(lhs);
-                let ty = self.assignable_value_ty(lhs).deref(self.db.upcast());
+                let ty = lhs
+                    .ty(self.db.upcast(), &self.body.store)
+                    .deref(self.db.upcast());
                 self.aggregate_elem_ptr(base_ptr, *idx, ty)
             }
             AssignableValue::Map { lhs, key } => {
@@ -851,31 +858,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 self.ctx
                     .runtime
                     .map_value_ptr(self.db, map_ptr, key, key_ty)
-            }
-        }
-    }
-
-    fn assignable_value_ty(&self, value: &AssignableValue) -> TypeId {
-        match value {
-            AssignableValue::Value(value) => self.body.store.value_ty(*value),
-            AssignableValue::Aggregate { lhs, idx } => {
-                let lhs_ty = self.assignable_value_ty(lhs);
-                let ty = lhs_ty
-                    .deref(self.db.upcast())
-                    .projection_ty(self.db.upcast(), self.body.store.value_data(*idx));
-
-                if lhs_ty.is_sptr(self.db.upcast()) {
-                    ty.make_sptr(self.db.upcast())
-                } else {
-                    ty.make_mptr(self.db.upcast())
-                }
-            }
-            AssignableValue::Map { lhs, key } => {
-                let map_ty = self.assignable_value_ty(lhs).deref(self.db.upcast());
-                match &map_ty.data(self.db.upcast()).kind {
-                    TypeKind::Map(def) => def.value_ty.make_sptr(self.db.upcast()),
-                    _ => unreachable!(),
-                }
             }
         }
     }

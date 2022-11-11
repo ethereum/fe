@@ -15,15 +15,15 @@ note:
   ┌─ checked_arithmetic.fe:3:16
   │
 3 │         return left + right
-  │                ^^^^   ^^^^^ u256: Value
+  │                ^^^^   ^^^^^ u256
   │                │       
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ checked_arithmetic.fe:3:16
   │
 3 │         return left + right
-  │                ^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^ u256
 
 note: 
   ┌─ checked_arithmetic.fe:6:5
@@ -37,15 +37,15 @@ note:
   ┌─ checked_arithmetic.fe:7:16
   │
 7 │         return left + right
-  │                ^^^^   ^^^^^ u128: Value
+  │                ^^^^   ^^^^^ u128
   │                │       
-  │                u128: Value
+  │                u128
 
 note: 
   ┌─ checked_arithmetic.fe:7:16
   │
 7 │         return left + right
-  │                ^^^^^^^^^^^^ u128: Value
+  │                ^^^^^^^^^^^^ u128
 
 note: 
    ┌─ checked_arithmetic.fe:10:5
@@ -59,15 +59,15 @@ note:
    ┌─ checked_arithmetic.fe:11:16
    │
 11 │         return left + right
-   │                ^^^^   ^^^^^ u64: Value
+   │                ^^^^   ^^^^^ u64
    │                │       
-   │                u64: Value
+   │                u64
 
 note: 
    ┌─ checked_arithmetic.fe:11:16
    │
 11 │         return left + right
-   │                ^^^^^^^^^^^^ u64: Value
+   │                ^^^^^^^^^^^^ u64
 
 note: 
    ┌─ checked_arithmetic.fe:14:5
@@ -81,15 +81,15 @@ note:
    ┌─ checked_arithmetic.fe:15:16
    │
 15 │         return left + right
-   │                ^^^^   ^^^^^ u32: Value
+   │                ^^^^   ^^^^^ u32
    │                │       
-   │                u32: Value
+   │                u32
 
 note: 
    ┌─ checked_arithmetic.fe:15:16
    │
 15 │         return left + right
-   │                ^^^^^^^^^^^^ u32: Value
+   │                ^^^^^^^^^^^^ u32
 
 note: 
    ┌─ checked_arithmetic.fe:18:5
@@ -103,15 +103,15 @@ note:
    ┌─ checked_arithmetic.fe:19:16
    │
 19 │         return left + right
-   │                ^^^^   ^^^^^ u16: Value
+   │                ^^^^   ^^^^^ u16
    │                │       
-   │                u16: Value
+   │                u16
 
 note: 
    ┌─ checked_arithmetic.fe:19:16
    │
 19 │         return left + right
-   │                ^^^^^^^^^^^^ u16: Value
+   │                ^^^^^^^^^^^^ u16
 
 note: 
    ┌─ checked_arithmetic.fe:22:5
@@ -125,15 +125,15 @@ note:
    ┌─ checked_arithmetic.fe:23:16
    │
 23 │         return left + right
-   │                ^^^^   ^^^^^ u8: Value
+   │                ^^^^   ^^^^^ u8
    │                │       
-   │                u8: Value
+   │                u8
 
 note: 
    ┌─ checked_arithmetic.fe:23:16
    │
 23 │         return left + right
-   │                ^^^^^^^^^^^^ u8: Value
+   │                ^^^^^^^^^^^^ u8
 
 note: 
    ┌─ checked_arithmetic.fe:26:5
@@ -147,15 +147,15 @@ note:
    ┌─ checked_arithmetic.fe:27:16
    │
 27 │         return left + right
-   │                ^^^^   ^^^^^ i256: Value
+   │                ^^^^   ^^^^^ i256
    │                │       
-   │                i256: Value
+   │                i256
 
 note: 
    ┌─ checked_arithmetic.fe:27:16
    │
 27 │         return left + right
-   │                ^^^^^^^^^^^^ i256: Value
+   │                ^^^^^^^^^^^^ i256
 
 note: 
    ┌─ checked_arithmetic.fe:30:5
@@ -169,15 +169,15 @@ note:
    ┌─ checked_arithmetic.fe:31:16
    │
 31 │         return left + right
-   │                ^^^^   ^^^^^ i128: Value
+   │                ^^^^   ^^^^^ i128
    │                │       
-   │                i128: Value
+   │                i128
 
 note: 
    ┌─ checked_arithmetic.fe:31:16
    │
 31 │         return left + right
-   │                ^^^^^^^^^^^^ i128: Value
+   │                ^^^^^^^^^^^^ i128
 
 note: 
    ┌─ checked_arithmetic.fe:34:5
@@ -191,15 +191,15 @@ note:
    ┌─ checked_arithmetic.fe:35:16
    │
 35 │         return left + right
-   │                ^^^^   ^^^^^ i64: Value
+   │                ^^^^   ^^^^^ i64
    │                │       
-   │                i64: Value
+   │                i64
 
 note: 
    ┌─ checked_arithmetic.fe:35:16
    │
 35 │         return left + right
-   │                ^^^^^^^^^^^^ i64: Value
+   │                ^^^^^^^^^^^^ i64
 
 note: 
    ┌─ checked_arithmetic.fe:38:5
@@ -213,15 +213,15 @@ note:
    ┌─ checked_arithmetic.fe:39:16
    │
 39 │         return left + right
-   │                ^^^^   ^^^^^ i32: Value
+   │                ^^^^   ^^^^^ i32
    │                │       
-   │                i32: Value
+   │                i32
 
 note: 
    ┌─ checked_arithmetic.fe:39:16
    │
 39 │         return left + right
-   │                ^^^^^^^^^^^^ i32: Value
+   │                ^^^^^^^^^^^^ i32
 
 note: 
    ┌─ checked_arithmetic.fe:42:5
@@ -235,15 +235,15 @@ note:
    ┌─ checked_arithmetic.fe:43:16
    │
 43 │         return left + right
-   │                ^^^^   ^^^^^ i16: Value
+   │                ^^^^   ^^^^^ i16
    │                │       
-   │                i16: Value
+   │                i16
 
 note: 
    ┌─ checked_arithmetic.fe:43:16
    │
 43 │         return left + right
-   │                ^^^^^^^^^^^^ i16: Value
+   │                ^^^^^^^^^^^^ i16
 
 note: 
    ┌─ checked_arithmetic.fe:46:5
@@ -257,15 +257,15 @@ note:
    ┌─ checked_arithmetic.fe:47:16
    │
 47 │         return left + right
-   │                ^^^^   ^^^^^ i8: Value
+   │                ^^^^   ^^^^^ i8
    │                │       
-   │                i8: Value
+   │                i8
 
 note: 
    ┌─ checked_arithmetic.fe:47:16
    │
 47 │         return left + right
-   │                ^^^^^^^^^^^^ i8: Value
+   │                ^^^^^^^^^^^^ i8
 
 note: 
    ┌─ checked_arithmetic.fe:50:5
@@ -279,15 +279,15 @@ note:
    ┌─ checked_arithmetic.fe:51:16
    │
 51 │         return left - right
-   │                ^^^^   ^^^^^ u256: Value
+   │                ^^^^   ^^^^^ u256
    │                │       
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ checked_arithmetic.fe:51:16
    │
 51 │         return left - right
-   │                ^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^ u256
 
 note: 
    ┌─ checked_arithmetic.fe:54:5
@@ -301,15 +301,15 @@ note:
    ┌─ checked_arithmetic.fe:55:16
    │
 55 │         return left - right
-   │                ^^^^   ^^^^^ u128: Value
+   │                ^^^^   ^^^^^ u128
    │                │       
-   │                u128: Value
+   │                u128
 
 note: 
    ┌─ checked_arithmetic.fe:55:16
    │
 55 │         return left - right
-   │                ^^^^^^^^^^^^ u128: Value
+   │                ^^^^^^^^^^^^ u128
 
 note: 
    ┌─ checked_arithmetic.fe:58:5
@@ -323,15 +323,15 @@ note:
    ┌─ checked_arithmetic.fe:59:16
    │
 59 │         return left - right
-   │                ^^^^   ^^^^^ u64: Value
+   │                ^^^^   ^^^^^ u64
    │                │       
-   │                u64: Value
+   │                u64
 
 note: 
    ┌─ checked_arithmetic.fe:59:16
    │
 59 │         return left - right
-   │                ^^^^^^^^^^^^ u64: Value
+   │                ^^^^^^^^^^^^ u64
 
 note: 
    ┌─ checked_arithmetic.fe:62:5
@@ -345,15 +345,15 @@ note:
    ┌─ checked_arithmetic.fe:63:16
    │
 63 │         return left - right
-   │                ^^^^   ^^^^^ u32: Value
+   │                ^^^^   ^^^^^ u32
    │                │       
-   │                u32: Value
+   │                u32
 
 note: 
    ┌─ checked_arithmetic.fe:63:16
    │
 63 │         return left - right
-   │                ^^^^^^^^^^^^ u32: Value
+   │                ^^^^^^^^^^^^ u32
 
 note: 
    ┌─ checked_arithmetic.fe:66:5
@@ -367,15 +367,15 @@ note:
    ┌─ checked_arithmetic.fe:67:16
    │
 67 │         return left - right
-   │                ^^^^   ^^^^^ u16: Value
+   │                ^^^^   ^^^^^ u16
    │                │       
-   │                u16: Value
+   │                u16
 
 note: 
    ┌─ checked_arithmetic.fe:67:16
    │
 67 │         return left - right
-   │                ^^^^^^^^^^^^ u16: Value
+   │                ^^^^^^^^^^^^ u16
 
 note: 
    ┌─ checked_arithmetic.fe:70:5
@@ -389,15 +389,15 @@ note:
    ┌─ checked_arithmetic.fe:71:16
    │
 71 │         return left - right
-   │                ^^^^   ^^^^^ u8: Value
+   │                ^^^^   ^^^^^ u8
    │                │       
-   │                u8: Value
+   │                u8
 
 note: 
    ┌─ checked_arithmetic.fe:71:16
    │
 71 │         return left - right
-   │                ^^^^^^^^^^^^ u8: Value
+   │                ^^^^^^^^^^^^ u8
 
 note: 
    ┌─ checked_arithmetic.fe:74:5
@@ -411,15 +411,15 @@ note:
    ┌─ checked_arithmetic.fe:75:16
    │
 75 │         return left - right
-   │                ^^^^   ^^^^^ i256: Value
+   │                ^^^^   ^^^^^ i256
    │                │       
-   │                i256: Value
+   │                i256
 
 note: 
    ┌─ checked_arithmetic.fe:75:16
    │
 75 │         return left - right
-   │                ^^^^^^^^^^^^ i256: Value
+   │                ^^^^^^^^^^^^ i256
 
 note: 
    ┌─ checked_arithmetic.fe:78:5
@@ -433,15 +433,15 @@ note:
    ┌─ checked_arithmetic.fe:79:16
    │
 79 │         return left - right
-   │                ^^^^   ^^^^^ i128: Value
+   │                ^^^^   ^^^^^ i128
    │                │       
-   │                i128: Value
+   │                i128
 
 note: 
    ┌─ checked_arithmetic.fe:79:16
    │
 79 │         return left - right
-   │                ^^^^^^^^^^^^ i128: Value
+   │                ^^^^^^^^^^^^ i128
 
 note: 
    ┌─ checked_arithmetic.fe:82:5
@@ -455,15 +455,15 @@ note:
    ┌─ checked_arithmetic.fe:83:16
    │
 83 │         return left - right
-   │                ^^^^   ^^^^^ i64: Value
+   │                ^^^^   ^^^^^ i64
    │                │       
-   │                i64: Value
+   │                i64
 
 note: 
    ┌─ checked_arithmetic.fe:83:16
    │
 83 │         return left - right
-   │                ^^^^^^^^^^^^ i64: Value
+   │                ^^^^^^^^^^^^ i64
 
 note: 
    ┌─ checked_arithmetic.fe:86:5
@@ -477,15 +477,15 @@ note:
    ┌─ checked_arithmetic.fe:87:16
    │
 87 │         return left - right
-   │                ^^^^   ^^^^^ i32: Value
+   │                ^^^^   ^^^^^ i32
    │                │       
-   │                i32: Value
+   │                i32
 
 note: 
    ┌─ checked_arithmetic.fe:87:16
    │
 87 │         return left - right
-   │                ^^^^^^^^^^^^ i32: Value
+   │                ^^^^^^^^^^^^ i32
 
 note: 
    ┌─ checked_arithmetic.fe:90:5
@@ -499,15 +499,15 @@ note:
    ┌─ checked_arithmetic.fe:91:16
    │
 91 │         return left - right
-   │                ^^^^   ^^^^^ i16: Value
+   │                ^^^^   ^^^^^ i16
    │                │       
-   │                i16: Value
+   │                i16
 
 note: 
    ┌─ checked_arithmetic.fe:91:16
    │
 91 │         return left - right
-   │                ^^^^^^^^^^^^ i16: Value
+   │                ^^^^^^^^^^^^ i16
 
 note: 
    ┌─ checked_arithmetic.fe:94:5
@@ -521,15 +521,15 @@ note:
    ┌─ checked_arithmetic.fe:95:16
    │
 95 │         return left - right
-   │                ^^^^   ^^^^^ i8: Value
+   │                ^^^^   ^^^^^ i8
    │                │       
-   │                i8: Value
+   │                i8
 
 note: 
    ┌─ checked_arithmetic.fe:95:16
    │
 95 │         return left - right
-   │                ^^^^^^^^^^^^ i8: Value
+   │                ^^^^^^^^^^^^ i8
 
 note: 
     ┌─ checked_arithmetic.fe:98:5
@@ -543,15 +543,15 @@ note:
    ┌─ checked_arithmetic.fe:99:16
    │
 99 │         return left / right
-   │                ^^^^   ^^^^^ u256: Value
+   │                ^^^^   ^^^^^ u256
    │                │       
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ checked_arithmetic.fe:99:16
    │
 99 │         return left / right
-   │                ^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^ u256
 
 note: 
     ┌─ checked_arithmetic.fe:102:5
@@ -565,15 +565,15 @@ note:
     ┌─ checked_arithmetic.fe:103:16
     │
 103 │         return left / right
-    │                ^^^^   ^^^^^ u128: Value
+    │                ^^^^   ^^^^^ u128
     │                │       
-    │                u128: Value
+    │                u128
 
 note: 
     ┌─ checked_arithmetic.fe:103:16
     │
 103 │         return left / right
-    │                ^^^^^^^^^^^^ u128: Value
+    │                ^^^^^^^^^^^^ u128
 
 note: 
     ┌─ checked_arithmetic.fe:106:5
@@ -587,15 +587,15 @@ note:
     ┌─ checked_arithmetic.fe:107:16
     │
 107 │         return left / right
-    │                ^^^^   ^^^^^ u64: Value
+    │                ^^^^   ^^^^^ u64
     │                │       
-    │                u64: Value
+    │                u64
 
 note: 
     ┌─ checked_arithmetic.fe:107:16
     │
 107 │         return left / right
-    │                ^^^^^^^^^^^^ u64: Value
+    │                ^^^^^^^^^^^^ u64
 
 note: 
     ┌─ checked_arithmetic.fe:110:5
@@ -609,15 +609,15 @@ note:
     ┌─ checked_arithmetic.fe:111:16
     │
 111 │         return left / right
-    │                ^^^^   ^^^^^ u32: Value
+    │                ^^^^   ^^^^^ u32
     │                │       
-    │                u32: Value
+    │                u32
 
 note: 
     ┌─ checked_arithmetic.fe:111:16
     │
 111 │         return left / right
-    │                ^^^^^^^^^^^^ u32: Value
+    │                ^^^^^^^^^^^^ u32
 
 note: 
     ┌─ checked_arithmetic.fe:114:5
@@ -631,15 +631,15 @@ note:
     ┌─ checked_arithmetic.fe:115:16
     │
 115 │         return left / right
-    │                ^^^^   ^^^^^ u16: Value
+    │                ^^^^   ^^^^^ u16
     │                │       
-    │                u16: Value
+    │                u16
 
 note: 
     ┌─ checked_arithmetic.fe:115:16
     │
 115 │         return left / right
-    │                ^^^^^^^^^^^^ u16: Value
+    │                ^^^^^^^^^^^^ u16
 
 note: 
     ┌─ checked_arithmetic.fe:118:5
@@ -653,15 +653,15 @@ note:
     ┌─ checked_arithmetic.fe:119:16
     │
 119 │         return left / right
-    │                ^^^^   ^^^^^ u8: Value
+    │                ^^^^   ^^^^^ u8
     │                │       
-    │                u8: Value
+    │                u8
 
 note: 
     ┌─ checked_arithmetic.fe:119:16
     │
 119 │         return left / right
-    │                ^^^^^^^^^^^^ u8: Value
+    │                ^^^^^^^^^^^^ u8
 
 note: 
     ┌─ checked_arithmetic.fe:122:5
@@ -675,15 +675,15 @@ note:
     ┌─ checked_arithmetic.fe:123:16
     │
 123 │         return left / right
-    │                ^^^^   ^^^^^ i256: Value
+    │                ^^^^   ^^^^^ i256
     │                │       
-    │                i256: Value
+    │                i256
 
 note: 
     ┌─ checked_arithmetic.fe:123:16
     │
 123 │         return left / right
-    │                ^^^^^^^^^^^^ i256: Value
+    │                ^^^^^^^^^^^^ i256
 
 note: 
     ┌─ checked_arithmetic.fe:126:5
@@ -697,15 +697,15 @@ note:
     ┌─ checked_arithmetic.fe:127:16
     │
 127 │         return left / right
-    │                ^^^^   ^^^^^ i128: Value
+    │                ^^^^   ^^^^^ i128
     │                │       
-    │                i128: Value
+    │                i128
 
 note: 
     ┌─ checked_arithmetic.fe:127:16
     │
 127 │         return left / right
-    │                ^^^^^^^^^^^^ i128: Value
+    │                ^^^^^^^^^^^^ i128
 
 note: 
     ┌─ checked_arithmetic.fe:130:5
@@ -719,15 +719,15 @@ note:
     ┌─ checked_arithmetic.fe:131:16
     │
 131 │         return left / right
-    │                ^^^^   ^^^^^ i64: Value
+    │                ^^^^   ^^^^^ i64
     │                │       
-    │                i64: Value
+    │                i64
 
 note: 
     ┌─ checked_arithmetic.fe:131:16
     │
 131 │         return left / right
-    │                ^^^^^^^^^^^^ i64: Value
+    │                ^^^^^^^^^^^^ i64
 
 note: 
     ┌─ checked_arithmetic.fe:134:5
@@ -741,15 +741,15 @@ note:
     ┌─ checked_arithmetic.fe:135:16
     │
 135 │         return left / right
-    │                ^^^^   ^^^^^ i32: Value
+    │                ^^^^   ^^^^^ i32
     │                │       
-    │                i32: Value
+    │                i32
 
 note: 
     ┌─ checked_arithmetic.fe:135:16
     │
 135 │         return left / right
-    │                ^^^^^^^^^^^^ i32: Value
+    │                ^^^^^^^^^^^^ i32
 
 note: 
     ┌─ checked_arithmetic.fe:138:5
@@ -763,15 +763,15 @@ note:
     ┌─ checked_arithmetic.fe:139:16
     │
 139 │         return left / right
-    │                ^^^^   ^^^^^ i16: Value
+    │                ^^^^   ^^^^^ i16
     │                │       
-    │                i16: Value
+    │                i16
 
 note: 
     ┌─ checked_arithmetic.fe:139:16
     │
 139 │         return left / right
-    │                ^^^^^^^^^^^^ i16: Value
+    │                ^^^^^^^^^^^^ i16
 
 note: 
     ┌─ checked_arithmetic.fe:142:5
@@ -785,15 +785,15 @@ note:
     ┌─ checked_arithmetic.fe:143:16
     │
 143 │         return left / right
-    │                ^^^^   ^^^^^ i8: Value
+    │                ^^^^   ^^^^^ i8
     │                │       
-    │                i8: Value
+    │                i8
 
 note: 
     ┌─ checked_arithmetic.fe:143:16
     │
 143 │         return left / right
-    │                ^^^^^^^^^^^^ i8: Value
+    │                ^^^^^^^^^^^^ i8
 
 note: 
     ┌─ checked_arithmetic.fe:146:5
@@ -807,15 +807,15 @@ note:
     ┌─ checked_arithmetic.fe:147:16
     │
 147 │         return left * right
-    │                ^^^^   ^^^^^ u256: Value
+    │                ^^^^   ^^^^^ u256
     │                │       
-    │                u256: Value
+    │                u256
 
 note: 
     ┌─ checked_arithmetic.fe:147:16
     │
 147 │         return left * right
-    │                ^^^^^^^^^^^^ u256: Value
+    │                ^^^^^^^^^^^^ u256
 
 note: 
     ┌─ checked_arithmetic.fe:150:5
@@ -829,15 +829,15 @@ note:
     ┌─ checked_arithmetic.fe:151:16
     │
 151 │         return left * right
-    │                ^^^^   ^^^^^ u128: Value
+    │                ^^^^   ^^^^^ u128
     │                │       
-    │                u128: Value
+    │                u128
 
 note: 
     ┌─ checked_arithmetic.fe:151:16
     │
 151 │         return left * right
-    │                ^^^^^^^^^^^^ u128: Value
+    │                ^^^^^^^^^^^^ u128
 
 note: 
     ┌─ checked_arithmetic.fe:154:5
@@ -851,15 +851,15 @@ note:
     ┌─ checked_arithmetic.fe:155:16
     │
 155 │         return left * right
-    │                ^^^^   ^^^^^ u64: Value
+    │                ^^^^   ^^^^^ u64
     │                │       
-    │                u64: Value
+    │                u64
 
 note: 
     ┌─ checked_arithmetic.fe:155:16
     │
 155 │         return left * right
-    │                ^^^^^^^^^^^^ u64: Value
+    │                ^^^^^^^^^^^^ u64
 
 note: 
     ┌─ checked_arithmetic.fe:158:5
@@ -873,15 +873,15 @@ note:
     ┌─ checked_arithmetic.fe:159:16
     │
 159 │         return left * right
-    │                ^^^^   ^^^^^ u32: Value
+    │                ^^^^   ^^^^^ u32
     │                │       
-    │                u32: Value
+    │                u32
 
 note: 
     ┌─ checked_arithmetic.fe:159:16
     │
 159 │         return left * right
-    │                ^^^^^^^^^^^^ u32: Value
+    │                ^^^^^^^^^^^^ u32
 
 note: 
     ┌─ checked_arithmetic.fe:162:5
@@ -895,15 +895,15 @@ note:
     ┌─ checked_arithmetic.fe:163:16
     │
 163 │         return left * right
-    │                ^^^^   ^^^^^ u16: Value
+    │                ^^^^   ^^^^^ u16
     │                │       
-    │                u16: Value
+    │                u16
 
 note: 
     ┌─ checked_arithmetic.fe:163:16
     │
 163 │         return left * right
-    │                ^^^^^^^^^^^^ u16: Value
+    │                ^^^^^^^^^^^^ u16
 
 note: 
     ┌─ checked_arithmetic.fe:166:5
@@ -917,15 +917,15 @@ note:
     ┌─ checked_arithmetic.fe:167:16
     │
 167 │         return left * right
-    │                ^^^^   ^^^^^ u8: Value
+    │                ^^^^   ^^^^^ u8
     │                │       
-    │                u8: Value
+    │                u8
 
 note: 
     ┌─ checked_arithmetic.fe:167:16
     │
 167 │         return left * right
-    │                ^^^^^^^^^^^^ u8: Value
+    │                ^^^^^^^^^^^^ u8
 
 note: 
     ┌─ checked_arithmetic.fe:170:5
@@ -939,15 +939,15 @@ note:
     ┌─ checked_arithmetic.fe:171:16
     │
 171 │         return left * right
-    │                ^^^^   ^^^^^ i256: Value
+    │                ^^^^   ^^^^^ i256
     │                │       
-    │                i256: Value
+    │                i256
 
 note: 
     ┌─ checked_arithmetic.fe:171:16
     │
 171 │         return left * right
-    │                ^^^^^^^^^^^^ i256: Value
+    │                ^^^^^^^^^^^^ i256
 
 note: 
     ┌─ checked_arithmetic.fe:174:5
@@ -961,15 +961,15 @@ note:
     ┌─ checked_arithmetic.fe:175:16
     │
 175 │         return left * right
-    │                ^^^^   ^^^^^ i128: Value
+    │                ^^^^   ^^^^^ i128
     │                │       
-    │                i128: Value
+    │                i128
 
 note: 
     ┌─ checked_arithmetic.fe:175:16
     │
 175 │         return left * right
-    │                ^^^^^^^^^^^^ i128: Value
+    │                ^^^^^^^^^^^^ i128
 
 note: 
     ┌─ checked_arithmetic.fe:178:5
@@ -983,15 +983,15 @@ note:
     ┌─ checked_arithmetic.fe:179:16
     │
 179 │         return left * right
-    │                ^^^^   ^^^^^ i64: Value
+    │                ^^^^   ^^^^^ i64
     │                │       
-    │                i64: Value
+    │                i64
 
 note: 
     ┌─ checked_arithmetic.fe:179:16
     │
 179 │         return left * right
-    │                ^^^^^^^^^^^^ i64: Value
+    │                ^^^^^^^^^^^^ i64
 
 note: 
     ┌─ checked_arithmetic.fe:182:5
@@ -1005,15 +1005,15 @@ note:
     ┌─ checked_arithmetic.fe:183:16
     │
 183 │         return left * right
-    │                ^^^^   ^^^^^ i32: Value
+    │                ^^^^   ^^^^^ i32
     │                │       
-    │                i32: Value
+    │                i32
 
 note: 
     ┌─ checked_arithmetic.fe:183:16
     │
 183 │         return left * right
-    │                ^^^^^^^^^^^^ i32: Value
+    │                ^^^^^^^^^^^^ i32
 
 note: 
     ┌─ checked_arithmetic.fe:186:5
@@ -1027,15 +1027,15 @@ note:
     ┌─ checked_arithmetic.fe:187:16
     │
 187 │         return left * right
-    │                ^^^^   ^^^^^ i16: Value
+    │                ^^^^   ^^^^^ i16
     │                │       
-    │                i16: Value
+    │                i16
 
 note: 
     ┌─ checked_arithmetic.fe:187:16
     │
 187 │         return left * right
-    │                ^^^^^^^^^^^^ i16: Value
+    │                ^^^^^^^^^^^^ i16
 
 note: 
     ┌─ checked_arithmetic.fe:190:5
@@ -1049,15 +1049,15 @@ note:
     ┌─ checked_arithmetic.fe:191:16
     │
 191 │         return left * right
-    │                ^^^^   ^^^^^ i8: Value
+    │                ^^^^   ^^^^^ i8
     │                │       
-    │                i8: Value
+    │                i8
 
 note: 
     ┌─ checked_arithmetic.fe:191:16
     │
 191 │         return left * right
-    │                ^^^^^^^^^^^^ i8: Value
+    │                ^^^^^^^^^^^^ i8
 
 note: 
     ┌─ checked_arithmetic.fe:194:5
@@ -1071,15 +1071,15 @@ note:
     ┌─ checked_arithmetic.fe:195:16
     │
 195 │         return left % right
-    │                ^^^^   ^^^^^ u256: Value
+    │                ^^^^   ^^^^^ u256
     │                │       
-    │                u256: Value
+    │                u256
 
 note: 
     ┌─ checked_arithmetic.fe:195:16
     │
 195 │         return left % right
-    │                ^^^^^^^^^^^^ u256: Value
+    │                ^^^^^^^^^^^^ u256
 
 note: 
     ┌─ checked_arithmetic.fe:198:5
@@ -1093,15 +1093,15 @@ note:
     ┌─ checked_arithmetic.fe:199:16
     │
 199 │         return left % right
-    │                ^^^^   ^^^^^ u128: Value
+    │                ^^^^   ^^^^^ u128
     │                │       
-    │                u128: Value
+    │                u128
 
 note: 
     ┌─ checked_arithmetic.fe:199:16
     │
 199 │         return left % right
-    │                ^^^^^^^^^^^^ u128: Value
+    │                ^^^^^^^^^^^^ u128
 
 note: 
     ┌─ checked_arithmetic.fe:202:5
@@ -1115,15 +1115,15 @@ note:
     ┌─ checked_arithmetic.fe:203:16
     │
 203 │         return left % right
-    │                ^^^^   ^^^^^ u64: Value
+    │                ^^^^   ^^^^^ u64
     │                │       
-    │                u64: Value
+    │                u64
 
 note: 
     ┌─ checked_arithmetic.fe:203:16
     │
 203 │         return left % right
-    │                ^^^^^^^^^^^^ u64: Value
+    │                ^^^^^^^^^^^^ u64
 
 note: 
     ┌─ checked_arithmetic.fe:206:5
@@ -1137,15 +1137,15 @@ note:
     ┌─ checked_arithmetic.fe:207:16
     │
 207 │         return left % right
-    │                ^^^^   ^^^^^ u32: Value
+    │                ^^^^   ^^^^^ u32
     │                │       
-    │                u32: Value
+    │                u32
 
 note: 
     ┌─ checked_arithmetic.fe:207:16
     │
 207 │         return left % right
-    │                ^^^^^^^^^^^^ u32: Value
+    │                ^^^^^^^^^^^^ u32
 
 note: 
     ┌─ checked_arithmetic.fe:210:5
@@ -1159,15 +1159,15 @@ note:
     ┌─ checked_arithmetic.fe:211:16
     │
 211 │         return left % right
-    │                ^^^^   ^^^^^ u16: Value
+    │                ^^^^   ^^^^^ u16
     │                │       
-    │                u16: Value
+    │                u16
 
 note: 
     ┌─ checked_arithmetic.fe:211:16
     │
 211 │         return left % right
-    │                ^^^^^^^^^^^^ u16: Value
+    │                ^^^^^^^^^^^^ u16
 
 note: 
     ┌─ checked_arithmetic.fe:214:5
@@ -1181,15 +1181,15 @@ note:
     ┌─ checked_arithmetic.fe:215:16
     │
 215 │         return left % right
-    │                ^^^^   ^^^^^ u8: Value
+    │                ^^^^   ^^^^^ u8
     │                │       
-    │                u8: Value
+    │                u8
 
 note: 
     ┌─ checked_arithmetic.fe:215:16
     │
 215 │         return left % right
-    │                ^^^^^^^^^^^^ u8: Value
+    │                ^^^^^^^^^^^^ u8
 
 note: 
     ┌─ checked_arithmetic.fe:218:5
@@ -1203,15 +1203,15 @@ note:
     ┌─ checked_arithmetic.fe:219:16
     │
 219 │         return left % right
-    │                ^^^^   ^^^^^ i256: Value
+    │                ^^^^   ^^^^^ i256
     │                │       
-    │                i256: Value
+    │                i256
 
 note: 
     ┌─ checked_arithmetic.fe:219:16
     │
 219 │         return left % right
-    │                ^^^^^^^^^^^^ i256: Value
+    │                ^^^^^^^^^^^^ i256
 
 note: 
     ┌─ checked_arithmetic.fe:222:5
@@ -1225,15 +1225,15 @@ note:
     ┌─ checked_arithmetic.fe:223:16
     │
 223 │         return left % right
-    │                ^^^^   ^^^^^ i128: Value
+    │                ^^^^   ^^^^^ i128
     │                │       
-    │                i128: Value
+    │                i128
 
 note: 
     ┌─ checked_arithmetic.fe:223:16
     │
 223 │         return left % right
-    │                ^^^^^^^^^^^^ i128: Value
+    │                ^^^^^^^^^^^^ i128
 
 note: 
     ┌─ checked_arithmetic.fe:226:5
@@ -1247,15 +1247,15 @@ note:
     ┌─ checked_arithmetic.fe:227:16
     │
 227 │         return left % right
-    │                ^^^^   ^^^^^ i64: Value
+    │                ^^^^   ^^^^^ i64
     │                │       
-    │                i64: Value
+    │                i64
 
 note: 
     ┌─ checked_arithmetic.fe:227:16
     │
 227 │         return left % right
-    │                ^^^^^^^^^^^^ i64: Value
+    │                ^^^^^^^^^^^^ i64
 
 note: 
     ┌─ checked_arithmetic.fe:230:5
@@ -1269,15 +1269,15 @@ note:
     ┌─ checked_arithmetic.fe:231:16
     │
 231 │         return left % right
-    │                ^^^^   ^^^^^ i32: Value
+    │                ^^^^   ^^^^^ i32
     │                │       
-    │                i32: Value
+    │                i32
 
 note: 
     ┌─ checked_arithmetic.fe:231:16
     │
 231 │         return left % right
-    │                ^^^^^^^^^^^^ i32: Value
+    │                ^^^^^^^^^^^^ i32
 
 note: 
     ┌─ checked_arithmetic.fe:234:5
@@ -1291,15 +1291,15 @@ note:
     ┌─ checked_arithmetic.fe:235:16
     │
 235 │         return left % right
-    │                ^^^^   ^^^^^ i16: Value
+    │                ^^^^   ^^^^^ i16
     │                │       
-    │                i16: Value
+    │                i16
 
 note: 
     ┌─ checked_arithmetic.fe:235:16
     │
 235 │         return left % right
-    │                ^^^^^^^^^^^^ i16: Value
+    │                ^^^^^^^^^^^^ i16
 
 note: 
     ┌─ checked_arithmetic.fe:238:5
@@ -1313,15 +1313,15 @@ note:
     ┌─ checked_arithmetic.fe:239:16
     │
 239 │         return left % right
-    │                ^^^^   ^^^^^ i8: Value
+    │                ^^^^   ^^^^^ i8
     │                │       
-    │                i8: Value
+    │                i8
 
 note: 
     ┌─ checked_arithmetic.fe:239:16
     │
 239 │         return left % right
-    │                ^^^^^^^^^^^^ i8: Value
+    │                ^^^^^^^^^^^^ i8
 
 note: 
     ┌─ checked_arithmetic.fe:242:5
@@ -1335,15 +1335,15 @@ note:
     ┌─ checked_arithmetic.fe:243:16
     │
 243 │         return left ** right
-    │                ^^^^    ^^^^^ u256: Value
+    │                ^^^^    ^^^^^ u256
     │                │        
-    │                u256: Value
+    │                u256
 
 note: 
     ┌─ checked_arithmetic.fe:243:16
     │
 243 │         return left ** right
-    │                ^^^^^^^^^^^^^ u256: Value
+    │                ^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ checked_arithmetic.fe:246:5
@@ -1357,15 +1357,15 @@ note:
     ┌─ checked_arithmetic.fe:247:16
     │
 247 │         return left ** right
-    │                ^^^^    ^^^^^ u128: Value
+    │                ^^^^    ^^^^^ u128
     │                │        
-    │                u128: Value
+    │                u128
 
 note: 
     ┌─ checked_arithmetic.fe:247:16
     │
 247 │         return left ** right
-    │                ^^^^^^^^^^^^^ u128: Value
+    │                ^^^^^^^^^^^^^ u128
 
 note: 
     ┌─ checked_arithmetic.fe:250:5
@@ -1379,15 +1379,15 @@ note:
     ┌─ checked_arithmetic.fe:251:16
     │
 251 │         return left ** right
-    │                ^^^^    ^^^^^ u64: Value
+    │                ^^^^    ^^^^^ u64
     │                │        
-    │                u64: Value
+    │                u64
 
 note: 
     ┌─ checked_arithmetic.fe:251:16
     │
 251 │         return left ** right
-    │                ^^^^^^^^^^^^^ u64: Value
+    │                ^^^^^^^^^^^^^ u64
 
 note: 
     ┌─ checked_arithmetic.fe:254:5
@@ -1401,15 +1401,15 @@ note:
     ┌─ checked_arithmetic.fe:255:16
     │
 255 │         return left ** right
-    │                ^^^^    ^^^^^ u32: Value
+    │                ^^^^    ^^^^^ u32
     │                │        
-    │                u32: Value
+    │                u32
 
 note: 
     ┌─ checked_arithmetic.fe:255:16
     │
 255 │         return left ** right
-    │                ^^^^^^^^^^^^^ u32: Value
+    │                ^^^^^^^^^^^^^ u32
 
 note: 
     ┌─ checked_arithmetic.fe:258:5
@@ -1423,15 +1423,15 @@ note:
     ┌─ checked_arithmetic.fe:259:16
     │
 259 │         return left ** right
-    │                ^^^^    ^^^^^ u16: Value
+    │                ^^^^    ^^^^^ u16
     │                │        
-    │                u16: Value
+    │                u16
 
 note: 
     ┌─ checked_arithmetic.fe:259:16
     │
 259 │         return left ** right
-    │                ^^^^^^^^^^^^^ u16: Value
+    │                ^^^^^^^^^^^^^ u16
 
 note: 
     ┌─ checked_arithmetic.fe:262:5
@@ -1445,15 +1445,15 @@ note:
     ┌─ checked_arithmetic.fe:263:16
     │
 263 │         return left ** right
-    │                ^^^^    ^^^^^ u8: Value
+    │                ^^^^    ^^^^^ u8
     │                │        
-    │                u8: Value
+    │                u8
 
 note: 
     ┌─ checked_arithmetic.fe:263:16
     │
 263 │         return left ** right
-    │                ^^^^^^^^^^^^^ u8: Value
+    │                ^^^^^^^^^^^^^ u8
 
 note: 
     ┌─ checked_arithmetic.fe:266:5
@@ -1467,15 +1467,15 @@ note:
     ┌─ checked_arithmetic.fe:267:16
     │
 267 │         return left ** right
-    │                ^^^^    ^^^^^ u256: Value
+    │                ^^^^    ^^^^^ u256
     │                │        
-    │                i256: Value
+    │                i256
 
 note: 
     ┌─ checked_arithmetic.fe:267:16
     │
 267 │         return left ** right
-    │                ^^^^^^^^^^^^^ i256: Value
+    │                ^^^^^^^^^^^^^ i256
 
 note: 
     ┌─ checked_arithmetic.fe:270:5
@@ -1489,15 +1489,15 @@ note:
     ┌─ checked_arithmetic.fe:271:16
     │
 271 │         return left ** right
-    │                ^^^^    ^^^^^ u128: Value
+    │                ^^^^    ^^^^^ u128
     │                │        
-    │                i128: Value
+    │                i128
 
 note: 
     ┌─ checked_arithmetic.fe:271:16
     │
 271 │         return left ** right
-    │                ^^^^^^^^^^^^^ i128: Value
+    │                ^^^^^^^^^^^^^ i128
 
 note: 
     ┌─ checked_arithmetic.fe:274:5
@@ -1511,15 +1511,15 @@ note:
     ┌─ checked_arithmetic.fe:275:16
     │
 275 │         return left ** right
-    │                ^^^^    ^^^^^ u64: Value
+    │                ^^^^    ^^^^^ u64
     │                │        
-    │                i64: Value
+    │                i64
 
 note: 
     ┌─ checked_arithmetic.fe:275:16
     │
 275 │         return left ** right
-    │                ^^^^^^^^^^^^^ i64: Value
+    │                ^^^^^^^^^^^^^ i64
 
 note: 
     ┌─ checked_arithmetic.fe:278:5
@@ -1533,15 +1533,15 @@ note:
     ┌─ checked_arithmetic.fe:279:16
     │
 279 │         return left ** right
-    │                ^^^^    ^^^^^ u32: Value
+    │                ^^^^    ^^^^^ u32
     │                │        
-    │                i32: Value
+    │                i32
 
 note: 
     ┌─ checked_arithmetic.fe:279:16
     │
 279 │         return left ** right
-    │                ^^^^^^^^^^^^^ i32: Value
+    │                ^^^^^^^^^^^^^ i32
 
 note: 
     ┌─ checked_arithmetic.fe:282:5
@@ -1555,15 +1555,15 @@ note:
     ┌─ checked_arithmetic.fe:283:16
     │
 283 │         return left ** right
-    │                ^^^^    ^^^^^ u16: Value
+    │                ^^^^    ^^^^^ u16
     │                │        
-    │                i16: Value
+    │                i16
 
 note: 
     ┌─ checked_arithmetic.fe:283:16
     │
 283 │         return left ** right
-    │                ^^^^^^^^^^^^^ i16: Value
+    │                ^^^^^^^^^^^^^ i16
 
 note: 
     ┌─ checked_arithmetic.fe:286:5
@@ -1577,14 +1577,14 @@ note:
     ┌─ checked_arithmetic.fe:287:16
     │
 287 │         return left ** right
-    │                ^^^^    ^^^^^ u8: Value
+    │                ^^^^    ^^^^^ u8
     │                │        
-    │                i8: Value
+    │                i8
 
 note: 
     ┌─ checked_arithmetic.fe:287:16
     │
 287 │         return left ** right
-    │                ^^^^^^^^^^^^^ i8: Value
+    │                ^^^^^^^^^^^^^ i8
 
 

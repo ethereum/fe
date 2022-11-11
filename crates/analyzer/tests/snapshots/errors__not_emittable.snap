@@ -9,10 +9,4 @@ error: the trait bound `NotEmittable: Emittable` is not satisfied
 15 │         ctx.emit(NotEmittable ( color: Color::Black ))
    │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Emittable` is not implemented for `NotEmittable`
 
-error: incorrect type for `emit` argument at position 0
-   ┌─ compile_errors/not_emittable.fe:15:18
-   │
-15 │         ctx.emit(NotEmittable ( color: Color::Black ))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this has type `NotEmittable`; expected type `T`
-
 

@@ -33,7 +33,7 @@ note:
    ┌─ strings.fe:18:16
    │
 18 │         return s2
-   │                ^^ String<100>: Memory
+   │                ^^ String<100>
 
 note: 
    ┌─ strings.fe:21:5
@@ -47,7 +47,7 @@ note:
    ┌─ strings.fe:22:16
    │
 22 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>
 
 note: 
    ┌─ strings.fe:25:5
@@ -61,13 +61,13 @@ note:
    ┌─ strings.fe:26:28
    │
 26 │         return String<100>("foo")
-   │                            ^^^^^ String<3>: Memory
+   │                            ^^^^^ String<3>
 
 note: 
    ┌─ strings.fe:26:16
    │
 26 │         return String<100>("foo")
-   │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
+   │                ^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
    ┌─ strings.fe:29:5
@@ -87,7 +87,7 @@ note:
    ┌─ strings.fe:30:29
    │
 30 │         let s: String<18> = "fe"
-   │                             ^^^^ String<18>: Memory
+   │                             ^^^^ String<18>
 
 note: 
    ┌─ strings.fe:33:5
@@ -104,6 +104,6 @@ note:
 34 │           return "\n\"'\r\t
    │ ╭────────────────^
 35 │ │         foo\\"
-   │ ╰──────────────^ String<18>: Memory
+   │ ╰──────────────^ String<18>
 
 

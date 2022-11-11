@@ -54,6 +54,11 @@ pub enum InstKind {
         src: ValueId,
     },
 
+    /// Load a primitive value from a ptr
+    Load {
+        src: ValueId,
+    },
+
     /// Access to aggregate fields or elements.
     /// # Example
     ///
@@ -221,6 +226,7 @@ impl Inst {
             Declare { local: arg }
             | Bind { src: arg }
             | MemCopy { src: arg }
+            | Load { src: arg }
             | Unary { value: arg, .. }
             | Cast { value: arg, .. }
             | Emit { arg }
@@ -264,6 +270,7 @@ impl Inst {
             Declare { local: arg }
             | Bind { src: arg }
             | MemCopy { src: arg }
+            | Load { src: arg }
             | Unary { value: arg, .. }
             | Cast { value: arg, .. }
             | Emit { arg }

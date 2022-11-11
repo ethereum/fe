@@ -4,7 +4,7 @@
 //! In this module, we assume all types are well-typed, so we can rely on the
 //! type information without checking it.
 
-use std::fmt::{self};
+use std::fmt;
 
 use fe_parser::{
     ast::{LiteralPattern, MatchArm, Pattern},

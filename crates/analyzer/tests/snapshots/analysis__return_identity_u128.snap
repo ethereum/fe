@@ -15,6 +15,6 @@ note:
   ┌─ return_identity_u128.fe:3:16
   │
 3 │         return x
-  │                ^ u128: Value
+  │                ^ u128
 
 
