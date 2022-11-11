@@ -20,5 +20,4 @@ rest_pattern_middle([Uint(1), Uint(2)]) used 3234 gas
 simple_struct([Int(1), Int(2), Bool(true)]) used 1024 gas
 simple_struct([Int(1), Int(2), Bool(false)]) used 1038 gas
 nested_struct([]) used 1461 gas
-enum_storage([Uint(1), Uint(2), Bool(true)]) used 90839 gas
 

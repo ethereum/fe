@@ -53,19 +53,19 @@ note:
    ┌─ erc20_token.fe:33:16
    │
 33 │         return self._name.to_mem()
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:33:16
    │
 33 │         return self._name.to_mem()
-   │                ^^^^^^^^^^ String<100>: Storage { nonce: Some(3) }
+   │                ^^^^^^^^^^ SPtr<String<100>>
 
 note: 
    ┌─ erc20_token.fe:33:16
    │
 33 │         return self._name.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: Some(3) } => Memory
+   │                ^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
    ┌─ erc20_token.fe:36:5
@@ -79,19 +79,19 @@ note:
    ┌─ erc20_token.fe:37:16
    │
 37 │         return self._symbol.to_mem()
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:37:16
    │
 37 │         return self._symbol.to_mem()
-   │                ^^^^^^^^^^^^ String<100>: Storage { nonce: Some(4) }
+   │                ^^^^^^^^^^^^ SPtr<String<100>>
 
 note: 
    ┌─ erc20_token.fe:37:16
    │
 37 │         return self._symbol.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: Some(4) } => Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
    ┌─ erc20_token.fe:40:5
@@ -105,13 +105,13 @@ note:
    ┌─ erc20_token.fe:41:16
    │
 41 │         return self._decimals
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:41:16
    │
 41 │         return self._decimals
-   │                ^^^^^^^^^^^^^^ u8: Storage { nonce: Some(5) } => Value
+   │                ^^^^^^^^^^^^^^ SPtr<u8> -> u8
 
 note: 
    ┌─ erc20_token.fe:44:5
@@ -125,13 +125,13 @@ note:
    ┌─ erc20_token.fe:45:16
    │
 45 │         return self._total_supply
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:45:16
    │
 45 │         return self._total_supply
-   │                ^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(2) } => Value
+   │                ^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:48:5
@@ -145,21 +145,21 @@ note:
    ┌─ erc20_token.fe:49:16
    │
 49 │         return self._balances[account]
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:49:16
    │
 49 │         return self._balances[account]
-   │                ^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                ^^^^^^^^^^^^^^ ^^^^^^^ address
    │                │               
-   │                Map<address, u256>: Storage { nonce: Some(0) }
+   │                SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:49:16
    │
 49 │         return self._balances[account]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:52:5
@@ -174,27 +174,27 @@ note:
    ┌─ erc20_token.fe:53:9
    │
 53 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
-   │         ^^^^           ^^^          ^^^ Context: Memory
+   │         ^^^^           ^^^          ^^^ Context
    │         │              │             
-   │         │              Context: Memory
-   │         ERC20: Value
+   │         │              Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:53:37
    │
 53 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
-   │                                     ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^ u256: Value
+   │                                     ^^^^^^^^^^^^^^^^  ^^^^^^^^^  ^^^^^ u256
    │                                     │                 │           
-   │                                     │                 address: Value
-   │                                     address: Value
+   │                                     │                 address
+   │                                     address
 
 note: 
    ┌─ erc20_token.fe:53:9
    │
 53 │         self._transfer(ctx, sender: ctx.msg_sender(), recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 54 │         return true
-   │                ^^^^ bool: Value
+   │                ^^^^ bool
 
 note: 
    ┌─ erc20_token.fe:57:5
@@ -208,29 +208,29 @@ note:
    ┌─ erc20_token.fe:58:16
    │
 58 │         return self._allowances[owner][spender]
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:58:16
    │
 58 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^ ^^^^^ address: Value
+   │                ^^^^^^^^^^^^^^^^ ^^^^^ address
    │                │                 
-   │                Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+   │                SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:58:16
    │
 58 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
    │                │                        
-   │                Map<address, u256>: Storage { nonce: None }
+   │                SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:58:16
    │
 58 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:61:5
@@ -245,27 +245,27 @@ note:
    ┌─ erc20_token.fe:62:9
    │
 62 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
-   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         ^^^^          ^^^         ^^^ Context
    │         │             │            
-   │         │             Context: Memory
-   │         ERC20: Value
+   │         │             Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:62:35
    │
 62 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
-   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^ u256: Value
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^ u256
    │                                   │                 │         
-   │                                   │                 address: Value
-   │                                   address: Value
+   │                                   │                 address
+   │                                   address
 
 note: 
    ┌─ erc20_token.fe:62:9
    │
 62 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 63 │         return true
-   │                ^^^^ bool: Value
+   │                ^^^^ bool
 
 note: 
    ┌─ erc20_token.fe:66:5
@@ -282,114 +282,114 @@ note:
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^ ERC20: Value
+   │                ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^^^^^^^^^^^^^ ^^^^^^ address: Value
+   │                ^^^^^^^^^^^^^^^^ ^^^^^^ address
    │                │                 
-   │                Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+   │                SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context
    │                │                         
-   │                Map<address, u256>: Storage { nonce: None }
+   │                SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:67:41
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                                         ^^^^^^^^^^^^^^^^ address: Value
+   │                                         ^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^ u256
    │                │                                              
-   │                u256: Storage { nonce: None } => Value
+   │                SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:67:16
    │
 67 │         assert self._allowances[sender][ctx.msg_sender()] >= value
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 68 │         self._transfer(ctx, sender, recipient, value)
-   │         ^^^^           ^^^  ^^^^^^  ^^^^^^^^^  ^^^^^ u256: Value
+   │         ^^^^           ^^^  ^^^^^^  ^^^^^^^^^  ^^^^^ u256
    │         │              │    │       │           
-   │         │              │    │       address: Value
-   │         │              │    address: Value
-   │         │              Context: Memory
-   │         ERC20: Value
+   │         │              │    │       address
+   │         │              │    address
+   │         │              Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:68:9
    │
 68 │         self._transfer(ctx, sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │         ^^^^          ^^^         ^^^^^^           ^^^ Context: Memory
+   │         ^^^^          ^^^         ^^^^^^           ^^^ Context
    │         │             │           │                 
-   │         │             │           address: Value
-   │         │             Context: Memory
-   │         ERC20: Value
+   │         │             │           address
+   │         │             Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:69:52
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                    ^^^^^^^^^^^^^^^^         ^^^^ ERC20: Value
+   │                                                    ^^^^^^^^^^^^^^^^         ^^^^ ERC20
    │                                                    │                         
-   │                                                    address: Value
+   │                                                    address
 
 note: 
    ┌─ erc20_token.fe:69:77
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                             ^^^^^^^^^^^^^^^^ ^^^^^^ address: Value
+   │                                                                             ^^^^^^^^^^^^^^^^ ^^^^^^ address
    │                                                                             │                 
-   │                                                                             Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+   │                                                                             SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:69:77
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ ^^^ Context
    │                                                                             │                         
-   │                                                                             Map<address, u256>: Storage { nonce: None }
+   │                                                                             SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:69:102
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                                                      ^^^^^^^^^^^^^^^^ address: Value
+   │                                                                                                      ^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:69:77
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                                                             │                                             
-   │                                                                             u256: Storage { nonce: None } => Value
+   │                                                                             SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:69:77
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ erc20_token.fe:69:9
    │
 69 │         self._approve(ctx, owner: sender, spender: ctx.msg_sender(), value: self._allowances[sender][ctx.msg_sender()] - value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 70 │         return true
-   │                ^^^^ bool: Value
+   │                ^^^^ bool
 
 note: 
    ┌─ erc20_token.fe:73:5
@@ -404,63 +404,63 @@ note:
    ┌─ erc20_token.fe:74:9
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         ^^^^          ^^^         ^^^ Context
    │         │             │            
-   │         │             Context: Memory
-   │         ERC20: Value
+   │         │             Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:74:35
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20: Value
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20
    │                                   │                 │                
-   │                                   │                 address: Value
-   │                                   address: Value
+   │                                   │                 address
+   │                                   address
 
 note: 
    ┌─ erc20_token.fe:74:69
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context
    │                                                                     │                 
-   │                                                                     Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+   │                                                                     SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:74:86
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                                      ^^^^^^^^^^^^^^^^ address: Value
+   │                                                                                      ^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:74:69
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                                                     │                                   
-   │                                                                     Map<address, u256>: Storage { nonce: None }
+   │                                                                     SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:74:69
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     u256: Storage { nonce: None } => Value
+   │                                                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:74:69
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ erc20_token.fe:74:9
    │
 74 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] + addedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 75 │         return true
-   │                ^^^^ bool: Value
+   │                ^^^^ bool
 
 note: 
    ┌─ erc20_token.fe:78:5
@@ -475,63 +475,63 @@ note:
    ┌─ erc20_token.fe:79:9
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │         ^^^^          ^^^         ^^^ Context: Memory
+   │         ^^^^          ^^^         ^^^ Context
    │         │             │            
-   │         │             Context: Memory
-   │         ERC20: Value
+   │         │             Context
+   │         ERC20
 
 note: 
    ┌─ erc20_token.fe:79:35
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20: Value
+   │                                   ^^^^^^^^^^^^^^^^  ^^^^^^^         ^^^^ ERC20
    │                                   │                 │                
-   │                                   │                 address: Value
-   │                                   address: Value
+   │                                   │                 address
+   │                                   address
 
 note: 
    ┌─ erc20_token.fe:79:69
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context: Memory
+   │                                                                     ^^^^^^^^^^^^^^^^ ^^^ Context
    │                                                                     │                 
-   │                                                                     Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+   │                                                                     SPtr<Map<address, Map<address, u256>>>
 
 note: 
    ┌─ erc20_token.fe:79:86
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                                      ^^^^^^^^^^^^^^^^ address: Value
+   │                                                                                      ^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:79:69
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                                                     │                                   
-   │                                                                     Map<address, u256>: Storage { nonce: None }
+   │                                                                     SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:79:69
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^ u256
    │                                                                     │                                              
-   │                                                                     u256: Storage { nonce: None } => Value
+   │                                                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:79:69
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ erc20_token.fe:79:9
    │
 79 │         self._approve(ctx, owner: ctx.msg_sender(), spender, value: self._allowances[ctx.msg_sender()][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 80 │         return true
-   │                ^^^^ bool: Value
+   │                ^^^^ bool
 
 note: 
    ┌─ erc20_token.fe:83:5
@@ -549,146 +549,146 @@ note:
    ┌─ erc20_token.fe:84:16
    │
 84 │         assert sender != address(0)
-   │                ^^^^^^            ^ u256: Value
+   │                ^^^^^^            ^ u256
    │                │                  
-   │                address: Value
+   │                address
 
 note: 
    ┌─ erc20_token.fe:84:26
    │
 84 │         assert sender != address(0)
-   │                          ^^^^^^^^^^ address: Value
+   │                          ^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:84:16
    │
 84 │         assert sender != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^ bool
 85 │         assert recipient != address(0)
-   │                ^^^^^^^^^            ^ u256: Value
+   │                ^^^^^^^^^            ^ u256
    │                │                     
-   │                address: Value
+   │                address
 
 note: 
    ┌─ erc20_token.fe:85:29
    │
 85 │         assert recipient != address(0)
-   │                             ^^^^^^^^^^ address: Value
+   │                             ^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:85:16
    │
 85 │         assert recipient != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ bool
 86 │         _before_token_transfer(from: sender, to: recipient, value)
-   │                                      ^^^^^^      ^^^^^^^^^  ^^^^^ u256: Value
+   │                                      ^^^^^^      ^^^^^^^^^  ^^^^^ u256
    │                                      │           │           
-   │                                      │           address: Value
-   │                                      address: Value
+   │                                      │           address
+   │                                      address
 
 note: 
    ┌─ erc20_token.fe:86:9
    │
 86 │         _before_token_transfer(from: sender, to: recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 87 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^ ERC20: Value
+   │         ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:87:9
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^^^^^^^^^^^ ^^^^^^ address: Value
+   │         ^^^^^^^^^^^^^^ ^^^^^^ address
    │         │               
-   │         Map<address, u256>: Storage { nonce: Some(0) }
+   │         SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:87:9
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
    │         │                         
-   │         u256: Storage { nonce: None }
+   │         SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:87:34
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │                                  ^^^^^^^^^^^^^^ ^^^^^^ address: Value
+   │                                  ^^^^^^^^^^^^^^ ^^^^^^ address
    │                                  │               
-   │                                  Map<address, u256>: Storage { nonce: Some(0) }
+   │                                  SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:87:34
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │                                  ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                                  ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                  │                         
-   │                                  u256: Storage { nonce: None } => Value
+   │                                  SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:87:34
    │
 87 │         self._balances[sender] = self._balances[sender] - value
-   │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^ ERC20: Value
+   │         ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:88:9
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^^^^^^^^^^^ ^^^^^^^^^ address: Value
+   │         ^^^^^^^^^^^^^^ ^^^^^^^^^ address
    │         │               
-   │         Map<address, u256>: Storage { nonce: Some(0) }
+   │         SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:88:9
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
    │         │                            
-   │         u256: Storage { nonce: None }
+   │         SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:88:37
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │                                     ^^^^^^^^^^^^^^ ^^^^^^^^^ address: Value
+   │                                     ^^^^^^^^^^^^^^ ^^^^^^^^^ address
    │                                     │               
-   │                                     Map<address, u256>: Storage { nonce: Some(0) }
+   │                                     SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:88:37
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                     │                            
-   │                                     u256: Storage { nonce: None } => Value
+   │                                     SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:88:37
    │
 88 │         self._balances[recipient] = self._balances[recipient] + value
-   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 89 │         ctx.emit(Transfer(from: sender, to: recipient, value))
-   │         ^^^                     ^^^^^^      ^^^^^^^^^  ^^^^^ u256: Value
+   │         ^^^                     ^^^^^^      ^^^^^^^^^  ^^^^^ u256
    │         │                       │           │           
-   │         │                       │           address: Value
-   │         │                       address: Value
-   │         Context: Memory
+   │         │                       │           address
+   │         │                       address
+   │         Context
 
 note: 
    ┌─ erc20_token.fe:89:18
    │
 89 │         ctx.emit(Transfer(from: sender, to: recipient, value))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer
 
 note: 
    ┌─ erc20_token.fe:89:9
    │
 89 │         ctx.emit(Transfer(from: sender, to: recipient, value))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ erc20_token.fe:92:5
@@ -706,127 +706,127 @@ note:
    ┌─ erc20_token.fe:93:16
    │
 93 │         assert account != address(0)
-   │                ^^^^^^^            ^ u256: Value
+   │                ^^^^^^^            ^ u256
    │                │                   
-   │                address: Value
+   │                address
 
 note: 
    ┌─ erc20_token.fe:93:27
    │
 93 │         assert account != address(0)
-   │                           ^^^^^^^^^^ address: Value
+   │                           ^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:93:16
    │
 93 │         assert account != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^ bool
 94 │         _before_token_transfer(from: address(0), to: account, value)
-   │                                              ^ u256: Value
+   │                                              ^ u256
 
 note: 
    ┌─ erc20_token.fe:94:38
    │
 94 │         _before_token_transfer(from: address(0), to: account, value)
-   │                                      ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256: Value
+   │                                      ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256
    │                                      │               │         
-   │                                      │               address: Value
-   │                                      address: Value
+   │                                      │               address
+   │                                      address
 
 note: 
    ┌─ erc20_token.fe:94:9
    │
 94 │         _before_token_transfer(from: address(0), to: account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 95 │         self._total_supply = self._total_supply + value
-   │         ^^^^ ERC20: Value
+   │         ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:95:9
    │
 95 │         self._total_supply = self._total_supply + value
-   │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+   │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
    │         │                     
-   │         u256: Storage { nonce: Some(2) }
+   │         SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:95:30
    │
 95 │         self._total_supply = self._total_supply + value
-   │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                              │                     
-   │                              u256: Storage { nonce: Some(2) } => Value
+   │                              SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:95:30
    │
 95 │         self._total_supply = self._total_supply + value
-   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 96 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^ ERC20: Value
+   │         ^^^^ ERC20
 
 note: 
    ┌─ erc20_token.fe:96:9
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │         ^^^^^^^^^^^^^^ ^^^^^^^ address
    │         │               
-   │         Map<address, u256>: Storage { nonce: Some(0) }
+   │         SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:96:9
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
    │         │                          
-   │         u256: Storage { nonce: None }
+   │         SPtr<u256>
 
 note: 
    ┌─ erc20_token.fe:96:35
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+   │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address
    │                                   │               
-   │                                   Map<address, u256>: Storage { nonce: Some(0) }
+   │                                   SPtr<Map<address, u256>>
 
 note: 
    ┌─ erc20_token.fe:96:35
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+   │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
    │                                   │                          
-   │                                   u256: Storage { nonce: None } => Value
+   │                                   SPtr<u256> -> u256
 
 note: 
    ┌─ erc20_token.fe:96:35
    │
 96 │         self._balances[account] = self._balances[account] + value
-   │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 97 │         ctx.emit(Transfer(from: address(0), to: account, value))
-   │         ^^^                             ^ u256: Value
+   │         ^^^                             ^ u256
    │         │                                
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ erc20_token.fe:97:33
    │
 97 │         ctx.emit(Transfer(from: address(0), to: account, value))
-   │                                 ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256: Value
+   │                                 ^^^^^^^^^^      ^^^^^^^  ^^^^^ u256
    │                                 │               │         
-   │                                 │               address: Value
-   │                                 address: Value
+   │                                 │               address
+   │                                 address
 
 note: 
    ┌─ erc20_token.fe:97:18
    │
 97 │         ctx.emit(Transfer(from: address(0), to: account, value))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer
 
 note: 
    ┌─ erc20_token.fe:97:9
    │
 97 │         ctx.emit(Transfer(from: address(0), to: account, value))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
     ┌─ erc20_token.fe:100:5
@@ -844,128 +844,128 @@ note:
     ┌─ erc20_token.fe:101:16
     │
 101 │         assert account != address(0)
-    │                ^^^^^^^            ^ u256: Value
+    │                ^^^^^^^            ^ u256
     │                │                   
-    │                address: Value
+    │                address
 
 note: 
     ┌─ erc20_token.fe:101:27
     │
 101 │         assert account != address(0)
-    │                           ^^^^^^^^^^ address: Value
+    │                           ^^^^^^^^^^ address
 
 note: 
     ┌─ erc20_token.fe:101:16
     │
 101 │         assert account != address(0)
-    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+    │                ^^^^^^^^^^^^^^^^^^^^^ bool
 102 │         _before_token_transfer(from: account, to: address(0), value)
-    │                                      ^^^^^^^              ^ u256: Value
+    │                                      ^^^^^^^              ^ u256
     │                                      │                     
-    │                                      address: Value
+    │                                      address
 
 note: 
     ┌─ erc20_token.fe:102:51
     │
 102 │         _before_token_transfer(from: account, to: address(0), value)
-    │                                                   ^^^^^^^^^^  ^^^^^ u256: Value
+    │                                                   ^^^^^^^^^^  ^^^^^ u256
     │                                                   │            
-    │                                                   address: Value
+    │                                                   address
 
 note: 
     ┌─ erc20_token.fe:102:9
     │
 102 │         _before_token_transfer(from: account, to: address(0), value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 103 │         self._balances[account] = self._balances[account] - value
-    │         ^^^^ ERC20: Value
+    │         ^^^^ ERC20
 
 note: 
     ┌─ erc20_token.fe:103:9
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │         ^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+    │         ^^^^^^^^^^^^^^ ^^^^^^^ address
     │         │               
-    │         Map<address, u256>: Storage { nonce: Some(0) }
+    │         SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:103:9
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
     │         │                          
-    │         u256: Storage { nonce: None }
+    │         SPtr<u256>
 
 note: 
     ┌─ erc20_token.fe:103:35
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+    │                                   ^^^^^^^^^^^^^^ ^^^^^^^ address
     │                                   │               
-    │                                   Map<address, u256>: Storage { nonce: Some(0) }
+    │                                   SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:103:35
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                                   │                          
-    │                                   u256: Storage { nonce: None } => Value
+    │                                   SPtr<u256> -> u256
 
 note: 
     ┌─ erc20_token.fe:103:35
     │
 103 │         self._balances[account] = self._balances[account] - value
-    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 104 │         self._total_supply = self._total_supply - value
-    │         ^^^^ ERC20: Value
+    │         ^^^^ ERC20
 
 note: 
     ┌─ erc20_token.fe:104:9
     │
 104 │         self._total_supply = self._total_supply - value
-    │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20: Value
+    │         ^^^^^^^^^^^^^^^^^^   ^^^^ ERC20
     │         │                     
-    │         u256: Storage { nonce: Some(2) }
+    │         SPtr<u256>
 
 note: 
     ┌─ erc20_token.fe:104:30
     │
 104 │         self._total_supply = self._total_supply - value
-    │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+    │                              ^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │                              │                     
-    │                              u256: Storage { nonce: Some(2) } => Value
+    │                              SPtr<u256> -> u256
 
 note: 
     ┌─ erc20_token.fe:104:30
     │
 104 │         self._total_supply = self._total_supply - value
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 105 │         ctx.emit(Transfer(from: account, to: address(0), value))
-    │         ^^^                     ^^^^^^^              ^ u256: Value
+    │         ^^^                     ^^^^^^^              ^ u256
     │         │                       │                     
-    │         │                       address: Value
-    │         Context: Memory
+    │         │                       address
+    │         Context
 
 note: 
     ┌─ erc20_token.fe:105:46
     │
 105 │         ctx.emit(Transfer(from: account, to: address(0), value))
-    │                                              ^^^^^^^^^^  ^^^^^ u256: Value
+    │                                              ^^^^^^^^^^  ^^^^^ u256
     │                                              │            
-    │                                              address: Value
+    │                                              address
 
 note: 
     ┌─ erc20_token.fe:105:18
     │
 105 │         ctx.emit(Transfer(from: account, to: address(0), value))
-    │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer: Memory
+    │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer
 
 note: 
     ┌─ erc20_token.fe:105:9
     │
 105 │         ctx.emit(Transfer(from: account, to: address(0), value))
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
     ┌─ erc20_token.fe:108:5
@@ -982,81 +982,81 @@ note:
     ┌─ erc20_token.fe:109:16
     │
 109 │         assert owner != address(0)
-    │                ^^^^^            ^ u256: Value
+    │                ^^^^^            ^ u256
     │                │                 
-    │                address: Value
+    │                address
 
 note: 
     ┌─ erc20_token.fe:109:25
     │
 109 │         assert owner != address(0)
-    │                         ^^^^^^^^^^ address: Value
+    │                         ^^^^^^^^^^ address
 
 note: 
     ┌─ erc20_token.fe:109:16
     │
 109 │         assert owner != address(0)
-    │                ^^^^^^^^^^^^^^^^^^^ bool: Value
+    │                ^^^^^^^^^^^^^^^^^^^ bool
 110 │         assert spender != address(0)
-    │                ^^^^^^^            ^ u256: Value
+    │                ^^^^^^^            ^ u256
     │                │                   
-    │                address: Value
+    │                address
 
 note: 
     ┌─ erc20_token.fe:110:27
     │
 110 │         assert spender != address(0)
-    │                           ^^^^^^^^^^ address: Value
+    │                           ^^^^^^^^^^ address
 
 note: 
     ┌─ erc20_token.fe:110:16
     │
 110 │         assert spender != address(0)
-    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+    │                ^^^^^^^^^^^^^^^^^^^^^ bool
 111 │         self._allowances[owner][spender] = value
-    │         ^^^^ ERC20: Value
+    │         ^^^^ ERC20
 
 note: 
     ┌─ erc20_token.fe:111:9
     │
 111 │         self._allowances[owner][spender] = value
-    │         ^^^^^^^^^^^^^^^^ ^^^^^ address: Value
+    │         ^^^^^^^^^^^^^^^^ ^^^^^ address
     │         │                 
-    │         Map<address, Map<address, u256>>: Storage { nonce: Some(1) }
+    │         SPtr<Map<address, Map<address, u256>>>
 
 note: 
     ┌─ erc20_token.fe:111:9
     │
 111 │         self._allowances[owner][spender] = value
-    │         ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address: Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^ address
     │         │                        
-    │         Map<address, u256>: Storage { nonce: None }
+    │         SPtr<Map<address, u256>>
 
 note: 
     ┌─ erc20_token.fe:111:9
     │
 111 │         self._allowances[owner][spender] = value
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256: Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^ u256
     │         │                                   
-    │         u256: Storage { nonce: None }
+    │         SPtr<u256>
 112 │         ctx.emit(Approval(owner, spender, value))
-    │         ^^^               ^^^^^  ^^^^^^^  ^^^^^ u256: Value
+    │         ^^^               ^^^^^  ^^^^^^^  ^^^^^ u256
     │         │                 │      │         
-    │         │                 │      address: Value
-    │         │                 address: Value
-    │         Context: Memory
+    │         │                 │      address
+    │         │                 address
+    │         Context
 
 note: 
     ┌─ erc20_token.fe:112:18
     │
 112 │         ctx.emit(Approval(owner, spender, value))
-    │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Approval: Memory
+    │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Approval
 
 note: 
     ┌─ erc20_token.fe:112:9
     │
 112 │         ctx.emit(Approval(owner, spender, value))
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
     ┌─ erc20_token.fe:115:5
@@ -1070,15 +1070,15 @@ note:
     ┌─ erc20_token.fe:116:9
     │
 116 │         self._decimals = decimals_
-    │         ^^^^ ERC20: Value
+    │         ^^^^ ERC20
 
 note: 
     ┌─ erc20_token.fe:116:9
     │
 116 │         self._decimals = decimals_
-    │         ^^^^^^^^^^^^^^   ^^^^^^^^^ u8: Value
+    │         ^^^^^^^^^^^^^^   ^^^^^^^^^ u8
     │         │                 
-    │         u8: Storage { nonce: Some(5) }
+    │         SPtr<u8>
 
 note: 
     ┌─ erc20_token.fe:119:5

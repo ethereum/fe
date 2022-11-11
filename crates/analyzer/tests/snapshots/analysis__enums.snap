@@ -1,6 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
+
 ---
 note: 
   ┌─ enums.fe:2:5
@@ -24,15 +25,15 @@ note:
   ┌─ enums.fe:7:30
   │
 7 │         return MyEnum::Tuple(x, y)
-  │                              ^  ^ u256: Value
+  │                              ^  ^ u256
   │                              │   
-  │                              u32: Value
+  │                              u32
 
 note: 
   ┌─ enums.fe:7:16
   │
 7 │         return MyEnum::Tuple(x, y)
-  │                ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+  │                ^^^^^^^^^^^^^^^^^^^ MyEnum
 
 note: 
    ┌─ enums.fe:10:5
@@ -50,30 +51,30 @@ note:
    ┌─ enums.fe:11:15
    │
 11 │         match self {
-   │               ^^^^ MyEnum: Memory
+   │               ^^^^ MyEnum
 12 │             MyEnum::Unit => {
 13 │                return 0
-   │                       ^ u256: Value
+   │                       ^ u256
    ·
 16 │                 return 1
-   │                        ^ u256: Value
+   │                        ^ u256
    ·
 19 │                 return u256(a) + b
-   │                             ^ u32: Value
+   │                             ^ u32
 
 note: 
    ┌─ enums.fe:19:24
    │
 19 │                 return u256(a) + b
-   │                        ^^^^^^^   ^ u256: Value
+   │                        ^^^^^^^   ^ u256
    │                        │          
-   │                        u256: Value
+   │                        u256
 
 note: 
    ┌─ enums.fe:19:24
    │
 19 │                 return u256(a) + b
-   │                        ^^^^^^^^^^^ u256: Value
+   │                        ^^^^^^^^^^^ u256
 
 note: 
    ┌─ enums.fe:26:5
@@ -99,19 +100,19 @@ note:
    ┌─ enums.fe:27:28
    │
 27 │         let unit: MyEnum = MyEnum::Unit
-   │                            ^^^^^^^^^^^^ MyEnum: Memory
+   │                            ^^^^^^^^^^^^ MyEnum
 28 │         let unit_tuple: MyEnum = MyEnum::UnitTuple()
-   │                                  ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+   │                                  ^^^^^^^^^^^^^^^^^^^ MyEnum
 29 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
-   │                                           ^  ^ u256: Value
+   │                                           ^  ^ u256
    │                                           │   
-   │                                           u32: Value
+   │                                           u32
 
 note: 
    ┌─ enums.fe:29:29
    │
 29 │         let tuple: MyEnum = MyEnum::Tuple(x, y)
-   │                             ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+   │                             ^^^^^^^^^^^^^^^^^^^ MyEnum
 
 note: 
    ┌─ enums.fe:32:5
@@ -132,23 +133,23 @@ note:
    ┌─ enums.fe:33:41
    │
 33 │         let tup: MyEnum = MyEnum::Tuple(x, y)
-   │                                         ^  ^ u256: Value
+   │                                         ^  ^ u256
    │                                         │   
-   │                                         u32: Value
+   │                                         u32
 
 note: 
    ┌─ enums.fe:33:27
    │
 33 │         let tup: MyEnum = MyEnum::Tuple(x, y)
-   │                           ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+   │                           ^^^^^^^^^^^^^^^^^^^ MyEnum
 34 │         return tup.fold()
-   │                ^^^ MyEnum: Memory
+   │                ^^^ MyEnum
 
 note: 
    ┌─ enums.fe:34:16
    │
 34 │         return tup.fold()
-   │                ^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^ u256
 
 note: 
    ┌─ enums.fe:37:5
@@ -162,20 +163,20 @@ note:
    ┌─ enums.fe:38:30
    │
 38 │         return MyEnum::tuple(x, y).fold()
-   │                              ^  ^ u256: Value
+   │                              ^  ^ u256
    │                              │   
-   │                              u32: Value
+   │                              u32
 
 note: 
    ┌─ enums.fe:38:16
    │
 38 │         return MyEnum::tuple(x, y).fold()
-   │                ^^^^^^^^^^^^^^^^^^^ MyEnum: Memory
+   │                ^^^^^^^^^^^^^^^^^^^ MyEnum
 
 note: 
    ┌─ enums.fe:38:16
    │
 38 │         return MyEnum::tuple(x, y).fold()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

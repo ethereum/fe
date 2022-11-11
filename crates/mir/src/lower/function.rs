@@ -3,9 +3,9 @@ use std::{collections::BTreeMap, rc::Rc, vec};
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
     constants::{EMITTABLE_TRAIT_NAME, EMIT_FN_NAME},
-    context::{CallType as AnalyzerCallType, NamedThing},
+    context::{Adjustment, AdjustmentKind, CallType as AnalyzerCallType, NamedThing},
     namespace::{
-        items::{self as analyzer_items},
+        items as analyzer_items,
         types::{self as analyzer_types, Type},
     },
 };
@@ -94,8 +94,9 @@ pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
     let ast = &analyzer_func.data(db.upcast()).ast;
     let analyzer_body = analyzer_func.body(db.upcast());
 
-    let body = BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref()).lower();
-    body.into()
+    BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref())
+        .lower()
+        .into()
 }
 
 pub(super) struct BodyLowerHelper<'db, 'a> {
@@ -141,7 +142,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             ast::FuncStmt::Assign { target, value } => {
                 let result = self.lower_assignable_value(target);
-                let expr = self.lower_expr(value);
+                let (expr, _ty) = self.lower_expr(value);
                 self.builder.map_result(expr, result)
             }
 
@@ -264,7 +265,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
-                    let init = self.lower_expr(init);
+                    let (init, init_ty) = self.lower_expr(init);
+                    debug_assert_eq!(ty.deref(self.db), init_ty);
                     self.builder.map_result(init, value.into());
                 }
             }
@@ -334,9 +336,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    pub(super) fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> InstId {
-        let ty = self.expr_ty(expr);
-        match &expr.kind {
+    pub(super) fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> (InstId, TypeId) {
+        let mut ty = self.expr_ty(expr);
+        let mut inst = match &expr.kind {
             ast::Expr::Ternary {
                 if_expr,
                 test,
@@ -355,12 +357,14 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .branch(cond, true_bb, false_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(true_bb);
-                let value = self.lower_expr(if_expr);
+                let (value, _) = self.lower_expr(if_expr);
+                // XXX debug_assert_eq!(value_ty, ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(false_bb);
-                let value = self.lower_expr(else_expr);
+                let (value, _) = self.lower_expr(else_expr);
+                // XXX debug_assert_eq!(value_ty, ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
@@ -400,14 +404,17 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::Subscript { value, index } => {
-                if !self.expr_ty(value).is_aggregate(self.db) {
+                let value_ty = self.expr_ty(value).deref(self.db);
+                if value_ty.is_aggregate(self.db) {
+                    let mut indices = vec![];
+                    let value = self.lower_aggregate_access(expr, &mut indices);
+                    self.builder.aggregate_access(value, indices, expr.into())
+                } else if value_ty.is_map(self.db) {
                     let value = self.lower_expr_to_value(value);
                     let key = self.lower_expr_to_value(index);
                     self.builder.map_access(value, key, expr.into())
                 } else {
-                    let mut indices = vec![];
-                    let value = self.lower_aggregate_access(expr, &mut indices);
-                    self.builder.aggregate_access(value, indices, expr.into())
+                    unreachable!()
                 }
             }
 
@@ -481,12 +488,43 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let value = self.make_unit();
                 self.builder.bind(value, expr.into())
             }
+        };
+
+        for Adjustment { into, kind } in &self.analyzer_body.expressions[&expr.id].type_adjustments
+        {
+            let into_ty = self.lower_analyzer_type(*into);
+
+            match kind {
+                AdjustmentKind::FromStorage => {
+                    // Moving non-primitives from storage requires a to_mem call (for now),
+                    // so this adjustment will only apply to primitive types.
+                    debug_assert!(into_ty.is_primitive(self.db));
+
+                    let val = self
+                        .builder
+                        .inst_result(inst)
+                        .and_then(|res| res.value_id())
+                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
+                    inst = self.builder.load(val, expr.into());
+                }
+                AdjustmentKind::IntSizeIncrease => {
+                    let val = self
+                        .builder
+                        .inst_result(inst)
+                        .and_then(|res| res.value_id())
+                        .unwrap_or_else(|| self.map_to_tmp(inst, ty));
+
+                    inst = self.builder.primitive_cast(val, into_ty, expr.into())
+                }
+                AdjustmentKind::StringSizeIncrease => {} // XXX
+            }
+            ty = into_ty;
         }
+        (inst, ty)
     }
 
     pub(super) fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
-        let ty = self.expr_ty(expr);
-        let inst = self.lower_expr(expr);
+        let (inst, ty) = self.lower_expr(expr);
         self.map_to_tmp(inst, ty)
     }
 
@@ -761,10 +799,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::Expr::Subscript { value, index } => {
                 let lhs = self.lower_assignable_value(value).into();
                 let attr = self.lower_expr_to_value(index);
-                if self.expr_ty(value).is_aggregate(self.db) {
+                let value_ty = self.expr_ty(value).deref(self.db);
+                if value_ty.is_aggregate(self.db) {
                     AssignableValue::Aggregate { lhs, idx: attr }
-                } else {
+                } else if value_ty.is_map(self.db) {
                     AssignableValue::Map { lhs, key: attr }
+                } else {
+                    unreachable!()
                 }
             }
             ast::Expr::Name(name) => self.resolve_name(name).into(),
@@ -773,6 +814,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
+    // XXX this is the pre-adjustment type!
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
         let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
         self.lower_analyzer_type(analyzer_ty)
@@ -800,7 +842,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(true_bb);
-                let rhs = self.lower_expr(rhs);
+                let (rhs, _rhs_ty) = self.lower_expr(rhs);
                 self.builder.map_result(rhs, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
@@ -822,7 +864,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(false_bb);
-                let rhs = self.lower_expr(rhs);
+                let (rhs, _rhs_ty) = self.lower_expr(rhs);
                 self.builder.map_result(rhs, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
             }
@@ -997,7 +1039,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .call(func_id, method_args, CallType::Internal, source)
             }
             AnalyzerCallType::External { function, .. } => {
-                let mut method_args = vec![self.lower_method_receiver(func)];
+                let receiver = self.lower_method_receiver(func);
+                debug_assert!(self.builder.value_ty(receiver).is_address(self.db));
+
+                let mut method_args = vec![receiver];
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*function);
                 self.builder
@@ -1015,6 +1060,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     if arg_ty == ty {
                         self.builder.bind(arg, source)
                     } else {
+                        debug_assert!(!arg_ty.is_ptr(self.db)); // Should be explicitly `Load`ed
                         self.builder.primitive_cast(arg, ty, source)
                     }
                 } else if ty.is_aggregate(self.db) {
@@ -1059,7 +1105,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 value
             }
 
-            ast::Expr::Subscript { value, index } if self.expr_ty(value).is_aggregate(self.db) => {
+            ast::Expr::Subscript { value, index }
+                if self.expr_ty(value).deref(self.db).is_aggregate(self.db) =>
+            {
                 let value = self.lower_aggregate_access(value, indices);
                 indices.push(self.lower_expr_to_value(index));
                 value

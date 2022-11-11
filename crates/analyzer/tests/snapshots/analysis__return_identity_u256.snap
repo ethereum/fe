@@ -15,6 +15,6 @@ note:
   ┌─ return_identity_u256.fe:3:16
   │
 3 │         return x
-  │                ^ u256: Value
+  │                ^ u256
 
 

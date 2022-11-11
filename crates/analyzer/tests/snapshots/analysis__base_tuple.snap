@@ -15,14 +15,14 @@ note:
   ┌─ base_tuple.fe:3:17
   │
 3 │         return (my_num, my_bool)
-  │                 ^^^^^^  ^^^^^^^ bool: Value
+  │                 ^^^^^^  ^^^^^^^ bool
   │                 │        
-  │                 u256: Value
+  │                 u256
 
 note: 
   ┌─ base_tuple.fe:3:16
   │
 3 │         return (my_num, my_bool)
-  │                ^^^^^^^^^^^^^^^^^ (u256, bool): Memory
+  │                ^^^^^^^^^^^^^^^^^ (u256, bool)
 
 

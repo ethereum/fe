@@ -30,13 +30,13 @@ note:
    ┌─ ownable.fe:16:16
    │
 16 │         return self._owner
-   │                ^^^^ Ownable: Value
+   │                ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:16:16
    │
 16 │         return self._owner
-   │                ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:19:5
@@ -52,73 +52,73 @@ note:
    ┌─ ownable.fe:20:16
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context: Memory
+   │                ^^^ Context
 
 note: 
    ┌─ ownable.fe:20:16
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
+   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:20:36
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                                    ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:20:16
    │
 20 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 21 │         self._owner = address(0)
-   │         ^^^^ Ownable: Value
+   │         ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:21:9
    │
 21 │         self._owner = address(0)
-   │         ^^^^^^^^^^^           ^ u256: Value
+   │         ^^^^^^^^^^^           ^ u256
    │         │                      
-   │         address: Storage { nonce: Some(0) }
+   │         SPtr<address>
 
 note: 
    ┌─ ownable.fe:21:23
    │
 21 │         self._owner = address(0)
-   │                       ^^^^^^^^^^ address: Value
+   │                       ^^^^^^^^^^ address
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │         ^^^                                          ^^^ Context: Memory
+   │         ^^^                                          ^^^ Context
    │         │                                             
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ ownable.fe:22:54
    │
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │                                                      ^^^^^^^^^^^^^^^^                    ^ u256: Value
+   │                                                      ^^^^^^^^^^^^^^^^                    ^ u256
    │                                                      │                                    
-   │                                                      address: Value
+   │                                                      address
 
 note: 
    ┌─ ownable.fe:22:82
    │
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │                                                                                  ^^^^^^^^^^ address: Value
+   │                                                                                  ^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:22:18
    │
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OwnershipTransferred: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OwnershipTransferred
 
 note: 
    ┌─ ownable.fe:22:9
    │
 22 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner: address(0)))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ ownable.fe:25:5
@@ -135,76 +135,76 @@ note:
    ┌─ ownable.fe:26:16
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                ^^^ Context: Memory
+   │                ^^^ Context
 
 note: 
    ┌─ ownable.fe:26:16
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable: Value
+   │                ^^^^^^^^^^^^^^^^    ^^^^ Ownable
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:26:36
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                                    ^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                                    ^^^^^^^^^^^ SPtr<address> -> address
 
 note: 
    ┌─ ownable.fe:26:16
    │
 26 │         assert ctx.msg_sender() == self._owner
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 27 │         assert newOwner != address(0)
-   │                ^^^^^^^^            ^ u256: Value
+   │                ^^^^^^^^            ^ u256
    │                │                    
-   │                address: Value
+   │                address
 
 note: 
    ┌─ ownable.fe:27:28
    │
 27 │         assert newOwner != address(0)
-   │                            ^^^^^^^^^^ address: Value
+   │                            ^^^^^^^^^^ address
 
 note: 
    ┌─ ownable.fe:27:16
    │
 27 │         assert newOwner != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^ bool
 28 │         self._owner = newOwner
-   │         ^^^^ Ownable: Value
+   │         ^^^^ Ownable
 
 note: 
    ┌─ ownable.fe:28:9
    │
 28 │         self._owner = newOwner
-   │         ^^^^^^^^^^^   ^^^^^^^^ address: Value
+   │         ^^^^^^^^^^^   ^^^^^^^^ address
    │         │              
-   │         address: Storage { nonce: Some(0) }
+   │         SPtr<address>
 29 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
-   │         ^^^                                          ^^^ Context: Memory
+   │         ^^^                                          ^^^ Context
    │         │                                             
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ ownable.fe:29:54
    │
 29 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
-   │                                                      ^^^^^^^^^^^^^^^^  ^^^^^^^^ address: Value
+   │                                                      ^^^^^^^^^^^^^^^^  ^^^^^^^^ address
    │                                                      │                  
-   │                                                      address: Value
+   │                                                      address
 
 note: 
    ┌─ ownable.fe:29:18
    │
 29 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OwnershipTransferred: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OwnershipTransferred
 
 note: 
    ┌─ ownable.fe:29:9
    │
 29 │         ctx.emit(OwnershipTransferred(previousOwner: ctx.msg_sender(), newOwner))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 

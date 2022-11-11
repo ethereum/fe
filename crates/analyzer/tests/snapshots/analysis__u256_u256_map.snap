@@ -21,21 +21,21 @@ note:
   ┌─ u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u256: Value
+  │                ^^^^^^^^ ^^^ u256
   │                │         
-  │                Map<u256, u256>: Storage { nonce: Some(0) }
+  │                SPtr<Map<u256, u256>>
 
 note: 
   ┌─ u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ u256_u256_map.fe:8:5
@@ -49,22 +49,22 @@ note:
   ┌─ u256_u256_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ u256_u256_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u256: Value
+  │         ^^^^^^^^ ^^^ u256
   │         │         
-  │         Map<u256, u256>: Storage { nonce: Some(0) }
+  │         SPtr<Map<u256, u256>>
 
 note: 
   ┌─ u256_u256_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u256: Value
+  │         ^^^^^^^^^^^^^   ^^^^^ u256
   │         │                
-  │         u256: Storage { nonce: None }
+  │         SPtr<u256>
 
 

@@ -19,19 +19,19 @@ note:
   ┌─ if_statement.fe:3:12
   │
 3 │         if input > 5 {
-  │            ^^^^^   ^ u256: Value
+  │            ^^^^^   ^ u256
   │            │        
-  │            u256: Value
+  │            u256
 
 note: 
   ┌─ if_statement.fe:3:12
   │
 3 │         if input > 5 {
-  │            ^^^^^^^^^ bool: Value
+  │            ^^^^^^^^^ bool
 4 │             return 1
-  │                    ^ u256: Value
+  │                    ^ u256
 5 │         } else {
 6 │             return 0
-  │                    ^ u256: Value
+  │                    ^ u256
 
 

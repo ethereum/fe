@@ -21,16 +21,7 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
         }
 
         if let Some(value) = value {
-            let value_attributes = expressions::assignable_expr(scope, value, Some(declared_type))?;
-
-            if declared_type != value_attributes.typ {
-                scope.type_error(
-                    "type mismatch",
-                    value.span,
-                    declared_type,
-                    value_attributes.typ,
-                );
-            }
+            expressions::expect_expr_type(scope, value, declared_type)?;
         } else if matches!(declared_type.typ(scope.db()), Type::Array(_)) {
             scope.error(
                 "uninitialized variable",
@@ -73,7 +64,7 @@ pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
         };
 
         // Perform semantic analysis before const evaluation.
-        let value_attributes = expressions::assignable_expr(scope, value, Some(declared_type))?;
+        let value_attributes = expressions::expr(scope, value, Some(declared_type))?;
 
         if declared_type != value_attributes.typ {
             scope.type_error(

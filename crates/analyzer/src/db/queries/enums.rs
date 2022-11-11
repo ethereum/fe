@@ -81,7 +81,7 @@ pub fn enum_variant_kind(
             let elem_tys: Result<SmallVec<[_; 4]>, _> = tuple
                 .iter()
                 .map(|ast_ty| match type_desc(&mut scope, ast_ty) {
-                    Ok(ty) if ty.typ(db).has_fixed_size() => Ok(ty),
+                    Ok(ty) if ty.has_fixed_size(db) => Ok(ty),
                     Ok(_) => Err(TypeError::new(scope.error(
                         "enum variant type must have a fixed size",
                         variant_data.ast.span,

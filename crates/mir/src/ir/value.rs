@@ -76,9 +76,9 @@ impl AssignableValue {
                 lhs_ty.projection_ty(db, store.value_data(*idx))
             }
             Self::Map { lhs, .. } => {
-                let lhs_ty = lhs.ty(db, store);
+                let lhs_ty = lhs.ty(db, store).deref(db);
                 match lhs_ty.data(db).kind {
-                    TypeKind::Map(def) => def.value_ty,
+                    TypeKind::Map(def) => def.value_ty.make_sptr(db),
                     _ => unreachable!(),
                 }
             }

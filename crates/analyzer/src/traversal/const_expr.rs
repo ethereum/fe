@@ -118,7 +118,7 @@ fn eval_bin_op(
     typ: &Type,
 ) -> Result<Constant, ConstEvalError> {
     let span = lhs.span + rhs.span;
-    let lhs_ty = context.expr_typ(lhs);
+    let lhs_ty = extract_int_typ(&context.expr_typ(lhs));
 
     let (lhs, rhs) = (eval_expr(context, lhs)?, eval_expr(context, rhs)?);
     let (lhs, rhs) = (lhs.extract_numeric(), rhs.extract_numeric());
@@ -131,9 +131,7 @@ fn eval_bin_op(
         BinOperator::Div => {
             if rhs.is_zero() {
                 return Err(zero_division_error(context, span));
-            } else if lhs_ty.is_signed_integer()
-                && lhs == &(extract_int_typ(&lhs_ty).min_value())
-                && rhs == &(-BigInt::one())
+            } else if lhs_ty.is_signed() && lhs == &(lhs_ty.min_value()) && rhs == &(-BigInt::one())
             {
                 return Err(overflow_error(context, span));
             } else {
@@ -165,7 +163,7 @@ fn eval_bin_op(
 
         BinOperator::LShift => {
             if let Some(exponent) = rhs.to_usize() {
-                let type_bits = extract_int_typ(&lhs_ty).bits();
+                let type_bits = lhs_ty.bits();
                 // If rhs is larger than or equal to lhs type bits, then we emits overflow
                 // error.
                 if exponent >= type_bits {
@@ -182,7 +180,7 @@ fn eval_bin_op(
 
         BinOperator::RShift => {
             if let Some(exponent) = rhs.to_usize() {
-                let type_bits = extract_int_typ(&lhs_ty).bits();
+                let type_bits = lhs_ty.bits();
                 // If rhs is larger than or equal to lhs type bits, then we emits overflow
                 // error.
                 if exponent >= type_bits {
@@ -264,7 +262,7 @@ impl Constant {
         typ: &Type,
         span: Span,
     ) -> Result<Self, ConstEvalError> {
-        debug_assert!(typ.is_integer());
+        debug_assert!(matches!(typ, Type::Base(Base::Numeric(_))));
 
         let literal = numeric::Literal::new(s);
         Self::make_const_numeric_with_ty(context, literal.parse::<BigInt>().unwrap(), typ, span)

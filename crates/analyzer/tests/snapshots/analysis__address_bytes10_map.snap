@@ -21,27 +21,27 @@ note:
   ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^ ^^^ address: Value
+  │                ^^^^^^^^ ^^^ address
   │                │         
-  │                Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
+  │                SPtr<Map<address, Array<u8, 10>>>
 
 note: 
   ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None }
+  │                ^^^^^^^^^^^^^ SPtr<Array<u8, 10>>
 
 note: 
   ┌─ address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Memory
+  │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>
 
 note: 
    ┌─ address_bytes10_map.fe:8:5
@@ -55,22 +55,22 @@ note:
   ┌─ address_bytes10_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ Foo
 
 note: 
   ┌─ address_bytes10_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ address: Value
+  │         ^^^^^^^^ ^^^ address
   │         │         
-  │         Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
+  │         SPtr<Map<address, Array<u8, 10>>>
 
 note: 
   ┌─ address_bytes10_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>: Memory
+  │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>
   │         │                
-  │         Array<u8, 10>: Storage { nonce: None }
+  │         SPtr<Array<u8, 10>>
 
 

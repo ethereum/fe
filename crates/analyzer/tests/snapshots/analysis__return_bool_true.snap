@@ -15,6 +15,6 @@ note:
   ┌─ return_bool_true.fe:3:16
   │
 3 │         return true
-  │                ^^^^ bool: Value
+  │                ^^^^ bool
 
 

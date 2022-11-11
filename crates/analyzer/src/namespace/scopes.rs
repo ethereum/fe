@@ -46,11 +46,8 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
             .expect_none("expression attributes already exist");
     }
 
-    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.expressions
-            .borrow_mut()
-            .insert(node.id, attributes)
-            .expect("expression attributes do not exist");
+    fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes)) {
+        f(self.expressions.borrow_mut().get_mut(&node.id).unwrap())
     }
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
@@ -238,12 +235,13 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
             .expect_none("expression attributes already exist");
     }
 
-    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.body
+    fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes)) {
+        f(self
+            .body
             .borrow_mut()
             .expressions
-            .insert(node.id, attributes)
-            .expect("expression attributes do not exist");
+            .get_mut(&node.id)
+            .unwrap())
     }
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
@@ -459,8 +457,8 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.add_expression(node, attributes)
     }
 
-    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
-        self.root.update_expression(node, attributes)
+    fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes)) {
+        self.root.update_expression(node, f)
     }
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {

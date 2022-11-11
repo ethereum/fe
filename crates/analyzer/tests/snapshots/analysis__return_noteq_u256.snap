@@ -15,14 +15,14 @@ note:
   ┌─ return_noteq_u256.fe:3:16
   │
 3 │         return x != y
-  │                ^    ^ u256: Value
+  │                ^    ^ u256
   │                │     
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ return_noteq_u256.fe:3:16
   │
 3 │         return x != y
-  │                ^^^^^^ bool: Value
+  │                ^^^^^^ bool
 
 

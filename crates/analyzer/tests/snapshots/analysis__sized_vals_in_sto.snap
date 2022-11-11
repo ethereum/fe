@@ -35,15 +35,15 @@ note:
    ┌─ sized_vals_in_sto.fe:13:9
    │
 13 │         self.num = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:13:9
    │
 13 │         self.num = x
-   │         ^^^^^^^^   ^ u256: Value
+   │         ^^^^^^^^   ^ u256
    │         │           
-   │         u256: Storage { nonce: Some(0) }
+   │         SPtr<u256>
 
 note: 
    ┌─ sized_vals_in_sto.fe:16:5
@@ -57,13 +57,13 @@ note:
    ┌─ sized_vals_in_sto.fe:17:16
    │
 17 │         return self.num
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:17:16
    │
 17 │         return self.num
-   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^ SPtr<u256> -> u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:20:5
@@ -77,15 +77,15 @@ note:
    ┌─ sized_vals_in_sto.fe:21:9
    │
 21 │         self.nums = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:21:9
    │
 21 │         self.nums = x
-   │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
+   │         ^^^^^^^^^   ^ Array<u256, 42>
    │         │            
-   │         Array<u256, 42>: Storage { nonce: Some(1) }
+   │         SPtr<Array<u256, 42>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:24:5
@@ -99,19 +99,19 @@ note:
    ┌─ sized_vals_in_sto.fe:25:16
    │
 25 │         return self.nums.to_mem()
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:25:16
    │
 25 │         return self.nums.to_mem()
-   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+   │                ^^^^^^^^^ SPtr<Array<u256, 42>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:25:16
    │
 25 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:28:5
@@ -125,15 +125,15 @@ note:
    ┌─ sized_vals_in_sto.fe:29:9
    │
 29 │         self.str = x
-   │         ^^^^ Foo: Value
+   │         ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:29:9
    │
 29 │         self.str = x
-   │         ^^^^^^^^   ^ String<26>: Memory
+   │         ^^^^^^^^   ^ String<26>
    │         │           
-   │         String<26>: Storage { nonce: Some(2) }
+   │         SPtr<String<26>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:32:5
@@ -147,19 +147,19 @@ note:
    ┌─ sized_vals_in_sto.fe:33:16
    │
 33 │         return self.str.to_mem()
-   │                ^^^^ Foo: Value
+   │                ^^^^ Foo
 
 note: 
    ┌─ sized_vals_in_sto.fe:33:16
    │
 33 │         return self.str.to_mem()
-   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+   │                ^^^^^^^^ SPtr<String<26>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:33:16
    │
 33 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+   │                ^^^^^^^^^^^^^^^^^ String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:36:5
@@ -173,54 +173,54 @@ note:
    ┌─ sized_vals_in_sto.fe:37:9
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │         ^^^                   ^^^^ Foo: Value
+   │         ^^^                   ^^^^ Foo
    │         │                      
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:31
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                               ^^^^^^^^        ^^^^ Foo: Value
+   │                               ^^^^^^^^        ^^^^ Foo
    │                               │                
-   │                               u256: Storage { nonce: Some(0) } => Value
+   │                               SPtr<u256> -> u256
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:47
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                                               ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+   │                                               ^^^^^^^^^ SPtr<Array<u256, 42>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:47
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                                               ^^^^^^^^^^^^^^^^^^       ^^^^ Foo: Value
+   │                                               ^^^^^^^^^^^^^^^^^^       ^^^^ Foo
    │                                               │                         
-   │                                               Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+   │                                               Array<u256, 42>
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:72
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                                                                        ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+   │                                                                        ^^^^^^^^ SPtr<String<26>>
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:72
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                                                                        ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+   │                                                                        ^^^^^^^^^^^^^^^^^ String<26>
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:18
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MyEvent
 
 note: 
    ┌─ sized_vals_in_sto.fe:37:9
    │
 37 │         ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 

@@ -26,29 +26,29 @@ note:
    ┌─ module_level_events.fe:11:9
    │
 11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
-   │         ^^^                       ^^^ Context: Memory
+   │         ^^^                       ^^^ Context
    │         │                          
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ module_level_events.fe:11:35
    │
 11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
-   │                                   ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
+   │                                   ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256
    │                                   │                           │    
-   │                                   │                           address: Value
-   │                                   address: Value
+   │                                   │                           address
+   │                                   address
 
 note: 
    ┌─ module_level_events.fe:11:18
    │
 11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
-   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer: Memory
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer
 
 note: 
    ┌─ module_level_events.fe:11:9
    │
 11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 

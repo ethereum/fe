@@ -14,6 +14,8 @@ use crate::AnalyzerDb;
 /// Returns all `impl` for the given type from the current ingot as well as
 /// dependency ingots
 pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
+    let ty = ty.deref(db);
+
     let ingot_modules = db
         .root_ingot()
         .all_modules(db)
@@ -37,7 +39,7 @@ pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplI
 }
 
 pub fn function_sigs(db: &dyn AnalyzerDb, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]> {
-    ty.get_all_impls(db)
+    db.all_impls(ty)
         .iter()
         .filter_map(|impl_| impl_.function(db, &name))
         .map(|fun| fun.sig(db))

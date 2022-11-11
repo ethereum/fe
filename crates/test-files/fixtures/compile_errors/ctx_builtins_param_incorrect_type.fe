@@ -4,7 +4,6 @@ contract Barn {
 
 contract Foo {
     pub fn bar(ctx: Context) {
-        let existing_barn: Barn = Barn("hello world", address(0))
         let created_barn: Barn = Barn.create(address(26), 0)
     }
 }

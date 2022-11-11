@@ -211,6 +211,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
     debug_assert!(ty.is_struct(db.upcast()));
+
     let legalized_ty = db.codegen_legalized_type(ty);
     let analyzer_struct = ty
         .analyzer_ty(db.upcast())

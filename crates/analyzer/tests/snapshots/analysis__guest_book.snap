@@ -31,46 +31,46 @@ note:
    ┌─ guest_book.fe:16:9
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │         ^^^^ GuestBook: Value
+   │         ^^^^ GuestBook
 
 note: 
    ┌─ guest_book.fe:16:9
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │         ^^^^^^^^^^^^^ ^^^ Context: Memory
+   │         ^^^^^^^^^^^^^ ^^^ Context
    │         │              
-   │         Map<address, String<100>>: Storage { nonce: Some(0) }
+   │         SPtr<Map<address, String<100>>>
 
 note: 
    ┌─ guest_book.fe:16:23
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │                       ^^^^^^^^^^^^^^^^ address: Value
+   │                       ^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ guest_book.fe:16:9
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>
    │         │                                  
-   │         String<100>: Storage { nonce: None }
+   │         SPtr<String<100>>
    ·
 19 │         ctx.emit(Signed(book_msg))
-   │         ^^^             ^^^^^^^^ String<100>: Memory
+   │         ^^^             ^^^^^^^^ String<100>
    │         │                
-   │         Context: Memory
+   │         Context
 
 note: 
    ┌─ guest_book.fe:19:18
    │
 19 │         ctx.emit(Signed(book_msg))
-   │                  ^^^^^^^^^^^^^^^^ Signed: Memory
+   │                  ^^^^^^^^^^^^^^^^ Signed
 
 note: 
    ┌─ guest_book.fe:19:9
    │
 19 │         ctx.emit(Signed(book_msg))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ guest_book.fe:22:5
@@ -86,26 +86,26 @@ note:
    ┌─ guest_book.fe:25:16
    │
 25 │         return self.messages[addr].to_mem()
-   │                ^^^^ GuestBook: Value
+   │                ^^^^ GuestBook
 
 note: 
    ┌─ guest_book.fe:25:16
    │
 25 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^ ^^^^ address: Value
+   │                ^^^^^^^^^^^^^ ^^^^ address
    │                │              
-   │                Map<address, String<100>>: Storage { nonce: Some(0) }
+   │                SPtr<Map<address, String<100>>>
 
 note: 
    ┌─ guest_book.fe:25:16
    │
 25 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
+   │                ^^^^^^^^^^^^^^^^^^^ SPtr<String<100>>
 
 note: 
    ┌─ guest_book.fe:25:16
    │
 25 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 
