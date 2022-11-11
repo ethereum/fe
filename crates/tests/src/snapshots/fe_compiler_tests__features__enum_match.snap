@@ -1,6 +1,7 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
+
 ---
 simple_match([Uint(1), Uint(2)]) used 573 gas
 nested_match([Uint(1), Uint(2)]) used 1502 gas
