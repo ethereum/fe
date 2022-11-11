@@ -265,188 +265,192 @@ fn test_arrays() {
     })
 }
 
-#[rstest(fixture_file, input, expected,
-    case("const_local.fe", &[], uint_token(42)),
-    case("for_loop_with_static_array.fe", &[], uint_token(30)),
-    case("for_loop_with_static_array_from_sto.fe", &[], uint_token(6)),
-    case("for_loop_with_break.fe", &[], uint_token(15)),
-    case("for_loop_with_continue.fe", &[], uint_token(17)),
-    case("while_loop_with_continue.fe", &[], uint_token(1)),
-    case("while_loop.fe", &[], uint_token(3)),
-    case("while_loop_test_from_sto.fe", &[], uint_token(42)),
-    case("while_loop_with_break.fe", &[], uint_token(1)),
-    case("while_loop_with_break_2.fe", &[], uint_token(1)),
-    case("if_statement.fe", &[uint_token(6)], uint_token(1)),
-    case("if_statement.fe", &[uint_token(4)], uint_token(0)),
-    case("if_statement_test_from_sto.fe", &[], uint_token(42)),
-    case("if_statement_2.fe", &[uint_token(6)], uint_token(1)),
-    case("if_statement_with_block_declaration.fe", &[], uint_token(1)),
-    case("ternary_expression.fe", &[uint_token(6)], uint_token(1)),
-    case("ternary_expression.fe", &[uint_token(4)], uint_token(0)),
-    case("call_statement_without_args.fe", &[], uint_token(100)),
-    case("call_statement_with_args.fe", &[], uint_token(100)),
-    case("call_statement_with_args_2.fe", &[], uint_token(100)),
-    case("return_bool_true.fe", &[], bool_token(true)),
-    case("return_bool_false.fe", &[], bool_token(false)),
-    case("return_bool_inverted.fe", &[bool_token(true)], bool_token(false)),
-    case("return_bool_inverted.fe", &[bool_token(false)], bool_token(true)),
-    case("return_u256_from_called_fn_with_args.fe", &[], uint_token(200)),
-    case("return_u256_from_called_fn.fe", &[], uint_token(42)),
-    case("return_u256.fe", &[], uint_token(42)),
-    case("return_i256.fe", &[], int_token(-3)),
-    case("return_from_storage_i8.fe", &[int_token(-3)], int_token(-6)),
-    case("return_from_storage_array_i8.fe", &[int_token(-10)], int_array_token(&[-10])),
-    case("return_from_memory_i8.fe", &[int_token(-3)], int_token(-6)),
-    case("return_identity_u256.fe", &[uint_token(42)], uint_token(42)),
-    case("return_identity_u128.fe", &[uint_token(42)], uint_token(42)),
-    case("return_identity_u64.fe", &[uint_token(42)], uint_token(42)),
-    case("return_identity_u32.fe", &[uint_token(42)], uint_token(42)),
-    case("return_identity_u16.fe", &[uint_token(42)], uint_token(42)),
-    case("return_identity_u8.fe", &[uint_token(42)], uint_token(42)),
-    case("return_u128_cast.fe", &[], uint_token(42)),
-    case("return_i128_cast.fe", &[], int_token(-3)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(253)], int_token(-3)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(127)], int_token(127)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(128)], int_token(-128)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(129)], int_token(-127)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(0)], int_token(0)),
-    case("return_cast_u8_to_signed.fe", &[uint_token(1)], int_token(1)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(-3)], uint_token(253)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(-128)], uint_token(128)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(-127)], uint_token(129)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(127)], uint_token(127)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(0)], uint_token(0)),
-    case("return_cast_i8_to_unsigned.fe", &[int_token(1)], uint_token(1)),
-    case("return_msg_sig.fe", &[], uint_token(4273672062)),
-    case("return_sum_list_expression_1.fe", &[], uint_token(210)),
-    case("return_sum_list_expression_2.fe", &[], uint_token(210)),
-    case("pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
-    case("pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
-    case("pure_fn_standalone.fe", &[uint_token(5)], uint_token(210)),
-    // unary invert
-    case("return_invert_i256.fe", &[int_token(1)], int_token(-2)),
-    case("return_invert_i128.fe", &[int_token(1)], int_token(-2)),
-    case("return_invert_i64.fe", &[int_token(4000000000)], int_token(-4000000001)),
-    case("return_invert_i32.fe", &[int_token(30000)], int_token(-30001)),
-    case("return_invert_i16.fe", &[int_token(2000)], int_token(-2001)),
-    case("return_invert_i8.fe", &[int_token(1)], int_token(-2)),
-    case("return_invert_u256.fe", &[uint_token(1)], uint_token_from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639934")),
-    case("return_invert_u128.fe", &[uint_token(1)], uint_token_from_dec_str("340282366920938463463374607431768211454")),
-    case("return_invert_u64.fe", &[uint_token(1)], uint_token_from_dec_str("18446744073709551614")),
-    case("return_invert_u32.fe", &[uint_token(1)], uint_token(4294967294)),
-    case("return_invert_u16.fe", &[uint_token(1)], uint_token(65534)),
-    case("return_invert_u8.fe", &[uint_token(1)], uint_token(254)),
-    // binary operators
-    case("return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
-    case("return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84)),
-    case("return_addition_i256.fe", &[int_token(-42), int_token(42)], int_token(0)),
-    case("return_addition_u128.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
-    case("return_subtraction_u256.fe", &[uint_token(42), uint_token(42)], uint_token(0)),
-    case("return_subtraction_i256.fe", &[int_token(-42), int_token(-42)], int_token(0)),
-    case("return_subtraction_i256.fe", &[int_token(-42), int_token(42)], int_token(-84)),
-    case("return_multiplication_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1764)),
-    case("return_multiplication_i256.fe", &[int_token(-42), int_token(-42)], int_token(1764)),
-    case("return_multiplication_i256.fe", &[int_token(-42), int_token(42)], int_token(-1764)),
-    case("return_division_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1)),
-    case("return_division_i256.fe", &[int_token(-42), int_token(-42)], int_token(1)),
-    case("return_division_i256.fe", &[int_token(-1), int_token(1)], int_token(-1)),
-    case("return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1)),
-    case("return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1)),
-    case("return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16)),
-    case("return_pow_i256.fe", &[int_token(-2), uint_token(3)], int_token(-8)),
-    case("return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1)),
-    case("return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2)),
-    case("return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0)),
-    case("return_mod_i256.fe", &[int_token(5), int_token(2)], int_token(1)),
-    case("return_mod_i256.fe", &[int_token(5), int_token(3)], int_token(2)),
-    case("return_mod_i256.fe", &[int_token(5), int_token(5)], int_token(0)),
-    case("return_bitwiseand_u256.fe", &[uint_token(12), uint_token(25)], uint_token(8)),
-    case("return_bitwiseand_u128.fe", &[uint_token(12), uint_token(25)], uint_token(8)),
-    case("return_bitwiseor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(29)),
-    case("return_bitwisexor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(21)),
-    case("return_bitwiseshl_u8.fe", &[uint_token(1), uint_token(8)], uint_token(0)),
-    case("return_bitwiseshl_i8.fe", &[int_token(-1), uint_token(1)], int_token(-2)),
-    case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
-    case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(1)], uint_token(424)),
-    case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
-    case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106)),
-    case("return_bitwiseshr_i256.fe", &[int_token(212), uint_token(0)], int_token(212)),
-    case("return_bitwiseshr_i256.fe", &[int_token(212), uint_token(1)], int_token(106)),
-    case("return_bitwiseshl_i64_coerced.fe", &[], int_token(-1)),
-    // comparison operators
-    case("return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
-    case("return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
-    case("return_noteq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
-    case("return_noteq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
-    case("return_lt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
-    case("return_lt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
-    case("return_lt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false)),
-    case("return_lt_u128.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
-    // lt_i256 with positive and negative numbers
-    case("return_lt_i256.fe", &[int_token(1), int_token(2)], bool_token(true)),
-    case("return_lt_i256.fe", &[int_token(1), int_token(1)], bool_token(false)),
-    case("return_lt_i256.fe", &[int_token(2), int_token(1)], bool_token(false)),
-    case("return_lt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true)),
-    case("return_lt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false)),
-    case("return_lt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false)),
-    case("return_lte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
-    case("return_lte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
-    // lte_i256 with positive and negative numbers
-    case("return_lte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false)),
-    case("return_lte_i256.fe", &[int_token(1), int_token(2)], bool_token(true)),
-    case("return_lte_i256.fe", &[int_token(1), int_token(1)], bool_token(true)),
-    case("return_lte_i256.fe", &[int_token(2), int_token(1)], bool_token(false)),
-    case("return_lte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true)),
-    case("return_lte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true)),
-    case("return_lte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false)),
-    case("return_gt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true)),
-    case("return_gt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
-    case("return_gt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
-    // gt_i256 with positive and negative numbers
-    case("return_gt_i256.fe", &[int_token(2), int_token(1)], bool_token(true)),
-    case("return_gt_i256.fe", &[int_token(1), int_token(1)], bool_token(false)),
-    case("return_gt_i256.fe", &[int_token(1), int_token(2)], bool_token(false)),
-    case("return_gt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true)),
-    case("return_gt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false)),
-    case("return_gt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false)),
-    case("return_gte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true)),
-    case("return_gte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
-    case("return_gte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
-    // gte_i256 with positive and negative numbers
-    case("return_gte_i256.fe", &[int_token(2), int_token(1)], bool_token(true)),
-    case("return_gte_i256.fe", &[int_token(1), int_token(1)], bool_token(true)),
-    case("return_gte_i256.fe", &[int_token(1), int_token(2)], bool_token(false)),
-    case("return_gte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true)),
-    case("return_gte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true)),
-    case("return_gte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false)),
-    // `and` bool operation
-    case("return_bool_op_and.fe", &[bool_token(true), bool_token(true)], bool_token(true)),
-    case("return_bool_op_and.fe", &[bool_token(true), bool_token(false)], bool_token(false)),
-    case("return_bool_op_and.fe", &[bool_token(false), bool_token(true)], bool_token(false)),
-    case("return_bool_op_and.fe", &[bool_token(false), bool_token(false)], bool_token(false)),
-    // `or` bool operation
-    case("return_bool_op_or.fe", &[bool_token(true), bool_token(true)], bool_token(true)),
-    case("return_bool_op_or.fe", &[bool_token(true), bool_token(false)], bool_token(true)),
-    case("return_bool_op_or.fe", &[bool_token(false), bool_token(true)], bool_token(true)),
-    case("return_bool_op_or.fe", &[bool_token(false), bool_token(false)], bool_token(false)),
-    // radix
-    case("radix_hex.fe", &[], uint_token(0xfe)),
-    case("radix_octal.fe", &[], uint_token(0o70)),
-    case("radix_binary.fe", &[], uint_token(0b10)),
-    case::map_tuple("map_tuple.fe", &[uint_token(1234)], uint_token(1234)),
-    case::int_literal_coercion("int_literal_coercion.fe", &[], uint_token(300)),
-    case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
-    case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
-    case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
-    case("for_loop_with_complex_elem_array.fe", &[], int_token(222)),
-)]
-fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, fixture_file, "Foo", &[]);
-        harness.test_function(&mut executor, "bar", input, Some(&expected));
-        assert_harness_gas_report!(harness);
-    })
+macro_rules! test_method_return {
+    ($name:ident, $path:expr, $input:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            with_executor(&|mut executor| {
+                let harness = deploy_contract(&mut executor, $path, "Foo", &[]);
+                harness.test_function(&mut executor, "bar", $input, Some(&$expected));
+                assert_harness_gas_report!(harness);
+            })
+        }
+    };
 }
+
+test_method_return! { const_local, "const_local.fe", &[], uint_token(42) }
+test_method_return! { for_loop_with_static_array, "for_loop_with_static_array.fe", &[], uint_token(30) }
+test_method_return! { for_loop_with_static_array_from_sto, "for_loop_with_static_array_from_sto.fe", &[], uint_token(6) }
+test_method_return! { for_loop_with_break, "for_loop_with_break.fe", &[], uint_token(15) }
+test_method_return! { for_loop_with_continue, "for_loop_with_continue.fe", &[], uint_token(17) }
+test_method_return! { while_loop_with_continue, "while_loop_with_continue.fe", &[], uint_token(1) }
+test_method_return! { while_loop, "while_loop.fe", &[], uint_token(3) }
+test_method_return! { while_loop_test_from_sto, "while_loop_test_from_sto.fe", &[], uint_token(42) }
+test_method_return! { while_loop_with_break, "while_loop_with_break.fe", &[], uint_token(1) }
+test_method_return! { while_loop_with_break_2, "while_loop_with_break_2.fe", &[], uint_token(1) }
+test_method_return! { if_statement_a, "if_statement.fe", &[uint_token(6)], uint_token(1) }
+test_method_return! { if_statement_b, "if_statement.fe", &[uint_token(4)], uint_token(0) }
+test_method_return! { if_statement_test_from_sto, "if_statement_test_from_sto.fe", &[], uint_token(42) }
+test_method_return! { if_statement_2, "if_statement_2.fe", &[uint_token(6)], uint_token(1) }
+test_method_return! { if_statement_with_block_declaration, "if_statement_with_block_declaration.fe", &[], uint_token(1) }
+test_method_return! { ternary_expression_a, "ternary_expression.fe", &[uint_token(6)], uint_token(1) }
+test_method_return! { ternary_expression_b, "ternary_expression.fe", &[uint_token(4)], uint_token(0) }
+test_method_return! { call_statement_without_args, "call_statement_without_args.fe", &[], uint_token(100) }
+test_method_return! { call_statement_with_args, "call_statement_with_args.fe", &[], uint_token(100) }
+test_method_return! { call_statement_with_args_2, "call_statement_with_args_2.fe", &[], uint_token(100) }
+test_method_return! { return_bool_true, "return_bool_true.fe", &[], bool_token(true) }
+test_method_return! { return_bool_false, "return_bool_false.fe", &[], bool_token(false) }
+test_method_return! { return_bool_inverted_a, "return_bool_inverted.fe", &[bool_token(true)], bool_token(false) }
+test_method_return! { return_bool_inverted_b, "return_bool_inverted.fe", &[bool_token(false)], bool_token(true) }
+test_method_return! { return_u256_from_called_fn_with_args, "return_u256_from_called_fn_with_args.fe", &[], uint_token(200) }
+test_method_return! { return_u256_from_called_fn, "return_u256_from_called_fn.fe", &[], uint_token(42) }
+test_method_return! { return_u256, "return_u256.fe", &[], uint_token(42) }
+test_method_return! { return_i256, "return_i256.fe", &[], int_token(-3) }
+test_method_return! { return_from_storage_i8, "return_from_storage_i8.fe", &[int_token(-3)], int_token(-6) }
+test_method_return! { return_from_storage_array_i8, "return_from_storage_array_i8.fe", &[int_token(-10)], int_array_token(&[-10]) }
+test_method_return! { return_from_memory_i8, "return_from_memory_i8.fe", &[int_token(-3)], int_token(-6) }
+test_method_return! { return_identity_u256, "return_identity_u256.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_identity_u128, "return_identity_u128.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_identity_u64, "return_identity_u64.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_identity_u32, "return_identity_u32.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_identity_u16, "return_identity_u16.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_identity_u8, "return_identity_u8.fe", &[uint_token(42)], uint_token(42) }
+test_method_return! { return_u128_cast, "return_u128_cast.fe", &[], uint_token(42) }
+test_method_return! { return_i128_cast, "return_i128_cast.fe", &[], int_token(-3) }
+test_method_return! { return_cast_u8_to_signed_a, "return_cast_u8_to_signed.fe", &[uint_token(253)], int_token(-3) }
+test_method_return! { return_cast_u8_to_signed_b, "return_cast_u8_to_signed.fe", &[uint_token(127)], int_token(127) }
+test_method_return! { return_cast_u8_to_signed_c, "return_cast_u8_to_signed.fe", &[uint_token(128)], int_token(-128) }
+test_method_return! { return_cast_u8_to_signed_d, "return_cast_u8_to_signed.fe", &[uint_token(129)], int_token(-127) }
+test_method_return! { return_cast_u8_to_signed_e, "return_cast_u8_to_signed.fe", &[uint_token(0)], int_token(0) }
+test_method_return! { return_cast_u8_to_signed_f, "return_cast_u8_to_signed.fe", &[uint_token(1)], int_token(1) }
+test_method_return! { return_cast_i8_to_unsigned_a, "return_cast_i8_to_unsigned.fe", &[int_token(-3)], uint_token(253) }
+test_method_return! { return_cast_i8_to_unsigned_b, "return_cast_i8_to_unsigned.fe", &[int_token(-128)], uint_token(128) }
+test_method_return! { return_cast_i8_to_unsigned_c, "return_cast_i8_to_unsigned.fe", &[int_token(-127)], uint_token(129) }
+test_method_return! { return_cast_i8_to_unsigned_d, "return_cast_i8_to_unsigned.fe", &[int_token(127)], uint_token(127) }
+test_method_return! { return_cast_i8_to_unsigned_e, "return_cast_i8_to_unsigned.fe", &[int_token(0)], uint_token(0) }
+test_method_return! { return_cast_i8_to_unsigned_f, "return_cast_i8_to_unsigned.fe", &[int_token(1)], uint_token(1) }
+test_method_return! { return_msg_sig, "return_msg_sig.fe", &[], uint_token(4273672062) }
+test_method_return! { return_sum_list_expression_1, "return_sum_list_expression_1.fe", &[], uint_token(210) }
+test_method_return! { return_sum_list_expression_2, "return_sum_list_expression_2.fe", &[], uint_token(210) }
+test_method_return! { pure_fn, "pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68) }
+test_method_return! { pure_fn_internal_call, "pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68) }
+test_method_return! { pure_fn_standalone, "pure_fn_standalone.fe", &[uint_token(5)], uint_token(210) }
+// unary invert
+test_method_return! { return_invert_i256, "return_invert_i256.fe", &[int_token(1)], int_token(-2) }
+test_method_return! { return_invert_i128, "return_invert_i128.fe", &[int_token(1)], int_token(-2) }
+test_method_return! { return_invert_i64, "return_invert_i64.fe", &[int_token(4000000000)], int_token(-4000000001) }
+test_method_return! { return_invert_i32, "return_invert_i32.fe", &[int_token(30000)], int_token(-30001) }
+test_method_return! { return_invert_i16, "return_invert_i16.fe", &[int_token(2000)], int_token(-2001) }
+test_method_return! { return_invert_i8, "return_invert_i8.fe", &[int_token(1)], int_token(-2) }
+test_method_return! { return_invert_u256, "return_invert_u256.fe", &[uint_token(1)], uint_token_from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639934") }
+test_method_return! { return_invert_u128, "return_invert_u128.fe", &[uint_token(1)], uint_token_from_dec_str("340282366920938463463374607431768211454") }
+test_method_return! { return_invert_u64, "return_invert_u64.fe", &[uint_token(1)], uint_token_from_dec_str("18446744073709551614") }
+test_method_return! { return_invert_u32, "return_invert_u32.fe", &[uint_token(1)], uint_token(4294967294) }
+test_method_return! { return_invert_u16, "return_invert_u16.fe", &[uint_token(1)], uint_token(65534) }
+test_method_return! { return_invert_u8, "return_invert_u8.fe", &[uint_token(1)], uint_token(254) }
+// binary operators
+test_method_return! { return_addition_u256, "return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84) }
+test_method_return! { return_addition_i256_a, "return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84) }
+test_method_return! { return_addition_i256_b, "return_addition_i256.fe", &[int_token(-42), int_token(42)], int_token(0) }
+test_method_return! { return_addition_u128, "return_addition_u128.fe", &[uint_token(42), uint_token(42)], uint_token(84) }
+test_method_return! { return_subtraction_u256, "return_subtraction_u256.fe", &[uint_token(42), uint_token(42)], uint_token(0) }
+test_method_return! { return_subtraction_i256_a, "return_subtraction_i256.fe", &[int_token(-42), int_token(-42)], int_token(0) }
+test_method_return! { return_subtraction_i256_b, "return_subtraction_i256.fe", &[int_token(-42), int_token(42)], int_token(-84) }
+test_method_return! { return_multiplication_u256, "return_multiplication_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1764) }
+test_method_return! { return_multiplication_i256_a, "return_multiplication_i256.fe", &[int_token(-42), int_token(-42)], int_token(1764) }
+test_method_return! { return_multiplication_i256_b, "return_multiplication_i256.fe", &[int_token(-42), int_token(42)], int_token(-1764) }
+test_method_return! { return_division_u256, "return_division_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1) }
+test_method_return! { return_division_i256_a, "return_division_i256.fe", &[int_token(-42), int_token(-42)], int_token(1) }
+test_method_return! { return_division_i256_b, "return_division_i256.fe", &[int_token(-1), int_token(1)], int_token(-1) }
+test_method_return! { return_division_i256_c, "return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1) }
+test_method_return! { return_pow_u256_a, "return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1) }
+test_method_return! { return_pow_u256_b, "return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16) }
+test_method_return! { return_pow_i256, "return_pow_i256.fe", &[int_token(-2), uint_token(3)], int_token(-8) }
+test_method_return! { return_mod_u256_a, "return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1) }
+test_method_return! { return_mod_u256_b, "return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2) }
+test_method_return! { return_mod_u256_c, "return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0) }
+test_method_return! { return_mod_i256_a, "return_mod_i256.fe", &[int_token(5), int_token(2)], int_token(1) }
+test_method_return! { return_mod_i256_b, "return_mod_i256.fe", &[int_token(5), int_token(3)], int_token(2) }
+test_method_return! { return_mod_i256_c, "return_mod_i256.fe", &[int_token(5), int_token(5)], int_token(0) }
+test_method_return! { return_bitwiseand_u256, "return_bitwiseand_u256.fe", &[uint_token(12), uint_token(25)], uint_token(8) }
+test_method_return! { return_bitwiseand_u128, "return_bitwiseand_u128.fe", &[uint_token(12), uint_token(25)], uint_token(8) }
+test_method_return! { return_bitwiseor_u256, "return_bitwiseor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(29) }
+test_method_return! { return_bitwisexor_u256, "return_bitwisexor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(21) }
+test_method_return! { return_bitwiseshl_u8, "return_bitwiseshl_u8.fe", &[uint_token(1), uint_token(8)], uint_token(0) }
+test_method_return! { return_bitwiseshl_i8, "return_bitwiseshl_i8.fe", &[int_token(-1), uint_token(1)], int_token(-2) }
+test_method_return! { return_bitwiseshl_u256_a, "return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212) }
+test_method_return! { return_bitwiseshl_u256_b, "return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(1)], uint_token(424) }
+test_method_return! { return_bitwiseshr_u256_c, "return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212) }
+test_method_return! { return_bitwiseshr_u256_d, "return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106) }
+test_method_return! { return_bitwiseshr_i256_a, "return_bitwiseshr_i256.fe", &[int_token(212), uint_token(0)], int_token(212) }
+test_method_return! { return_bitwiseshr_i256_b, "return_bitwiseshr_i256.fe", &[int_token(212), uint_token(1)], int_token(106) }
+test_method_return! { return_bitwiseshl_i64_coerced, "return_bitwiseshl_i64_coerced.fe", &[], int_token(-1) }
+// comparison operators
+test_method_return! { return_eq_u256_a, "return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
+test_method_return! { return_eq_u256_b, "return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
+test_method_return! { return_noteq_u256a, "return_noteq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
+test_method_return! { return_noteq_u256b, "return_noteq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
+test_method_return! { return_lt_u256_a, "return_lt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
+test_method_return! { return_lt_u256_b, "return_lt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
+test_method_return! { return_lt_u256_c, "return_lt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false) }
+test_method_return! { return_lt_u128, "return_lt_u128.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
+// lt_i256 with positive and negative numbers
+test_method_return! { return_lt_i256_a, "return_lt_i256.fe", &[int_token(1), int_token(2)], bool_token(true) }
+test_method_return! { return_lt_i256_b, "return_lt_i256.fe", &[int_token(1), int_token(1)], bool_token(false) }
+test_method_return! { return_lt_i256_c, "return_lt_i256.fe", &[int_token(2), int_token(1)], bool_token(false) }
+test_method_return! { return_lt_i256_d, "return_lt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true) }
+test_method_return! { return_lt_i256_e, "return_lt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false) }
+test_method_return! { return_lt_i256_f, "return_lt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false) }
+test_method_return! { return_lte_u256_a, "return_lte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
+test_method_return! { return_lte_u256_b, "return_lte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
+// lte_i256 with positive and negative numbers
+test_method_return! { return_lte_u256, "return_lte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false) }
+test_method_return! { return_lte_i256_a, "return_lte_i256.fe", &[int_token(1), int_token(2)], bool_token(true) }
+test_method_return! { return_lte_i256_b, "return_lte_i256.fe", &[int_token(1), int_token(1)], bool_token(true) }
+test_method_return! { return_lte_i256_c, "return_lte_i256.fe", &[int_token(2), int_token(1)], bool_token(false) }
+test_method_return! { return_lte_i256_d, "return_lte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true) }
+test_method_return! { return_lte_i256_e, "return_lte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true) }
+test_method_return! { return_lte_i256_f, "return_lte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false) }
+test_method_return! { return_gt_u256_a, "return_gt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true) }
+test_method_return! { return_gt_u256_b, "return_gt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
+test_method_return! { return_gt_u256_c, "return_gt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
+// gt_i256 with positive and negative numbers
+test_method_return! { return_gt_i256_a, "return_gt_i256.fe", &[int_token(2), int_token(1)], bool_token(true) }
+test_method_return! { return_gt_i256_b, "return_gt_i256.fe", &[int_token(1), int_token(1)], bool_token(false) }
+test_method_return! { return_gt_i256_c, "return_gt_i256.fe", &[int_token(1), int_token(2)], bool_token(false) }
+test_method_return! { return_gt_i256_d, "return_gt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true) }
+test_method_return! { return_gt_i256_e, "return_gt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false) }
+test_method_return! { return_gt_i256_f, "return_gt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false) }
+test_method_return! { return_gte_u256_a, "return_gte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true) }
+test_method_return! { return_gte_u256_b, "return_gte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
+test_method_return! { return_gte_u256_c, "return_gte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
+// gte_i256 with positive and negative numbers
+test_method_return! { return_gte_i256_a, "return_gte_i256.fe", &[int_token(2), int_token(1)], bool_token(true) }
+test_method_return! { return_gte_i256_b, "return_gte_i256.fe", &[int_token(1), int_token(1)], bool_token(true) }
+test_method_return! { return_gte_i256_c, "return_gte_i256.fe", &[int_token(1), int_token(2)], bool_token(false) }
+test_method_return! { return_gte_i256_d, "return_gte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true) }
+test_method_return! { return_gte_i256_e, "return_gte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true) }
+test_method_return! { return_gte_i256_f, "return_gte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false) }
+// `and` bool operation
+test_method_return! { return_bool_op_and_a, "return_bool_op_and.fe", &[bool_token(true), bool_token(true)], bool_token(true) }
+test_method_return! { return_bool_op_and_b, "return_bool_op_and.fe", &[bool_token(true), bool_token(false)], bool_token(false) }
+test_method_return! { return_bool_op_and_c, "return_bool_op_and.fe", &[bool_token(false), bool_token(true)], bool_token(false) }
+test_method_return! { return_bool_op_and_d, "return_bool_op_and.fe", &[bool_token(false), bool_token(false)], bool_token(false) }
+// `or` bool operation
+test_method_return! { return_bool_op_or_a, "return_bool_op_or.fe", &[bool_token(true), bool_token(true)], bool_token(true) }
+test_method_return! { return_bool_op_or_b, "return_bool_op_or.fe", &[bool_token(true), bool_token(false)], bool_token(true) }
+test_method_return! { return_bool_op_or_c, "return_bool_op_or.fe", &[bool_token(false), bool_token(true)], bool_token(true) }
+test_method_return! { return_bool_op_or_d, "return_bool_op_or.fe", &[bool_token(false), bool_token(false)], bool_token(false) }
+// radix
+test_method_return! { radix_hex, "radix_hex.fe", &[], uint_token(0xfe) }
+test_method_return! { radix_octal, "radix_octal.fe", &[], uint_token(0o70) }
+test_method_return! { radix_binary, "radix_binary.fe", &[], uint_token(0b10) }
+test_method_return! { map_tuple, "map_tuple.fe", &[uint_token(1234)], uint_token(1234) }
+test_method_return! { int_literal_coercion, "int_literal_coercion.fe", &[], uint_token(300) }
+test_method_return! { associated_fns, "associated_fns.fe", &[uint_token(12)], uint_token(144) }
+test_method_return! { struct_fns, "struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100) }
+test_method_return! { cast_address_to_u256, "cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS) }
+test_method_return! { for_loop_with_complex_elem_array, "for_loop_with_complex_elem_array.fe", &[], int_token(222) }
 
 #[test]
 fn return_array() {
