@@ -173,11 +173,6 @@ pub fn parse_trait_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
             TokenKind::Fn => {
                 // TODO: Traits should also be allowed to have functions that do contain a body.
                 functions.push(parse_fn_sig(par, attrs, None)?);
-                par.expect_with_notes(
-                    TokenKind::Semi,
-                    "failed to parse trait definition",
-                    |_| vec!["Note: trait functions must appear without body and followed by a semicolon.".into()],
-                )?;
                 par.eat_newlines();
             }
             TokenKind::BraceClose if attrs.is_empty() => {

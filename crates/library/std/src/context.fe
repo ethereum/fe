@@ -11,7 +11,7 @@ struct OutOfReachMarker {}
 // private `OutOfReachMarker` here to which only the `Context` has access.
 // Now there is no way to call `emit` directly on an Emittable.
 pub trait Emittable {
-  fn emit(self, _ val: OutOfReachMarker);
+  fn emit(self, _ val: OutOfReachMarker)
 }
 
 pub struct Context {

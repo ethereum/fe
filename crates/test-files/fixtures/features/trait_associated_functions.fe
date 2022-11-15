@@ -1,5 +1,5 @@
 trait Max {
-  fn max() -> u8;
+  fn max() -> u8
 }
 
 impl Max for u8 {
