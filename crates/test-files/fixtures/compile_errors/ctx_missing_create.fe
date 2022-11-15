@@ -4,6 +4,6 @@ contract Foo {
 
 contract Bar {
     pub fn create_foo(ctx: Context) {
-        Foo.create(0)
+        ctx.create<Foo>(0)
     }
 }

@@ -231,8 +231,18 @@ impl BodyBuilder {
         self.insert_inst(inst)
     }
 
-    pub fn create(&mut self, value: ValueId, contract: ContractId, source: SourceInfo) -> InstId {
-        let kind = InstKind::Create { value, contract };
+    pub fn create(
+        &mut self,
+        value: ValueId,
+        args: ValueId,
+        contract: ContractId,
+        source: SourceInfo,
+    ) -> InstId {
+        let kind = InstKind::Create {
+            value,
+            args,
+            contract,
+        };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst)
     }

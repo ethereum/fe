@@ -105,6 +105,9 @@ impl TypeId {
     pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
         self.typ(db).as_struct()
     }
+    pub fn as_contract(&self, db: &dyn AnalyzerDb) -> Option<ContractId> {
+        self.typ(db).as_contract()
+    }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.typ(db).name(db)
@@ -589,6 +592,7 @@ pub trait TypeDowncast {
     fn as_primitive(&self) -> Option<Base>;
     fn as_generic(&self) -> Option<&Generic>;
     fn as_struct(&self) -> Option<StructId>;
+    fn as_contract(&self) -> Option<ContractId>;
 }
 
 impl TypeDowncast for Type {
@@ -634,6 +638,12 @@ impl TypeDowncast for Type {
             _ => None,
         }
     }
+    fn as_contract(&self) -> Option<ContractId> {
+        match self {
+            Type::Contract(id) => Some(*id),
+            _ => None,
+        }
+    }
     fn as_generic(&self) -> Option<&Generic> {
         match self {
             Type::Generic(inner) => Some(inner),
@@ -663,6 +673,9 @@ impl TypeDowncast for Option<&Type> {
     }
     fn as_struct(&self) -> Option<StructId> {
         self.and_then(TypeDowncast::as_struct)
+    }
+    fn as_contract(&self) -> Option<ContractId> {
+        self.and_then(TypeDowncast::as_contract)
     }
     fn as_generic(&self) -> Option<&Generic> {
         self.and_then(TypeDowncast::as_generic)

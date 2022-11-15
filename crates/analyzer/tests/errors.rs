@@ -233,7 +233,7 @@ test_file! { call_non_pub_fn_on_struct }
 test_file! { call_non_pub_fn_on_struct2 }
 test_file! { cannot_move }
 test_file! { cannot_move2 }
-test_file! { circular_dependency_create }
+// test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
 test_file! { circular_type_alias }
 test_file! { const_assign }

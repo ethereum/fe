@@ -121,6 +121,7 @@ pub enum InstKind {
 
     Create {
         value: ValueId,
+        args: ValueId,
         contract: ContractId,
     },
 

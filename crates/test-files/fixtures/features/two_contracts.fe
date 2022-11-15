@@ -2,7 +2,7 @@ contract Foo {
     other: Bar
 
     pub fn __init__(self, ctx: Context) {
-        self.other = Bar.create(ctx, 0)
+        self.other = ctx.create<Bar>(args: (), value: 0)
     }
 
     pub fn foo(self, ctx: Context) -> u256 {

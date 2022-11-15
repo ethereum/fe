@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ create_contract.fe:2:5
@@ -21,7 +20,7 @@ note:
    ┌─ create_contract.fe:8:5
    │  
  8 │ ╭     pub fn create_foo(ctx: Context) -> address {
- 9 │ │         let foo: Foo = Foo.create(ctx, 0)
+ 9 │ │         let foo: Foo = ctx.create<Foo>(args: (), value: 0)
 10 │ │         return address(foo)
 11 │ │     }
    │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
@@ -29,22 +28,23 @@ note:
 note: 
   ┌─ create_contract.fe:9:13
   │
-9 │         let foo: Foo = Foo.create(ctx, 0)
+9 │         let foo: Foo = ctx.create<Foo>(args: (), value: 0)
   │             ^^^ Foo
 
 note: 
-  ┌─ create_contract.fe:9:35
+  ┌─ create_contract.fe:9:24
   │
-9 │         let foo: Foo = Foo.create(ctx, 0)
-  │                                   ^^^  ^ u256: Value
-  │                                   │     
-  │                                   Context: Memory
+9 │         let foo: Foo = ctx.create<Foo>(args: (), value: 0)
+  │                        ^^^                   ^^         ^ u256: Value
+  │                        │                     │           
+  │                        │                     (): Value
+  │                        Context: Memory
 
 note: 
    ┌─ create_contract.fe:9:24
    │
- 9 │         let foo: Foo = Foo.create(ctx, 0)
-   │                        ^^^^^^^^^^^^^^^^^^ Foo: Value
+ 9 │         let foo: Foo = ctx.create<Foo>(args: (), value: 0)
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Foo: Value
 10 │         return address(foo)
    │                        ^^^ Foo: Value
 
