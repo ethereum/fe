@@ -1,7 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(module_stmts), try_parse_module,\n    r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8 {\n    return x * 2\n}\n\nfn secret() -> u8 { return 0xBEEF }\n\ncontract A {\n    pub const x: u256 = 10\n}\n\ncontract B {\n    pub x: X\n}\"#)"
-
 ---
 Node(
   kind: Module(
@@ -163,6 +162,7 @@ Node(
         kind: Function(
           sig: Node(
             kind: FunctionSignature(
+              attributes: [],
               pub_: Some(Span(
                 start: 87,
                 end: 90,
@@ -274,6 +274,7 @@ Node(
         kind: Function(
           sig: Node(
             kind: FunctionSignature(
+              attributes: [],
               pub_: None,
               unsafe_: None,
               name: Node(

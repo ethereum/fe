@@ -2,11 +2,11 @@
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 ---
-error: expected `fn` or `unsafe fn` after `pub`
-   ┌─ compile_errors/enum_name_conflict.fe:15:5
+error: expected a function definition after `pub` or attributes
+   ┌─ compile_errors/enum_name_conflict.fe:15:9
    │
 15 │     pub Unit
-   │     ^^^
+   │         ^^^^
 
 error: duplicate variant names in `enum MyEnum1`
   ┌─ compile_errors/enum_name_conflict.fe:3:5

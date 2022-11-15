@@ -238,6 +238,7 @@ pub enum ContractStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FunctionSignature {
+    pub attributes: Vec<Node<SmolStr>>,
     // qualifier order: `pub unsafe fn`
     pub pub_: Option<Span>,
     pub unsafe_: Option<Span>,
@@ -881,6 +882,7 @@ impl fmt::Display for Node<Function> {
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let FunctionSignature {
+            attributes,
             pub_,
             unsafe_,
             name,
@@ -888,6 +890,10 @@ impl fmt::Display for Function {
             args,
             return_type,
         } = &self.sig.kind;
+
+        for attr in attributes {
+            write!(f, "#[{}]", attr.kind)?;
+        }
 
         if pub_.is_some() {
             write!(f, "pub ")?;

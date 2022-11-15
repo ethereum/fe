@@ -192,6 +192,7 @@ Node(
               kind: Function(
                 sig: Node(
                   kind: FunctionSignature(
+                    attributes: [],
                     pub_: Some(Span(
                       start: 157,
                       end: 160,
@@ -436,6 +437,7 @@ Node(
               kind: Function(
                 sig: Node(
                   kind: FunctionSignature(
+                    attributes: [],
                     pub_: Some(Span(
                       start: 299,
                       end: 302,

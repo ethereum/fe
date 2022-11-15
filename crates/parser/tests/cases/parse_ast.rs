@@ -305,3 +305,24 @@ contract Foo {
     }
 }
 "# }
+
+test_parse! { function_attributes, try_parse_module, r#"
+#attr1
+pub fn gas_cost() -> u256 {}
+
+struct MyS {
+    value: u256
+        
+    #attr2
+    pub fn foo(self) -> u256 {
+        return self.value
+    }
+}
+
+contract Foo {
+    #attr3
+    fn transfer(ctx: Context, to: address, value: u256) {
+        ctx.emit(Transfer(sender: msg.sender, receiver: to, value))
+    }
+}
+"# }

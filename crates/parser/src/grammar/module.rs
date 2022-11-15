@@ -1,3 +1,4 @@
+use super::attributes::parse_attributes;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
 use super::types::{
@@ -38,6 +39,21 @@ pub fn parse_module(par: &mut Parser) -> Node<Module> {
 
 /// Parse a [`ModuleStmt`].
 pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
+    let attrs = parse_attributes(par)?;
+    if !attrs.is_empty() {
+        let pub_span = par.optional(TokenKind::Pub).map(|tok| tok.span);
+        return match par.peek_or_err()? {
+            TokenKind::Fn | TokenKind::Unsafe => {
+                Ok(ModuleStmt::Function(parse_fn_def(par, attrs, pub_span)?))
+            }
+            _ => {
+                let span = par.next().unwrap().span;
+                par.error(span, "expected a function definition after attributes");
+                Err(ParseFailed)
+            }
+        };
+    }
+
     let stmt = match par.peek_or_err()? {
         TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
@@ -52,7 +68,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             let pub_span = par.next()?.span;
             match par.peek_or_err()? {
                 TokenKind::Fn | TokenKind::Unsafe => {
-                    ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
+                    ModuleStmt::Function(parse_fn_def(par, vec![], Some(pub_span))?)
                 }
                 TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
                 TokenKind::Enum => ModuleStmt::Enum(parse_enum_def(par, Some(pub_span))?),
@@ -73,7 +89,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                 }
             }
         }
-        TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, None)?),
+        TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, vec![], None)?),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(

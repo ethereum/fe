@@ -11,6 +11,8 @@ use if_chain::if_chain;
 use smol_str::SmolStr;
 use vec1::Vec1;
 
+use super::attributes::parse_attributes;
+
 /// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
@@ -30,22 +32,12 @@ pub fn parse_struct_def(
 
     loop {
         par.eat_newlines();
-
-        let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
-            let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
-                vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
-            // This hints to a future where we would support multiple attributes per field. For now we don't need it.
-            vec![Node::new(attr_name.text.into(), attr.span + attr_name.span)]
-        } else {
-            vec![]
-        };
-
-        par.eat_newlines();
+        let attrs = parse_attributes(par)?;
 
         let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
         match par.peek_or_err()? {
             TokenKind::Name => {
-                let field = parse_field(par, attributes, pub_qual, None)?;
+                let field = parse_field(par, attrs, pub_qual, None)?;
                 if !functions.is_empty() {
                     par.error(
                         field.span,
@@ -55,12 +47,23 @@ pub fn parse_struct_def(
                 fields.push(field);
             }
             TokenKind::Fn | TokenKind::Unsafe => {
-                functions.push(parse_fn_def(par, pub_qual)?);
+                functions.push(parse_fn_def(par, attrs, pub_qual)?);
             }
-            TokenKind::BraceClose if pub_qual.is_none() => {
+
+            TokenKind::BraceClose if pub_qual.is_none() && attrs.is_empty() => {
                 span += par.next()?.span;
                 break;
             }
+
+            _ if pub_qual.is_some() || !attrs.is_empty() => {
+                let span = par.next()?.span;
+                par.error(
+                    span,
+                    "expected a field or function definition after `pub` or attributes",
+                );
+                return Err(ParseFailed);
+            }
+
             _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(&tok, "failed to parse struct definition", vec![]);
@@ -97,8 +100,10 @@ pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<N
     par.enter_block(span, "enum definition")?;
     loop {
         par.eat_newlines();
+        let attrs = parse_attributes(par)?;
+        let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
         match par.peek_or_err()? {
-            TokenKind::Name => {
+            TokenKind::Name if pub_qual.is_none() && attrs.is_empty() => {
                 let variant = parse_variant(par)?;
                 if !functions.is_empty() {
                     par.error(
@@ -110,28 +115,20 @@ pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<N
             }
 
             TokenKind::Fn | TokenKind::Unsafe => {
-                functions.push(parse_fn_def(par, None)?);
+                functions.push(parse_fn_def(par, attrs, pub_qual)?);
             }
 
-            TokenKind::Pub => {
-                let pub_qual = Some(par.next().unwrap().span);
-                match par.peek() {
-                    Some(TokenKind::Fn | TokenKind::Unsafe) => {
-                        functions.push(parse_fn_def(par, pub_qual)?);
-                    }
-
-                    _ => {
-                        par.error(
-                            pub_qual.unwrap(),
-                            "expected `fn` or `unsafe fn` after `pub`",
-                        );
-                    }
-                }
-            }
-
-            TokenKind::BraceClose => {
+            TokenKind::BraceClose if pub_qual.is_none() && attrs.is_empty() => {
                 span += par.next()?.span;
                 break;
+            }
+
+            _ if pub_qual.is_some() || !attrs.is_empty() => {
+                let span = par.next()?.span;
+                par.error(
+                    span,
+                    "expected a function definition after `pub` or attributes",
+                );
             }
 
             _ => {
@@ -171,10 +168,11 @@ pub fn parse_trait_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
     par.enter_block(header_span, "trait definition")?;
 
     loop {
+        let attrs = parse_attributes(par)?;
         match par.peek_or_err()? {
             TokenKind::Fn => {
                 // TODO: Traits should also be allowed to have functions that do contain a body.
-                functions.push(parse_fn_sig(par, None)?);
+                functions.push(parse_fn_sig(par, attrs, None)?);
                 par.expect_with_notes(
                     TokenKind::Semi,
                     "failed to parse trait definition",
@@ -182,7 +180,7 @@ pub fn parse_trait_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
                 )?;
                 par.eat_newlines();
             }
-            TokenKind::BraceClose => {
+            TokenKind::BraceClose if attrs.is_empty() => {
                 par.next()?;
                 break;
             }
@@ -236,7 +234,7 @@ pub fn parse_impl_def(par: &mut Parser) -> ParseResult<Node<Impl>> {
         par.eat_newlines();
         match par.peek_or_err()? {
             TokenKind::Fn => {
-                functions.push(parse_fn_def(par, None)?);
+                functions.push(parse_fn_def(par, vec![], None)?);
             }
             TokenKind::BraceClose => {
                 par.next()?;
