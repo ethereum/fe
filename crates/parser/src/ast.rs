@@ -706,21 +706,24 @@ impl fmt::Display for ConstantDecl {
 
 impl fmt::Display for Trait {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "trait {}:", self.name.kind)?;
-
-        Ok(())
+        if self.pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "trait {} {{", self.name.kind)?;
+        write_nodes_line_wrapped(&mut indented(f), &self.functions)?;
+        write!(f, "}}")
     }
 }
 
 impl fmt::Display for Impl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(
+        write!(
             f,
-            "impl {} for {}",
+            "impl {} for {} {{",
             self.impl_trait.kind, self.receiver.kind
         )?;
-
-        Ok(())
+        write_nodes_line_wrapped(&mut indented(f), &self.functions)?;
+        write!(f, "}}")
     }
 }
 
@@ -1350,7 +1353,6 @@ impl InfixBindingPower for BoolOperator {
         }
     }
 }
-
 impl InfixBindingPower for BinOperator {
     fn infix_binding_power(&self) -> (u8, u8) {
         use BinOperator::*;
