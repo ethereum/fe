@@ -28,7 +28,7 @@ pub fn parse_struct_def(
     let mut span = struct_tok.span + name.span;
     let mut fields = vec![];
     let mut functions = vec![];
-    par.enter_block(span, "struct body must start with `{`")?;
+    par.enter_block(span, "struct body")?;
 
     loop {
         par.eat_newlines();

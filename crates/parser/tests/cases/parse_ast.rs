@@ -326,3 +326,14 @@ contract Foo {
     }
 }
 "# }
+
+test_parse! { module_level_extern, try_parse_module, r#"
+#evm
+extern {
+    #intrinsic
+    pub unsafe fn gas_cost() -> u256
+    
+    #intrinsic
+    pub fn gas_limit() -> u256
+}
+"# }

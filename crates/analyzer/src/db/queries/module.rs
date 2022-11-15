@@ -68,6 +68,9 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
                     module,
                 })),
             ))),
+            ast::ModuleStmt::Extern(_) => {
+                todo!()
+            }
             ast::ModuleStmt::Contract(node) => Some(Item::Type(TypeDef::Contract(
                 db.intern_contract(Rc::new(Contract {
                     name: node.name().into(),
