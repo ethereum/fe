@@ -3,11 +3,47 @@ source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
 
 ---
-error: unresolved path item
+error: type MyInt is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:11
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │           ^^^^^ MyInt
+
+error: constant MY_CONST is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:18
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                  ^^^^^^^^ MY_CONST
+
+error: struct MyStruct is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:28
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                            ^^^^^^^^ MyStruct
+
+error: trait MyTrait is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:38
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                                      ^^^^^^^ MyTrait
+
+error: function my_func is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:47
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                                               ^^^^^^^ my_func
+
+error: type MyContract is private
+  ┌─ compile_errors/bad_visibility/src/main.fe:1:56
+  │
+1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
+  │                                                        ^^^^^^^^^^ MyContract
+
+error: type MyEnum is private
   ┌─ compile_errors/bad_visibility/src/main.fe:1:68
   │
 1 │ use foo::{MyInt, MY_CONST, MyStruct, MyTrait, my_func, MyContract, MyEnum }
-  │                                                                    ^^^^^^ not found
+  │                                                                    ^^^^^^ MyEnum
 
 error: the type `MyInt` is private
   ┌─ compile_errors/bad_visibility/src/main.fe:7:33
@@ -101,10 +137,24 @@ error: the function `my_func` is private
    = `my_func` can only be used within `foo`
    = Hint: use `pub` to make `my_func` visible from outside of `foo`
 
-error: the type `MyContract` is private
+error: the type `MyEnum` is private
    ┌─ compile_errors/bad_visibility/src/main.fe:25:16
    │
-25 │         let _: MyContract = MyContract(addr)
+25 │         let e: MyEnum = MyEnum::Some
+   │                ^^^^^^ this type is not `pub`
+   │
+   ┌─ compile_errors/bad_visibility/src/foo.fe:17:6
+   │
+17 │ enum MyEnum {
+   │      ------ `MyEnum` is defined here
+   │
+   = `MyEnum` can only be used within `foo`
+   = Hint: use `pub` to make `MyEnum` visible from outside of `foo`
+
+error: the type `MyContract` is private
+   ┌─ compile_errors/bad_visibility/src/main.fe:29:16
+   │
+29 │         let _: MyContract = MyContract(addr)
    │                ^^^^^^^^^^ this type is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:13:10
@@ -116,9 +166,9 @@ error: the type `MyContract` is private
    = Hint: use `pub` to make `MyContract` visible from outside of `foo`
 
 error: the type `MyContract` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:25:29
+   ┌─ compile_errors/bad_visibility/src/main.fe:29:29
    │
-25 │         let _: MyContract = MyContract(addr)
+29 │         let _: MyContract = MyContract(addr)
    │                             ^^^^^^^^^^ this type is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:13:10
@@ -130,9 +180,9 @@ error: the type `MyContract` is private
    = Hint: use `pub` to make `MyContract` visible from outside of `foo`
 
 error: the type `MyContract` is private
-   ┌─ compile_errors/bad_visibility/src/main.fe:26:9
+   ┌─ compile_errors/bad_visibility/src/main.fe:30:9
    │
-26 │         MyContract.create(ctx, 1)
+30 │         MyContract.create(ctx, 1)
    │         ^^^^^^^^^^ this type is not `pub`
    │
    ┌─ compile_errors/bad_visibility/src/foo.fe:13:10

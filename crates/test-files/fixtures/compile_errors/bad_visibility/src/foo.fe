@@ -13,3 +13,8 @@ fn my_func() {}
 contract MyContract {
     x: i32
 }
+
+enum MyEnum {
+    Some
+    Thing
+}

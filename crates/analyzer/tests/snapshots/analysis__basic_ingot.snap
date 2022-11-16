@@ -313,8 +313,8 @@ note:
 note: 
   ┌─ ingots/basic_ingot/src/ding/dang.fe:1:1
   │
-1 │ type Dang = Array<u256, 42>
-  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
+1 │ pub type Dang = Array<u256, 42>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 
 note: 
