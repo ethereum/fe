@@ -21,6 +21,10 @@ contract Main {
         my_func()
     }
 
+    pub fn priv_enum() {
+        let e: MyEnum = MyEnum::Some
+    }
+
     pub fn priv_contract(mut ctx: Context, addr: address) {
         let _: MyContract = MyContract(addr)
         MyContract.create(ctx, 1)

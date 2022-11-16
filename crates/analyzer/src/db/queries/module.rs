@@ -441,6 +441,14 @@ pub fn module_used_item_map(
                 diagnostics.extend(items.diagnostics.iter().cloned());
 
                 for (name, (name_span, item)) in items.value.iter() {
+                    if !item.is_public(db) {
+                        diagnostics.push(errors::error(
+                            &format!("{} {} is private", item.item_kind_display_name(), name,),
+                            *name_span,
+                            name.as_str(),
+                        ));
+                    }
+
                     if let Some((other_name_span, other_item)) =
                         accum.insert(name.clone(), (*name_span, *item))
                     {

@@ -2,7 +2,7 @@ pub struct Bing {
     pub my_address: address
 }
 
-fn get_42_backend() -> u256 {
+pub fn get_42_backend() -> u256 {
     return 42
 }
 
