@@ -23,19 +23,19 @@ pub struct Addresses {
 
 contract Foo {
 
-    pub fn emit_nums(ctx: Context) {
+    pub fn emit_nums(mut ctx: Context) {
         ctx.emit(Nums(num1: 26, num2: 42))
     }
 
-    pub fn emit_bases(ctx: Context, addr: address) {
+    pub fn emit_bases(mut ctx: Context, addr: address) {
         ctx.emit(Bases(num: 26, addr))
     }
 
-    pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
+    pub fn emit_mix(mut ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
         ctx.emit(Mix(num1: 26, addr, num2: 42, my_bytes))
     }
 
-    pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
+    pub fn emit_addresses(mut ctx: Context, addr1: address, addr2: address) {
         let mut addrs: Array<address, 2> = [address(0); 2]
         addrs[0] = addr1
         addrs[1] = addr2

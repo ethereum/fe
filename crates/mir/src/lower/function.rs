@@ -360,13 +360,11 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
                 self.builder.move_to_block(true_bb);
                 let (value, _) = self.lower_expr(if_expr);
-                // XXX debug_assert_eq!(value_ty, ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
                 self.builder.move_to_block(false_bb);
                 let (value, _) = self.lower_expr(else_expr);
-                // XXX debug_assert_eq!(value_ty, ty);
                 self.builder.map_result(value, tmp.into());
                 self.builder.jump(merge_bb, SourceInfo::dummy());
 
@@ -519,7 +517,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn inst_result_or_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
         self.builder
             .inst_result(inst)
-            .and_then(AssignableValue::value_id)
+            .and_then(|r| r.value_id())
             .unwrap_or_else(|| self.map_to_tmp(inst, ty))
     }
 
@@ -814,7 +812,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    // XXX this is the pre-adjustment type!
+    /// Returns the pre-adjustment type of the given `Expr`
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
         let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
         self.lower_analyzer_type(analyzer_ty)

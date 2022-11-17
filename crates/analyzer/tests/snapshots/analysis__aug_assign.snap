@@ -12,317 +12,416 @@ note:
 note: 
   ┌─ aug_assign.fe:4:5
   │  
-4 │ ╭     pub fn add(mut a: u256, b: u256) -> u256 {
-5 │ │         a += b
-6 │ │         return a
-7 │ │     }
-  │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
+4 │ ╭     pub fn add(a: u256, b: u256) -> u256 {
+5 │ │         let mut v: u256 = a
+6 │ │         v += b
+7 │ │         return v
+8 │ │     }
+  │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-  ┌─ aug_assign.fe:5:9
+  ┌─ aug_assign.fe:5:17
   │
-5 │         a += b
+5 │         let mut v: u256 = a
+  │                 ^ mut u256
+
+note: 
+  ┌─ aug_assign.fe:5:27
+  │
+5 │         let mut v: u256 = a
+  │                           ^ u256
+6 │         v += b
   │         ^    ^ u256
   │         │     
   │         mut u256
-6 │         return a
+7 │         return v
   │                ^ mut u256
 
 note: 
-   ┌─ aug_assign.fe:9:5
+   ┌─ aug_assign.fe:10:5
    │  
- 9 │ ╭     pub fn sub(mut a: u256, b: u256) -> u256 {
-10 │ │         a -= b
-11 │ │         return a
-12 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
+10 │ ╭     pub fn sub(a: u256, b: u256) -> u256 {
+11 │ │         let mut v: u256 = a
+12 │ │         v -= b
+13 │ │         return v
+14 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-   ┌─ aug_assign.fe:10:9
+   ┌─ aug_assign.fe:11:17
    │
-10 │         a -= b
+11 │         let mut v: u256 = a
+   │                 ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:11:27
+   │
+11 │         let mut v: u256 = a
+   │                           ^ u256
+12 │         v -= b
    │         ^    ^ u256
    │         │     
    │         mut u256
-11 │         return a
+13 │         return v
    │                ^ mut u256
 
 note: 
-   ┌─ aug_assign.fe:14:5
+   ┌─ aug_assign.fe:16:5
    │  
-14 │ ╭     pub fn mul(mut a: u256, b: u256) -> u256 {
-15 │ │         a *= b
-16 │ │         return a
-17 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
+16 │ ╭     pub fn mul(a: u256, b: u256) -> u256 {
+17 │ │         let mut v: u256 = a
+18 │ │         v *= b
+19 │ │         return v
+20 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-   ┌─ aug_assign.fe:15:9
+   ┌─ aug_assign.fe:17:17
    │
-15 │         a *= b
+17 │         let mut v: u256 = a
+   │                 ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:17:27
+   │
+17 │         let mut v: u256 = a
+   │                           ^ u256
+18 │         v *= b
    │         ^    ^ u256
    │         │     
    │         mut u256
-16 │         return a
+19 │         return v
    │                ^ mut u256
 
 note: 
-   ┌─ aug_assign.fe:19:5
+   ┌─ aug_assign.fe:22:5
    │  
-19 │ ╭     pub fn div(mut a: u256, b: u256) -> u256 {
-20 │ │         a /= b
-21 │ │         return a
-22 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
+22 │ ╭     pub fn div(a: u256, b: u256) -> u256 {
+23 │ │         let mut v: u256 = a
+24 │ │         v /= b
+25 │ │         return v
+26 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-   ┌─ aug_assign.fe:20:9
+   ┌─ aug_assign.fe:23:17
    │
-20 │         a /= b
+23 │         let mut v: u256 = a
+   │                 ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:23:27
+   │
+23 │         let mut v: u256 = a
+   │                           ^ u256
+24 │         v /= b
    │         ^    ^ u256
    │         │     
    │         mut u256
-21 │         return a
+25 │         return v
    │                ^ mut u256
 
 note: 
-   ┌─ aug_assign.fe:24:5
+   ┌─ aug_assign.fe:28:5
    │  
-24 │ ╭     pub fn mod(mut a: u256, b: u256) -> u256 {
-25 │ │         a %= b
-26 │ │         return a
-27 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
-
-note: 
-   ┌─ aug_assign.fe:25:9
-   │
-25 │         a %= b
-   │         ^    ^ u256
-   │         │     
-   │         mut u256
-26 │         return a
-   │                ^ mut u256
-
-note: 
-   ┌─ aug_assign.fe:29:5
-   │  
-29 │ ╭     pub fn pow(mut a: u256, b: u256) -> u256 {
-30 │ │         a **= b
-31 │ │         return a
+28 │ ╭     pub fn mod(a: u256, b: u256) -> u256 {
+29 │ │         let mut v: u256 = a
+30 │ │         v %= b
+31 │ │         return v
 32 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u256 }, { label: None, name: b, typ: u256 }] -> u256
+   │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-   ┌─ aug_assign.fe:30:9
+   ┌─ aug_assign.fe:29:17
    │
-30 │         a **= b
-   │         ^     ^ u256
-   │         │      
+29 │         let mut v: u256 = a
+   │                 ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:29:27
+   │
+29 │         let mut v: u256 = a
+   │                           ^ u256
+30 │         v %= b
+   │         ^    ^ u256
+   │         │     
    │         mut u256
-31 │         return a
+31 │         return v
    │                ^ mut u256
 
 note: 
    ┌─ aug_assign.fe:34:5
    │  
-34 │ ╭     pub fn lshift(mut a: u8, b: u8) -> u8 {
-35 │ │         a <<= b
-36 │ │         return a
-37 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u8 }, { label: None, name: b, typ: u8 }] -> u8
-
-note: 
-   ┌─ aug_assign.fe:35:9
-   │
-35 │         a <<= b
-   │         ^     ^ u8
-   │         │      
-   │         mut u8
-36 │         return a
-   │                ^ mut u8
-
-note: 
-   ┌─ aug_assign.fe:39:5
-   │  
-39 │ ╭     pub fn rshift(mut a: u8, b: u8) -> u8 {
-40 │ │         a >>= b
-41 │ │         return a
-42 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u8 }, { label: None, name: b, typ: u8 }] -> u8
-
-note: 
-   ┌─ aug_assign.fe:40:9
-   │
-40 │         a >>= b
-   │         ^     ^ u8
-   │         │      
-   │         mut u8
-41 │         return a
-   │                ^ mut u8
-
-note: 
-   ┌─ aug_assign.fe:44:5
-   │  
-44 │ ╭     pub fn bit_or(mut a: u8, b: u8) -> u8 {
-45 │ │         a |= b
-46 │ │         return a
-47 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u8 }, { label: None, name: b, typ: u8 }] -> u8
-
-note: 
-   ┌─ aug_assign.fe:45:9
-   │
-45 │         a |= b
-   │         ^    ^ u8
-   │         │     
-   │         mut u8
-46 │         return a
-   │                ^ mut u8
-
-note: 
-   ┌─ aug_assign.fe:49:5
-   │  
-49 │ ╭     pub fn bit_xor(mut a: u8, b: u8) -> u8 {
-50 │ │         a ^= b
-51 │ │         return a
-52 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u8 }, { label: None, name: b, typ: u8 }] -> u8
-
-note: 
-   ┌─ aug_assign.fe:50:9
-   │
-50 │         a ^= b
-   │         ^    ^ u8
-   │         │     
-   │         mut u8
-51 │         return a
-   │                ^ mut u8
-
-note: 
-   ┌─ aug_assign.fe:54:5
-   │  
-54 │ ╭     pub fn bit_and(mut a: u8, b: u8) -> u8 {
-55 │ │         a &= b
-56 │ │         return a
-57 │ │     }
-   │ ╰─────^ params: [{ label: None, name: a, typ: mut u8 }, { label: None, name: b, typ: u8 }] -> u8
-
-note: 
-   ┌─ aug_assign.fe:55:9
-   │
-55 │         a &= b
-   │         ^    ^ u8
-   │         │     
-   │         mut u8
-56 │         return a
-   │                ^ mut u8
-
-note: 
-   ┌─ aug_assign.fe:59:5
-   │  
-59 │ ╭     pub fn add_from_sto(mut self, a: u256, b: u256) -> u256 {
-60 │ │         self.my_num = a
-61 │ │         self.my_num += b
-62 │ │         return self.my_num
-63 │ │     }
-   │ ╰─────^ params: [mut self, { label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
-
-note: 
-   ┌─ aug_assign.fe:60:9
-   │
-60 │         self.my_num = a
-   │         ^^^^ mut Foo
-
-note: 
-   ┌─ aug_assign.fe:60:9
-   │
-60 │         self.my_num = a
-   │         ^^^^^^^^^^^   ^ u256
-   │         │              
-   │         mut SPtr<u256>
-61 │         self.my_num += b
-   │         ^^^^ mut Foo
-
-note: 
-   ┌─ aug_assign.fe:61:9
-   │
-61 │         self.my_num += b
-   │         ^^^^^^^^^^^    ^ u256
-   │         │               
-   │         mut SPtr<u256> -Load-> u256
-62 │         return self.my_num
-   │                ^^^^ mut Foo
-
-note: 
-   ┌─ aug_assign.fe:62:16
-   │
-62 │         return self.my_num
-   │                ^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-
-note: 
-   ┌─ aug_assign.fe:65:5
-   │  
-65 │ ╭     pub fn add_from_mem(a: u256, b: u256) -> u256 {
-66 │ │         let mut my_array: Array<u256, 10> = [0; 10]
-67 │ │         my_array[7] = a
-68 │ │         my_array[7] += b
-69 │ │         return my_array[7]
-70 │ │     }
+34 │ ╭     pub fn pow(a: u256, b: u256) -> u256 {
+35 │ │         let mut v: u256 = a
+36 │ │         v **= b
+37 │ │         return v
+38 │ │     }
    │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
 
 note: 
-   ┌─ aug_assign.fe:66:17
+   ┌─ aug_assign.fe:35:17
    │
-66 │         let mut my_array: Array<u256, 10> = [0; 10]
+35 │         let mut v: u256 = a
+   │                 ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:35:27
+   │
+35 │         let mut v: u256 = a
+   │                           ^ u256
+36 │         v **= b
+   │         ^     ^ u256
+   │         │      
+   │         mut u256
+37 │         return v
+   │                ^ mut u256
+
+note: 
+   ┌─ aug_assign.fe:40:5
+   │  
+40 │ ╭     pub fn lshift(a: u8, b: u8) -> u8 {
+41 │ │         let mut v: u8 = a
+42 │ │         v <<= b
+43 │ │         return v
+44 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
+
+note: 
+   ┌─ aug_assign.fe:41:17
+   │
+41 │         let mut v: u8 = a
+   │                 ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:41:25
+   │
+41 │         let mut v: u8 = a
+   │                         ^ u8
+42 │         v <<= b
+   │         ^     ^ u8
+   │         │      
+   │         mut u8
+43 │         return v
+   │                ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:46:5
+   │  
+46 │ ╭     pub fn rshift(a: u8, b: u8) -> u8 {
+47 │ │         let mut v: u8 = a
+48 │ │         v >>= b
+49 │ │         return v
+50 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
+
+note: 
+   ┌─ aug_assign.fe:47:17
+   │
+47 │         let mut v: u8 = a
+   │                 ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:47:25
+   │
+47 │         let mut v: u8 = a
+   │                         ^ u8
+48 │         v >>= b
+   │         ^     ^ u8
+   │         │      
+   │         mut u8
+49 │         return v
+   │                ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:52:5
+   │  
+52 │ ╭     pub fn bit_or(a: u8, b: u8) -> u8 {
+53 │ │         let mut v: u8 = a
+54 │ │         v |= b
+55 │ │         return v
+56 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
+
+note: 
+   ┌─ aug_assign.fe:53:17
+   │
+53 │         let mut v: u8 = a
+   │                 ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:53:25
+   │
+53 │         let mut v: u8 = a
+   │                         ^ u8
+54 │         v |= b
+   │         ^    ^ u8
+   │         │     
+   │         mut u8
+55 │         return v
+   │                ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:58:5
+   │  
+58 │ ╭     pub fn bit_xor(a: u8, b: u8) -> u8 {
+59 │ │         let mut v: u8 = a
+60 │ │         v ^= b
+61 │ │         return v
+62 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
+
+note: 
+   ┌─ aug_assign.fe:59:17
+   │
+59 │         let mut v: u8 = a
+   │                 ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:59:25
+   │
+59 │         let mut v: u8 = a
+   │                         ^ u8
+60 │         v ^= b
+   │         ^    ^ u8
+   │         │     
+   │         mut u8
+61 │         return v
+   │                ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:64:5
+   │  
+64 │ ╭     pub fn bit_and(a: u8, b: u8) -> u8 {
+65 │ │         let mut v: u8 = a
+66 │ │         v &= b
+67 │ │         return v
+68 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u8 }, { label: None, name: b, typ: u8 }] -> u8
+
+note: 
+   ┌─ aug_assign.fe:65:17
+   │
+65 │         let mut v: u8 = a
+   │                 ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:65:25
+   │
+65 │         let mut v: u8 = a
+   │                         ^ u8
+66 │         v &= b
+   │         ^    ^ u8
+   │         │     
+   │         mut u8
+67 │         return v
+   │                ^ mut u8
+
+note: 
+   ┌─ aug_assign.fe:70:5
+   │  
+70 │ ╭     pub fn add_from_sto(mut self, a: u256, b: u256) -> u256 {
+71 │ │         self.my_num = a
+72 │ │         self.my_num += b
+73 │ │         return self.my_num
+74 │ │     }
+   │ ╰─────^ params: [mut self, { label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
+
+note: 
+   ┌─ aug_assign.fe:71:9
+   │
+71 │         self.my_num = a
+   │         ^^^^ mut Foo
+
+note: 
+   ┌─ aug_assign.fe:71:9
+   │
+71 │         self.my_num = a
+   │         ^^^^^^^^^^^   ^ u256
+   │         │              
+   │         mut SPtr<u256>
+72 │         self.my_num += b
+   │         ^^^^ mut Foo
+
+note: 
+   ┌─ aug_assign.fe:72:9
+   │
+72 │         self.my_num += b
+   │         ^^^^^^^^^^^    ^ u256
+   │         │               
+   │         mut SPtr<u256> -Load-> u256
+73 │         return self.my_num
+   │                ^^^^ mut Foo
+
+note: 
+   ┌─ aug_assign.fe:73:16
+   │
+73 │         return self.my_num
+   │                ^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
+
+note: 
+   ┌─ aug_assign.fe:76:5
+   │  
+76 │ ╭     pub fn add_from_mem(a: u256, b: u256) -> u256 {
+77 │ │         let mut my_array: Array<u256, 10> = [0; 10]
+78 │ │         my_array[7] = a
+79 │ │         my_array[7] += b
+80 │ │         return my_array[7]
+81 │ │     }
+   │ ╰─────^ params: [{ label: None, name: a, typ: u256 }, { label: None, name: b, typ: u256 }] -> u256
+
+note: 
+   ┌─ aug_assign.fe:77:17
+   │
+77 │         let mut my_array: Array<u256, 10> = [0; 10]
    │                 ^^^^^^^^ mut Array<u256, 10>
 
 note: 
-   ┌─ aug_assign.fe:66:46
+   ┌─ aug_assign.fe:77:46
    │
-66 │         let mut my_array: Array<u256, 10> = [0; 10]
+77 │         let mut my_array: Array<u256, 10> = [0; 10]
    │                                              ^  ^^ u256
    │                                              │   
    │                                              u256
 
 note: 
-   ┌─ aug_assign.fe:66:45
+   ┌─ aug_assign.fe:77:45
    │
-66 │         let mut my_array: Array<u256, 10> = [0; 10]
+77 │         let mut my_array: Array<u256, 10> = [0; 10]
    │                                             ^^^^^^^ Array<u256, 10>
-67 │         my_array[7] = a
+78 │         my_array[7] = a
    │         ^^^^^^^^ ^ u256
    │         │         
    │         mut Array<u256, 10>
 
 note: 
-   ┌─ aug_assign.fe:67:9
+   ┌─ aug_assign.fe:78:9
    │
-67 │         my_array[7] = a
+78 │         my_array[7] = a
    │         ^^^^^^^^^^^   ^ u256
    │         │              
    │         mut u256
-68 │         my_array[7] += b
+79 │         my_array[7] += b
    │         ^^^^^^^^ ^ u256
    │         │         
    │         mut Array<u256, 10>
 
 note: 
-   ┌─ aug_assign.fe:68:9
+   ┌─ aug_assign.fe:79:9
    │
-68 │         my_array[7] += b
+79 │         my_array[7] += b
    │         ^^^^^^^^^^^    ^ u256
    │         │               
    │         mut u256
-69 │         return my_array[7]
+80 │         return my_array[7]
    │                ^^^^^^^^ ^ u256
    │                │         
    │                mut Array<u256, 10>
 
 note: 
-   ┌─ aug_assign.fe:69:16
+   ┌─ aug_assign.fe:80:16
    │
-69 │         return my_array[7]
+80 │         return my_array[7]
    │                ^^^^^^^^^^^ mut u256
 
 

@@ -1159,195 +1159,195 @@ note:
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
-    ┌─ uniswap.fe:169:5
+    ┌─ uniswap.fe:168:5
     │  
-169 │ ╭     fn _mint_fee(mut self, mut ctx: Context, reserve0: u256, reserve1: u256) -> bool {
-170 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
-171 │ │         let fee_on: bool = fee_to != address(0)
-172 │ │         let k_last: u256 = self.k_last
+168 │ ╭     fn _mint_fee(mut self, mut ctx: Context, reserve0: u256, reserve1: u256) -> bool {
+169 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+170 │ │         let fee_on: bool = fee_to != address(0)
+171 │ │         let k_last: u256 = self.k_last
     · │
-189 │ │         return fee_on
-190 │ │     }
+188 │ │         return fee_on
+189 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: reserve0, typ: u256 }, { label: None, name: reserve1, typ: u256 }] -> bool
 
 note: 
-    ┌─ uniswap.fe:170:13
+    ┌─ uniswap.fe:169:13
     │
-170 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+169 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │             ^^^^^^ address
-171 │         let fee_on: bool = fee_to != address(0)
+170 │         let fee_on: bool = fee_to != address(0)
     │             ^^^^^^ bool
-172 │         let k_last: u256 = self.k_last
+171 │         let k_last: u256 = self.k_last
     │             ^^^^^^ u256
     ·
-175 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+174 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
     │                     ^^^^^^ u256
-176 │                 let root_k_last: u256 = sqrt(k_last)
+175 │                 let root_k_last: u256 = sqrt(k_last)
     │                     ^^^^^^^^^^^ u256
-177 │                 if root_k > root_k_last {
-178 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+176 │                 if root_k > root_k_last {
+177 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                         ^^^^^^^^^ u256
-179 │                     let denominator: u256 = root_k * 5 + root_k_last
+178 │                     let denominator: u256 = root_k * 5 + root_k_last
     │                         ^^^^^^^^^^^ u256
-180 │                     let liquidity: u256 = numerator / denominator
+179 │                     let liquidity: u256 = numerator / denominator
     │                         ^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:170:48
+    ┌─ uniswap.fe:169:48
     │
-170 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+169 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │                                                ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:170:48
+    ┌─ uniswap.fe:169:48
     │
-170 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+169 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │                                                ^^^^^^^^^^^^ mut SPtr<address> -Load-> address
 
 note: 
-    ┌─ uniswap.fe:170:31
+    ┌─ uniswap.fe:169:31
     │
-170 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+169 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:170:31
+    ┌─ uniswap.fe:169:31
     │
-170 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+169 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
     │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address
-171 │         let fee_on: bool = fee_to != address(0)
+170 │         let fee_on: bool = fee_to != address(0)
     │                            ^^^^^^            ^ u256
     │                            │                  
     │                            address
 
 note: 
-    ┌─ uniswap.fe:171:38
+    ┌─ uniswap.fe:170:38
     │
-171 │         let fee_on: bool = fee_to != address(0)
+170 │         let fee_on: bool = fee_to != address(0)
     │                                      ^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:170:28
+    │
+170 │         let fee_on: bool = fee_to != address(0)
+    │                            ^^^^^^^^^^^^^^^^^^^^ bool
+171 │         let k_last: u256 = self.k_last
+    │                            ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:171:28
     │
-171 │         let fee_on: bool = fee_to != address(0)
-    │                            ^^^^^^^^^^^^^^^^^^^^ bool
-172 │         let k_last: u256 = self.k_last
-    │                            ^^^^ mut UniswapV2Pair
-
-note: 
-    ┌─ uniswap.fe:172:28
-    │
-172 │         let k_last: u256 = self.k_last
+171 │         let k_last: u256 = self.k_last
     │                            ^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-173 │         if fee_on {
+172 │         if fee_on {
     │            ^^^^^^ bool
-174 │             if k_last != 0 {
+173 │             if k_last != 0 {
     │                ^^^^^^    ^ u256
     │                │          
     │                u256
 
 note: 
-    ┌─ uniswap.fe:174:16
+    ┌─ uniswap.fe:173:16
     │
-174 │             if k_last != 0 {
+173 │             if k_last != 0 {
     │                ^^^^^^^^^^^ bool
-175 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+174 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
     │                                         ^^^^^^^^   ^^^^^^^^ u256
     │                                         │           
     │                                         u256
 
 note: 
-    ┌─ uniswap.fe:175:41
+    ┌─ uniswap.fe:174:41
     │
-175 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+174 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
     │                                         ^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:175:36
+    ┌─ uniswap.fe:174:36
     │
-175 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+174 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
     │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-176 │                 let root_k_last: u256 = sqrt(k_last)
+175 │                 let root_k_last: u256 = sqrt(k_last)
     │                                              ^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:176:41
+    ┌─ uniswap.fe:175:41
     │
-176 │                 let root_k_last: u256 = sqrt(k_last)
+175 │                 let root_k_last: u256 = sqrt(k_last)
     │                                         ^^^^^^^^^^^^ u256
-177 │                 if root_k > root_k_last {
+176 │                 if root_k > root_k_last {
     │                    ^^^^^^   ^^^^^^^^^^^ u256
     │                    │         
     │                    u256
 
 note: 
-    ┌─ uniswap.fe:177:20
+    ┌─ uniswap.fe:176:20
     │
-177 │                 if root_k > root_k_last {
+176 │                 if root_k > root_k_last {
     │                    ^^^^^^^^^^^^^^^^^^^^ bool
-178 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+177 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                                           ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:178:43
+    ┌─ uniswap.fe:177:43
     │
-178 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+177 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                                           ^^^^^^^^^^^^^^^^^   ^^^^^^ u256
     │                                           │                    
     │                                           mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:178:43
+    ┌─ uniswap.fe:177:43
     │
-178 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+177 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^ u256
     │                                           │                             
     │                                           u256
 
 note: 
-    ┌─ uniswap.fe:178:43
+    ┌─ uniswap.fe:177:43
     │
-178 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+177 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-179 │                     let denominator: u256 = root_k * 5 + root_k_last
+178 │                     let denominator: u256 = root_k * 5 + root_k_last
     │                                             ^^^^^^   ^ u256
     │                                             │         
     │                                             u256
 
 note: 
-    ┌─ uniswap.fe:179:45
+    ┌─ uniswap.fe:178:45
     │
-179 │                     let denominator: u256 = root_k * 5 + root_k_last
+178 │                     let denominator: u256 = root_k * 5 + root_k_last
     │                                             ^^^^^^^^^^   ^^^^^^^^^^^ u256
     │                                             │             
     │                                             u256
 
 note: 
-    ┌─ uniswap.fe:179:45
+    ┌─ uniswap.fe:178:45
     │
-179 │                     let denominator: u256 = root_k * 5 + root_k_last
+178 │                     let denominator: u256 = root_k * 5 + root_k_last
     │                                             ^^^^^^^^^^^^^^^^^^^^^^^^ u256
-180 │                     let liquidity: u256 = numerator / denominator
+179 │                     let liquidity: u256 = numerator / denominator
     │                                           ^^^^^^^^^   ^^^^^^^^^^^ u256
     │                                           │            
     │                                           u256
 
 note: 
-    ┌─ uniswap.fe:180:43
+    ┌─ uniswap.fe:179:43
     │
-180 │                     let liquidity: u256 = numerator / denominator
+179 │                     let liquidity: u256 = numerator / denominator
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^ u256
-181 │                     if liquidity > 0 {
+180 │                     if liquidity > 0 {
     │                        ^^^^^^^^^   ^ u256
     │                        │            
     │                        u256
 
 note: 
-    ┌─ uniswap.fe:181:24
+    ┌─ uniswap.fe:180:24
     │
-181 │                     if liquidity > 0 {
+180 │                     if liquidity > 0 {
     │                        ^^^^^^^^^^^^^ bool
-182 │                         self._mint(ctx, to: fee_to, value: liquidity)
+181 │                         self._mint(ctx, to: fee_to, value: liquidity)
     │                         ^^^^       ^^^      ^^^^^^         ^^^^^^^^^ u256
     │                         │          │        │               
     │                         │          │        address
@@ -1355,99 +1355,121 @@ note:
     │                         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:182:25
+    ┌─ uniswap.fe:181:25
     │
-182 │                         self._mint(ctx, to: fee_to, value: liquidity)
+181 │                         self._mint(ctx, to: fee_to, value: liquidity)
     │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
     ·
-186 │         } else if k_last != 0 {
+185 │         } else if k_last != 0 {
     │                   ^^^^^^    ^ u256
     │                   │          
     │                   u256
 
 note: 
-    ┌─ uniswap.fe:186:19
+    ┌─ uniswap.fe:185:19
     │
-186 │         } else if k_last != 0 {
+185 │         } else if k_last != 0 {
     │                   ^^^^^^^^^^^ bool
-187 │             self.k_last = 0
+186 │             self.k_last = 0
     │             ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:187:13
+    ┌─ uniswap.fe:186:13
     │
-187 │             self.k_last = 0
+186 │             self.k_last = 0
     │             ^^^^^^^^^^^   ^ u256
     │             │              
     │             mut SPtr<u256>
-188 │         }
-189 │         return fee_on
+187 │         }
+188 │         return fee_on
     │                ^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:193:5
+    ┌─ uniswap.fe:192:5
     │  
-193 │ ╭     pub fn mint(mut self, mut ctx: Context, to: address) -> u256 {
-194 │ │         let MINIMUM_LIQUIDITY: u256 = 1000
-195 │ │         let reserve0: u256 = self.reserve0
-196 │ │         let reserve1: u256 = self.reserve1
+192 │ ╭     pub fn mint(mut self, mut ctx: Context, to: address) -> u256 {
+193 │ │         let MINIMUM_LIQUIDITY: u256 = 1000
+194 │ │         let reserve0: u256 = self.reserve0
+195 │ │         let reserve1: u256 = self.reserve1
     · │
-217 │ │         return liquidity
-218 │ │     }
+216 │ │         return liquidity
+217 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: to, typ: address }] -> u256
 
 note: 
-    ┌─ uniswap.fe:194:13
+    ┌─ uniswap.fe:193:13
     │
-194 │         let MINIMUM_LIQUIDITY: u256 = 1000
+193 │         let MINIMUM_LIQUIDITY: u256 = 1000
     │             ^^^^^^^^^^^^^^^^^ u256
-195 │         let reserve0: u256 = self.reserve0
+194 │         let reserve0: u256 = self.reserve0
     │             ^^^^^^^^ u256
-196 │         let reserve1: u256 = self.reserve1
+195 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
-197 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+196 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
-198 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
+197 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
-199 │         let amount0: u256 = balance0 - self.reserve0
+198 │         let amount0: u256 = balance0 - self.reserve0
     │             ^^^^^^^ u256
-200 │         let amount1: u256 = balance1 - self.reserve1
+199 │         let amount1: u256 = balance1 - self.reserve1
     │             ^^^^^^^ u256
-201 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+200 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │             ^^^^^^ bool
-202 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
+201 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │             ^^^^^^^^^^^^ u256
-203 │         let mut liquidity: u256 = 0
+202 │         let mut liquidity: u256 = 0
     │                 ^^^^^^^^^ mut u256
 
 note: 
-    ┌─ uniswap.fe:194:39
+    ┌─ uniswap.fe:193:39
     │
-194 │         let MINIMUM_LIQUIDITY: u256 = 1000
+193 │         let MINIMUM_LIQUIDITY: u256 = 1000
     │                                       ^^^^ u256
-195 │         let reserve0: u256 = self.reserve0
+194 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^ mut UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:194:30
+    │
+194 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
+195 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:195:30
     │
-195 │         let reserve0: u256 = self.reserve0
+195 │         let reserve1: u256 = self.reserve1
     │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-196 │         let reserve1: u256 = self.reserve1
+196 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
     │                              ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:196:30
     │
-196 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-197 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+196 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^           ^^^ mut Context
+    │                              │                      
+    │                              mut SPtr<ERC20> -Load-> ERC20
+
+note: 
+    ┌─ uniswap.fe:196:52
+    │
+196 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                                                    ^^^^^^^^^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:196:30
+    │
+196 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+197 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │                              ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:197:30
     │
-197 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+197 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │                              ^^^^^^^^^^^           ^^^ mut Context
     │                              │                      
     │                              mut SPtr<ERC20> -Load-> ERC20
@@ -1455,37 +1477,31 @@ note:
 note: 
     ┌─ uniswap.fe:197:52
     │
-197 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+197 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │                                                    ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:197:30
     │
-197 │         let balance0: u256 = self.token0.balanceOf(ctx.self_address())
+197 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
     │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-198 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
-    │                              ^^^^ mut UniswapV2Pair
+198 │         let amount0: u256 = balance0 - self.reserve0
+    │                             ^^^^^^^^   ^^^^ mut UniswapV2Pair
+    │                             │           
+    │                             u256
 
 note: 
-    ┌─ uniswap.fe:198:30
+    ┌─ uniswap.fe:198:40
     │
-198 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^           ^^^ mut Context
-    │                              │                      
-    │                              mut SPtr<ERC20> -Load-> ERC20
+198 │         let amount0: u256 = balance0 - self.reserve0
+    │                                        ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:198:52
+    ┌─ uniswap.fe:198:29
     │
-198 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
-    │                                                    ^^^^^^^^^^^^^^^^^^ address
-
-note: 
-    ┌─ uniswap.fe:198:30
-    │
-198 │         let balance1: u256 = self.token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-199 │         let amount0: u256 = balance0 - self.reserve0
+198 │         let amount0: u256 = balance0 - self.reserve0
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^ u256
+199 │         let amount1: u256 = balance1 - self.reserve1
     │                             ^^^^^^^^   ^^^^ mut UniswapV2Pair
     │                             │           
     │                             u256
@@ -1493,31 +1509,15 @@ note:
 note: 
     ┌─ uniswap.fe:199:40
     │
-199 │         let amount0: u256 = balance0 - self.reserve0
+199 │         let amount1: u256 = balance1 - self.reserve1
     │                                        ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
     ┌─ uniswap.fe:199:29
     │
-199 │         let amount0: u256 = balance0 - self.reserve0
+199 │         let amount1: u256 = balance1 - self.reserve1
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^ u256
-200 │         let amount1: u256 = balance1 - self.reserve1
-    │                             ^^^^^^^^   ^^^^ mut UniswapV2Pair
-    │                             │           
-    │                             u256
-
-note: 
-    ┌─ uniswap.fe:200:40
-    │
-200 │         let amount1: u256 = balance1 - self.reserve1
-    │                                        ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-
-note: 
-    ┌─ uniswap.fe:200:29
-    │
-200 │         let amount1: u256 = balance1 - self.reserve1
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^^ u256
-201 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+200 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^           ^^^  ^^^^^^^^  ^^^^^^^^ u256
     │                            │              │    │          
     │                            │              │    u256
@@ -1525,131 +1525,131 @@ note:
     │                            mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:201:28
+    ┌─ uniswap.fe:200:28
     │
-201 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+200 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-202 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
+201 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │                                  ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:202:34
+    ┌─ uniswap.fe:201:34
     │
-202 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
+201 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since totalSupply can update in _mintFee
     │                                  ^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-203 │         let mut liquidity: u256 = 0
+202 │         let mut liquidity: u256 = 0
     │                                   ^ u256
-204 │         if total_supply == 0 {
+203 │         if total_supply == 0 {
     │            ^^^^^^^^^^^^    ^ u256
     │            │                
     │            u256
 
 note: 
-    ┌─ uniswap.fe:204:12
+    ┌─ uniswap.fe:203:12
     │
-204 │         if total_supply == 0 {
+203 │         if total_supply == 0 {
     │            ^^^^^^^^^^^^^^^^^ bool
-205 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+204 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │             ^^^^^^^^^        ^^^^^^^   ^^^^^^^ u256
     │             │                │          
     │             │                u256
     │             mut u256
 
 note: 
-    ┌─ uniswap.fe:205:30
+    ┌─ uniswap.fe:204:30
     │
-205 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+204 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │                              ^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:205:25
+    ┌─ uniswap.fe:204:25
     │
-205 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+204 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │                         ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^ u256
     │                         │                          
     │                         u256
 
 note: 
-    ┌─ uniswap.fe:205:25
+    ┌─ uniswap.fe:204:25
     │
-205 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+204 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-206 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
+205 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │             ^^^^       ^^^              ^ u256
     │             │          │                 
     │             │          mut Context
     │             mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:206:33
+    ┌─ uniswap.fe:205:33
     │
-206 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
+205 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │                                 ^^^^^^^^^^         ^^^^^^^^^^^^^^^^^ u256
     │                                 │                   
     │                                 address
 
 note: 
-    ┌─ uniswap.fe:206:13
+    ┌─ uniswap.fe:205:13
     │
-206 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
+205 │             self._mint(ctx, to: address(0), value: MINIMUM_LIQUIDITY) // permanently lock the first MINIMUM_LIQUIDITY tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-207 │         } else {
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+206 │         } else {
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │             ^^^^^^^^^       ^^^^^^^   ^^^^^^^^^^^^ u256
     │             │               │          
     │             │               u256
     │             mut u256
 
 note: 
-    ┌─ uniswap.fe:208:29
+    ┌─ uniswap.fe:207:29
     │
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ u256
     │                             │                         
     │                             u256
 
 note: 
-    ┌─ uniswap.fe:208:29
+    ┌─ uniswap.fe:207:29
     │
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^   ^^^^^^^^^^^^ u256
     │                             │                                  │          
     │                             │                                  u256
     │                             u256
 
 note: 
-    ┌─ uniswap.fe:208:64
+    ┌─ uniswap.fe:207:64
     │
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │                                                                ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ u256
     │                                                                │                         
     │                                                                u256
 
 note: 
-    ┌─ uniswap.fe:208:64
+    ┌─ uniswap.fe:207:64
     │
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:208:25
+    ┌─ uniswap.fe:207:25
     │
-208 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
+207 │             liquidity = min(amount0 * total_supply / reserve0, amount1 * total_supply / reserve1)
     │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-209 │         }
-210 │         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
+208 │         }
+209 │         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
     │                ^^^^^^^^^   ^ u256
     │                │            
     │                mut u256
 
 note: 
-    ┌─ uniswap.fe:210:16
+    ┌─ uniswap.fe:209:16
     │
-210 │         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
+209 │         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
     │                ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<40>
     │                │               
     │                bool
-211 │         self._mint(ctx, to, value: liquidity)
+210 │         self._mint(ctx, to, value: liquidity)
     │         ^^^^       ^^^  ^^         ^^^^^^^^^ mut u256
     │         │          │    │           
     │         │          │    address
@@ -1657,11 +1657,11 @@ note:
     │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:211:9
+    ┌─ uniswap.fe:210:9
     │
-211 │         self._mint(ctx, to, value: liquidity)
+210 │         self._mint(ctx, to, value: liquidity)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-212 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+211 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^         ^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^ u256
     │         │            │    │         │         │          
     │         │            │    │         │         u256
@@ -1671,133 +1671,149 @@ note:
     │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:212:9
+    ┌─ uniswap.fe:211:9
     │
-212 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+211 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-213 │         if fee_on {
+212 │         if fee_on {
     │            ^^^^^^ bool
-214 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
+213 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │             ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:214:13
+    ┌─ uniswap.fe:213:13
     │
-214 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
+213 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │             ^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^ u256
     │             │             │           
     │             │             u256
     │             mut SPtr<u256>
 
 note: 
-    ┌─ uniswap.fe:214:27
+    ┌─ uniswap.fe:213:27
     │
-214 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
+213 │             self.k_last = reserve0 * reserve1 // reserve0 and reserve1 are up-to-date
     │                           ^^^^^^^^^^^^^^^^^^^ u256
-215 │         }
-216 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
+214 │         }
+215 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
     │         ^^^                   ^^^ mut Context
     │         │                      
     │         mut Context
 
 note: 
-    ┌─ uniswap.fe:216:31
+    ┌─ uniswap.fe:215:31
     │
-216 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
+215 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
     │                               ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^^^ u256
     │                               │                 │         
     │                               │                 u256
     │                               address
 
 note: 
-    ┌─ uniswap.fe:216:18
+    ┌─ uniswap.fe:215:18
     │
-216 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
+215 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
     │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mint
 
 note: 
-    ┌─ uniswap.fe:216:9
+    ┌─ uniswap.fe:215:9
     │
-216 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
+215 │         ctx.emit(Mint(sender: ctx.msg_sender(), amount0, amount1))
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-217 │         return liquidity
+216 │         return liquidity
     │                ^^^^^^^^^ mut u256
 
 note: 
-    ┌─ uniswap.fe:221:5
+    ┌─ uniswap.fe:220:5
     │  
-221 │ ╭     pub fn burn(mut self, mut ctx: Context, to: address) -> (u256, u256) {
-222 │ │         let reserve0: u256 = self.reserve0
-223 │ │         let reserve1: u256 = self.reserve1
-224 │ │         let token0: ERC20 = self.token0
+220 │ ╭     pub fn burn(mut self, mut ctx: Context, to: address) -> (u256, u256) {
+221 │ │         let reserve0: u256 = self.reserve0
+222 │ │         let reserve1: u256 = self.reserve1
+223 │ │         let token0: ERC20 = self.token0
     · │
-245 │ │         return (amount0, amount1)
-246 │ │     }
+244 │ │         return (amount0, amount1)
+245 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: to, typ: address }] -> (u256, u256)
 
 note: 
-    ┌─ uniswap.fe:222:13
+    ┌─ uniswap.fe:221:13
     │
-222 │         let reserve0: u256 = self.reserve0
+221 │         let reserve0: u256 = self.reserve0
     │             ^^^^^^^^ u256
-223 │         let reserve1: u256 = self.reserve1
+222 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
-224 │         let token0: ERC20 = self.token0
+223 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-225 │         let token1: ERC20 = self.token1
+224 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
-226 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+225 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
     │                 ^^^^^^^^ mut u256
-227 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
+226 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
     │                 ^^^^^^^^ mut u256
-228 │         let liquidity: u256 = self.balances[ctx.self_address()]
+227 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │             ^^^^^^^^^ u256
-229 │ 
-230 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+228 │ 
+229 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │             ^^^^^^ bool
-231 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
+230 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │             ^^^^^^^^^^^^ u256
-232 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+231 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
     │             ^^^^^^^ u256
-233 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
+232 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │             ^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:222:30
+    ┌─ uniswap.fe:221:30
     │
-222 │         let reserve0: u256 = self.reserve0
+221 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^ mut UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:221:30
+    │
+221 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
+222 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:222:30
     │
-222 │         let reserve0: u256 = self.reserve0
+222 │         let reserve1: u256 = self.reserve1
     │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-223 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^ mut UniswapV2Pair
+223 │         let token0: ERC20 = self.token0
+    │                             ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:223:30
+    ┌─ uniswap.fe:223:29
     │
-223 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-224 │         let token0: ERC20 = self.token0
+223 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
+224 │         let token1: ERC20 = self.token1
     │                             ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:224:29
     │
-224 │         let token0: ERC20 = self.token0
+224 │         let token1: ERC20 = self.token1
     │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
-225 │         let token1: ERC20 = self.token1
-    │                             ^^^^ mut UniswapV2Pair
+225 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                  ^^^^^^           ^^^ mut Context
+    │                                  │                 
+    │                                  ERC20
 
 note: 
-    ┌─ uniswap.fe:225:29
+    ┌─ uniswap.fe:225:51
     │
-225 │         let token1: ERC20 = self.token1
-    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
-226 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+225 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                                   ^^^^^^^^^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:225:34
+    │
+225 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+226 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
     │                                  ^^^^^^           ^^^ mut Context
     │                                  │                 
     │                                  ERC20
@@ -1805,54 +1821,38 @@ note:
 note: 
     ┌─ uniswap.fe:226:51
     │
-226 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+226 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
     │                                                   ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:226:34
     │
-226 │         let mut balance0: u256 = token0.balanceOf(ctx.self_address())
+226 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
     │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-227 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                                  ^^^^^^           ^^^ mut Context
-    │                                  │                 
-    │                                  ERC20
-
-note: 
-    ┌─ uniswap.fe:227:51
-    │
-227 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                                                   ^^^^^^^^^^^^^^^^^^ address
-
-note: 
-    ┌─ uniswap.fe:227:34
-    │
-227 │         let mut balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-228 │         let liquidity: u256 = self.balances[ctx.self_address()]
+227 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │                               ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:228:31
+    ┌─ uniswap.fe:227:31
     │
-228 │         let liquidity: u256 = self.balances[ctx.self_address()]
+227 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │                               ^^^^^^^^^^^^^ ^^^ mut Context
     │                               │              
     │                               mut SPtr<Map<address, u256>>
 
 note: 
-    ┌─ uniswap.fe:228:45
+    ┌─ uniswap.fe:227:45
     │
-228 │         let liquidity: u256 = self.balances[ctx.self_address()]
+227 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │                                             ^^^^^^^^^^^^^^^^^^ address
 
 note: 
-    ┌─ uniswap.fe:228:31
+    ┌─ uniswap.fe:227:31
     │
-228 │         let liquidity: u256 = self.balances[ctx.self_address()]
+227 │         let liquidity: u256 = self.balances[ctx.self_address()]
     │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-229 │ 
-230 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+228 │ 
+229 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^           ^^^  ^^^^^^^^  ^^^^^^^^ u256
     │                            │              │    │          
     │                            │              │    u256
@@ -1860,19 +1860,37 @@ note:
     │                            mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:230:28
+    ┌─ uniswap.fe:229:28
     │
-230 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
+229 │         let fee_on: bool = self._mint_fee(ctx, reserve0, reserve1)
     │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-231 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
+230 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │                                  ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:231:34
+    ┌─ uniswap.fe:230:34
     │
-231 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
+230 │         let total_supply: u256 = self.total_supply // gas savings, must be defined here since total_supply can update in _mintFee
     │                                  ^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-232 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+231 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+    │                              ^^^^^^^^^   ^^^^^^^^ mut u256
+    │                              │            
+    │                              u256
+
+note: 
+    ┌─ uniswap.fe:231:29
+    │
+231 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^ u256
+    │                             │                         
+    │                             u256
+
+note: 
+    ┌─ uniswap.fe:231:29
+    │
+231 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+232 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                              ^^^^^^^^^   ^^^^^^^^ mut u256
     │                              │            
     │                              u256
@@ -1880,7 +1898,7 @@ note:
 note: 
     ┌─ uniswap.fe:232:29
     │
-232 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+232 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^ u256
     │                             │                         
     │                             u256
@@ -1888,73 +1906,66 @@ note:
 note: 
     ┌─ uniswap.fe:232:29
     │
-232 │         let amount0: u256 = (liquidity * balance0) / total_supply // using balances ensures pro-rata distribution
+232 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-233 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
-    │                              ^^^^^^^^^   ^^^^^^^^ mut u256
-    │                              │            
-    │                              u256
-
-note: 
-    ┌─ uniswap.fe:233:29
-    │
-233 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
-    │                             ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^ u256
-    │                             │                         
-    │                             u256
-
-note: 
-    ┌─ uniswap.fe:233:29
-    │
-233 │         let amount1: u256 = (liquidity * balance1) / total_supply // using balances ensures pro-rata distribution
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-234 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
+233 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
     │                ^^^^^^^   ^ u256
     │                │          
     │                u256
 
 note: 
-    ┌─ uniswap.fe:234:16
+    ┌─ uniswap.fe:233:16
     │
-234 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
+233 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
     │                ^^^^^^^^^^^     ^^^^^^^   ^ u256
     │                │               │          
     │                │               u256
     │                bool
 
 note: 
-    ┌─ uniswap.fe:234:32
+    ┌─ uniswap.fe:233:32
     │
-234 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
+233 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
     │                                ^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:234:16
+    ┌─ uniswap.fe:233:16
     │
-234 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
+233 │         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<40>
     │                │                             
     │                bool
-235 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
+234 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
     │         ^^^^       ^^^        ^^^ mut Context
     │         │          │           
     │         │          mut Context
     │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:235:31
+    ┌─ uniswap.fe:234:31
     │
-235 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
+234 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
     │                               ^^^^^^^^^^^^^^^^^^         ^^^^^^^^^ u256
     │                               │                           
     │                               address
 
 note: 
+    ┌─ uniswap.fe:234:9
+    │
+234 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
+235 │         token0.transfer(to, amount0)
+    │         ^^^^^^          ^^  ^^^^^^^ u256
+    │         │               │    
+    │         │               address
+    │         ERC20
+
+note: 
     ┌─ uniswap.fe:235:9
     │
-235 │         self._burn(ctx, from: ctx.self_address(), value: liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-236 │         token0.transfer(to, amount0)
+235 │         token0.transfer(to, amount0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+236 │         token1.transfer(to, amount1)
     │         ^^^^^^          ^^  ^^^^^^^ u256
     │         │               │    
     │         │               address
@@ -1963,20 +1974,26 @@ note:
 note: 
     ┌─ uniswap.fe:236:9
     │
-236 │         token0.transfer(to, amount0)
+236 │         token1.transfer(to, amount1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-237 │         token1.transfer(to, amount1)
-    │         ^^^^^^          ^^  ^^^^^^^ u256
-    │         │               │    
-    │         │               address
-    │         ERC20
+237 │         balance0 = token0.balanceOf(ctx.self_address())
+    │         ^^^^^^^^   ^^^^^^           ^^^ mut Context
+    │         │          │                 
+    │         │          ERC20
+    │         mut u256
 
 note: 
-    ┌─ uniswap.fe:237:9
+    ┌─ uniswap.fe:237:37
     │
-237 │         token1.transfer(to, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-238 │         balance0 = token0.balanceOf(ctx.self_address())
+237 │         balance0 = token0.balanceOf(ctx.self_address())
+    │                                     ^^^^^^^^^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:237:20
+    │
+237 │         balance0 = token0.balanceOf(ctx.self_address())
+    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+238 │         balance1 = token1.balanceOf(ctx.self_address())
     │         ^^^^^^^^   ^^^^^^           ^^^ mut Context
     │         │          │                 
     │         │          ERC20
@@ -1985,32 +2002,15 @@ note:
 note: 
     ┌─ uniswap.fe:238:37
     │
-238 │         balance0 = token0.balanceOf(ctx.self_address())
+238 │         balance1 = token1.balanceOf(ctx.self_address())
     │                                     ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:238:20
     │
-238 │         balance0 = token0.balanceOf(ctx.self_address())
+238 │         balance1 = token1.balanceOf(ctx.self_address())
     │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-239 │         balance1 = token1.balanceOf(ctx.self_address())
-    │         ^^^^^^^^   ^^^^^^           ^^^ mut Context
-    │         │          │                 
-    │         │          ERC20
-    │         mut u256
-
-note: 
-    ┌─ uniswap.fe:239:37
-    │
-239 │         balance1 = token1.balanceOf(ctx.self_address())
-    │                                     ^^^^^^^^^^^^^^^^^^ address
-
-note: 
-    ┌─ uniswap.fe:239:20
-    │
-239 │         balance1 = token1.balanceOf(ctx.self_address())
-    │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-240 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+239 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^         ^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^ u256
     │         │            │    │         │         │          
     │         │            │    │         │         u256
@@ -2020,39 +2020,39 @@ note:
     │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:240:9
+    ┌─ uniswap.fe:239:9
     │
-240 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+239 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-241 │         if fee_on {
+240 │         if fee_on {
     │            ^^^^^^ bool
-242 │             self.k_last = reserve0 * reserve1
+241 │             self.k_last = reserve0 * reserve1
     │             ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:242:13
+    ┌─ uniswap.fe:241:13
     │
-242 │             self.k_last = reserve0 * reserve1
+241 │             self.k_last = reserve0 * reserve1
     │             ^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^ u256
     │             │             │           
     │             │             u256
     │             mut SPtr<u256>
 
 note: 
-    ┌─ uniswap.fe:242:27
+    ┌─ uniswap.fe:241:27
     │
-242 │             self.k_last = reserve0 * reserve1
+241 │             self.k_last = reserve0 * reserve1
     │                           ^^^^^^^^^^^^^^^^^^^ u256
-243 │         }
-244 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
+242 │         }
+243 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
     │         ^^^                   ^^^ mut Context
     │         │                      
     │         mut Context
 
 note: 
-    ┌─ uniswap.fe:244:31
+    ┌─ uniswap.fe:243:31
     │
-244 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
+243 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
     │                               ^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^^^  ^^ address
     │                               │                 │        │         
     │                               │                 │        u256
@@ -2060,243 +2060,259 @@ note:
     │                               address
 
 note: 
-    ┌─ uniswap.fe:244:18
+    ┌─ uniswap.fe:243:18
     │
-244 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
+243 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
     │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Burn
 
 note: 
-    ┌─ uniswap.fe:244:9
+    ┌─ uniswap.fe:243:9
     │
-244 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
+243 │         ctx.emit(Burn(sender: ctx.msg_sender(), amount0, amount1, to))
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-245 │         return (amount0, amount1)
+244 │         return (amount0, amount1)
     │                 ^^^^^^^  ^^^^^^^ u256
     │                 │         
     │                 u256
 
 note: 
-    ┌─ uniswap.fe:245:16
+    ┌─ uniswap.fe:244:16
     │
-245 │         return (amount0, amount1)
+244 │         return (amount0, amount1)
     │                ^^^^^^^^^^^^^^^^^^ (u256, u256)
 
 note: 
-    ┌─ uniswap.fe:251:5
+    ┌─ uniswap.fe:250:5
     │  
-251 │ ╭     pub fn swap(mut self, mut ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
-252 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
-253 │ │         let reserve0: u256 = self.reserve0
-254 │ │         let reserve1: u256 = self.reserve1
+250 │ ╭     pub fn swap(mut self, mut ctx: Context, amount0_out: u256, amount1_out: u256, to: address) {
+251 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
+252 │ │         let reserve0: u256 = self.reserve0
+253 │ │         let reserve1: u256 = self.reserve1
     · │
-287 │ │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
-288 │ │     }
+286 │ │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
+287 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: amount0_out, typ: u256 }, { label: None, name: amount1_out, typ: u256 }, { label: None, name: to, typ: address }] -> ()
 
 note: 
-    ┌─ uniswap.fe:253:13
+    ┌─ uniswap.fe:252:13
     │
-253 │         let reserve0: u256 = self.reserve0
+252 │         let reserve0: u256 = self.reserve0
     │             ^^^^^^^^ u256
-254 │         let reserve1: u256 = self.reserve1
+253 │         let reserve1: u256 = self.reserve1
     │             ^^^^^^^^ u256
     ·
-257 │         let token0: ERC20 = self.token0
+256 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-258 │         let token1: ERC20 = self.token1
+257 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
     ·
-273 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+272 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
-274 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
+273 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
     │             ^^^^^^^^ u256
-275 │ 
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+274 │ 
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
     │             ^^^^^^^^^^ u256
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │             ^^^^^^^^^^ u256
     ·
-281 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+280 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
     │             ^^^^^^^^^^^^^^^^^ u256
-282 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+281 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
     │             ^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:252:16
+    ┌─ uniswap.fe:251:16
     │
-252 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
+251 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
     │                ^^^^^^^^^^^   ^ u256
     │                │              
     │                u256
 
 note: 
-    ┌─ uniswap.fe:252:16
+    ┌─ uniswap.fe:251:16
     │
-252 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
+251 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
     │                ^^^^^^^^^^^^^^^    ^^^^^^^^^^^   ^ u256
     │                │                  │              
     │                │                  u256
     │                bool
 
 note: 
-    ┌─ uniswap.fe:252:35
+    ┌─ uniswap.fe:251:35
     │
-252 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
+251 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
     │                                   ^^^^^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:252:16
+    ┌─ uniswap.fe:251:16
     │
-252 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
+251 │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<37>
     │                │                                    
     │                bool
-253 │         let reserve0: u256 = self.reserve0
+252 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^ mut UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:252:30
+    │
+252 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
+253 │         let reserve1: u256 = self.reserve1
     │                              ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:253:30
     │
-253 │         let reserve0: u256 = self.reserve0
+253 │         let reserve1: u256 = self.reserve1
     │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-254 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^ mut UniswapV2Pair
-
-note: 
-    ┌─ uniswap.fe:254:30
-    │
-254 │         let reserve1: u256 = self.reserve1
-    │                              ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
-255 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
+254 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
     │                ^^^^^^^^^^^   ^^^^^^^^ u256
     │                │              
     │                u256
 
 note: 
-    ┌─ uniswap.fe:255:16
+    ┌─ uniswap.fe:254:16
     │
-255 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
+254 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
     │                ^^^^^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^   ^^^^^^^^ u256
     │                │                          │              
     │                │                          u256
     │                bool
 
 note: 
-    ┌─ uniswap.fe:255:43
+    ┌─ uniswap.fe:254:43
     │
-255 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
+254 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
     │                                           ^^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:255:16
+    ┌─ uniswap.fe:254:16
     │
-255 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
+254 │         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<33>
     │                │                                                   
     │                bool
-256 │ 
-257 │         let token0: ERC20 = self.token0
+255 │ 
+256 │         let token0: ERC20 = self.token0
+    │                             ^^^^ mut UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:256:29
+    │
+256 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
+257 │         let token1: ERC20 = self.token1
     │                             ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:257:29
     │
-257 │         let token0: ERC20 = self.token0
-    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
-258 │         let token1: ERC20 = self.token1
-    │                             ^^^^ mut UniswapV2Pair
-
-note: 
-    ┌─ uniswap.fe:258:29
-    │
-258 │         let token1: ERC20 = self.token1
+257 │         let token1: ERC20 = self.token1
     │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
     ·
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                ^^            ^^^^^^ ERC20
     │                │              
     │                address
 
 note: 
-    ┌─ uniswap.fe:261:22
+    ┌─ uniswap.fe:260:22
     │
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                      ^^^^^^^^^^^^^^^ address
 
 note: 
-    ┌─ uniswap.fe:261:16
+    ┌─ uniswap.fe:260:16
     │
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                ^^^^^^^^^^^^^^^^^^^^^     ^^            ^^^^^^ ERC20
     │                │                         │              
     │                │                         address
     │                bool
 
 note: 
-    ┌─ uniswap.fe:261:48
+    ┌─ uniswap.fe:260:48
     │
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                                                ^^^^^^^^^^^^^^^ address
 
 note: 
-    ┌─ uniswap.fe:261:42
+    ┌─ uniswap.fe:260:42
     │
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                                          ^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:261:16
+    ┌─ uniswap.fe:260:16
     │
-261 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
+260 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^ String<21>
     │                │                                                 
     │                bool
-262 │ 
-263 │         if amount0_out > 0 {
+261 │ 
+262 │         if amount0_out > 0 {
     │            ^^^^^^^^^^^   ^ u256
     │            │              
     │            u256
 
 note: 
-    ┌─ uniswap.fe:263:12
+    ┌─ uniswap.fe:262:12
     │
-263 │         if amount0_out > 0 {
+262 │         if amount0_out > 0 {
     │            ^^^^^^^^^^^^^^^ bool
-264 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
+263 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
     │             ^^^^^^          ^^  ^^^^^^^^^^^ u256
     │             │               │    
     │             │               address
     │             ERC20
 
 note: 
-    ┌─ uniswap.fe:264:13
+    ┌─ uniswap.fe:263:13
     │
-264 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
+263 │             token0.transfer(to, amount0_out) // optimistically transfer tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-265 │         }
-266 │         if amount1_out > 0 {
+264 │         }
+265 │         if amount1_out > 0 {
     │            ^^^^^^^^^^^   ^ u256
     │            │              
     │            u256
 
 note: 
-    ┌─ uniswap.fe:266:12
+    ┌─ uniswap.fe:265:12
     │
-266 │         if amount1_out > 0 {
+265 │         if amount1_out > 0 {
     │            ^^^^^^^^^^^^^^^ bool
-267 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
+266 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
     │             ^^^^^^          ^^  ^^^^^^^^^^^ u256
     │             │               │    
     │             │               address
     │             ERC20
 
 note: 
-    ┌─ uniswap.fe:267:13
+    ┌─ uniswap.fe:266:13
     │
-267 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
+266 │             token1.transfer(to, amount1_out) // optimistically transfer tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
     ·
-273 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+272 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^           ^^^ mut Context
+    │                              │                 
+    │                              ERC20
+
+note: 
+    ┌─ uniswap.fe:272:47
+    │
+272 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                                               ^^^^^^^^^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:272:30
+    │
+272 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+273 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
     │                              ^^^^^^           ^^^ mut Context
     │                              │                 
     │                              ERC20
@@ -2304,32 +2320,63 @@ note:
 note: 
     ┌─ uniswap.fe:273:47
     │
-273 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+273 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
     │                                               ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:273:30
     │
-273 │         let balance0: u256 = token0.balanceOf(ctx.self_address())
+273 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
     │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-274 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^           ^^^ mut Context
-    │                              │                 
-    │                              ERC20
+274 │ 
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                       ^^^^^^^^   ^^^^^^^^   ^^^^^^^^^^^ u256
+    │                                                                       │          │           
+    │                                                                       │          u256
+    │                                                                       u256
 
 note: 
-    ┌─ uniswap.fe:274:47
+    ┌─ uniswap.fe:275:82
     │
-274 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                                               ^^^^^^^^^^^^^^^^^^ address
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                                  ^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:274:30
+    ┌─ uniswap.fe:275:32
     │
-274 │         let balance1: u256 = token1.balanceOf(ctx.self_address())
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-275 │ 
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+    │                                │                                       
+    │                                u256
+
+note: 
+    ┌─ uniswap.fe:275:44
+    │
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                            ^^^^^^^^   ^^^^^^^^^^^ u256
+    │                                            │           
+    │                                            u256
+
+note: 
+    ┌─ uniswap.fe:275:43
+    │
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ u256
+
+note: 
+    ┌─ uniswap.fe:275:32
+    │
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                           ^ u256
+    │                                │                                                                              
+    │                                u256
+
+note: 
+    ┌─ uniswap.fe:275:32
+    │
+275 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                                                       ^^^^^^^^   ^^^^^^^^   ^^^^^^^^^^^ u256
     │                                                                       │          │           
     │                                                                       │          u256
@@ -2338,13 +2385,13 @@ note:
 note: 
     ┌─ uniswap.fe:276:82
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                                                                  ^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:276:32
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                ^^^^^^^^                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
     │                                │                                       
     │                                u256
@@ -2352,7 +2399,7 @@ note:
 note: 
     ┌─ uniswap.fe:276:44
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                            ^^^^^^^^   ^^^^^^^^^^^ u256
     │                                            │           
     │                                            u256
@@ -2360,13 +2407,13 @@ note:
 note: 
     ┌─ uniswap.fe:276:43
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:276:32
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                           ^ u256
     │                                │                                                                              
     │                                u256
@@ -2374,85 +2421,63 @@ note:
 note: 
     ┌─ uniswap.fe:276:32
     │
-276 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+276 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
     │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                       ^^^^^^^^   ^^^^^^^^   ^^^^^^^^^^^ u256
-    │                                                                       │          │           
-    │                                                                       │          u256
-    │                                                                       u256
-
-note: 
-    ┌─ uniswap.fe:277:82
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                                  ^^^^^^^^^^^^^^^^^^^^^^ u256
-
-note: 
-    ┌─ uniswap.fe:277:32
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                ^^^^^^^^                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-    │                                │                                       
-    │                                u256
-
-note: 
-    ┌─ uniswap.fe:277:44
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                            ^^^^^^^^   ^^^^^^^^^^^ u256
-    │                                            │           
-    │                                            u256
-
-note: 
-    ┌─ uniswap.fe:277:43
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ u256
-
-note: 
-    ┌─ uniswap.fe:277:32
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                           ^ u256
-    │                                │                                                                              
-    │                                u256
-
-note: 
-    ┌─ uniswap.fe:277:32
-    │
-277 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-278 │ 
-279 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
+277 │ 
+278 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
     │                ^^^^^^^^^^   ^ u256
     │                │             
     │                u256
 
 note: 
-    ┌─ uniswap.fe:279:16
+    ┌─ uniswap.fe:278:16
     │
-279 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
+278 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
     │                ^^^^^^^^^^^^^^    ^^^^^^^^^^   ^ u256
     │                │                 │             
     │                │                 u256
     │                bool
 
 note: 
-    ┌─ uniswap.fe:279:34
+    ┌─ uniswap.fe:278:34
     │
-279 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
+278 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
     │                                  ^^^^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:279:16
+    ┌─ uniswap.fe:278:16
     │
-279 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
+278 │         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<36>
     │                │                                  
     │                bool
-280 │ 
-281 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+279 │ 
+280 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^   ^^^^ u256
+    │                                       │           
+    │                                       u256
+
+note: 
+    ┌─ uniswap.fe:280:39
+    │
+280 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^^^^^^^^   ^^^^^^^^^^   ^ u256
+    │                                       │                 │             
+    │                                       │                 u256
+    │                                       u256
+
+note: 
+    ┌─ uniswap.fe:280:57
+    │
+280 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                                         ^^^^^^^^^^^^^^ u256
+
+note: 
+    ┌─ uniswap.fe:280:39
+    │
+280 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+281 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
     │                                       ^^^^^^^^   ^^^^ u256
     │                                       │           
     │                                       u256
@@ -2460,7 +2485,7 @@ note:
 note: 
     ┌─ uniswap.fe:281:39
     │
-281 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+281 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
     │                                       ^^^^^^^^^^^^^^^   ^^^^^^^^^^   ^ u256
     │                                       │                 │             
     │                                       │                 u256
@@ -2469,77 +2494,52 @@ note:
 note: 
     ┌─ uniswap.fe:281:57
     │
-281 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+281 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
     │                                                         ^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:281:39
     │
-281 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+281 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
     │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-282 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                       ^^^^^^^^   ^^^^ u256
-    │                                       │           
-    │                                       u256
-
-note: 
-    ┌─ uniswap.fe:282:39
-    │
-282 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                       ^^^^^^^^^^^^^^^   ^^^^^^^^^^   ^ u256
-    │                                       │                 │             
-    │                                       │                 u256
-    │                                       u256
-
-note: 
-    ┌─ uniswap.fe:282:57
-    │
-282 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                                         ^^^^^^^^^^^^^^ u256
-
-note: 
-    ┌─ uniswap.fe:282:39
-    │
-282 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-283 │ 
-284 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
+282 │ 
+283 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
     │                ^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^ u256
     │                │                    
     │                u256
 
 note: 
-    ┌─ uniswap.fe:284:16
+    ┌─ uniswap.fe:283:16
     │
-284 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
+283 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^^^^   ^^^^^^^^ u256
     │                │                                        │           
     │                │                                        u256
     │                u256
 
 note: 
-    ┌─ uniswap.fe:284:57
+    ┌─ uniswap.fe:283:57
     │
-284 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
+283 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
     │                                                         ^^^^^^^^^^^^^^^^^^^   ^^^^^^^ u256
     │                                                         │                      
     │                                                         u256
 
 note: 
-    ┌─ uniswap.fe:284:57
+    ┌─ uniswap.fe:283:57
     │
-284 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
+283 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
     │                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:284:16
+    ┌─ uniswap.fe:283:16
     │
-284 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
+283 │         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^ String<12>
     │                │                                                                        
     │                bool
-285 │ 
-286 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+284 │ 
+285 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^         ^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^ u256
     │         │            │    │         │         │          
     │         │            │    │         │         u256
@@ -2549,19 +2549,19 @@ note:
     │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:286:9
+    ┌─ uniswap.fe:285:9
     │
-286 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
+285 │         self._update(ctx, balance0, balance1, reserve0, reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-287 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
+286 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
     │         ^^^                   ^^^ mut Context
     │         │                      
     │         mut Context
 
 note: 
-    ┌─ uniswap.fe:287:31
+    ┌─ uniswap.fe:286:31
     │
-287 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
+286 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
     │                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^  ^^ address
     │                               │                 │           │           │            │             
     │                               │                 │           │           │            u256
@@ -2571,56 +2571,94 @@ note:
     │                               address
 
 note: 
-    ┌─ uniswap.fe:287:18
+    ┌─ uniswap.fe:286:18
     │
-287 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
+286 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
     │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Swap
 
 note: 
-    ┌─ uniswap.fe:287:9
+    ┌─ uniswap.fe:286:9
     │
-287 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
+286 │         ctx.emit(Swap(sender: ctx.msg_sender(), amount0_in, amount1_in, amount0_out, amount1_out, to))
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
-    ┌─ uniswap.fe:291:5
+    ┌─ uniswap.fe:290:5
     │  
-291 │ ╭     pub fn skim(self, ctx: Context, to: address) {
-292 │ │         let token0: ERC20 = self.token0 // gas savings
-293 │ │         let token1: ERC20 = self.token1 // gas savings
-294 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
-295 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-296 │ │     }
+290 │ ╭     pub fn skim(self, ctx: Context, to: address) {
+291 │ │         let token0: ERC20 = self.token0 // gas savings
+292 │ │         let token1: ERC20 = self.token1 // gas savings
+293 │ │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+294 │ │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
+295 │ │     }
     │ ╰─────^ params: [self, { label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }] -> ()
 
 note: 
-    ┌─ uniswap.fe:292:13
+    ┌─ uniswap.fe:291:13
     │
-292 │         let token0: ERC20 = self.token0 // gas savings
+291 │         let token0: ERC20 = self.token0 // gas savings
     │             ^^^^^^ ERC20
-293 │         let token1: ERC20 = self.token1 // gas savings
+292 │         let token1: ERC20 = self.token1 // gas savings
     │             ^^^^^^ ERC20
 
 note: 
-    ┌─ uniswap.fe:292:29
+    ┌─ uniswap.fe:291:29
     │
-292 │         let token0: ERC20 = self.token0 // gas savings
+291 │         let token0: ERC20 = self.token0 // gas savings
     │                             ^^^^ UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:292:29
+    ┌─ uniswap.fe:291:29
     │
-292 │         let token0: ERC20 = self.token0 // gas savings
+291 │         let token0: ERC20 = self.token0 // gas savings
     │                             ^^^^^^^^^^^ SPtr<ERC20> -Load-> ERC20
-293 │         let token1: ERC20 = self.token1 // gas savings
+292 │         let token1: ERC20 = self.token1 // gas savings
     │                             ^^^^ UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:292:29
+    │
+292 │         let token1: ERC20 = self.token1 // gas savings
+    │                             ^^^^^^^^^^^ SPtr<ERC20> -Load-> ERC20
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │         ^^^^^^          ^^  ^^^^^^           ^^^ Context
+    │         │               │   │                 
+    │         │               │   ERC20
+    │         │               address
+    │         ERC20
+
+note: 
+    ┌─ uniswap.fe:293:46
+    │
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │                                              ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:293:29
     │
-293 │         let token1: ERC20 = self.token1 // gas savings
-    │                             ^^^^^^^^^^^ SPtr<ERC20> -Load-> ERC20
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ UniswapV2Pair
+    │                             │                                       
+    │                             u256
+
+note: 
+    ┌─ uniswap.fe:293:68
+    │
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │                                                                    ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
+
+note: 
+    ┌─ uniswap.fe:293:29
+    │
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+
+note: 
+    ┌─ uniswap.fe:293:9
+    │
+293 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │         ^^^^^^          ^^  ^^^^^^           ^^^ Context
     │         │               │   │                 
     │         │               │   ERC20
@@ -2630,13 +2668,13 @@ note:
 note: 
     ┌─ uniswap.fe:294:46
     │
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │                                              ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:294:29
     │
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ UniswapV2Pair
     │                             │                                       
     │                             u256
@@ -2644,103 +2682,81 @@ note:
 note: 
     ┌─ uniswap.fe:294:68
     │
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │                                                                    ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
     ┌─ uniswap.fe:294:29
     │
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
     ┌─ uniswap.fe:294:9
     │
-294 │         token0.transfer(to, token0.balanceOf(ctx.self_address()) - self.reserve0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │         ^^^^^^          ^^  ^^^^^^           ^^^ Context
-    │         │               │   │                 
-    │         │               │   ERC20
-    │         │               address
-    │         ERC20
-
-note: 
-    ┌─ uniswap.fe:295:46
-    │
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │                                              ^^^^^^^^^^^^^^^^^^ address
-
-note: 
-    ┌─ uniswap.fe:295:29
-    │
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^ UniswapV2Pair
-    │                             │                                       
-    │                             u256
-
-note: 
-    ┌─ uniswap.fe:295:68
-    │
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │                                                                    ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
-
-note: 
-    ┌─ uniswap.fe:295:29
-    │
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
-    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-
-note: 
-    ┌─ uniswap.fe:295:9
-    │
-295 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
+294 │         token1.transfer(to, token1.balanceOf(ctx.self_address()) - self.reserve1)
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-    ┌─ uniswap.fe:299:5
+    ┌─ uniswap.fe:298:5
     │  
-299 │ ╭     pub fn sync(self, mut ctx: Context) {
-300 │ │         let token0: ERC20 = self.token0
-301 │ │         let token1: ERC20 = self.token1
-302 │ │         self._update(ctx,
+298 │ ╭     pub fn sync(mut self, mut ctx: Context) {
+299 │ │         let token0: ERC20 = self.token0
+300 │ │         let token1: ERC20 = self.token1
+301 │ │         self._update(ctx,
     · │
-306 │ │                      reserve1: self.reserve1)
-307 │ │     }
-    │ ╰─────^ params: [self, { label: None, name: ctx, typ: mut Context }] -> ()
+305 │ │                      reserve1: self.reserve1)
+306 │ │     }
+    │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
-    ┌─ uniswap.fe:300:13
+    ┌─ uniswap.fe:299:13
     │
-300 │         let token0: ERC20 = self.token0
+299 │         let token0: ERC20 = self.token0
     │             ^^^^^^ ERC20
-301 │         let token1: ERC20 = self.token1
+300 │         let token1: ERC20 = self.token1
     │             ^^^^^^ ERC20
+
+note: 
+    ┌─ uniswap.fe:299:29
+    │
+299 │         let token0: ERC20 = self.token0
+    │                             ^^^^ mut UniswapV2Pair
+
+note: 
+    ┌─ uniswap.fe:299:29
+    │
+299 │         let token0: ERC20 = self.token0
+    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
+300 │         let token1: ERC20 = self.token1
+    │                             ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:300:29
     │
-300 │         let token0: ERC20 = self.token0
-    │                             ^^^^ UniswapV2Pair
-
-note: 
-    ┌─ uniswap.fe:300:29
-    │
-300 │         let token0: ERC20 = self.token0
-    │                             ^^^^^^^^^^^ SPtr<ERC20> -Load-> ERC20
-301 │         let token1: ERC20 = self.token1
-    │                             ^^^^ UniswapV2Pair
-
-note: 
-    ┌─ uniswap.fe:301:29
-    │
-301 │         let token1: ERC20 = self.token1
-    │                             ^^^^^^^^^^^ SPtr<ERC20> -Load-> ERC20
-302 │         self._update(ctx,
+300 │         let token1: ERC20 = self.token1
+    │                             ^^^^^^^^^^^ mut SPtr<ERC20> -Load-> ERC20
+301 │         self._update(ctx,
     │         ^^^^         ^^^ mut Context
     │         │             
-    │         UniswapV2Pair
-303 │                      balance0: token0.balanceOf(ctx.self_address()),
+    │         mut UniswapV2Pair
+302 │                      balance0: token0.balanceOf(ctx.self_address()),
+    │                                ^^^^^^           ^^^ mut Context
+    │                                │                 
+    │                                ERC20
+
+note: 
+    ┌─ uniswap.fe:302:49
+    │
+302 │                      balance0: token0.balanceOf(ctx.self_address()),
+    │                                                 ^^^^^^^^^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:302:32
+    │
+302 │                      balance0: token0.balanceOf(ctx.self_address()),
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+303 │                      balance1: token1.balanceOf(ctx.self_address()),
     │                                ^^^^^^           ^^^ mut Context
     │                                │                 
     │                                ERC20
@@ -2748,188 +2764,191 @@ note:
 note: 
     ┌─ uniswap.fe:303:49
     │
-303 │                      balance0: token0.balanceOf(ctx.self_address()),
+303 │                      balance1: token1.balanceOf(ctx.self_address()),
     │                                                 ^^^^^^^^^^^^^^^^^^ address
 
 note: 
     ┌─ uniswap.fe:303:32
     │
-303 │                      balance0: token0.balanceOf(ctx.self_address()),
+303 │                      balance1: token1.balanceOf(ctx.self_address()),
     │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-304 │                      balance1: token1.balanceOf(ctx.self_address()),
-    │                                ^^^^^^           ^^^ mut Context
-    │                                │                 
-    │                                ERC20
-
-note: 
-    ┌─ uniswap.fe:304:49
-    │
-304 │                      balance1: token1.balanceOf(ctx.self_address()),
-    │                                                 ^^^^^^^^^^^^^^^^^^ address
+304 │                      reserve0: self.reserve0,
+    │                                ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:304:32
     │
-304 │                      balance1: token1.balanceOf(ctx.self_address()),
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-305 │                      reserve0: self.reserve0,
-    │                                ^^^^ UniswapV2Pair
+304 │                      reserve0: self.reserve0,
+    │                                ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
+305 │                      reserve1: self.reserve1)
+    │                                ^^^^ mut UniswapV2Pair
 
 note: 
     ┌─ uniswap.fe:305:32
     │
-305 │                      reserve0: self.reserve0,
-    │                                ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
-306 │                      reserve1: self.reserve1)
-    │                                ^^^^ UniswapV2Pair
+305 │                      reserve1: self.reserve1)
+    │                                ^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:306:32
-    │
-306 │                      reserve1: self.reserve1)
-    │                                ^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
-
-note: 
-    ┌─ uniswap.fe:302:9
+    ┌─ uniswap.fe:301:9
     │  
-302 │ ╭         self._update(ctx,
-303 │ │                      balance0: token0.balanceOf(ctx.self_address()),
-304 │ │                      balance1: token1.balanceOf(ctx.self_address()),
-305 │ │                      reserve0: self.reserve0,
-306 │ │                      reserve1: self.reserve1)
+301 │ ╭         self._update(ctx,
+302 │ │                      balance0: token0.balanceOf(ctx.self_address()),
+303 │ │                      balance1: token1.balanceOf(ctx.self_address()),
+304 │ │                      reserve0: self.reserve0,
+305 │ │                      reserve1: self.reserve1)
     │ ╰─────────────────────────────────────────────^ ()
 
 note: 
-    ┌─ uniswap.fe:312:5
+    ┌─ uniswap.fe:311:5
     │
-312 │     pub token0: address
+311 │     pub token0: address
     │     ^^^^^^^^^^^^^^^^^^^ address
-313 │     #indexed
-314 │     pub token1: address
+312 │     #indexed
+313 │     pub token1: address
     │     ^^^^^^^^^^^^^^^^^^^ address
-315 │     pub pair: address
+314 │     pub pair: address
     │     ^^^^^^^^^^^^^^^^^ address
-316 │     pub index: u256
+315 │     pub index: u256
     │     ^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:320:5
+    ┌─ uniswap.fe:319:5
     │
-320 │     fee_to: address
+319 │     fee_to: address
     │     ^^^^^^^^^^^^^^^ address
-321 │     fee_to_setter: address
+320 │     fee_to_setter: address
     │     ^^^^^^^^^^^^^^^^^^^^^^ address
-322 │ 
-323 │     pairs: Map<address, Map<address, address>>
+321 │ 
+322 │     pairs: Map<address, Map<address, address>>
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, address>>
-324 │ 
-325 │     all_pairs: Array<address, 100>
+323 │ 
+324 │     all_pairs: Array<address, 100>
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 100>
-326 │     pair_counter: u256
+325 │     pair_counter: u256
     │     ^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-    ┌─ uniswap.fe:332:5
+    ┌─ uniswap.fe:331:5
     │  
-332 │ ╭     pub fn fee_to(self) -> address {
-333 │ │         return self.fee_to
-334 │ │     }
+331 │ ╭     pub fn fee_to(self) -> address {
+332 │ │         return self.fee_to
+333 │ │     }
     │ ╰─────^ params: [self] -> address
 
 note: 
-    ┌─ uniswap.fe:333:16
+    ┌─ uniswap.fe:332:16
     │
-333 │         return self.fee_to
+332 │         return self.fee_to
     │                ^^^^ UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:333:16
+    ┌─ uniswap.fe:332:16
     │
-333 │         return self.fee_to
+332 │         return self.fee_to
     │                ^^^^^^^^^^^ SPtr<address> -Load-> address
 
 note: 
-    ┌─ uniswap.fe:336:5
+    ┌─ uniswap.fe:335:5
     │  
-336 │ ╭     pub fn fee_to_setter(self) -> address {
-337 │ │         return self.fee_to_setter
-338 │ │     }
+335 │ ╭     pub fn fee_to_setter(self) -> address {
+336 │ │         return self.fee_to_setter
+337 │ │     }
     │ ╰─────^ params: [self] -> address
 
 note: 
-    ┌─ uniswap.fe:337:16
+    ┌─ uniswap.fe:336:16
     │
-337 │         return self.fee_to_setter
+336 │         return self.fee_to_setter
     │                ^^^^ UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:337:16
+    ┌─ uniswap.fe:336:16
     │
-337 │         return self.fee_to_setter
+336 │         return self.fee_to_setter
     │                ^^^^^^^^^^^^^^^^^^ SPtr<address> -Load-> address
 
 note: 
-    ┌─ uniswap.fe:340:5
+    ┌─ uniswap.fe:339:5
     │  
-340 │ ╭     pub fn all_pairs_length(self) -> u256 {
-341 │ │         return self.pair_counter
-342 │ │     }
+339 │ ╭     pub fn all_pairs_length(self) -> u256 {
+340 │ │         return self.pair_counter
+341 │ │     }
     │ ╰─────^ params: [self] -> u256
 
 note: 
-    ┌─ uniswap.fe:341:16
+    ┌─ uniswap.fe:340:16
     │
-341 │         return self.pair_counter
+340 │         return self.pair_counter
     │                ^^^^ UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:341:16
+    ┌─ uniswap.fe:340:16
     │
-341 │         return self.pair_counter
+340 │         return self.pair_counter
     │                ^^^^^^^^^^^^^^^^^ SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:344:5
+    ┌─ uniswap.fe:343:5
     │  
-344 │ ╭     pub fn create_pair(mut self, mut ctx: Context, _ token_a: address, _ token_b: address) -> address {
-345 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
-346 │ │ 
-347 │ │         let token0: address = token_a if token_a < token_b else token_b
+343 │ ╭     pub fn create_pair(mut self, mut ctx: Context, _ token_a: address, _ token_b: address) -> address {
+344 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
+345 │ │ 
+346 │ │         let token0: address = token_a if token_a < token_b else token_b
     · │
-362 │ │         return address(pair)
-363 │ │     }
+361 │ │         return address(pair)
+362 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: Some("_"), name: token_a, typ: address }, { label: Some("_"), name: token_b, typ: address }] -> address
 
 note: 
-    ┌─ uniswap.fe:347:13
+    ┌─ uniswap.fe:346:13
     │
-347 │         let token0: address = token_a if token_a < token_b else token_b
+346 │         let token0: address = token_a if token_a < token_b else token_b
     │             ^^^^^^ address
-348 │         let token1: address = token_a if token_a > token_b else token_b
+347 │         let token1: address = token_a if token_a > token_b else token_b
     │             ^^^^^^ address
     ·
-352 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+351 │         let salt: u256 = keccak256((token0, token1).abi_encode())
     │             ^^^^ u256
-353 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
-    │             ^^^^ UniswapV2Pair
+352 │         let mut pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
+    │                 ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:345:16
+    ┌─ uniswap.fe:344:16
     │
-345 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
+344 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
     │                ^^^^^^^    ^^^^^^^ address
     │                │           
     │                address
 
 note: 
-    ┌─ uniswap.fe:345:16
+    ┌─ uniswap.fe:344:16
     │
-345 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
+344 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
     │                ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<30>
     │                │                    
     │                bool
-346 │ 
-347 │         let token0: address = token_a if token_a < token_b else token_b
+345 │ 
+346 │         let token0: address = token_a if token_a < token_b else token_b
+    │                                          ^^^^^^^   ^^^^^^^ address
+    │                                          │          
+    │                                          address
+
+note: 
+    ┌─ uniswap.fe:346:31
+    │
+346 │         let token0: address = token_a if token_a < token_b else token_b
+    │                               ^^^^^^^    ^^^^^^^^^^^^^^^^^      ^^^^^^^ address
+    │                               │          │                       
+    │                               │          bool
+    │                               address
+
+note: 
+    ┌─ uniswap.fe:346:31
+    │
+346 │         let token0: address = token_a if token_a < token_b else token_b
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address
+347 │         let token1: address = token_a if token_a > token_b else token_b
     │                                          ^^^^^^^   ^^^^^^^ address
     │                                          │          
     │                                          address
@@ -2937,7 +2956,7 @@ note:
 note: 
     ┌─ uniswap.fe:347:31
     │
-347 │         let token0: address = token_a if token_a < token_b else token_b
+347 │         let token1: address = token_a if token_a > token_b else token_b
     │                               ^^^^^^^    ^^^^^^^^^^^^^^^^^      ^^^^^^^ address
     │                               │          │                       
     │                               │          bool
@@ -2946,152 +2965,165 @@ note:
 note: 
     ┌─ uniswap.fe:347:31
     │
-347 │         let token0: address = token_a if token_a < token_b else token_b
+347 │         let token1: address = token_a if token_a > token_b else token_b
     │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address
-348 │         let token1: address = token_a if token_a > token_b else token_b
-    │                                          ^^^^^^^   ^^^^^^^ address
-    │                                          │          
-    │                                          address
-
-note: 
-    ┌─ uniswap.fe:348:31
-    │
-348 │         let token1: address = token_a if token_a > token_b else token_b
-    │                               ^^^^^^^    ^^^^^^^^^^^^^^^^^      ^^^^^^^ address
-    │                               │          │                       
-    │                               │          bool
-    │                               address
-
-note: 
-    ┌─ uniswap.fe:348:31
-    │
-348 │         let token1: address = token_a if token_a > token_b else token_b
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ address
-349 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
+348 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
     │                ^^^^^^            ^ u256
     │                │                  
     │                address
 
 note: 
-    ┌─ uniswap.fe:349:26
+    ┌─ uniswap.fe:348:26
     │
-349 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
+348 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
     │                          ^^^^^^^^^^ address
+
+note: 
+    ┌─ uniswap.fe:348:16
+    │
+348 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
+    │                ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^ String<23>
+    │                │                      
+    │                bool
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+    │                ^^^^ mut UniswapV2Factory
 
 note: 
     ┌─ uniswap.fe:349:16
     │
-349 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
-    │                ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^ String<23>
-    │                │                      
-    │                bool
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                ^^^^ mut UniswapV2Factory
-
-note: 
-    ┌─ uniswap.fe:350:16
-    │
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                ^^^^^^^^^^ ^^^^^^ address
     │                │           
     │                mut SPtr<Map<address, Map<address, address>>>
 
 note: 
-    ┌─ uniswap.fe:350:16
+    ┌─ uniswap.fe:349:16
     │
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                ^^^^^^^^^^^^^^^^^^ ^^^^^^ address
     │                │                   
     │                mut SPtr<Map<address, address>>
 
 note: 
-    ┌─ uniswap.fe:350:16
+    ┌─ uniswap.fe:349:16
     │
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^            ^ u256
     │                │                                      
     │                mut SPtr<address> -Load-> address
 
 note: 
-    ┌─ uniswap.fe:350:46
+    ┌─ uniswap.fe:349:46
     │
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                                              ^^^^^^^^^^ address
 
 note: 
-    ┌─ uniswap.fe:350:16
+    ┌─ uniswap.fe:349:16
     │
-350 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
+349 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^ String<22>
     │                │                                          
     │                bool
-351 │ 
-352 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+350 │ 
+351 │         let salt: u256 = keccak256((token0, token1).abi_encode())
     │                                     ^^^^^^  ^^^^^^ address
     │                                     │        
     │                                     address
 
 note: 
-    ┌─ uniswap.fe:352:36
+    ┌─ uniswap.fe:351:36
     │
-352 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+351 │         let salt: u256 = keccak256((token0, token1).abi_encode())
     │                                    ^^^^^^^^^^^^^^^^ (address, address)
 
 note: 
-    ┌─ uniswap.fe:352:36
+    ┌─ uniswap.fe:351:36
     │
-352 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+351 │         let salt: u256 = keccak256((token0, token1).abi_encode())
     │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 64>
 
 note: 
-    ┌─ uniswap.fe:352:26
+    ┌─ uniswap.fe:351:26
     │
-352 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+351 │         let salt: u256 = keccak256((token0, token1).abi_encode())
     │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
-353 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
-    │                                                         ^^^  ^  ^^^^ u256
-    │                                                         │    │   
-    │                                                         │    u256
-    │                                                         mut Context
+352 │         let mut pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
+    │                                                             ^^^  ^  ^^^^ u256
+    │                                                             │    │   
+    │                                                             │    u256
+    │                                                             mut Context
 
 note: 
-    ┌─ uniswap.fe:353:35
+    ┌─ uniswap.fe:352:39
     │
-353 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
-    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Pair
-354 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+352 │         let mut pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
+    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UniswapV2Pair
+353 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
     │         ^^^^            ^^^                ^^^^^^ address
     │         │               │                   
     │         │               mut Context
-    │         UniswapV2Pair
+    │         mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:354:38
+    ┌─ uniswap.fe:353:38
     │
-354 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+353 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
     │                                      ^^^^^^^^^^^^^                ^^^^^^ address
     │                                      │                             
     │                                      ERC20
 
 note: 
-    ┌─ uniswap.fe:354:61
+    ┌─ uniswap.fe:353:61
     │
-354 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+353 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
     │                                                             ^^^^^^^^^^^^^ ERC20
 
 note: 
-    ┌─ uniswap.fe:354:9
+    ┌─ uniswap.fe:353:9
     │
-354 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
+353 │         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-355 │ 
-356 │         self.pairs[token0][token1] = address(pair)
+354 │ 
+355 │         self.pairs[token0][token1] = address(pair)
+    │         ^^^^ mut UniswapV2Factory
+
+note: 
+    ┌─ uniswap.fe:355:9
+    │
+355 │         self.pairs[token0][token1] = address(pair)
+    │         ^^^^^^^^^^ ^^^^^^ address
+    │         │           
+    │         mut SPtr<Map<address, Map<address, address>>>
+
+note: 
+    ┌─ uniswap.fe:355:9
+    │
+355 │         self.pairs[token0][token1] = address(pair)
+    │         ^^^^^^^^^^^^^^^^^^ ^^^^^^ address
+    │         │                   
+    │         mut SPtr<Map<address, address>>
+
+note: 
+    ┌─ uniswap.fe:355:9
+    │
+355 │         self.pairs[token0][token1] = address(pair)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ mut UniswapV2Pair
+    │         │                                     
+    │         mut SPtr<address>
+
+note: 
+    ┌─ uniswap.fe:355:38
+    │
+355 │         self.pairs[token0][token1] = address(pair)
+    │                                      ^^^^^^^^^^^^^ address
+356 │         self.pairs[token1][token0] = address(pair)
     │         ^^^^ mut UniswapV2Factory
 
 note: 
     ┌─ uniswap.fe:356:9
     │
-356 │         self.pairs[token0][token1] = address(pair)
+356 │         self.pairs[token1][token0] = address(pair)
     │         ^^^^^^^^^^ ^^^^^^ address
     │         │           
     │         mut SPtr<Map<address, Map<address, address>>>
@@ -3099,7 +3131,7 @@ note:
 note: 
     ┌─ uniswap.fe:356:9
     │
-356 │         self.pairs[token0][token1] = address(pair)
+356 │         self.pairs[token1][token0] = address(pair)
     │         ^^^^^^^^^^^^^^^^^^ ^^^^^^ address
     │         │                   
     │         mut SPtr<Map<address, address>>
@@ -3107,377 +3139,345 @@ note:
 note: 
     ┌─ uniswap.fe:356:9
     │
-356 │         self.pairs[token0][token1] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ UniswapV2Pair
+356 │         self.pairs[token1][token0] = address(pair)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ mut UniswapV2Pair
     │         │                                     
     │         mut SPtr<address>
 
 note: 
     ┌─ uniswap.fe:356:38
     │
-356 │         self.pairs[token0][token1] = address(pair)
+356 │         self.pairs[token1][token0] = address(pair)
     │                                      ^^^^^^^^^^^^^ address
-357 │         self.pairs[token1][token0] = address(pair)
+357 │         self.all_pairs[self.pair_counter] = address(pair)
     │         ^^^^ mut UniswapV2Factory
 
 note: 
     ┌─ uniswap.fe:357:9
     │
-357 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^ ^^^^^^ address
-    │         │           
-    │         mut SPtr<Map<address, Map<address, address>>>
-
-note: 
-    ┌─ uniswap.fe:357:9
-    │
-357 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^ ^^^^^^ address
-    │         │                   
-    │         mut SPtr<Map<address, address>>
-
-note: 
-    ┌─ uniswap.fe:357:9
-    │
-357 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ UniswapV2Pair
-    │         │                                     
-    │         mut SPtr<address>
-
-note: 
-    ┌─ uniswap.fe:357:38
-    │
-357 │         self.pairs[token1][token0] = address(pair)
-    │                                      ^^^^^^^^^^^^^ address
-358 │         self.all_pairs[self.pair_counter] = address(pair)
-    │         ^^^^ mut UniswapV2Factory
-
-note: 
-    ┌─ uniswap.fe:358:9
-    │
-358 │         self.all_pairs[self.pair_counter] = address(pair)
+357 │         self.all_pairs[self.pair_counter] = address(pair)
     │         ^^^^^^^^^^^^^^ ^^^^ mut UniswapV2Factory
     │         │               
     │         mut SPtr<Array<address, 100>>
 
 note: 
-    ┌─ uniswap.fe:358:24
+    ┌─ uniswap.fe:357:24
     │
-358 │         self.all_pairs[self.pair_counter] = address(pair)
+357 │         self.all_pairs[self.pair_counter] = address(pair)
     │                        ^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:358:9
+    ┌─ uniswap.fe:357:9
     │
-358 │         self.all_pairs[self.pair_counter] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ UniswapV2Pair
+357 │         self.all_pairs[self.pair_counter] = address(pair)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^ mut UniswapV2Pair
     │         │                                            
     │         mut SPtr<address>
 
 note: 
-    ┌─ uniswap.fe:358:45
+    ┌─ uniswap.fe:357:45
     │
-358 │         self.all_pairs[self.pair_counter] = address(pair)
+357 │         self.all_pairs[self.pair_counter] = address(pair)
     │                                             ^^^^^^^^^^^^^ address
-359 │         self.pair_counter = self.pair_counter + 1
+358 │         self.pair_counter = self.pair_counter + 1
     │         ^^^^ mut UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:359:9
+    ┌─ uniswap.fe:358:9
     │
-359 │         self.pair_counter = self.pair_counter + 1
+358 │         self.pair_counter = self.pair_counter + 1
     │         ^^^^^^^^^^^^^^^^^   ^^^^ mut UniswapV2Factory
     │         │                    
     │         mut SPtr<u256>
 
 note: 
-    ┌─ uniswap.fe:359:29
+    ┌─ uniswap.fe:358:29
     │
-359 │         self.pair_counter = self.pair_counter + 1
+358 │         self.pair_counter = self.pair_counter + 1
     │                             ^^^^^^^^^^^^^^^^^   ^ u256
     │                             │                    
     │                             mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:359:29
+    ┌─ uniswap.fe:358:29
     │
-359 │         self.pair_counter = self.pair_counter + 1
+358 │         self.pair_counter = self.pair_counter + 1
     │                             ^^^^^^^^^^^^^^^^^^^^^ u256
-360 │ 
-361 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
-    │         ^^^                  ^^^^^^  ^^^^^^                ^^^^ UniswapV2Pair
+359 │ 
+360 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
+    │         ^^^                  ^^^^^^  ^^^^^^                ^^^^ mut UniswapV2Pair
     │         │                    │       │                      
     │         │                    │       address
     │         │                    address
     │         mut Context
 
 note: 
-    ┌─ uniswap.fe:361:52
+    ┌─ uniswap.fe:360:52
     │
-361 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
+360 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
     │                                                    ^^^^^^^^^^^^^         ^^^^ mut UniswapV2Factory
     │                                                    │                      
     │                                                    address
 
 note: 
-    ┌─ uniswap.fe:361:74
+    ┌─ uniswap.fe:360:74
     │
-361 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
+360 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
     │                                                                          ^^^^^^^^^^^^^^^^^ mut SPtr<u256> -Load-> u256
 
 note: 
-    ┌─ uniswap.fe:361:18
+    ┌─ uniswap.fe:360:18
     │
-361 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
+360 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
     │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PairCreated
 
 note: 
-    ┌─ uniswap.fe:361:9
+    ┌─ uniswap.fe:360:9
     │
-361 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
+360 │         ctx.emit(PairCreated(token0, token1, pair: address(pair), index: self.pair_counter))
     │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
-362 │         return address(pair)
-    │                        ^^^^ UniswapV2Pair
+361 │         return address(pair)
+    │                        ^^^^ mut UniswapV2Pair
 
 note: 
-    ┌─ uniswap.fe:362:16
+    ┌─ uniswap.fe:361:16
     │
-362 │         return address(pair)
+361 │         return address(pair)
     │                ^^^^^^^^^^^^^ address
 
 note: 
-    ┌─ uniswap.fe:365:5
+    ┌─ uniswap.fe:364:5
     │  
-365 │ ╭     pub fn set_fee_to(mut self, ctx: Context, fee_to: address) {
-366 │ │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
-367 │ │         self.fee_to = fee_to
-368 │ │     }
+364 │ ╭     pub fn set_fee_to(mut self, ctx: Context, fee_to: address) {
+365 │ │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
+366 │ │         self.fee_to = fee_to
+367 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }, { label: None, name: fee_to, typ: address }] -> ()
 
 note: 
-    ┌─ uniswap.fe:366:16
+    ┌─ uniswap.fe:365:16
     │
-366 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
+365 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^ Context
 
 note: 
-    ┌─ uniswap.fe:366:16
+    ┌─ uniswap.fe:365:16
     │
-366 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
+365 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^^^^^^^^^^^^^^    ^^^^ mut UniswapV2Factory
     │                │                    
     │                address
 
 note: 
-    ┌─ uniswap.fe:366:36
+    ┌─ uniswap.fe:365:36
     │
-366 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
+365 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
     │                                    ^^^^^^^^^^^^^^^^^^ mut SPtr<address> -Load-> address
 
 note: 
-    ┌─ uniswap.fe:366:16
+    ┌─ uniswap.fe:365:16
     │
-366 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
+365 │         assert ctx.msg_sender() == self.fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^ String<20>
     │                │                                        
     │                bool
-367 │         self.fee_to = fee_to
+366 │         self.fee_to = fee_to
     │         ^^^^ mut UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:367:9
+    ┌─ uniswap.fe:366:9
     │
-367 │         self.fee_to = fee_to
+366 │         self.fee_to = fee_to
     │         ^^^^^^^^^^^   ^^^^^^ address
     │         │              
     │         mut SPtr<address>
 
 note: 
-    ┌─ uniswap.fe:370:5
+    ┌─ uniswap.fe:369:5
     │  
-370 │ ╭     pub fn set_fee_to_setter(mut self, ctx: Context, fee_to_setter: address) {
-371 │ │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
-372 │ │         self.fee_to_setter = fee_to_setter
-373 │ │     }
+369 │ ╭     pub fn set_fee_to_setter(mut self, ctx: Context, fee_to_setter: address) {
+370 │ │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
+371 │ │         self.fee_to_setter = fee_to_setter
+372 │ │     }
     │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }, { label: None, name: fee_to_setter, typ: address }] -> ()
 
 note: 
-    ┌─ uniswap.fe:371:16
+    ┌─ uniswap.fe:370:16
     │
-371 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
+370 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^ Context
 
 note: 
-    ┌─ uniswap.fe:371:16
+    ┌─ uniswap.fe:370:16
     │
-371 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
+370 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^^^^^^^^^^^^^^    ^^^^^^^^^^^^^ address
     │                │                    
     │                address
 
 note: 
-    ┌─ uniswap.fe:371:16
+    ┌─ uniswap.fe:370:16
     │
-371 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
+370 │         assert ctx.msg_sender() == fee_to_setter, "UniswapV2: FORBIDDEN"
     │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^ String<20>
     │                │                                   
     │                bool
-372 │         self.fee_to_setter = fee_to_setter
+371 │         self.fee_to_setter = fee_to_setter
     │         ^^^^ mut UniswapV2Factory
 
 note: 
-    ┌─ uniswap.fe:372:9
+    ┌─ uniswap.fe:371:9
     │
-372 │         self.fee_to_setter = fee_to_setter
+371 │         self.fee_to_setter = fee_to_setter
     │         ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^ address
     │         │                     
     │         mut SPtr<address>
 
 note: 
-    ┌─ uniswap.fe:376:1
+    ┌─ uniswap.fe:375:1
     │  
-376 │ ╭ fn sqrt(_ val: u256) -> u256 {
-377 │ │     let mut z: u256
-378 │ │     if val > 3 {
-379 │ │         z = val
+375 │ ╭ fn sqrt(_ val: u256) -> u256 {
+376 │ │     let mut z: u256
+377 │ │     if val > 3 {
+378 │ │         z = val
     · │
-388 │ │     return z
-389 │ │ }
+387 │ │     return z
+388 │ │ }
     │ ╰─^ params: [{ label: Some("_"), name: val, typ: u256 }] -> u256
 
 note: 
-    ┌─ uniswap.fe:377:13
+    ┌─ uniswap.fe:376:13
     │
-377 │     let mut z: u256
+376 │     let mut z: u256
     │             ^ mut u256
     ·
-380 │         let mut x: u256 = val / 2 + 1
+379 │         let mut x: u256 = val / 2 + 1
     │                 ^ mut u256
 
 note: 
-    ┌─ uniswap.fe:378:8
+    ┌─ uniswap.fe:377:8
     │
-378 │     if val > 3 {
+377 │     if val > 3 {
     │        ^^^   ^ u256
     │        │      
     │        u256
 
 note: 
-    ┌─ uniswap.fe:378:8
+    ┌─ uniswap.fe:377:8
     │
-378 │     if val > 3 {
+377 │     if val > 3 {
     │        ^^^^^^^ bool
-379 │         z = val
+378 │         z = val
     │         ^   ^^^ u256
     │         │    
     │         mut u256
-380 │         let mut x: u256 = val / 2 + 1
+379 │         let mut x: u256 = val / 2 + 1
     │                           ^^^   ^ u256
     │                           │      
     │                           u256
 
 note: 
-    ┌─ uniswap.fe:380:27
+    ┌─ uniswap.fe:379:27
     │
-380 │         let mut x: u256 = val / 2 + 1
+379 │         let mut x: u256 = val / 2 + 1
     │                           ^^^^^^^   ^ u256
     │                           │          
     │                           u256
 
 note: 
-    ┌─ uniswap.fe:380:27
+    ┌─ uniswap.fe:379:27
     │
-380 │         let mut x: u256 = val / 2 + 1
+379 │         let mut x: u256 = val / 2 + 1
     │                           ^^^^^^^^^^^ u256
-381 │         while x < z {
+380 │         while x < z {
     │               ^   ^ mut u256
     │               │    
     │               mut u256
 
 note: 
-    ┌─ uniswap.fe:381:15
+    ┌─ uniswap.fe:380:15
     │
-381 │         while x < z {
+380 │         while x < z {
     │               ^^^^^ bool
-382 │             z = x
+381 │             z = x
     │             ^   ^ mut u256
     │             │    
     │             mut u256
-383 │             x = (val / x + x) / 2
+382 │             x = (val / x + x) / 2
     │             ^    ^^^   ^ mut u256
     │             │    │      
     │             │    u256
     │             mut u256
 
 note: 
-    ┌─ uniswap.fe:383:18
+    ┌─ uniswap.fe:382:18
     │
-383 │             x = (val / x + x) / 2
+382 │             x = (val / x + x) / 2
     │                  ^^^^^^^   ^ mut u256
     │                  │          
     │                  u256
 
 note: 
-    ┌─ uniswap.fe:383:17
+    ┌─ uniswap.fe:382:17
     │
-383 │             x = (val / x + x) / 2
+382 │             x = (val / x + x) / 2
     │                 ^^^^^^^^^^^^^   ^ u256
     │                 │                
     │                 u256
 
 note: 
-    ┌─ uniswap.fe:383:17
+    ┌─ uniswap.fe:382:17
     │
-383 │             x = (val / x + x) / 2
+382 │             x = (val / x + x) / 2
     │                 ^^^^^^^^^^^^^^^^^ u256
-384 │         }
-385 │     } else if val != 0 {
+383 │         }
+384 │     } else if val != 0 {
     │               ^^^    ^ u256
     │               │       
     │               u256
 
 note: 
-    ┌─ uniswap.fe:385:15
+    ┌─ uniswap.fe:384:15
     │
-385 │     } else if val != 0 {
+384 │     } else if val != 0 {
     │               ^^^^^^^^ bool
-386 │         z = 1
+385 │         z = 1
     │         ^   ^ u256
     │         │    
     │         mut u256
-387 │     }
-388 │     return z
+386 │     }
+387 │     return z
     │            ^ mut u256
 
 note: 
-    ┌─ uniswap.fe:391:1
+    ┌─ uniswap.fe:390:1
     │  
-391 │ ╭ fn min(_ x: u256, _ y: u256) -> u256 {
-392 │ │     return x if x < y else y
-393 │ │ }
+390 │ ╭ fn min(_ x: u256, _ y: u256) -> u256 {
+391 │ │     return x if x < y else y
+392 │ │ }
     │ ╰─^ params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
-    ┌─ uniswap.fe:392:17
+    ┌─ uniswap.fe:391:17
     │
-392 │     return x if x < y else y
+391 │     return x if x < y else y
     │                 ^   ^ u256
     │                 │    
     │                 u256
 
 note: 
-    ┌─ uniswap.fe:392:12
+    ┌─ uniswap.fe:391:12
     │
-392 │     return x if x < y else y
+391 │     return x if x < y else y
     │            ^    ^^^^^      ^ u256
     │            │    │           
     │            │    bool
     │            u256
 
 note: 
-    ┌─ uniswap.fe:392:12
+    ┌─ uniswap.fe:391:12
     │
-392 │     return x if x < y else y
+391 │     return x if x < y else y
     │            ^^^^^^^^^^^^^^^^^ u256
 
 

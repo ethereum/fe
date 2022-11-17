@@ -40,7 +40,7 @@ impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>, bool) {
     }
 }
 
-impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>) {
+impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>, bool) {
     fn label(&self) -> Option<&str> {
         self.0.as_ref().map(smol_str::SmolStr::as_str)
     }
@@ -48,8 +48,7 @@ impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>) {
         self.1.clone()
     }
     fn is_sink(&self) -> bool {
-        // XXX
-        true
+        self.2
     }
 }
 
@@ -218,8 +217,14 @@ pub fn validate_named_args(
             }
             arg_attr.typ
         };
+
         if param_type.is_mut(context.db()) && !arg_type.is_mut(context.db()) {
-            context.error("XXX need mut", arg.span, "make this `mut`");
+            let msg = if let Some(label) = param.label() {
+                format!("`{}` argument `{}` must be mutable", name, label)
+            } else {
+                format!("`{}` argument at position {} must be mutable", name, index)
+            };
+            context.error(&msg, arg.kind.value.span, "is not `mut`");
         }
     }
     Ok(())

@@ -15,6 +15,7 @@ use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
+use std::cmp::Ordering;
 
 /// Try to perform an explicit type cast, eg `u256(my_address)` or `address(my_contract)`.
 /// Returns nothing. Emits an error if the cast fails; explicit cast failures are not fatal.
@@ -47,7 +48,6 @@ pub fn try_cast_type(
                     ),
                 );
             } else {
-                // XXX should this be here?
                 adjust_type(context, from_expr, into, AdjustmentKind::StringSizeIncrease);
             }
         }
@@ -174,7 +174,6 @@ fn coerce(
     }
 
     match (from.typ(context.db()), into.typ(context.db())) {
-        // XXX insert copy, deref rhs, rm assignment heuristic in codegen?
         (Type::SPtr(from), Type::SPtr(into)) => {
             coerce(context, from_expr, from, into, false, chain)
         }
@@ -215,21 +214,18 @@ fn coerce(
         // Note that no `Adjustment` is added here.
         (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, false, chain),
 
-        // XXX handle should_copy
         (
             Type::String(FeString { max_size: from_sz }),
             Type::String(FeString { max_size: into_sz }),
-        ) => {
-            if into_sz >= from_sz {
-                Ok(add_adjustment(
-                    chain,
-                    into,
-                    AdjustmentKind::StringSizeIncrease,
-                ))
-            } else {
-                Err(TypeCoercionError::Incompatible)
-            }
-        }
+        ) => match into_sz.cmp(&from_sz) {
+            Ordering::Equal => Ok(chain),
+            Ordering::Greater => Ok(add_adjustment(
+                chain,
+                into,
+                AdjustmentKind::StringSizeIncrease,
+            )),
+            Ordering::Less => Err(TypeCoercionError::Incompatible),
+        },
         (Type::SelfContract(from), Type::Contract(into)) => {
             if from == into {
                 Err(TypeCoercionError::SelfContractType)
@@ -264,7 +260,6 @@ fn coerce(
             Err(TypeCoercionError::Incompatible)
         }
 
-        // XXX check?
         (Type::Base(Base::Numeric(f)), Type::Base(Base::Numeric(i))) => {
             if f.is_signed() == i.is_signed() && i.size() > f.size() {
                 Ok(add_adjustment(chain, into, AdjustmentKind::IntSizeIncrease))
@@ -393,7 +388,7 @@ pub fn apply_generic_type_args(
 
             (GenericParamKind::PrimitiveType, ast::GenericArg::TypeDesc(type_node)) => {
                 let typ = type_desc(context, type_node)?;
-                if typ.is_base(context.db()) {
+                if typ.is_primitive(context.db()) {
                     Ok(GenericArg::Type(typ))
                 } else {
                     Err(TypeError::new(context.error(

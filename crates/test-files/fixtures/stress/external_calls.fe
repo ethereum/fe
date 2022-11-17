@@ -63,7 +63,7 @@ contract FooProxy {
         self.foo = Foo(foo_addr)
     }
 
-    pub fn call_set_my_string(self, some_string: String<100>) {
+    pub fn call_set_my_string(mut self, some_string: String<100>) {
         self.foo.set_my_string(some_string)
     }
 
@@ -71,7 +71,7 @@ contract FooProxy {
         return self.foo.get_my_string()
     }
 
-    pub fn call_set_my_tuple(self, some_tuple: (u256, address)) {
+    pub fn call_set_my_tuple(mut self, some_tuple: (u256, address)) {
         self.foo.set_my_tuple(some_tuple)
     }
 
@@ -79,7 +79,7 @@ contract FooProxy {
         return self.foo.get_my_tuple()
     }
 
-    pub fn call_set_my_string_and_tuple(self, some_string: String<100>, some_tuple: (u256, address)) {
+    pub fn call_set_my_string_and_tuple(mut self, some_string: String<100>, some_tuple: (u256, address)) {
         self.foo.set_my_string_and_tuple(some_string, some_tuple)
     }
 

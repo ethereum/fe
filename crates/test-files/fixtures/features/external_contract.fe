@@ -6,7 +6,7 @@ struct MyEvent {
 
 contract Foo {
 
-    pub fn emit_event(self, ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+    pub fn emit_event(self, mut ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
         ctx.emit(MyEvent(my_num, my_addrs, my_string))
     }
 
@@ -24,7 +24,7 @@ contract Foo {
 }
 
 contract FooProxy {
-    pub fn call_emit_event(ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+    pub fn call_emit_event(mut ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
         let foo: Foo = Foo(foo_address)
         foo.emit_event(ctx, my_num, my_addrs, my_string)
     }

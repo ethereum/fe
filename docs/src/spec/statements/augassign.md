@@ -22,62 +22,21 @@ An augmenting assignment statement consists of an expression that holds a mutabl
 Example:
 
 ```fe
-contract Foo {
-
-    pub fn add(mut a: u256, b: u256) -> u256 {
-        a += b
-        return a
-    }
-
-    pub fn sub(mut a: u256, b: u256) -> u256 {
-        a -= b
-        return a
-    }
-
-    pub fn mul(mut a: u256, b: u256) -> u256 {
-        a *= b
-        return a
-    }
-
-    pub fn div(mut a: u256, b: u256) -> u256 {
-        a /= b
-        return a
-    }
-
-    pub fn mod(mut a: u256, b: u256) -> u256 {
-        a %= b
-        return a
-    }
-
-    pub fn pow(mut a: u256, b: u256) -> u256 {
-        a **= b
-        return a
-    }
-
-    pub fn lshift(mut a: u8, b: u8) -> u8 {
-        a <<= b
-        return a
-    }
-
-    pub fn rshift(mut a: u8, b: u8) -> u8 {
-        a >>= b
-        return a
-    }
-
-    pub fn bit_or(mut a: u8, b: u8) -> u8 {
-        a |= b
-        return a
-    }
-
-    pub fn bit_xor(mut a: u8, b: u8) -> u8 {
-        a ^= b
-        return a
-    }
-
-    pub fn bit_and(mut a: u8, b: u8) -> u8 {
-        a &= b
-        return a
-    }
+fn example() -> u8 {
+    let mut a: u8 = 1
+    let b: u8 = 2
+    a += b
+    a -= b
+    a *= b
+    a /= b
+    a %= b
+    a **= b
+    a <<= b
+    a >>= b
+    a |= b
+    a ^= b
+    a &= b
+    return a
 }
 ```
 

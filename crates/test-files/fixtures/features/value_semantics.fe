@@ -1,8 +1,7 @@
 contract Foo {
-
     my_array: Array<u8, 3>
 
-    pub fn bar(self) -> bool {
+    pub fn bar(mut self) -> bool {
         self.set_array()
         tuple_of_primitive()
 
@@ -12,7 +11,6 @@ contract Foo {
     pub fn set_array(mut self) {
         self.my_array = [42; 3]
     }
-
 }
 
 
@@ -63,8 +61,21 @@ fn struct_constructor() {
 fn copies() {
     let p: Point = Point(x: 0, y: 0)
     let mut a: Point = p // copy
+    a.x = 1
+    assert p.x == 0
+    assert a.x == 1
+
     let b: Point = p     // no copy
     a = b                // copy
+    assert a.x == 0
+    a.x = 2
+    assert b.x == 0
+    assert a.x == 2
+
+    let mut c: Point = a // copy
+    a.x = 3
+    assert c.x == 2
+    assert a.x == 3
 
     let m: Line = Line::from_origin_to(b)     // no copy
     let mut n: Line = Line::from_origin_to(b) // copy

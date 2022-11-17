@@ -42,7 +42,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --workspace --all-targets --all-features -- -D warnings -W clippy::redundant_closure_for_method_calls
+          args: --workspace --all-targets --all-features -- -D warnings
 
   book:
     runs-on: ubuntu-latest

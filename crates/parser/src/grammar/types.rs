@@ -136,7 +136,6 @@ pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<N
 
             _ => {
                 let tok = par.next()?;
-                dbg!(&tok);
                 par.unexpected_token_error(&tok, "failed to parse enum definition body", vec![]);
                 return Err(ParseFailed);
             }
