@@ -203,7 +203,7 @@ fn is_value_zst(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) -> bool
     body.store
         .value_ty(value)
         .deref(db.upcast())
-        .is_zero_sized(db.upcast()) // XXX deref?
+        .is_zero_sized(db.upcast())
 }
 
 fn is_value_contract(db: &dyn CodegenDb, body: &FunctionBody, value: ValueId) -> bool {

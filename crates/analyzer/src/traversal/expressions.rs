@@ -66,7 +66,6 @@ pub fn expect_expr_type(
     Ok(attr)
 }
 
-// XXX remove?
 pub fn value_expr_type(
     context: &mut dyn AnalyzerContext,
     exp: &Node<fe::Expr>,
@@ -284,8 +283,8 @@ fn expr_tuple(
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        // XXX don't fatal if expected.is_some()
         if !&types.iter().all(|id| id.has_fixed_size(context.db())) {
+            // TODO: doesn't need to be fatal if expected.is_some()
             return Err(FatalError::new(context.error(
                 "variable size types can not be part of tuples",
                 exp.span,
@@ -759,7 +758,6 @@ fn expr_bin_operation(
     ) {
         Err(err) => {
             let diag = add_bin_operations_errors(
-                // XXX deref types?
                 context,
                 &op.kind,
                 left.span,
@@ -1374,7 +1372,7 @@ fn expr_call_enum_constructor(
             );
         }
         EnumVariantKind::Tuple(elts) => {
-            let params: Vec<_> = elts.iter().map(|ty| (None, Ok(*ty))).collect();
+            let params: Vec<_> = elts.iter().map(|ty| (None, Ok(*ty), true)).collect();
             validate_named_args(context, name, name_span, args, &params)?;
         }
     }
@@ -1423,11 +1421,7 @@ fn expr_call_method(
         check_for_call_to_special_fns(context, &field.kind, field.span)?;
     }
 
-    match obj_type
-        .function_sigs(context.db(), &field.kind)
-        .to_vec()
-        .as_slice()
-    {
+    match obj_type.function_sigs(context.db(), &field.kind).as_ref() {
         [] => Err(FatalError::new(context.fancy_error(
             &format!(
                 "No function `{}` exists on type `{}`",
@@ -1460,6 +1454,17 @@ fn expr_call_method(
             }
 
             let sig = method.signature(context.db());
+
+            if matches!(sig.self_decl.map(|d| d.is_mut()), Some(true))
+                && !target_attributes.typ.is_mut(context.db())
+            {
+                context.error(
+                    &format!("`{}` takes `mut self`", &field.kind),
+                    target.span,
+                    "this is not mutable",
+                );
+            }
+
             validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
 
             let calltype = match obj_type.typ(context.db()) {
@@ -1764,7 +1769,6 @@ fn expr_call_type_attribute(
                 if let Some(attrs) = arg_attributes.get(i) {
                     if i == 0 {
                         if let Some(ctx_type) = context.get_context_type() {
-                            // XXX require mut ctx
                             if attrs.typ != Type::Mut(ctx_type).id(context.db()) {
                                 context.fancy_error(
                                     &format!(
@@ -1991,7 +1995,6 @@ fn expr_ternary(
         let if_attr = expr(context, if_expr, expected_type)?;
         let else_attr = expr(context, else_expr, expected_type.or(Some(if_attr.typ)))?;
 
-        // XXX expect_types_to_match(
         // Should have the same return Type
         if if_attr.typ != else_attr.typ {
             let if_expr_ty = deref_type(context, exp, if_attr.typ);

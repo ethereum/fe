@@ -71,7 +71,7 @@ pub struct Context {
         unsafe { return address(__address()) }
     }
 
-    pub fn send_value(self, to: address, wei: u256) {
+    pub fn send_value(mut self, to: address, wei: u256) {
         unsafe {
             if evm::balance() < wei {
                 revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
@@ -86,7 +86,7 @@ pub struct Context {
         }
     }
 
-    pub fn emit<T: Emittable>(self, _ val: T) {
+    pub fn emit<T: Emittable>(mut self, _ val: T) {
         val.emit(OutOfReachMarker())
     }
 }

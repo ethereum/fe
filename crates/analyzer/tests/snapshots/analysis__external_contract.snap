@@ -16,10 +16,10 @@ note:
 note: 
    ┌─ external_contract.fe:9:5
    │  
- 9 │ ╭     pub fn emit_event(self, ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+ 9 │ ╭     pub fn emit_event(self, mut ctx: Context, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 10 │ │         ctx.emit(MyEvent(my_num, my_addrs, my_string))
 11 │ │     }
-   │ ╰─────^ params: [self, { label: None, name: ctx, typ: Context }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
+   │ ╰─────^ params: [self, { label: None, name: ctx, typ: mut Context }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
 
 note: 
    ┌─ external_contract.fe:10:9
@@ -29,7 +29,7 @@ note:
    │         │                │       │          
    │         │                │       Array<address, 5> -Copy-> Array<address, 5>
    │         │                u256
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ external_contract.fe:10:18
@@ -145,11 +145,11 @@ note:
 note: 
    ┌─ external_contract.fe:27:5
    │  
-27 │ ╭     pub fn call_emit_event(ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
+27 │ ╭     pub fn call_emit_event(mut ctx: Context, foo_address: address, my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>) {
 28 │ │         let foo: Foo = Foo(foo_address)
 29 │ │         foo.emit_event(ctx, my_num, my_addrs, my_string)
 30 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: foo_address, typ: address }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: foo_address, typ: address }, { label: None, name: my_num, typ: u256 }, { label: None, name: my_addrs, typ: Array<address, 5> }, { label: None, name: my_string, typ: String<11> }] -> ()
 
 note: 
    ┌─ external_contract.fe:28:13
@@ -173,7 +173,7 @@ note:
    │         │              │    │       │          
    │         │              │    │       Array<address, 5>
    │         │              │    u256
-   │         │              Context
+   │         │              mut Context
    │         Foo
 
 note: 

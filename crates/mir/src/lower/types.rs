@@ -12,8 +12,9 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId
     let ty_kind = match analyzer_ty.typ(db.upcast()) {
         analyzer_types::Type::SPtr(inner) => TypeKind::SPtr(lower_type(db, inner)),
 
-        // XXX this results in unexpected MIR TypeId inequalities
-        //  (when different analyzer types map to the same MIR type)
+        // NOTE: this results in unexpected MIR TypeId inequalities
+        //  (when different analyzer types map to the same MIR type).
+        //  We could (should?) remove .analyzer_ty from Type.
         analyzer_types::Type::Mut(inner) => match inner.typ(db.upcast()) {
             analyzer_types::Type::SPtr(t) => TypeKind::SPtr(lower_type(db, t)),
             analyzer_types::Type::Base(t) => lower_base(t),

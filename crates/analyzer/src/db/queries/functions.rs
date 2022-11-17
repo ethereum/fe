@@ -107,8 +107,16 @@ pub fn function_signature(
             ast::FunctionArg::Regular { mut_, label, name, typ: typedesc } => {
                 let typ = resolve_function_param_type(db, function, &mut scope, typedesc).and_then(|typ| match typ {
                     typ if typ.has_fixed_size(db) => {
-                        if mut_.is_some() {
-                            Ok(Type::Mut(typ).id(db))
+                        if let Some(mut_span) = mut_ {
+                            if typ.is_primitive(db) {
+                                Err(TypeError::new(scope.error(
+                                    "primitive type function parameters cannot be `mut`",
+                                    *mut_span + typedesc.span,
+                                    &format!("`{}` type can't be used as a `mut` function parameter",
+                                             typ.display(db)))))
+                            } else {
+                                Ok(Type::Mut(typ).id(db))
+                            }
                         } else {
                             Ok(typ)
                         }

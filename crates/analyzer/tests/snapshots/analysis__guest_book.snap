@@ -18,14 +18,14 @@ note:
 note: 
    ┌─ guest_book.fe:14:5
    │  
-14 │ ╭     pub fn sign(mut self, ctx: Context, book_msg: String<100>) {
+14 │ ╭     pub fn sign(mut self, mut ctx: Context, book_msg: String<100>) {
 15 │ │         // All storage access is explicit using `self.<some-key>`
 16 │ │         self.messages[ctx.msg_sender()] = book_msg
 17 │ │ 
 18 │ │         // Emit the `Signed` event.
 19 │ │         ctx.emit(Signed(book_msg))
 20 │ │     }
-   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }, { label: None, name: book_msg, typ: String<100> }] -> ()
 
 note: 
    ┌─ guest_book.fe:16:9
@@ -37,7 +37,7 @@ note:
    ┌─ guest_book.fe:16:9
    │
 16 │         self.messages[ctx.msg_sender()] = book_msg
-   │         ^^^^^^^^^^^^^ ^^^ Context
+   │         ^^^^^^^^^^^^^ ^^^ mut Context
    │         │              
    │         mut SPtr<Map<address, String<100>>>
 
@@ -58,7 +58,7 @@ note:
 19 │         ctx.emit(Signed(book_msg))
    │         ^^^             ^^^^^^^^ String<100> -Copy-> String<100>
    │         │                
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ guest_book.fe:19:18

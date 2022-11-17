@@ -83,7 +83,7 @@ fn is_valid_assign_target(
         }
 
         Name(name) => match scope.resolve_name(name, expr.span) {
-            Ok(Some(NamedThing::SelfValue { .. })) => Ok(true), // XXX ?
+            Ok(Some(NamedThing::SelfValue { .. })) => Ok(true),
             Ok(Some(NamedThing::Item(_)) | Some(NamedThing::EnumVariant(_)) | None) => {
                 bad_assign_target_error(scope, expr, "invalid assignment target");
                 Ok(false)
@@ -123,7 +123,7 @@ pub fn aug_assign(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(
     };
 
     if is_valid_assign_target(scope, target)? {
-        let lhs_ty = assignment_lhs_type(scope, target)?; // XXX check this
+        let lhs_ty = assignment_lhs_type(scope, target)?;
         let rhs = expressions::expr(scope, value, Some(lhs_ty))?;
 
         if let Err(err) = operations::bin(scope, lhs_ty, target, op.kind, rhs.typ, value) {

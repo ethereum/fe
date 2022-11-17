@@ -98,13 +98,9 @@ impl TypeId {
         self.typ(db).has_fixed_size(db)
     }
 
-    // XXX is Contract type usable everywhere Base types are?
     /// `true` if Type::Base or Type::Contract (which is just an Address)
     pub fn is_primitive(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(_) | Type::Contract(_))
-    }
-    pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(self.typ(db), Type::Base(_))
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
@@ -557,10 +553,6 @@ impl Type {
             Self::Contract(id) | Self::SelfContract(id) => Some(id.span(context.db())),
             _ => None,
         }
-    }
-
-    pub fn is_base(&self) -> bool {
-        matches!(self, Type::Base(_))
     }
 
     /// Creates an instance of bool.

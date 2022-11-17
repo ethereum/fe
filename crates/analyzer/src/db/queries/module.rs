@@ -315,9 +315,9 @@ pub fn module_constant_type(
     let typ = type_desc(&mut scope, &constant_data.ast.kind.typ);
 
     match &typ {
-        Ok(typ) if !typ.is_base(db) => {
+        Ok(typ) if !typ.is_primitive(db) => {
             scope.error(
-                "Non-base types not yet supported for constants",
+                "Non-primitive types not yet supported for constants",
                 constant.data(db).ast.kind.typ.span,
                 &format!(
                     "this has type `{}`; expected a primitive type",

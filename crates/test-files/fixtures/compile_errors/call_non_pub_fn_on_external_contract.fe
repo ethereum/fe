@@ -8,6 +8,7 @@ contract Foo {
 
 contract Bar {
     fn test() {
-        Foo(address(0)).do_private_thingz()
+        let mut foo: Foo = Foo(address(0))
+        foo.do_private_thingz()
     }
 }

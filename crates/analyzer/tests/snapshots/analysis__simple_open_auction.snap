@@ -235,14 +235,14 @@ note:
 note: 
    ┌─ simple_open_auction.fe:58:5
    │  
-58 │ ╭     pub fn withdraw(mut self, ctx: Context) -> bool {
+58 │ ╭     pub fn withdraw(mut self, mut ctx: Context) -> bool {
 59 │ │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 60 │ │ 
 61 │ │         if amount > 0 {
    · │
 65 │ │         return true
 66 │ │     }
-   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }] -> bool
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: mut Context }] -> bool
 
 note: 
    ┌─ simple_open_auction.fe:59:13
@@ -260,7 +260,7 @@ note:
    ┌─ simple_open_auction.fe:59:28
    │
 59 │         let amount: u256 = self.pending_returns[ctx.msg_sender()]
-   │                            ^^^^^^^^^^^^^^^^^^^^ ^^^ Context
+   │                            ^^^^^^^^^^^^^^^^^^^^ ^^^ mut Context
    │                            │                     
    │                            mut SPtr<Map<address, u256>>
 
@@ -293,7 +293,7 @@ note:
    ┌─ simple_open_auction.fe:62:13
    │
 62 │             self.pending_returns[ctx.msg_sender()] = 0
-   │             ^^^^^^^^^^^^^^^^^^^^ ^^^ Context
+   │             ^^^^^^^^^^^^^^^^^^^^ ^^^ mut Context
    │             │                     
    │             mut SPtr<Map<address, u256>>
 
@@ -311,9 +311,9 @@ note:
    │             │                                         
    │             mut SPtr<u256>
 63 │             ctx.send_value(to: ctx.msg_sender(), wei: amount)
-   │             ^^^                ^^^ Context
+   │             ^^^                ^^^ mut Context
    │             │                   
-   │             Context
+   │             mut Context
 
 note: 
    ┌─ simple_open_auction.fe:63:32

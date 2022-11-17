@@ -55,7 +55,7 @@ contract SimpleOpenAuction {
         ctx.emit(HighestBidIncreased(bidder: ctx.msg_sender(), amount: ctx.msg_value()))
     }
 
-    pub fn withdraw(mut self, ctx: Context) -> bool {
+    pub fn withdraw(mut self, mut ctx: Context) -> bool {
         let amount: u256 = self.pending_returns[ctx.msg_sender()]
 
         if amount > 0 {

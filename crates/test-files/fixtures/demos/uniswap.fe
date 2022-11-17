@@ -165,7 +165,6 @@ contract UniswapV2Pair {
         ctx.emit(Sync(reserve0: self.reserve0, reserve1: self.reserve1))
     }
 
-    // XXX expect `mut` error for ctx here
     fn _mint_fee(mut self, mut ctx: Context, reserve0: u256, reserve1: u256) -> bool {
         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
         let fee_on: bool = fee_to != address(0)
@@ -296,7 +295,7 @@ contract UniswapV2Pair {
     }
 
     // force reserves to match balances
-    pub fn sync(self, mut ctx: Context) {
+    pub fn sync(mut self, mut ctx: Context) {
         let token0: ERC20 = self.token0
         let token1: ERC20 = self.token1
         self._update(ctx,
@@ -350,7 +349,7 @@ contract UniswapV2Factory {
         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
 
         let salt: u256 = keccak256((token0, token1).abi_encode())
-        let pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
+        let mut pair: UniswapV2Pair = UniswapV2Pair.create2(ctx, 0, salt)
         pair.initialize(ctx, token0: ERC20(token0), token1: ERC20(token1))
 
         self.pairs[token0][token1] = address(pair)

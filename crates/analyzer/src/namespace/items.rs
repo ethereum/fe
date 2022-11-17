@@ -1097,7 +1097,6 @@ impl FunctionSigId {
         db.lookup_intern_function_sig(*self)
     }
 
-    // XXX #[deprecated]
     pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl.is_some()
     }
@@ -1113,13 +1112,7 @@ impl FunctionSigId {
         }
     }
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
-        if self.takes_self(db) {
-            self.data(db).ast.kind.args.iter().find_map(|arg| {
-                matches!(arg.kind, ast::FunctionArg::Self_ { .. }).then(|| arg.span)
-            })
-        } else {
-            None
-        }
+        Some(self.signature(db).self_decl?.span)
     }
     pub fn signature(&self, db: &dyn AnalyzerDb) -> Rc<types::FunctionSignature> {
         db.function_signature(*self).value

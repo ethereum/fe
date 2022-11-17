@@ -25,8 +25,9 @@ struct Point {
 }
 
 fn pointy_stuff() {
-    let p: Point = Point(x: 10, y: 11)
+    let mut p: Point = Point(x: 10, y: 11)
     let px: u256 = p.x
+    p.x = 100
 }
 ```
 

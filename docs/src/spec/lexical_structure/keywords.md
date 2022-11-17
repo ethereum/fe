@@ -24,9 +24,10 @@ be used as the [identifiers](./identifiers.md).
 > KW_FOR            : `for`\
 > KW_IDX             : `idx`\
 > KW_IF             : `if`\
-> KW_MATCH          : `match`\
 > KW_IN             : `in`\
 > KW_LET            : `let`\
+> KW_MATCH          : `match`\
+> KW_MUT            : `mut`\
 > KW_NONPAYABLE     : `nonpayable`\
 > KW_PAYABLE        : `payable`\
 > KW_PUB            : `pub`\
@@ -35,6 +36,7 @@ be used as the [identifiers](./identifiers.md).
 > KW_SELFVALUE      : `self`\
 > KW_STRUCT         : `struct`\
 > KW_TRUE           : `true`\
+> KW_USE            : `use`\
 > KW_WHILE          : `while` \
 > KW_ADDRESS        : `address`
 
@@ -48,14 +50,13 @@ them to use these keywords.
 
 > **Lexer:**\
 > KW_ABSTRACT       : `abstract`\
-> KW_ABSTRACT       : `async`\
-> KW_ABSTRACT       : `await`\
+> KW_ASYNC          : `async`\
+> KW_AWAIT          : `await`\
 > KW_DO             : `do`\
 > KW_EXTERNAL       : `external`\
 > KW_FINAL          : `final`\
 > KW_IMPL           : `impl`\
 > KW_MACRO          : `macro`\
-> KW_MUT            : `mut`\
 > KW_OVERRIDE       : `override`\
 > KW_PURE           : `pure`\
 > KW_SELFTYPE       : `Self`\
@@ -64,7 +65,6 @@ them to use these keywords.
 > KW_TRAIT          : `trait`\
 > KW_TYPE           : `type`\
 > KW_TYPEOF         : `typeof`\
-> KW_USE            : `use`\
 > KW_VIEW           : `view`\
 > KW_VIRTUAL        : `virtual`\
 > KW_WHERE          : `where`\

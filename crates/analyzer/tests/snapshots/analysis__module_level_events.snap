@@ -17,18 +17,18 @@ note:
 note: 
    ┌─ module_level_events.fe:10:5
    │  
-10 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
+10 │ ╭     fn transfer(mut ctx: Context, to: address, value: u256) {
 11 │ │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
 12 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
    ┌─ module_level_events.fe:11:9
    │
 11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
-   │         ^^^                       ^^^ Context
+   │         ^^^                       ^^^ mut Context
    │         │                          
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ module_level_events.fe:11:35

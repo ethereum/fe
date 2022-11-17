@@ -41,10 +41,10 @@ note:
 note: 
    ┌─ events.fe:26:5
    │  
-26 │ ╭     pub fn emit_nums(ctx: Context) {
+26 │ ╭     pub fn emit_nums(mut ctx: Context) {
 27 │ │         ctx.emit(Nums(num1: 26, num2: 42))
 28 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ events.fe:27:9
@@ -53,7 +53,7 @@ note:
    │         ^^^                 ^^        ^^ u256
    │         │                   │          
    │         │                   u256
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ events.fe:27:18
@@ -70,10 +70,10 @@ note:
 note: 
    ┌─ events.fe:30:5
    │  
-30 │ ╭     pub fn emit_bases(ctx: Context, addr: address) {
+30 │ ╭     pub fn emit_bases(mut ctx: Context, addr: address) {
 31 │ │         ctx.emit(Bases(num: 26, addr))
 32 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: addr, typ: address }] -> ()
 
 note: 
    ┌─ events.fe:31:9
@@ -82,7 +82,7 @@ note:
    │         ^^^                 ^^  ^^^^ address
    │         │                   │    
    │         │                   u256
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ events.fe:31:18
@@ -99,10 +99,10 @@ note:
 note: 
    ┌─ events.fe:34:5
    │  
-34 │ ╭     pub fn emit_mix(ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
+34 │ ╭     pub fn emit_mix(mut ctx: Context, addr: address, my_bytes: Array<u8, 100>) {
 35 │ │         ctx.emit(Mix(num1: 26, addr, num2: 42, my_bytes))
 36 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr, typ: address }, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: addr, typ: address }, { label: None, name: my_bytes, typ: Array<u8, 100> }] -> ()
 
 note: 
    ┌─ events.fe:35:9
@@ -113,7 +113,7 @@ note:
    │         │                  │   │           u256
    │         │                  │   address
    │         │                  u256
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ events.fe:35:18
@@ -130,13 +130,13 @@ note:
 note: 
    ┌─ events.fe:38:5
    │  
-38 │ ╭     pub fn emit_addresses(ctx: Context, addr1: address, addr2: address) {
+38 │ ╭     pub fn emit_addresses(mut ctx: Context, addr1: address, addr2: address) {
 39 │ │         let mut addrs: Array<address, 2> = [address(0); 2]
 40 │ │         addrs[0] = addr1
 41 │ │         addrs[1] = addr2
 42 │ │         ctx.emit(Addresses(addrs))
 43 │ │     }
-   │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }, { label: None, name: addr1, typ: address }, { label: None, name: addr2, typ: address }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: addr1, typ: address }, { label: None, name: addr2, typ: address }] -> ()
 
 note: 
    ┌─ events.fe:39:17
@@ -190,7 +190,7 @@ note:
 42 │         ctx.emit(Addresses(addrs))
    │         ^^^                ^^^^^ mut Array<address, 2> -Copy-> Array<address, 2>
    │         │                   
-   │         Context
+   │         mut Context
 
 note: 
    ┌─ events.fe:42:18
