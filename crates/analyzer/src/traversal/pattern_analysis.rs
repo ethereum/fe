@@ -638,7 +638,7 @@ fn simplify_pattern(
             }
         }
 
-        Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
+        Pattern::Path(path) => match scope.resolve_visible_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => SimplifiedPatternKind::Constructor {
                 kind: ConstructorKind::Enum(variant),
                 fields: vec![],
@@ -650,7 +650,7 @@ fn simplify_pattern(
         },
 
         Pattern::PathTuple(path, elts) => {
-            let variant = match scope.maybe_resolve_path(&path.kind).unwrap() {
+            let variant = match scope.resolve_visible_path(&path.kind).unwrap() {
                 NamedThing::EnumVariant(variant) => variant,
                 _ => unreachable!(),
             };
@@ -668,7 +668,7 @@ fn simplify_pattern(
             fields: pat_fields,
             ..
         } => {
-            let (sid, ctor_kind) = match scope.maybe_resolve_path(&path.kind).unwrap() {
+            let (sid, ctor_kind) = match scope.resolve_visible_path(&path.kind).unwrap() {
                 NamedThing::Item(Item::Type(TypeDef::Struct(sid))) => {
                     (sid, ConstructorKind::Struct(sid))
                 }

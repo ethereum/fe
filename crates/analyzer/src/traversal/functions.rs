@@ -208,7 +208,7 @@ fn match_pattern(
             tuple_pattern(scope, elts, &expected_elts, pat.span, None)
         }
 
-        Pattern::Path(path) => match scope.maybe_resolve_path(&path.kind) {
+        Pattern::Path(path) => match scope.resolve_visible_path(&path.kind) {
             Some(NamedThing::EnumVariant(variant)) => {
                 let db = scope.db();
                 let parent_type = variant.parent(db).as_type(db);

@@ -5,7 +5,7 @@ use crate::errors::{self, FatalError, IndexingError, TypeCoercionError};
 use crate::namespace::items::{
     EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef,
 };
-use crate::namespace::scopes::BlockScopeType;
+use crate::namespace::scopes::{check_visibility, BlockScopeType};
 use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
@@ -979,8 +979,139 @@ fn expr_call_path<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    let named_thing = context.resolve_path(path, func.span)?;
-    expr_call_named_thing(context, named_thing, func, generic_args, args)
+    match context.resolve_any_path(path) {
+        Some(named_thing) => {
+            check_visibility(context, &named_thing, func.span);
+            validate_has_no_conflicting_trait_in_scope(context, &named_thing, path, func)?;
+            expr_call_named_thing(context, named_thing, func, generic_args, args)
+        }
+        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance that `do_thing`
+        // still exists as as a trait associated function for `foo::Bar`.
+        None => expr_call_trait_associated_function(context, path, func, generic_args, args),
+    }
+}
+
+fn validate_has_no_conflicting_trait_in_scope<T: std::fmt::Display>(
+    context: &mut dyn AnalyzerContext,
+    named_thing: &NamedThing,
+    path: &fe::Path,
+    func: &Node<T>,
+) -> Result<(), FatalError> {
+    let fn_name = &path.segments.last().unwrap().kind;
+    let parent_path = path.remove_last();
+    let parent_thing = context.resolve_path(&parent_path, func.span)?;
+
+    if let NamedThing::Item(Item::Type(val)) = parent_thing {
+        let type_id = val.type_id(context.db())?;
+        let (_, in_scope_candidates) = type_id.trait_function_candidates(context, fn_name);
+
+        if !in_scope_candidates.is_empty() {
+            let labels = vec![Label::primary(
+                named_thing.name_span(context.db()).unwrap(),
+                format!(
+                    "candidate 1 is defined here on the {}",
+                    parent_thing.item_kind_display_name(),
+                ),
+            )]
+            .into_iter()
+            .chain(
+                in_scope_candidates
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, (fun, _impl))| {
+                        Label::primary(
+                            fun.name_span(context.db()),
+                            format!(
+                                "candidate #{} is defined here on trait `{}`",
+                                idx + 2,
+                                _impl.trait_id(context.db()).name(context.db())
+                            ),
+                        )
+                    }),
+            )
+            .collect::<Vec<_>>();
+
+            return Err(FatalError::new(context.fancy_error(
+                "multiple applicable items in scope",
+                labels,
+                vec![
+                    "Hint: Rename one of the methods or make sure only one of them is in scope"
+                        .into(),
+                ],
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn expr_call_trait_associated_function<T: std::fmt::Display>(
+    context: &mut dyn AnalyzerContext,
+    path: &fe::Path,
+    func: &Node<T>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let fn_name = &path.segments.last().unwrap().kind;
+    let parent_path = path.remove_last();
+    let parent_thing = context.resolve_path(&parent_path, func.span)?;
+
+    if let NamedThing::Item(Item::Type(val)) = parent_thing {
+        let type_id = val.type_id(context.db())?;
+
+        let (candidates, in_scope_candidates) = type_id.trait_function_candidates(context, fn_name);
+
+        if in_scope_candidates.len() > 1 {
+            context.fancy_error(
+                "multiple applicable items in scope",
+                in_scope_candidates
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, (fun, _impl))| {
+                        Label::primary(
+                            fun.name_span(context.db()),
+                            format!(
+                                "candidate #{} is defined here on trait `{}`",
+                                idx + 1,
+                                _impl.trait_id(context.db()).name(context.db())
+                            ),
+                        )
+                    })
+                    .collect(),
+                vec![
+                    "Hint: Rename one of the methods or make sure only one of them is in scope"
+                        .into(),
+                ],
+            );
+            // We arbitrarily carry on with the first candidate since the error doesn't need to be fatal
+            let (fun, _) = in_scope_candidates[0];
+            return expr_call_pure(context, fun, func.span, generic_args, args);
+        } else if in_scope_candidates.is_empty() && !candidates.is_empty() {
+            context.fancy_error(
+                "Applicable items exist but are not in scope",
+                candidates.iter().enumerate().map(|(idx, (fun, _impl ))| {
+                    Label::primary(fun.name_span(context.db()), format!(
+                        "candidate #{} is defined here on trait `{}`",
+                        idx + 1,
+                        _impl.trait_id(context.db()).name(context.db())
+                    ))
+                }).collect(),
+                vec!["Hint: Bring one of these candidates in scope via `use module_name::trait_name`".into()],
+            );
+            // We arbitrarily carry on with an applicable candidate since the error doesn't need to be fatal
+            let (fun, _) = candidates[0];
+            return expr_call_pure(context, fun, func.span, generic_args, args);
+        } else if in_scope_candidates.len() == 1 {
+            let (fun, _) = in_scope_candidates[0];
+            return expr_call_pure(context, fun, func.span, generic_args, args);
+        }
+    }
+
+    Err(FatalError::new(context.error(
+        "unresolved path item",
+        func.span,
+        "not found",
+    )))
 }
 
 fn expr_call_named_thing<T: std::fmt::Display>(

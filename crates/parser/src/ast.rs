@@ -38,6 +38,14 @@ pub struct Path {
     pub segments: Vec<Node<SmolStr>>,
 }
 
+impl Path {
+    pub fn remove_last(&self) -> Path {
+        Path {
+            segments: self.segments[0..self.segments.len() - 1].to_vec(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Use {
     pub tree: Node<UseTree>,

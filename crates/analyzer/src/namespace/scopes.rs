@@ -141,7 +141,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         }
     }
 
-    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+    fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing> {
         let resolved = self.module.resolve_path_internal(self.db(), path);
 
         if resolved.diagnostics.len() > 0 {
@@ -154,6 +154,16 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         } else {
             None
         }
+    }
+
+    fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self.module.resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        resolved.value
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -384,7 +394,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         }
     }
 
-    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
+    fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing> {
         let resolved = self
             .function
             .module(self.db())
@@ -400,6 +410,19 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         } else {
             None
         }
+    }
+
+    fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        let resolved = self
+            .function
+            .module(self.db())
+            .resolve_path_internal(self.db(), path);
+
+        if resolved.diagnostics.len() > 0 {
+            return None;
+        }
+
+        resolved.value
     }
 
     fn get_context_type(&self) -> Option<TypeId> {
@@ -530,8 +553,12 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         self.root.resolve_path(path, span)
     }
 
-    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing> {
-        self.root.maybe_resolve_path(path)
+    fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        self.root.resolve_visible_path(path)
+    }
+
+    fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing> {
+        self.root.resolve_any_path(path)
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
@@ -634,7 +661,7 @@ impl<T> OptionExt for Option<T> {
 
 /// Check an item visibility and sink diagnostics if an item is invisible from
 /// the scope.
-fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing, span: Span) {
+pub fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing, span: Span) {
     if let NamedThing::Item(item) = named_thing {
         let item_module = item
             .module(context.db())

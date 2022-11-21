@@ -2229,6 +2229,7 @@ fn ctx_init_in_call() {
 #[rstest(
     fixture_file,
     case::simple_traits("simple_traits.fe"),
+    case::trait_associated_functions("trait_associated_functions.fe"),
     case::generic_functions("generic_functions.fe"),
     case::generic_functions_primitves("generic_functions_primitves.fe"),
     case::contract_pure_fns("contract_pure_fns.fe")
