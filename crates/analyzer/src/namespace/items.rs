@@ -824,7 +824,7 @@ impl TypeDef {
             }
             TypeDef::Enum(val) => val.pure_functions_as_items(db),
             TypeDef::Contract(val) => val.pure_functions_as_items(db),
-            _ => todo!("cannot access items in types yet"),
+            _ => Rc::new(indexmap! {}),
         }
     }
 
@@ -1803,6 +1803,40 @@ impl ImplId {
                         vec![],
                     ));
                 }
+
+                if impl_fn.takes_self(db) != trait_fn.takes_self(db) {
+                    let ((selfy_thing, selfy_span), (non_selfy_thing, non_selfy_span)) =
+                        if impl_fn.takes_self(db) {
+                            (
+                                ("impl", impl_fn.name_span(db)),
+                                ("trait", trait_fn.name_span(db)),
+                            )
+                        } else {
+                            (
+                                ("trait", trait_fn.name_span(db)),
+                                ("impl", impl_fn.name_span(db)),
+                            )
+                        };
+                    sink.push(&errors::fancy_error(
+                        format!(
+                            "method `{}` has a `self` declaration in the {}, but not in the `{}`",
+                            impl_fn.name(db),
+                            selfy_thing,
+                            non_selfy_thing
+                        ),
+                        vec![
+                            Label::primary(
+                                selfy_span,
+                                format!("`self` declared on the `{}`", selfy_thing),
+                            ),
+                            Label::primary(
+                                non_selfy_span,
+                                format!("no `self` declared on the `{}`", non_selfy_thing),
+                            ),
+                        ],
+                        vec![],
+                    ));
+                }
             } else {
                 sink.push(&errors::fancy_error(
                     format!(
@@ -1903,19 +1937,9 @@ impl TraitId {
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
-        db.trait_all_functions(*self).iter().for_each(|id| {
-            if !id.takes_self(db) {
-                sink.push(&errors::fancy_error(
-                    "associated functions aren't yet supported in traits",
-                    vec![Label::primary(
-                        id.data(db).ast.span,
-                        "function doesn't take `self`",
-                    )],
-                    vec!["Hint: add a `self` param to this function".into()],
-                ));
-            }
-            id.sink_diagnostics(db, sink)
-        });
+        db.trait_all_functions(*self)
+            .iter()
+            .for_each(|id| id.sink_diagnostics(db, sink));
     }
 }
 

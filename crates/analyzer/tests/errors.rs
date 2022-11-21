@@ -209,7 +209,11 @@ test_stmt! { invert_non_numeric, "~true" }
 
 test_file! { ambiguous_traits }
 test_file! { ambiguous_traits2 }
+test_file! { ambiguous_traits3 }
+test_file! { ambiguous_traits4 }
 test_ingot! { trait_not_in_scope }
+test_ingot! { trait_not_in_scope2 }
+test_ingot! { call_trait_assoc_fn_on_invisible_type }
 test_file! { bad_enums }
 test_file! { enum_match }
 test_file! { enum_name_conflict }
@@ -302,7 +306,6 @@ test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { struct_recursive_cycles }
 test_file! { trait_impl_mismatch }
-test_file! { trait_fn_without_self }
 test_file! { trait_fn_with_generic_params }
 test_file! { traits_as_fields }
 test_file! { trait_conflicting_impls }

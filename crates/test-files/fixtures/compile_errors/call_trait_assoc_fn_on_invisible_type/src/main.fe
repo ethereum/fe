@@ -1,0 +1,7 @@
+use foo::DoThing
+
+contract Example {
+  pub fn run_test(self) {
+    foo::Bar::do()
+  }
+}

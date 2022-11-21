@@ -52,8 +52,13 @@ impl<T> Analysis<T> {
 
 pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
+    /// Resolves the given path and registers all errors
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError>;
-    fn maybe_resolve_path(&self, path: &ast::Path) -> Option<NamedThing>;
+    /// Resolves the given path only if it is visible. Does not register any errors
+    fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing>;
+    /// Resolves the given path. Does not register any errors
+    fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing>;
+
     fn add_diagnostic(&self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
 
@@ -319,7 +324,11 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't resolve paths")
     }
 
-    fn maybe_resolve_path(&self, _path: &ast::Path) -> Option<NamedThing> {
+    fn resolve_visible_path(&self, _path: &ast::Path) -> Option<NamedThing> {
+        panic!("TempContext can't resolve paths")
+    }
+
+    fn resolve_any_path(&self, _path: &ast::Path) -> Option<NamedThing> {
         panic!("TempContext can't resolve paths")
     }
 

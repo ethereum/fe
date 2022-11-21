@@ -2,7 +2,9 @@ use crate::context::AnalyzerContext;
 use crate::display::DisplayWithDb;
 use crate::display::Displayable;
 use crate::errors::TypeError;
-use crate::namespace::items::{ContractId, EnumId, FunctionSigId, ImplId, StructId, TraitId};
+use crate::namespace::items::{
+    ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+};
 use crate::AnalyzerDb;
 
 use fe_common::impl_intern_key;
@@ -55,6 +57,9 @@ pub enum Type {
     SPtr(TypeId),
     Mut(TypeId),
 }
+
+type TraitFunctionLookup = (Vec<(FunctionId, ImplId)>, Vec<(FunctionId, ImplId)>);
+
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct TypeId(pub(crate) u32);
 impl_intern_key!(TypeId);
@@ -162,8 +167,41 @@ impl TypeId {
         db.impl_for(*self, trait_)
     }
 
-    // Signature for the function with the given name defined directly on the type.
-    // Does not consider trait impls.
+    /// Looks up all possible candidates of the given function name that are implemented via traits.
+    /// Groups results in two lists, the first contains all theoretical possible candidates and
+    /// the second contains only those that are actually callable because the trait is in scope.
+    pub fn trait_function_candidates(
+        &self,
+        context: &mut dyn AnalyzerContext,
+        fn_name: &str,
+    ) -> TraitFunctionLookup {
+        let candidates = context
+            .db()
+            .all_impls(*self)
+            .iter()
+            .cloned()
+            .filter_map(|_impl| {
+                _impl
+                    .function(context.db(), fn_name)
+                    .map(|fun| (fun, _impl))
+            })
+            .collect::<Vec<_>>();
+
+        let in_scope_candidates = candidates
+            .iter()
+            .cloned()
+            .filter(|(_, _impl)| {
+                context
+                    .module()
+                    .is_in_scope(context.db(), Item::Trait(_impl.trait_id(context.db())))
+            })
+            .collect::<Vec<_>>();
+
+        (candidates, in_scope_candidates)
+    }
+
+    /// Signature for the function with the given name defined directly on the type.
+    /// Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
             Type::SPtr(inner) => inner.function_sig(db, name),

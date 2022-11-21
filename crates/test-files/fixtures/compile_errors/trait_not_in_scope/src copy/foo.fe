@@ -1,0 +1,9 @@
+trait DoThing {
+  fn do(self);
+}
+
+
+impl DoThing for u256 {
+  fn do(self) {
+  }
+}

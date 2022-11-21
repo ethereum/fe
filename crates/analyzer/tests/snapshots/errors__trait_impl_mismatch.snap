@@ -9,7 +9,7 @@ error: method `this_has_wrong_args_in_impl` has incompatible parameters for `thi
  3 │     fn this_has_wrong_args_in_impl(self, val: u8, val2: bool);
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ signature of method in trait `Foo`
    ·
-11 │     fn this_has_wrong_args_in_impl(self, val: u16, val2: Array<u8, 10>) {}
+13 │     fn this_has_wrong_args_in_impl(self, val: u16, val2: Array<u8, 10>) {}
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ signature of method in `impl` block
 
 error: method `this_has_wrong_return_type_in_impl` has an incompatible return type for `this_has_wrong_return_type_in_impl` of trait `Foo`
@@ -18,13 +18,31 @@ error: method `this_has_wrong_return_type_in_impl` has an incompatible return ty
  4 │     fn this_has_wrong_return_type_in_impl(self) -> bool;
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ signature of method in trait `Foo`
    ·
-12 │     fn this_has_wrong_return_type_in_impl(self) -> u8 {
+14 │     fn this_has_wrong_return_type_in_impl(self) -> u8 {
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ signature of method in `impl` block
 
-error: method `this_does_not_exist_in_trait` is not a member of trait `Foo`
-   ┌─ compile_errors/trait_impl_mismatch.fe:15:5
+error: method `this_has_no_self_in_impl` has a `self` declaration in the trait, but not in the `impl`
+   ┌─ compile_errors/trait_impl_mismatch.fe:5:8
    │
-15 │     fn this_does_not_exist_in_trait() {}
+ 5 │     fn this_has_no_self_in_impl(self);
+   │        ^^^^^^^^^^^^^^^^^^^^^^^^ `self` declared on the `trait`
+   ·
+17 │     fn this_has_no_self_in_impl() {}
+   │        ^^^^^^^^^^^^^^^^^^^^^^^^ no `self` declared on the `impl`
+
+error: method `this_has_self_in_impl` has a `self` declaration in the impl, but not in the `trait`
+   ┌─ compile_errors/trait_impl_mismatch.fe:6:8
+   │
+ 6 │     fn this_has_self_in_impl();
+   │        ^^^^^^^^^^^^^^^^^^^^^ no `self` declared on the `trait`
+   ·
+18 │     fn this_has_self_in_impl(self) {}
+   │        ^^^^^^^^^^^^^^^^^^^^^ `self` declared on the `impl`
+
+error: method `this_does_not_exist_in_trait` is not a member of trait `Foo`
+   ┌─ compile_errors/trait_impl_mismatch.fe:19:5
+   │
+19 │     fn this_does_not_exist_in_trait() {}
    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Foo`
 
 error: not all members of trait `Foo` implemented, missing: `this_misses_in_impl`
