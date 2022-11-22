@@ -979,7 +979,7 @@ fn expr_call_path<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    match context.resolve_any_path(path) {
+    match context.resolve_visible_path(path) {
         Some(named_thing) => {
             check_visibility(context, &named_thing, func.span);
             validate_has_no_conflicting_trait_in_scope(context, &named_thing, path, func)?;
@@ -1106,6 +1106,10 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
             return expr_call_pure(context, fun, func.span, generic_args, args);
         }
     }
+
+    // At this point, we will have an error so we run `resolve_path` to register any errors that we
+    // did not report yet
+    context.resolve_path(path, func.span)?;
 
     Err(FatalError::new(context.error(
         "unresolved path item",
