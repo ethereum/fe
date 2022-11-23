@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use indexmap::IndexSet;
 
 use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::FunctionId;
@@ -14,9 +14,9 @@ use super::{lower_contract_deployable, lower_function};
 
 pub struct Context {
     pub runtime: Box<dyn RuntimeProvider>,
-    pub(super) contract_dependency: BTreeSet<ContractId>,
-    pub(super) function_dependency: BTreeSet<FunctionId>,
-    pub(super) string_constants: BTreeSet<String>,
+    pub(super) contract_dependency: IndexSet<ContractId>,
+    pub(super) function_dependency: IndexSet<FunctionId>,
+    pub(super) string_constants: IndexSet<String>,
     pub(super) lowered_functions: FxHashSet<FunctionId>,
 }
 
@@ -24,9 +24,9 @@ impl Default for Context {
     fn default() -> Self {
         Self {
             runtime: Box::new(DefaultRuntimeProvider::default()),
-            contract_dependency: BTreeSet::default(),
-            function_dependency: BTreeSet::default(),
-            string_constants: BTreeSet::default(),
+            contract_dependency: IndexSet::default(),
+            function_dependency: IndexSet::default(),
+            string_constants: IndexSet::default(),
             lowered_functions: FxHashSet::default(),
         }
     }

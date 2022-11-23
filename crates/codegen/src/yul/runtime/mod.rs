@@ -10,7 +10,7 @@ use std::fmt::Write;
 use fe_abi::types::AbiType;
 use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{types::ArrayDef, FunctionId, TypeId, TypeKind};
-use fxhash::FxHashMap;
+use indexmap::IndexMap;
 use yultsur::*;
 
 use num_bigint::BigInt;
@@ -225,7 +225,7 @@ pub enum AbiSrcLocation {
 
 #[derive(Debug, Default)]
 pub struct DefaultRuntimeProvider {
-    functions: FxHashMap<String, RuntimeFunction>,
+    functions: IndexMap<String, RuntimeFunction>,
 }
 
 impl DefaultRuntimeProvider {
