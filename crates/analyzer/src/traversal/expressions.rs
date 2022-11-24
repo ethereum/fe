@@ -888,9 +888,9 @@ fn expr_call(
     if !context.inherits_type(BlockScopeType::Unsafe) && call_type.is_unsafe(context.db()) {
         let mut labels = vec![Label::primary(func.span, "call to unsafe function")];
         let fn_name = call_type.function_name(context.db());
-        if let Some(function) = call_type.function() {
-            let def_name_span = function.name_span(context.db());
-            let unsafe_span = function.unsafe_span(context.db());
+        if let Some(sig) = call_type.function_sig() {
+            let def_name_span = sig.name_span(context.db());
+            let unsafe_span = sig.unsafe_span(context.db());
             labels.push(Label::secondary(
                 def_name_span + unsafe_span,
                 format!("`{}` is defined here as unsafe", &fn_name),
@@ -986,8 +986,8 @@ fn expr_call_path<T: std::fmt::Display>(
             validate_has_no_conflicting_trait_in_scope(context, &named_thing, path, func)?;
             expr_call_named_thing(context, named_thing, func, generic_args, args)
         }
-        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance that `do_thing`
-        // still exists as as a trait associated function for `foo::Bar`.
+        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance
+        // that `do_thing` still exists as as a trait associated function for `foo::Bar`.
         None => expr_call_trait_associated_function(context, path, func, generic_args, args),
     }
 }
@@ -1084,7 +1084,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                         .into(),
                 ],
             );
-            // We arbitrarily carry on with the first candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with the first candidate since the error doesn't need
+            // to be fatal
             let (fun, _) = in_scope_candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.is_empty() && !candidates.is_empty() {
@@ -1099,7 +1100,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                 }).collect(),
                 vec!["Hint: Bring one of these candidates in scope via `use module_name::trait_name`".into()],
             );
-            // We arbitrarily carry on with an applicable candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with an applicable candidate since the error doesn't
+            // need to be fatal
             let (fun, _) = candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.len() == 1 {
@@ -1108,8 +1110,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
         }
     }
 
-    // At this point, we will have an error so we run `resolve_path` to register any errors that we
-    // did not report yet
+    // At this point, we will have an error so we run `resolve_path` to register any
+    // errors that we did not report yet
     context.resolve_path(path, func.span)?;
 
     Err(FatalError::new(context.error(
@@ -1389,7 +1391,7 @@ fn expr_call_pure(
     let return_type = sig.return_type.clone()?;
     Ok((
         ExpressionAttributes::new(return_type),
-        CallType::Pure(function),
+        CallType::Pure(function.sig(context.db())),
     ))
 }
 
@@ -1618,20 +1620,20 @@ fn expr_call_method(
                     if is_self_value(target) {
                         CallType::ValueMethod {
                             typ: obj_type,
-                            method,
+                            sig: method.sig(context.db()),
                         }
                     } else {
                         // Contract address needs to be on the stack
                         deref_type(context, target, target_attributes.typ);
                         CallType::External {
                             contract,
-                            function: method,
+                            sig: method.sig(context.db()),
                         }
                     }
                 }
                 Type::Generic(inner) => CallType::TraitValueMethod {
                     trait_id: *inner.bounds.first().expect("expected trait bound"),
-                    method: *method,
+                    sig: *method,
                     generic_type: inner,
                 },
                 ty => {
@@ -1666,7 +1668,7 @@ fn expr_call_method(
 
                     CallType::ValueMethod {
                         typ: obj_type,
-                        method,
+                        sig: method.sig(context.db()),
                     }
                 }
             };
@@ -1700,7 +1702,7 @@ fn expr_call_method(
                 ExpressionAttributes::new(return_type),
                 CallType::ValueMethod {
                     typ: obj_type,
-                    method: first.function(context.db()).unwrap(),
+                    sig: *first,
                 },
             ));
         }
@@ -1969,7 +1971,10 @@ fn expr_call_type_attribute(
             }
             return Ok((
                 ExpressionAttributes::new(context.db().intern_type(typ)),
-                CallType::BuiltinAssociatedFunction { contract, function },
+                CallType::BuiltinAssociatedFunction {
+                    contract,
+                    sig: function,
+                },
             ));
         }
     }
@@ -2012,9 +2017,7 @@ fn expr_call_type_attribute(
             ExpressionAttributes::new(ret_type),
             CallType::AssociatedFunction {
                 typ: target_type,
-                function: sig
-                    .function(context.db())
-                    .expect("expected function signature to have body"),
+                sig,
             },
         ));
     }

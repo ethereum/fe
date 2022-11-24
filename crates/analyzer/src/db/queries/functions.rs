@@ -396,17 +396,23 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
     let body = function.body(db);
     for calltype in body.calls.values() {
         match calltype {
-            CallType::Pure(function) | CallType::AssociatedFunction { function, .. } => {
-                directs.push((root, Item::Function(*function), DepLocality::Local));
+            CallType::Pure(sig) | CallType::AssociatedFunction { sig, .. } => {
+                if let Some(func) = sig.function(db) {
+                    directs.push((root, Item::Function(func), DepLocality::Local));
+                }
             }
-            CallType::ValueMethod { method, .. } => {
-                directs.push((root, Item::Function(*method), DepLocality::Local));
+            CallType::ValueMethod { sig, .. } => {
+                if let Some(func) = sig.function(db) {
+                    directs.push((root, Item::Function(func), DepLocality::Local));
+                }
             }
             CallType::TraitValueMethod { trait_id, .. } => {
                 directs.push((root, Item::Trait(*trait_id), DepLocality::Local));
             }
-            CallType::External { contract, function } => {
-                directs.push((root, Item::Function(*function), DepLocality::External));
+            CallType::External { contract, sig } => {
+                if let Some(func) = sig.function(db) {
+                    directs.push((root, Item::Function(func), DepLocality::External));
+                }
                 // Probably redundant:
                 directs.push((
                     root,

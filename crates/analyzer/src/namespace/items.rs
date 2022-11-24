@@ -1121,6 +1121,9 @@ impl FunctionSigId {
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.is_trait_fn(db) || self.is_impl_fn(db) || self.pub_span(db).is_some()
     }
+    pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
+        self.unsafe_span(db).is_some()
+    }
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.kind.name.kind.clone()
     }
