@@ -20,6 +20,8 @@ use std::rc::Rc;
 use std::{fmt, ops::Deref};
 use strum::IntoEnumIterator;
 
+use super::types::Generic;
+
 /// A named item. This does not include things inside of
 /// a function body.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
@@ -1106,6 +1108,10 @@ impl FunctionSigId {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
             Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
             Item::Type(TypeDef::Enum(sid)) => Some(types::Type::Enum(sid).id(db)),
+            Item::Trait(_) => Some(db.intern_type(Type::Generic(Generic {
+                name: "Self".into(),
+                bounds: Rc::new([]),
+            }))),
             Item::Impl(id) => Some(id.receiver(db)),
             Item::Type(TypeDef::Primitive(ty)) => Some(db.intern_type(Type::Base(ty))),
             _ => None,
