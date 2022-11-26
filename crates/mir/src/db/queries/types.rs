@@ -222,7 +222,12 @@ impl TypeId {
         )
     }
 
+    pub fn is_type_param(self, db: &dyn MirDb) -> bool {
+        matches!(&self.data(db).kind, TypeKind::TypeParam(_))
+    }
+
     /// Returns size of the type in bytes.
+    /// TODO: Move this method to codegen.
     pub fn size_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
         match &self.data(db).kind {
             TypeKind::Bool | TypeKind::I8 | TypeKind::U8 => 1,
@@ -269,6 +274,8 @@ impl TypeId {
                     .unwrap_or(0);
                 data_offset + maximum_data_size
             }
+
+            TypeKind::TypeParam(_) => unreachable!(),
         }
     }
 
@@ -435,6 +442,9 @@ impl TypeId {
             TypeKind::SPtr(inner) => {
                 write!(w, "*@s ")?;
                 inner.print(db, w)
+            }
+            TypeKind::TypeParam(def) => {
+                write!(w, "{}", def.name)
             }
         }
     }

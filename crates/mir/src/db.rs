@@ -1,12 +1,14 @@
-use std::{collections::BTreeMap, rc::Rc};
+use std::rc::Rc;
 
 use fe_analyzer::{
     db::AnalyzerDbStorage,
-    namespace::{items as analyzer_items, types as analyzer_types},
+    namespace::{
+        items::{self as analyzer_items, FunctionId},
+        types as analyzer_types,
+    },
     AnalyzerDb,
 };
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
-use smol_str::SmolStr;
 
 use crate::ir::{self, ConstantId, TypeId};
 
@@ -19,31 +21,31 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
     #[salsa::interned]
     fn mir_intern_type(&self, data: Rc<ir::Type>) -> ir::TypeId;
     #[salsa::interned]
-    fn mir_intern_function(&self, data: Rc<ir::FunctionSignature>) -> ir::FunctionId;
+    fn mir_intern_function(&self, data: Rc<ir::FunctionSignature>) -> ir::FunctionSigId;
 
     #[salsa::invoke(queries::module::mir_lower_module_all_functions)]
     fn mir_lower_module_all_functions(
         &self,
         module: analyzer_items::ModuleId,
-    ) -> Rc<Vec<ir::FunctionId>>;
+    ) -> Rc<Vec<(ir::FunctionSigId, FunctionId)>>;
 
     #[salsa::invoke(queries::contract::mir_lower_contract_all_functions)]
     fn mir_lower_contract_all_functions(
         &self,
         contract: analyzer_items::ContractId,
-    ) -> Rc<Vec<ir::FunctionId>>;
+    ) -> Rc<Vec<(ir::FunctionSigId, FunctionId)>>;
 
     #[salsa::invoke(queries::structs::mir_lower_struct_all_functions)]
     fn mir_lower_struct_all_functions(
         &self,
         struct_: analyzer_items::StructId,
-    ) -> Rc<Vec<ir::FunctionId>>;
+    ) -> Rc<Vec<(ir::FunctionSigId, FunctionId)>>;
 
     #[salsa::invoke(queries::enums::mir_lower_enum_all_functions)]
     fn mir_lower_enum_all_functions(
         &self,
         enum_: analyzer_items::EnumId,
-    ) -> Rc<Vec<ir::FunctionId>>;
+    ) -> Rc<Vec<(ir::FunctionSigId, FunctionId)>>;
 
     #[salsa::invoke(queries::types::mir_lowered_type)]
     fn mir_lowered_type(&self, analyzer_type: analyzer_types::TypeId) -> TypeId;
@@ -52,23 +54,9 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
     fn mir_lowered_constant(&self, analyzer_const: analyzer_items::ModuleConstantId) -> ConstantId;
 
     #[salsa::invoke(queries::function::mir_lowered_func_signature)]
-    fn mir_lowered_func_signature(
-        &self,
-        analyzer_func: analyzer_items::FunctionId,
-    ) -> ir::FunctionId;
-    #[salsa::invoke(queries::function::mir_lowered_monomorphized_func_signature)]
-    fn mir_lowered_monomorphized_func_signature(
-        &self,
-        analyzer_func: analyzer_items::FunctionId,
-        resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
-    ) -> ir::FunctionId;
-    #[salsa::invoke(queries::function::mir_lowered_pseudo_monomorphized_func_signature)]
-    fn mir_lowered_pseudo_monomorphized_func_signature(
-        &self,
-        analyzer_func: analyzer_items::FunctionId,
-    ) -> ir::FunctionId;
+    fn mir_lowered_func_signature(&self, sig: analyzer_items::FunctionSigId) -> ir::FunctionSigId;
     #[salsa::invoke(queries::function::mir_lowered_func_body)]
-    fn mir_lowered_func_body(&self, func: ir::FunctionId) -> Rc<ir::FunctionBody>;
+    fn mir_lowered_func_body(&self, func: analyzer_items::FunctionId) -> Rc<ir::FunctionBody>;
 }
 
 #[salsa::database(SourceDbStorage, AnalyzerDbStorage, MirDbStorage)]

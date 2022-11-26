@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, rc::Rc, vec};
+use std::{rc::Rc, vec};
 
 use fe_analyzer::{
     builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
@@ -25,21 +25,14 @@ use crate::{
         function::Linkage,
         inst::{CallType, InstKind},
         value::{AssignableValue, Local},
-        BasicBlockId, Constant, FunctionBody, FunctionId, FunctionParam, FunctionSignature, InstId,
-        SourceInfo, TypeId, Value, ValueId,
+        BasicBlockId, Constant, FunctionBody, FunctionParam, FunctionSigId, FunctionSignature,
+        InstId, SourceInfo, TypeId, Value, ValueId,
     },
 };
 
 type ScopeId = Id<Scope>;
 
-pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionId) -> FunctionId {
-    lower_monomorphized_func_signature(db, func, BTreeMap::new())
-}
-pub fn lower_monomorphized_func_signature(
-    db: &dyn MirDb,
-    func: analyzer_items::FunctionId,
-    resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
-) -> FunctionId {
+pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionSigId) -> FunctionSigId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
 
@@ -52,15 +45,12 @@ pub fn lower_monomorphized_func_signature(
 
     for param in analyzer_signature.params.iter() {
         let source = arg_source(db, func, &param.name);
-
-        let param_type = if let Type::Generic(generic) = param.typ.clone().unwrap().typ(db.upcast())
-        {
-            *resolved_generics.get(&generic.name).unwrap()
-        } else {
-            param.typ.clone().unwrap()
-        };
-
-        params.push(make_param(db, param.clone().name, param_type, source))
+        params.push(make_param(
+            db,
+            param.name.clone(),
+            param.typ.clone().unwrap(),
+            source,
+        ))
     }
 
     let return_type = db.mir_lowered_type(analyzer_signature.return_type.clone().unwrap());
@@ -77,22 +67,25 @@ pub fn lower_monomorphized_func_signature(
 
     let sig = FunctionSignature {
         params,
-        resolved_generics,
         return_type: Some(return_type),
         module_id: func.module(db.upcast()),
-        analyzer_func_id: func,
+        analyzer_id: func,
         linkage,
     };
 
     db.mir_intern_function(sig.into())
 }
 
-pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
-    let analyzer_func = func.analyzer_func(db);
+pub fn lower_func_body(
+    db: &dyn MirDb,
+    analyzer_func: analyzer_items::FunctionId,
+) -> Rc<FunctionBody> {
+    let analyzer_sig = analyzer_func.sig(db.upcast());
+    let sig = db.mir_lowered_func_signature(analyzer_sig);
     let ast = &analyzer_func.data(db.upcast()).ast;
     let analyzer_body = analyzer_func.body(db.upcast());
 
-    BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref())
+    BodyLowerHelper::new(db, sig, ast, analyzer_body.as_ref())
         .lower()
         .into()
 }
@@ -101,7 +94,6 @@ pub(super) struct BodyLowerHelper<'db, 'a> {
     pub(super) db: &'db dyn MirDb,
     pub(super) builder: BodyBuilder,
     ast: &'a Node<ast::Function>,
-    func: FunctionId,
     analyzer_body: &'a fe_analyzer::context::FunctionBody,
     scopes: Arena<Scope>,
     current_scope: ScopeId,
@@ -126,7 +118,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::FuncStmt::ConstantDecl { name, value, .. } => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&name.id]);
+                let ty = self
+                    .db
+                    .mir_lowered_type(self.analyzer_body.var_types[&name.id]);
 
                 let value = self.analyzer_body.expressions[&value.id]
                     .const_value
@@ -260,7 +254,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
+                let ty = self
+                    .db
+                    .mir_lowered_type(self.analyzer_body.var_types[&var.id]);
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
                     let (init, _init_ty) = self.lower_expr(init);
@@ -313,7 +309,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     ) {
         match &var.kind {
             ast::VarDeclTarget::Name(name) => {
-                let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
+                let ty = self
+                    .db
+                    .mir_lowered_type(self.analyzer_body.var_types[&var.id]);
                 let local = Local::user_local(name.clone(), ty, var.into());
 
                 let lhs = self.builder.declare(local);
@@ -490,7 +488,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
         for Adjustment { into, kind } in &self.analyzer_body.expressions[&expr.id].type_adjustments
         {
-            let into_ty = self.lower_analyzer_type(*into);
+            let into_ty = self.db.mir_lowered_type(*into);
 
             match kind {
                 AdjustmentKind::Copy => {
@@ -563,7 +561,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     fn new(
         db: &'db dyn MirDb,
-        func: FunctionId,
+        func: FunctionSigId,
         ast: &'a Node<ast::Function>,
         analyzer_body: &'a fe_analyzer::context::FunctionBody,
     ) -> Self {
@@ -578,29 +576,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             db,
             builder,
             ast,
-            func,
             analyzer_body,
             scopes,
             current_scope,
         }
-    }
-
-    fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
-        // If the analyzer type is generic we first need to resolve it to its concrete
-        // type before lowering to a MIR type
-        if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
-            let resolved_type = self
-                .func
-                .signature(self.db)
-                .resolved_generics
-                .get(&generic.name)
-                .cloned()
-                .expect("expected generic to be resolved");
-
-            return self.db.mir_lowered_type(resolved_type);
-        }
-
-        self.db.mir_lowered_type(analyzer_ty)
     }
 
     fn lower(mut self) -> FunctionBody {
@@ -706,7 +685,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let exit_bb = self.builder.make_block();
 
         let iter_elem_ty = self.analyzer_body.var_types[&loop_variable.id];
-        let iter_elem_ty = self.lower_analyzer_type(iter_elem_ty);
+        let iter_elem_ty = self.db.mir_lowered_type(iter_elem_ty);
 
         self.builder.jump(preheader_bb, SourceInfo::dummy());
 
@@ -813,7 +792,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     /// Returns the pre-adjustment type of the given `Expr`
     fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
         let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
-        self.lower_analyzer_type(analyzer_ty)
+        self.db.mir_lowered_type(analyzer_ty)
     }
 
     fn lower_bool_op(
@@ -909,31 +888,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    fn resolve_generics_args(
-        &mut self,
-        method: &analyzer_items::FunctionId,
-        args: &[Id<Value>],
-    ) -> BTreeMap<SmolStr, analyzer_types::TypeId> {
-        method
-            .signature(self.db.upcast())
-            .params
-            .iter()
-            .zip(args.iter().map(|val| {
-                self.builder
-                    .value_ty(*val)
-                    .analyzer_ty(self.db)
-                    .expect("invalid parameter")
-            }))
-            .filter_map(|(param, typ)| {
-                if let Type::Generic(generic) = param.typ.clone().unwrap().typ(self.db.upcast()) {
-                    Some((generic.name, typ))
-                } else {
-                    None
-                }
-            })
-            .collect::<BTreeMap<_, _>>()
-    }
-
     fn lower_call(
         &mut self,
         func: &Node<ast::Expr>,
@@ -968,79 +922,52 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             // We ignores `args[0]', which represents `context` and not used for now.
-            AnalyzerCallType::BuiltinAssociatedFunction { contract, function } => match function {
+            AnalyzerCallType::BuiltinAssociatedFunction {
+                contract,
+                sig: function,
+            } => match function {
                 ContractTypeMethod::Create => self.builder.create(args[1], *contract, source),
                 ContractTypeMethod::Create2 => {
                     self.builder.create2(args[1], args[2], *contract, source)
                 }
             },
 
-            AnalyzerCallType::AssociatedFunction { function, .. }
-            | AnalyzerCallType::Pure(function) => {
-                let func_id = self.db.mir_lowered_func_signature(*function);
+            AnalyzerCallType::AssociatedFunction { sig, .. } | AnalyzerCallType::Pure(sig) => {
+                let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder.call(func_id, args, CallType::Internal, source)
             }
 
-            AnalyzerCallType::ValueMethod { method, .. } => {
-                let resolved_generics = self.resolve_generics_args(method, &args);
-
+            AnalyzerCallType::ValueMethod { sig, .. } => {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
-
-                let func_id = if method.is_generic(self.db.upcast()) {
-                    self.db
-                        .mir_lowered_monomorphized_func_signature(*method, resolved_generics)
-                } else {
-                    self.db.mir_lowered_func_signature(*method)
-                };
-
+                let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder
                     .call(func_id, method_args, CallType::Internal, source)
             }
             AnalyzerCallType::TraitValueMethod {
-                trait_id, method, ..
+                trait_id,
+                sig: method,
+                ..
             } if trait_id.is_std_trait(self.db.upcast(), EMITTABLE_TRAIT_NAME)
                 && method.name(self.db.upcast()) == EMIT_FN_NAME =>
             {
                 let event = self.lower_method_receiver(func);
                 self.builder.emit(event, source)
             }
-            AnalyzerCallType::TraitValueMethod {
-                method,
-                trait_id,
-                generic_type,
-                ..
-            } => {
+            AnalyzerCallType::TraitValueMethod { sig, .. } => {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
-
-                let concrete_type = self
-                    .func
-                    .signature(self.db)
-                    .resolved_generics
-                    .get(&generic_type.name)
-                    .cloned()
-                    .expect("unresolved generic type");
-
-                let impl_ = concrete_type
-                    .get_impl_for(self.db.upcast(), *trait_id)
-                    .expect("missing impl");
-
-                let function = impl_
-                    .function(self.db.upcast(), &method.name(self.db.upcast()))
-                    .expect("missing function");
-
-                let func_id = self.db.mir_lowered_func_signature(function);
+                let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder
                     .call(func_id, method_args, CallType::Internal, source)
             }
-            AnalyzerCallType::External { function, .. } => {
+            AnalyzerCallType::External { sig, .. } => {
                 let receiver = self.lower_method_receiver(func);
                 debug_assert!(self.builder.value_ty(receiver).is_address(self.db));
 
                 let mut method_args = vec![receiver];
                 method_args.append(&mut args);
-                let func_id = self.db.mir_lowered_func_signature(*function);
+                let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder
                     .call(func_id, method_args, CallType::External, source)
             }
@@ -1226,7 +1153,7 @@ struct Scope {
 }
 
 impl Scope {
-    fn root(db: &dyn MirDb, func: FunctionId, builder: &mut BodyBuilder) -> Self {
+    fn root(db: &dyn MirDb, func: FunctionSigId, builder: &mut BodyBuilder) -> Self {
         let mut root = Self {
             parent: None,
             loop_entry: None,
@@ -1310,11 +1237,9 @@ impl Scope {
     }
 }
 
-fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceInfo {
+fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionSigId) -> SourceInfo {
     func.data(db.upcast())
         .ast
-        .kind
-        .sig
         .kind
         .args
         .iter()
@@ -1323,11 +1248,9 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
         .into()
 }
 
-fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) -> SourceInfo {
+fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionSigId, arg_name: &str) -> SourceInfo {
     func.data(db.upcast())
         .ast
-        .kind
-        .sig
         .kind
         .args
         .iter()

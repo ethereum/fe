@@ -1,19 +1,20 @@
 use std::rc::Rc;
 
-use fe_analyzer::namespace::items::{self as analyzer_items, TypeDef};
+use fe_analyzer::namespace::items::{self as analyzer_items, FunctionId, TypeDef};
 
-use crate::{db::MirDb, ir::FunctionId};
+use crate::{db::MirDb, ir::FunctionSigId};
 
 pub fn mir_lower_module_all_functions(
     db: &dyn MirDb,
     module: analyzer_items::ModuleId,
-) -> Rc<Vec<FunctionId>> {
+) -> Rc<Vec<(FunctionSigId, FunctionId)>> {
     let mut functions = vec![];
 
     let items = module.all_items(db.upcast());
     items.iter().for_each(|item| match item {
         analyzer_items::Item::Function(func) => {
-            functions.push(db.mir_lowered_func_signature(*func))
+            let sig = func.sig(db.upcast());
+            functions.push((db.mir_lowered_func_signature(sig), *func))
         }
 
         analyzer_items::Item::Type(TypeDef::Contract(contract)) => {

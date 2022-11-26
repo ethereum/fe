@@ -661,12 +661,14 @@ enum TerminatorInfo {
 
 #[cfg(test)]
 mod tests {
-    use fe_mir::ir::{body_builder::BodyBuilder, inst::InstKind, FunctionId, SourceInfo, TypeId};
+    use fe_mir::ir::{
+        body_builder::BodyBuilder, inst::InstKind, FunctionSigId, SourceInfo, TypeId,
+    };
 
     use super::*;
 
     fn body_builder() -> BodyBuilder {
-        BodyBuilder::new(FunctionId(0), SourceInfo::dummy())
+        BodyBuilder::new(FunctionSigId(0), SourceInfo::dummy())
     }
 
     fn serialize_func_body(func: &mut FunctionBody) -> impl Iterator<Item = StructuralInst> {

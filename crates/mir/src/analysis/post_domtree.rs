@@ -75,10 +75,10 @@ pub enum PostIDom {
 mod tests {
     use super::*;
 
-    use crate::ir::{body_builder::BodyBuilder, FunctionId, SourceInfo, TypeId};
+    use crate::ir::{body_builder::BodyBuilder, FunctionSigId, SourceInfo, TypeId};
 
     fn body_builder() -> BodyBuilder {
-        BodyBuilder::new(FunctionId(0), SourceInfo::dummy())
+        BodyBuilder::new(FunctionSigId(0), SourceInfo::dummy())
     }
 
     #[test]

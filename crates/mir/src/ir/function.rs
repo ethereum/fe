@@ -1,11 +1,9 @@
 use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::types as analyzer_types;
 use fe_common::impl_intern_key;
 use fxhash::FxHashMap;
 use id_arena::Arena;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::collections::BTreeMap;
 
 use super::{
     basic_block::BasicBlock,
@@ -20,10 +18,9 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
-    pub resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
     pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
-    pub analyzer_func_id: analyzer_items::FunctionId,
+    pub analyzer_id: analyzer_items::FunctionSigId,
     pub linkage: Linkage,
 }
 
@@ -35,8 +32,8 @@ pub struct FunctionParam {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FunctionId(pub u32);
-impl_intern_key!(FunctionId);
+pub struct FunctionSigId(pub u32);
+impl_intern_key!(FunctionSigId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Linkage {
@@ -62,7 +59,7 @@ impl Linkage {
 /// transformation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionBody {
-    pub fid: FunctionId,
+    pub fid: FunctionSigId,
 
     pub store: BodyDataStore,
 
@@ -73,7 +70,7 @@ pub struct FunctionBody {
 }
 
 impl FunctionBody {
-    pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
+    pub fn new(fid: FunctionSigId, source: SourceInfo) -> Self {
         let mut store = BodyDataStore::default();
         let entry_bb = store.store_block(BasicBlock {});
         Self {
