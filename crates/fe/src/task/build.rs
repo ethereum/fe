@@ -3,9 +3,9 @@ use std::io::{Error, Write};
 use std::path::Path;
 
 use clap::{ArgEnum, Args};
-use fe_common::diagnostics::print_diagnostics;
+use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
 use fe_common::files::SourceFileId;
-use fe_driver::CompiledModule;
+use fe_driver::{CompiledModule, Db};
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 const DEFAULT_INGOT: &str = "main";
@@ -19,6 +19,7 @@ enum Emit {
     LoweredAst,
     Bytecode,
     Tokens,
+    Mir,
     Yul,
 }
 
@@ -37,20 +38,17 @@ pub struct BuildArgs {
     )]
     emit: Vec<Emit>,
     #[clap(long)]
-    mir: bool,
-    #[clap(long)]
     overwrite: bool,
     #[clap(long, takes_value(true))]
     optimize: Option<bool>,
 }
 
-fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
+fn build_single_file(db: &mut Db, compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
     let optimize = compile_arg.optimize.unwrap_or(true);
 
-    let mut db = fe_driver::Db::default();
     let content = match std::fs::read_to_string(input_path) {
         Err(err) => {
             eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
@@ -59,24 +57,19 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         Ok(content) => content,
     };
 
-    let compiled_module = match fe_driver::compile_single_file(
-        &mut db,
-        input_path,
-        &content,
-        with_bytecode,
-        optimize,
-    ) {
-        Ok(module) => module,
-        Err(error) => {
-            eprintln!("Unable to compile {}.", input_path);
-            print_diagnostics(&db, &error.0);
-            std::process::exit(1)
-        }
-    };
+    let compiled_module =
+        match fe_driver::compile_single_file(db, input_path, &content, with_bytecode, optimize) {
+            Ok(module) => module,
+            Err(error) => {
+                eprintln!("Unable to compile {}.", input_path);
+                print_diagnostics(db, &error.0);
+                std::process::exit(1)
+            }
+        };
     (content, compiled_module)
 }
 
-fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
+fn build_ingot(db: &mut Db, compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
     let input_path = &compile_arg.input_path;
@@ -99,9 +92,8 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         }
     };
 
-    let mut db = fe_driver::Db::default();
     let compiled_module = match fe_driver::compile_ingot(
-        &mut db,
+        db,
         DEFAULT_INGOT, // TODO: real ingot name
         &files,
         with_bytecode,
@@ -110,7 +102,7 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         Ok(module) => module,
         Err(error) => {
             eprintln!("Unable to compile {}.", input_path);
-            print_diagnostics(&db, &error.0);
+            print_diagnostics(db, &error.0);
             std::process::exit(1)
         }
     };
@@ -124,25 +116,29 @@ pub fn build(compile_arg: BuildArgs) {
 
     let input_path = &compile_arg.input_path;
 
-    if compile_arg.mir {
-        return mir_dump(input_path);
-    }
-
     let _with_bytecode = emit.contains(&Emit::Bytecode);
     #[cfg(not(feature = "solc-backend"))]
     if _with_bytecode {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
+    let mut db = Db::default();
     let (content, compiled_module) = if Path::new(input_path).is_file() {
-        build_single_file(&compile_arg)
+        build_single_file(&mut db, &compile_arg)
     } else {
-        build_ingot(&compile_arg)
+        build_ingot(&mut db, &compile_arg)
     };
 
     let output_dir = &compile_arg.output_dir;
     let overwrite = compile_arg.overwrite;
-    match write_compiled_module(compiled_module, &content, emit, output_dir, overwrite) {
+    match write_compiled_module(
+        &mut db,
+        compiled_module,
+        &content,
+        emit,
+        output_dir,
+        overwrite,
+    ) {
         Ok(_) => eprintln!("Compiled {}. Outputs in `{}`", input_path, output_dir),
         Err(err) => {
             eprintln!(
@@ -155,6 +151,7 @@ pub fn build(compile_arg: BuildArgs) {
 }
 
 fn write_compiled_module(
+    db: &mut Db,
     mut module: CompiledModule,
     file_content: &str,
     targets: &[Emit],
@@ -205,6 +202,13 @@ fn write_compiled_module(
             write_output(&contract_output_dir.join(file_name), &contract.yul)?;
         }
 
+        if targets.contains(&Emit::Mir) {
+            let file_name = format!("{}_ir.dot", &name);
+            let mir = fe_driver::emit_mir(db, module.module_id)
+                .map_err(|e| diagnostics_string(db, &e.0))?;
+            write_output(&contract_output_dir.join(file_name), &mir)?;
+        }
+
         #[cfg(feature = "solc-backend")]
         if targets.contains(&Emit::Bytecode) {
             let file_name = format!("{}.bin", &name);
@@ -239,30 +243,5 @@ fn verify_nonexistent_or_empty(dir: &Path) -> Result<(), String> {
             "Directory '{}' is not empty. Use --overwrite to overwrite.",
             dir.display()
         ))
-    }
-}
-
-fn mir_dump(input_path: &str) {
-    let mut db = fe_driver::Db::default();
-    if Path::new(input_path).is_file() {
-        let content = match std::fs::read_to_string(input_path) {
-            Err(err) => {
-                eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
-                std::process::exit(1)
-            }
-            Ok(content) => content,
-        };
-
-        match fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
-            Ok(text) => println!("{}", text),
-            Err(err) => {
-                eprintln!("Unable to dump mir `{}", input_path);
-                print_diagnostics(&db, &err.0);
-                std::process::exit(1)
-            }
-        }
-    } else {
-        eprintln!("dumping mir for ingot is not supported yet");
-        std::process::exit(1)
     }
 }

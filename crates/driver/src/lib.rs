@@ -22,6 +22,7 @@ pub struct CompiledModule {
     pub src_ast: String,
     pub lowered_ast: String,
     pub contracts: IndexMap<String, CompiledContract>,
+    pub module_id: ModuleId,
 }
 
 /// The artifacts of a compiled contract.
@@ -113,9 +114,7 @@ pub fn compile_ingot(
 
 /// Returns graphviz string.
 // TODO: This is temporary function for debugging.
-pub fn dump_mir_single_file(db: &mut Db, path: &str, src: &str) -> Result<String, CompileError> {
-    let module = ModuleId::new_standalone(db, path, src);
-
+pub fn emit_mir(db: &mut Db, module: ModuleId) -> Result<String, CompileError> {
     let diags = module.diagnostics(db);
     if !diags.is_empty() {
         return Err(CompileError(diags));
@@ -160,6 +159,7 @@ fn compile_module_id(
         src_ast: format!("{:#?}", module_id.ast(db)),
         lowered_ast: format!("{:#?}", module_id.ast(db)),
         contracts,
+        module_id,
     })
 }
 
@@ -189,6 +189,7 @@ fn compile_module_id(
         src_ast: format!("{:#?}", module_id.ast(db)),
         lowered_ast: format!("{:#?}", module_id.ast(db)),
         contracts,
+        module_id,
     })
 }
 
