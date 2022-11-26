@@ -42,6 +42,7 @@ pub enum TypeKind {
     Map(MapDef),
     MPtr(TypeId),
     SPtr(TypeId),
+    TypeParam(SmolStr),
 }
 
 /// An interned Id for [`ArrayDef`].

@@ -11,7 +11,7 @@ use fe_analyzer::{
         types::{CtxDecl, SelfDecl},
     },
 };
-use fe_mir::ir::{self, FunctionId, TypeId};
+use fe_mir::ir::{self, FunctionSigId, TypeId};
 
 use crate::db::CodegenDb;
 
@@ -19,13 +19,15 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     let mut funcs = vec![];
 
     if let Some(init) = contract.init_function(db.upcast()) {
-        let init_func = db.mir_lowered_func_signature(init);
+        let init_sig = init.sig(db.upcast());
+        let init_func = db.mir_lowered_func_signature(init_sig);
         let init_abi = db.codegen_abi_function(init_func);
         funcs.push(init_abi);
     }
 
     for &func in contract.all_functions(db.upcast()).as_ref() {
-        let mir_func = db.mir_lowered_func_signature(func);
+        let sig = func.sig(db.upcast());
+        let mir_func = db.mir_lowered_func_signature(sig);
         if mir_func.linkage(db.upcast()).is_exported() {
             let func_abi = db.codegen_abi_function(mir_func);
             funcs.push(func_abi);
@@ -46,7 +48,7 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     AbiContract::new(funcs, events)
 }
 
-pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
+pub fn abi_function(db: &dyn CodegenDb, function: FunctionSigId) -> AbiFunction {
     // We use a legalized signature.
     let sig = db.codegen_legalized_signature(function);
 
@@ -87,14 +89,14 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
     AbiFunction::new(func_type, name.to_string(), args, ret_ty, state_mutability)
 }
 
-pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
+pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionSigId) -> usize {
     let sig = db.codegen_legalized_signature(function);
     sig.params.iter().fold(0, |acc, param| {
         acc + db.codegen_abi_type_maximum_size(param.ty)
     })
 }
 
-pub fn abi_function_return_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
+pub fn abi_function_return_maximum_size(db: &dyn CodegenDb, function: FunctionSigId) -> usize {
     let sig = db.codegen_legalized_signature(function);
     sig.return_type
         .map(|ty| db.codegen_abi_type_maximum_size(ty))
@@ -231,7 +233,8 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
         ir::TypeKind::Contract(_)
         | ir::TypeKind::Map(_)
         | ir::TypeKind::Enum(_)
-        | ir::TypeKind::SPtr(_) => unreachable!(),
+        | ir::TypeKind::SPtr(_)
+        | ir::TypeKind::TypeParam(_) => unreachable!(),
     }
 }
 
