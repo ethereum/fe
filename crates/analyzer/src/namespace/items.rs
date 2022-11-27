@@ -503,6 +503,10 @@ impl ModuleId {
         db.module_all_items(*self)
     }
 
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.module_all_functions(*self)
+    }
+
     /// Includes duplicate names
     pub fn all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
         db.module_all_impls(*self)

@@ -2,8 +2,8 @@ use crate::context::{Analysis, AnalyzerContext, Constant, NamedThing};
 use crate::display::Displayable;
 use crate::errors::{self, ConstEvalError, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Enum, Function, Impl, ImplId, Item, ModuleConstant, ModuleConstantId,
-    ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
+    Contract, ContractId, Enum, Function, FunctionId, Impl, ImplId, Item, ModuleConstant,
+    ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, TypeId};
@@ -107,6 +107,31 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
             ast::ModuleStmt::ParseError(_) => None,
         })
         .collect()
+}
+
+pub fn module_all_functions(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[FunctionId]> {
+    let mut funcs = vec![];
+    for item in module.all_items(db).iter() {
+        match item {
+            Item::Impl(id) => funcs.extend(id.all_functions(db).iter().copied()),
+            Item::Function(func) => funcs.push(*func),
+            Item::Type(def) => match def {
+                TypeDef::Contract(id) => {
+                    funcs.extend(id.all_functions(db).iter().copied());
+                }
+                TypeDef::Struct(id) => {
+                    funcs.extend(id.all_functions(db).iter().copied());
+                }
+                TypeDef::Enum(id) => {
+                    funcs.extend(id.all_functions(db).iter().copied());
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    funcs.into_iter().collect()
 }
 
 pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ImplId]> {

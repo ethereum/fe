@@ -82,6 +82,9 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn module_is_incomplete(&self, module: ModuleId) -> bool;
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<[Item]>;
+    // Returns all functions defined in the module.
+    #[salsa::invoke(queries::module::module_all_functions)]
+    fn module_all_functions(&self, module: ModuleId) -> Rc<[FunctionId]>;
     #[salsa::invoke(queries::module::module_all_impls)]
     fn module_all_impls(&self, module: ModuleId) -> Rc<[ImplId]>;
     #[salsa::invoke(queries::module::module_item_map)]
