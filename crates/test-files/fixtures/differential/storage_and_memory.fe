@@ -12,7 +12,7 @@ contract Foo {
     more_items: Array<u256, 100>
     some_string: String<100>
 
-    pub fn set_data(self, val: MyStruct) {
+    pub fn set_data(mut self, val: MyStruct) {
         self.data = val
     }
 
@@ -20,7 +20,7 @@ contract Foo {
         return self.data.to_mem()
     }
 
-    pub fn set_string(self, val: String<100>) {
+    pub fn set_string(mut self, val: String<100>) {
         self.some_string = val
     }
 
@@ -28,7 +28,7 @@ contract Foo {
         return self.some_string.to_mem()
     }
 
-    pub fn set_item(self, index: u256, item: i8) {
+    pub fn set_item(mut self, index: u256, item: i8) {
         self.items[index] = item
     }
 
@@ -36,9 +36,9 @@ contract Foo {
         return self.items.to_mem()
     }
 
-    pub fn set_range(self, ctx: Context, from: u256, to: u256) {
-        let index: u256 = from
-        let counter: u256 = 0
+    pub fn set_range(mut self, ctx: Context, from: u256, to: u256) {
+        let mut index: u256 = from
+        let mut counter: u256 = 0
         while index < to {
             self.more_items[index] = self.more_items[index] + ctx.block_number()
             index += 1
