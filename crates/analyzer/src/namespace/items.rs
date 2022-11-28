@@ -1167,6 +1167,11 @@ impl FunctionSigId {
             Item::Type(TypeDef::Enum(id)) => id.function(db, &self.name(db)),
             Item::Impl(id) => id.function(db, &self.name(db)),
             Item::Type(TypeDef::Contract(id)) => id.function(db, &self.name(db)),
+            Item::Module(id) => id
+                .all_functions(db)
+                .iter()
+                .find(|id| id.sig(db) == *self)
+                .copied(),
             _ => None,
         }
     }
