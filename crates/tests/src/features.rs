@@ -737,6 +737,15 @@ fn events() {
         let addr2 = address_token("9123000000000000000000000000000000004567");
         let addr_array = ethabi::Token::FixedArray(vec![addr1.clone(), addr2.clone()]);
         let bytes = bytes_token(&"ten bytes.".repeat(10));
+        let nested_array_elem1 = ethabi::Token::FixedArray(vec![
+            tuple_token(&[uint_token(0), uint_token(1)]),
+            tuple_token(&[uint_token(2), uint_token(3)]),
+        ]);
+        let nested_array_elem2 = ethabi::Token::FixedArray(vec![
+            tuple_token(&[uint_token(4), uint_token(5)]),
+            tuple_token(&[uint_token(6), uint_token(7)]),
+        ]);
+        let nested_array = ethabi::Token::FixedArray(vec![nested_array_elem1, nested_array_elem2]);
 
         harness.test_function(&mut executor, "emit_nums", &[], None);
         harness.test_function(&mut executor, "emit_bases", &[addr1.clone()], None);
@@ -752,6 +761,7 @@ fn events() {
             &[addr1.clone(), addr2],
             None,
         );
+        harness.test_function(&mut executor, "emit_nested_array", &[], None);
 
         harness.events_emitted(
             executor,
@@ -760,6 +770,7 @@ fn events() {
                 ("Bases", &[uint_token(26), addr1.clone()]),
                 ("Mix", &[uint_token(26), addr1, uint_token(42), bytes]),
                 ("Addresses", &[addr_array]),
+                ("NestedArray", &[nested_array]),
             ],
         );
         assert_harness_gas_report!(harness);
