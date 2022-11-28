@@ -79,7 +79,7 @@ coverage:
 
 .PHONY: clippy
 clippy:
-	cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms -A clippy::large-enum-variant -W clippy::redundant_closure_for_method_calls
+	cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms -A clippy::large-enum-variant
 
 .PHONY: rustfmt
 rustfmt:
