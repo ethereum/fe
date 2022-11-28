@@ -45,6 +45,6 @@ note:
   │         │              
   │         mut u256
 5 │         return my_array
-  │                ^^^^^^^^ mut Array<u256, 5>
+  │                ^^^^^^^^ mut Array<u256, 5> -Copy-> Array<u256, 5>
 
 

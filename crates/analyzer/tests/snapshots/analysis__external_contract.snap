@@ -118,7 +118,7 @@ note:
    │         │              
    │         mut u256
 18 │         return my_array
-   │                ^^^^^^^^ mut Array<u256, 3>
+   │                ^^^^^^^^ mut Array<u256, 3> -Copy-> Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:21:5
@@ -218,7 +218,7 @@ note:
    ┌─ external_contract.fe:34:16
    │
 34 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3> -Copy-> Array<u256, 3>
 
 note: 
    ┌─ external_contract.fe:37:5

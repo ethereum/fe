@@ -53,7 +53,7 @@ note:
    ┌─ struct_fns.fe:10:16
    │
 10 │         return Point::internal_new(x, y)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ Point
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ Point -Copy-> Point
 
 note: 
    ┌─ struct_fns.fe:13:5

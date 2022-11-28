@@ -428,7 +428,7 @@ note:
 81 │         my_struct.my_addr = address(9999)
    │                             ^^^^^^^^^^^^^ address
 82 │         return my_struct
-   │                ^^^^^^^^^ mut MyStruct
+   │                ^^^^^^^^^ mut MyStruct -Copy-> MyStruct
 
 note: 
    ┌─ abi_encoding_stress.fe:85:5

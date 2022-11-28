@@ -71,6 +71,6 @@ note:
   │         │              
   │         mut u256
 7 │         return my_array
-  │                ^^^^^^^^ mut Array<u256, 3>
+  │                ^^^^^^^^ mut Array<u256, 3> -Copy-> Array<u256, 3>
 
 

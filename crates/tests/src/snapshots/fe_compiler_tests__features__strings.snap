@@ -3,8 +3,8 @@ source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 
 ---
-bar([String("string 4"), String("string 5")]) used 1063 gas
-return_static_string([]) used 752 gas
+bar([String("string 4"), String("string 5")]) used 1622 gas
+return_static_string([]) used 1137 gas
 return_casted_static_string([]) used 981 gas
-return_special_chars([]) used 717 gas
+return_special_chars([]) used 1016 gas
 
