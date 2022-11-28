@@ -33,7 +33,7 @@ note:
    ┌─ strings.fe:18:16
    │
 18 │         return s2
-   │                ^^ String<100>
+   │                ^^ String<100> -Copy-> String<100>
 
 note: 
    ┌─ strings.fe:21:5
@@ -47,7 +47,7 @@ note:
    ┌─ strings.fe:22:16
    │
 22 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43> -Copy-> String<43>
 
 note: 
    ┌─ strings.fe:25:5
@@ -104,6 +104,6 @@ note:
 34 │           return "\n\"'\r\t
    │ ╭────────────────^
 35 │ │         foo\\"
-   │ ╰──────────────^ String<18>
+   │ ╰──────────────^ String<18> -Copy-> String<18>
 
 
