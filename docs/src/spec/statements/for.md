@@ -17,7 +17,7 @@ Example:
 contract Foo {
 
     pub fn bar(values: Array<u256, 10>) -> u256 {
-        let sum: u256
+        let mut sum: u256 = 0
         for i in values {
             sum = sum + i
         }

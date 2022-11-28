@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Return as wrapped back tracking parser
+    /// Returns back tracking parser.
     pub fn as_bt_parser<'b>(&'b mut self) -> BTParser<'a, 'b> {
         BTParser::new(self)
     }
@@ -166,7 +166,7 @@ impl<'a> Parser<'a> {
 
     /// Returns `true` if the parser has reached the end of the file.
     pub fn done(&mut self) -> bool {
-        self.peek_raw() == None
+        self.peek_raw().is_none()
     }
 
     pub fn eat_newlines(&mut self) {
@@ -231,7 +231,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// If the next token matches the expected kind, return it. Otherwise return None.
+    /// If the next token matches the expected kind, return it. Otherwise return
+    /// None.
     pub fn optional(&mut self, kind: TokenKind) -> Option<Token<'a>> {
         if self.peek() == Some(kind) {
             Some(self.next().unwrap())
@@ -276,8 +277,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consumes newlines and semicolons. Returns Ok if one or more newlines or semicolons
-    /// are consumed, or if the next token is a `}`.
+    /// Consumes newlines and semicolons. Returns Ok if one or more newlines or
+    /// semicolons are consumed, or if the next token is a `}`.
     pub fn expect_stmt_end(&mut self, context_name: &str) -> ParseResult<()> {
         let mut newline = false;
         while matches!(self.peek_raw(), Some(TokenKind::Newline | TokenKind::Semi)) {

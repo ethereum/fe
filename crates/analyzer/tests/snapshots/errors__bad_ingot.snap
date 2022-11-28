@@ -94,10 +94,10 @@ error: the struct `Foo` is private
   = `Foo` can only be used within `foo`
   = Hint: use `pub` to make `Foo` visible from outside of `foo`
 
-error: incorrect type for `Foo` argument `my_num`
-  ┌─ compile_errors/bad_ingot/src/main.fe:8:33
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/main.fe:8:16
   │
 8 │         return foo::Foo(my_num: true)
-  │                                 ^^^^ this has type `bool`; expected type `u256`
+  │                ^^^^^^^^ not found
 
 

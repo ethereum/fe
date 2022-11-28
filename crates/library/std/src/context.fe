@@ -5,6 +5,15 @@ use ingot::error::{
     Error
 }
 
+struct OutOfReachMarker {}
+
+// ctx.emit(my_event) should be the only way to emit an event. We achieve this by defining the
+// private `OutOfReachMarker` here to which only the `Context` has access.
+// Now there is no way to call `emit` directly on an Emittable.
+pub trait Emittable {
+  fn emit(self, _ val: OutOfReachMarker);
+}
+
 pub struct Context {
     pub fn base_fee(self) -> u256 {
         unsafe { return evm::base_fee() }
@@ -62,7 +71,7 @@ pub struct Context {
         unsafe { return address(__address()) }
     }
 
-    pub fn send_value(self, to: address, wei: u256) {
+    pub fn send_value(mut self, to: address, wei: u256) {
         unsafe {
             if evm::balance() < wei {
                 revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
@@ -75,5 +84,9 @@ pub struct Context {
                 revert Error(code: ERROR_FAILED_SEND_VALUE)
             }
         }
+    }
+
+    pub fn emit<T: Emittable>(mut self, _ val: T) {
+        val.emit(OutOfReachMarker())
     }
 }

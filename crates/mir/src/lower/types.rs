@@ -1,16 +1,28 @@
 use crate::{
     db::MirDb,
     ir::{
-        types::{ArrayDef, EventDef, MapDef, StructDef, TupleDef},
+        types::{ArrayDef, EnumDef, EnumVariant, MapDef, StructDef, TupleDef},
         Type, TypeId, TypeKind,
     },
 };
 
 use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 
-pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeId {
+pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId {
     let ty_kind = match analyzer_ty.typ(db.upcast()) {
-        analyzer_types::Type::Base(base) => lower_base(&base),
+        analyzer_types::Type::SPtr(inner) => TypeKind::SPtr(lower_type(db, inner)),
+
+        // NOTE: this results in unexpected MIR TypeId inequalities
+        //  (when different analyzer types map to the same MIR type).
+        //  We could (should?) remove .analyzer_ty from Type.
+        analyzer_types::Type::Mut(inner) => match inner.typ(db.upcast()) {
+            analyzer_types::Type::SPtr(t) => TypeKind::SPtr(lower_type(db, t)),
+            analyzer_types::Type::Base(t) => lower_base(t),
+            analyzer_types::Type::Contract(_) => TypeKind::Address,
+            _ => TypeKind::MPtr(lower_type(db, inner)),
+        },
+
+        analyzer_types::Type::Base(base) => lower_base(base),
         analyzer_types::Type::Array(arr) => lower_array(db, &arr),
         analyzer_types::Type::Map(map) => lower_map(db, &map),
         analyzer_types::Type::Tuple(tup) => lower_tuple(db, &tup),
@@ -18,44 +30,16 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: &analyzer_types::TypeId) -> TypeI
         analyzer_types::Type::Contract(_) => TypeKind::Address,
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
+        analyzer_types::Type::Enum(enum_) => lower_enum(db, enum_),
         analyzer_types::Type::Generic(_) => {
             panic!("should be lowered in `lower_types_in_functions`")
         }
     };
 
-    intern_type(db, ty_kind, Some(*analyzer_ty))
+    intern_type(db, ty_kind, Some(analyzer_ty.deref(db.upcast())))
 }
 
-pub fn lower_event_type(db: &dyn MirDb, event: analyzer_items::EventId) -> TypeId {
-    let name = event.name(db.upcast());
-
-    let analyzer_ty = event.typ(db.upcast());
-    // Lower event fields.
-    let fields = analyzer_ty
-        .fields
-        .iter()
-        .map(|field| {
-            let ty = db.mir_lowered_type(field.typ.clone().unwrap());
-            (field.name.clone(), ty, field.is_indexed)
-        })
-        .collect();
-
-    // Obtain span.
-    let span = event.span(db.upcast());
-
-    let module_id = event.module(db.upcast());
-
-    let def = EventDef {
-        name,
-        fields,
-        span,
-        module_id,
-    };
-    let ty = TypeKind::Event(def);
-    intern_type(db, ty, None)
-}
-
-fn lower_base(base: &analyzer_types::Base) -> TypeKind {
+fn lower_base(base: analyzer_types::Base) -> TypeKind {
     use analyzer_types::{Base, Integer};
 
     match base {
@@ -110,13 +94,13 @@ fn lower_tuple(db: &dyn MirDb, tup: &analyzer_types::Tuple) -> TypeKind {
 fn lower_contract(db: &dyn MirDb, contract: analyzer_items::ContractId) -> TypeKind {
     let name = contract.name(db.upcast());
 
-    // Lower contract fields.
+    // Note: contract field types are wrapped in SPtr in TypeId::projection_ty
     let fields = contract
         .fields(db.upcast())
         .iter()
         .map(|(fname, fid)| {
-            let analyzer_types = fid.typ(db.upcast()).unwrap();
-            let ty = db.mir_lowered_type(analyzer_types);
+            let analyzer_type = fid.typ(db.upcast()).unwrap();
+            let ty = db.mir_lowered_type(analyzer_type);
             (fname.clone(), ty)
         })
         .collect();
@@ -161,6 +145,38 @@ fn lower_struct(db: &dyn MirDb, id: analyzer_items::StructId) -> TypeKind {
         module_id,
     };
     TypeKind::Struct(def)
+}
+
+fn lower_enum(db: &dyn MirDb, id: analyzer_items::EnumId) -> TypeKind {
+    let analyzer_variants = id.variants(db.upcast());
+    let mut variants = Vec::with_capacity(analyzer_variants.len());
+    for variant in analyzer_variants.values() {
+        let variant_ty = match variant.kind(db.upcast()).unwrap() {
+            analyzer_items::EnumVariantKind::Tuple(elts) => {
+                let tuple_ty = analyzer_types::TypeId::tuple(db.upcast(), &elts);
+                db.mir_lowered_type(tuple_ty)
+            }
+            analyzer_items::EnumVariantKind::Unit => {
+                let unit_ty = analyzer_types::TypeId::unit(db.upcast());
+                db.mir_lowered_type(unit_ty)
+            }
+        };
+
+        variants.push(EnumVariant {
+            name: variant.name(db.upcast()),
+            span: variant.span(db.upcast()),
+            ty: variant_ty,
+        });
+    }
+
+    let def = EnumDef {
+        name: id.name(db.upcast()),
+        span: id.span(db.upcast()),
+        variants,
+        module_id: id.module(db.upcast()),
+    };
+
+    TypeKind::Enum(def)
 }
 
 fn intern_type(

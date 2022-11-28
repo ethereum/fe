@@ -1,0 +1,34 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_mut), functions::parse_stmt,\n    \"let mut x: Foo\")"
+
+---
+Node(
+  kind: VarDecl(
+    mut_: Some(Span(
+      start: 4,
+      end: 7,
+    )),
+    target: Node(
+      kind: Name("x"),
+      span: Span(
+        start: 8,
+        end: 9,
+      ),
+    ),
+    typ: Node(
+      kind: Base(
+        base: "Foo",
+      ),
+      span: Span(
+        start: 11,
+        end: 14,
+      ),
+    ),
+    value: None,
+  ),
+  span: Span(
+    start: 0,
+    end: 14,
+  ),
+)

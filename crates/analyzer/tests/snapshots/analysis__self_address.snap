@@ -9,18 +9,18 @@ note:
 2 │ ╭     pub fn my_address(ctx: Context) -> address {
 3 │ │         return ctx.self_address()
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> address
+  │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }] -> address
 
 note: 
   ┌─ self_address.fe:3:16
   │
 3 │         return ctx.self_address()
-  │                ^^^ Context: Memory
+  │                ^^^ Context
 
 note: 
   ┌─ self_address.fe:3:16
   │
 3 │         return ctx.self_address()
-  │                ^^^^^^^^^^^^^^^^^^ address: Value
+  │                ^^^^^^^^^^^^^^^^^^ address
 
 

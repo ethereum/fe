@@ -1,15 +1,15 @@
+struct MyEvent {
+    pub num: u256
+    pub nums: Array<u256, 42>
+    pub str: String<26>
+}
+
 contract Foo {
     num: u256
     nums: Array<u256, 42>
     str: String<26>
 
-    event MyEvent {
-        num: u256
-        nums: Array<u256, 42>
-        str: String<26>
-    }
-
-    pub fn write_num(self, x: u256) {
+    pub fn write_num(mut self, x: u256) {
         self.num = x
     }
 
@@ -17,7 +17,7 @@ contract Foo {
         return self.num
     }
 
-    pub fn write_nums(self, x: Array<u256, 42>) {
+    pub fn write_nums(mut self, x: Array<u256, 42>) {
         self.nums = x
     }
 
@@ -25,7 +25,7 @@ contract Foo {
         return self.nums.to_mem()
     }
 
-    pub fn write_str(self, x: String<26>) {
+    pub fn write_str(mut self, x: String<26>) {
         self.str = x
     }
 
@@ -33,7 +33,7 @@ contract Foo {
         return self.str.to_mem()
     }
 
-    pub fn emit_event(self, ctx: Context) {
-        emit MyEvent(ctx, num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem())
+    pub fn emit_event(self, mut ctx: Context) {
+        ctx.emit(MyEvent(num: self.num, nums: self.nums.to_mem(), str: self.str.to_mem()))
     }
 }

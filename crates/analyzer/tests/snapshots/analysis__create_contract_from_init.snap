@@ -9,13 +9,13 @@ note:
 2 │ ╭     pub fn get_my_num() -> u256 {
 3 │ │         return 42
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> u256
+  │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ create_contract_from_init.fe:3:16
   │
 3 │         return 42
-  │                ^^ u256: Value
+  │                ^^ u256
 
 note: 
   ┌─ create_contract_from_init.fe:8:5
@@ -29,18 +29,18 @@ note:
 14 │ ╭     pub fn get_foo_addr(self) -> address {
 15 │ │         return self.foo_addr
 16 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> address
+   │ ╰─────^ params: [self] -> address
 
 note: 
    ┌─ create_contract_from_init.fe:15:16
    │
 15 │         return self.foo_addr
-   │                ^^^^ FooFactory: Value
+   │                ^^^^ FooFactory
 
 note: 
    ┌─ create_contract_from_init.fe:15:16
    │
 15 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^^^ SPtr<address> -Load-> address
 
 

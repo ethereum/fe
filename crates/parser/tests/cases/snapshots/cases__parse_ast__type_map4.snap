@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_map4), types::parse_type_desc,\n           \"map < address , map < u8, u256 > >\")"
+expression: "ast_string(stringify!(type_map4), types::parse_type_desc,\n    \"map < address , map < u8, u256 > >\")"
 
 ---
 Node(

@@ -1,0 +1,17 @@
+use std::context::Context
+
+enum Color {
+    White
+    Black
+}
+
+struct NotEmittable {
+    pub color: Color
+}
+
+contract Foo {
+
+    pub fn emit(self, ctx: Context) {
+        ctx.emit(NotEmittable ( color: Color::Black ))
+    }
+}

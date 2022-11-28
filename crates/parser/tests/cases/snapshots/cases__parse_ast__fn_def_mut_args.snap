@@ -1,0 +1,171 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(fn_def_mut_args), try_parse_module,\n    \"fn transfer(mut from sender: address, to recip: address, mut val: u64) -> bool { \\n return false \\n}\")"
+
+---
+Node(
+  kind: Module(
+    body: [
+      Function(Node(
+        kind: Function(
+          sig: Node(
+            kind: FunctionSignature(
+              pub_: None,
+              unsafe_: None,
+              name: Node(
+                kind: "transfer",
+                span: Span(
+                  start: 3,
+                  end: 11,
+                ),
+              ),
+              generic_params: Node(
+                kind: [],
+                span: Span(
+                  start: 3,
+                  end: 11,
+                ),
+              ),
+              args: [
+                Node(
+                  kind: Regular(
+                    mut_: Some(Span(
+                      start: 12,
+                      end: 15,
+                    )),
+                    label: Some(Node(
+                      kind: "from",
+                      span: Span(
+                        start: 16,
+                        end: 20,
+                      ),
+                    )),
+                    name: Node(
+                      kind: "sender",
+                      span: Span(
+                        start: 21,
+                        end: 27,
+                      ),
+                    ),
+                    typ: Node(
+                      kind: Base(
+                        base: "address",
+                      ),
+                      span: Span(
+                        start: 29,
+                        end: 36,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 12,
+                    end: 36,
+                  ),
+                ),
+                Node(
+                  kind: Regular(
+                    mut_: None,
+                    label: Some(Node(
+                      kind: "to",
+                      span: Span(
+                        start: 38,
+                        end: 40,
+                      ),
+                    )),
+                    name: Node(
+                      kind: "recip",
+                      span: Span(
+                        start: 41,
+                        end: 46,
+                      ),
+                    ),
+                    typ: Node(
+                      kind: Base(
+                        base: "address",
+                      ),
+                      span: Span(
+                        start: 48,
+                        end: 55,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 38,
+                    end: 55,
+                  ),
+                ),
+                Node(
+                  kind: Regular(
+                    mut_: Some(Span(
+                      start: 57,
+                      end: 60,
+                    )),
+                    label: None,
+                    name: Node(
+                      kind: "val",
+                      span: Span(
+                        start: 61,
+                        end: 64,
+                      ),
+                    ),
+                    typ: Node(
+                      kind: Base(
+                        base: "u64",
+                      ),
+                      span: Span(
+                        start: 66,
+                        end: 69,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 57,
+                    end: 69,
+                  ),
+                ),
+              ],
+              return_type: Some(Node(
+                kind: Base(
+                  base: "bool",
+                ),
+                span: Span(
+                  start: 74,
+                  end: 78,
+                ),
+              )),
+            ),
+            span: Span(
+              start: 0,
+              end: 78,
+            ),
+          ),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: Bool(false),
+                  span: Span(
+                    start: 90,
+                    end: 95,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 83,
+                end: 95,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 0,
+          end: 98,
+        ),
+      )),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 98,
+  ),
+)

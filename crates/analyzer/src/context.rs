@@ -1,7 +1,12 @@
-use crate::display::Displayable;
+use crate::{
+    display::Displayable,
+    errors::FatalError,
+    namespace::items::{EnumVariantId, TypeDef},
+    pattern_analysis::PatternMatrix,
+};
 
 use crate::namespace::items::{
-    ContractId, DiagnosticSink, EventId, FunctionId, FunctionSigId, Item, TraitId,
+    ContractId, DiagnosticSink, FunctionId, FunctionSigId, Item, TraitId,
 };
 use crate::namespace::types::{Generic, SelfDecl, Type, TypeId};
 use crate::AnalyzerDb;
@@ -10,7 +15,7 @@ use crate::{
     namespace::scopes::BlockScopeType,
 };
 use crate::{
-    errors::{self, CannotMove, IncompleteItem, TypeError},
+    errors::{self, IncompleteItem, TypeError},
     namespace::items::ModuleId,
 };
 use fe_common::diagnostics::Diagnostic;
@@ -40,15 +45,24 @@ impl<T> Analysis<T> {
     pub fn sink_diagnostics(&self, sink: &mut impl DiagnosticSink) {
         self.diagnostics.iter().for_each(|diag| sink.push(diag))
     }
+    pub fn has_diag(&self) -> bool {
+        !self.diagnostics.is_empty()
+    }
 }
 
 pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
-    fn resolve_path(&self, path: &ast::Path, span: Span) -> Option<NamedThing>;
+    /// Resolves the given path and registers all errors
+    fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError>;
+    /// Resolves the given path only if it is visible. Does not register any errors
+    fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing>;
+    /// Resolves the given path. Does not register any errors
+    fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing>;
+
     fn add_diagnostic(&self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
 
-    fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
+    fn error(&self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
         self.register_diag(errors::error(message, label_span, label))
     }
 
@@ -64,7 +78,7 @@ pub trait AnalyzerContext {
     /// # Panics
     ///
     /// Panics if an entry does not already exist for the node id.
-    fn update_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes);
+    fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes));
 
     /// Returns a type of an expression.
     ///
@@ -137,6 +151,7 @@ pub trait AnalyzerContext {
     /// Panics if a context is not in a function. Use [`Self::is_in_function`]
     /// to determine whether a context is in a function.
     fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType);
+    fn get_call(&self, node: &Node<ast::Expr>) -> Option<CallType>;
 
     /// Returns `true` if the context is in function scope.
     fn is_in_function(&self) -> bool;
@@ -213,6 +228,7 @@ pub trait AnalyzerContext {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NamedThing {
     Item(Item),
+    EnumVariant(EnumVariantId),
     SelfValue {
         /// Function `self` parameter.
         decl: Option<SelfDecl>,
@@ -235,6 +251,7 @@ impl NamedThing {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         match self {
             NamedThing::Item(item) => item.name_span(db),
+            NamedThing::EnumVariant(variant) => Some(variant.span(db)),
             NamedThing::SelfValue { span, .. } => *span,
             NamedThing::Variable { span, .. } => Some(*span),
         }
@@ -243,15 +260,39 @@ impl NamedThing {
     pub fn is_builtin(&self) -> bool {
         match self {
             NamedThing::Item(item) => item.is_builtin(),
-            NamedThing::Variable { .. } | NamedThing::SelfValue { .. } => false,
+            NamedThing::EnumVariant(_)
+            | NamedThing::Variable { .. }
+            | NamedThing::SelfValue { .. } => false,
         }
     }
 
     pub fn item_kind_display_name(&self) -> &str {
         match self {
             NamedThing::Item(item) => item.item_kind_display_name(),
+            NamedThing::EnumVariant(_) => "enum variant",
             NamedThing::Variable { .. } => "variable",
             NamedThing::SelfValue { .. } => "value",
+        }
+    }
+
+    pub fn resolve_path_segment(
+        &self,
+        db: &dyn AnalyzerDb,
+        segment: &SmolStr,
+    ) -> Option<NamedThing> {
+        if let Self::Item(Item::Type(TypeDef::Enum(enum_))) = self {
+            if let Some(variant) = enum_.variant(db, segment) {
+                return Some(NamedThing::EnumVariant(variant));
+            }
+        }
+
+        match self {
+            Self::Item(item) => item
+                .items(db)
+                .get(segment)
+                .map(|resolved| NamedThing::Item(*resolved)),
+
+            _ => None,
         }
     }
 }
@@ -279,7 +320,15 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't resolve names")
     }
 
-    fn resolve_path(&self, _path: &ast::Path, _span: Span) -> Option<NamedThing> {
+    fn resolve_path(&self, _path: &ast::Path, _span: Span) -> Result<NamedThing, FatalError> {
+        panic!("TempContext can't resolve paths")
+    }
+
+    fn resolve_visible_path(&self, _path: &ast::Path) -> Option<NamedThing> {
+        panic!("TempContext can't resolve paths")
+    }
+
+    fn resolve_any_path(&self, _path: &ast::Path) -> Option<NamedThing> {
         panic!("TempContext can't resolve paths")
     }
 
@@ -287,7 +336,7 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't store expression")
     }
 
-    fn update_expression(&self, _node: &Node<ast::Expr>, _attributes: ExpressionAttributes) {
+    fn update_expression(&self, _node: &Node<ast::Expr>, _f: &dyn Fn(&mut ExpressionAttributes)) {
         panic!("TempContext can't update expression");
     }
 
@@ -323,6 +372,10 @@ impl AnalyzerContext for TempContext {
         panic!("TempContext can't add call");
     }
 
+    fn get_call(&self, _node: &Node<ast::Expr>) -> Option<CallType> {
+        panic!("TempContext can't have calls");
+    }
+
     fn is_in_function(&self) -> bool {
         false
     }
@@ -340,37 +393,11 @@ impl AnalyzerContext for TempContext {
     }
 }
 
-/// Indicates where an expression is stored.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Location {
-    /// A storage value may not have a nonce known at compile time, so it is
-    /// optional.
-    Storage {
-        nonce: Option<usize>,
-    },
-    Memory,
-    Value,
-    // An unresolved location is used for generic types prior to monomorphization.
-    Unresolved,
-}
-
-impl Location {
-    /// The expected location of a value with the given type when being
-    /// assigned, returned, or passed.
-    pub fn assign_location(typ: &Type) -> Self {
-        match typ {
-            Type::Base(_) | Type::Contract(_) => Location::Value,
-            Type::Generic(_) => Location::Unresolved,
-            Type::Array(_) | Type::Tuple(_) | Type::String(_) | Type::Struct(_) => Location::Memory,
-            _ => panic!("Type can not be assigned, returned or passed"),
-        }
-    }
-}
-
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
-    pub emits: IndexMap<NodeId, EventId>,
+    // Map match statements to the corresponding [`PatternMatrix`]
+    pub matches: IndexMap<NodeId, PatternMatrix>,
     // Map lhs of variable declaration to type.
     pub var_types: IndexMap<NodeId, TypeId>,
     pub calls: IndexMap<NodeId, CallType>,
@@ -381,53 +408,61 @@ pub struct FunctionBody {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExpressionAttributes {
     pub typ: TypeId,
-    pub location: Location,
-    pub move_location: Option<Location>,
     // Evaluated constant value of const local definition.
     pub const_value: Option<Constant>,
+    pub type_adjustments: Vec<Adjustment>,
+}
+impl ExpressionAttributes {
+    pub fn original_type(&self) -> TypeId {
+        self.typ
+    }
+    pub fn adjusted_type(&self) -> TypeId {
+        if let Some(adj) = self.type_adjustments.last() {
+            adj.into
+        } else {
+            self.typ
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Adjustment {
+    pub into: TypeId,
+    pub kind: AdjustmentKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AdjustmentKind {
+    Copy,
+    /// Load from storage ptr
+    Load,
+    IntSizeIncrease,
+    StringSizeIncrease,
 }
 
 impl ExpressionAttributes {
-    pub fn new(typ: TypeId, location: Location) -> Self {
+    pub fn new(typ: TypeId) -> Self {
         Self {
             typ,
-            location,
-            move_location: None,
             const_value: None,
+            type_adjustments: vec![],
         }
-    }
-
-    /// Adds a move to memory.
-    pub fn into_cloned(mut self) -> Self {
-        self.move_location = Some(Location::Memory);
-        self
-    }
-
-    /// Adds a move to value, if it is in storage or memory.
-    pub fn into_loaded(mut self, db: &dyn AnalyzerDb) -> Result<Self, CannotMove> {
-        match self.typ.typ(db) {
-            Type::Base(_) | Type::Contract(_) => {
-                if self.location != Location::Value {
-                    self.move_location = Some(Location::Value);
-                }
-
-                Ok(self)
-            }
-            _ => Err(CannotMove),
-        }
-    }
-
-    /// The final location of an expression after a possible move.
-    pub fn final_location(&self) -> Location {
-        self.move_location.unwrap_or(self.location)
     }
 }
 
 impl crate::display::DisplayWithDb for ExpressionAttributes {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}: {:?}", self.typ.display(db), self.location)?;
-        if let Some(move_to) = self.move_location {
-            write!(f, " => {:?}", move_to)?;
+        let ExpressionAttributes {
+            typ,
+            const_value,
+            type_adjustments,
+        } = self;
+        write!(f, "{}", typ.display(db))?;
+        if let Some(val) = &const_value {
+            write!(f, " = {:?}", val)?;
+        }
+        for adj in type_adjustments {
+            write!(f, " -{:?}-> {}", adj.kind, adj.into.display(db))?;
         }
         Ok(())
     }
@@ -460,13 +495,14 @@ pub enum CallType {
         method: FunctionId,
     },
     // some_trait.foo()
-    // The reason this can not use `ValueMethod` is mainly because the trait might not have a function implementation
-    // and even if it had it might not be the one that ends up getting executed. An `impl` block will decide that.
+    // The reason this can not use `ValueMethod` is mainly because the trait might not have a
+    // function implementation and even if it had it might not be the one that ends up getting
+    // executed. An `impl` block will decide that.
     TraitValueMethod {
         trait_id: TraitId,
         method: FunctionSigId,
-        // Traits can not directly be used as types but can act as bounds for generics. This is the generic type
-        // that the method is called on.
+        // Traits can not directly be used as types but can act as bounds for generics. This is the
+        // generic type that the method is called on.
         generic_type: Generic,
     },
     External {
@@ -475,6 +511,7 @@ pub enum CallType {
     },
     Pure(FunctionId),
     TypeConstructor(TypeId),
+    EnumConstructor(EnumVariantId),
 }
 
 impl CallType {
@@ -484,6 +521,7 @@ impl CallType {
             BuiltinFunction(_)
             | BuiltinValueMethod { .. }
             | TypeConstructor(_)
+            | EnumConstructor(_)
             | Intrinsic(_)
             | TraitValueMethod { .. }
             | BuiltinAssociatedFunction { .. } => None,
@@ -506,6 +544,11 @@ impl CallType {
             | CallType::Pure(id) => id.name(db),
             CallType::TraitValueMethod { method: id, .. } => id.name(db),
             CallType::TypeConstructor(typ) => typ.display(db).to_string().into(),
+            CallType::EnumConstructor(variant) => {
+                let enum_name = variant.parent(db).name(db);
+                let variant_name = variant.name(db);
+                format!("{enum_name}::{variant_name}").into()
+            }
         }
     }
 

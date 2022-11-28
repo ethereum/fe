@@ -9,13 +9,13 @@ note:
 2 │ ╭     pub fn bar(self) -> u256 {
 3 │ │         return foo()
 4 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [] -> u256
+  │ ╰─────^ params: [self] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn.fe:3:16
   │
 3 │         return foo()
-  │                ^^^^^ u256: Value
+  │                ^^^^^ u256
 
 note: 
   ┌─ return_u256_from_called_fn.fe:6:5
@@ -23,12 +23,12 @@ note:
 6 │ ╭     pub fn foo() -> u256 {
 7 │ │         return 42
 8 │ │     }
-  │ ╰─────^ self: None, params: [] -> u256
+  │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ return_u256_from_called_fn.fe:7:16
   │
 7 │         return 42
-  │                ^^ u256: Value
+  │                ^^ u256
 
 

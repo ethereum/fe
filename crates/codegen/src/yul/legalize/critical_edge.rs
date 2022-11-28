@@ -2,7 +2,7 @@ use fe_mir::{
     analysis::ControlFlowGraph,
     ir::{
         body_cursor::{BodyCursor, CursorLocation},
-        inst::{BranchInfo, InstKind},
+        inst::InstKind,
         BasicBlock, BasicBlockId, FunctionBody, Inst, InstId, SourceInfo,
     },
 };
@@ -36,22 +36,10 @@ impl CriticalEdgeSplitter {
         func: &FunctionBody,
         cfg: &ControlFlowGraph,
     ) {
-        match func.store.branch_info(terminator) {
-            BranchInfo::Branch(_, then, else_) => {
-                if cfg.preds(then).len() > 1 {
-                    self.critical_edges.push(CriticalEdge {
-                        terminator,
-                        to: then,
-                    });
-                }
-                if cfg.preds(else_).len() > 1 {
-                    self.critical_edges.push(CriticalEdge {
-                        terminator,
-                        to: else_,
-                    });
-                }
+        for to in func.store.branch_info(terminator).block_iter() {
+            if cfg.preds(to).len() > 1 {
+                self.critical_edges.push(CriticalEdge { terminator, to });
             }
-            BranchInfo::Jump(_) | BranchInfo::NotBranch => {}
         }
     }
 

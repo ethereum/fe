@@ -21,10 +21,10 @@ pub enum ModuleStmt {
     Contract(Node<Contract>),
     Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
+    Enum(Node<Enum>),
     Trait(Node<Trait>),
     Impl(Node<Impl>),
     Function(Node<Function>),
-    Event(Node<Event>),
     ParseError(Span),
 }
 
@@ -36,6 +36,14 @@ pub struct Pragma {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Path {
     pub segments: Vec<Node<SmolStr>>,
+}
+
+impl Path {
+    pub fn remove_last(&self) -> Path {
+        Path {
+            segments: self.segments[0..self.segments.len() - 1].to_vec(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -85,6 +93,14 @@ pub struct Contract {
 pub struct Struct {
     pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
+    pub functions: Vec<Node<Function>>,
+    pub pub_qual: Option<Span>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Enum {
+    pub name: Node<SmolStr>,
+    pub variants: Vec<Node<Variant>>,
     pub functions: Vec<Node<Function>>,
     pub pub_qual: Option<Span>,
 }
@@ -175,23 +191,49 @@ impl Spanned for GenericParameter {
 pub struct Field {
     pub is_pub: bool,
     pub is_const: bool,
+    pub attributes: Vec<Node<SmolStr>>,
     pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
 }
 
+/// Enum variant definition.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Variant {
+    pub name: Node<SmolStr>,
+    pub kind: VariantKind,
+}
+
+/// Enum variant kind.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum VariantKind {
+    /// Unit variant.
+    /// E.g., `Bar` in
+    ///
+    /// ```fe
+    /// enum Foo {
+    ///     Bar
+    ///     Baz(u32, i32)
+    /// }
+    /// ```
+    Unit,
+
+    /// Tuple variant.
+    /// E.g., `Baz(u32, i32)` in
+    ///
+    /// ```fe
+    /// enum Foo {
+    ///     Bar
+    ///     Baz(u32, i32)
+    /// }
+    /// ```
+    Tuple(Vec<Node<TypeDesc>>),
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum ContractStmt {
-    Event(Node<Event>),
     Function(Node<Function>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Event {
-    pub name: Node<SmolStr>,
-    pub fields: Vec<Node<EventField>>,
-    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -212,24 +254,39 @@ pub struct Function {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct EventField {
-    pub is_idx: bool,
-    pub name: Node<SmolStr>,
-    pub typ: Node<TypeDesc>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct RegularFunctionArg {
-    pub label: Option<Node<SmolStr>>,
-    pub name: Node<SmolStr>,
-    pub typ: Node<TypeDesc>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum FunctionArg {
-    Regular(RegularFunctionArg),
-    Self_,
+    Regular {
+        mut_: Option<Span>,
+        label: Option<Node<SmolStr>>,
+        name: Node<SmolStr>,
+        typ: Node<TypeDesc>,
+    },
+    Self_ {
+        mut_: Option<Span>,
+    },
+}
+impl FunctionArg {
+    pub fn label_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular { label, .. } => label.as_ref().map(|label| label.span),
+            Self::Self_ { .. } => None,
+        }
+    }
+
+    pub fn name_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular { name, .. } => Some(name.span),
+            Self::Self_ { .. } => None,
+        }
+    }
+
+    pub fn typ_span(&self) -> Option<Span> {
+        match self {
+            Self::Regular { typ, .. } => Some(typ.span),
+            Self::Self_ { .. } => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -238,6 +295,7 @@ pub enum FuncStmt {
         value: Option<Node<Expr>>,
     },
     VarDecl {
+        mut_: Option<Span>,
         target: Node<VarDeclTarget>,
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
@@ -270,13 +328,13 @@ pub enum FuncStmt {
         body: Vec<Node<FuncStmt>>,
         or_else: Vec<Node<FuncStmt>>,
     },
+    Match {
+        expr: Node<Expr>,
+        arms: Vec<Node<MatchArm>>,
+    },
     Assert {
         test: Node<Expr>,
         msg: Option<Node<Expr>>,
-    },
-    Emit {
-        name: Node<SmolStr>,
-        args: Node<Vec<Node<CallArg>>>,
     },
     Expr {
         value: Node<Expr>,
@@ -287,6 +345,48 @@ pub enum FuncStmt {
         error: Option<Node<Expr>>,
     },
     Unsafe(Vec<Node<FuncStmt>>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct MatchArm {
+    pub pat: Node<Pattern>,
+    pub body: Vec<Node<FuncStmt>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum Pattern {
+    /// Represents a wildcard pattern `_`.
+    WildCard,
+    /// Rest pattern. e.g., `..`
+    Rest,
+    /// Represents a literal pattern. e.g., `true`.
+    Literal(Node<LiteralPattern>),
+    /// Represents tuple destructuring pattern. e.g., `(x, y, z)`.
+    Tuple(Vec<Node<Pattern>>),
+    /// Represents unit variant pattern. e.g., `Enum::Unit`.
+    Path(Node<Path>),
+    /// Represents tuple variant pattern. e.g., `Enum::Tuple(x, y, z)`.
+    PathTuple(Node<Path>, Vec<Node<Pattern>>),
+    /// Represents struct or struct variant destructuring pattern. e.g.,
+    /// `MyStruct {x: pat1, y: pat2}}`.
+    PathStruct {
+        path: Node<Path>,
+        fields: Vec<(Node<SmolStr>, Node<Pattern>)>,
+        has_rest: bool,
+    },
+    /// Represents or pattern. e.g., `EnumUnit | EnumTuple(_, _, _)`
+    Or(Vec<Node<Pattern>>),
+}
+
+impl Pattern {
+    pub fn is_rest(&self) -> bool {
+        matches!(self, Pattern::Rest)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum LiteralPattern {
+    Bool(bool),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -408,13 +508,19 @@ impl Node<Struct> {
     }
 }
 
-impl Node<Trait> {
+impl Node<Enum> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
     }
 }
 
-impl Node<Event> {
+impl Node<Variant> {
+    pub fn name(&self) -> &str {
+        &self.kind.name.kind
+    }
+}
+
+impl Node<Trait> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
     }
@@ -435,15 +541,15 @@ impl Node<Function> {
 impl Node<FunctionArg> {
     pub fn name(&self) -> &str {
         match &self.kind {
-            FunctionArg::Regular(arg) => &arg.name.kind,
-            FunctionArg::Self_ => "self",
+            FunctionArg::Regular { name, .. } => &name.kind,
+            FunctionArg::Self_ { .. } => "self",
         }
     }
 
     pub fn name_span(&self) -> Span {
         match &self.kind {
-            FunctionArg::Regular(arg) => arg.name.span,
-            FunctionArg::Self_ => self.span,
+            FunctionArg::Regular { name, .. } => name.span,
+            FunctionArg::Self_ { .. } => self.span,
         }
     }
 }
@@ -465,8 +571,8 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
+            ModuleStmt::Enum(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
-            ModuleStmt::Event(inner) => inner.span,
             ModuleStmt::ParseError(span) => *span,
         }
     }
@@ -475,7 +581,6 @@ impl Spanned for ModuleStmt {
 impl Spanned for ContractStmt {
     fn span(&self) -> Span {
         match self {
-            ContractStmt::Event(inner) => inner.span,
             ContractStmt::Function(inner) => inner.span,
         }
     }
@@ -513,8 +618,8 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Enum(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
-            ModuleStmt::Event(node) => write!(f, "{}", node.kind),
             ModuleStmt::ParseError(span) => {
                 write!(f, "# PARSE ERROR: {}..{}", span.start, span.end)
             }
@@ -672,6 +777,30 @@ impl fmt::Display for Struct {
     }
 }
 
+impl fmt::Display for Enum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let Enum {
+            name,
+            variants,
+            functions,
+            pub_qual,
+        } = self;
+
+        if pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+
+        write!(f, "enum {} ", name.kind)?;
+        write!(f, "{{")?;
+        write_nodes_line_wrapped(&mut indented(f), variants)?;
+
+        if !functions.is_empty() {
+            writeln!(indented(f), "{}", double_line_joined(functions))?;
+        }
+        write!(f, "}}")
+    }
+}
+
 impl fmt::Display for TypeDesc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -686,7 +815,7 @@ impl fmt::Display for TypeDesc {
                 }
             }
             TypeDesc::Generic { base, args } => {
-                write!(f, "{}<{}>", base.kind, comma_joined(&args.kind))
+                write!(f, "{}<{}>", base.kind, comma_joined(args.kind.iter()))
             }
         }
     }
@@ -723,24 +852,22 @@ impl fmt::Display for Field {
     }
 }
 
-impl fmt::Display for ContractStmt {
+impl fmt::Display for Variant {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ContractStmt::Event(node) => write!(f, "{}", node.kind),
-            ContractStmt::Function(node) => write!(f, "{}", node.kind),
+        write!(f, "{}", self.name.kind)?;
+        match &self.kind {
+            VariantKind::Unit => Ok(()),
+            VariantKind::Tuple(elts) => {
+                write!(f, "({})", node_comma_joined(elts))
+            }
         }
     }
 }
 
-impl fmt::Display for Event {
+impl fmt::Display for ContractStmt {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "event {} ", self.name.kind)?;
-        if self.fields.is_empty() {
-            write!(f, "{{}}")
-        } else {
-            writeln!(f, "{{")?;
-            writeln!(indented(f), "{}", node_line_joined(&self.fields))?;
-            write!(f, "}}")
+        match self {
+            ContractStmt::Function(node) => write!(f, "{}", node.kind),
         }
     }
 }
@@ -770,7 +897,7 @@ impl fmt::Display for Function {
         }
         write!(f, "fn {}", name.kind)?;
         if !generic_params.kind.is_empty() {
-            write!(f, "<{}>", comma_joined(&generic_params.kind))?;
+            write!(f, "<{}>", comma_joined(generic_params.kind.iter()))?;
         }
         write!(f, "({})", node_comma_joined(args))?;
 
@@ -783,29 +910,30 @@ impl fmt::Display for Function {
     }
 }
 
-impl fmt::Display for EventField {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_idx {
-            write!(f, "idx ")?;
-        }
-        write!(f, "{}: {}", self.name.kind, self.typ.kind)
-    }
-}
-
-impl fmt::Display for RegularFunctionArg {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(label) = &self.label {
-            write!(f, "{} ", label.kind)?;
-        }
-        write!(f, "{}: {}", self.name.kind, self.typ.kind)
-    }
-}
-
 impl fmt::Display for FunctionArg {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionArg::Regular(arg) => write!(f, "{}", arg),
-            FunctionArg::Self_ => write!(f, "self"),
+            FunctionArg::Regular {
+                mut_,
+                label,
+                name,
+                typ,
+            } => {
+                if mut_.is_some() {
+                    write!(f, "mut ")?
+                }
+                if let Some(label) = label {
+                    write!(f, "{} ", label.kind)?
+                }
+
+                write!(f, "{}: {}", name.kind, typ.kind)
+            }
+            FunctionArg::Self_ { mut_ } => {
+                if mut_.is_some() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "self")
+            }
         }
     }
 }
@@ -820,11 +948,21 @@ impl fmt::Display for FuncStmt {
                     write!(f, "return")
                 }
             }
-            FuncStmt::VarDecl { target, typ, value } => {
+            FuncStmt::VarDecl {
+                mut_,
+                target,
+                typ,
+                value,
+            } => {
+                let mut_ = if mut_.is_some() { "mut " } else { "" };
                 if let Some(value) = value {
-                    write!(f, "let {}: {} = {}", target.kind, typ.kind, value.kind)
+                    write!(
+                        f,
+                        "let {}{}: {} = {}",
+                        mut_, target.kind, typ.kind, value.kind
+                    )
                 } else {
-                    write!(f, "let {}: {}", target.kind, typ.kind)
+                    write!(f, "let {}{}: {}", mut_, target.kind, typ.kind)
                 }
             }
             FuncStmt::ConstantDecl { name, typ, value } => {
@@ -875,15 +1013,17 @@ impl fmt::Display for FuncStmt {
                     }
                 }
             }
+            FuncStmt::Match { expr, arms } => {
+                write!(f, "match {} {{", expr.kind)?;
+                write_nodes_line_wrapped(&mut indented(f), arms)?;
+                write!(f, "}}")
+            }
             FuncStmt::Assert { test, msg } => {
                 if let Some(msg) = msg {
                     write!(f, "assert {}, {}", test.kind, msg.kind)
                 } else {
                     write!(f, "assert {}", test.kind)
                 }
-            }
-            FuncStmt::Emit { name, args } => {
-                write!(f, "emit {}({})", name.kind, node_comma_joined(&args.kind))
             }
             FuncStmt::Expr { value } => write!(f, "{}", value.kind),
             FuncStmt::Break => write!(f, "break"),
@@ -963,7 +1103,7 @@ impl fmt::Display for Expr {
             } => {
                 write!(f, "{}", func.kind)?;
                 if let Some(generic_args) = generic_args {
-                    write!(f, "<{}>", comma_joined(&generic_args.kind))?;
+                    write!(f, "<{}>", comma_joined(generic_args.kind.iter()))?;
                 }
                 write!(f, "({})", node_comma_joined(&args.kind))
             }
@@ -1055,16 +1195,82 @@ impl fmt::Display for CompOperator {
     }
 }
 
-fn node_comma_joined(nodes: &[Node<impl fmt::Display>]) -> String {
-    comma_joined(&nodes.iter().map(|node| &node.kind).collect::<Vec<_>>())
+impl fmt::Display for MatchArm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} => {{", self.pat.kind)?;
+        write_nodes_line_wrapped(&mut indented(f), &self.body)?;
+        write!(f, "}}")
+    }
 }
 
-fn comma_joined(items: &[impl fmt::Display]) -> String {
+impl fmt::Display for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WildCard => write!(f, "_"),
+            Self::Rest => write!(f, ".."),
+            Self::Literal(pat) => write!(f, "{}", pat.kind),
+            Self::Path(path) => write!(f, "{}", path.kind),
+            Self::PathTuple(path, elts) => {
+                write!(f, "{}", path.kind)?;
+                write!(f, "({})", node_comma_joined(elts))
+            }
+            Self::Tuple(elts) => {
+                write!(f, "({})", node_comma_joined(elts))
+            }
+            Self::PathStruct {
+                path,
+                fields,
+                has_rest: is_rest,
+            } => {
+                write!(f, "{}", path.kind)?;
+                let fields = fields
+                    .iter()
+                    .map(|(name, pat)| format!("{}: {}", name.kind, pat.kind));
+                let fields = comma_joined(fields);
+                if *is_rest {
+                    write!(f, "{{{}, ..}}", fields)
+                } else {
+                    write!(f, "{{{}}}", fields)
+                }
+            }
+            Self::Or(pats) => {
+                write!(f, "{}", node_delim_joined(pats, "| "))
+            }
+        }
+    }
+}
+
+impl fmt::Display for LiteralPattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bool(b) => write!(f, "{b}"),
+        }
+    }
+}
+
+fn node_comma_joined(nodes: &[Node<impl fmt::Display>]) -> String {
+    node_delim_joined(nodes, ", ")
+}
+
+fn node_delim_joined(nodes: &[Node<impl fmt::Display>], delim: &str) -> String {
+    delim_joined(nodes.iter().map(|node| &node.kind), delim)
+}
+
+fn comma_joined<T>(items: impl Iterator<Item = T>) -> String
+where
+    T: fmt::Display,
+{
+    delim_joined(items, ", ")
+}
+
+fn delim_joined<T>(items: impl Iterator<Item = T>, delim: &str) -> String
+where
+    T: fmt::Display,
+{
     items
-        .iter()
         .map(|item| format!("{}", item))
         .collect::<Vec<_>>()
-        .join(", ")
+        .join(delim)
 }
 
 fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>]) -> fmt::Result {
@@ -1075,18 +1281,6 @@ fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>
         writeln!(f, "{}", n.kind)?;
     }
     Ok(())
-}
-
-fn node_line_joined(nodes: &[Node<impl fmt::Display>]) -> String {
-    line_joined(&nodes.iter().map(|node| &node.kind).collect::<Vec<_>>())
-}
-
-fn line_joined(items: &[impl fmt::Display]) -> String {
-    items
-        .iter()
-        .map(|item| format!("{}", item))
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 fn double_line_joined(items: &[impl fmt::Display]) -> String {

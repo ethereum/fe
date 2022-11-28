@@ -1,0 +1,24 @@
+trait DoThing {
+  fn do();
+}
+
+trait DoOtherThing {
+  fn do();
+}
+
+
+impl DoThing for u256 {
+  fn do() {
+  }
+}
+
+impl DoOtherThing for u256 {
+  fn do() {
+  }
+}
+
+contract Example {
+  pub fn run_test(self) {
+    u256::do()
+  }
+}

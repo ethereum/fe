@@ -12,7 +12,7 @@ error: duplicate definition of variable `x`
 6 │         for x in xs {
   │             - `x` redefined here
 
-error: `+` operand types must be equal
+error: `+` operand types are not compatible
   ┌─ compile_errors/duplicate_var_in_for_loop.fe:7:13
   │
 7 │             sum += x

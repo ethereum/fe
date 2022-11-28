@@ -9,10 +9,4 @@ error: the trait bound `Bar: Dummy` is not satisfied
 16 │     foo.bar(Bar())
    │             ^^^^^ the trait `Dummy` is not implemented for `Bar`
 
-error: incorrect type for `bar` argument at position 0
-   ┌─ compile_errors/call_generic_function_with_unsatisfied_bound.fe:16:13
-   │
-16 │     foo.bar(Bar())
-   │             ^^^^^ this has type `Bar`; expected type `T`
-
 

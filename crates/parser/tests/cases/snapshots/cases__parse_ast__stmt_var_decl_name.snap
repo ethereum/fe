@@ -1,10 +1,11 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt,\n           \"let foo: u256 = 1\")"
+expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt,\n    \"let foo: u256 = 1\")"
 
 ---
 Node(
   kind: VarDecl(
+    mut_: None,
     target: Node(
       kind: Name("foo"),
       span: Span(

@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::constants::MAX_INDEXED_EVENT_FIELDS;
 use crate::context::AnalyzerContext;
 use crate::db::Analysis;
 use crate::errors::TypeError;
@@ -10,7 +11,8 @@ use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{Type, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
-use fe_parser::ast;
+use fe_common::utils::humanize::pluralize_conditionally;
+use fe_parser::{ast, Label};
 use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
 use std::rc::Rc;
@@ -39,9 +41,25 @@ pub fn struct_field_map(
     let scope = ItemScope::new(db, struct_.module(db));
     let mut fields = IndexMap::<SmolStr, StructFieldId>::new();
 
+    let mut indexed_count = 0;
     let struct_name = struct_.name(db);
     for field in db.struct_all_fields(struct_).iter() {
         let node = &field.data(db).ast;
+
+        if field.is_indexed(db) {
+            indexed_count += 1;
+        }
+
+        // Multiple attributes are currently still rejected by the parser so we only
+        // need to check the name here
+        if !field.attributes(db).is_empty() && !field.is_indexed(db) {
+            let span = field.data(db).ast.kind.attributes.first().unwrap().span;
+            scope.error(
+                "Invalid attribute",
+                span,
+                "illegal name. Only `indexed` supported.",
+            );
+        }
 
         match fields.entry(node.name().into()) {
             Entry::Occupied(entry) => {
@@ -58,6 +76,33 @@ pub fn struct_field_map(
         }
     }
 
+    if indexed_count > MAX_INDEXED_EVENT_FIELDS {
+        let excess_count = indexed_count - MAX_INDEXED_EVENT_FIELDS;
+
+        let mut labels = fields
+            .iter()
+            .filter_map(|(_, field)| {
+                field
+                    .is_indexed(db)
+                    .then(|| Label::primary(field.span(db), String::new()))
+            })
+            .collect::<Vec<Label>>();
+        labels.last_mut().unwrap().message = format!("{} indexed fields", indexed_count);
+
+        scope.fancy_error(
+            &format!(
+                "more than three indexed fields in `event {}`",
+                struct_.name(db)
+            ),
+            labels,
+            vec![format!(
+                "Note: Remove the `indexed` attribute from at least {} {}.",
+                excess_count,
+                pluralize_conditionally("field", excess_count)
+            )],
+        );
+    }
+
     Analysis::new(Rc::new(fields), scope.diagnostics.take().into())
 }
 
@@ -70,6 +115,7 @@ pub fn struct_field_type(
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
 
     let ast::Field {
+        attributes: _,
         is_pub: _,
         is_const,
         name: _,
@@ -92,7 +138,7 @@ pub fn struct_field_type(
                 );
                 Ok(typ)
             }
-            t if t.has_fixed_size() => Ok(typ),
+            t if t.has_fixed_size(db) => Ok(typ),
             _ => Err(TypeError::new(scope.error(
                 "struct field type must have a fixed size",
                 field_data.ast.span,
@@ -127,7 +173,7 @@ pub fn struct_function_map(
     db: &dyn AnalyzerDb,
     struct_: StructId,
 ) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
-    let mut scope = ItemScope::new(db, struct_.module(db));
+    let scope = ItemScope::new(db, struct_.module(db));
     let mut map = IndexMap::<SmolStr, FunctionId>::new();
 
     for func in db.struct_all_functions(struct_).iter() {
@@ -199,6 +245,7 @@ pub fn struct_dependency_graph(
             )),
             // Not possible yet, but it will be soon
             Type::Struct(id) => Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local)),
+            Type::Enum(id) => Some((root, Item::Type(TypeDef::Enum(id)), DepLocality::Local)),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -221,7 +268,7 @@ pub fn struct_cycle(
     _cycle: &[String],
     struct_: &StructId,
 ) -> Analysis<DepGraphWrapper> {
-    let mut scope = ItemScope::new(db, struct_.module(db));
+    let scope = ItemScope::new(db, struct_.module(db));
     let struct_data = &struct_.data(db).ast;
     scope.error(
         &format!("recursive struct `{}`", struct_data.name()),

@@ -13,7 +13,7 @@ note:
    · │
  9 │ │         }
 10 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ if_statement_with_block_declaration.fe:4:17
@@ -28,15 +28,15 @@ note:
   ┌─ if_statement_with_block_declaration.fe:3:12
   │
 3 │         if true {
-  │            ^^^^ bool: Value
+  │            ^^^^ bool
 4 │             let y: u256 = 1
-  │                           ^ u256: Value
+  │                           ^ u256
 5 │             return y
-  │                    ^ u256: Value
+  │                    ^ u256
 6 │         } else {
 7 │             let y: u256 = 1
-  │                           ^ u256: Value
+  │                           ^ u256
 8 │             return y
-  │                    ^ u256: Value
+  │                    ^ u256
 
 

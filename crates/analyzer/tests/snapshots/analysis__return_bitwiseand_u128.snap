@@ -9,20 +9,20 @@ note:
 2 │ ╭     pub fn bar(x: u128, y: u128) -> u128 {
 3 │ │         return x & y
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u128 }, { label: None, name: y, typ: u128 }] -> u128
+  │ ╰─────^ params: [{ label: None, name: x, typ: u128 }, { label: None, name: y, typ: u128 }] -> u128
 
 note: 
   ┌─ return_bitwiseand_u128.fe:3:16
   │
 3 │         return x & y
-  │                ^   ^ u128: Value
+  │                ^   ^ u128
   │                │    
-  │                u128: Value
+  │                u128
 
 note: 
   ┌─ return_bitwiseand_u128.fe:3:16
   │
 3 │         return x & y
-  │                ^^^^^ u128: Value
+  │                ^^^^^ u128
 
 

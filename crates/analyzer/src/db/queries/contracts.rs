@@ -1,9 +1,9 @@
-use crate::context::{AnalyzerContext, NamedThing};
+use crate::context::AnalyzerContext;
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, EventId, FunctionId,
-    Item, TypeDef,
+    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item,
+    TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
@@ -20,16 +20,13 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[
     let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
     body.iter()
-        .filter_map(|stmt| match stmt {
-            ast::ContractStmt::Event(_) => None,
-            ast::ContractStmt::Function(node) => {
-                Some(db.intern_function(Rc::new(items::Function::new(
-                    db,
-                    node,
-                    Some(Item::Type(TypeDef::Contract(contract))),
-                    module,
-                ))))
-            }
+        .map(|stmt| match stmt {
+            ast::ContractStmt::Function(node) => db.intern_function(Rc::new(items::Function::new(
+                db,
+                node,
+                Some(Item::Type(TypeDef::Contract(contract))),
+                module,
+            ))),
         })
         .collect()
 }
@@ -48,17 +45,6 @@ pub fn contract_function_map(
             continue;
         }
 
-        if let Some(event) = contract.event(db, def_name) {
-            scope.name_conflict_error(
-                "function",
-                def_name,
-                &NamedThing::Item(Item::Event(event)),
-                Some(event.name_span(db)),
-                def.kind.sig.kind.name.span,
-            );
-            continue;
-        }
-
         if let Ok(Some(named_item)) = scope.resolve_name(def_name, func.name_span(db)) {
             scope.name_conflict_error(
                 "function",
@@ -68,6 +54,41 @@ pub fn contract_function_map(
                 def.kind.sig.kind.name.span,
             );
             continue;
+        }
+
+        let func_sig = func.sig(db);
+        if let Ok(ret_ty) = func_sig.signature(db).return_type {
+            if func.is_public(db) && !ret_ty.is_encodable(db).unwrap_or(false) {
+                scope.fancy_error(
+                    "can't return unencodable type from public contract function",
+                    vec![Label::primary(
+                        func_sig
+                            .data(db)
+                            .ast
+                            .kind
+                            .return_type
+                            .as_ref()
+                            .unwrap()
+                            .span,
+                        format! {"can't return `{}` here", ret_ty.name(db)},
+                    )],
+                    vec![],
+                );
+            }
+        }
+        for (i, param) in func_sig.signature(db).params.iter().enumerate() {
+            if let Ok(param_ty) = param.typ {
+                if func.is_public(db) && !param_ty.is_encodable(db).unwrap_or(false) {
+                    scope.fancy_error(
+                        "can't use unencodable type as a public contract function argument",
+                        vec![Label::primary(
+                            func_sig.data(db).ast.kind.args[i].kind.typ_span().unwrap(),
+                            format! {"can't use `{}` here", param_ty.name(db)},
+                        )],
+                        vec![],
+                    );
+                }
+            }
         }
 
         match map.entry(def.name().into()) {
@@ -113,7 +134,7 @@ pub fn contract_init_function(
     let all_fns = db.contract_all_functions(contract);
     let mut init_fns = all_fns.iter().filter_map(|func| {
         let def = &func.data(db).ast;
-        (def.name() == "__init__").then(|| (func, def.span))
+        (def.name() == "__init__").then_some((func, def.span))
     });
 
     let mut diagnostics = vec![];
@@ -165,7 +186,7 @@ pub fn contract_call_function(
     let all_fns = db.contract_all_functions(contract);
     let mut call_fns = all_fns.iter().filter_map(|func| {
         let def = &func.data(db).ast;
-        (def.name() == "__call__").then(|| (func, def.span))
+        (def.name() == "__call__").then_some((func, def.span))
     });
 
     let mut diagnostics = vec![];
@@ -226,54 +247,6 @@ pub fn contract_call_function(
     Analysis {
         value: first_def.map(|(id, _span)| *id),
         diagnostics: diagnostics.into(),
-    }
-}
-
-/// A `Vec` of all events defined within the contract, including those with
-/// duplicate names.
-pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<[EventId]> {
-    let body = &contract.data(db).ast.kind.body;
-    body.iter()
-        .filter_map(|stmt| match stmt {
-            ast::ContractStmt::Function(_) => None,
-            ast::ContractStmt::Event(node) => Some(db.intern_event(Rc::new(items::Event {
-                ast: node.clone(),
-                module: contract.module(db),
-                contract: Some(contract),
-            }))),
-        })
-        .collect()
-}
-
-pub fn contract_event_map(
-    db: &dyn AnalyzerDb,
-    contract: ContractId,
-) -> Analysis<Rc<IndexMap<SmolStr, EventId>>> {
-    let scope = ItemScope::new(db, contract.module(db));
-    let mut map = IndexMap::<SmolStr, EventId>::new();
-
-    let contract_name = contract.name(db);
-    for event in db.contract_all_events(contract).iter() {
-        let node = &event.data(db).ast;
-
-        match map.entry(node.name().into()) {
-            Entry::Occupied(entry) => {
-                scope.duplicate_name_error(
-                    &format!("duplicate event names in `contract {}`", contract_name,),
-                    entry.key(),
-                    entry.get().data(db).ast.span,
-                    node.span,
-                );
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(*event);
-            }
-        }
-    }
-
-    Analysis {
-        value: Rc::new(map),
-        diagnostics: scope.diagnostics.take().into(),
     }
 }
 

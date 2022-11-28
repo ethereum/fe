@@ -5,6 +5,15 @@ struct MyStruct {
     pub my_addr: address
 }
 
+struct MyEvent {
+    pub my_addrs: Array<address, 5>
+    pub my_u128: u128
+    pub my_string: String<10>
+    pub my_u16s: Array<u16, 255>
+    pub my_bool: bool
+    pub my_bytes: Array<u8, 100>
+}
+
 contract Foo {
     my_addrs: Array<address, 5>
     my_u128: u128
@@ -13,16 +22,7 @@ contract Foo {
     my_bool: bool
     my_bytes: Array<u8, 100>
 
-    event MyEvent {
-        my_addrs: Array<address, 5>
-        my_u128: u128
-        my_string: String<10>
-        my_u16s: Array<u16, 255>
-        my_bool: bool
-        my_bytes: Array<u8, 100>
-    }
-
-    pub fn set_my_addrs(self, my_addrs: Array<address, 5>) {
+    pub fn set_my_addrs(mut self, my_addrs: Array<address, 5>) {
         self.my_addrs = my_addrs
     }
 
@@ -30,7 +30,7 @@ contract Foo {
         return self.my_addrs.to_mem()
     }
 
-    pub fn set_my_u128(self, my_u128: u128) {
+    pub fn set_my_u128(mut self, my_u128: u128) {
         self.my_u128 = my_u128
     }
 
@@ -38,7 +38,7 @@ contract Foo {
         return self.my_u128
     }
 
-    pub fn set_my_string(self, my_string: String<10>) {
+    pub fn set_my_string(mut self, my_string: String<10>) {
         self.my_string = my_string
     }
 
@@ -46,7 +46,7 @@ contract Foo {
         return self.my_string.to_mem()
     }
 
-    pub fn set_my_u16s(self, my_u16s: Array<u16, 255>) {
+    pub fn set_my_u16s(mut self, my_u16s: Array<u16, 255>) {
         self.my_u16s = my_u16s
     }
 
@@ -54,7 +54,7 @@ contract Foo {
         return self.my_u16s.to_mem()
     }
 
-    pub fn set_my_bool(self, my_bool: bool) {
+    pub fn set_my_bool(mut self, my_bool: bool) {
         self.my_bool = my_bool
     }
 
@@ -62,7 +62,7 @@ contract Foo {
         return self.my_bool
     }
 
-    pub fn set_my_bytes(self, my_bytes: Array<u8, 100>) {
+    pub fn set_my_bytes(mut self, my_bytes: Array<u8, 100>) {
         self.my_bytes = my_bytes
     }
 
@@ -74,7 +74,7 @@ contract Foo {
         return MyStruct(my_num: 42, my_num2: u8(26), my_bool: true, my_addr: address(123456))
     }
 
-    pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct {
+    pub fn mod_my_struct(mut my_struct: MyStruct) -> MyStruct {
         my_struct.my_num = 12341234
         my_struct.my_num2 = u8(42)
         my_struct.my_bool = false
@@ -82,7 +82,7 @@ contract Foo {
         return my_struct
     }
 
-    pub fn emit_my_event(self, ctx: Context) {
-        emit MyEvent(ctx, my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem())
+    pub fn emit_my_event(self, mut ctx: Context) {
+        ctx.emit(MyEvent(my_addrs: self.my_addrs.to_mem(), my_u128: self.my_u128, my_string: self.my_string.to_mem(), my_u16s: self.my_u16s.to_mem(), my_bool: self.my_bool, my_bytes: self.my_bytes.to_mem()))
     }
 }

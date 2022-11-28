@@ -1,5 +1,5 @@
 pub mod contracts;
-pub mod events;
+pub mod enums;
 pub mod functions;
 pub mod impls;
 pub mod ingots;

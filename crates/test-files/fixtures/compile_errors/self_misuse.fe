@@ -3,7 +3,7 @@ fn foo() {
     self = 5
 }
 
-fn change_x(_ s: S) {
+fn change_x(mut _ s: S) {
     s.x = 100
 }
 
@@ -16,11 +16,11 @@ struct S {
         self()
     }
 
-    fn g(self) {
+    fn g(mut self) {
         self = S(x: 10)
     }
 
-    fn h(self) {
+    fn h(mut self) {
         change_x(self)
     }
 }
@@ -31,6 +31,7 @@ contract C {
     fn g(self) {}
 
     fn h(self) {
+        let x: address = address(self)
         g(self)
     }
 

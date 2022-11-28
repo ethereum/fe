@@ -1,10 +1,11 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_path_type), functions::parse_stmt,\n           \"let x: foo::Bar = foo::Bar(1, 2)\")"
+expression: "ast_string(stringify!(stmt_path_type), functions::parse_stmt,\n    \"let x: foo::Bar = foo::Bar(1, 2)\")"
 
 ---
 Node(
   kind: VarDecl(
+    mut_: None,
     target: Node(
       kind: Name("x"),
       span: Span(

@@ -10,7 +10,7 @@ contract Foo {
         return self.my_string.to_mem()
     }
 
-    pub fn set_my_string(self, some_string: String<100>) {
+    pub fn set_my_string(mut self, some_string: String<100>) {
         self.my_string = some_string
     }
 
@@ -18,11 +18,11 @@ contract Foo {
         return self.my_tuple.to_mem()
     }
 
-    pub fn set_my_tuple(self, some_tuple: (u256, address)) {
+    pub fn set_my_tuple(mut self, some_tuple: (u256, address)) {
         self.my_tuple = some_tuple
     }
 
-    pub fn set_my_string_and_tuple(self, some_string: String<100>, some_tuple: (u256, address)) {
+    pub fn set_my_string_and_tuple(mut self, some_string: String<100>, some_tuple: (u256, address)) {
         self.my_string = some_string
         self.my_tuple = some_tuple
     }
@@ -59,11 +59,11 @@ contract Foo {
 contract FooProxy {
     foo: Foo
 
-    pub fn __init__(self, foo_addr: address) {
+    pub fn __init__(mut self, foo_addr: address) {
         self.foo = Foo(foo_addr)
     }
 
-    pub fn call_set_my_string(self, some_string: String<100>) {
+    pub fn call_set_my_string(mut self, some_string: String<100>) {
         self.foo.set_my_string(some_string)
     }
 
@@ -71,7 +71,7 @@ contract FooProxy {
         return self.foo.get_my_string()
     }
 
-    pub fn call_set_my_tuple(self, some_tuple: (u256, address)) {
+    pub fn call_set_my_tuple(mut self, some_tuple: (u256, address)) {
         self.foo.set_my_tuple(some_tuple)
     }
 
@@ -79,7 +79,7 @@ contract FooProxy {
         return self.foo.get_my_tuple()
     }
 
-    pub fn call_set_my_string_and_tuple(self, some_string: String<100>, some_tuple: (u256, address)) {
+    pub fn call_set_my_string_and_tuple(mut self, some_string: String<100>, some_tuple: (u256, address)) {
         self.foo.set_my_string_and_tuple(some_string, some_tuple)
     }
 

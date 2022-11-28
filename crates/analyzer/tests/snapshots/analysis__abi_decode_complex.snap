@@ -9,13 +9,13 @@ note:
 2 │ ╭     pub fn decode_static_complex(s: StaticComplex) -> StaticComplex {
 3 │ │         return s
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StaticComplex }] -> StaticComplex
+  │ ╰─────^ params: [{ label: None, name: s, typ: StaticComplex }] -> StaticComplex
 
 note: 
   ┌─ abi_decode_complex.fe:3:16
   │
 3 │         return s
-  │                ^ StaticComplex: Memory
+  │                ^ StaticComplex
 
 note: 
   ┌─ abi_decode_complex.fe:6:5
@@ -23,13 +23,13 @@ note:
 6 │ ╭     pub fn decode_string_complex(s: StringComplex) -> StringComplex {
 7 │ │         return s
 8 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: s, typ: StringComplex }] -> StringComplex
+  │ ╰─────^ params: [{ label: None, name: s, typ: StringComplex }] -> StringComplex
 
 note: 
   ┌─ abi_decode_complex.fe:7:16
   │
 7 │         return s
-  │                ^ StringComplex: Memory
+  │                ^ StringComplex
 
 note: 
    ┌─ abi_decode_complex.fe:10:5
@@ -37,13 +37,13 @@ note:
 10 │ ╭     pub fn decode_bytes_complex(s: BytesComplex) -> BytesComplex {
 11 │ │         return s
 12 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: BytesComplex }] -> BytesComplex
+   │ ╰─────^ params: [{ label: None, name: s, typ: BytesComplex }] -> BytesComplex
 
 note: 
    ┌─ abi_decode_complex.fe:11:16
    │
 11 │         return s
-   │                ^ BytesComplex: Memory
+   │                ^ BytesComplex
 
 note: 
    ┌─ abi_decode_complex.fe:14:5
@@ -51,13 +51,13 @@ note:
 14 │ ╭     pub fn decode_nested_dynamic_complex(s: NestedDynamicComplex) -> NestedDynamicComplex {
 15 │ │         return s
 16 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: s, typ: NestedDynamicComplex }] -> NestedDynamicComplex
+   │ ╰─────^ params: [{ label: None, name: s, typ: NestedDynamicComplex }] -> NestedDynamicComplex
 
 note: 
    ┌─ abi_decode_complex.fe:15:16
    │
 15 │         return s
-   │                ^ NestedDynamicComplex: Memory
+   │                ^ NestedDynamicComplex
 
 note: 
    ┌─ abi_decode_complex.fe:18:5
@@ -65,13 +65,13 @@ note:
 18 │ ╭     pub fn decode_static_complex_elem_array(arr: Array<StaticComplex, 3>) -> Array<StaticComplex, 3> {
 19 │ │         return arr
 20 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<StaticComplex, 3> }] -> Array<StaticComplex, 3>
+   │ ╰─────^ params: [{ label: None, name: arr, typ: Array<StaticComplex, 3> }] -> Array<StaticComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:19:16
    │
 19 │         return arr
-   │                ^^^ Array<StaticComplex, 3>: Memory
+   │                ^^^ Array<StaticComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:22:5
@@ -79,13 +79,13 @@ note:
 22 │ ╭     pub fn decode_dynamic_complex_elem_array(arr: Array<NestedDynamicComplex, 3>) -> Array<NestedDynamicComplex, 3> {
 23 │ │         return arr
 24 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: arr, typ: Array<NestedDynamicComplex, 3> }] -> Array<NestedDynamicComplex, 3>
+   │ ╰─────^ params: [{ label: None, name: arr, typ: Array<NestedDynamicComplex, 3> }] -> Array<NestedDynamicComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:23:16
    │
 23 │         return arr
-   │                ^^^ Array<NestedDynamicComplex, 3>: Memory
+   │                ^^^ Array<NestedDynamicComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:28:5

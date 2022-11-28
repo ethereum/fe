@@ -4,10 +4,6 @@ const MY_CONST: MyInt = 1
 
 trait MyTrait {}
 
-event MyEvent {
-    x: i32
-}
-
 struct MyStruct {
     x: i32
 }
@@ -16,4 +12,9 @@ fn my_func() {}
 
 contract MyContract {
     x: i32
+}
+
+enum MyEnum {
+    Some
+    Thing
 }

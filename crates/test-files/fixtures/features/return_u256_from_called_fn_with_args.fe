@@ -9,7 +9,7 @@ contract Foo {
         return 100
     }
 
-    pub fn bar(self) -> u256 {
+    pub fn bar(mut self) -> u256 {
         self.baz[0] = 43
         return foo(5, 2, cem(), 25 + 25, self.baz[0])
     }

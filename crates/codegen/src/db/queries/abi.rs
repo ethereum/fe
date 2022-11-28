@@ -4,7 +4,7 @@ use fe_abi::{
     function::{AbiFunction, AbiFunctionType},
     types::{AbiTupleField, AbiType},
 };
-use fe_analyzer::namespace::items::ContractId;
+use fe_analyzer::{constants::INDEXED, namespace::items::ContractId};
 use fe_mir::ir::{self, FunctionId, TypeId};
 
 use crate::db::CodegenDb;
@@ -27,10 +27,14 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     }
 
     let mut events = vec![];
-    for &event in db.contract_all_events(contract).as_ref() {
-        let mir_event = db.mir_lowered_event_type(event);
-        let event = db.codegen_abi_event(mir_event);
-        events.push(event);
+    for &s in db.module_structs(contract.module(db.upcast())).as_ref() {
+        let struct_ty = s.as_type(db.upcast());
+        // TODO: This is a hack to avoid generating an ABI for non-`emittable` structs.
+        if struct_ty.is_emittable(db.upcast()) {
+            let mir_event = db.mir_lowered_type(struct_ty);
+            let event = db.codegen_abi_event(mir_event);
+            events.push(event);
+        }
     }
 
     AbiContract::new(funcs, events)
@@ -203,31 +207,41 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
 
             AbiType::Tuple(fields)
         }
+        ir::TypeKind::MPtr(inner) => db.codegen_abi_type(*inner),
 
-        ir::TypeKind::Event(_)
-        | ir::TypeKind::Contract(_)
+        ir::TypeKind::Contract(_)
         | ir::TypeKind::Map(_)
-        | ir::TypeKind::MPtr(_)
+        | ir::TypeKind::Enum(_)
         | ir::TypeKind::SPtr(_) => unreachable!(),
     }
 }
 
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
-    debug_assert!(ty.is_event(db.upcast()));
-    let legalized_ty = db.codegen_legalized_type(ty);
+    debug_assert!(ty.is_struct(db.upcast()));
 
+    let legalized_ty = db.codegen_legalized_type(ty);
+    let analyzer_struct = ty
+        .analyzer_ty(db.upcast())
+        .and_then(|val| val.as_struct(db.upcast()))
+        .unwrap();
     let legalized_ty_data = legalized_ty.data(db.upcast());
     let event_def = match &legalized_ty_data.kind {
-        ir::TypeKind::Event(def) => def,
+        ir::TypeKind::Struct(def) => def,
         _ => unreachable!(),
     };
 
     let fields = event_def
         .fields
         .iter()
-        .map(|(name, ty, indexed)| {
+        .map(|(name, ty)| {
+            let attr = analyzer_struct
+                .field(db.upcast(), name)
+                .unwrap()
+                .attributes(db.upcast());
+
             let ty = db.codegen_abi_type(*ty);
-            AbiEventField::new(name.to_string(), ty, *indexed)
+            let indexed = attr.iter().any(|attr| attr == INDEXED);
+            AbiEventField::new(name.to_string(), ty, indexed)
         })
         .collect();
 

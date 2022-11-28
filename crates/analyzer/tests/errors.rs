@@ -102,9 +102,9 @@ test_stmt! { array_constructor_call, "u8[3]([1, 2, 3])" }
 test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
-test_stmt! { assign_type_mismatch, "let x: u256 = 10\nx = address(0)" }
-test_stmt! { aug_assign_non_numeric, "let a: u256 = 1\nlet b: bool = true\na += b" }
-test_stmt! { binary_op_add_uints, "let a: u256 = 1\nlet b: u8 = 2\na + b" }
+test_stmt! { assign_type_mismatch, "let mut x: u256 = 10\nx = address(0)" }
+test_stmt! { aug_assign_non_numeric, "let mut a: u256 = 1\nlet b: bool = true\na += b" }
+test_stmt! { binary_op_add_sign_mismatch, "let a: u256 = 1\nlet b: i256 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "let a: bool = true\nlet b: i256\na << b" }
 test_stmt! { binary_op_lshift_with_int, "let a: u256 = 1\nlet b: i256 = 2\na << b" }
 test_stmt! { binary_op_pow_int, "let a: u256 = 1\nlet b: i256 = 2\na ** b" }
@@ -128,12 +128,8 @@ test_stmt! { call_balance_of_without_parameter, "unsafe { std::evm::balance_of()
 test_stmt! { call_balance_of_with_wrong_type, "unsafe { std::evm::balance_of(true) }" }
 test_stmt! { call_balance_of_with_2_args, "unsafe { std::evm::balance_of(address(0), 2) }" }
 test_stmt! { call_balance_with_arg, "unsafe { std::evm::balance(address(0)) }" }
-test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true { continue }" }
-test_stmt! { emit_undefined_event, "emit MyEvent()" }
-test_stmt! { emit_type_name, "emit u8()" }
-test_stmt! { emit_variable, "let x: u8 = 10\nemit x()" }
 test_stmt! { int_type_generic_arg_list, "let x: u256<>" }
 test_stmt! { int_type_generic_arg, "let x: u256<10>" }
 test_stmt! { int_type_constructor_generic_arg_list, "u256<>(10)" }
@@ -146,8 +142,8 @@ test_stmt! { map_no_type_arg_list, "let x: Map" }
 test_stmt! { map_one_type_arg, "let x: Map<y>" }
 test_stmt! { map_map_key_type, "let x: Map<Map<u8, u8>, address>" }
 test_stmt! { map_constructor, "Map<u8, u8>()" }
-test_stmt! { non_bool_and, "let x: bool = true\nlet y: u256 = 1\nx = x and y" }
-test_stmt! { non_bool_or, "let x: bool = true\nlet y: u256 = 1\nx = x or y" }
+test_stmt! { non_bool_and, "let mut x: bool = true\nlet y: u256 = 1\nx = x and y" }
+test_stmt! { non_bool_or, "let mut x: bool = true\nlet y: u256 = 1\nx = x or y" }
 test_stmt! { overflow_i128_neg, "i128(-170141183460469231731687303715884105729)" }
 test_stmt! { overflow_i128_pos, "i128(170141183460469231731687303715884105728)" }
 test_stmt! { overflow_i16_neg, "i16(-32769)" }
@@ -213,7 +209,16 @@ test_stmt! { invert_non_numeric, "~true" }
 
 test_file! { ambiguous_traits }
 test_file! { ambiguous_traits2 }
+test_file! { ambiguous_traits3 }
+test_file! { ambiguous_traits4 }
 test_ingot! { trait_not_in_scope }
+test_ingot! { trait_not_in_scope2 }
+test_ingot! { call_trait_assoc_fn_on_invisible_type }
+test_file! { bad_enums }
+test_file! { enum_match }
+test_file! { enum_name_conflict }
+test_file! { exhaustiveness }
+test_file! { unreachable_pattern }
 test_file! { bad_string }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
@@ -222,7 +227,6 @@ test_file! { call_generic_function_with_unsatisfied_bound}
 test_file! { call_builtin_object }
 test_file! { call_create_with_wrong_type }
 test_file! { call_create2_with_wrong_type }
-test_file! { call_event_with_wrong_types }
 test_file! { call_static_function_without_double_colon }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
@@ -240,7 +244,6 @@ test_file! { const_generics_param }
 test_file! { const_local }
 test_file! { duplicate_arg_in_contract_method }
 test_file! { duplicate_contract_in_module }
-test_file! { duplicate_event_in_contract }
 test_file! { duplicate_field_in_contract }
 test_file! { duplicate_field_in_struct }
 test_file! { duplicate_method_in_contract }
@@ -250,9 +253,9 @@ test_file! { duplicate_var_in_child_scope }
 test_file! { duplicate_var_in_contract_method }
 test_file! { duplicate_var_in_for_loop }
 test_file! { duplicate_generic_params }
-test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
+test_file! { emittable_not_implementable }
 test_file! { contract_function_with_generic_params }
 test_file! { indexed_event }
 test_file! { invalid_compiler_version }
@@ -264,6 +267,7 @@ test_file! { invalid_impl_type }
 test_file! { invalid_impl_location }
 test_file! { invalid_msg_field }
 test_file! { invalid_string_field }
+test_file! { invalid_struct_attribute }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }
@@ -282,6 +286,7 @@ test_file! { module_const_non_base_type }
 test_file! { module_const_call }
 test_file! { needs_mem_copy }
 test_file! { not_callable }
+test_file! { not_emittable }
 test_file! { not_in_scope }
 test_file! { not_in_scope_2 }
 test_file! { private_struct_field }
@@ -294,13 +299,13 @@ test_file! { return_type_undefined }
 test_file! { return_type_not_fixedsize }
 test_file! { undefined_type_param }
 
+test_file! { enum_in_public_contract_sig }
 test_file! { strict_boolean_if_else }
 test_file! { struct_private_constructor }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { struct_recursive_cycles }
 test_file! { trait_impl_mismatch }
-test_file! { trait_fn_without_self }
 test_file! { trait_fn_with_generic_params }
 test_file! { traits_as_fields }
 test_file! { trait_conflicting_impls }
@@ -320,7 +325,7 @@ test_file! { abi_encode_from_storage }
 test_file! { assert_sto_msg_no_copy }
 test_file! { for_loop_sto_iter_no_copy }
 test_file! { revert_sto_error_no_copy }
-
+test_file! { call_to_mem_on_primitive }
 test_file! { call_to_mut_fn_without_self }
 test_file! { call_to_pure_fn_on_self }
 test_file! { call_to_pure_struct_fn_on_instance }
@@ -337,15 +342,14 @@ test_ingot! { bad_visibility }
 test_file! { ctx_not_first }
 test_file! { ctx_not_after_self }
 test_file! { ctx_init }
-test_file! { ctx_pure }
 test_file! { ctx_undeclared }
 test_file! { ctx_missing_internal_call }
 test_file! { ctx_missing_create }
-test_file! { ctx_missing_load }
-test_file! { ctx_missing_event }
 test_file! { ctx_builtins_param_incorrect_type }
 test_file! { ctx_undefined_create }
 test_file! { ctx_undefined_create2 }
-test_file! { ctx_undefined_event }
 test_file! { uninit_values }
 test_file! { invalid_repeat_length }
+test_file! { invalid_struct_pub_qualifier }
+test_file! { mut_mistakes }
+test_file! { invalid_comparisons }

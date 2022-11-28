@@ -7,117 +7,117 @@ note:
    ┌─ math.fe:2:5
    │  
  2 │ ╭     pub fn sqrt(val: u256) -> u256 {
- 3 │ │         let z: u256
+ 3 │ │         let mut z: u256
  4 │ │         if val > 3 {
  5 │ │             z = val
    · │
 14 │ │         return z
 15 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: val, typ: u256 }] -> u256
+   │ ╰─────^ params: [{ label: None, name: val, typ: u256 }] -> u256
 
 note: 
-  ┌─ math.fe:3:13
+  ┌─ math.fe:3:17
   │
-3 │         let z: u256
-  │             ^ u256
+3 │         let mut z: u256
+  │                 ^ mut u256
   ·
-6 │             let x: u256 = val / 2 + 1
-  │                 ^ u256
+6 │             let mut x: u256 = val / 2 + 1
+  │                     ^ mut u256
 
 note: 
   ┌─ math.fe:4:12
   │
 4 │         if val > 3 {
-  │            ^^^   ^ u256: Value
+  │            ^^^   ^ u256
   │            │      
-  │            u256: Value
+  │            u256
 
 note: 
   ┌─ math.fe:4:12
   │
 4 │         if val > 3 {
-  │            ^^^^^^^ bool: Value
+  │            ^^^^^^^ bool
 5 │             z = val
-  │             ^   ^^^ u256: Value
+  │             ^   ^^^ u256
   │             │    
-  │             u256: Value
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^   ^ u256: Value
-  │                           │      
-  │                           u256: Value
+  │             mut u256
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^   ^ u256
+  │                               │      
+  │                               u256
 
 note: 
-  ┌─ math.fe:6:27
+  ┌─ math.fe:6:31
   │
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^   ^ u256: Value
-  │                           │          
-  │                           u256: Value
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^^^^^   ^ u256
+  │                               │          
+  │                               u256
 
 note: 
-  ┌─ math.fe:6:27
+  ┌─ math.fe:6:31
   │
-6 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^^^^^ u256: Value
+6 │             let mut x: u256 = val / 2 + 1
+  │                               ^^^^^^^^^^^ u256
 7 │             while x < z {
-  │                   ^   ^ u256: Value
+  │                   ^   ^ mut u256
   │                   │    
-  │                   u256: Value
+  │                   mut u256
 
 note: 
   ┌─ math.fe:7:19
   │
 7 │             while x < z {
-  │                   ^^^^^ bool: Value
+  │                   ^^^^^ bool
 8 │                 z = x
-  │                 ^   ^ u256: Value
+  │                 ^   ^ mut u256
   │                 │    
-  │                 u256: Value
+  │                 mut u256
 9 │                 x = (val / x + x) / 2
-  │                 ^    ^^^   ^ u256: Value
+  │                 ^    ^^^   ^ mut u256
   │                 │    │      
-  │                 │    u256: Value
-  │                 u256: Value
+  │                 │    u256
+  │                 mut u256
 
 note: 
   ┌─ math.fe:9:22
   │
 9 │                 x = (val / x + x) / 2
-  │                      ^^^^^^^   ^ u256: Value
+  │                      ^^^^^^^   ^ mut u256
   │                      │          
-  │                      u256: Value
+  │                      u256
 
 note: 
   ┌─ math.fe:9:21
   │
 9 │                 x = (val / x + x) / 2
-  │                     ^^^^^^^^^^^^^   ^ u256: Value
+  │                     ^^^^^^^^^^^^^   ^ u256
   │                     │                
-  │                     u256: Value
+  │                     u256
 
 note: 
    ┌─ math.fe:9:21
    │
  9 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^^^^^ u256: Value
+   │                     ^^^^^^^^^^^^^^^^^ u256
 10 │             }
 11 │         } else if val != 0 {
-   │                   ^^^    ^ u256: Value
+   │                   ^^^    ^ u256
    │                   │       
-   │                   u256: Value
+   │                   u256
 
 note: 
    ┌─ math.fe:11:19
    │
 11 │         } else if val != 0 {
-   │                   ^^^^^^^^ bool: Value
+   │                   ^^^^^^^^ bool
 12 │             z = 1
-   │             ^   ^ u256: Value
+   │             ^   ^ u256
    │             │    
-   │             u256: Value
+   │             mut u256
 13 │         }
 14 │         return z
-   │                ^ u256: Value
+   │                ^ mut u256
 
 note: 
    ┌─ math.fe:17:5
@@ -125,29 +125,29 @@ note:
 17 │ ╭     pub fn min(x: u256, y: u256) -> u256 {
 18 │ │         return x if x < y else y
 19 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [{ label: None, name: x, typ: u256 }, { label: None, name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ math.fe:18:21
    │
 18 │         return x if x < y else y
-   │                     ^   ^ u256: Value
+   │                     ^   ^ u256
    │                     │    
-   │                     u256: Value
+   │                     u256
 
 note: 
    ┌─ math.fe:18:16
    │
 18 │         return x if x < y else y
-   │                ^    ^^^^^      ^ u256: Value
+   │                ^    ^^^^^      ^ u256
    │                │    │           
-   │                │    bool: Value
-   │                u256: Value
+   │                │    bool
+   │                u256
 
 note: 
    ┌─ math.fe:18:16
    │
 18 │         return x if x < y else y
-   │                ^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^ u256
 
 

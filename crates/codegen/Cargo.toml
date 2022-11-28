@@ -12,5 +12,6 @@ fe-abi = { path = "../abi", version = "^0.19.1-alpha"}
 salsa = "0.16.1"
 num-bigint = "0.4.3"
 fxhash = "0.2.1"
+indexmap = "1.6.2"
 smol_str = "0.1.21"
 yultsur = { git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470" }

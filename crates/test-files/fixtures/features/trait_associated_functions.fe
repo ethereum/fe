@@ -1,0 +1,16 @@
+trait Max {
+  fn max() -> u8;
+}
+
+impl Max for u8 {
+  fn max() -> u8 {
+    return u8(255)
+  }
+}
+
+contract Example {
+
+  pub fn run_test(self) {
+    assert u8::max() == 255
+  }
+}

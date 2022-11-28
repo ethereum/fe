@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items as analyzer_items;
@@ -23,9 +23,25 @@ pub fn mir_lowered_func_signature(
 pub fn mir_lowered_monomorphized_func_signature(
     db: &dyn MirDb,
     analyzer_func: analyzer_items::FunctionId,
-    concrete_args: Vec<analyzer_types::TypeId>,
+    resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
 ) -> ir::FunctionId {
-    lower_monomorphized_func_signature(db, analyzer_func, &concrete_args)
+    lower_monomorphized_func_signature(db, analyzer_func, resolved_generics)
+}
+
+/// Generate MIR function and monomorphize generic parameters as if they were called with unit type
+/// NOTE: THIS SHOULD ONLY BE USED IN TEST CODE
+pub fn mir_lowered_pseudo_monomorphized_func_signature(
+    db: &dyn MirDb,
+    analyzer_func: analyzer_items::FunctionId,
+) -> ir::FunctionId {
+    let resolved_generics = analyzer_func
+        .sig(db.upcast())
+        .generic_params(db.upcast())
+        .iter()
+        .map(|generic| (generic.name(), analyzer_types::TypeId::unit(db.upcast())))
+        .collect::<BTreeMap<_, _>>();
+
+    lower_monomorphized_func_signature(db, analyzer_func, resolved_generics)
 }
 
 pub fn mir_lowered_func_body(db: &dyn MirDb, func: ir::FunctionId) -> Rc<ir::FunctionBody> {

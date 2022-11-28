@@ -1,10 +1,10 @@
-use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
 use super::types::{
-    parse_event_def, parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def,
-    parse_type_alias, parse_type_desc,
+    parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def, parse_type_alias,
+    parse_type_desc,
 };
+use super::{contracts::parse_contract_def, types::parse_enum_def};
 use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
@@ -43,20 +43,19 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par, None)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
+        TokenKind::Enum => ModuleStmt::Enum(parse_enum_def(par, None)?),
         TokenKind::Trait => ModuleStmt::Trait(parse_trait_def(par, None)?),
         TokenKind::Impl => ModuleStmt::Impl(parse_impl_def(par)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
         TokenKind::Const => ModuleStmt::Constant(parse_constant(par, None)?),
-
-        TokenKind::Event => ModuleStmt::Event(parse_event_def(par, None)?),
         TokenKind::Pub => {
             let pub_span = par.next()?.span;
             match par.peek_or_err()? {
-                TokenKind::Event => ModuleStmt::Event(parse_event_def(par, Some(pub_span))?),
                 TokenKind::Fn | TokenKind::Unsafe => {
                     ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
                 }
                 TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
+                TokenKind::Enum => ModuleStmt::Enum(parse_enum_def(par, Some(pub_span))?),
                 TokenKind::Trait => ModuleStmt::Trait(parse_trait_def(par, Some(pub_span))?),
                 TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?),
                 TokenKind::Const => ModuleStmt::Constant(parse_constant(par, Some(pub_span))?),
@@ -80,7 +79,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             par.unexpected_token_error(
                 &tok,
                 "failed to parse module",
-                vec!["Note: expected import, contract, struct, type, const or event".into()],
+                vec!["Note: expected import, contract, struct, type or const".into()],
             );
             return Err(ParseFailed);
         }

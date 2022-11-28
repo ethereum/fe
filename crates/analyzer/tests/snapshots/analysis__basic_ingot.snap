@@ -10,23 +10,23 @@ note:
 10 │ │         assert file_items_work()
 11 │ │         return Baz(my_bool: true, my_u256: 26)
 12 │ │     }
-   │ ╰─────^ self: None, params: [] -> Baz
+   │ ╰─────^ params: [] -> Baz
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:10:16
    │
 10 │         assert file_items_work()
-   │                ^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^ bool
 11 │         return Baz(my_bool: true, my_u256: 26)
-   │                             ^^^^           ^^ u256: Value
+   │                             ^^^^           ^^ u256
    │                             │               
-   │                             bool: Value
+   │                             bool
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:11:16
    │
 11 │         return Baz(my_bool: true, my_u256: 26)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Baz: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Baz
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:14:5
@@ -34,25 +34,25 @@ note:
 14 │ ╭     pub fn get_my_bing() -> Bong {
 15 │ │         return Bong(my_address: address(42))
 16 │ │     }
-   │ ╰─────^ self: None, params: [] -> Bing
+   │ ╰─────^ params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:15:41
    │
 15 │         return Bong(my_address: address(42))
-   │                                         ^^ u256: Value
+   │                                         ^^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:15:33
    │
 15 │         return Bong(my_address: address(42))
-   │                                 ^^^^^^^^^^^ address: Value
+   │                                 ^^^^^^^^^^^ address
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:15:16
    │
 15 │         return Bong(my_address: address(42))
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:18:5
@@ -60,13 +60,13 @@ note:
 18 │ ╭     pub fn get_42() -> u256 {
 19 │ │         return get_42_backend()
 20 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:19:16
    │
 19 │         return get_42_backend()
-   │                ^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:22:5
@@ -74,21 +74,21 @@ note:
 22 │ ╭     pub fn get_26() -> u256 {
 23 │ │         return std::evm::add(13, 13)
 24 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:30
    │
 23 │         return std::evm::add(13, 13)
-   │                              ^^  ^^ u256: Value
+   │                              ^^  ^^ u256
    │                              │    
-   │                              u256: Value
+   │                              u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:23:16
    │
 23 │         return std::evm::add(13, 13)
-   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:26:5
@@ -97,37 +97,37 @@ note:
 27 │ │         assert bar::mee::Mee::kawum() == 1
 28 │ │         assert bar::mee::Mee().rums() == 1
 29 │ │     }
-   │ ╰─────^ self: None, params: [] -> ()
+   │ ╰─────^ params: [] -> ()
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:27:16
    │
 27 │         assert bar::mee::Mee::kawum() == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:27:16
    │
 27 │         assert bar::mee::Mee::kawum() == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 28 │         assert bar::mee::Mee().rums() == 1
-   │                ^^^^^^^^^^^^^^^ Mee: Memory
+   │                ^^^^^^^^^^^^^^^ Mee
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:28:16
    │
 28 │         assert bar::mee::Mee().rums() == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
    │                │                          
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:28:16
    │
 28 │         assert bar::mee::Mee().rums() == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:31:5
@@ -135,43 +135,43 @@ note:
 31 │ ╭     pub fn get_my_dyng() -> dong::Dyng {
 32 │ │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
 33 │ │     }
-   │ ╰─────^ self: None, params: [] -> Dyng
+   │ ╰─────^ params: [] -> Dyng
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:32:47
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
-   │                                               ^ u256: Value
+   │                                               ^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:32:39
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
-   │                                       ^^^^^^^^^^           ^^          ^ u256: Value
+   │                                       ^^^^^^^^^^           ^^          ^ u256
    │                                       │                    │            
-   │                                       │                    u256: Value
-   │                                       address: Value
+   │                                       │                    u256
+   │                                       address
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:32:71
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
-   │                                                                       ^^ i8: Value
+   │                                                                       ^^ i8
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:32:16
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Dyng: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Dyng
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:35:5
    │  
-35 │ ╭     pub fn create_bing_contract(ctx: Context) -> u256 {
+35 │ ╭     pub fn create_bing_contract(mut ctx: Context) -> u256 {
 36 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
 37 │ │         return bing_contract.add(40, 50)
 38 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:13
@@ -183,26 +183,26 @@ note:
    ┌─ ingots/basic_ingot/src/main.fe:36:63
    │
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-   │                                                               ^^^  ^ u256: Value
+   │                                                               ^^^  ^ u256
    │                                                               │     
-   │                                                               Context: Memory
+   │                                                               mut Context
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:36:43
    │
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
-   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract: Value
+   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract
 37 │         return bing_contract.add(40, 50)
-   │                ^^^^^^^^^^^^^     ^^  ^^ u256: Value
+   │                ^^^^^^^^^^^^^     ^^  ^^ u256
    │                │                 │    
-   │                │                 u256: Value
-   │                BingContract: Value
+   │                │                 u256
+   │                BingContract
 
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:37:16
    │
 37 │         return bing_contract.add(40, 50)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
 
 note: 
@@ -211,13 +211,13 @@ note:
 1 │ ╭ pub fn file_items_work() -> bool {
 2 │ │     return true
 3 │ │ }
-  │ ╰─^ self: None, params: [] -> bool
+  │ ╰─^ params: [] -> bool
 
 note: 
   ┌─ ingots/basic_ingot/src/bar.fe:2:12
   │
 2 │     return true
-  │            ^^^^ bool: Value
+  │            ^^^^ bool
 
 
 note: 
@@ -232,21 +232,21 @@ note:
 7 │ ╭ pub fn get_42_backend() -> u256 {
 8 │ │     return std::evm::add(21, 21)
 9 │ │ }
-  │ ╰─^ self: None, params: [] -> u256
+  │ ╰─^ params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bing.fe:8:26
   │
 8 │     return std::evm::add(21, 21)
-  │                          ^^  ^^ u256: Value
+  │                          ^^  ^^ u256
   │                          │    
-  │                          u256: Value
+  │                          u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bing.fe:8:12
   │
 8 │     return std::evm::add(21, 21)
-  │            ^^^^^^^^^^^^^^^^^^^^^ u256: Value
+  │            ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:12:5
@@ -254,21 +254,21 @@ note:
 12 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 13 │ │         return x + y
 14 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:13:16
    │
 13 │         return x + y
-   │                ^   ^ u256: Value
+   │                ^   ^ u256
    │                │    
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ ingots/basic_ingot/src/bing.fe:13:16
    │
 13 │         return x + y
-   │                ^^^^^ u256: Value
+   │                ^^^^^ u256
 
 
 
@@ -287,13 +287,13 @@ note:
 2 │ ╭     pub fn kawum() -> u256 {
 3 │ │         return 1
 4 │ │     }
-  │ ╰─────^ self: None, params: [] -> u256
+  │ ╰─────^ params: [] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:3:16
   │
 3 │         return 1
-  │                ^ u256: Value
+  │                ^ u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:6:5
@@ -301,20 +301,20 @@ note:
 6 │ ╭     pub fn rums(self) -> u256 {
 7 │ │         return 1
 8 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [] -> u256
+  │ ╰─────^ params: [self] -> u256
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/mee.fe:7:16
   │
 7 │         return 1
-  │                ^ u256: Value
+  │                ^ u256
 
 
 note: 
   ┌─ ingots/basic_ingot/src/ding/dang.fe:1:1
   │
-1 │ type Dang = Array<u256, 42>
-  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
+1 │ pub type Dang = Array<u256, 42>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 
 note: 
@@ -333,24 +333,24 @@ note:
  9 │ ╭ fn get_bing() -> Bing {
 10 │ │     return Bing(my_address: address(0))
 11 │ │ }
-   │ ╰─^ self: None, params: [] -> Bing
+   │ ╰─^ params: [] -> Bing
 
 note: 
    ┌─ ingots/basic_ingot/src/ding/dong.fe:10:37
    │
 10 │     return Bing(my_address: address(0))
-   │                                     ^ u256: Value
+   │                                     ^ u256
 
 note: 
    ┌─ ingots/basic_ingot/src/ding/dong.fe:10:29
    │
 10 │     return Bing(my_address: address(0))
-   │                             ^^^^^^^^^^ address: Value
+   │                             ^^^^^^^^^^ address
 
 note: 
    ┌─ ingots/basic_ingot/src/ding/dong.fe:10:12
    │
 10 │     return Bing(my_address: address(0))
-   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing: Memory
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing
 
 

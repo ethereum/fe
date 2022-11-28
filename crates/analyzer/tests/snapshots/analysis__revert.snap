@@ -23,37 +23,37 @@ note:
  9 │ ╭     pub fn bar() -> u256 {
 10 │ │         revert
 11 │ │     }
-   │ ╰─────^ self: None, params: [] -> u256
+   │ ╰─────^ params: [] -> u256
 
 note: 
    ┌─ revert.fe:13:5
    │  
-13 │ ╭     pub fn revert_custom_error(ctx: Context) {
+13 │ ╭     pub fn revert_custom_error(mut ctx: Context) {
 14 │ │         ctx.send_value(to: address(0), wei: 100)
 15 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> ()
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
    ┌─ revert.fe:14:9
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │         ^^^                        ^ u256: Value
+   │         ^^^                        ^ u256
    │         │                           
-   │         Context: Memory
+   │         mut Context
 
 note: 
    ┌─ revert.fe:14:28
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │                            ^^^^^^^^^^       ^^^ u256: Value
+   │                            ^^^^^^^^^^       ^^^ u256
    │                            │                 
-   │                            address: Value
+   │                            address
 
 note: 
    ┌─ revert.fe:14:9
    │
 14 │         ctx.send_value(to: address(0), wei: 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ revert.fe:17:5
@@ -61,64 +61,64 @@ note:
 17 │ ╭     pub fn revert_other_error() {
 18 │ │         revert OtherError(msg: 1, val: true)
 19 │ │     }
-   │ ╰─────^ self: None, params: [] -> ()
+   │ ╰─────^ params: [] -> ()
 
 note: 
    ┌─ revert.fe:18:32
    │
 18 │         revert OtherError(msg: 1, val: true)
-   │                                ^       ^^^^ bool: Value
+   │                                ^       ^^^^ bool
    │                                │        
-   │                                u256: Value
+   │                                u256
 
 note: 
    ┌─ revert.fe:18:16
    │
 18 │         revert OtherError(msg: 1, val: true)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 note: 
    ┌─ revert.fe:21:5
    │  
-21 │ ╭     pub fn revert_other_error_from_sto(self) {
+21 │ ╭     pub fn revert_other_error_from_sto(mut self) {
 22 │ │         self.my_other_error = OtherError(msg: 1, val: true)
 23 │ │         revert self.my_other_error.to_mem()
 24 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [mut self] -> ()
 
 note: 
    ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │         ^^^^ Foo: Value
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ revert.fe:22:9
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool: Value
+   │         ^^^^^^^^^^^^^^^^^^^                   ^       ^^^^ bool
    │         │                                     │        
-   │         │                                     u256: Value
-   │         OtherError: Storage { nonce: Some(0) }
+   │         │                                     u256
+   │         mut SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:22:31
    │
 22 │         self.my_other_error = OtherError(msg: 1, val: true)
-   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Memory
+   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^ Foo: Value
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) }
+   │                ^^^^^^^^^^^^^^^^^^^ mut SPtr<OtherError>
 
 note: 
    ┌─ revert.fe:23:16
    │
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError: Storage { nonce: Some(0) } => Memory
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OtherError
 
 

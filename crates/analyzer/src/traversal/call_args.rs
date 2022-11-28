@@ -1,8 +1,9 @@
+use super::expressions::{expr, expr_type};
+use super::types::try_coerce_type;
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::display::Displayable;
-use crate::errors::{FatalError, TypeError};
-use crate::namespace::types::{EventField, FunctionParam, Generic, Type, TypeId};
-use crate::traversal::expressions::assignable_expr;
+use crate::errors::{self, FatalError, TypeCoercionError, TypeError};
+use crate::namespace::types::{FunctionParam, Generic, Type, TypeId};
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
@@ -12,6 +13,7 @@ use smol_str::SmolStr;
 pub trait LabeledParameter {
     fn label(&self) -> Option<&str>;
     fn typ(&self) -> Result<TypeId, TypeError>;
+    fn is_sink(&self) -> bool;
 }
 
 impl LabeledParameter for FunctionParam {
@@ -21,28 +23,37 @@ impl LabeledParameter for FunctionParam {
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.typ.clone()
     }
-}
-
-impl LabeledParameter for EventField {
-    fn label(&self) -> Option<&str> {
-        Some(&self.name)
-    }
-    fn typ(&self) -> Result<TypeId, TypeError> {
-        self.typ.clone()
+    fn is_sink(&self) -> bool {
+        false
     }
 }
 
-impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>) {
+impl LabeledParameter for (SmolStr, Result<TypeId, TypeError>, bool) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
     }
     fn typ(&self) -> Result<TypeId, TypeError> {
         self.1.clone()
     }
+    fn is_sink(&self) -> bool {
+        self.2
+    }
+}
+
+impl LabeledParameter for (Option<SmolStr>, Result<TypeId, TypeError>, bool) {
+    fn label(&self) -> Option<&str> {
+        self.0.as_ref().map(smol_str::SmolStr::as_str)
+    }
+    fn typ(&self) -> Result<TypeId, TypeError> {
+        self.1.clone()
+    }
+    fn is_sink(&self) -> bool {
+        self.2
+    }
 }
 
 pub fn validate_arg_count(
-    context: &mut dyn AnalyzerContext,
+    context: &dyn AnalyzerContext,
     name: &str,
     name_span: Span,
     args: &Node<Vec<impl Spanned>>,
@@ -98,7 +109,8 @@ pub fn validate_named_args(
     params: &[impl LabeledParameter],
 ) -> Result<(), FatalError> {
     validate_arg_count(context, name, name_span, args, params.len(), "argument");
-    // TODO: if the first arg is missing, every other arg will get a label and type error
+    // TODO: if the first arg is missing, every other arg will get a label and type
+    // error
 
     for (index, (param, arg)) in params.iter().zip(args.kind.iter()).enumerate() {
         let expected_label = param.label();
@@ -151,50 +163,69 @@ pub fn validate_named_args(
         }
 
         let param_type = param.typ()?;
-        let val_attrs = assignable_expr(context, &arg.kind.value, Some(param_type))?;
-        if !validate_arg_type(context, arg, val_attrs.typ, param_type) {
+        // Check arg type
+        let arg_type = if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
+            let arg_type = expr_type(context, &arg.kind.value)?;
+            for bound in bounds.iter() {
+                if !bound.is_implemented_for(context.db(), arg_type) {
+                    context.error(
+                        &format!(
+                            "the trait bound `{}: {}` is not satisfied",
+                            arg_type.display(context.db()),
+                            bound.name(context.db())
+                        ),
+                        arg.span,
+                        &format!(
+                            "the trait `{}` is not implemented for `{}`",
+                            bound.name(context.db()),
+                            arg_type.display(context.db()),
+                        ),
+                    );
+                }
+            }
+            arg_type
+        } else {
+            let arg_attr = expr(context, &arg.kind.value, Some(param_type))?;
+            match try_coerce_type(
+                context,
+                Some(&arg.kind.value),
+                arg_attr.typ,
+                param_type,
+                param.is_sink(),
+            ) {
+                Err(TypeCoercionError::Incompatible) => {
+                    let msg = if let Some(label) = param.label() {
+                        format!("incorrect type for `{}` argument `{}`", name, label)
+                    } else {
+                        format!(
+                            "incorrect type for `{}` argument at position {}",
+                            name, index
+                        )
+                    };
+                    context.type_error(&msg, arg.kind.value.span, param_type, arg_attr.typ);
+                }
+                Err(TypeCoercionError::RequiresToMem) => {
+                    context.add_diagnostic(errors::to_mem_error(arg.span));
+                }
+                Err(TypeCoercionError::SelfContractType) => {
+                    context.add_diagnostic(errors::self_contract_type_error(
+                        arg.span,
+                        &param_type.display(context.db()),
+                    ));
+                }
+                Ok(_) => {}
+            }
+            arg_attr.typ
+        };
+
+        if param_type.is_mut(context.db()) && !arg_type.is_mut(context.db()) {
             let msg = if let Some(label) = param.label() {
-                format!("incorrect type for `{}` argument `{}`", name, label)
+                format!("`{}` argument `{}` must be mutable", name, label)
             } else {
-                format!(
-                    "incorrect type for `{}` argument at position {}",
-                    name, index
-                )
+                format!("`{}` argument at position {} must be mutable", name, index)
             };
-            context.type_error(&msg, arg.kind.value.span, param_type, val_attrs.typ);
+            context.error(&msg, arg.kind.value.span, "is not `mut`");
         }
     }
     Ok(())
-}
-
-fn validate_arg_type(
-    context: &mut dyn AnalyzerContext,
-    arg: &Node<fe::CallArg>,
-    arg_type: TypeId,
-    param_type: TypeId,
-) -> bool {
-    if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
-        for bound in bounds.iter() {
-            if !bound.is_implemented_for(context.db(), arg_type) {
-                context.error(
-                    &format!(
-                        "the trait bound `{}: {}` is not satisfied",
-                        arg_type.display(context.db()),
-                        bound.name(context.db())
-                    ),
-                    arg.span,
-                    &format!(
-                        "the trait `{}` is not implemented for `{}`",
-                        bound.name(context.db()),
-                        arg_type.display(context.db()),
-                    ),
-                );
-
-                return false;
-            }
-        }
-        true
-    } else {
-        arg_type == param_type
-    }
 }

@@ -66,13 +66,8 @@ contract C {
 }
 
 test_parse_err! { type_desc_path_number, module::parse_module, "type Foo = some::mod::Foo::5000" }
-test_parse_err! { module_pub_event, module::parse_module, "pub event E{\n  x: u8}" }
-test_parse_err! { contract_pub_event, module::parse_module, "contract C {\n pub event E{\n  x: u8 \n}}" }
 test_parse_err! { contract_const_pub, module::parse_module, "contract C {\n const pub x: u8\n}" }
 test_parse_err! { contract_const_fn, module::parse_module, "contract C {\n const fn f() {}\n}" }
-test_parse_err! { emit_no_args, functions::parse_stmt, "emit x" }
-test_parse_err! { emit_expr, functions::parse_stmt, "emit x + 1" }
-test_parse_err! { emit_bad_call, functions::parse_stmt, "emit MyEvent(1)()" }
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, "*x + 1" }
 test_parse_err! { expr_path_left, expressions::parse_expr, "(1 + 2)::foo::bar" }
 test_parse_err! { expr_path_right, expressions::parse_expr, "foo::10::bar" }
@@ -88,7 +83,7 @@ test_parse_err! { fn_invalid_bound, module::parse_module, "pub fn f<T:(u8, u8)>(
 test_parse_err! { use_bad_name, module::parse_use, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, "if x { y }" }
 test_parse_err! { module_nonsense, module::parse_module, "))" }
-test_parse_err! { struct_bad_field_name, module::parse_module, "struct f {\n pub event }" }
+test_parse_err! { struct_bad_field_name, module::parse_module, "struct f {\n pub type }" }
 test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, "(a, ()) : u256" }
@@ -107,6 +102,11 @@ test_parse_err! { self_struct, module::parse_module, "struct self {}" }
 test_parse_err! { self_fn, module::parse_module, "pub fn self() {}" }
 test_parse_err! { self_use1, module::parse_module, "use self as bar" }
 test_parse_err! { self_use2, module::parse_module, "use bar as self" }
+test_parse_err! { stmt_match1, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {.., x: x, y: true}  => {
+        return x
+    }
+}"# }
 
 // assert_snapshot! doesn't like the invalid escape code
 #[test]

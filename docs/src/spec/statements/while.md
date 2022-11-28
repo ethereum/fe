@@ -15,7 +15,7 @@ Example:
 contract Foo {
 
     pub fn bar() -> u256 {
-        let sum: u256
+        let mut sum: u256 = 0
         while sum < 10 {
             sum += 1
         }

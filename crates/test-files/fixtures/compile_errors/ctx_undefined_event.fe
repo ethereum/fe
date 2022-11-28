@@ -1,9 +1,0 @@
-event YouWin {
-    amount: u256
-}
-
-contract Foo {
-    pub fn bar() {
-        emit YouWin(amount: 42)
-    }
-}

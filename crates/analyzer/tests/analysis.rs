@@ -1,6 +1,5 @@
 use fe_analyzer::display::Displayable;
 use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::namespace::types::TypeId;
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::{FileKind, Utf8Path};
@@ -200,6 +199,8 @@ test_analysis! { create2_contract, "features/create2_contract.fe"}
 test_analysis! { create_contract, "features/create_contract.fe"}
 test_analysis! { create_contract_from_init, "features/create_contract_from_init.fe"}
 test_analysis! { empty, "features/empty.fe"}
+test_analysis! { enums, "features/enums.fe"}
+test_analysis! { enum_match, "features/enum_match.fe"}
 test_analysis! { events, "features/events.fe"}
 test_analysis! { module_level_events, "features/module_level_events.fe"}
 test_analysis! { external_contract, "features/external_contract.fe"}
@@ -280,12 +281,14 @@ test_analysis! { structs, "features/structs.fe"}
 test_analysis! { struct_fns, "features/struct_fns.fe"}
 test_analysis! { ternary_expression, "features/ternary_expression.fe"}
 test_analysis! { two_contracts, "features/two_contracts.fe"}
+test_analysis! { type_coercion, "features/type_coercion.fe"}
 test_analysis! { u8_u8_map, "features/u8_u8_map.fe"}
 test_analysis! { u16_u16_map, "features/u16_u16_map.fe"}
 test_analysis! { u32_u32_map, "features/u32_u32_map.fe"}
 test_analysis! { u64_u64_map, "features/u64_u64_map.fe"}
 test_analysis! { u128_u128_map, "features/u128_u128_map.fe"}
 test_analysis! { u256_u256_map, "features/u256_u256_map.fe"}
+test_analysis! { value_semantics, "features/value_semantics.fe"}
 test_analysis! { while_loop, "features/while_loop.fe"}
 test_analysis! { while_loop_with_break, "features/while_loop_with_break.fe"}
 test_analysis! { while_loop_with_break_2, "features/while_loop_with_break_2.fe"}
@@ -293,6 +296,7 @@ test_analysis! { while_loop_with_continue, "features/while_loop_with_continue.fe
 test_analysis! { abi_encoding_stress, "stress/abi_encoding_stress.fe"}
 test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
+test_analysis! { tuple_destructuring, "features/tuple_destructuring.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 test_analysis! { const_generics, "features/const_generics.fe" }
 test_analysis! { const_local, "features/const_local.fe" }
@@ -324,6 +328,22 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                     .collect(),
             ]
             .concat(),
+            Item::Type(TypeDef::Enum(enum_)) => [
+                label_in_non_overlapping_groups(
+                    db,
+                    &enum_
+                        .variants(db)
+                        .values()
+                        .map(|variant| (variant.data(db).ast.span, variant.kind(db).unwrap()))
+                        .collect::<Vec<_>>(),
+                ),
+                enum_
+                    .functions(db)
+                    .values()
+                    .flat_map(|id| function_diagnostics(*id, db))
+                    .collect(),
+            ]
+            .concat(),
             Item::Type(TypeDef::Contract(contract)) => [
                 label_in_non_overlapping_groups(
                     db,
@@ -333,11 +353,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                         .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
                         .collect::<Vec<_>>(),
                 ),
-                contract
-                    .events(db)
-                    .values()
-                    .flat_map(|id| event_diagnostics(*id, db))
-                    .collect(),
                 contract
                     .functions(db)
                     .values()
@@ -364,7 +379,6 @@ fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
                 id.span(db),
                 &id.typ(db).unwrap().display(db),
             )],
-            Item::Event(id) => event_diagnostics(*id, db),
             // Built-in stuff
             Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
@@ -443,38 +457,12 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
         label_in_non_overlapping_groups(db, &lookup_spans(&body.var_types, &body.spans)),
         // expressions
         label_in_non_overlapping_groups(db, &lookup_spans(&body.expressions, &body.spans)),
-        // emits
-        // TODO: log fully qualified path to event type
-        //  eg foo::bar::MyEvent
-
         // CallType includes FunctionId,ContractId,StructId, so the debug output
         // may change when we add something to the std lib.
         // Disabling until we come up with a better label to use here.
         // label_in_non_overlapping_groups(db, &lookup_spans(&body.calls, &body.spans)),
     ]
     .concat()
-}
-
-fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-    // Event field spans are a bit of a hassle right now
-    label_in_non_overlapping_groups(
-        db,
-        &event
-            .data(db)
-            .ast
-            .kind
-            .fields
-            .iter()
-            .map(|node| node.span)
-            .zip(
-                event
-                    .typ(db)
-                    .fields
-                    .iter()
-                    .map(|field| field.typ.clone().unwrap()),
-            )
-            .collect::<Vec<(Span, TypeId)>>(),
-    )
 }
 
 fn lookup_spans<T: Clone>(

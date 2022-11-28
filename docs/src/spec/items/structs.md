@@ -3,11 +3,15 @@
 > **<sup>Syntax</sup>**\
 > _Struct_ :\
 > &nbsp;&nbsp; `struct` [IDENTIFIER] `{`\
-> &nbsp;&nbsp; _StructField_<sup>*</sup>\
+> &nbsp;&nbsp; &nbsp;&nbsp; _StructField_<sup>\*</sup>\
+> &nbsp;&nbsp; &nbsp;&nbsp; _StructMethod_<sup>\*</sup>\
 > &nbsp;&nbsp; `}`
 >
 > _StructField_ :\
 > &nbsp;&nbsp; `pub`? [IDENTIFIER] `:` [_Type_]
+>
+> _StructMethod_ :\
+> &nbsp;&nbsp; [_Function_]
 
 
 A _struct_ is a nominal [struct type][struct type] defined with the keyword `struct`.
@@ -21,8 +25,9 @@ struct Point {
 }
 
 fn pointy_stuff() {
-    let p: Point = Point(x: 10, y: 11)
+    let mut p: Point = Point(x: 10, y: 11)
     let px: u256 = p.x
+    p.x = 100
 }
 ```
 
@@ -34,5 +39,6 @@ Builtin functions:
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [IDENTIFIER]: ../lexical_structure/identifiers.md
-[struct type]: ../type_system/types/struct.md
+[_Function_]: ./functions.md
 [_Type_]: ../type_system/types/index.md
+[struct type]: ../type_system/types/struct.md

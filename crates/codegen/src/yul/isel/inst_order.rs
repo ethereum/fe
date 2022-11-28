@@ -3,9 +3,12 @@ use fe_mir::{
         domtree::DFSet, loop_tree::LoopId, post_domtree::PostIDom, ControlFlowGraph, DomTree,
         LoopTree, PostDomTree,
     },
-    ir::{inst::BranchInfo, BasicBlockId, FunctionBody, InstId, ValueId},
+    ir::{
+        inst::{BranchInfo, SwitchTable},
+        BasicBlockId, FunctionBody, InstId, ValueId,
+    },
 };
-use fxhash::FxHashSet;
+use indexmap::{IndexMap, IndexSet};
 
 #[derive(Debug, Clone)]
 pub(super) enum StructuralInst {
@@ -15,10 +18,19 @@ pub(super) enum StructuralInst {
         then: Vec<StructuralInst>,
         else_: Vec<StructuralInst>,
     },
+
+    Switch {
+        scrutinee: ValueId,
+        table: Vec<(ValueId, Vec<StructuralInst>)>,
+        default: Option<Vec<StructuralInst>>,
+    },
+
     For {
         body: Vec<StructuralInst>,
     },
+
     Break,
+
     Continue,
 }
 
@@ -77,7 +89,7 @@ impl<'a> InstSerializer<'a> {
                         if self
                             .scope
                             .as_ref()
-                            .map(|scope| scope.if_merge_block() != Some(exit))
+                            .map(|scope| scope.branch_merge_block() != Some(exit))
                             .unwrap_or(true) =>
                     {
                         self.serialize_block(exit, order);
@@ -107,6 +119,20 @@ impl<'a> InstSerializer<'a> {
                 else_,
                 merge_block,
             } => self.serialize_if_terminator(cond, *then, *else_, merge_block, order),
+
+            TerminatorInfo::Switch {
+                scrutinee,
+                table,
+                default,
+                merge_block,
+            } => self.serialize_switch_terminator(
+                scrutinee,
+                table,
+                default.map(|value| *value),
+                merge_block,
+                order,
+            ),
+
             TerminatorInfo::ToMergeBlock => {}
             TerminatorInfo::Continue => order.push(StructuralInst::Continue),
             TerminatorInfo::Break => order.push(StructuralInst::Break),
@@ -126,21 +152,9 @@ impl<'a> InstSerializer<'a> {
         let mut then_body = vec![];
         let mut else_body = vec![];
 
-        self.enter_if_scope(merge_block);
-        let mut serialize_dest =
-            |dest_info, body: &mut Vec<StructuralInst>, merge_block| match dest_info {
-                TerminatorInfo::Break => body.push(StructuralInst::Break),
-                TerminatorInfo::Continue => body.push(StructuralInst::Continue),
-                TerminatorInfo::ToMergeBlock => {}
-                TerminatorInfo::FallThrough(dest) => {
-                    if Some(dest) != merge_block {
-                        self.serialize_block(dest, body);
-                    }
-                }
-                _ => unreachable!(),
-            };
-        serialize_dest(then, &mut then_body, merge_block);
-        serialize_dest(else_, &mut else_body, merge_block);
+        self.enter_branch_scope(merge_block);
+        self.serialize_branch_dest(then, &mut then_body, merge_block);
+        self.serialize_branch_dest(else_, &mut else_body, merge_block);
         self.exit_scope();
 
         order.push(StructuralInst::If {
@@ -153,6 +167,61 @@ impl<'a> InstSerializer<'a> {
         }
     }
 
+    fn serialize_switch_terminator(
+        &mut self,
+        scrutinee: ValueId,
+        table: Vec<(ValueId, TerminatorInfo)>,
+        default: Option<TerminatorInfo>,
+        merge_block: Option<BasicBlockId>,
+        order: &mut Vec<StructuralInst>,
+    ) {
+        self.enter_branch_scope(merge_block);
+
+        let mut serialized_table = Vec::with_capacity(table.len());
+        for (value, dest) in table {
+            let mut body = vec![];
+            self.serialize_branch_dest(dest, &mut body, merge_block);
+            serialized_table.push((value, body));
+        }
+
+        let serialized_default = default.map(|dest| {
+            let mut body = vec![];
+            self.serialize_branch_dest(dest, &mut body, merge_block);
+            body
+        });
+
+        order.push(StructuralInst::Switch {
+            scrutinee,
+            table: serialized_table,
+            default: serialized_default,
+        });
+
+        self.exit_scope();
+
+        if let Some(merge_block) = merge_block {
+            self.serialize_block(merge_block, order);
+        }
+    }
+
+    fn serialize_branch_dest(
+        &mut self,
+        dest: TerminatorInfo,
+        body: &mut Vec<StructuralInst>,
+        merge_block: Option<BasicBlockId>,
+    ) {
+        match dest {
+            TerminatorInfo::Break => body.push(StructuralInst::Break),
+            TerminatorInfo::Continue => body.push(StructuralInst::Continue),
+            TerminatorInfo::ToMergeBlock => {}
+            TerminatorInfo::FallThrough(dest) => {
+                if Some(dest) != merge_block {
+                    self.serialize_block(dest, body);
+                }
+            }
+            _ => unreachable!(),
+        };
+    }
+
     fn enter_loop_scope(&mut self, lp: LoopId, header: BasicBlockId, exit: Option<BasicBlockId>) {
         let kind = ScopeKind::Loop { lp, header, exit };
         let current_scope = std::mem::take(&mut self.scope);
@@ -162,8 +231,8 @@ impl<'a> InstSerializer<'a> {
         });
     }
 
-    fn enter_if_scope(&mut self, merge_block: Option<BasicBlockId>) {
-        let kind = ScopeKind::If { merge_block };
+    fn enter_branch_scope(&mut self, merge_block: Option<BasicBlockId>) {
+        let kind = ScopeKind::Branch { merge_block };
         let current_scope = std::mem::take(&mut self.scope);
         self.scope = Some(Scope {
             kind,
@@ -220,7 +289,7 @@ impl<'a> InstSerializer<'a> {
 
         // If all candidates have the same dominance frontier, then the frontier block
         // is the canonicalized loop exit.
-        let mut frontier: FxHashSet<_> = self
+        let mut frontier: IndexSet<_> = self
             .df
             .frontiers(exit_candidates.pop().unwrap())
             .map(std::iter::Iterator::collect)
@@ -239,16 +308,21 @@ impl<'a> InstSerializer<'a> {
     fn analyze_terminator(&self, inst: InstId) -> TerminatorInfo {
         debug_assert!(self.body.store.is_terminator(inst));
 
+        let inst_block = self.body.order.inst_block(inst);
         match self.body.store.branch_info(inst) {
             BranchInfo::Jump(dest) => self.analyze_jump(dest),
-            BranchInfo::Branch(cond, then, else_) => {
-                self.analyze_branch(self.body.order.inst_block(inst), cond, then, else_)
+
+            BranchInfo::Branch(cond, then, else_) => self.analyze_if(inst_block, cond, then, else_),
+
+            BranchInfo::Switch(scrutinee, table, default) => {
+                self.analyze_switch(inst_block, scrutinee, table, default)
             }
+
             BranchInfo::NotBranch => TerminatorInfo::NormalInst(inst),
         }
     }
 
-    fn analyze_branch(
+    fn analyze_if(
         &self,
         block: BasicBlockId,
         cond: ValueId,
@@ -258,34 +332,13 @@ impl<'a> InstSerializer<'a> {
         let then = Box::new(self.analyze_dest(then_bb));
         let else_ = Box::new(self.analyze_dest(else_bb));
 
-        let cand_for_merge_bb = |bb| {
-            if self.domtree.dominates(bb, block) {
-                return None;
-            }
+        let then_cands = self.find_merge_block_candidates(block, then_bb);
+        let else_cands = self.find_merge_block_candidates(block, else_bb);
+        debug_assert!(then_cands.len() < 2);
+        debug_assert!(else_cands.len() < 2);
 
-            // a block `cand` can be a candidate of a `merge` block iff
-            // 1. `cand` is a dominance frontier of `bb`.
-            // 2. `cand` is NOT a dominator of `bb`.
-            // 3. `cand` is NOT a "merge" block of parent `if`.
-            // 4. `cand` is NOT a "loop_exit" block of parent `loop`.
-            let mut cands = self.df.frontiers(bb)?.filter(|cand| {
-                !self.domtree.dominates(*cand, bb)
-                    && Some(*cand)
-                        != self
-                            .scope
-                            .as_ref()
-                            .and_then(Scope::if_merge_block_recursive)
-                    && Some(*cand) != self.scope.as_ref().and_then(Scope::loop_exit_recursive)
-            });
-
-            let cand = cands.next();
-            // Assert the number of candidates is at most one.
-            debug_assert!(cands.next().is_none());
-            cand
-        };
-
-        let merge_block = match (cand_for_merge_bb(then_bb), cand_for_merge_bb(else_bb)) {
-            (Some(then_cand), Some(else_cand)) => {
+        let merge_block = match (then_cands.as_slice(), else_cands.as_slice()) {
+            (&[then_cand], &[else_cand]) => {
                 if then_cand == else_cand {
                     Some(then_cand)
                 } else {
@@ -293,7 +346,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (Some(cand), None) => {
+            (&[cand], []) => {
                 if cand == else_bb {
                     Some(cand)
                 } else {
@@ -301,7 +354,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (None, Some(cand)) => {
+            ([], &[cand]) => {
                 if cand == then_bb {
                     Some(cand)
                 } else {
@@ -309,7 +362,7 @@ impl<'a> InstSerializer<'a> {
                 }
             }
 
-            (None, None) => match self.pd_tree.post_idom(block) {
+            ([], []) => match self.pd_tree.post_idom(block) {
                 PostIDom::Block(block) => {
                     if let Some(lp) = self.scope.as_ref().and_then(Scope::loop_recursive) {
                         if self.loop_tree.is_block_in_loop(block, lp) {
@@ -323,6 +376,8 @@ impl<'a> InstSerializer<'a> {
                 }
                 _ => None,
             },
+
+            (_, _) => unreachable!(),
         };
 
         TerminatorInfo::If {
@@ -331,6 +386,168 @@ impl<'a> InstSerializer<'a> {
             else_,
             merge_block,
         }
+    }
+
+    fn analyze_switch(
+        &self,
+        block: BasicBlockId,
+        scrutinee: ValueId,
+        table: &SwitchTable,
+        default: Option<BasicBlockId>,
+    ) -> TerminatorInfo {
+        let mut analyzed_table = Vec::with_capacity(table.len());
+
+        let mut merge_block_cands = IndexSet::default();
+        for (value, dest) in table.iter() {
+            analyzed_table.push((value, self.analyze_dest(dest)));
+            merge_block_cands.extend(self.find_merge_block_candidates(block, dest));
+        }
+
+        let analyzed_default = default.map(|dest| {
+            merge_block_cands.extend(self.find_merge_block_candidates(block, dest));
+            Box::new(self.analyze_dest(dest))
+        });
+
+        TerminatorInfo::Switch {
+            scrutinee,
+            table: analyzed_table,
+            default: analyzed_default,
+            merge_block: self.select_switch_merge_block(
+                &merge_block_cands,
+                table.iter().map(|(_, d)| d).chain(default),
+            ),
+        }
+    }
+
+    fn find_merge_block_candidates(
+        &self,
+        branch_inst_bb: BasicBlockId,
+        branch_dest_bb: BasicBlockId,
+    ) -> Vec<BasicBlockId> {
+        if self.domtree.dominates(branch_dest_bb, branch_inst_bb) {
+            return vec![];
+        }
+
+        // a block `cand` can be a candidate of a `merge` block iff
+        // 1. `cand` is a dominance frontier of `branch_dest_bb`.
+        // 2. `cand` is NOT a dominator of `branch_dest_bb`.
+        // 3. `cand` is NOT a "merge" block of parent `if` or `switch`.
+        // 4. `cand` is NOT a "loop_exit" block of parent `loop`.
+        match self.df.frontiers(branch_dest_bb) {
+            Some(cands) => cands
+                .filter(|cand| {
+                    !self.domtree.dominates(*cand, branch_dest_bb)
+                        && Some(*cand)
+                            != self
+                                .scope
+                                .as_ref()
+                                .and_then(Scope::branch_merge_block_recursive)
+                        && Some(*cand) != self.scope.as_ref().and_then(Scope::loop_exit_recursive)
+                })
+                .collect(),
+            None => vec![],
+        }
+    }
+
+    /// Each destination block of `switch` instruction could have multiple
+    /// candidates for the merge block because arm bodies can have multiple
+    /// predecessors, e.g., `default` arm.
+    /// So we need a heuristic to select the merge block from candidates.
+    ///
+    /// First, if one of the dominance frontiers of switch dests is a parent
+    /// merge block, then we stop searching the merge block because the parent
+    /// merge block should be the subsequent codes after the switch in terms of
+    /// high-level flow structure like Fe or yul.
+    ///
+    /// If no parent merge block is found, we start scoring the candidates by
+    /// the following function.
+    ///
+    /// The scoring function `F` is defined as follows:
+    /// 1. The initial score of each candidate('cand_bb`) is number of
+    /// predecessors of the candidate.
+    ///
+    /// 2. Find the `top_cand` of each `cand_bb`. `top_cand` can be found by
+    /// [`Self::try_find_top_cand`] method, see the method for details.
+    ///
+    /// 3. If `top_cand` is found, then add the `cand_bb` score to the
+    /// `top_cand` score, then set 0 to the `cand_bb` score.
+    ///
+    /// After the scoring, the candidates with the highest score will be
+    /// selected.
+    fn select_switch_merge_block(
+        &self,
+        cands: &IndexSet<BasicBlockId>,
+        dests: impl Iterator<Item = BasicBlockId>,
+    ) -> Option<BasicBlockId> {
+        let parent_merge = self
+            .scope
+            .as_ref()
+            .and_then(Scope::branch_merge_block_recursive);
+        for dest in dests {
+            if self
+                .df
+                .frontiers(dest)
+                .map(|mut frontieres| frontieres.any(|frontier| Some(frontier) == parent_merge))
+                .unwrap_or_default()
+            {
+                return None;
+            }
+        }
+
+        let mut cands_with_score = cands
+            .iter()
+            .map(|cand| (*cand, self.cfg.preds(*cand).len()))
+            .collect::<IndexMap<_, _>>();
+
+        for cand_bb in cands_with_score.keys().copied().collect::<Vec<_>>() {
+            if let Some(top_cand) = self.try_find_top_cand(&cands_with_score, cand_bb) {
+                let score = std::mem::take(cands_with_score.get_mut(&cand_bb).unwrap());
+                *cands_with_score.get_mut(&top_cand).unwrap() += score;
+            }
+        }
+
+        cands_with_score
+            .iter()
+            .max_by_key(|(_, score)| *score)
+            .map(|(&cand, _)| cand)
+    }
+
+    /// Try to find the `top_cand` of the `cand_bb`.
+    /// A `top_cand` can be found by the following rules:
+    ///
+    /// 1. Find the block which is contained in DF of `cand_bb` and in
+    /// `cands_with_score`.
+    ///
+    /// 2. If a block is found in 1., and the score of the block is positive,
+    /// then the block is `top_cand`.
+    ///
+    /// 2'. If a block is found in 1., and the score of the block is 0, then the
+    /// `top_cand` of the block is `top_cand` of `cand_bb`.
+    ///
+    /// 2''. If a block is NOT found in 1., then there is no `top_cand` for
+    /// `cand_bb`.
+    fn try_find_top_cand(
+        &self,
+        cands_with_score: &IndexMap<BasicBlockId, usize>,
+        cand_bb: BasicBlockId,
+    ) -> Option<BasicBlockId> {
+        let mut frontiers = match self.df.frontiers(cand_bb) {
+            Some(frontiers) => frontiers,
+            _ => return None,
+        };
+
+        while let Some(frontier_bb) = frontiers.next() {
+            if cands_with_score.contains_key(&frontier_bb) {
+                debug_assert!(frontiers.all(|bb| !cands_with_score.contains_key(&bb)));
+                if cands_with_score[&frontier_bb] != 0 {
+                    return Some(frontier_bb);
+                } else {
+                    return self.try_find_top_cand(cands_with_score, frontier_bb);
+                }
+            }
+        }
+
+        None
     }
 
     fn analyze_jump(&self, dest: BasicBlockId) -> TerminatorInfo {
@@ -344,7 +561,7 @@ impl<'a> InstSerializer<'a> {
                     TerminatorInfo::Continue
                 } else if Some(dest) == scope.loop_exit_recursive() {
                     TerminatorInfo::Break
-                } else if Some(dest) == scope.if_merge_block_recursive() {
+                } else if Some(dest) == scope.branch_merge_block_recursive() {
                     TerminatorInfo::ToMergeBlock
                 } else {
                     TerminatorInfo::FallThrough(dest)
@@ -368,7 +585,7 @@ enum ScopeKind {
         header: BasicBlockId,
         exit: Option<BasicBlockId>,
     },
-    If {
+    Branch {
         merge_block: Option<BasicBlockId>,
     },
 }
@@ -402,19 +619,19 @@ impl Scope {
         }
     }
 
-    fn if_merge_block(&self) -> Option<BasicBlockId> {
+    fn branch_merge_block(&self) -> Option<BasicBlockId> {
         match self.kind {
-            ScopeKind::If { merge_block } => merge_block,
+            ScopeKind::Branch { merge_block } => merge_block,
             _ => None,
         }
     }
 
-    fn if_merge_block_recursive(&self) -> Option<BasicBlockId> {
+    fn branch_merge_block_recursive(&self) -> Option<BasicBlockId> {
         match self.kind {
-            ScopeKind::If {
+            ScopeKind::Branch {
                 merge_block: Some(merge_block),
             } => Some(merge_block),
-            _ => self.parent.as_ref()?.if_merge_block_recursive(),
+            _ => self.parent.as_ref()?.branch_merge_block_recursive(),
         }
     }
 }
@@ -427,6 +644,14 @@ enum TerminatorInfo {
         else_: Box<TerminatorInfo>,
         merge_block: Option<BasicBlockId>,
     },
+
+    Switch {
+        scrutinee: ValueId,
+        table: Vec<(ValueId, TerminatorInfo)>,
+        default: Option<Box<TerminatorInfo>>,
+        merge_block: Option<BasicBlockId>,
+    },
+
     ToMergeBlock,
     Continue,
     Break,
@@ -456,6 +681,26 @@ mod tests {
     ) {
         match insts.next().unwrap() {
             StructuralInst::If { then, else_, .. } => (then.into_iter(), else_.into_iter()),
+            _ => panic!("expect if inst"),
+        }
+    }
+
+    fn expect_switch(
+        insts: &mut impl Iterator<Item = StructuralInst>,
+    ) -> Vec<impl Iterator<Item = StructuralInst>> {
+        match insts.next().unwrap() {
+            StructuralInst::Switch { table, default, .. } => {
+                let mut arms: Vec<_> = table
+                    .into_iter()
+                    .map(|(_, insts)| insts.into_iter())
+                    .collect();
+                if let Some(default) = default {
+                    arms.push(default.into_iter());
+                }
+
+                arms
+            }
+
             _ => panic!("expect if inst"),
         }
     }
@@ -958,6 +1203,166 @@ mod tests {
         expect_continue(&mut body);
         expect_end(&mut body);
 
+        expect_end(&mut order);
+    }
+
+    #[test]
+    fn switch_basic() {
+        // +-----+     +-------+     +-----+
+        // | bb2 | <-- |  bb0  | --> | bb3 |
+        // +-----+     +-------+     +-----+
+        //   |           |             |
+        //   |           |             |
+        //   |           v             |
+        //   |         +-------+       |
+        //   |         |  bb1  |       |
+        //   |         +-------+       |
+        //   |           |             |
+        //   |           |             |
+        //   |           v             |
+        //   |         +-------+       |
+        //   +-------> | merge | <-----+
+        //             +-------+
+        let mut builder = body_builder();
+        let dummy_ty = TypeId(0);
+        let dummy_value = builder.make_unit(dummy_ty);
+
+        let bb1 = builder.make_block();
+        let bb2 = builder.make_block();
+        let bb3 = builder.make_block();
+        let merge = builder.make_block();
+
+        let mut table = SwitchTable::default();
+        table.add_arm(dummy_value, bb1);
+        table.add_arm(dummy_value, bb2);
+        table.add_arm(dummy_value, bb3);
+        builder.switch(dummy_value, table, None, SourceInfo::dummy());
+
+        builder.move_to_block(bb1);
+        builder.jump(merge, SourceInfo::dummy());
+
+        builder.move_to_block(bb2);
+        builder.jump(merge, SourceInfo::dummy());
+        builder.move_to_block(bb3);
+        builder.jump(merge, SourceInfo::dummy());
+
+        builder.move_to_block(merge);
+        builder.ret(dummy_value, SourceInfo::dummy());
+
+        let mut func = builder.build();
+        let mut order = serialize_func_body(&mut func);
+
+        let arms = expect_switch(&mut order);
+        assert_eq!(arms.len(), 3);
+        for mut arm in arms {
+            expect_end(&mut arm);
+        }
+
+        expect_return(&func, &mut order);
+        expect_end(&mut order);
+    }
+
+    #[test]
+    fn switch_default() {
+        //      +-----------+
+        //      |           |
+        //      |           |
+        //      |      +----+--------+
+        //      v      |    |        |
+        //    +-----+  |  +-------+  |  +---------+
+        //    | bb2 | -+  |  bb0  | -+> |   bb3   |
+        //    +-----+     +-------+  |  +---------+
+        //      |           |        |    |
+        //      |           |        |    |
+        //      v           v        |    v
+        //    +-----+     +-------+  |  +---------+
+        //    | bb5 |  +- |  bb1  |  +> | default | <+
+        //    +-----+  |  +-------+     +---------+  |
+        //      |      |    |             |          |
+        //      |      |    |             |          |
+        //      |      |    v             |          |
+        //      |      |  +-------+       |          |
+        //      |      |  |  bb4  |       |          |
+        //      |      |  +-------+       |          |
+        //      |      |    |             |          |
+        // +----+------+    |             |          |
+        // |    |           v             |          |
+        // |    |         +-------+       |          |
+        // |    +-------> | merge | <-----+          |
+        // |              +-------+                  |
+        // |                                         |
+        // +-----------------------------------------+
+        let mut builder = body_builder();
+        let dummy_ty = TypeId(0);
+        let dummy_value = builder.make_unit(dummy_ty);
+
+        let bb1 = builder.make_block();
+        let bb2 = builder.make_block();
+        let bb3 = builder.make_block();
+        let bb4 = builder.make_block();
+        let bb5 = builder.make_block();
+        let default = builder.make_block();
+        let merge = builder.make_block();
+
+        let mut table = SwitchTable::default();
+        table.add_arm(dummy_value, bb1);
+        table.add_arm(dummy_value, bb2);
+        table.add_arm(dummy_value, bb3);
+        builder.switch(dummy_value, table, None, SourceInfo::dummy());
+
+        builder.move_to_block(bb1);
+        let mut table = SwitchTable::default();
+        table.add_arm(dummy_value, bb4);
+        table.add_arm(dummy_value, default);
+        builder.switch(dummy_value, table, None, SourceInfo::dummy());
+
+        builder.move_to_block(bb2);
+        let mut table = SwitchTable::default();
+        table.add_arm(dummy_value, bb5);
+        table.add_arm(dummy_value, default);
+        builder.switch(dummy_value, table, None, SourceInfo::dummy());
+
+        builder.move_to_block(bb3);
+        builder.jump(default, SourceInfo::dummy());
+
+        builder.move_to_block(bb4);
+        builder.jump(merge, SourceInfo::dummy());
+
+        builder.move_to_block(bb5);
+        builder.jump(merge, SourceInfo::dummy());
+
+        builder.move_to_block(default);
+        builder.jump(merge, SourceInfo::dummy());
+
+        builder.move_to_block(merge);
+        builder.ret(dummy_value, SourceInfo::dummy());
+
+        let mut func = builder.build();
+        let mut order = serialize_func_body(&mut func);
+
+        let mut arms = expect_switch(&mut order);
+        assert_eq!(arms.len(), 3);
+
+        let mut bb3_jump = arms.pop().unwrap();
+        expect_end(&mut bb3_jump);
+
+        let mut bb2_switch = arms.pop().unwrap();
+        let bb2_switch_arms = expect_switch(&mut bb2_switch);
+        assert_eq!(bb2_switch_arms.len(), 2);
+        for mut bb2_switch_arm in bb2_switch_arms {
+            expect_end(&mut bb2_switch_arm);
+        }
+        expect_end(&mut bb2_switch);
+
+        let mut bb1_switch = arms.pop().unwrap();
+        let bb1_switch_arms = expect_switch(&mut bb1_switch);
+        assert_eq!(bb1_switch_arms.len(), 2);
+        for mut bb1_switch_arm in bb1_switch_arms {
+            expect_end(&mut bb1_switch_arm);
+        }
+        expect_end(&mut bb1_switch);
+
+        expect_return(&func, &mut order);
         expect_end(&mut order);
     }
 }

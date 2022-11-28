@@ -10,7 +10,7 @@ use std::fmt::Write;
 use fe_abi::types::AbiType;
 use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{types::ArrayDef, FunctionId, TypeId, TypeKind};
-use fxhash::FxHashMap;
+use indexmap::IndexMap;
 use yultsur::*;
 
 use num_bigint::BigInt;
@@ -225,7 +225,7 @@ pub enum AbiSrcLocation {
 
 #[derive(Debug, Default)]
 pub struct DefaultRuntimeProvider {
-    functions: FxHashMap<String, RuntimeFunction>,
+    functions: IndexMap<String, RuntimeFunction>,
 }
 
 impl DefaultRuntimeProvider {
@@ -367,17 +367,38 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         &mut self,
         db: &dyn CodegenDb,
         ptr: yul::Expression,
-        args: Vec<yul::Expression>,
+        mut args: Vec<yul::Expression>,
         ptr_ty: TypeId,
         arg_tys: Vec<TypeId>,
     ) -> yul::Expression {
         debug_assert!(ptr_ty.is_ptr(db.upcast()));
-        let name = format!("$aggregate_init_{}", ptr_ty.0);
+        let deref_ty = ptr_ty.deref(db.upcast());
+
+        // Handle unit enum variant.
+        if args.len() == 1 && deref_ty.is_enum(db.upcast()) {
+            let tag = args.pop().unwrap();
+            let tag_ty = arg_tys[0];
+            let is_sptr = ptr_ty.is_sptr(db.upcast());
+            return self.ptr_store(db, ptr, tag, make_ptr(db, tag_ty, is_sptr));
+        }
+
+        let deref_ty = ptr_ty.deref(db.upcast());
         let args = std::iter::once(ptr).chain(args.into_iter()).collect();
         let legalized_ty = db.codegen_legalized_type(ptr_ty);
-        self.create_then_call(&name, args, |provider| {
-            data::make_aggregate_init(provider, db, &name, legalized_ty, arg_tys)
-        })
+        if deref_ty.is_enum(db.upcast()) {
+            let mut name = format!("enum_init_{}", ptr_ty.0);
+            for ty in &arg_tys {
+                write!(&mut name, "_{}", ty.0).unwrap();
+            }
+            self.create_then_call(&name, args, |provider| {
+                data::make_enum_init(provider, db, &name, legalized_ty, arg_tys)
+            })
+        } else {
+            let name = format!("$aggregate_init_{}", ptr_ty.0);
+            self.create_then_call(&name, args, |provider| {
+                data::make_aggregate_init(provider, db, &name, legalized_ty, arg_tys)
+            })
+        }
     }
 
     fn string_copy(

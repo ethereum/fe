@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(ops_math), expressions::parse_expr,\n           \"a + b * -c ** d / e % f\")"
+expression: "ast_string(stringify!(ops_math), expressions::parse_expr,\n    \"a + b * -c ** d / e % f\")"
 
 ---
 Node(

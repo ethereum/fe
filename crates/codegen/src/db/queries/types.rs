@@ -1,5 +1,5 @@
 use fe_mir::ir::{
-    types::{ArrayDef, EventDef, MapDef, StructDef, TupleDef},
+    types::{ArrayDef, MapDef, StructDef, TupleDef},
     Type, TypeId, TypeKind,
 };
 
@@ -52,28 +52,6 @@ pub fn legalized_type(db: &dyn CodegenDb, ty: TypeId) -> TypeId {
                 module_id: def.module_id,
             };
             TypeKind::Struct(new_def)
-        }
-
-        TypeKind::Event(def) => {
-            let fields = def
-                .fields
-                .iter()
-                .cloned()
-                .filter_map(|(name, ty, indexed)| {
-                    if ty.is_zero_sized(db.upcast()) {
-                        None
-                    } else {
-                        Some((name, legalized_type(db, ty), indexed))
-                    }
-                })
-                .collect();
-            let new_def = EventDef {
-                name: def.name.clone(),
-                fields,
-                span: def.span,
-                module_id: def.module_id,
-            };
-            TypeKind::Event(new_def)
         }
 
         TypeKind::Contract(def) => {

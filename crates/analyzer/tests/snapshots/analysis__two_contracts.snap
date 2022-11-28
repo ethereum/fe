@@ -12,51 +12,51 @@ note:
 note: 
    ┌─ two_contracts.fe:8:5
    │  
- 8 │ ╭     pub fn foo(self, ctx: Context) -> u256 {
+ 8 │ ╭     pub fn foo(mut self, ctx: Context) -> u256 {
  9 │ │         self.other.set_foo_addr(ctx.self_address())
 10 │ │         return self.other.answer()
 11 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: ctx, typ: Context }] -> u256
+   │ ╰─────^ params: [mut self, { label: None, name: ctx, typ: Context }] -> u256
 
 note: 
   ┌─ two_contracts.fe:9:9
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │         ^^^^ Foo: Value
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ two_contracts.fe:9:9
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │         ^^^^^^^^^^              ^^^ Context: Memory
+  │         ^^^^^^^^^^              ^^^ Context
   │         │                        
-  │         Bar: Storage { nonce: Some(0) } => Value
+  │         mut SPtr<Bar> -Load-> Bar
 
 note: 
   ┌─ two_contracts.fe:9:33
   │
 9 │         self.other.set_foo_addr(ctx.self_address())
-  │                                 ^^^^^^^^^^^^^^^^^^ address: Value
+  │                                 ^^^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ two_contracts.fe:9:9
    │
  9 │         self.other.set_foo_addr(ctx.self_address())
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 10 │         return self.other.answer()
-   │                ^^^^ Foo: Value
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ two_contracts.fe:10:16
    │
 10 │         return self.other.answer()
-   │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^ mut SPtr<Bar> -Load-> Bar
 
 note: 
    ┌─ two_contracts.fe:10:16
    │
 10 │         return self.other.answer()
-   │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ two_contracts.fe:13:5
@@ -64,21 +64,21 @@ note:
 13 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 14 │ │         return x + y
 15 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
+   │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
    ┌─ two_contracts.fe:14:16
    │
 14 │         return x + y
-   │                ^   ^ u256: Value
+   │                ^   ^ u256
    │                │    
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ two_contracts.fe:14:16
    │
 14 │         return x + y
-   │                ^^^^^ u256: Value
+   │                ^^^^^ u256
 
 note: 
    ┌─ two_contracts.fe:19:5
@@ -89,30 +89,30 @@ note:
 note: 
    ┌─ two_contracts.fe:21:5
    │  
-21 │ ╭     pub fn set_foo_addr(self, _ addr: address) {
+21 │ ╭     pub fn set_foo_addr(mut self, _ addr: address) {
 22 │ │         self.other = Foo(addr)
 23 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: Some("_"), name: addr, typ: address }] -> ()
+   │ ╰─────^ params: [mut self, { label: Some("_"), name: addr, typ: address }] -> ()
 
 note: 
    ┌─ two_contracts.fe:22:9
    │
 22 │         self.other = Foo(addr)
-   │         ^^^^ Bar: Value
+   │         ^^^^ mut Bar
 
 note: 
    ┌─ two_contracts.fe:22:9
    │
 22 │         self.other = Foo(addr)
-   │         ^^^^^^^^^^       ^^^^ address: Value
+   │         ^^^^^^^^^^       ^^^^ address
    │         │                 
-   │         Foo: Storage { nonce: Some(0) }
+   │         mut SPtr<Foo>
 
 note: 
    ┌─ two_contracts.fe:22:22
    │
 22 │         self.other = Foo(addr)
-   │                      ^^^^^^^^^ Foo: Value
+   │                      ^^^^^^^^^ Foo
 
 note: 
    ┌─ two_contracts.fe:25:5
@@ -120,27 +120,27 @@ note:
 25 │ ╭     pub fn answer(self) -> u256 {
 26 │ │         return self.other.add(20, 22)
 27 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> u256
+   │ ╰─────^ params: [self] -> u256
 
 note: 
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^ Bar: Value
+   │                ^^^^ Bar
 
 note: 
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^^^^^^^     ^^  ^^ u256: Value
+   │                ^^^^^^^^^^     ^^  ^^ u256
    │                │              │    
-   │                │              u256: Value
-   │                Foo: Storage { nonce: Some(0) } => Value
+   │                │              u256
+   │                SPtr<Foo> -Load-> Foo
 
 note: 
    ┌─ two_contracts.fe:26:16
    │
 26 │         return self.other.add(20, 22)
-   │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^^^^^^^^^ u256
 
 

@@ -44,7 +44,7 @@ Fe is moving fast. Read up on all the latest improvements.
 
   Example:
 
-  ```fe
+  ```fe,ignore
   use std::context::Context // see issue #679
 
   contract Foo {

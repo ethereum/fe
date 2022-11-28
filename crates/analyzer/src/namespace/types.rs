@@ -2,7 +2,9 @@ use crate::context::AnalyzerContext;
 use crate::display::DisplayWithDb;
 use crate::display::Displayable;
 use crate::errors::TypeError;
-use crate::namespace::items::{ContractId, StructId, TraitId};
+use crate::namespace::items::{
+    ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+};
 use crate::AnalyzerDb;
 
 use fe_common::impl_intern_key;
@@ -14,9 +16,6 @@ use std::fmt;
 use std::rc::Rc;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};
-
-use super::items::FunctionSigId;
-use super::items::ImplId;
 
 pub fn u256_min() -> BigInt {
     BigInt::from(0)
@@ -53,8 +52,14 @@ pub enum Type {
     /// of `self` within a contract function.
     SelfContract(ContractId),
     Struct(StructId),
+    Enum(EnumId),
     Generic(Generic),
+    SPtr(TypeId),
+    Mut(TypeId),
 }
+
+type TraitFunctionLookup = (Vec<(FunctionId, ImplId)>, Vec<(FunctionId, ImplId)>);
+
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct TypeId(pub(crate) u32);
 impl_intern_key!(TypeId);
@@ -74,15 +79,33 @@ impl TypeId {
     pub fn base(db: &dyn AnalyzerDb, t: Base) -> Self {
         db.intern_type(Type::Base(t))
     }
+    pub fn tuple(db: &dyn AnalyzerDb, items: &[TypeId]) -> Self {
+        db.intern_type(Type::Tuple(Tuple {
+            items: items.into(),
+        }))
+    }
 
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Type {
         db.lookup_intern_type(*self)
     }
-    pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).has_fixed_size()
+    pub fn deref(self, db: &dyn AnalyzerDb) -> TypeId {
+        match self.typ(db) {
+            Type::SPtr(inner) => inner,
+            Type::Mut(inner) => inner.deref(db),
+            _ => self,
+        }
     }
-    pub fn is_base(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_base()
+    pub fn make_sptr(self, db: &dyn AnalyzerDb) -> TypeId {
+        Type::SPtr(self).id(db)
+    }
+
+    pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
+        self.typ(db).has_fixed_size(db)
+    }
+
+    /// `true` if Type::Base or Type::Contract (which is just an Address)
+    pub fn is_primitive(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Base(_) | Type::Contract(_))
     }
     pub fn is_bool(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Base(Base::Bool))
@@ -91,13 +114,37 @@ impl TypeId {
         matches!(self.typ(db), Type::Contract(_) | Type::SelfContract(_))
     }
     pub fn is_integer(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).is_integer()
+        matches!(self.typ(db), Type::Base(Base::Numeric(_)))
+    }
+    pub fn is_map(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Map(_))
     }
     pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
-        self.typ(db).as_string().is_some()
+        matches!(self.typ(db), Type::String(_))
     }
     pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
-        self.typ(db).as_struct()
+        if let Type::Struct(id) = self.typ(db) {
+            Some(id)
+        } else {
+            None
+        }
+    }
+    pub fn is_struct(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Struct(_))
+    }
+    pub fn is_sptr(&self, db: &dyn AnalyzerDb) -> bool {
+        match self.typ(db) {
+            Type::SPtr(_) => true,
+            Type::Mut(inner) => inner.is_sptr(db),
+            _ => false,
+        }
+    }
+    pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.deref(db).typ(db), Type::Generic(_))
+    }
+
+    pub fn is_mut(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Mut(_))
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -114,22 +161,54 @@ impl TypeId {
         }
     }
 
-    /// Return the `impl` for the given trait. There can only ever be a single implementation
-    /// per concrete type and trait.
+    /// Return the `impl` for the given trait. There can only ever be a single
+    /// implementation per concrete type and trait.
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         db.impl_for(*self, trait_)
     }
 
-    // Returns all `impl` for the type even from foreign ingots
-    pub fn get_all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
-        db.all_impls(*self)
+    /// Looks up all possible candidates of the given function name that are implemented via traits.
+    /// Groups results in two lists, the first contains all theoretical possible candidates and
+    /// the second contains only those that are actually callable because the trait is in scope.
+    pub fn trait_function_candidates(
+        &self,
+        context: &mut dyn AnalyzerContext,
+        fn_name: &str,
+    ) -> TraitFunctionLookup {
+        let candidates = context
+            .db()
+            .all_impls(*self)
+            .iter()
+            .cloned()
+            .filter_map(|_impl| {
+                _impl
+                    .function(context.db(), fn_name)
+                    .map(|fun| (fun, _impl))
+            })
+            .collect::<Vec<_>>();
+
+        let in_scope_candidates = candidates
+            .iter()
+            .cloned()
+            .filter(|(_, _impl)| {
+                context
+                    .module()
+                    .is_in_scope(context.db(), Item::Trait(_impl.trait_id(context.db())))
+            })
+            .collect::<Vec<_>>();
+
+        (candidates, in_scope_candidates)
     }
 
+    /// Signature for the function with the given name defined directly on the type.
+    /// Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
+            Type::SPtr(inner) => inner.function_sig(db, name),
             Type::Contract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::SelfContract(id) => id.function(db, name).map(|fun| fun.sig(db)),
             Type::Struct(id) => id.function(db, name).map(|fun| fun.sig(db)),
+            Type::Enum(id) => id.function(db, name).map(|fun| fun.sig(db)),
             // TODO: This won't hold when we support multiple bounds
             Type::Generic(inner) => inner
                 .bounds
@@ -139,15 +218,64 @@ impl TypeId {
         }
     }
 
-    /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only considers functions natively
-    /// implemented on the type but also those that are provided by implemented traits on the type.
+    /// Like `function_sig` but returns a `Vec<FunctionSigId>` which not only
+    /// considers functions natively implemented on the type but also those
+    /// that are provided by implemented traits on the type.
     pub fn function_sigs(&self, db: &dyn AnalyzerDb, name: &str) -> Rc<[FunctionSigId]> {
         db.function_sigs(*self, name.into())
     }
 
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         let fun = self.function_sig(db, name)?;
-        fun.takes_self(db).then(|| fun)
+        fun.takes_self(db).then_some(fun)
+    }
+
+    /// Returns `true` if the type qualifies to implement the `Emittable` trait
+    /// TODO: This function should be removed when we add `Encode / Decode`
+    /// trait
+    pub fn is_emittable(self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::Struct(_)) && self.is_encodable(db).unwrap_or(false)
+    }
+
+    /// Returns `true` if the type is encodable in Solidity ABI.
+    /// TODO: This function must be removed when we add `Encode`/`Decode` trait.
+    pub fn is_encodable(self, db: &dyn AnalyzerDb) -> Result<bool, TypeError> {
+        match self.typ(db) {
+            Type::Base(_) | Type::String(_) | Type::Contract(_) => Ok(true),
+            Type::Array(arr) => arr.inner.is_encodable(db),
+            Type::Struct(sid) => {
+                // Returns `false` if diagnostics is not empty.
+                // The diagnostics is properly emitted in struct definition site, so there is no
+                // need to emit the diagnostics here.
+                if !db.struct_dependency_graph(sid).diagnostics.is_empty() {
+                    return Ok(false);
+                };
+                let mut res = true;
+                // We have to continue the iteration even if an item is NOT encodable so that we
+                // could propagate an error which returned from `item.is_encodable()` for
+                // keeping consistency.
+                for (_, &fid) in sid.fields(db).iter() {
+                    res &= fid.typ(db)?.is_encodable(db)?;
+                }
+                Ok(res)
+            }
+            Type::Tuple(tup) => {
+                let mut res = true;
+                // We have to continue the iteration even if an item is NOT encodable so that we
+                // could propagate an error which returned from `item.is_encodable()` for
+                // keeping consistency.
+                for item in tup.items.iter() {
+                    res &= item.is_encodable(db)?;
+                }
+                Ok(res)
+            }
+            Type::Mut(inner) => inner.is_encodable(db),
+            Type::Map(_)
+            | Type::SelfContract(_)
+            | Type::Generic(_)
+            | Type::Enum(_)
+            | Type::SPtr(_) => Ok(false),
+        }
     }
 }
 
@@ -225,19 +353,19 @@ pub struct FeString {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
-    pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<TypeId, TypeError>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub enum SelfDecl {
-    Mutable,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SelfDecl {
+    pub span: Span,
+    pub mut_: Option<Span>,
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub enum CtxDecl {
-    Mutable,
+impl SelfDecl {
+    pub fn is_mut(&self) -> bool {
+        self.mut_.is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -445,19 +573,6 @@ impl Integer {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Event {
-    pub name: SmolStr,
-    pub fields: Vec<EventField>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EventField {
-    pub name: SmolStr,
-    pub typ: Result<TypeId, TypeError>,
-    pub is_indexed: bool,
-}
-
 impl Type {
     pub fn id(&self, db: &dyn AnalyzerDb) -> TypeId {
         db.intern_type(self.clone())
@@ -476,22 +591,6 @@ impl Type {
             Self::Contract(id) | Self::SelfContract(id) => Some(id.span(context.db())),
             _ => None,
         }
-    }
-
-    pub fn is_base(&self) -> bool {
-        matches!(self, Type::Base(_))
-    }
-
-    /// Returns `true` if the type is integer.
-    pub fn is_integer(&self) -> bool {
-        matches!(self, Type::Base(Base::Numeric(_)))
-    }
-
-    pub fn is_signed_integer(&self) -> bool {
-        if let Type::Base(Base::Numeric(integer)) = &self {
-            return integer.is_signed();
-        }
-        false
     }
 
     /// Creates an instance of bool.
@@ -527,106 +626,60 @@ impl Type {
         Type::Base(Base::Numeric(int_type))
     }
 
-    pub fn has_fixed_size(&self) -> bool {
+    pub fn has_fixed_size(&self, db: &dyn AnalyzerDb) -> bool {
         match self {
             Type::Base(_)
             | Type::Array(_)
             | Type::Tuple(_)
             | Type::String(_)
             | Type::Struct(_)
+            | Type::Enum(_)
             | Type::Generic(_)
             | Type::Contract(_) => true,
             Type::Map(_) | Type::SelfContract(_) => false,
+            Type::SPtr(inner) | Type::Mut(inner) => inner.has_fixed_size(db),
         }
     }
 }
 
 pub trait TypeDowncast {
-    fn as_array(&self) -> Option<&Array>;
-    fn as_tuple(&self) -> Option<&Tuple>;
-    fn as_string(&self) -> Option<&FeString>;
-    fn as_map(&self) -> Option<&Map>;
-    fn as_int(&self) -> Option<Integer>;
-    fn as_primitive(&self) -> Option<Base>;
-    fn as_generic(&self) -> Option<&Generic>;
-    fn as_struct(&self) -> Option<StructId>;
+    fn as_array(&self, db: &dyn AnalyzerDb) -> Option<Array>;
+    fn as_tuple(&self, db: &dyn AnalyzerDb) -> Option<Tuple>;
+    fn as_string(&self, db: &dyn AnalyzerDb) -> Option<FeString>;
+    fn as_map(&self, db: &dyn AnalyzerDb) -> Option<Map>;
+    fn as_int(&self, db: &dyn AnalyzerDb) -> Option<Integer>;
 }
 
-impl TypeDowncast for Type {
-    fn as_array(&self) -> Option<&Array> {
-        match self {
+impl TypeDowncast for TypeId {
+    fn as_array(&self, db: &dyn AnalyzerDb) -> Option<Array> {
+        match self.typ(db) {
             Type::Array(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_tuple(&self) -> Option<&Tuple> {
-        match self {
+    fn as_tuple(&self, db: &dyn AnalyzerDb) -> Option<Tuple> {
+        match self.typ(db) {
             Type::Tuple(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_string(&self) -> Option<&FeString> {
-        match self {
+    fn as_string(&self, db: &dyn AnalyzerDb) -> Option<FeString> {
+        match self.typ(db) {
             Type::String(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_map(&self) -> Option<&Map> {
-        match self {
+    fn as_map(&self, db: &dyn AnalyzerDb) -> Option<Map> {
+        match self.typ(db) {
             Type::Map(inner) => Some(inner),
             _ => None,
         }
     }
-    fn as_int(&self) -> Option<Integer> {
-        match self {
-            Type::Base(Base::Numeric(int)) => Some(*int),
+    fn as_int(&self, db: &dyn AnalyzerDb) -> Option<Integer> {
+        match self.typ(db) {
+            Type::Base(Base::Numeric(int)) => Some(int),
             _ => None,
         }
-    }
-    fn as_primitive(&self) -> Option<Base> {
-        match self {
-            Type::Base(base) => Some(*base),
-            _ => None,
-        }
-    }
-    fn as_struct(&self) -> Option<StructId> {
-        match self {
-            Type::Struct(id) => Some(*id),
-            _ => None,
-        }
-    }
-    fn as_generic(&self) -> Option<&Generic> {
-        match self {
-            Type::Generic(inner) => Some(inner),
-            _ => None,
-        }
-    }
-}
-
-impl TypeDowncast for Option<&Type> {
-    fn as_array(&self) -> Option<&Array> {
-        self.and_then(TypeDowncast::as_array)
-    }
-    fn as_tuple(&self) -> Option<&Tuple> {
-        self.and_then(TypeDowncast::as_tuple)
-    }
-    fn as_string(&self) -> Option<&FeString> {
-        self.and_then(TypeDowncast::as_string)
-    }
-    fn as_map(&self) -> Option<&Map> {
-        self.and_then(TypeDowncast::as_map)
-    }
-    fn as_int(&self) -> Option<Integer> {
-        self.and_then(TypeDowncast::as_int)
-    }
-    fn as_primitive(&self) -> Option<Base> {
-        self.and_then(TypeDowncast::as_primitive)
-    }
-    fn as_struct(&self) -> Option<StructId> {
-        self.and_then(TypeDowncast::as_struct)
-    }
-    fn as_generic(&self) -> Option<&Generic> {
-        self.and_then(TypeDowncast::as_generic)
     }
 }
 
@@ -660,7 +713,10 @@ impl DisplayWithDb for Type {
             }
             Type::Contract(id) | Type::SelfContract(id) => write!(f, "{}", id.name(db)),
             Type::Struct(id) => write!(f, "{}", id.name(db)),
+            Type::Enum(id) => write!(f, "{}", id.name(db)),
             Type::Generic(inner) => inner.fmt(f),
+            Type::SPtr(inner) => write!(f, "SPtr<{}>", inner.display(db)),
+            Type::Mut(inner) => write!(f, "mut {}", inner.display(db)),
         }
     }
 }
@@ -712,14 +768,17 @@ impl DisplayWithDb for FunctionSignature {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let FunctionSignature {
             self_decl,
-            ctx_decl: _,
             params,
             return_type,
         } = self;
 
-        write!(f, "self: {:?}, ", self_decl)?;
         write!(f, "params: [")?;
         let mut delim = "";
+        if let Some(s) = self_decl {
+            write!(f, "{}self", if s.mut_.is_some() { "mut " } else { "" },)?;
+            delim = ", ";
+        }
+
         for p in params {
             write!(
                 f,

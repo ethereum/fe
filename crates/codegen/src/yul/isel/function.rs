@@ -1,16 +1,21 @@
 #![allow(unused)]
+use std::thread::Scope;
+
 use super::{context::Context, inst_order::InstSerializer};
 use fe_common::numeric::to_hex_str;
 
 use fe_abi::function::{AbiFunction, AbiFunctionType};
 use fe_common::db::Upcast;
-use fe_mir::ir::{
-    self,
-    constant::ConstantValue,
-    inst::{BinOp, CallType, InstKind, UnOp},
-    value::AssignableValue,
-    Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind, Value,
-    ValueId,
+use fe_mir::{
+    ir::{
+        self,
+        constant::ConstantValue,
+        inst::{BinOp, CallType, CastKind, InstKind, UnOp},
+        value::AssignableValue,
+        Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind,
+        Value, ValueId,
+    },
+    pretty_print::PrettyPrint,
 };
 use fxhash::FxHashMap;
 use smol_str::SmolStr;
@@ -44,7 +49,7 @@ pub fn lower_function(
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
     ctx: &'a mut Context,
-    value_map: FxHashMap<ValueId, yul::Identifier>,
+    value_map: ScopedValueMap,
     func: FunctionId,
     sig: &'a FunctionSignature,
     body: &'a FunctionBody,
@@ -60,7 +65,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,
     ) -> Self {
-        let mut value_map = FxHashMap::default();
+        let mut value_map = ScopedValueMap::default();
         // Register arguments to value_map.
         for &value in body.store.locals() {
             match body.store.value_data(value) {
@@ -135,6 +140,14 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 let if_block = self.lower_if(cond, then, else_);
                 self.sink.push(if_block)
             }
+            StructuralInst::Switch {
+                scrutinee,
+                table,
+                default,
+            } => {
+                let switch_block = self.lower_switch(scrutinee, table, default);
+                self.sink.push(switch_block)
+            }
             StructuralInst::For { body } => {
                 let for_block = self.lower_for(body);
                 self.sink.push(for_block)
@@ -154,29 +167,45 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             InstKind::Unary { op, value } => {
                 let inst_result = self.body.store.inst_result(inst).unwrap();
-                let inst_result_ty = self.assignable_value_ty(inst_result);
+                let inst_result_ty = inst_result.ty(self.db.upcast(), &self.body.store);
                 let result = self.lower_unary(*op, *value);
                 self.assign_inst_result(inst, result, inst_result_ty.deref(self.db.upcast()))
             }
 
             InstKind::Binary { op, lhs, rhs } => {
                 let inst_result = self.body.store.inst_result(inst).unwrap();
-                let inst_result_ty = self.assignable_value_ty(inst_result);
+                let inst_result_ty = inst_result.ty(self.db.upcast(), &self.body.store);
                 let result = self.lower_binary(*op, *lhs, *rhs, inst);
                 self.assign_inst_result(inst, result, inst_result_ty.deref(self.db.upcast()))
             }
 
-            InstKind::Cast { value, to } => {
+            InstKind::Cast { kind, value, to } => {
                 let from_ty = self.body.store.value_ty(*value);
-                let value = self.value_expr(*value);
-                let result = self.ctx.runtime.primitive_cast(self.db, value, from_ty);
+                let result = match kind {
+                    CastKind::Primitive => {
+                        debug_assert!(
+                            from_ty.is_primitive(self.db.upcast())
+                                && to.is_primitive(self.db.upcast())
+                        );
+                        let value = self.value_expr(*value);
+                        self.ctx.runtime.primitive_cast(self.db, value, from_ty)
+                    }
+                    CastKind::Untag => {
+                        let from_ty = from_ty.deref(self.db.upcast());
+                        debug_assert!(from_ty.is_enum(self.db.upcast()));
+                        let value = self.value_expr(*value);
+                        let offset = literal_expression! {(from_ty.enum_data_offset(self.db.upcast(), SLOT_SIZE))};
+                        expression! {add([value], [offset])}
+                    }
+                };
+
                 self.assign_inst_result(inst, result, *to)
             }
 
             InstKind::AggregateConstruct { ty, args } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let ptr = self.lower_assignable_value(lhs);
-                let ptr_ty = self.assignable_value_ty(lhs);
+                let ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let arg_values = args.iter().map(|arg| self.value_expr(*arg)).collect();
                 let arg_tys = args
                     .iter()
@@ -199,7 +228,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                             let size = self.value_ty_size_deref(*src);
                             let lhs = self.body.store.inst_result(inst).unwrap();
                             let ptr = self.lower_assignable_value(lhs);
-                            let inst_result_ty = self.assignable_value_ty(lhs);
+                            let inst_result_ty = lhs.ty(self.db.upcast(), &self.body.store);
                             self.sink.push(yul::Statement::Expression(
                                 self.ctx.runtime.string_copy(
                                     self.db,
@@ -225,7 +254,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::MemCopy { src } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let dst_ptr = self.lower_assignable_value(lhs);
-                let dst_ptr_ty = self.assignable_value_ty(lhs);
+                let dst_ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_ptr = self.value_expr(*src);
                 let src_ptr_ty = self.body.store.value_ty(*src);
                 let ty_size = literal_expression! { (self.value_ty_size_deref(*src)) };
@@ -240,25 +269,30 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                     )))
             }
 
+            InstKind::Load { src } => {
+                let src_ty = self.body.store.value_ty(*src);
+                let src = self.value_expr(*src);
+                debug_assert!(src_ty.is_ptr(self.db.upcast()));
+
+                let result = self.body.store.inst_result(inst).unwrap();
+                debug_assert!(!result
+                    .ty(self.db.upcast(), &self.body.store)
+                    .is_ptr(self.db.upcast()));
+                self.assign_inst_result(inst, src, src_ty)
+            }
+
             InstKind::AggregateAccess { value, indices } => {
                 let base = self.value_expr(*value);
                 let mut ptr = base;
-                let ptr_ty = self.body.store.value_ty(*value);
-                let mut inner_ty = ptr_ty.deref(self.db.upcast());
+                let mut inner_ty = self.body.store.value_ty(*value);
                 for &idx in indices {
-                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty);
+                    ptr = self.aggregate_elem_ptr(ptr, idx, inner_ty.deref(self.db.upcast()));
                     inner_ty =
                         inner_ty.projection_ty(self.db.upcast(), self.body.store.value_data(idx));
                 }
 
-                let elem_ptr_ty = if ptr_ty.is_mptr(self.db.upcast()) {
-                    inner_ty.make_mptr(self.db.upcast())
-                } else {
-                    inner_ty.make_sptr(self.db.upcast())
-                };
-
                 let result = self.body.store.inst_result(inst).unwrap();
-                self.assign_inst_result(inst, ptr, elem_ptr_ty)
+                self.assign_inst_result(inst, ptr, inner_ty)
             }
 
             InstKind::MapAccess { value, key } => {
@@ -353,7 +387,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::AbiEncode { arg } => {
                 let lhs = self.body.store.inst_result(inst).unwrap();
                 let ptr = self.lower_assignable_value(lhs);
-                let ptr_ty = self.assignable_value_ty(lhs);
+                let ptr_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_expr = self.value_expr(*arg);
                 let src_ty = self.body.store.value_ty(*arg);
 
@@ -407,7 +441,8 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             InstKind::Nop => {}
 
-            InstKind::Jump { .. } | InstKind::Branch { .. } => {
+            // These flow control instructions are already legalized.
+            InstKind::Jump { .. } | InstKind::Branch { .. } | InstKind::Switch { .. } => {
                 unreachable!()
             }
         }
@@ -420,25 +455,68 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         else_: Vec<StructuralInst>,
     ) -> yul::Statement {
         let cond = self.value_expr(cond);
-        let mut then_stmts = vec![];
-        let mut else_stmts = vec![];
 
-        for inst in then {
-            std::mem::swap(&mut self.sink, &mut then_stmts);
-            self.lower_structural_inst(inst);
-            std::mem::swap(&mut self.sink, &mut then_stmts);
-        }
-        for inst in else_ {
-            std::mem::swap(&mut self.sink, &mut else_stmts);
-            self.lower_structural_inst(inst);
-            std::mem::swap(&mut self.sink, &mut else_stmts);
-        }
+        self.enter_scope();
+        let then_body = self.lower_branch_body(then);
+        self.leave_scope();
+
+        self.enter_scope();
+        let else_body = self.lower_branch_body(else_);
+        self.leave_scope();
 
         switch! {
             switch ([cond])
-            (case 1 {[then_stmts...]})
-            (case 0 {[else_stmts...]})
+            (case 1 {[then_body...]})
+            (case 0 {[else_body...]})
         }
+    }
+
+    fn lower_switch(
+        &mut self,
+        scrutinee: ValueId,
+        table: Vec<(ValueId, Vec<StructuralInst>)>,
+        default: Option<Vec<StructuralInst>>,
+    ) -> yul::Statement {
+        let scrutinee = self.value_expr(scrutinee);
+
+        let mut cases = vec![];
+        for (value, insts) in table {
+            let value = self.value_expr(value);
+            let value = match value {
+                yul::Expression::Literal(lit) => lit,
+                _ => panic!("switch table values must be literal"),
+            };
+
+            self.enter_scope();
+            let body = self.lower_branch_body(insts);
+            self.leave_scope();
+            cases.push(yul::Case {
+                literal: Some(value),
+                block: block! { [body...] },
+            })
+        }
+
+        if let Some(insts) = default {
+            let block = self.lower_branch_body(insts);
+            cases.push(case! {
+                default {[block...]}
+            });
+        }
+
+        switch! {
+            switch ([scrutinee])
+            [cases...]
+        }
+    }
+
+    fn lower_branch_body(&mut self, insts: Vec<StructuralInst>) -> Vec<yul::Statement> {
+        let mut body = vec![];
+        std::mem::swap(&mut self.sink, &mut body);
+        for inst in insts {
+            self.lower_structural_inst(inst);
+        }
+        std::mem::swap(&mut self.sink, &mut body);
+        body
     }
 
     fn lower_for(&mut self, body: Vec<StructuralInst>) -> yul::Statement {
@@ -465,7 +543,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 statement! { [lhs] := [rhs] }
             }
             AssignableValue::Aggregate { .. } | AssignableValue::Map { .. } => {
-                let dst_ty = self.assignable_value_ty(lhs);
+                let dst_ty = lhs.ty(self.db.upcast(), &self.body.store);
                 let src_ty = self.body.store.value_ty(rhs);
                 debug_assert_eq!(
                     dst_ty.deref(self.db.upcast()),
@@ -530,15 +608,15 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             .store
             .inst_result(inst)
             .map(|val| {
-                let ty = self.assignable_value_ty(val);
+                let ty = val.ty(self.db.upcast(), &self.body.store);
                 ty.is_signed(self.db.upcast())
             })
             .unwrap_or(false);
         let is_lhs_signed = self.body.store.value_ty(lhs).is_signed(self.db.upcast());
 
         let inst_result = self.body.store.inst_result(inst).unwrap();
-        let inst_result_ty = self
-            .assignable_value_ty(inst_result)
+        let inst_result_ty = inst_result
+            .ty(self.db.upcast(), &self.body.store)
             .deref(self.db.upcast());
         match op {
             BinOp::Add => self
@@ -598,7 +676,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         // assignment.
         let stmt = if let Some(result) = self.body.store.inst_result(inst) {
             let lhs = self.lower_assignable_value(result);
-            let lhs_ty = self.assignable_value_ty(result);
+            let lhs_ty = result.ty(self.db.upcast(), &self.body.store);
             match result {
                 AssignableValue::Value(value) => {
                     match (
@@ -679,7 +757,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
     fn declare_assignable_value(&mut self, value: &AssignableValue) {
         match value {
-            AssignableValue::Value(value) if !self.value_map.contains_key(value) => {
+            AssignableValue::Value(value) if !self.value_map.contains(*value) => {
                 self.declare_value(*value);
             }
             _ => {}
@@ -687,18 +765,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn declare_value(&mut self, value: ValueId) {
-        let var = match self.body.store.value_data(value) {
-            Value::Local(local) => {
-                if local.is_tmp {
-                    YulVariable::new(format! {
-                    "$tmp_{}", value.index()})
-                } else {
-                    YulVariable::new(local.name.as_str())
-                }
-            }
-            Value::Temporary { .. } => YulVariable::new(format!("$tmp_{}", value.index())),
-            _ => unreachable!(),
-        };
+        let var = YulVariable::new(format!("$tmp_{}", value.index()));
         self.value_map.insert(value, var.ident());
         let value_ty = self.body.store.value_ty(value);
 
@@ -723,7 +790,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn value_expr(&mut self, value: ValueId) -> yul::Expression {
         match self.body.store.value_data(value) {
             Value::Local(_) | Value::Temporary { .. } => {
-                let ident = &self.value_map[&value];
+                let ident = self.value_map.lookup(value).unwrap();
                 literal_expression! {(ident)}
             }
             Value::Immediate { imm, .. } => {
@@ -731,8 +798,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
             Value::Constant { constant, .. } => match &constant.data(self.db.upcast()).value {
                 ConstantValue::Immediate(imm) => {
-                    // YUL does not support representing negative integers with leading minus (e.g. `-1` in YUL would lead to an ICE).
-                    // To mitigate that we convert all numeric values into hexadecimal representation.
+                    // YUL does not support representing negative integers with leading minus (e.g.
+                    // `-1` in YUL would lead to an ICE). To mitigate that we
+                    // convert all numeric values into hexadecimal representation.
                     literal_expression! {(to_hex_str(imm))}
                 }
                 ConstantValue::Str(s) => {
@@ -751,7 +819,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn value_ident(&self, value: ValueId) -> yul::Identifier {
-        self.value_map[&value].clone()
+        self.value_map.lookup(value).unwrap().clone()
     }
 
     fn make_tmp(&mut self, tmp: ValueId) -> yul::Identifier {
@@ -778,7 +846,9 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             AssignableValue::Aggregate { lhs, idx } => {
                 let base_ptr = self.lower_assignable_value(lhs);
-                let ty = self.assignable_value_ty(lhs).deref(self.db.upcast());
+                let ty = lhs
+                    .ty(self.db.upcast(), &self.body.store)
+                    .deref(self.db.upcast());
                 self.aggregate_elem_ptr(base_ptr, *idx, ty)
             }
             AssignableValue::Map { lhs, key } => {
@@ -788,31 +858,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 self.ctx
                     .runtime
                     .map_value_ptr(self.db, map_ptr, key, key_ty)
-            }
-        }
-    }
-
-    fn assignable_value_ty(&self, value: &AssignableValue) -> TypeId {
-        match value {
-            AssignableValue::Value(value) => self.body.store.value_ty(*value),
-            AssignableValue::Aggregate { lhs, idx } => {
-                let lhs_ty = self.assignable_value_ty(lhs);
-                let ty = lhs_ty
-                    .deref(self.db.upcast())
-                    .projection_ty(self.db.upcast(), self.body.store.value_data(*idx));
-
-                if lhs_ty.is_sptr(self.db.upcast()) {
-                    ty.make_sptr(self.db.upcast())
-                } else {
-                    ty.make_mptr(self.db.upcast())
-                }
-            }
-            AssignableValue::Map { lhs, key } => {
-                let map_ty = self.assignable_value_ty(lhs).deref(self.db.upcast());
-                match &map_ty.data(self.db.upcast()).kind {
-                    TypeKind::Map(def) => def.value_ty.make_sptr(self.db.upcast()),
-                    _ => unreachable!(),
-                }
             }
         }
     }
@@ -876,6 +921,50 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             .value_ty(value)
             .deref(self.db.upcast())
             .size_of(self.db.upcast(), SLOT_SIZE)
+    }
+
+    fn enter_scope(&mut self) {
+        let value_map = std::mem::take(&mut self.value_map);
+        self.value_map = ScopedValueMap::with_parent(value_map);
+    }
+
+    fn leave_scope(&mut self) {
+        let value_map = std::mem::take(&mut self.value_map);
+        self.value_map = value_map.into_parent();
+    }
+}
+
+#[derive(Debug, Default)]
+struct ScopedValueMap {
+    parent: Option<Box<ScopedValueMap>>,
+    map: FxHashMap<ValueId, yul::Identifier>,
+}
+
+impl ScopedValueMap {
+    fn lookup(&self, value: ValueId) -> Option<&yul::Identifier> {
+        match self.map.get(&value) {
+            Some(ident) => Some(ident),
+            None => self.parent.as_ref().and_then(|p| p.lookup(value)),
+        }
+    }
+
+    fn with_parent(parent: ScopedValueMap) -> Self {
+        Self {
+            parent: Some(parent.into()),
+            ..Self::default()
+        }
+    }
+
+    fn into_parent(self) -> Self {
+        *self.parent.unwrap()
+    }
+
+    fn insert(&mut self, value: ValueId, ident: yul::Identifier) {
+        self.map.insert(value, ident);
+    }
+
+    fn contains(&self, value: ValueId) -> bool {
+        self.lookup(value).is_some()
     }
 }
 

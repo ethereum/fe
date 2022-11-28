@@ -4,38 +4,51 @@ expression: "build_snapshot(&db, module)"
 
 ---
 note: 
-  ┌─ module_level_events.fe:2:5
+  ┌─ module_level_events.fe:3:5
   │
-2 │     idx sender: address
+3 │     pub sender: address
   │     ^^^^^^^^^^^^^^^^^^^ address
-3 │     idx receiver: address
+4 │     #indexed
+5 │     pub receiver: address
   │     ^^^^^^^^^^^^^^^^^^^^^ address
-4 │     value: u256
-  │     ^^^^^^^^^^^ u256
+6 │     pub value: u256
+  │     ^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ module_level_events.fe:8:5
+   ┌─ module_level_events.fe:10:5
    │  
- 8 │ ╭     fn transfer(ctx: Context, to: address, value: u256) {
- 9 │ │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-10 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
+10 │ ╭     fn transfer(mut ctx: Context, to: address, value: u256) {
+11 │ │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
+12 │ │     }
+   │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }, { label: None, name: to, typ: address }, { label: None, name: value, typ: u256 }] -> ()
 
 note: 
-  ┌─ module_level_events.fe:9:23
-  │
-9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-  │                       ^^^          ^^^ Context: Memory
-  │                       │             
-  │                       Context: Memory
+   ┌─ module_level_events.fe:11:9
+   │
+11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
+   │         ^^^                       ^^^ mut Context
+   │         │                          
+   │         mut Context
 
 note: 
-  ┌─ module_level_events.fe:9:36
-  │
-9 │         emit Transfer(ctx, sender: ctx.msg_sender(), receiver: to, value)
-  │                                    ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256: Value
-  │                                    │                           │    
-  │                                    │                           address: Value
-  │                                    address: Value
+   ┌─ module_level_events.fe:11:35
+   │
+11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
+   │                                   ^^^^^^^^^^^^^^^^            ^^  ^^^^^ u256
+   │                                   │                           │    
+   │                                   │                           address
+   │                                   address
+
+note: 
+   ┌─ module_level_events.fe:11:18
+   │
+11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Transfer
+
+note: 
+   ┌─ module_level_events.fe:11:9
+   │
+11 │         ctx.emit(Transfer(sender: ctx.msg_sender(), receiver: to, value))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 

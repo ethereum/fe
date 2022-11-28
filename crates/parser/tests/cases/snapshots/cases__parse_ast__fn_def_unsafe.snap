@@ -31,7 +31,8 @@ Node(
               ),
               args: [
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: None,
                     name: Node(
                       kind: "x",
@@ -49,14 +50,15 @@ Node(
                         end: 23,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
                     start: 16,
                     end: 23,
                   ),
                 ),
                 Node(
-                  kind: Regular(RegularFunctionArg(
+                  kind: Regular(
+                    mut_: None,
                     label: None,
                     name: Node(
                       kind: "y",
@@ -74,7 +76,7 @@ Node(
                         end: 35,
                       ),
                     ),
-                  )),
+                  ),
                   span: Span(
                     start: 25,
                     end: 35,

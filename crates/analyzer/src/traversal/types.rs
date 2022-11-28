@@ -1,14 +1,320 @@
-use crate::context::{AnalyzerContext, Constant, NamedThing};
+use crate::builtins::ValueMethod;
+use crate::context::{
+    Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
+    NamedThing,
+};
 use crate::display::Displayable;
-use crate::errors::TypeError;
+use crate::errors::{TypeCoercionError, TypeError};
 use crate::namespace::items::{Item, TraitId};
-use crate::namespace::types::{GenericArg, GenericParamKind, GenericType, Tuple, Type, TypeId};
+use crate::namespace::types::{
+    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, Tuple, Type, TypeId,
+};
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
+use std::cmp::Ordering;
+
+/// Try to perform an explicit type cast, eg `u256(my_address)` or `address(my_contract)`.
+/// Returns nothing. Emits an error if the cast fails; explicit cast failures are not fatal.
+pub fn try_cast_type(
+    context: &mut dyn AnalyzerContext,
+    from: TypeId,
+    from_expr: &Node<ast::Expr>,
+    into: TypeId,
+    into_span: Span,
+) {
+    if into == from {
+        return;
+    }
+    match (from.typ(context.db()), into.typ(context.db())) {
+        (Type::SPtr(inner), _) => {
+            adjust_type(context, from_expr, inner, AdjustmentKind::Load);
+            try_cast_type(context, inner, from_expr, into, into_span)
+        }
+
+        (Type::Mut(inner), _) => try_cast_type(context, inner, from_expr, into, into_span),
+
+        (Type::String(from_str), Type::String(into_str)) => {
+            if from_str.max_size > into_str.max_size {
+                context.error(
+                    "string capacity exceeded",
+                    from_expr.span,
+                    &format!(
+                        "this string has length {}; expected length <= {}",
+                        from_str.max_size, into_str.max_size
+                    ),
+                );
+            } else {
+                adjust_type(context, from_expr, into, AdjustmentKind::StringSizeIncrease);
+            }
+        }
+
+        (Type::Base(Base::Address), Type::Contract(_)) => {}
+        (Type::Contract(_), Type::Base(Base::Address)) => {}
+
+        (Type::Base(Base::Numeric(from_int)), Type::Base(Base::Numeric(into_int))) => {
+            let sign_differs = from_int.is_signed() != into_int.is_signed();
+            let size_differs = from_int.size() != into_int.size();
+
+            if sign_differs && size_differs {
+                context.error(
+                        "Casting between numeric values can change the sign or size but not both at once",
+                        from_expr.span,
+                        &format!("can not cast from `{}` to `{}` in a single step",
+                                 from.display(context.db()),
+                                 into.display(context.db())));
+            }
+        }
+        (Type::Base(Base::Numeric(_)), Type::Base(Base::Address)) => {}
+        (Type::Base(Base::Address), Type::Base(Base::Numeric(into))) => {
+            if into != Integer::U256 {
+                context.error(
+                    &format!("can't cast `address` to `{}`", into),
+                    into_span,
+                    "try `u256` here",
+                );
+            }
+        }
+        (Type::SelfContract(_), Type::Base(Base::Address)) => {
+            context.error(
+                "`self` address must be retrieved via `Context` object",
+                into_span + from_expr.span,
+                "use `ctx.self_address()` here",
+            );
+        }
+
+        (_, Type::Base(Base::Unit)) => unreachable!(), // rejected in expr_call_type
+        (_, Type::Base(Base::Bool)) => unreachable!(), // handled in expr_call_type_constructor
+        (_, Type::Tuple(_)) => unreachable!(),         // rejected in expr_call_type
+        (_, Type::Struct(_)) => unreachable!(),        // handled in expr_call_type_constructor
+        (_, Type::Map(_)) => unreachable!(),           // handled in expr_call_type_constructor
+        (_, Type::Array(_)) => unreachable!(),         // handled in expr_call_type_constructor
+        (_, Type::Generic(_)) => unreachable!(),       // handled in expr_call_type_constructor
+        (_, Type::SelfContract(_)) => unreachable!(),  // contract names become Contract
+
+        _ => {
+            context.error(
+                &format!(
+                    "incorrect type for argument to `{}`",
+                    into.display(context.db())
+                ),
+                from_expr.span,
+                &format!(
+                    "cannot cast type `{}` to type `{}`",
+                    from.display(context.db()),
+                    into.display(context.db()),
+                ),
+            );
+        }
+    };
+}
+
+pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty: TypeId) -> TypeId {
+    match ty.typ(context.db()) {
+        Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::Load),
+        Type::Mut(inner) => deref_type(context, expr, inner),
+        _ => ty,
+    }
+}
+
+pub fn adjust_type(
+    context: &mut dyn AnalyzerContext,
+    expr: &Node<ast::Expr>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> TypeId {
+    context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
+        attr.type_adjustments.push(Adjustment { into, kind });
+    });
+    into
+}
+
+pub fn try_coerce_type(
+    context: &mut dyn AnalyzerContext,
+    from_expr: Option<&Node<ast::Expr>>,
+    from: TypeId,
+    into: TypeId,
+    should_copy: bool,
+) -> Result<TypeId, TypeCoercionError> {
+    let chain = coerce(context, from_expr, from, into, should_copy, vec![])?;
+    if let Some(expr) = from_expr {
+        context.update_expression(expr, &|attr: &mut ExpressionAttributes| {
+            attr.type_adjustments.extend(chain.iter())
+        });
+    }
+    Ok(into)
+}
+
+fn coerce(
+    context: &mut dyn AnalyzerContext,
+    from_expr: Option<&Node<ast::Expr>>,
+    from: TypeId,
+    into: TypeId,
+    should_copy: bool,
+    chain: Vec<Adjustment>,
+) -> Result<Vec<Adjustment>, TypeCoercionError> {
+    // Cut down on some obviously unnecessary copy operations,
+    // because we don't currently optimize MIR.
+    let should_copy = should_copy
+        && !into.is_sptr(context.db())
+        && !into.deref(context.db()).is_primitive(context.db())
+        && !from_expr.map(|e| is_temporary(context, e)).unwrap_or(false);
+
+    if from == into {
+        let chain = add_adjustment_if(
+            should_copy,
+            chain,
+            from.deref(context.db()),
+            AdjustmentKind::Copy,
+        );
+        return Ok(chain);
+    }
+
+    match (from.typ(context.db()), into.typ(context.db())) {
+        (Type::SPtr(from), Type::SPtr(into)) => {
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        // Strip off any `mut`s.
+        // Fn call `mut` is checked in `fn validate_arg_type`.
+        (Type::Mut(from), Type::Mut(into)) => {
+            let chain = add_adjustment_if(should_copy, chain, into, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (Type::Mut(from), _) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (_, Type::Mut(into)) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+
+        // Primitive types can be moved from storage implicitly.
+        // Contract type is also a primitive.
+        (Type::SPtr(from_inner), Type::Base(_) | Type::Contract(_)) => coerce(
+            context,
+            from_expr,
+            from_inner,
+            into,
+            false,
+            add_adjustment(chain, from_inner, AdjustmentKind::Load),
+        ),
+
+        // complex types require .to_mem()
+        (Type::SPtr(from), _) => {
+            // If the inner types are incompatible, report that error instead
+            try_coerce_type(context, from_expr, from, into, false)?;
+            Err(TypeCoercionError::RequiresToMem)
+        }
+
+        // All types can be moved into storage implicitly.
+        // Note that no `Adjustment` is added here.
+        (_, Type::SPtr(into)) => coerce(context, from_expr, from, into, false, chain),
+
+        (
+            Type::String(FeString { max_size: from_sz }),
+            Type::String(FeString { max_size: into_sz }),
+        ) => match into_sz.cmp(&from_sz) {
+            Ordering::Equal => Ok(chain),
+            Ordering::Greater => Ok(add_adjustment(
+                chain,
+                into,
+                AdjustmentKind::StringSizeIncrease,
+            )),
+            Ordering::Less => Err(TypeCoercionError::Incompatible),
+        },
+        (Type::SelfContract(from), Type::Contract(into)) => {
+            if from == into {
+                Err(TypeCoercionError::SelfContractType)
+            } else {
+                Err(TypeCoercionError::Incompatible)
+            }
+        }
+
+        (Type::Tuple(ftup), Type::Tuple(itup)) => {
+            // If the rhs is a tuple expr, each element gets its own coercion chain.
+            // Else, we don't allow coercion (for now, at least).
+            if let Some(Node {
+                kind: ast::Expr::Tuple { elts },
+                ..
+            }) = &from_expr
+            {
+                if ftup.items.len() == itup.items.len()
+                    && elts
+                        .iter()
+                        .zip(ftup.items.iter().zip(itup.items.iter()))
+                        .map(|(elt, (from, into))| {
+                            try_coerce_type(context, Some(elt), *from, *into, should_copy).is_ok()
+                        })
+                        .all(|x| x)
+                {
+                    // Update the type of the rhs tuple, because its elements
+                    // have been coerced into the lhs element types.
+                    context.update_expression(from_expr.unwrap(), &|attr| attr.typ = into);
+                    return Ok(chain);
+                }
+            }
+            Err(TypeCoercionError::Incompatible)
+        }
+
+        (Type::Base(Base::Numeric(f)), Type::Base(Base::Numeric(i))) => {
+            if f.is_signed() == i.is_signed() && i.size() > f.size() {
+                Ok(add_adjustment(chain, into, AdjustmentKind::IntSizeIncrease))
+            } else {
+                Err(TypeCoercionError::Incompatible)
+            }
+        }
+        (_, _) => Err(TypeCoercionError::Incompatible),
+    }
+}
+
+#[must_use]
+fn add_adjustment(
+    mut chain: Vec<Adjustment>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> Vec<Adjustment> {
+    chain.push(Adjustment { into, kind });
+    chain
+}
+
+#[must_use]
+fn add_adjustment_if(
+    test: bool,
+    mut chain: Vec<Adjustment>,
+    into: TypeId,
+    kind: AdjustmentKind,
+) -> Vec<Adjustment> {
+    if test {
+        chain.push(Adjustment { into, kind });
+    }
+    chain
+}
+
+fn is_temporary(context: &dyn AnalyzerContext, expr: &Node<ast::Expr>) -> bool {
+    match &expr.kind {
+        ast::Expr::Tuple { .. } | ast::Expr::List { .. } | ast::Expr::Repeat { .. } => true,
+        ast::Expr::Path(path) => {
+            matches!(
+                context.resolve_path(path, expr.span),
+                Ok(NamedThing::EnumVariant(_))
+            )
+        }
+        ast::Expr::Call { func, .. } => matches!(
+            context.get_call(func),
+            Some(CallType::TypeConstructor(_))
+                | Some(CallType::EnumConstructor(_))
+                | Some(CallType::BuiltinValueMethod {
+                    method: ValueMethod::ToMem | ValueMethod::AbiEncode,
+                    ..
+                })
+        ),
+        _ => false,
+    }
+}
 
 pub fn apply_generic_type_args(
     context: &mut dyn AnalyzerContext,
@@ -82,7 +388,7 @@ pub fn apply_generic_type_args(
 
             (GenericParamKind::PrimitiveType, ast::GenericArg::TypeDesc(type_node)) => {
                 let typ = type_desc(context, type_node)?;
-                if typ.is_base(context.db()) {
+                if typ.is_primitive(context.db()) {
                     Ok(GenericArg::Type(typ))
                 } else {
                     Err(TypeError::new(context.error(
@@ -149,8 +455,8 @@ pub fn resolve_concrete_type_path<T: std::fmt::Display>(
     base_desc: &Node<T>,
     generic_args: Option<&Node<Vec<ast::GenericArg>>>,
 ) -> Result<TypeId, TypeError> {
-    let named_thing = context.resolve_path(path, base_desc.span);
-    resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
+    let named_thing = context.resolve_path(path, base_desc.span)?;
+    resolve_concrete_type_named_thing(context, Some(named_thing), base_desc, generic_args)
 }
 
 pub fn resolve_concrete_type_named_thing<T: std::fmt::Display>(
@@ -257,8 +563,8 @@ pub fn type_desc_to_trait(
             resolve_concrete_trait_named_thing(context, named_thing, desc)
         }
         ast::TypeDesc::Path(path) => {
-            let named_thing = context.resolve_path(path, desc.span);
-            resolve_concrete_trait_named_thing(context, named_thing, desc)
+            let named_thing = context.resolve_path(path, desc.span)?;
+            resolve_concrete_trait_named_thing(context, Some(named_thing), desc)
         }
         // generic will need to allow for paths too
         ast::TypeDesc::Generic { base, .. } => {

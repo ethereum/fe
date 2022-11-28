@@ -71,14 +71,12 @@ pub enum TokenKind {
     Const,
     #[token("else")]
     Else,
-    #[token("emit")]
-    Emit,
-    #[token("event")]
-    Event,
     #[token("idx")]
     Idx,
     #[token("if")]
     If,
+    #[token("match")]
+    Match,
     #[token("impl")]
     Impl,
     #[token("pragma")]
@@ -95,6 +93,8 @@ pub enum TokenKind {
     SelfValue,
     #[token("struct")]
     Struct,
+    #[token("enum")]
+    Enum,
     #[token("trait")]
     Trait,
     #[token("type")]
@@ -116,6 +116,8 @@ pub enum TokenKind {
     Or,
     #[token("let")]
     Let,
+    #[token("mut")]
+    Mut,
     #[token("use")]
     Use,
     // Symbols
@@ -137,6 +139,8 @@ pub enum TokenKind {
     ColonColon,
     #[token(",")]
     Comma,
+    #[token("#")]
+    Hash,
     #[token(";")]
     Semi,
     #[token("+")]
@@ -163,6 +167,8 @@ pub enum TokenKind {
     Eq,
     #[token(".")]
     Dot,
+    #[token("..")]
+    DotDot,
     #[token("%")]
     Percent,
     #[token("==")]
@@ -203,6 +209,8 @@ pub enum TokenKind {
     GtGtEq,
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
 }
 
 impl TokenKind {
@@ -229,11 +237,11 @@ impl TokenKind {
             Fn => "keyword `fn`",
             Const => "keyword `const`",
             Let => "keyword `let`",
+            Mut => "keyword `mut`",
             Else => "keyword `else`",
-            Emit => "keyword `emit`",
-            Event => "keyword `event`",
             Idx => "keyword `idx`",
             If => "keyword `if`",
+            Match => "keyword `match`",
             Impl => "keyword `impl`",
             Pragma => "keyword `pragma`",
             For => "keyword `for`",
@@ -242,6 +250,7 @@ impl TokenKind {
             Revert => "keyword `revert`",
             SelfValue => "keyword `self`",
             Struct => "keyword `struct`",
+            Enum => "keyword `enum`",
             Trait => "keyword `trait`",
             Type => "keyword `type`",
             Unsafe => "keyword `unsafe`",
@@ -261,6 +270,7 @@ impl TokenKind {
             Colon => "symbol `:`",
             ColonColon => "symbol `::`",
             Comma => "symbol `,`",
+            Hash => "symbol `#`",
             Semi => "symbol `;`",
             Plus => "symbol `+`",
             Minus => "symbol `-`",
@@ -274,6 +284,7 @@ impl TokenKind {
             GtGt => "symbol `>>`",
             Eq => "symbol `=`",
             Dot => "symbol `.`",
+            DotDot => "symbol `..`",
             Percent => "symbol `%`",
             EqEq => "symbol `==`",
             NotEq => "symbol `!=`",
@@ -294,6 +305,7 @@ impl TokenKind {
             LtLtEq => "symbol `<<=`",
             GtGtEq => "symbol `>>=`",
             Arrow => "symbol `->`",
+            FatArrow => "symbol `=>`",
 
             Error => unreachable!(), // TODO this is reachable
         }

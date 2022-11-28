@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::{
     db::AnalyzerDbStorage,
@@ -6,6 +6,7 @@ use fe_analyzer::{
     AnalyzerDb,
 };
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
+use smol_str::SmolStr;
 
 use crate::ir::{self, ConstantId, TypeId};
 
@@ -38,10 +39,14 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
         struct_: analyzer_items::StructId,
     ) -> Rc<Vec<ir::FunctionId>>;
 
+    #[salsa::invoke(queries::enums::mir_lower_enum_all_functions)]
+    fn mir_lower_enum_all_functions(
+        &self,
+        enum_: analyzer_items::EnumId,
+    ) -> Rc<Vec<ir::FunctionId>>;
+
     #[salsa::invoke(queries::types::mir_lowered_type)]
     fn mir_lowered_type(&self, analyzer_type: analyzer_types::TypeId) -> TypeId;
-    #[salsa::invoke(queries::types::mir_lowered_event_type)]
-    fn mir_lowered_event_type(&self, analyzer_type: analyzer_items::EventId) -> TypeId;
 
     #[salsa::invoke(queries::constant::mir_lowered_constant)]
     fn mir_lowered_constant(&self, analyzer_const: analyzer_items::ModuleConstantId) -> ConstantId;
@@ -55,7 +60,12 @@ pub trait MirDb: AnalyzerDb + Upcast<dyn AnalyzerDb> + UpcastMut<dyn AnalyzerDb>
     fn mir_lowered_monomorphized_func_signature(
         &self,
         analyzer_func: analyzer_items::FunctionId,
-        concrete_args: Vec<analyzer_types::TypeId>,
+        resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
+    ) -> ir::FunctionId;
+    #[salsa::invoke(queries::function::mir_lowered_pseudo_monomorphized_func_signature)]
+    fn mir_lowered_pseudo_monomorphized_func_signature(
+        &self,
+        analyzer_func: analyzer_items::FunctionId,
     ) -> ir::FunctionId;
     #[salsa::invoke(queries::function::mir_lowered_func_body)]
     fn mir_lowered_func_body(&self, func: ir::FunctionId) -> Rc<ir::FunctionBody>;

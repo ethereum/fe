@@ -1,0 +1,20 @@
+pub enum MyEnum {
+    UnitTuple()
+    Tuple(i32, u256)
+}
+
+contract Foo {
+    pub fn enum_ret(x: i32, y: u256) -> MyEnum {
+        let tuple: MyEnum = MyEnum::Tuple(x, y)
+        return tuple
+    }
+    
+    pub fn enum_arg(x: i32, y: MyEnum) {
+        return
+    }
+
+    fn priv(x: i32, y: u256) -> MyEnum {
+        let tuple: MyEnum = MyEnum::Tuple(x, y)
+        return tuple
+    }
+}

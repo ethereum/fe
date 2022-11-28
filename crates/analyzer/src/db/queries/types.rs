@@ -11,15 +11,17 @@ use crate::namespace::types::{self, TypeId};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 
-/// Returns all `impl` for the given type from the current ingot as well as dependency ingots
+/// Returns all `impl` for the given type from the current ingot as well as
+/// dependency ingots
 pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
+    let ty = ty.deref(db);
+
     let ingot_modules = db
         .root_ingot()
         .all_modules(db)
         .iter()
         .flat_map(|module_id| module_id.all_impls(db).to_vec())
         .collect::<Vec<_>>();
-
     db.ingot_external_ingots(db.root_ingot())
         .values()
         .flat_map(|ingot| ingot.all_modules(db).to_vec())
@@ -37,7 +39,7 @@ pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplI
 }
 
 pub fn function_sigs(db: &dyn AnalyzerDb, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]> {
-    ty.get_all_impls(db)
+    db.all_impls(ty)
         .iter()
         .filter_map(|impl_| impl_.function(db, &name))
         .map(|fun| fun.sig(db))
@@ -60,7 +62,7 @@ pub fn type_alias_type_cycle(
     _cycle: &[String],
     alias: &TypeAliasId,
 ) -> Analysis<Result<types::TypeId, TypeError>> {
-    let mut context = TempContext::default();
+    let context = TempContext::default();
     let err = Err(TypeError::new(context.error(
         "recursive type definition",
         alias.data(db).ast.span,

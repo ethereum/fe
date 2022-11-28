@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_const_fn), module::parse_module,\n           \"contract C {\\n const fn f() {}\\n}\")"
+expression: "err_string(stringify!(contract_const_fn), module::parse_module,\n    \"contract C {\\n const fn f() {}\\n}\")"
 
 ---
 error: `const` qualifier can't be used with function definitions

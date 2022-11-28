@@ -15,56 +15,56 @@ note:
 4 │ ╭     pub fn read_bar(self, key: u128) -> u128 {
 5 │ │         return self.bar[key]
 6 │ │     }
-  │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u128 }] -> u128
+  │ ╰─────^ params: [self, { label: None, name: key, typ: u128 }] -> u128
 
 note: 
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^ Foo: Value
+  │                ^^^^ Foo
 
 note: 
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u128: Value
+  │                ^^^^^^^^ ^^^ u128
   │                │         
-  │                Map<u128, u128>: Storage { nonce: Some(0) }
+  │                SPtr<Map<u128, u128>>
 
 note: 
   ┌─ u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u128: Storage { nonce: None } => Value
+  │                ^^^^^^^^^^^^^ SPtr<u128> -Load-> u128
 
 note: 
    ┌─ u128_u128_map.fe:8:5
    │  
- 8 │ ╭     pub fn write_bar(self, key: u128, value: u128) {
+ 8 │ ╭     pub fn write_bar(mut self, key: u128, value: u128) {
  9 │ │         self.bar[key] = value
 10 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [{ label: None, name: key, typ: u128 }, { label: None, name: value, typ: u128 }] -> ()
+   │ ╰─────^ params: [mut self, { label: None, name: key, typ: u128 }, { label: None, name: value, typ: u128 }] -> ()
 
 note: 
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^ Foo: Value
+  │         ^^^^ mut Foo
 
 note: 
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u128: Value
+  │         ^^^^^^^^ ^^^ u128
   │         │         
-  │         Map<u128, u128>: Storage { nonce: Some(0) }
+  │         mut SPtr<Map<u128, u128>>
 
 note: 
   ┌─ u128_u128_map.fe:9:9
   │
 9 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u128: Value
+  │         ^^^^^^^^^^^^^   ^^^^^ u128
   │         │                
-  │         u128: Storage { nonce: None }
+  │         mut SPtr<u128>
 
 

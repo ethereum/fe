@@ -15,7 +15,7 @@ struct MyStruct {
 contract Foo {
     my_struct: MyStruct
 
-    pub fn bar(self, val: u256) -> u256 {
+    pub fn bar(mut self, val: u256) -> u256 {
         self.my_struct = MyStruct::new(x: val)
         return Lib::square(x: self.my_struct.x)
     }

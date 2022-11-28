@@ -1,29 +1,39 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_level_events), try_parse_module,\n    r#\"\nevent Transfer {\n    idx sender: address\n    idx receiver: address\n    value: u256\n}\ncontract Foo {\n    fn transfer(ctx: Context, to: address, value: u256) {\n        emit Transfer(ctx, sender: msg.sender, receiver: to, value)\n    }\n}\n\"#)"
+expression: "ast_string(stringify!(module_level_events), try_parse_module,\n    r#\"\nstruct Transfer {\n    #indexed\n    sender: address\n    #indexed\n    receiver: address\n    value: u256\n}\ncontract Foo {\n    fn transfer(ctx: Context, to: address, value: u256) {\n        ctx.emit(Transfer(sender: msg.sender, receiver: to, value))\n    }\n}\n\"#)"
 
 ---
 Node(
   kind: Module(
     body: [
-      Event(Node(
-        kind: Event(
+      Struct(Node(
+        kind: Struct(
           name: Node(
             kind: "Transfer",
             span: Span(
-              start: 7,
-              end: 15,
+              start: 8,
+              end: 16,
             ),
           ),
           fields: [
             Node(
-              kind: EventField(
-                is_idx: true,
+              kind: Field(
+                is_pub: false,
+                is_const: false,
+                attributes: [
+                  Node(
+                    kind: "indexed",
+                    span: Span(
+                      start: 23,
+                      end: 31,
+                    ),
+                  ),
+                ],
                 name: Node(
                   kind: "sender",
                   span: Span(
-                    start: 26,
-                    end: 32,
+                    start: 36,
+                    end: 42,
                   ),
                 ),
                 typ: Node(
@@ -31,24 +41,35 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 34,
-                    end: 41,
+                    start: 44,
+                    end: 51,
                   ),
                 ),
+                value: None,
               ),
               span: Span(
-                start: 22,
-                end: 41,
+                start: 36,
+                end: 51,
               ),
             ),
             Node(
-              kind: EventField(
-                is_idx: true,
+              kind: Field(
+                is_pub: false,
+                is_const: false,
+                attributes: [
+                  Node(
+                    kind: "indexed",
+                    span: Span(
+                      start: 56,
+                      end: 64,
+                    ),
+                  ),
+                ],
                 name: Node(
                   kind: "receiver",
                   span: Span(
-                    start: 50,
-                    end: 58,
+                    start: 69,
+                    end: 77,
                   ),
                 ),
                 typ: Node(
@@ -56,24 +77,27 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 60,
-                    end: 67,
+                    start: 79,
+                    end: 86,
                   ),
                 ),
+                value: None,
               ),
               span: Span(
-                start: 46,
-                end: 67,
+                start: 69,
+                end: 86,
               ),
             ),
             Node(
-              kind: EventField(
-                is_idx: false,
+              kind: Field(
+                is_pub: false,
+                is_const: false,
+                attributes: [],
                 name: Node(
                   kind: "value",
                   span: Span(
-                    start: 72,
-                    end: 77,
+                    start: 91,
+                    end: 96,
                   ),
                 ),
                 typ: Node(
@@ -81,22 +105,24 @@ Node(
                     base: "u256",
                   ),
                   span: Span(
-                    start: 79,
-                    end: 83,
+                    start: 98,
+                    end: 102,
                   ),
                 ),
+                value: None,
               ),
               span: Span(
-                start: 72,
-                end: 83,
+                start: 91,
+                end: 102,
               ),
             ),
           ],
+          functions: [],
           pub_qual: None,
         ),
         span: Span(
           start: 1,
-          end: 85,
+          end: 104,
         ),
       )),
       Contract(Node(
@@ -104,8 +130,8 @@ Node(
           name: Node(
             kind: "Foo",
             span: Span(
-              start: 95,
-              end: 98,
+              start: 114,
+              end: 117,
             ),
           ),
           fields: [],
@@ -119,26 +145,27 @@ Node(
                     name: Node(
                       kind: "transfer",
                       span: Span(
-                        start: 108,
-                        end: 116,
+                        start: 127,
+                        end: 135,
                       ),
                     ),
                     generic_params: Node(
                       kind: [],
                       span: Span(
-                        start: 108,
-                        end: 116,
+                        start: 127,
+                        end: 135,
                       ),
                     ),
                     args: [
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "ctx",
                             span: Span(
-                              start: 117,
-                              end: 120,
+                              start: 136,
+                              end: 139,
                             ),
                           ),
                           typ: Node(
@@ -146,24 +173,25 @@ Node(
                               base: "Context",
                             ),
                             span: Span(
-                              start: 122,
-                              end: 129,
+                              start: 141,
+                              end: 148,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
-                          start: 117,
-                          end: 129,
+                          start: 136,
+                          end: 148,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "to",
                             span: Span(
-                              start: 131,
-                              end: 133,
+                              start: 150,
+                              end: 152,
                             ),
                           ),
                           typ: Node(
@@ -171,24 +199,25 @@ Node(
                               base: "address",
                             ),
                             span: Span(
-                              start: 135,
-                              end: 142,
+                              start: 154,
+                              end: 161,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
-                          start: 131,
-                          end: 142,
+                          start: 150,
+                          end: 161,
                         ),
                       ),
                       Node(
-                        kind: Regular(RegularFunctionArg(
+                        kind: Regular(
+                          mut_: None,
                           label: None,
                           name: Node(
                             kind: "value",
                             span: Span(
-                              start: 144,
-                              end: 149,
+                              start: 163,
+                              end: 168,
                             ),
                           ),
                           typ: Node(
@@ -196,158 +225,199 @@ Node(
                               base: "u256",
                             ),
                             span: Span(
-                              start: 151,
-                              end: 155,
+                              start: 170,
+                              end: 174,
                             ),
                           ),
-                        )),
+                        ),
                         span: Span(
-                          start: 144,
-                          end: 155,
+                          start: 163,
+                          end: 174,
                         ),
                       ),
                     ],
                     return_type: None,
                   ),
                   span: Span(
-                    start: 105,
-                    end: 156,
+                    start: 124,
+                    end: 175,
                   ),
                 ),
                 body: [
                   Node(
-                    kind: Emit(
-                      name: Node(
-                        kind: "Transfer",
-                        span: Span(
-                          start: 172,
-                          end: 180,
-                        ),
-                      ),
-                      args: Node(
-                        kind: [
-                          Node(
-                            kind: CallArg(
-                              label: None,
+                    kind: Expr(
+                      value: Node(
+                        kind: Call(
+                          func: Node(
+                            kind: Attribute(
                               value: Node(
                                 kind: Name("ctx"),
                                 span: Span(
-                                  start: 181,
-                                  end: 184,
+                                  start: 186,
+                                  end: 189,
                                 ),
                               ),
-                            ),
-                            span: Span(
-                              start: 181,
-                              end: 184,
-                            ),
-                          ),
-                          Node(
-                            kind: CallArg(
-                              label: Some(Node(
-                                kind: "sender",
+                              attr: Node(
+                                kind: "emit",
                                 span: Span(
-                                  start: 186,
-                                  end: 192,
-                                ),
-                              )),
-                              value: Node(
-                                kind: Attribute(
-                                  value: Node(
-                                    kind: Name("msg"),
-                                    span: Span(
-                                      start: 194,
-                                      end: 197,
-                                    ),
-                                  ),
-                                  attr: Node(
-                                    kind: "sender",
-                                    span: Span(
-                                      start: 198,
-                                      end: 204,
-                                    ),
-                                  ),
-                                ),
-                                span: Span(
-                                  start: 194,
-                                  end: 204,
+                                  start: 190,
+                                  end: 194,
                                 ),
                               ),
                             ),
                             span: Span(
                               start: 186,
-                              end: 204,
+                              end: 194,
                             ),
                           ),
-                          Node(
-                            kind: CallArg(
-                              label: Some(Node(
-                                kind: "receiver",
-                                span: Span(
-                                  start: 206,
-                                  end: 214,
+                          generic_args: None,
+                          args: Node(
+                            kind: [
+                              Node(
+                                kind: CallArg(
+                                  label: None,
+                                  value: Node(
+                                    kind: Call(
+                                      func: Node(
+                                        kind: Name("Transfer"),
+                                        span: Span(
+                                          start: 195,
+                                          end: 203,
+                                        ),
+                                      ),
+                                      generic_args: None,
+                                      args: Node(
+                                        kind: [
+                                          Node(
+                                            kind: CallArg(
+                                              label: Some(Node(
+                                                kind: "sender",
+                                                span: Span(
+                                                  start: 204,
+                                                  end: 210,
+                                                ),
+                                              )),
+                                              value: Node(
+                                                kind: Attribute(
+                                                  value: Node(
+                                                    kind: Name("msg"),
+                                                    span: Span(
+                                                      start: 212,
+                                                      end: 215,
+                                                    ),
+                                                  ),
+                                                  attr: Node(
+                                                    kind: "sender",
+                                                    span: Span(
+                                                      start: 216,
+                                                      end: 222,
+                                                    ),
+                                                  ),
+                                                ),
+                                                span: Span(
+                                                  start: 212,
+                                                  end: 222,
+                                                ),
+                                              ),
+                                            ),
+                                            span: Span(
+                                              start: 204,
+                                              end: 222,
+                                            ),
+                                          ),
+                                          Node(
+                                            kind: CallArg(
+                                              label: Some(Node(
+                                                kind: "receiver",
+                                                span: Span(
+                                                  start: 224,
+                                                  end: 232,
+                                                ),
+                                              )),
+                                              value: Node(
+                                                kind: Name("to"),
+                                                span: Span(
+                                                  start: 234,
+                                                  end: 236,
+                                                ),
+                                              ),
+                                            ),
+                                            span: Span(
+                                              start: 224,
+                                              end: 236,
+                                            ),
+                                          ),
+                                          Node(
+                                            kind: CallArg(
+                                              label: None,
+                                              value: Node(
+                                                kind: Name("value"),
+                                                span: Span(
+                                                  start: 238,
+                                                  end: 243,
+                                                ),
+                                              ),
+                                            ),
+                                            span: Span(
+                                              start: 238,
+                                              end: 243,
+                                            ),
+                                          ),
+                                        ],
+                                        span: Span(
+                                          start: 203,
+                                          end: 244,
+                                        ),
+                                      ),
+                                    ),
+                                    span: Span(
+                                      start: 195,
+                                      end: 244,
+                                    ),
+                                  ),
                                 ),
-                              )),
-                              value: Node(
-                                kind: Name("to"),
                                 span: Span(
-                                  start: 216,
-                                  end: 218,
+                                  start: 195,
+                                  end: 244,
                                 ),
                               ),
-                            ),
+                            ],
                             span: Span(
-                              start: 206,
-                              end: 218,
+                              start: 194,
+                              end: 245,
                             ),
                           ),
-                          Node(
-                            kind: CallArg(
-                              label: None,
-                              value: Node(
-                                kind: Name("value"),
-                                span: Span(
-                                  start: 220,
-                                  end: 225,
-                                ),
-                              ),
-                            ),
-                            span: Span(
-                              start: 220,
-                              end: 225,
-                            ),
-                          ),
-                        ],
+                        ),
                         span: Span(
-                          start: 180,
-                          end: 226,
+                          start: 186,
+                          end: 245,
                         ),
                       ),
                     ),
                     span: Span(
-                      start: 167,
-                      end: 226,
+                      start: 186,
+                      end: 245,
                     ),
                   ),
                 ],
               ),
               span: Span(
-                start: 105,
-                end: 232,
+                start: 124,
+                end: 251,
               ),
             )),
           ],
           pub_qual: None,
         ),
         span: Span(
-          start: 86,
-          end: 234,
+          start: 105,
+          end: 253,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 234,
+    end: 253,
   ),
 )

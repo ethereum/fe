@@ -9,19 +9,19 @@ note:
 2 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256 {
 3 │ │         return keccak256(val)
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: val, typ: Array<u8, 1> }] -> u256
+  │ ╰─────^ params: [{ label: None, name: val, typ: Array<u8, 1> }] -> u256
 
 note: 
   ┌─ keccak.fe:3:26
   │
 3 │         return keccak256(val)
-  │                          ^^^ Array<u8, 1>: Memory
+  │                          ^^^ Array<u8, 1>
 
 note: 
   ┌─ keccak.fe:3:16
   │
 3 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^ u256
 
 note: 
   ┌─ keccak.fe:6:5
@@ -29,19 +29,19 @@ note:
 6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256 {
 7 │ │         return keccak256(val)
 8 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: val, typ: Array<u8, 3> }] -> u256
+  │ ╰─────^ params: [{ label: None, name: val, typ: Array<u8, 3> }] -> u256
 
 note: 
   ┌─ keccak.fe:7:26
   │
 7 │         return keccak256(val)
-  │                          ^^^ Array<u8, 3>: Memory
+  │                          ^^^ Array<u8, 3>
 
 note: 
   ┌─ keccak.fe:7:16
   │
 7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ keccak.fe:10:5
@@ -49,18 +49,18 @@ note:
 10 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256 {
 11 │ │         return keccak256(val)
 12 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: val, typ: Array<u8, 32> }] -> u256
+   │ ╰─────^ params: [{ label: None, name: val, typ: Array<u8, 32> }] -> u256
 
 note: 
    ┌─ keccak.fe:11:26
    │
 11 │         return keccak256(val)
-   │                          ^^^ Array<u8, 32>: Memory
+   │                          ^^^ Array<u8, 32>
 
 note: 
    ┌─ keccak.fe:11:16
    │
 11 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ u256: Value
+   │                ^^^^^^^^^^^^^^ u256
 
 

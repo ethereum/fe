@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn bar() {}
-}
-
-contract Bar {
-    pub fn create_foo(ctx: Context) {
-        Foo(0)
-    }
-}

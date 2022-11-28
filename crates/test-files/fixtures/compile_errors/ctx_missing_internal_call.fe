@@ -5,7 +5,7 @@ contract Foo {
         return ctx.block_number()
     }
 
-    pub fn baz(self, ctx: Context) {
+    pub fn baz(mut self, ctx: Context) {
         self.favorite_number = bar()
     }
 }

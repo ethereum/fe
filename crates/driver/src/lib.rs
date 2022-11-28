@@ -157,8 +157,8 @@ fn compile_module_id(
     }
 
     Ok(CompiledModule {
-        src_ast: format!("{:?}", module_id.ast(db)),
-        lowered_ast: format!("{:?}", module_id.ast(db)),
+        src_ast: format!("{:#?}", module_id.ast(db)),
+        lowered_ast: format!("{:#?}", module_id.ast(db)),
         contracts,
     })
 }
@@ -186,8 +186,8 @@ fn compile_module_id(
     }
 
     Ok(CompiledModule {
-        src_ast: format!("{:?}", module_id.ast(db)),
-        lowered_ast: format!("{:?}", module_id.ast(db)),
+        src_ast: format!("{:#?}", module_id.ast(db)),
+        lowered_ast: format!("{:#?}", module_id.ast(db)),
         contracts,
     })
 }

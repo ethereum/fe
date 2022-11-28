@@ -3,12 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
 
 ---
-error: can't move value onto stack
+error: `+` operands must be numeric
   ┌─ compile_errors/cannot_move2.fe:5:34
   │
 5 │         let c: Array<u256, 20> = x + y
-  │                                  ^ Value to be moved
-  │
-  = Note: Can't move `Array<u256, 10>` types on the stack
+  │                                  ^   ^ this has type `Array<u256, 10>`
+  │                                  │    
+  │                                  this has type `Array<u256, 10>`
 
 

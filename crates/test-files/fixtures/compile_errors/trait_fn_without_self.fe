@@ -1,3 +1,0 @@
-trait Foo {
-    fn this_has_no_self();
-}

@@ -7,44 +7,44 @@ note:
   ┌─ return_array.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256) -> Array<u256, 5> {
-3 │ │         let my_array: Array<u256, 5> = [0; 5]
+3 │ │         let mut my_array: Array<u256, 5> = [0; 5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
 6 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: x, typ: u256 }] -> Array<u256, 5>
+  │ ╰─────^ params: [{ label: None, name: x, typ: u256 }] -> Array<u256, 5>
 
 note: 
-  ┌─ return_array.fe:3:13
+  ┌─ return_array.fe:3:17
   │
-3 │         let my_array: Array<u256, 5> = [0; 5]
-  │             ^^^^^^^^ Array<u256, 5>
+3 │         let mut my_array: Array<u256, 5> = [0; 5]
+  │                 ^^^^^^^^ mut Array<u256, 5>
 
 note: 
-  ┌─ return_array.fe:3:41
+  ┌─ return_array.fe:3:45
   │
-3 │         let my_array: Array<u256, 5> = [0; 5]
-  │                                         ^  ^ u256: Value
-  │                                         │   
-  │                                         u256: Value
+3 │         let mut my_array: Array<u256, 5> = [0; 5]
+  │                                             ^  ^ u256
+  │                                             │   
+  │                                             u256
 
 note: 
-  ┌─ return_array.fe:3:40
+  ┌─ return_array.fe:3:44
   │
-3 │         let my_array: Array<u256, 5> = [0; 5]
-  │                                        ^^^^^^ Array<u256, 5>: Memory
+3 │         let mut my_array: Array<u256, 5> = [0; 5]
+  │                                            ^^^^^^ Array<u256, 5>
 4 │         my_array[3] = x
-  │         ^^^^^^^^ ^ u256: Value
+  │         ^^^^^^^^ ^ u256
   │         │         
-  │         Array<u256, 5>: Memory
+  │         mut Array<u256, 5>
 
 note: 
   ┌─ return_array.fe:4:9
   │
 4 │         my_array[3] = x
-  │         ^^^^^^^^^^^   ^ u256: Value
+  │         ^^^^^^^^^^^   ^ u256
   │         │              
-  │         u256: Memory
+  │         mut u256
 5 │         return my_array
-  │                ^^^^^^^^ Array<u256, 5>: Memory
+  │                ^^^^^^^^ mut Array<u256, 5>
 
 

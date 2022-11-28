@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 write_num([Uint(68)]) used 22210 gas
 read_num([]) used 265 gas

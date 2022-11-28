@@ -17,16 +17,15 @@ struct MyStruct {
 
 struct EmptyType {}
 
+struct MyEvent {
+    #indexed
+    field1: bool
+    field2: String<42>
+}
+
 contract Foo {
     field1: Map<u256, bool>
     field2: bool
-
-    event EmptyEvent {}
-
-    event MyEvent {
-        idx field1: bool
-        field2: String<42>
-    }
 
     pub fn my_func() {
         std::solidity::bytes2::from_array([1, 2])

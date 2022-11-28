@@ -1,16 +1,17 @@
-contract Foo {
-    event MyEvent {
-        s2: String<26>
-        u: u256
-        s1: String<42>
-        s3: String<100>
-        a: address
-        s4: String<18>
-        s5: String<100>
-    }
+struct MyEvent {
+    pub s2: String<26>
+    pub u: u256
+    pub s1: String<42>
+    pub s3: String<100>
+    pub a: address
+    pub s4: String<18>
+    pub s5: String<100>
+}
 
-    pub fn __init__(ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>) {
-        emit MyEvent(ctx, s2, u, s1, s3, a, s4: "static string", s5: String<100>("foo"))
+contract Foo {
+
+    pub fn __init__(mut ctx: Context, s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>) {
+        ctx.emit(MyEvent(s2, u, s1, s3, a, s4: "static string", s5: String<100>("foo")))
     }
 
     pub fn bar(s1: String<100>, s2: String<100>) -> String<100> {

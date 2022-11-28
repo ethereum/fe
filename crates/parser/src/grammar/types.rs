@@ -1,4 +1,6 @@
-use crate::ast::{self, EventField, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc};
+use crate::ast::{
+    self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
+};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
 use crate::node::{Node, Span};
@@ -14,7 +16,7 @@ use vec1::Vec1;
 /// Panics if the next token isn't `struct`.
 pub fn parse_struct_def(
     par: &mut Parser,
-    struct_pub_qual: Option<Span>,
+    pub_qual: Option<Span>,
 ) -> ParseResult<Node<ast::Struct>> {
     let struct_tok = par.assert(TokenKind::Struct);
     let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
@@ -25,12 +27,25 @@ pub fn parse_struct_def(
     let mut fields = vec![];
     let mut functions = vec![];
     par.enter_block(span, "struct body must start with `{`")?;
+
     loop {
         par.eat_newlines();
+
+        let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
+            let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
+                vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
+            // This hints to a future where we would support multiple attributes per field. For now we don't need it.
+            vec![Node::new(attr_name.text.into(), attr.span + attr_name.span)]
+        } else {
+            vec![]
+        };
+
+        par.eat_newlines();
+
         let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
         match par.peek_or_err()? {
             TokenKind::Name => {
-                let field = parse_field(par, pub_qual, None)?;
+                let field = parse_field(par, attributes, pub_qual, None)?;
                 if !functions.is_empty() {
                     par.error(
                         field.span,
@@ -42,7 +57,7 @@ pub fn parse_struct_def(
             TokenKind::Fn | TokenKind::Unsafe => {
                 functions.push(parse_fn_def(par, pub_qual)?);
             }
-            TokenKind::BraceClose => {
+            TokenKind::BraceClose if pub_qual.is_none() => {
                 span += par.next()?.span;
                 break;
             }
@@ -58,7 +73,81 @@ pub fn parse_struct_def(
             name: name.into(),
             fields,
             functions,
-            pub_qual: struct_pub_qual,
+            pub_qual,
+        },
+        span,
+    ))
+}
+
+/// Parse a [`ModuleStmt::Enum`].
+/// # Panics
+/// Panics if the next token isn't [`TokenKind::Enum`].
+pub fn parse_enum_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Enum>> {
+    let enum_tok = par.assert(TokenKind::Enum);
+    let name = par.expect_with_notes(
+        TokenKind::Name,
+        "failed to parse enum definition",
+        |_| vec!["Note: `enum` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
+    )?;
+
+    let mut span = enum_tok.span + name.span;
+    let mut variants = vec![];
+    let mut functions = vec![];
+
+    par.enter_block(span, "enum definition")?;
+    loop {
+        par.eat_newlines();
+        match par.peek_or_err()? {
+            TokenKind::Name => {
+                let variant = parse_variant(par)?;
+                if !functions.is_empty() {
+                    par.error(
+                        variant.span,
+                        "enum variant definitions must come before any function definitions",
+                    );
+                }
+                variants.push(variant);
+            }
+
+            TokenKind::Fn | TokenKind::Unsafe => {
+                functions.push(parse_fn_def(par, None)?);
+            }
+
+            TokenKind::Pub => {
+                let pub_qual = Some(par.next().unwrap().span);
+                match par.peek() {
+                    Some(TokenKind::Fn | TokenKind::Unsafe) => {
+                        functions.push(parse_fn_def(par, pub_qual)?);
+                    }
+
+                    _ => {
+                        par.error(
+                            pub_qual.unwrap(),
+                            "expected `fn` or `unsafe fn` after `pub`",
+                        );
+                    }
+                }
+            }
+
+            TokenKind::BraceClose => {
+                span += par.next()?.span;
+                break;
+            }
+
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(&tok, "failed to parse enum definition body", vec![]);
+                return Err(ParseFailed);
+            }
+        };
+    }
+
+    Ok(Node::new(
+        ast::Enum {
+            name: name.into(),
+            variants,
+            functions,
+            pub_qual,
         },
         span,
     ))
@@ -67,7 +156,7 @@ pub fn parse_struct_def(
 /// Parse a trait definition.
 /// # Panics
 /// Panics if the next token isn't `trait`.
-pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseResult<Node<Trait>> {
+pub fn parse_trait_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Trait>> {
     let trait_tok = par.assert(TokenKind::Trait);
 
     // trait Event {}
@@ -105,12 +194,12 @@ pub fn parse_trait_def(par: &mut Parser, trait_pub_qual: Option<Span>) -> ParseR
         };
     }
 
-    let span = header_span + trait_pub_qual;
+    let span = header_span + pub_qual;
     Ok(Node::new(
         Trait {
             name: Node::new(trait_name.text.into(), trait_name.span),
             functions,
-            pub_qual: trait_pub_qual,
+            pub_qual,
         },
         span,
     ))
@@ -196,77 +285,11 @@ pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult
     ))
 }
 
-/// Parse an event definition.
-/// # Panics
-/// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ast::Event>> {
-    use TokenKind::*;
-
-    let event_tok = par.assert(Event);
-    let name = par.expect(Name, "failed to parse event definition")?;
-    par.enter_block(event_tok.span + name.span, "event definition")?;
-
-    let mut span = event_tok.span;
-    let mut fields = vec![];
-    loop {
-        match par.peek_or_err()? {
-            Name | Idx => {
-                fields.push(parse_event_field(par)?);
-            }
-            BraceClose => {
-                span += par.next()?.span;
-                break;
-            }
-            _ => {
-                let tok = par.next()?;
-                par.unexpected_token_error(&tok, "failed to parse event definition", vec![]);
-                return Err(ParseFailed);
-            }
-        }
-    }
-    Ok(Node::new(
-        ast::Event {
-            name: name.into(),
-            fields,
-            pub_qual,
-        },
-        span,
-    ))
-}
-
-/// Parse an event field, e.g. `foo: u8` or `idx from: address`.
-pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
-    let idx_qual = parse_opt_qualifier(par, TokenKind::Idx);
-    let name = par.expect(TokenKind::Name, "failed to parse event field")?;
-    par.expect_with_notes(TokenKind::Colon, "failed to parse event field", |_| {
-        vec![
-            "Note: event field name must be followed by a colon and a type description".into(),
-            format!(
-                "Example: `{}{}: address`",
-                if idx_qual.is_some() { "idx " } else { "" },
-                name.text
-            ),
-        ]
-    })?;
-
-    let typ = parse_type_desc(par)?;
-    par.expect_stmt_end("event field")?;
-    let span = name.span + idx_qual + &typ;
-    Ok(Node::new(
-        EventField {
-            is_idx: idx_qual.is_some(),
-            name: name.into(),
-            typ,
-        },
-        span,
-    ))
-}
-
 /// Parse a field for a struct or contract. The leading optional `pub` and
 /// `const` qualifiers must be parsed by the caller, and passed in.
-/// Note that `event` fields are handled in [`parse_event_field`].
 pub fn parse_field(
     par: &mut Parser,
+    attributes: Vec<Node<SmolStr>>,
     pub_qual: Option<Span>,
     const_qual: Option<Span>,
 ) -> ParseResult<Node<Field>> {
@@ -309,9 +332,63 @@ pub fn parse_field(
         Field {
             is_pub: pub_qual.is_some(),
             is_const: const_qual.is_some(),
+            attributes,
             name: name.into(),
             typ,
             value,
+        },
+        span,
+    ))
+}
+
+/// Parse a variant for a enum definition.
+/// # Panics
+/// Panics if the next token isn't [`TokenKind::Name`].
+pub fn parse_variant(par: &mut Parser) -> ParseResult<Node<Variant>> {
+    let name = par.expect(TokenKind::Name, "failed to parse enum variant")?;
+    let mut span = name.span;
+
+    let kind = match par.peek_or_err()? {
+        TokenKind::ParenOpen => {
+            span += par.next().unwrap().span;
+            let mut tys = vec![];
+            loop {
+                match par.peek_or_err()? {
+                    TokenKind::ParenClose => {
+                        span += par.next().unwrap().span;
+                        break;
+                    }
+
+                    _ => {
+                        let ty = parse_type_desc(par)?;
+                        span += ty.span;
+                        tys.push(ty);
+                        if par.peek_or_err()? == TokenKind::Comma {
+                            par.next()?;
+                        } else {
+                            span += par
+                                .expect(
+                                    TokenKind::ParenClose,
+                                    "unexpected token while parsing enum variant",
+                                )?
+                                .span;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            VariantKind::Tuple(tys)
+        }
+
+        _ => VariantKind::Unit,
+    };
+
+    par.expect_stmt_end("enum variant")?;
+    Ok(Node::new(
+        Variant {
+            name: name.into(),
+            kind,
         },
         span,
     ))

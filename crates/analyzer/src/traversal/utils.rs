@@ -13,7 +13,7 @@ fn type_label(db: &dyn AnalyzerDb, span: Span, typ: TypeId) -> Label {
 }
 
 pub fn add_bin_operations_errors(
-    context: &mut dyn AnalyzerContext,
+    context: &dyn AnalyzerContext,
     op: &dyn Display,
     lspan: Span,
     ltype: TypeId,
@@ -22,6 +22,9 @@ pub fn add_bin_operations_errors(
     error: BinaryOperationError,
 ) -> DiagnosticVoucher {
     let db = context.db();
+    let ltype = ltype.deref(db);
+    let rtype = rtype.deref(db);
+
     match error {
         BinaryOperationError::NotEqualAndUnsigned => context.fancy_error(
             &format!("`{}` operand types must be equal and unsigned", op),
@@ -47,8 +50,8 @@ pub fn add_bin_operations_errors(
                 ltype.display(db)
             )],
         ),
-        BinaryOperationError::TypesNotEqual => context.fancy_error(
-            &format!("`{}` operand types must be equal", op),
+        BinaryOperationError::TypesNotCompatible => context.fancy_error(
+            &format!("`{}` operand types are not compatible", op),
             vec![type_label(db, lspan, ltype), type_label(db, rspan, rtype)],
             vec![],
         ),

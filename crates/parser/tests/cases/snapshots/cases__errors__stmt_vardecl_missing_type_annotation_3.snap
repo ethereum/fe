@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(stmt_vardecl_missing_type_annotation_3),\n           functions::parse_stmt, true, \"let x:\")"
+expression: "err_string(stringify!(stmt_vardecl_missing_type_annotation_3),\n    functions::parse_stmt, \"let x:\")"
 
 ---
 error: unexpected end of file

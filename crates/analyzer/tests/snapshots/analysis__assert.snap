@@ -17,21 +17,21 @@ note:
 5 │ ╭     pub fn bar(baz: u256) {
 6 │ │         assert baz > 5
 7 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }] -> ()
+  │ ╰─────^ params: [{ label: None, name: baz, typ: u256 }] -> ()
 
 note: 
   ┌─ assert.fe:6:16
   │
 6 │         assert baz > 5
-  │                ^^^   ^ u256: Value
+  │                ^^^   ^ u256
   │                │      
-  │                u256: Value
+  │                u256
 
 note: 
   ┌─ assert.fe:6:16
   │
 6 │         assert baz > 5
-  │                ^^^^^^^ bool: Value
+  │                ^^^^^^^ bool
 
 note: 
    ┌─ assert.fe:9:5
@@ -39,23 +39,23 @@ note:
  9 │ ╭     pub fn revert_with_static_string(baz: u256) {
 10 │ │         assert baz > 5, "Must be greater than five"
 11 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }] -> ()
+   │ ╰─────^ params: [{ label: None, name: baz, typ: u256 }] -> ()
 
 note: 
    ┌─ assert.fe:10:16
    │
 10 │         assert baz > 5, "Must be greater than five"
-   │                ^^^   ^ u256: Value
+   │                ^^^   ^ u256
    │                │      
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ assert.fe:10:16
    │
 10 │         assert baz > 5, "Must be greater than five"
-   │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory
+   │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>
    │                │         
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:13:5
@@ -63,92 +63,92 @@ note:
 13 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>) {
 14 │ │         assert baz > 5, reason
 15 │ │     }
-   │ ╰─────^ self: None, params: [{ label: None, name: baz, typ: u256 }, { label: None, name: reason, typ: String<1000> }] -> ()
+   │ ╰─────^ params: [{ label: None, name: baz, typ: u256 }, { label: None, name: reason, typ: String<1000> }] -> ()
 
 note: 
    ┌─ assert.fe:14:16
    │
 14 │         assert baz > 5, reason
-   │                ^^^   ^ u256: Value
+   │                ^^^   ^ u256
    │                │      
-   │                u256: Value
+   │                u256
 
 note: 
    ┌─ assert.fe:14:16
    │
 14 │         assert baz > 5, reason
-   │                ^^^^^^^  ^^^^^^ String<1000>: Memory
+   │                ^^^^^^^  ^^^^^^ String<1000>
    │                │         
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:17:5
    │  
-17 │ ╭     pub fn assert_sto_bool(self) {
+17 │ ╭     pub fn assert_sto_bool(mut self) {
 18 │ │         self.my_bool = false
 19 │ │         assert self.my_bool
 20 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [mut self] -> ()
 
 note: 
    ┌─ assert.fe:18:9
    │
 18 │         self.my_bool = false
-   │         ^^^^ Foo: Value
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ assert.fe:18:9
    │
 18 │         self.my_bool = false
-   │         ^^^^^^^^^^^^   ^^^^^ bool: Value
+   │         ^^^^^^^^^^^^   ^^^^^ bool
    │         │               
-   │         bool: Storage { nonce: Some(0) }
+   │         mut SPtr<bool>
 19 │         assert self.my_bool
-   │                ^^^^ Foo: Value
+   │                ^^^^ mut Foo
 
 note: 
    ┌─ assert.fe:19:16
    │
 19 │         assert self.my_bool
-   │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Value
+   │                ^^^^^^^^^^^^ mut SPtr<bool> -Load-> bool
 
 note: 
    ┌─ assert.fe:22:5
    │  
-22 │ ╭     pub fn assert_sto_string_msg(self) {
+22 │ ╭     pub fn assert_sto_string_msg(mut self) {
 23 │ │         self.my_string = "hello"
 24 │ │         assert false, self.my_string.to_mem()
 25 │ │     }
-   │ ╰─────^ self: Some(Mutable), params: [] -> ()
+   │ ╰─────^ params: [mut self] -> ()
 
 note: 
    ┌─ assert.fe:23:9
    │
 23 │         self.my_string = "hello"
-   │         ^^^^ Foo: Value
+   │         ^^^^ mut Foo
 
 note: 
    ┌─ assert.fe:23:9
    │
 23 │         self.my_string = "hello"
-   │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>: Memory
+   │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>
    │         │                 
-   │         String<5>: Storage { nonce: Some(1) }
+   │         mut SPtr<String<5>>
 24 │         assert false, self.my_string.to_mem()
-   │                ^^^^^  ^^^^ Foo: Value
+   │                ^^^^^  ^^^^ mut Foo
    │                │       
-   │                bool: Value
+   │                bool
 
 note: 
    ┌─ assert.fe:24:23
    │
 24 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) }
+   │                       ^^^^^^^^^^^^^^ mut SPtr<String<5>>
 
 note: 
    ┌─ assert.fe:24:23
    │
 24 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => Memory
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ String<5>
 
 

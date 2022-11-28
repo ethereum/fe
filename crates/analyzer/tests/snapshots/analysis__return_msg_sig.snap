@@ -9,18 +9,18 @@ note:
 2 │ ╭     pub fn bar(ctx: Context) -> u256 {
 3 │ │         return ctx.msg_sig()
 4 │ │     }
-  │ ╰─────^ self: None, params: [{ label: None, name: ctx, typ: Context }] -> u256
+  │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
   ┌─ return_msg_sig.fe:3:16
   │
 3 │         return ctx.msg_sig()
-  │                ^^^ Context: Memory
+  │                ^^^ Context
 
 note: 
   ┌─ return_msg_sig.fe:3:16
   │
 3 │         return ctx.msg_sig()
-  │                ^^^^^^^^^^^^^ u256: Value
+  │                ^^^^^^^^^^^^^ u256
 
 

@@ -21,7 +21,6 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_WhileStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_IfStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_AssertStatement_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; | [_EmitStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_BreakStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_ContinueStatement_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_RevertStatement_]\
@@ -74,7 +73,7 @@ fn add(_ x: u256, _ y: u256) -> u256 {
 contract CoolCoin {
     balance: Map<address, u256>
 
-    fn transfer(self, from sender: address, to recipient: address, value: u256) -> bool {
+    fn transfer(mut self, from sender: address, to recipient: address, value: u256) -> bool {
         if self.balance[sender] < value {
             return false
         }
@@ -82,7 +81,7 @@ contract CoolCoin {
         self.balance[recipient] += value
         return true
     }
-    pub fn demo(self) {
+    pub fn demo(mut self) {
         let ann: address = address(0xaa)
         let bob: address = address(0xbb)
         self.balance[ann] = 100
@@ -159,7 +158,6 @@ let ok: bool = self.transfer(from, to, value)
 [_WhileStatement_]: ../statements/for.md
 [_IfStatement_]: ../statements/if.md
 [_AssertStatement_]: ../statements/assert.md
-[_EmitStatement_]: ../statements/emit.md
 [_BreakStatement_]: ../statements/break.md
 [_ContinueStatement_]: ../statements/continue.md
 [_RevertStatement_]: ../statements/revert.md

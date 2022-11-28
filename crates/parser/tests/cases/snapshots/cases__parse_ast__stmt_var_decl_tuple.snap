@@ -1,10 +1,11 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_var_decl_tuple), functions::parse_stmt,\n           \"let (foo, bar): (u256, u256) = (10, 10)\")"
+expression: "ast_string(stringify!(stmt_var_decl_tuple), functions::parse_stmt,\n    \"let (foo, bar): (u256, u256) = (10, 10)\")"
 
 ---
 Node(
   kind: VarDecl(
+    mut_: None,
     target: Node(
       kind: Tuple([
         Node(

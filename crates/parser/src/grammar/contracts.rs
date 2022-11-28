@@ -1,5 +1,5 @@
 use super::functions::parse_fn_def;
-use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
+use super::types::{parse_field, parse_opt_qualifier};
 
 use crate::ast::{Contract, ContractStmt};
 use crate::node::{Node, Span};
@@ -45,9 +45,12 @@ pub fn parse_contract_def(
 
         match par.peek_or_err()? {
             TokenKind::Name => {
-                let field = parse_field(par, pub_qual, const_qual)?;
+                let field = parse_field(par, vec![], pub_qual, const_qual)?;
                 if !defs.is_empty() {
-                    par.error(field.span, "contract field definitions must come before any function or event definitions");
+                    par.error(
+                        field.span,
+                        "contract field definitions must come before any function definitions",
+                    );
                 }
                 fields.push(field);
             }
@@ -59,21 +62,6 @@ pub fn parse_contract_def(
                     );
                 }
                 defs.push(ContractStmt::Function(parse_fn_def(par, pub_qual)?));
-            }
-            TokenKind::Event => {
-                if let Some(span) = pub_qual {
-                    par.error(
-                        span,
-                        "`pub` qualifier can't be used with contract-level event definitions",
-                    );
-                }
-                if let Some(span) = const_qual {
-                    par.error(
-                        span,
-                        "`const` qualifier can't be used with event definitions",
-                    );
-                }
-                defs.push(ContractStmt::Event(parse_event_def(par, None)?));
             }
             TokenKind::BraceClose => {
                 span += par.next()?.span;

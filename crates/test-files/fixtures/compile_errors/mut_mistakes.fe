@@ -1,0 +1,76 @@
+contract Foo {
+    x: u8
+    m: Map<u8, u8>
+
+    pub fn non_mut_self(self) {
+        self.x = 10 // self not mut
+        self.m[1] = 1
+    }
+}
+
+fn non_mut_primitive() {
+   let x: u8 // TODO: suggest mut or init value
+   x = 10
+}
+
+fn non_mut_struct() {
+   let p: Point = Point(x: 1, y: 2)
+   p.set_x(10) // ERROR
+   p.x = 10
+   p.y = 20
+}
+
+fn non_mut_tuple() {
+   let t: (u8, u8, u8) = (1, 2, 3)
+   t.item0 = 10
+}
+
+fn non_mut_array() {
+   let a: Array<u8, 3> = [1, 2, 3]
+   a[0] = 10
+}
+
+fn mut_primitive_arg() {
+   let mut x: u256 = 0
+   add_one(x)
+}
+
+fn add_one(mut _ x: u256) {
+   x += 1
+}
+
+struct Point {
+    pub x: u64
+    pub y: u64
+
+    pub fn non_mut_self(self) {
+        self.x *= 2
+    }
+
+    pub fn set_x(mut self, _ x: u8) {
+        self.x = x
+    }
+}
+
+fn borrow_checker() {
+    let mut p: Point = Point(x: 1, y: 2)
+    let mut q: Point = Point(x: 1, y: 2)
+
+    p.set_x(10)
+
+    let r: Point = Point(x: 10, y: 20)
+
+    move_stuff(a: p, b: q) // OK
+    move_stuff(a: p, b: p) // TODO: should be ERROR
+}
+
+fn non_mut_arg() {
+   let mut a: Point = Point(x: 1, y: 2)
+   let b: Point = Point(x: 2, y: 3)
+   move_stuff(a, b) // ERROR
+}
+
+fn move_stuff(mut a: Point, mut b: Point) {
+   a.x *= 10
+   b.x *= 10
+}

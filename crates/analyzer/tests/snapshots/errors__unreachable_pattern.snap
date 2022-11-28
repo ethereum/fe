@@ -1,0 +1,17 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: unreachable pattern 
+   ┌─ compile_errors/unreachable_pattern.fe:20:13
+   │
+20 │             MyEnumNested::Nested(MyEnum::Tuple(x1, y1)) => {
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this arm is unreachable
+
+error: unreachable pattern 
+   ┌─ compile_errors/unreachable_pattern.fe:28:13
+   │
+28 │             MyEnumNested::Nested(MyEnum::UnitTuple()) => {
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this arm is unreachable
+
+

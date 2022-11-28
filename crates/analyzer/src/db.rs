@@ -1,10 +1,17 @@
-use crate::context::{Analysis, Constant, FunctionBody};
-use crate::errors::{ConstEvalError, TypeError};
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, FunctionSigId, ImplId,
-    IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId, TypeAliasId,
+    self, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId, FunctionSigId,
+    ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId,
+    TypeAliasId,
 };
 use crate::namespace::types::{self, Type, TypeId};
+use crate::{
+    context::{Analysis, Constant, FunctionBody},
+    namespace::items::EnumId,
+};
+use crate::{
+    errors::{ConstEvalError, TypeError},
+    namespace::items::EnumVariantId,
+};
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_common::{SourceFileId, Span};
 use fe_parser::ast;
@@ -24,11 +31,15 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::interned]
     fn intern_struct(&self, data: Rc<items::Struct>) -> StructId;
     #[salsa::interned]
+    fn intern_struct_field(&self, data: Rc<items::StructField>) -> StructFieldId;
+    #[salsa::interned]
+    fn intern_enum(&self, data: Rc<items::Enum>) -> EnumId;
+    #[salsa::interned]
+    fn intern_enum_variant(&self, data: Rc<items::EnumVariant>) -> EnumVariantId;
+    #[salsa::interned]
     fn intern_trait(&self, data: Rc<items::Trait>) -> TraitId;
     #[salsa::interned]
     fn intern_impl(&self, data: Rc<items::Impl>) -> ImplId;
-    #[salsa::interned]
-    fn intern_struct_field(&self, data: Rc<items::StructField>) -> StructFieldId;
     #[salsa::interned]
     fn intern_type_alias(&self, data: Rc<items::TypeAlias>) -> TypeAliasId;
     #[salsa::interned]
@@ -39,8 +50,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn intern_function_sig(&self, data: Rc<items::FunctionSig>) -> FunctionSigId;
     #[salsa::interned]
     fn intern_function(&self, data: Rc<items::Function>) -> FunctionId;
-    #[salsa::interned]
-    fn intern_event(&self, data: Rc<items::Event>) -> EventId;
     #[salsa::interned]
     fn intern_type(&self, data: Type) -> TypeId;
 
@@ -53,8 +62,9 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn ingot_files(&self, ingot: IngotId) -> Rc<[SourceFileId]>;
     #[salsa::input]
     fn ingot_external_ingots(&self, ingot: IngotId) -> Rc<IndexMap<SmolStr, IngotId>>;
-    // Having the root ingot available as a "global" might offend functional programming purists
-    // but it makes for much nicer ergonomics in queries that just need the global entrypoint
+    // Having the root ingot available as a "global" might offend functional
+    // programming purists but it makes for much nicer ergonomics in queries
+    // that just need the global entrypoint
     #[salsa::input]
     fn root_ingot(&self) -> IngotId;
 
@@ -120,11 +130,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::contracts::contract_call_function)]
     fn contract_call_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 
-    #[salsa::invoke(queries::contracts::contract_all_events)]
-    fn contract_all_events(&self, id: ContractId) -> Rc<[EventId]>;
-    #[salsa::invoke(queries::contracts::contract_event_map)]
-    fn contract_event_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<SmolStr, EventId>>>;
-
     #[salsa::invoke(queries::contracts::contract_all_fields)]
     fn contract_all_fields(&self, id: ContractId) -> Rc<[ContractFieldId]>;
     #[salsa::invoke(queries::contracts::contract_field_map)]
@@ -165,6 +170,21 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::structs::struct_dependency_graph)]
     fn struct_dependency_graph(&self, id: StructId) -> Analysis<DepGraphWrapper>;
 
+    // Enum
+    #[salsa::invoke(queries::enums::enum_all_variants)]
+    fn enum_all_variants(&self, id: EnumId) -> Rc<[EnumVariantId]>;
+    #[salsa::invoke(queries::enums::enum_variant_map)]
+    fn enum_variant_map(&self, id: EnumId) -> Analysis<Rc<IndexMap<SmolStr, EnumVariantId>>>;
+    #[salsa::invoke(queries::enums::enum_all_functions)]
+    fn enum_all_functions(&self, id: EnumId) -> Rc<[FunctionId]>;
+    #[salsa::invoke(queries::enums::enum_function_map)]
+    fn enum_function_map(&self, id: EnumId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
+    #[salsa::cycle(queries::enums::enum_cycle)]
+    #[salsa::invoke(queries::enums::enum_dependency_graph)]
+    fn enum_dependency_graph(&self, id: EnumId) -> Analysis<DepGraphWrapper>;
+    #[salsa::invoke(queries::enums::enum_variant_kind)]
+    fn enum_variant_kind(&self, id: EnumVariantId) -> Analysis<Result<EnumVariantKind, TypeError>>;
+
     // Trait
     #[salsa::invoke(queries::traits::trait_all_functions)]
     fn trait_all_functions(&self, id: TraitId) -> Rc<[FunctionSigId]>;
@@ -178,10 +198,6 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn impl_all_functions(&self, id: ImplId) -> Rc<[FunctionId]>;
     #[salsa::invoke(queries::impls::impl_function_map)]
     fn impl_function_map(&self, id: ImplId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
-
-    // Event
-    #[salsa::invoke(queries::events::event_type)]
-    fn event_type(&self, event: EventId) -> Analysis<Rc<types::Event>>;
 
     // Type
     #[salsa::invoke(queries::types::all_impls)]

@@ -114,8 +114,6 @@ test_parse! { stmt_aug_xor, functions::parse_stmt, "x ^= y" }
 test_parse! { stmt_aug_lsh, functions::parse_stmt, "x <<= y" }
 test_parse! { stmt_aug_rsh, functions::parse_stmt, "x >>= y" }
 test_parse! { stmt_aug_exp, functions::parse_stmt, "x **= y" }
-test_parse! { stmt_emit1, functions::parse_stmt, "emit Foo()" }
-test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x: y)" }
 test_parse! { stmt_path_type, functions::parse_stmt, "let x: foo::Bar = foo::Bar(1, 2)" }
 test_parse! { stmt_return1, functions::parse_stmt, "return" }
 test_parse! { stmt_return2, functions::parse_stmt, "return x" }
@@ -125,9 +123,46 @@ test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
 
 test_parse! { stmt_if, functions::parse_stmt, "if a { \n b }" }
 test_parse! { stmt_if2, functions::parse_stmt, "if a { b } else if c { d } else if e { \n f } \n else {\n g }" }
+test_parse! { stmt_match, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit => {
+        return 0
+    }
+    MyEnum::Tuple(x, y) => {
+        let sum: i32 = x + y;
+        return sum
+    }
+    _ => {
+        return -1
+    }
+}"# }
+test_parse! { stmt_match2, functions::parse_stmt, r#"match my_enum {
+    MyEnum::Unit | MyEnum::Tuple(_, _) => {
+        return 0
+    }
+    _ => {
+        return -1
+    }
+}"# }
+test_parse! { stmt_match3, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {x: x, y: true}  => {
+        return x
+    }
+    mymod::MyS {x: _, y: false} => {
+        return 0
+    }
+    mymod::MyS {x: x, ..} => {
+        return x - 1
+    }
+}"# }
+test_parse! { stmt_match4, functions::parse_stmt, r#"match my_enum {
+    mymod::MyS {}  => {
+        return 1
+    }
+}"# }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5 { \n a -= 1 }" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0] {}" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
+test_parse! { stmt_var_decl_mut, functions::parse_stmt, "let mut x: Foo" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
 test_parse! { stmt_semicolons, functions::parse_stmt, "if a { b; c; d; for x in y {}; }" }
@@ -152,9 +187,7 @@ test_parse! { fn_def_generic, try_parse_module, "fn foo<T, R: Event>(this: T, th
 test_parse! { fn_def_pub, try_parse_module, "pub fn foo21(x: bool, y: address,) -> bool { x }"}
 test_parse! { fn_def_unsafe, try_parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool {\n x\n}"}
 test_parse! { fn_def_pub_unsafe, try_parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool{x}"}
-test_parse! { event_def, try_parse_module, "event Foo {\n  x: address\n  idx y: u8\n}" }
-test_parse! { empty_event_def, try_parse_module, "event Foo {}" }
-test_parse! { pub_event_def, try_parse_module, "pub event Foo {\nx: address\nidx y: u8\n}" }
+test_parse! { fn_def_mut_args, try_parse_module, "fn transfer(mut from sender: address, to recip: address, mut val: u64) -> bool { \n return false \n}"}
 test_parse! { const_def, try_parse_module, "const FOO: i32 = 1" }
 test_parse! { pub_const_def, try_parse_module, "pub const FOO: i32 = 1" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
@@ -172,6 +205,7 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
 }"#
 }
 test_parse! { struct_def, try_parse_module, r#"struct S {
+  #indexed
   x: address
   pub y: u8
   z: u8
@@ -184,6 +218,14 @@ test_parse! { struct_def, try_parse_module, r#"struct S {
 }"# }
 test_parse! { empty_struct_def, try_parse_module, "struct S {}" }
 
+test_parse! { enum_def, try_parse_module, r#"enum E {
+    Unit1
+    Tuple1(i32, String<10>)
+    Unit2
+    Tuple2(Array<u32, 10>, u256)
+}"# }
+test_parse! { enum_enum_def, try_parse_module, r#"enum E {}"# }
+
 test_parse! { contract_def, try_parse_module, r#"contract Foo {
   x: address
   pub y: u8
@@ -191,9 +233,6 @@ test_parse! { contract_def, try_parse_module, r#"contract Foo {
 
   pub fn foo() -> u8 {
     return 10
-  }
-  event Bar {
-    idx from: address
   }
 }
 "# }
@@ -234,17 +273,18 @@ contract B {
 test_parse! { guest_book, try_parse_module, r#"
 type BookMsg = Array<bytes, 100>
 
+struct Signed {
+    #indexed
+    book_msg: BookMsg
+}
+
 contract GuestBook {
     pub guest_book: Map<address, BookMsg>
-
-    event Signed {
-        idx book_msg: BookMsg
-    }
 
     pub fn sign(self, book_msg: BookMsg) {
         self.guest_book[msg.sender] = book_msg
 
-        emit Signed(book_msg: book_msg)
+        ctx.emit(Signed(book_msg: book_msg))
     }
     pub fn get_msg(self, addr: address) -> BookMsg {
         return self.guest_book[addr]
@@ -252,14 +292,16 @@ contract GuestBook {
 }"# }
 
 test_parse! { module_level_events, try_parse_module, r#"
-event Transfer {
-    idx sender: address
-    idx receiver: address
+struct Transfer {
+    #indexed
+    sender: address
+    #indexed
+    receiver: address
     value: u256
 }
 contract Foo {
     fn transfer(ctx: Context, to: address, value: u256) {
-        emit Transfer(ctx, sender: msg.sender, receiver: to, value)
+        ctx.emit(Transfer(sender: msg.sender, receiver: to, value))
     }
 }
 "# }

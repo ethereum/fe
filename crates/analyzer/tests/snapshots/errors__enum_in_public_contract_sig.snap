@@ -1,0 +1,17 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: can't return unencodable type from public contract function
+  ┌─ compile_errors/enum_in_public_contract_sig.fe:7:41
+  │
+7 │     pub fn enum_ret(x: i32, y: u256) -> MyEnum {
+  │                                         ^^^^^^ can't return `MyEnum` here
+
+error: can't use unencodable type as a public contract function argument
+   ┌─ compile_errors/enum_in_public_contract_sig.fe:12:32
+   │
+12 │     pub fn enum_arg(x: i32, y: MyEnum) {
+   │                                ^^^^^^ can't use `MyEnum` here
+
+

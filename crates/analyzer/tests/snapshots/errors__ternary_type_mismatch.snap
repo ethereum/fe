@@ -7,7 +7,7 @@ error: `if` test expression must be a `bool`
   ┌─ [snippet]:3:9
   │
 3 │   10 if 100 else true
-  │         ^^^ this has type `u256`; expected `bool`
+  │         ^^^ this has type `u256`; expected type `bool`
 
 error: `if` and `else` values must have same type
   ┌─ [snippet]:3:3

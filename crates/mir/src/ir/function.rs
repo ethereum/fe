@@ -7,13 +7,11 @@ use num_bigint::BigInt;
 use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
-use crate::db::MirDb;
-
 use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
     inst::{BranchInfo, Inst, InstId, InstKind},
-    types::{TypeId, TypeKind},
+    types::TypeId,
     value::{AssignableValue, Local, Value, ValueId},
     BasicBlockId, SourceInfo,
 };
@@ -22,7 +20,7 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
-    pub resolved_generics: BTreeMap<analyzer_types::Generic, analyzer_types::TypeId>,
+    pub resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
     pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
     pub analyzer_func_id: analyzer_items::FunctionId,
@@ -191,10 +189,17 @@ impl BodyDataStore {
         self.blocks.alloc(block)
     }
 
-    /// Returns an instruction result. A returned value is guaranteed to be a
-    /// temporary value.
+    /// Returns an instruction result
     pub fn inst_result(&self, inst: InstId) -> Option<&AssignableValue> {
         self.inst_results.get(&inst)
+    }
+
+    pub fn map_result(&mut self, inst: InstId, result: AssignableValue) {
+        self.inst_results.insert(inst, result);
+    }
+
+    pub fn remove_inst_result(&mut self, inst: InstId) -> Option<AssignableValue> {
+        self.inst_results.remove(&inst)
     }
 
     pub fn rewrite_branch_dest(&mut self, inst: InstId, from: BasicBlockId, to: BasicBlockId) {
@@ -216,33 +221,8 @@ impl BodyDataStore {
         }
     }
 
-    pub fn remove_inst_result(&mut self, inst: InstId) {
-        self.inst_results.remove(&inst);
-    }
-
     pub fn value_ty(&self, vid: ValueId) -> TypeId {
         self.values[vid].ty()
-    }
-
-    pub fn assignable_value_ty(&self, db: &dyn MirDb, value: &AssignableValue) -> TypeId {
-        match value {
-            AssignableValue::Value(value) => self.value_ty(*value),
-            AssignableValue::Aggregate { lhs, idx } => {
-                let lhs = self.assignable_value_ty(db, lhs).deref(db);
-                lhs.projection_ty(db, self.value_data(*idx))
-            }
-            AssignableValue::Map { lhs, .. } => {
-                let lhs = self.assignable_value_ty(db, lhs).deref(db);
-                match &lhs.data(db).kind {
-                    TypeKind::Map(def) => def.value_ty,
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
-
-    pub fn map_result(&mut self, inst: InstId, result: AssignableValue) {
-        self.inst_results.insert(inst, result);
     }
 
     pub fn locals(&self) -> &[ValueId] {

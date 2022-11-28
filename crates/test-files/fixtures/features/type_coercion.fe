@@ -1,0 +1,13 @@
+contract Foo {
+    s: Array<i32, 20>
+    x: i32
+
+    pub fn test(self, index: u8) -> i32 {
+        let elem: i32 = self.s[index]
+        return elem
+    }
+
+    pub fn tuple(self) {
+        let a: (i32, i32) = (self.x, self.x)
+    }
+}
