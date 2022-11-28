@@ -17,6 +17,7 @@ use super::{
 /// Represents function signature.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
+    pub name: SmolStr,
     pub params: Vec<FunctionParam>,
     pub return_type: Option<TypeId>,
     pub module_id: analyzer_items::ModuleId,
@@ -213,6 +214,15 @@ impl BodyDataStore {
                 }
             }
             _ => unreachable!("inst is not a branch"),
+        }
+    }
+
+    pub fn rewrite_callee(&mut self, inst: InstId, new: FunctionSigId) {
+        match &mut self.inst_data_mut(inst).kind {
+            InstKind::Call { func: callee, .. } => {
+                *callee = new;
+            }
+            _ => unreachable!("`inst` is not a `call`"),
         }
     }
 
