@@ -4,7 +4,8 @@ use fe_analyzer::namespace::items::ContractId;
 use id_arena::Id;
 
 use super::{
-    basic_block::BasicBlockId, function::FunctionSigId, value::ValueId, SourceInfo, TypeId,
+    basic_block::BasicBlockId, function::FunctionSigId, types::TypeParamDef, value::ValueId,
+    SourceInfo, TypeId,
 };
 
 pub type InstId = Id<Inst>;

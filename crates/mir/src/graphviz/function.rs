@@ -53,7 +53,7 @@ impl FunctionNode {
     fn signature(self, db: &dyn MirDb) -> String {
         let body = db.mir_lowered_func_body(self.func);
 
-        let sig_data = self.sig.signature(db);
+        let sig_data = self.sig.data(db);
         let mut sig = format!("fn {}", self.sig.debug_name(db));
         if self.sig.is_generic(db) {
             write!(sig, "<").unwrap();

@@ -27,20 +27,20 @@ pub fn mir_lowered_func_body(
 }
 
 impl ir::FunctionSigId {
-    pub fn signature(self, db: &dyn MirDb) -> Rc<FunctionSignature> {
+    pub fn data(self, db: &dyn MirDb) -> Rc<FunctionSignature> {
         db.lookup_mir_intern_function(self)
     }
 
     pub fn return_type(self, db: &dyn MirDb) -> Option<TypeId> {
-        self.signature(db).return_type
+        self.data(db).return_type
     }
 
     pub fn linkage(self, db: &dyn MirDb) -> Linkage {
-        self.signature(db).linkage
+        self.data(db).linkage
     }
 
     pub fn type_params(self, db: &dyn MirDb) -> Vec<TypeParamDef> {
-        self.signature(db)
+        self.data(db)
             .params
             .iter()
             .filter_map(|param| match &param.ty.data(db).kind {
@@ -51,14 +51,14 @@ impl ir::FunctionSigId {
     }
 
     pub fn is_generic(self, db: &dyn MirDb) -> bool {
-        self.signature(db)
+        self.data(db)
             .params
             .iter()
             .any(|param| param.ty.is_type_param(db))
     }
 
     pub fn analyzer_sig(self, db: &dyn MirDb) -> analyzer_items::FunctionSigId {
-        self.signature(db).analyzer_id
+        self.data(db).analyzer_id
     }
 
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {
@@ -70,9 +70,12 @@ impl ir::FunctionSigId {
         self.analyzer_sig(db).is_constructor(db.upcast())
     }
 
-    pub fn name(&self, db: &dyn MirDb) -> SmolStr {
-        let analyzer_func = self.analyzer_sig(db);
-        analyzer_func.name(db.upcast())
+    pub fn name(self, db: &dyn MirDb) -> SmolStr {
+        self.data(db).name.clone()
+    }
+
+    pub fn has_self(self, db: &dyn MirDb) -> bool {
+        self.data(db).has_self
     }
 
     /// Returns `class_name::fn_name` if a function is a method else `fn_name`.
