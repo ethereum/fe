@@ -353,6 +353,7 @@ pub struct FeString {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub self_decl: Option<SelfDecl>,
+    pub ctx_decl: Option<CtxDecl>,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<TypeId, TypeError>,
 }
@@ -362,10 +363,16 @@ pub struct SelfDecl {
     pub span: Span,
     pub mut_: Option<Span>,
 }
+
 impl SelfDecl {
     pub fn is_mut(&self) -> bool {
         self.mut_.is_some()
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CtxDecl {
+    pub span: Span
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -768,6 +775,7 @@ impl DisplayWithDb for FunctionSignature {
     fn format(&self, db: &dyn AnalyzerDb, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let FunctionSignature {
             self_decl,
+            ctx_decl: _,
             params,
             return_type,
         } = self;
