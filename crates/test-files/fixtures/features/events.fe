@@ -21,6 +21,10 @@ pub struct Addresses {
     pub addrs: Array<address, 2>
 }
 
+pub struct NestedArray {
+    pub inner: Array<Array<Nums, 2>, 2>
+}
+
 contract Foo {
 
     pub fn emit_nums(mut ctx: Context) {
@@ -40,5 +44,11 @@ contract Foo {
         addrs[0] = addr1
         addrs[1] = addr2
         ctx.emit(Addresses(addrs))
+    }
+    
+    pub fn emit_nested_array(mut ctx: Context) {
+        let inner: Array<Array<Nums, 2>, 2> = [[Nums(num1: 0, num2: 1), Nums(num1: 2, num2: 3)], [Nums(num1: 4, num2: 5), Nums(num1: 6, num2: 7)]]
+        let nested_array: NestedArray = NestedArray(inner)
+        ctx.emit(nested_array)
     }
 }

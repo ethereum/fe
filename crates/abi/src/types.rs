@@ -119,6 +119,14 @@ impl AbiType {
             Self::Bytes | Self::String => None,
         }
     }
+
+    fn serialize_component<S: SerializeMap>(&self, s: &mut S) -> Result<(), S::Error> {
+        match self {
+            Self::Tuple(entry) => s.serialize_entry("components", entry),
+            Self::Array { elem_ty, .. } => elem_ty.serialize_component(s),
+            _ => Ok(()),
+        }
+    }
 }
 
 impl Serialize for AbiType {
@@ -128,16 +136,7 @@ impl Serialize for AbiType {
 
         map.serialize_entry("type", &type_name)?;
 
-        match self {
-            Self::Tuple(entry) => map.serialize_entry("components", entry)?,
-            Self::Array { elem_ty, .. } => {
-                if let Self::Tuple(entry) = elem_ty.as_ref() {
-                    map.serialize_entry("components", entry)?
-                }
-            }
-            _ => {}
-        }
-
+        self.serialize_component(&mut map)?;
         map.end()
     }
 }
