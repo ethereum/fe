@@ -729,6 +729,14 @@ fn nested_map() {
 }
 
 #[test]
+fn tmp() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "tmp.fe", "Foo", &[]);
+        assert_harness_gas_report!(harness);
+    })
+}
+
+#[test]
 fn events() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "events.fe", "Foo", &[]);

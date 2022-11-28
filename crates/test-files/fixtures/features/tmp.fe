@@ -1,0 +1,12 @@
+pub struct Field {
+    row: u8
+    column: u8
+    value: u8
+}
+
+pub struct Board {
+    state: Array<Array<Field, 4>, 4>
+}
+
+pub contract Foo {
+}
