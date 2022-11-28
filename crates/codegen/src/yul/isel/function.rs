@@ -2,6 +2,7 @@
 use std::thread::Scope;
 
 use super::{context::Context, inst_order::InstSerializer};
+use fe_analyzer::namespace::items::FunctionId;
 use fe_common::numeric::to_hex_str;
 
 use fe_abi::function::{AbiFunction, AbiFunctionType};
@@ -12,7 +13,7 @@ use fe_mir::{
         constant::ConstantValue,
         inst::{BinOp, CallType, CastKind, InstKind, UnOp},
         value::AssignableValue,
-        Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind,
+        Constant, FunctionBody, FunctionSigId, FunctionSignature, InstId, Type, TypeId, TypeKind,
         Value, ValueId,
     },
     pretty_print::PrettyPrint,
@@ -37,20 +38,19 @@ use crate::{
 pub fn lower_function(
     db: &dyn CodegenDb,
     ctx: &mut Context,
-    function: FunctionId,
+    sig: FunctionSigId,
+    func: FunctionId,
 ) -> yul::FunctionDefinition {
-    debug_assert!(!ctx.lowered_functions.contains(&function));
-    ctx.lowered_functions.insert(function);
-    let sig = &db.codegen_legalized_signature(function);
-    let body = &db.codegen_legalized_body(function);
-    FuncLowerHelper::new(db, ctx, function, sig, body).lower_func()
+    let sig_data = &db.codegen_legalized_signature(sig);
+    let body = &db.codegen_legalized_body(func);
+    FuncLowerHelper::new(db, ctx, sig, sig_data, body).lower_func()
 }
 
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
     ctx: &'a mut Context,
     value_map: ScopedValueMap,
-    func: FunctionId,
+    sig_id: FunctionSigId,
     sig: &'a FunctionSignature,
     body: &'a FunctionBody,
     ret_value: Option<yul::Identifier>,
@@ -61,7 +61,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn new(
         db: &'db dyn CodegenDb,
         ctx: &'a mut Context,
-        func: FunctionId,
+        sig_id: FunctionSigId,
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,
     ) -> Self {
@@ -87,7 +87,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             db,
             ctx,
             value_map,
-            func,
+            sig_id,
             sig,
             body,
             ret_value,
@@ -96,7 +96,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn lower_func(mut self) -> yul::FunctionDefinition {
-        let name = identifier! { (self.db.codegen_function_symbol_name(self.func)) };
+        let name = identifier! { (self.db.codegen_function_symbol_name(self.sig_id)) };
 
         let parameters = self
             .sig

@@ -10,6 +10,7 @@ use crate::ir::{
 
 use super::{
     inst::{CallType, CastKind, SwitchTable, YulIntrinsicOp},
+    types::TypeParamDef,
     ConstantId, Value, ValueId,
 };
 
@@ -218,12 +219,14 @@ impl BodyBuilder {
         func: FunctionSigId,
         args: Vec<ValueId>,
         call_type: CallType,
+        generic_type: Option<TypeParamDef>,
         source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Call {
             func,
             args,
             call_type,
+            generic_type,
         };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst)

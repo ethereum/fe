@@ -14,7 +14,7 @@ use smol_str::SmolStr;
 use crate::{db::CodegenDb, yul::legalize};
 
 pub fn legalized_signature(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<FunctionSignature> {
-    let mut sig = function.signature(db.upcast()).as_ref().clone();
+    let mut sig = function.data(db.upcast()).as_ref().clone();
     legalize::legalize_func_signature(db, &mut sig);
     sig.into()
 }
@@ -26,7 +26,7 @@ pub fn legalized_body(db: &dyn CodegenDb, func: FunctionId) -> Rc<FunctionBody> 
 }
 
 pub fn symbol_name(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<String> {
-    let module = function.signature(db.upcast()).module_id;
+    let module = function.data(db.upcast()).module_id;
     let module_name = module.name(db.upcast());
 
     let analyzer_func = function.analyzer_sig(db.upcast());

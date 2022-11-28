@@ -6,7 +6,7 @@ use crate::{
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
 use fe_analyzer::namespace::items::ContractId;
-use fe_mir::ir::{FunctionId, Type, TypeKind};
+use fe_mir::ir::{FunctionSigId, Type, TypeKind};
 
 use yultsur::*;
 
@@ -66,7 +66,7 @@ pub(super) fn make_external_call(
     provider: &mut DefaultRuntimeProvider,
     db: &dyn CodegenDb,
     func_name: &str,
-    function: FunctionId,
+    function: FunctionSigId,
 ) -> RuntimeFunction {
     let func_name = YulVariable::new(func_name);
     let sig = db.codegen_legalized_signature(function);

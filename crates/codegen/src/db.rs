@@ -1,23 +1,36 @@
 use std::rc::Rc;
 
 use fe_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};
-use fe_analyzer::{db::AnalyzerDbStorage, namespace::items::ContractId, AnalyzerDb};
+use fe_analyzer::{
+    db::AnalyzerDbStorage,
+    namespace::items::{ContractId, FunctionId, IngotId},
+    AnalyzerDb,
+};
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_mir::{
     db::{MirDb, MirDbStorage},
-    ir::{FunctionBody, FunctionId, FunctionSignature, TypeId},
+    ir::{FunctionBody, FunctionSigId, FunctionSignature, TypeId},
 };
+
+use crate::cgu::{CguFunction, CguFunctionId, CodegenUnit, CodegenUnitId};
 
 mod queries;
 
 #[salsa::query_group(CodegenDbStorage)]
 pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
+    #[salsa::interned]
+    fn codegen_intern_cgu(&self, data: Rc<CodegenUnit>) -> CodegenUnitId;
+    #[salsa::interned]
+    fn codegen_intern_cgu_func(&self, data: Rc<CguFunction>) -> CguFunctionId;
+    #[salsa::invoke(queries::cgu::generate_cgu)]
+    fn codegen_generate_cgu(&self, ingot: IngotId) -> Rc<[CodegenUnitId]>;
+
     #[salsa::invoke(queries::function::legalized_signature)]
-    fn codegen_legalized_signature(&self, function_id: FunctionId) -> Rc<FunctionSignature>;
+    fn codegen_legalized_signature(&self, function_id: FunctionSigId) -> Rc<FunctionSignature>;
     #[salsa::invoke(queries::function::legalized_body)]
-    fn codegen_legalized_body(&self, function_id: FunctionId) -> Rc<FunctionBody>;
+    fn codegen_legalized_body(&self, func: FunctionId) -> Rc<FunctionBody>;
     #[salsa::invoke(queries::function::symbol_name)]
-    fn codegen_function_symbol_name(&self, function_id: FunctionId) -> Rc<String>;
+    fn codegen_function_symbol_name(&self, function_id: FunctionSigId) -> Rc<String>;
 
     #[salsa::invoke(queries::types::legalized_type)]
     fn codegen_legalized_type(&self, ty: TypeId) -> TypeId;
@@ -25,7 +38,7 @@ pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
     #[salsa::invoke(queries::abi::abi_type)]
     fn codegen_abi_type(&self, ty: TypeId) -> AbiType;
     #[salsa::invoke(queries::abi::abi_function)]
-    fn codegen_abi_function(&self, function_id: FunctionId) -> AbiFunction;
+    fn codegen_abi_function(&self, function_id: FunctionSigId) -> AbiFunction;
     #[salsa::invoke(queries::abi::abi_event)]
     fn codegen_abi_event(&self, ty: TypeId) -> AbiEvent;
     #[salsa::invoke(queries::abi::abi_contract)]
@@ -35,9 +48,9 @@ pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
     #[salsa::invoke(queries::abi::abi_type_minimum_size)]
     fn codegen_abi_type_minimum_size(&self, ty: TypeId) -> usize;
     #[salsa::invoke(queries::abi::abi_function_argument_maximum_size)]
-    fn codegen_abi_function_argument_maximum_size(&self, contract: FunctionId) -> usize;
+    fn codegen_abi_function_argument_maximum_size(&self, contract: FunctionSigId) -> usize;
     #[salsa::invoke(queries::abi::abi_function_return_maximum_size)]
-    fn codegen_abi_function_return_maximum_size(&self, function: FunctionId) -> usize;
+    fn codegen_abi_function_return_maximum_size(&self, function: FunctionSigId) -> usize;
 
     #[salsa::invoke(queries::contract::symbol_name)]
     fn codegen_contract_symbol_name(&self, contract: ContractId) -> Rc<String>;

@@ -103,6 +103,7 @@ impl PrettyPrint for InstId {
                 func,
                 args,
                 call_type,
+                ..
             } => {
                 let name = func.debug_name(db);
                 write!(w, "{}@{}(", name, call_type)?;
