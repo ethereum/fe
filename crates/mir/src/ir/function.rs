@@ -27,6 +27,7 @@ pub struct FunctionSignature {
     pub linkage: Linkage,
     pub has_self: bool,
     pub has_ctx: bool,
+    pub has_mut: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

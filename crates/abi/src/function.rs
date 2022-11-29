@@ -31,8 +31,7 @@ impl AbiFunction {
         name: String,
         args: Vec<(String, AbiType)>,
         ret_ty: Option<AbiType>,
-        has_self: bool,
-        has_ctx: bool,
+        state_mutability: StateMutability 
     ) -> Self {
         let inputs = args
             .into_iter()
@@ -51,11 +50,7 @@ impl AbiFunction {
             // For now, we default to payable so that tooling such as hardhat simply assumes all functions need to be
             // called with a transaction.
             // And if self and ctx are note taken then we use `pure` as state mutability
-            state_mutability: if !has_self && !has_ctx {
-                StateMutability::Pure
-            } else {
-                StateMutability::Payable
-            },
+            state_mutability
         }
     }
 
@@ -139,7 +134,7 @@ mod tests {
         AbiType::Tuple(vec![field1, field2])
     }
 
-    fn test_func(has_self: bool, has_ctx: bool) -> AbiFunction {
+    fn test_func(state_mutability: StateMutability) -> AbiFunction {
         let i32_ty = AbiType::Int(32);
         let tuple_ty = simple_tuple();
         let u64_ty = AbiType::UInt(64);
@@ -149,14 +144,13 @@ mod tests {
             "test_func".into(),
             vec![("arg1".into(), i32_ty), ("arg2".into(), tuple_ty)],
             Some(u64_ty),
-            has_self,
-            has_ctx,
+            state_mutability
         )
     }
 
     #[test]
     fn serialize_func() {
-        let func = test_func(true, true);
+        let func = test_func(StateMutability::Payable);
 
         assert_ser_tokens(
             &func,
@@ -223,16 +217,16 @@ mod tests {
 
     #[test]
     fn test_state_mutability() {
-        let pure_func = test_func(false, false);
+        let pure_func = test_func(StateMutability::Pure);
         assert_eq!(pure_func.state_mutability, StateMutability::Pure);
 
-        let impure_func = test_func(true, false);
+        let impure_func = test_func(StateMutability::Payable);
         assert_eq!(impure_func.state_mutability, StateMutability::Payable);
     }
 
     #[test]
     fn func_selector() {
-        let func = test_func(true, true);
+        let func = test_func(StateMutability::Payable);
         let selector = func.selector();
 
         debug_assert_eq!(

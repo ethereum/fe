@@ -1,7 +1,7 @@
 use fe_abi::{
     contract::AbiContract,
     event::{AbiEvent, AbiEventField},
-    function::{AbiFunction, AbiFunctionType},
+    function::{AbiFunction, AbiFunctionType, StateMutability},
     types::{AbiTupleField, AbiType},
 };
 use fe_analyzer::{constants::INDEXED, namespace::items::ContractId};
@@ -58,13 +58,27 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
         AbiFunctionType::Function
     };
 
+    let has_self = sig.has_self;
+    let has_ctx = sig.has_ctx;
+    let has_mut = sig.has_mut;
+
+    // Check ABI conformity 
+    // https://github.com/ethereum/fe/issues/558
+    // 
+    //             |none self             |    self  |  mut self             |
+    // | none ctx  |    pure              |    view  |  payable/nonpayable   |
+    // | ctx       |    view              |    view  |  payable/nonpayable   | 
+    // | mut ctx   |   payable/nopayable  |    view  |  payable/nonpayable   |
+
+    let mut state_mutability = StateMutability::Payable;
+    
+
     AbiFunction::new(
         func_type,
         name.to_string(),
         args,
         ret_ty,
-        sig.has_self,
-        sig.has_ctx,
+        state_mutability
     )
 }
 
