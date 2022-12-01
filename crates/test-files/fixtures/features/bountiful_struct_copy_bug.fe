@@ -30,13 +30,11 @@ contract Foo {
         assert b.second.x == 1 and b.second.y == 2
 
         b.swap_y(p1: b.get_first(), p2: b.get_second())
-
-        // TODO: this should be prevented by a borrow checker.
-        // This causes the assertions below to fail:
-        // b.swap_y(p1: b.first, p2: b.second)
-
         assert b.first.y == 2
         assert b.second.y == 200
+
+        // This is a compiler error
+        // b.swap_y(p1: b.first, p2: b.second)
 
         return 0
     }

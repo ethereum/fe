@@ -82,10 +82,50 @@ error: cannot modify `self.x`, as it is not mutable
 47 │         self.x *= 2
    │         ^^^^^^ not mutable
 
-error: `move_stuff` argument `b` must be mutable
-   ┌─ compile_errors/mut_mistakes.fe:70:18
+error: borrow conflict in call to fn `move_stuff`
+   ┌─ compile_errors/mut_mistakes.fe:79:16
    │
-70 │    move_stuff(a, b) // ERROR
-   │                  ^ is not `mut`
+79 │     move_stuff(p, p) // ERROR
+   │                ^  - `p` is used again here
+   │                │   
+   │                `p` is used mutably here
+
+error: borrow conflict in call to fn `move_stuff`
+   ┌─ compile_errors/mut_mistakes.fe:80:31
+   │
+80 │     move_stuff(q if true else p, p) // ERROR
+   │                               ^  - `p` is used again here
+   │                               │   
+   │                               `p` is used mutably here
+
+error: borrow conflict in call to fn `mutate_self_and`
+   ┌─ compile_errors/mut_mistakes.fe:83:5
+   │
+83 │     p.mutate_self_and(p) // ERROR
+   │     ^                 - `p` is used again here
+   │     │                  
+   │     `p` is used mutably here
+
+error: borrow conflict in call to fn `set_ys`
+   ┌─ compile_errors/mut_mistakes.fe:90:5
+   │
+90 │     line.set_ys(a: line.b, b: line.a)           // ERROR
+   │     ^^^^           ---- `line` is used again here
+   │     │               
+   │     `line` is used mutably here
+
+error: borrow conflict in call to fn `set_ys`
+   ┌─ compile_errors/mut_mistakes.fe:91:5
+   │
+91 │     line.set_ys(a: p if true else line.b, b: q) // ERROR
+   │     ^^^^                          ---- `line` is used again here
+   │     │                              
+   │     `line` is used mutably here
+
+error: `move_stuff` argument at position 1 must be mutable
+   ┌─ compile_errors/mut_mistakes.fe:97:19
+   │
+97 │     move_stuff(a, b) // ERROR
+   │                   ^ is not `mut`
 
 

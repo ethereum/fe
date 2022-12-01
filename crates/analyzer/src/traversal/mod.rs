@@ -7,6 +7,7 @@ pub(crate) mod const_expr;
 pub(crate) mod expressions;
 
 mod assignments;
+mod borrowck;
 mod call_args;
 mod declarations;
 mod matching_anomaly;
