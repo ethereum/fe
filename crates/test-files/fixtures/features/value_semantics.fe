@@ -4,6 +4,12 @@ contract Foo {
     pub fn bar(mut self) -> bool {
         self.set_array()
         tuple_of_primitive()
+        tuple_of_structs()
+        struct_constructor()
+        copies()
+        struct_field_copies()
+        ternary(true)
+        ternary(false)
 
         return true
     }
@@ -33,6 +39,16 @@ fn tuple_of_primitive() {
     assert tup_imm.item0 == 1
 }
 
+fn tuple_of_structs() {
+    let mut p: Point = Point(x: 0, y: 0)
+    let q: Point = Point(x: 0, y: 0)
+    let mut pair: (Point, Point) = (p, q)
+    pair.item0.x = 100
+    pair.item1.x = 200
+    assert p.x == 0
+    assert q.x == 0
+}
+
 struct Point {
     pub x: u64
     pub y: u64
@@ -41,8 +57,12 @@ struct Line {
     pub a: Point
     pub b: Point
 
-    pub fn from_origin_to(b: Point) -> Line {
+    pub fn from_origin_to(_ b: Point) -> Line {
         return Line(a: Point(x: 0, y: 0), b)
+    }
+
+    pub fn get_a(self) -> Point {
+        return self.a
     }
 }
 
@@ -79,4 +99,32 @@ fn copies() {
 
     let m: Line = Line::from_origin_to(b)     // no copy
     let mut n: Line = Line::from_origin_to(b) // copy
+}
+
+fn struct_field_copies() {
+    let mut line: Line = Line(a: Point(x: 1, y: 1), b: Point(x: 2, y: 2))
+    let a1: Point = line.a       // copy
+    let a2: Point = line.get_a() // copy
+
+    line.a.x = 100
+    assert line.a.x == 100
+    assert a1.x == 1
+    assert a2.x == 1
+}
+
+fn ternary(_ b: bool) {
+    let mut p: Point = Point(x: 10, y: 20)
+    let mut q: Point = Point(x: 10, y: 20)
+    move_rightward(p if b else q)
+    if b {
+        assert p.x == 11
+        assert q.x == 10
+    } else {
+        assert p.x == 10
+        assert q.x == 11
+    }
+}
+
+fn move_rightward(mut _ p: Point) {
+    p.x += 1
 }

@@ -1,3 +1,4 @@
+use super::borrowck;
 use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
 use crate::context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, NamedThing};
 use crate::display::Displayable;
@@ -1383,6 +1384,7 @@ fn expr_call_pure(
     let sig = function.signature(context.db());
     let name_span = function.name_span(context.db());
     validate_named_args(context, &fn_name, name_span, args, &sig.params)?;
+    borrowck::check_fn_call_arg_borrows(context, &fn_name, None, &args.kind, &sig.params);
 
     let return_type = sig.return_type.clone()?;
     Ok((
@@ -1589,10 +1591,8 @@ fn expr_call_method(
             }
 
             let sig = method.signature(context.db());
-
-            if matches!(sig.self_decl.map(|d| d.is_mut()), Some(true))
-                && !target_attributes.typ.is_mut(context.db())
-            {
+            let mut_self = matches!(sig.self_decl.map(|d| d.is_mut()), Some(true));
+            if mut_self && !target_attributes.typ.is_mut(context.db()) {
                 context.error(
                     &format!("`{}` takes `mut self`", &field.kind),
                     target.span,
@@ -1601,6 +1601,13 @@ fn expr_call_method(
             }
 
             validate_named_args(context, &field.kind, field.span, args, &sig.params)?;
+            borrowck::check_fn_call_arg_borrows(
+                context,
+                &field.kind,
+                Some((target, target_attributes.typ)),
+                &args.kind,
+                &sig.params,
+            );
 
             let calltype = match obj_type.typ(context.db()) {
                 Type::Contract(contract) | Type::SelfContract(contract) => {

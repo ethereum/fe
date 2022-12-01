@@ -240,7 +240,7 @@ pub enum NamedThing {
     },
     // SelfType // when/if we add a `Self` type keyword
     Variable {
-        name: String,
+        name: SmolStr,
         typ: Result<TypeId, TypeError>,
         is_const: bool,
         span: Span,
@@ -248,6 +248,15 @@ pub enum NamedThing {
 }
 
 impl NamedThing {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        match self {
+            NamedThing::Item(item) => item.name(db),
+            NamedThing::EnumVariant(variant) => variant.name(db),
+            NamedThing::SelfValue { .. } => "self".into(),
+            NamedThing::Variable { name, .. } => name.clone(),
+        }
+    }
+
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         match self {
             NamedThing::Item(item) => item.name_span(db),

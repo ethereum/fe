@@ -344,7 +344,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                     .expect("found param type but not span");
 
                 NamedThing::Variable {
-                    name: name.to_string(),
+                    name: name.into(),
                     typ: param.typ.clone(),
                     is_const: false,
                     span,
@@ -467,7 +467,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
             self.variable_defs
                 .get(name)
                 .map(|(typ, is_const, span)| NamedThing::Variable {
-                    name: name.to_string(),
+                    name: name.into(),
                     typ: Ok(*typ),
                     is_const: *is_const,
                     span: *span,
