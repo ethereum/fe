@@ -6,7 +6,7 @@ use crate::namespace::items::{
     DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Generic, SelfDecl, Type, TypeId, CtxDecl};
+use crate::namespace::types::{self, CtxDecl, Generic, SelfDecl, Type, TypeId};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::{type_desc, type_desc_to_trait};
 use fe_common::diagnostics::Label;

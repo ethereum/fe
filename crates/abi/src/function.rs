@@ -31,7 +31,7 @@ impl AbiFunction {
         name: String,
         args: Vec<(String, AbiType)>,
         ret_ty: Option<AbiType>,
-        state_mutability: StateMutability 
+        state_mutability: StateMutability,
     ) -> Self {
         let inputs = args
             .into_iter()
@@ -50,7 +50,7 @@ impl AbiFunction {
             // For now, we default to payable so that tooling such as hardhat simply assumes all functions need to be
             // called with a transaction.
             // And if self and ctx are note taken then we use `pure` as state mutability
-            state_mutability
+            state_mutability,
         }
     }
 
@@ -144,7 +144,7 @@ mod tests {
             "test_func".into(),
             vec![("arg1".into(), i32_ty), ("arg2".into(), tuple_ty)],
             Some(u64_ty),
-            state_mutability
+            state_mutability,
         )
     }
 

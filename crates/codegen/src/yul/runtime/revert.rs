@@ -82,7 +82,7 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
         name.to_string(),
         args,
         None,
-        StateMutability::Pure
+        StateMutability::Pure,
     )
     .selector();
     let type_sig = selector.hex();
