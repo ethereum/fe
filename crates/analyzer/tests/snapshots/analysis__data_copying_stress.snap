@@ -332,7 +332,7 @@ note:
    │         │              
    │         mut u256
 44 │         return my_array
-   │                ^^^^^^^^ mut Array<u256, 10>
+   │                ^^^^^^^^ mut Array<u256, 10> -Copy-> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:47:5
@@ -355,7 +355,7 @@ note:
 48 │         let a: Array<u256, 10> = my_array
    │                                  ^^^^^^^^ Array<u256, 10>
 49 │         return a
-   │                ^ Array<u256, 10>
+   │                ^ Array<u256, 10> -Copy-> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:52:5
@@ -410,7 +410,7 @@ note:
 55 │         assert my_array[3] != 5
    │                ^^^^^^^^^^^^^^^^ bool
 56 │         return my_array
-   │                ^^^^^^^^ Array<u256, 10>
+   │                ^^^^^^^^ Array<u256, 10> -Copy-> Array<u256, 10>
 
 note: 
    ┌─ data_copying_stress.fe:59:5
@@ -550,7 +550,7 @@ note:
 66 │         my_nums_mem = self.my_nums.to_mem()
    │                       ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 5>
 67 │         return my_nums_mem
-   │                ^^^^^^^^^^^ mut Array<u256, 5>
+   │                ^^^^^^^^^^^ mut Array<u256, 5> -Copy-> Array<u256, 5>
 
 note: 
    ┌─ data_copying_stress.fe:70:5

@@ -724,7 +724,7 @@ fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), 
             None => ExpressionAttributes::new(TypeId::unit(scope.db())),
         };
 
-        match types::try_coerce_type(scope, value.as_ref(), value_attr.typ, expected_type, false) {
+        match types::try_coerce_type(scope, value.as_ref(), value_attr.typ, expected_type, true) {
             Err(TypeCoercionError::RequiresToMem) => {
                 let value = value.clone().expect("to_mem required on unit type?");
                 scope.add_diagnostic(errors::to_mem_error(value.span));

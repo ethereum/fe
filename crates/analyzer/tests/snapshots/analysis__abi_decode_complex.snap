@@ -15,7 +15,7 @@ note:
   ┌─ abi_decode_complex.fe:3:16
   │
 3 │         return s
-  │                ^ StaticComplex
+  │                ^ StaticComplex -Copy-> StaticComplex
 
 note: 
   ┌─ abi_decode_complex.fe:6:5
@@ -29,7 +29,7 @@ note:
   ┌─ abi_decode_complex.fe:7:16
   │
 7 │         return s
-  │                ^ StringComplex
+  │                ^ StringComplex -Copy-> StringComplex
 
 note: 
    ┌─ abi_decode_complex.fe:10:5
@@ -43,7 +43,7 @@ note:
    ┌─ abi_decode_complex.fe:11:16
    │
 11 │         return s
-   │                ^ BytesComplex
+   │                ^ BytesComplex -Copy-> BytesComplex
 
 note: 
    ┌─ abi_decode_complex.fe:14:5
@@ -57,7 +57,7 @@ note:
    ┌─ abi_decode_complex.fe:15:16
    │
 15 │         return s
-   │                ^ NestedDynamicComplex
+   │                ^ NestedDynamicComplex -Copy-> NestedDynamicComplex
 
 note: 
    ┌─ abi_decode_complex.fe:18:5
@@ -71,7 +71,7 @@ note:
    ┌─ abi_decode_complex.fe:19:16
    │
 19 │         return arr
-   │                ^^^ Array<StaticComplex, 3>
+   │                ^^^ Array<StaticComplex, 3> -Copy-> Array<StaticComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:22:5
@@ -85,7 +85,7 @@ note:
    ┌─ abi_decode_complex.fe:23:16
    │
 23 │         return arr
-   │                ^^^ Array<NestedDynamicComplex, 3>
+   │                ^^^ Array<NestedDynamicComplex, 3> -Copy-> Array<NestedDynamicComplex, 3>
 
 note: 
    ┌─ abi_decode_complex.fe:28:5

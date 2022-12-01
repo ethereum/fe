@@ -452,6 +452,7 @@ test_method_return! { associated_fns, "associated_fns.fe", &[uint_token(12)], ui
 test_method_return! { struct_fns, "struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100) }
 test_method_return! { cast_address_to_u256, "cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS) }
 test_method_return! { for_loop_with_complex_elem_array, "for_loop_with_complex_elem_array.fe", &[], int_token(222) }
+test_method_return! { bountiful_struct_copy_bug, "bountiful_struct_copy_bug.fe", &[], uint_token(0) }
 
 #[test]
 fn return_array() {

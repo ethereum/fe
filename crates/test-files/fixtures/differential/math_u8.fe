@@ -64,10 +64,10 @@ contract Foo {
     }
 
     pub fn sqrt(val: u256) -> u256 {
-        let z: u256
+        let mut z: u256
         if val > 3 {
             z = val
-            let x: u256 = val / 2 + 1
+            let mut x: u256 = val / 2 + 1
             while x < z {
                 z = x
                 x = (val / x + x) / 2

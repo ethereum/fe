@@ -1571,7 +1571,7 @@ note:
     ┌─ structs.fe:111:16
     │
 111 │         return val.name
-    │                ^^^^^^^^ mut String<3>
+    │                ^^^^^^^^ mut String<3> -Copy-> String<3>
 
 note: 
     ┌─ structs.fe:114:5
@@ -2533,7 +2533,7 @@ note:
     ┌─ structs.fe:177:16
     │
 177 │         return house.encode()
-    │                ^^^^^^^^^^^^^^ Array<u8, 128>
+    │                ^^^^^^^^^^^^^^ Array<u8, 128> -Copy-> Array<u8, 128>
 
 note: 
     ┌─ structs.fe:180:5
