@@ -42,11 +42,12 @@ pub fn lower_monomorphized_func_signature(
 ) -> FunctionId {
     // TODO: Remove this when an analyzer's function signature contains `self` type.
     let mut params = vec![];
-    let has_self = func.takes_self(db.upcast());
-    let has_ctx = func.takes_ctx(db.upcast());
-    let has_mut = func.takes_mut(db.upcast());
 
-    if has_self {
+    let mut_self = func.mut_self(db.upcast());
+    let mut_ctx = func.mut_ctx(db.upcast());
+
+    // mut_self same like not good name... It's good if somebody can recommend a better nam
+    if mut_self.is_some() {
         let self_ty = func.self_type(db.upcast()).unwrap();
         let source = self_arg_source(db, func);
         params.push(make_param(db, "self", self_ty, source));
@@ -85,9 +86,8 @@ pub fn lower_monomorphized_func_signature(
         module_id: func.module(db.upcast()),
         analyzer_func_id: func,
         linkage,
-        has_self,
-        has_ctx,
-        has_mut
+        mut_ctx,
+        mut_self,
     };
 
     db.mir_intern_function(sig.into())

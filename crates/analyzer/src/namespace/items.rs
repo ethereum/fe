@@ -1201,13 +1201,18 @@ impl FunctionSigId {
         matches! {self.parent(db), Item::Type(TypeDef::Contract(_))}
     }
 
-    pub fn is_mut(self, db: &dyn AnalyzerDb) -> bool {
-        if let Some(func_self_arg) = self.signature(db).self_decl {
-            func_self_arg.is_mut()
-        } else {
-            false
-        }
+    pub fn mut_self(self, db: &dyn AnalyzerDb) -> Option<bool> {
+        self.signature(db)
+            .self_decl
+            .map(|func_self_arg| func_self_arg.is_mut())
     }
+
+    pub fn mut_ctx(self, db: &dyn AnalyzerDb) -> Option<bool> {
+        self.signature(db)
+            .ctx_decl
+            .map(|func_self_arg| func_self_arg.is_mut())
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.function_signature(*self).diagnostics.iter());
     }
@@ -1272,14 +1277,18 @@ impl FunctionId {
         self.sig(db).takes_ctx(db)
     }
 
+    pub fn mut_self(&self, db: &dyn AnalyzerDb) -> Option<bool> {
+        self.sig(db).mut_self(db)
+    }
+
+    pub fn mut_ctx(&self, db: &dyn AnalyzerDb) -> Option<bool> {
+        self.sig(db).mut_ctx(db)
+    }
+
     pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.sig(db).self_span(db)
     }
-    
-    pub fn takes_mut(&self, db: &dyn AnalyzerDb) -> bool {
-        self.sig(db).is_mut(db)
-    }
-    
+
     pub fn is_generic(&self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).is_generic(db)
     }

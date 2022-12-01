@@ -151,7 +151,7 @@ pub fn function_signature(
                             );
                         }
                         else {
-                            ctx_decl = Some(CtxDecl {span: arg.span})
+                            ctx_decl = Some(CtxDecl {span: arg.span,  mut_: *mut_})
                         }
                     }
                 }

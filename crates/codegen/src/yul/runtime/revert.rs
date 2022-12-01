@@ -5,7 +5,7 @@ use crate::{
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
-use fe_abi::function::{AbiFunction, AbiFunctionType};
+use fe_abi::function::{AbiFunction, AbiFunctionType, StateMutability};
 use fe_mir::ir::{self, TypeId};
 use yultsur::*;
 
@@ -82,8 +82,7 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
         name.to_string(),
         args,
         None,
-        true,
-        true,
+        StateMutability::Pure
     )
     .selector();
     let type_sig = selector.hex();

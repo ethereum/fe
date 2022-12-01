@@ -370,9 +370,17 @@ impl SelfDecl {
     }
 }
 
+// TODO: Self and Ctx is same struct, find better wat to declare them.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CtxDecl {
-    pub span: Span
+    pub span: Span,
+    pub mut_: Option<Span>,
+}
+
+impl CtxDecl {
+    pub fn is_mut(&self) -> bool {
+        self.mut_.is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
