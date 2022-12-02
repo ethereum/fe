@@ -14,6 +14,36 @@ pub enum StateMutability {
     Payable,
 }
 
+impl StateMutability {
+    pub fn decision(mut_self: Option<bool>, mut_ctx: Option<bool>) -> Self {
+        // Check ABI conformity
+        // https://github.com/ethereum/fe/issues/558
+        //
+        //             |none self             |    self  |  mut self             |
+        // | none ctx  |    pure              |    view  |  payable/nonpayable   |
+        // | ctx       |    view              |    view  |  payable/nonpayable   |
+        // | mut ctx   |   payable/nopayable  |    view  |  payable/nonpayable   |
+        //
+        // NOTE: we default payable for all method right now. But this should be resolve in the future.
+
+        let state_mutability;
+        if mut_self.is_none() {
+            if mut_ctx.is_none() {
+                state_mutability = StateMutability::Pure;
+            } else if mut_ctx == Some(false) {
+                state_mutability = StateMutability::View
+            } else {
+                state_mutability = StateMutability::Payable;
+            }
+        } else if mut_self == Some(false) {
+            state_mutability = StateMutability::View;
+        } else {
+            state_mutability = StateMutability::Payable
+        }
+        state_mutability
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiFunction {
     #[serde(rename = "type")]
@@ -217,6 +247,42 @@ mod tests {
 
     #[test]
     fn test_state_mutability() {
+        assert_eq!(StateMutability::decision(None, None), StateMutability::Pure);
+        assert_eq!(
+            StateMutability::decision(None, Some(false)),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::decision(None, Some(true)),
+            StateMutability::Payable
+        );
+
+        assert_eq!(
+            StateMutability::decision(Some(false), None),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::decision(Some(false), Some(false)),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::decision(Some(false), Some(true)),
+            StateMutability::View
+        );
+
+        assert_eq!(
+            StateMutability::decision(Some(true), None),
+            StateMutability::Payable
+        );
+        assert_eq!(
+            StateMutability::decision(Some(true), Some(false)),
+            StateMutability::Payable
+        );
+        assert_eq!(
+            StateMutability::decision(Some(true), Some(true)),
+            StateMutability::Payable
+        );
+
         let pure_func = test_func(StateMutability::Pure);
         assert_eq!(pure_func.state_mutability, StateMutability::Pure);
 

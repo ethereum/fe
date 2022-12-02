@@ -61,32 +61,13 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
     let mut_self = sig.mut_self;
     let mut_ctx = sig.mut_ctx;
 
-    // Check ABI conformity
-    // https://github.com/ethereum/fe/issues/558
-    //
-    //             |none self             |    self  |  mut self             |
-    // | none ctx  |    pure              |    view  |  payable/nonpayable   |
-    // | ctx       |    view              |    view  |  payable/nonpayable   |
-    // | mut ctx   |   payable/nopayable  |    view  |  payable/nonpayable   |
-    //
-    // NOTE: we default payable for all method right now. But this should be resolve in the future.
-
-    let state_mutability;
-    if mut_self.is_none() {
-        if mut_ctx.is_none() {
-            state_mutability = StateMutability::Pure;
-        } else if mut_ctx == Some(false) {
-            state_mutability = StateMutability::View
-        } else {
-            state_mutability = StateMutability::Payable;
-        }
-    } else if mut_self == Some(false) {
-        state_mutability = StateMutability::View;
-    } else {
-        state_mutability = StateMutability::Payable
-    }
-
-    AbiFunction::new(func_type, name.to_string(), args, ret_ty, state_mutability)
+    AbiFunction::new(
+        func_type,
+        name.to_string(),
+        args,
+        ret_ty,
+        StateMutability::decision(mut_self, mut_ctx),
+    )
 }
 
 pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
