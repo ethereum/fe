@@ -14,33 +14,37 @@ pub enum StateMutability {
     Payable,
 }
 
-impl StateMutability {
-    pub fn decision(mut_self: Option<bool>, mut_ctx: Option<bool>) -> Self {
-        // Check ABI conformity
-        // https://github.com/ethereum/fe/issues/558
-        //
-        //             |none self             |    self  |  mut self             |
-        // | none ctx  |    pure              |    view  |  payable/nonpayable   |
-        // | ctx       |    view              |    view  |  payable/nonpayable   |
-        // | mut ctx   |   payable/nopayable  |    view  |  payable/nonpayable   |
-        //
-        // NOTE: we default payable for all method right now. But this should be resolve in the future.
+pub enum SelfParam {
+    None,
+    Imm,
+    Mut,
+}
+pub enum CtxParam {
+    None,
+    Imm,
+    Mut,
+}
 
-        let state_mutability;
-        if mut_self.is_none() {
-            if mut_ctx.is_none() {
-                state_mutability = StateMutability::Pure;
-            } else if mut_ctx == Some(false) {
-                state_mutability = StateMutability::View
-            } else {
-                state_mutability = StateMutability::Payable;
-            }
-        } else if mut_self == Some(false) {
-            state_mutability = StateMutability::View;
-        } else {
-            state_mutability = StateMutability::Payable
+impl StateMutability {
+    pub fn from_self_and_ctx_params(self_: SelfParam, ctx: CtxParam) -> Self {
+        // Check ABI conformity
+        // See https://github.com/ethereum/fe/issues/558
+        //
+        //              no self   |   self   |  mut self  |
+        //           ......................................
+        // no ctx    :    pure    |   view    |  payable  |
+        // ctx       :    view    |   view    |  payable  |
+        // mut ctx   :   payable  |  payable  |  payable  |
+
+        match (self_, ctx) {
+            (SelfParam::None, CtxParam::None) => StateMutability::Pure,
+            (SelfParam::None, CtxParam::Imm) => StateMutability::View,
+            (SelfParam::None, CtxParam::Mut) => StateMutability::Payable,
+            (SelfParam::Imm, CtxParam::None) => StateMutability::View,
+            (SelfParam::Imm, CtxParam::Imm) => StateMutability::View,
+            (SelfParam::Imm, CtxParam::Mut) => StateMutability::Payable,
+            (SelfParam::Mut, _) => StateMutability::Payable,
         }
-        state_mutability
     }
 }
 
@@ -76,10 +80,6 @@ impl AbiFunction {
             name,
             inputs,
             outputs,
-            // In the future we will derive that based on the fact whether `self` or `ctx` are taken as `mut` or not.
-            // For now, we default to payable so that tooling such as hardhat simply assumes all functions need to be
-            // called with a transaction.
-            // And if self and ctx are note taken then we use `pure` as state mutability
             state_mutability,
         }
     }
@@ -247,39 +247,42 @@ mod tests {
 
     #[test]
     fn test_state_mutability() {
-        assert_eq!(StateMutability::decision(None, None), StateMutability::Pure);
         assert_eq!(
-            StateMutability::decision(None, Some(false)),
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::None),
+            StateMutability::Pure
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::Imm),
             StateMutability::View
         );
         assert_eq!(
-            StateMutability::decision(None, Some(true)),
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::Mut),
             StateMutability::Payable
         );
 
         assert_eq!(
-            StateMutability::decision(Some(false), None),
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::None),
             StateMutability::View
         );
         assert_eq!(
-            StateMutability::decision(Some(false), Some(false)),
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::Imm),
             StateMutability::View
         );
         assert_eq!(
-            StateMutability::decision(Some(false), Some(true)),
-            StateMutability::View
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::Mut),
+            StateMutability::Payable
         );
 
         assert_eq!(
-            StateMutability::decision(Some(true), None),
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::None),
             StateMutability::Payable
         );
         assert_eq!(
-            StateMutability::decision(Some(true), Some(false)),
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::Imm),
             StateMutability::Payable
         );
         assert_eq!(
-            StateMutability::decision(Some(true), Some(true)),
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::Mut),
             StateMutability::Payable
         );
 

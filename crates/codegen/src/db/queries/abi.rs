@@ -1,10 +1,16 @@
 use fe_abi::{
     contract::AbiContract,
     event::{AbiEvent, AbiEventField},
-    function::{AbiFunction, AbiFunctionType, StateMutability},
+    function::{AbiFunction, AbiFunctionType, CtxParam, SelfParam, StateMutability},
     types::{AbiTupleField, AbiType},
 };
-use fe_analyzer::{constants::INDEXED, namespace::items::ContractId};
+use fe_analyzer::{
+    constants::INDEXED,
+    namespace::{
+        items::ContractId,
+        types::{CtxDecl, SelfDecl},
+    },
+};
 use fe_mir::ir::{self, FunctionId, TypeId};
 
 use crate::db::CodegenDb;
@@ -58,15 +64,26 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
         AbiFunctionType::Function
     };
 
-    let mut_self = sig.mut_self;
-    let mut_ctx = sig.mut_ctx;
+    // The "stateMutability" field is derived from the presence & mutability of
+    // `self` and `ctx` params in the analyzer fn sig.
+    let analyzer_sig = sig.analyzer_func_id.signature(db.upcast());
+    let self_param = match analyzer_sig.self_decl {
+        None => SelfParam::None,
+        Some(SelfDecl { mut_: None, .. }) => SelfParam::Imm,
+        Some(SelfDecl { mut_: Some(_), .. }) => SelfParam::Mut,
+    };
+    let ctx_param = match analyzer_sig.ctx_decl {
+        None => CtxParam::None,
+        Some(CtxDecl { mut_: None, .. }) => CtxParam::Imm,
+        Some(CtxDecl { mut_: Some(_), .. }) => CtxParam::Mut,
+    };
 
     AbiFunction::new(
         func_type,
         name.to_string(),
         args,
         ret_ty,
-        StateMutability::decision(mut_self, mut_ctx),
+        StateMutability::from_self_and_ctx_params(self_param, ctx_param),
     )
 }
 
