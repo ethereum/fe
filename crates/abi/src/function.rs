@@ -14,6 +14,40 @@ pub enum StateMutability {
     Payable,
 }
 
+pub enum SelfParam {
+    None,
+    Imm,
+    Mut,
+}
+pub enum CtxParam {
+    None,
+    Imm,
+    Mut,
+}
+
+impl StateMutability {
+    pub fn from_self_and_ctx_params(self_: SelfParam, ctx: CtxParam) -> Self {
+        // Check ABI conformity
+        // See https://github.com/ethereum/fe/issues/558
+        //
+        //              no self   |   self   |  mut self  |
+        //           ......................................
+        // no ctx    :    pure    |   view    |  payable  |
+        // ctx       :    view    |   view    |  payable  |
+        // mut ctx   :   payable  |  payable  |  payable  |
+
+        match (self_, ctx) {
+            (SelfParam::None, CtxParam::None) => StateMutability::Pure,
+            (SelfParam::None, CtxParam::Imm) => StateMutability::View,
+            (SelfParam::None, CtxParam::Mut) => StateMutability::Payable,
+            (SelfParam::Imm, CtxParam::None) => StateMutability::View,
+            (SelfParam::Imm, CtxParam::Imm) => StateMutability::View,
+            (SelfParam::Imm, CtxParam::Mut) => StateMutability::Payable,
+            (SelfParam::Mut, _) => StateMutability::Payable,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiFunction {
     #[serde(rename = "type")]
@@ -31,6 +65,7 @@ impl AbiFunction {
         name: String,
         args: Vec<(String, AbiType)>,
         ret_ty: Option<AbiType>,
+        state_mutability: StateMutability,
     ) -> Self {
         let inputs = args
             .into_iter()
@@ -45,10 +80,7 @@ impl AbiFunction {
             name,
             inputs,
             outputs,
-            // In the future we will derive that based on the fact whether `self` or `ctx` are taken as `mut` or not.
-            // For now, we default to payable so that tooling such as hardhat simply assumes all functions need to be
-            // called with a transaction.
-            state_mutability: StateMutability::Payable,
+            state_mutability,
         }
     }
 
@@ -131,7 +163,8 @@ mod tests {
 
         AbiType::Tuple(vec![field1, field2])
     }
-    fn test_func() -> AbiFunction {
+
+    fn test_func(state_mutability: StateMutability) -> AbiFunction {
         let i32_ty = AbiType::Int(32);
         let tuple_ty = simple_tuple();
         let u64_ty = AbiType::UInt(64);
@@ -141,12 +174,13 @@ mod tests {
             "test_func".into(),
             vec![("arg1".into(), i32_ty), ("arg2".into(), tuple_ty)],
             Some(u64_ty),
+            state_mutability,
         )
     }
 
     #[test]
     fn serialize_func() {
-        let func = test_func();
+        let func = test_func(StateMutability::Payable);
 
         assert_ser_tokens(
             &func,
@@ -212,8 +246,56 @@ mod tests {
     }
 
     #[test]
+    fn test_state_mutability() {
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::None),
+            StateMutability::Pure
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::Imm),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::None, CtxParam::Mut),
+            StateMutability::Payable
+        );
+
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::None),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::Imm),
+            StateMutability::View
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Imm, CtxParam::Mut),
+            StateMutability::Payable
+        );
+
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::None),
+            StateMutability::Payable
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::Imm),
+            StateMutability::Payable
+        );
+        assert_eq!(
+            StateMutability::from_self_and_ctx_params(SelfParam::Mut, CtxParam::Mut),
+            StateMutability::Payable
+        );
+
+        let pure_func = test_func(StateMutability::Pure);
+        assert_eq!(pure_func.state_mutability, StateMutability::Pure);
+
+        let impure_func = test_func(StateMutability::Payable);
+        assert_eq!(impure_func.state_mutability, StateMutability::Payable);
+    }
+
+    #[test]
     fn func_selector() {
-        let func = test_func();
+        let func = test_func(StateMutability::Payable);
         let selector = func.selector();
 
         debug_assert_eq!(

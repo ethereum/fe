@@ -6,7 +6,7 @@ use crate::namespace::items::{
     DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
 };
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, Generic, SelfDecl, Type, TypeId};
+use crate::namespace::types::{self, CtxDecl, Generic, SelfDecl, Type, TypeId};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::{type_desc, type_desc_to_trait};
 use fe_common::diagnostics::Label;
@@ -29,6 +29,7 @@ pub fn function_signature(
     let fn_parent = function.parent(db);
 
     let mut self_decl = None;
+    let mut ctx_decl = None;
     let mut names = HashMap::new();
     let mut labels = HashMap::new();
 
@@ -149,6 +150,9 @@ pub fn function_signature(
                                 "`ctx: Context` must be the first parameter",
                             );
                         }
+                        else {
+                            ctx_decl = Some(CtxDecl {span: arg.span,  mut_: *mut_})
+                        }
                     }
                 }
 
@@ -237,6 +241,7 @@ pub fn function_signature(
     Analysis {
         value: Rc::new(types::FunctionSignature {
             self_decl,
+            ctx_decl,
             params,
             return_type,
         }),
