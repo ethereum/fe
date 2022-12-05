@@ -130,7 +130,7 @@ pub fn function_signature(
                 });
 
                 if let Some(context_type) = scope.get_context_type() {
-                    if typ == Ok(context_type) {
+                    if typ.as_ref().map(|val| val.deref(db)) == Ok(context_type) {
                         if arg.name() != "ctx" {
                             scope.error(
                                 "invalid `Context` instance name",
