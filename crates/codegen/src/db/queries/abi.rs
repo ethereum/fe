@@ -78,13 +78,13 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
         Some(CtxDecl { mut_: Some(_), .. }) => CtxParam::Mut,
     };
 
-    AbiFunction::new(
-        func_type,
-        name.to_string(),
-        args,
-        ret_ty,
-        StateMutability::from_self_and_ctx_params(self_param, ctx_param),
-    )
+    let state_mutability = if name == "__init__" {
+        StateMutability::Payable
+    } else {
+        StateMutability::from_self_and_ctx_params(self_param, ctx_param)
+    };
+
+    AbiFunction::new(func_type, name.to_string(), args, ret_ty, state_mutability)
 }
 
 pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
