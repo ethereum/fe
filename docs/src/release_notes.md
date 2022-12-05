@@ -10,6 +10,250 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.20.0-alpha (2022-12-05)
+
+
+### Features
+
+
+- Removed the `event` type as well as the `emit` keyword.
+  Instead the `struct` type now automatically implements
+  the `Emittable` trait and can be emitted via `ctx.emit(..)`.
+
+  Indexed fields can be annotated via the `#indexed` attribute.
+
+  E.g.
+
+  ```
+  struct Signed {
+      book_msg: String<100>
+  }
+
+  contract GuestBook {
+      messages: Map<address, String<100>>
+
+      pub fn sign(mut self, mut ctx: Context, book_msg: String<100>) {
+          self.messages[ctx.msg_sender()] = book_msg
+          ctx.emit(Signed(book_msg))
+      }
+  }
+  ```
+  ([#717](https://github.com/ethereum/fe/issues/717))
+
+- Allow to call trait methods on types when trait is in scope
+
+  So far traits were only useful as bounds for generic functions.
+  With this change traits can also be used as illustrated with
+  the following example:
+
+  ```
+  trait Double {
+    fn double(self) -> u256;
+  }
+
+  impl Double for (u256, u256) {
+    fn double(self) -> u256 {
+      return (self.item0 + self.item1) * 2
+    }
+  }
+
+  contract Example {
+
+    pub fn run_test(self) {
+      assert (0, 1).double() == 2
+    }
+  }
+  ```
+
+  If a call turns out to be ambigious the compiler currently asks the
+  user to disambiguate via renaming. In the future we will likely
+  introduce a syntax to allow to disambiguate at the callsite. ([#757](https://github.com/ethereum/fe/issues/757))
+
+- Allow contract associated functions to be called via `ContractName::function_name()` syntax. ([#767](https://github.com/ethereum/fe/issues/767))
+- Add `enum` types and `match` statement.
+
+  `enum` can now be defined, e.g.,
+
+  ```fe
+  pub enum MyEnum {
+      Unit
+      Tuple(u32, u256, bool)
+    
+      fn unit() -> MyEnum {
+          return MyEnum::Unit
+      }
+  }
+  ```
+
+  Also, `match` statement is introduced, e.g.,
+
+  ```fe,ignore
+  pub fn eval_enum()  -> u256{
+      match MyEnum {
+          MyEnum::Unit => { 
+              return 0
+          }
+        
+          MyEnum::Tuple(a, _, false) => {
+              return u256(a)
+          }
+        
+          MyEnum::Tuple(.., true) => {
+              return u256(1)
+          }
+      }
+  }
+  ```
+
+
+  For now, available patterns are restricted to 
+  * Wildcard(`_`), which matches all patterns: `_`
+  * Named variable, which matches all patterns and binds the value to make the value usable in the arm. e.g., `a`, `b` and `c` in `MyEnum::Tuple(a, b, c)`
+  * Boolean literal(`true` and `false`)
+  * Enum variant. e.g., `MyEnum::Tuple(a, b, c)`
+  * Tuple pattern. e.g., `(a, b, c)`
+  * Struct pattern. e.g., `MyStruct {x: x1, y: y1, b: true}` 
+  * Rest pattern(`..`), which matches the rest of the pattern. e.g., `MyEnum::Tuple(.., true)`
+  * Or pattern(|). e.g., MyEnum::Unit | MyEnum::Tuple(.., true)
+
+  Fe compiler performs the exhaustiveness and usefulness checks for `match` statement.  
+  So the compiler will emit an error when all patterns are not covered or an unreachable arm are detected. ([#770](https://github.com/ethereum/fe/issues/770))
+- Changed comments to use `//` instead of `#` ([#776](https://github.com/ethereum/fe/issues/776))
+- Added the `mut` keyword, to mark things as mutable. Any variable or function parameter
+  not marked `mut` is now immutable.
+
+  ```fe
+  contract Counter {
+      count: u256
+
+      pub fn increment(mut self) -> u256 {
+          // `self` is mutable, so storage can be modified
+          self.count += 1
+          return self.count
+      }
+  }
+
+  struct Point {
+      pub x: u32
+      pub y: u32
+
+      pub fn add(mut self, _ other: Point) {
+          self.x += other.x
+          self.y += other.y
+
+          // other.x = 1000 // ERROR: `other` is not mutable
+      }
+  }
+
+  fn pointless() {
+      let origin: Point = Point(x: 0, y: 0)
+      // origin.x = 10 // ERROR: origin is not mutable
+
+      let x: u32 = 10
+      // x_coord = 100 // ERROR: `x_coord` is not mutable
+      let mut y: u32 = 0
+      y = 10 // OK
+
+      let mut p: Point = origin // copies `origin`
+      p.x = 10 // OK, doesn't modify `origin`
+
+      let mut q: Point = p // copies `p`
+      q.x = 100            // doesn't modify `p`
+
+      p.add(q)
+      assert p.x == 110
+  }
+  ```
+
+  Note that, in this release, primitive type function parameters
+  can't be `mut`. This restriction might be lifted in a future release.
+
+  For example:
+  ```fe,ignore
+  fn increment(mut x: u256) { // ERROR: primitive type parameters can't be mut
+      x += 1
+  }
+  ```
+  ([#777](https://github.com/ethereum/fe/issues/777))
+- The contents of the `std::prelude` module (currently just the `Context` struct)
+  are now automatically `use`d by every module, so `use std::context::Context` is
+  no longer required. ([#779](https://github.com/ethereum/fe/issues/779))
+- When the Fe compiler generates a JSON ABI file for a contract, the
+  "stateMutability" field for each function now reflects whether the function can
+  read or modify chain or contract state, based on the presence or absence of the
+  `self` and `ctx` parameters, and whether those parameters are `mut`able.
+
+  If a function doesn't take `self` or `ctx`, it's "pure".
+  If a function takes `self` or `ctx` immutably, it can read state but not mutate
+  state, so it's a "view"
+  If a function takes `mut self` or `mut ctx`, it can mutate state, and is thus
+  marked "payable".
+
+  Note that we're following the convention set by Solidity for this field, which
+  isn't a perfect fit for Fe. The primary issue is that Fe doesn't currently
+  distinguish between "payable" and "nonpayable" functions; if you want a function
+  to revert when Eth is sent, you need to do it manually
+  (eg `assert ctx.msg_value() == 0`). ([#783](https://github.com/ethereum/fe/issues/783))
+
+- Trait associated functions
+
+  This change allows trait functions that do not take a `self` parameter.
+  The following demonstrates a possible trait associated function and its usage:
+
+  ```
+  trait Max {
+    fn max(self) -> u8;
+  }
+
+  impl Max for u8 {
+    fn max() -> u8 {
+      return u8(255)
+    }
+  }
+
+  contract Example {
+
+    pub fn run_test(self) {
+      assert u8::max() == 255
+    }
+  }
+  ```
+  ([#805](https://github.com/ethereum/fe/issues/805))
+
+
+### Bugfixes
+
+
+- Fix issue where calls to assiciated functions did not enforce visibility rules.
+
+  E.g the following code should be rejected but previously wasn't:
+
+  ```
+  struct Foo {
+      fn do_private_things() {
+      }
+  }
+
+  contract Bar {
+      fn test() {
+          Foo::do_private_things()
+      }
+  }
+  ```
+
+  With this change, the above code is now rejected because `do_private_things` is not `pub`. ([#767](https://github.com/ethereum/fe/issues/767))
+- Padding on `bytes` and `string` ABI types is zeroed out. ([#769](https://github.com/ethereum/fe/issues/769))
+- Ensure traits from other modules or even ingots can be implemented ([#773](https://github.com/ethereum/fe/issues/773))
+- Certain cases where the compiler would not reject pure functions
+  being called on instances are now properly rejected. ([#775](https://github.com/ethereum/fe/issues/775))
+- Reject calling `to_mem()` on primitive types in storage ([#801](https://github.com/ethereum/fe/issues/801))
+- Disallow importing private type via `use`
+
+  The following was previously allowed but will now error:
+
+  `use foo::PrivateStruct` ([#815](https://github.com/ethereum/fe/issues/815))
+
+
 ## 0.19.1-alpha "Sunstone" (2022-07-06)
 
 
