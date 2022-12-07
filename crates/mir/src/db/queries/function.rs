@@ -62,8 +62,11 @@ impl ir::FunctionSigId {
     }
 
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {
-        let analyzer_func = self.analyzer_sig(db);
-        analyzer_func.module(db.upcast())
+        self.analyzer_sig(db).module(db.upcast())
+    }
+
+    pub fn ingot(self, db: &dyn MirDb) -> analyzer_items::IngotId {
+        self.analyzer_sig(db).ingot(db.upcast())
     }
 
     pub fn is_contract_init(self, db: &dyn MirDb) -> bool {
@@ -72,10 +75,6 @@ impl ir::FunctionSigId {
 
     pub fn name(self, db: &dyn MirDb) -> SmolStr {
         self.data(db).name.clone()
-    }
-
-    pub fn has_self(self, db: &dyn MirDb) -> bool {
-        self.data(db).has_self
     }
 
     /// Returns `class_name::fn_name` if a function is a method else `fn_name`.

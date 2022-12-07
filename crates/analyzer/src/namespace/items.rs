@@ -1211,6 +1211,10 @@ impl FunctionSigId {
         self.data(db).module
     }
 
+    pub fn ingot(&self, db: &dyn AnalyzerDb) -> IngotId {
+        self.module(db).ingot(db)
+    }
+
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
         matches! {self.parent(db), Item::Type(TypeDef::Contract(_))}
     }

@@ -28,6 +28,8 @@ pub fn legalized_body(db: &dyn CodegenDb, func: FunctionId) -> Rc<FunctionBody> 
 pub fn symbol_name(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<String> {
     let module = function.data(db.upcast()).module_id;
     let module_name = module.name(db.upcast());
+    let ingot = module.ingot(db.upcast());
+    let ingot_name = ingot.name(db.upcast());
 
     let analyzer_func = function.analyzer_sig(db.upcast());
     let func_name = format!("{}", analyzer_func.name(db.upcast()),);
@@ -48,7 +50,7 @@ pub fn symbol_name(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<String> {
         _ => func_name,
     };
 
-    format!("{}${}", module_name, func_name).into()
+    format!("{}${}${}", ingot_name, module_name, func_name).into()
 }
 
 fn safe_name(db: &dyn CodegenDb, ty: TypeId) -> SmolStr {

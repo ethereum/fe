@@ -316,6 +316,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 func,
                 args,
                 call_type,
+                ..
             } => {
                 let args: Vec<_> = args.iter().map(|arg| self.value_expr(*arg)).collect();
                 let result = match call_type {

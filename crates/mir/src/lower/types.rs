@@ -31,9 +31,9 @@ pub fn lower_type(db: &dyn MirDb, analyzer_ty: analyzer_types::TypeId) -> TypeId
         analyzer_types::Type::SelfContract(contract) => lower_contract(db, contract),
         analyzer_types::Type::Struct(struct_) => lower_struct(db, struct_),
         analyzer_types::Type::Enum(enum_) => lower_enum(db, enum_),
-        analyzer_types::Type::Generic(generic) => TypeKind::TypeParam(TypeParamDef {
-            name: generic.name.clone(),
-        }),
+        analyzer_types::Type::Generic(generic) => {
+            TypeKind::TypeParam(TypeParamDef { name: generic.name })
+        }
     };
 
     intern_type(db, ty_kind, Some(analyzer_ty.deref(db.upcast())))

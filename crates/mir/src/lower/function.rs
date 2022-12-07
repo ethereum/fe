@@ -66,7 +66,7 @@ pub fn lower_func_signature(db: &dyn MirDb, func: analyzer_items::FunctionSigId)
     };
 
     let sig = FunctionSignature {
-        name: func.name(db.upcast()).clone(),
+        name: func.name(db.upcast()),
         params,
         return_type: Some(return_type),
         module_id: func.module(db.upcast()),
