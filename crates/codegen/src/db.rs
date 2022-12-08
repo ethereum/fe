@@ -3,16 +3,17 @@ use std::rc::Rc;
 use fe_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};
 use fe_analyzer::{
     db::AnalyzerDbStorage,
-    namespace::items::{ContractId, FunctionId, IngotId},
+    namespace::items::{ContractId, IngotId, ModuleId},
     AnalyzerDb,
 };
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_mir::{
     db::{MirDb, MirDbStorage},
-    ir::{FunctionBody, FunctionSigId, FunctionSignature, TypeId},
+    ir::{FunctionSigId, FunctionSignature, TypeId},
 };
+use fxhash::FxHashMap;
 
-use crate::cgu::{CguFunction, CguFunctionId, CodegenUnit, CodegenUnitId};
+use crate::cgu::{CodegenUnit, CodegenUnitId};
 
 mod queries;
 
@@ -20,15 +21,11 @@ mod queries;
 pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
     #[salsa::interned]
     fn codegen_intern_cgu(&self, data: Rc<CodegenUnit>) -> CodegenUnitId;
-    #[salsa::interned]
-    fn codegen_intern_cgu_func(&self, data: Rc<CguFunction>) -> CguFunctionId;
     #[salsa::invoke(queries::cgu::generate_cgu)]
-    fn codegen_generate_cgu(&self, ingot: IngotId) -> Rc<[CodegenUnitId]>;
+    fn codegen_generate_cgu(&self, ingot: IngotId) -> Rc<FxHashMap<ModuleId, CodegenUnitId>>;
 
     #[salsa::invoke(queries::function::legalized_signature)]
     fn codegen_legalized_signature(&self, function_id: FunctionSigId) -> Rc<FunctionSignature>;
-    #[salsa::invoke(queries::function::legalized_body)]
-    fn codegen_legalized_body(&self, func: FunctionId) -> Rc<FunctionBody>;
     #[salsa::invoke(queries::function::symbol_name)]
     fn codegen_function_symbol_name(&self, function_id: FunctionSigId) -> Rc<String>;
 

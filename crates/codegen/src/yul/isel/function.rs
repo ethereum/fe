@@ -1,6 +1,7 @@
 #![allow(unused)]
 use std::thread::Scope;
 
+use super::cgu::CguContext;
 use super::{context::Context, inst_order::InstSerializer};
 use fe_analyzer::namespace::items::FunctionId;
 use fe_common::numeric::to_hex_str;
@@ -25,6 +26,8 @@ use yultsur::{
     *,
 };
 
+use crate::cgu::CguFunction;
+use crate::yul::legalize::legalize_func_body;
 use crate::{
     db::CodegenDb,
     yul::isel::inst_order::StructuralInst,
@@ -37,18 +40,18 @@ use crate::{
 
 pub fn lower_function(
     db: &dyn CodegenDb,
-    ctx: &mut Context,
-    sig: FunctionSigId,
-    func: FunctionId,
+    ctx: &mut CguContext,
+    func: CguFunction,
 ) -> yul::FunctionDefinition {
-    let sig_data = &db.codegen_legalized_signature(sig);
-    let body = &db.codegen_legalized_body(func);
-    FuncLowerHelper::new(db, ctx, sig, sig_data, body).lower_func()
+    let sig_data = &db.codegen_legalized_signature(func.sig);
+    let mut body = func.body;
+    legalize_func_body(db, &mut body);
+    FuncLowerHelper::new(db, ctx, func.sig, sig_data, &body).lower_func()
 }
 
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
-    ctx: &'a mut Context,
+    ctx: &'a mut CguContext,
     value_map: ScopedValueMap,
     sig_id: FunctionSigId,
     sig: &'a FunctionSignature,
@@ -60,7 +63,7 @@ struct FuncLowerHelper<'db, 'a> {
 impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn new(
         db: &'db dyn CodegenDb,
-        ctx: &'a mut Context,
+        ctx: &'a mut CguContext,
         sig_id: FunctionSigId,
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,
@@ -224,7 +227,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                         // Need special handling when rhs is the string literal because it needs ptr
                         // copy.
                         if let ConstantValue::Str(s) = &constant.data(self.db.upcast()).value {
-                            self.ctx.string_constants.insert(s.to_string());
+                            self.ctx.add_string_constant(self.db, s);
                             let size = self.value_ty_size_deref(*src);
                             let lhs = self.body.store.inst_result(inst).unwrap();
                             let ptr = self.lower_assignable_value(lhs);
@@ -321,7 +324,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 let args: Vec<_> = args.iter().map(|arg| self.value_expr(*arg)).collect();
                 let result = match call_type {
                     CallType::Internal => {
-                        self.ctx.function_dependency.insert(*func);
                         let func_name = identifier! {(self.db.codegen_function_symbol_name(*func))};
                         expression! {[func_name]([args...])}
                     }
@@ -405,8 +407,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
 
             InstKind::Create { value, contract } => {
-                self.ctx.contract_dependency.insert(*contract);
-
                 let value_expr = self.value_expr(*value);
                 let result = self.ctx.runtime.create(self.db, *contract, value_expr);
                 let u256_ty = yul_primitive_type(self.db);
@@ -418,8 +418,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 salt,
                 contract,
             } => {
-                self.ctx.contract_dependency.insert(*contract);
-
                 let value_expr = self.value_expr(*value);
                 let salt_expr = self.value_expr(*salt);
                 let result = self
@@ -805,7 +803,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                     literal_expression! {(to_hex_str(imm))}
                 }
                 ConstantValue::Str(s) => {
-                    self.ctx.string_constants.insert(s.to_string());
+                    self.ctx.add_string_constant(self.db, s);
                     self.ctx.runtime.string_construct(self.db, s, s.len())
                 }
                 ConstantValue::Bool(true) => {

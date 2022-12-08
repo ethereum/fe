@@ -3,18 +3,30 @@
 
 use std::hash::{Hash, Hasher};
 
-use fe_analyzer::namespace::items::ContractId;
+use fe_analyzer::namespace::items::{ContractId, ModuleId};
 use fe_common::impl_intern_key;
 use fe_mir::ir::{FunctionBody, FunctionSigId};
 use indexmap::IndexSet;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenUnit {
+    pub module: ModuleId,
+
     /// All contracts in the CGU.
     pub contracts: Vec<ContractId>,
 
     /// All functions in the CGU.
-    pub functions: Vec<CguFunctionId>,
+    pub functions: Vec<CguFunction>,
+}
+
+impl CodegenUnit {
+    pub fn new(module: ModuleId) -> Self {
+        Self {
+            module,
+            contracts: Vec::new(),
+            functions: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,7 +53,3 @@ impl Hash for CguFunction {
         self.sig.hash(state);
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CguFunctionId(pub u32);
-impl_intern_key!(CguFunctionId);

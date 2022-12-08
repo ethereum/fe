@@ -1,4 +1,6 @@
 pub mod context;
+
+mod cgu;
 mod contract;
 mod function;
 mod inst_order;

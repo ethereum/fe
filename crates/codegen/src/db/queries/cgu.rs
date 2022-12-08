@@ -22,7 +22,7 @@ use std::rc::Rc;
 
 use fe_analyzer::namespace::{
     items::FunctionSigId as AnalyzerFuncSigId,
-    items::{IngotId, Item},
+    items::{IngotId, Item, ModuleId},
 };
 use fe_mir::ir::{
     body_cursor::{BodyCursor, CursorLocation},
@@ -37,11 +37,11 @@ use indexmap::IndexSet;
 use smol_str::SmolStr;
 
 use crate::{
-    cgu::{CguFunction, CguFunctionId, CodegenUnit, CodegenUnitId},
+    cgu::{CguFunction, CodegenUnit, CodegenUnitId},
     db::CodegenDb,
 };
 
-pub fn generate_cgu(db: &dyn CodegenDb, ingot: IngotId) -> Rc<[CodegenUnitId]> {
+pub fn generate_cgu(db: &dyn CodegenDb, ingot: IngotId) -> Rc<FxHashMap<ModuleId, CodegenUnitId>> {
     let mut worklist = Vec::new();
 
     // Step 1.
@@ -74,15 +74,17 @@ pub fn generate_cgu(db: &dyn CodegenDb, ingot: IngotId) -> Rc<[CodegenUnitId]> {
         let module = sig.module(db.upcast());
         cgu_map
             .entry(module)
-            .or_default()
+            .or_insert_with(|| CodegenUnit::new(module))
             .functions
             .push(cgu_func_id);
     }
 
-    cgu_map
-        .into_values()
-        .map(|cgu| db.codegen_intern_cgu(cgu.into()))
-        .collect()
+    Rc::new(
+        cgu_map
+            .into_iter()
+            .map(|(module, cgu)| (module, db.codegen_intern_cgu(cgu.into())))
+            .collect(),
+    )
 }
 
 struct CguFunctionBuilder<'db> {
@@ -98,7 +100,7 @@ impl<'db> CguFunctionBuilder<'db> {
         &self,
         sig: FunctionSigId,
         mut body: FunctionBody,
-    ) -> (CguFunctionId, Vec<(FunctionSigId, FunctionBody)>) {
+    ) -> (CguFunction, Vec<(FunctionSigId, FunctionBody)>) {
         let mut mono_funcs = Vec::new();
         let mut callees = IndexSet::new();
 
@@ -131,8 +133,7 @@ impl<'db> CguFunctionBuilder<'db> {
             }
         }
         let cgu_func = CguFunction { sig, body, callees };
-        let cgu_func_id = self.db.codegen_intern_cgu_func(cgu_func.into());
-        (cgu_func_id, mono_funcs)
+        (cgu_func, mono_funcs)
     }
 
     fn monomorphize_func(
