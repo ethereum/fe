@@ -196,26 +196,25 @@
 
                       </div>
                       <code class="language-fe flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">
+// Structs can be emitted as events
+struct Signed {
+    pub book_msg: String&lt;100&gt;
+}
+
 // The `contract` keyword defines a new contract type
 contract GuestBook {
     // Strings are generic over a constant number
     // that restricts its maximum size
     messages: Map&lt;address, String&lt;100&gt;&gt;
 
-    // Events can be defined on contract or module level
-    event Signed {
-        book_msg: String&lt;100&gt;
-    }
-
     // Context is a struct provided by the standard library
     // that gives access to various features of the EVM
-    pub fn sign(self, ctx: Context, book_msg: String&lt;100&gt;) {
+    pub fn sign(mut self, mut ctx: Context, book_msg: String&lt;100&gt;) {
         // All storage access is explicit using `self.&lt;some-key&gt;`
         self.messages[ctx.msg_sender()] = book_msg
 
-        // Emit the `Signed` event. In the future, this will change to:
-        // `ctx.emit(Signed(ctx, book_msg))`
-        emit Signed(ctx, book_msg)
+        // Emit the `Signed` event.
+        ctx.emit(Signed(book_msg))
     }
 
     pub fn get_msg(self, addr: address) -> String&lt;100&gt; {
