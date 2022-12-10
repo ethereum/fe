@@ -1,5 +1,3 @@
-pub mod context;
-
 mod cgu;
 mod contract;
 mod dependency_graph;
