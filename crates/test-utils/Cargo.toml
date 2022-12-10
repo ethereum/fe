@@ -20,7 +20,7 @@ primitive-types = {version = "0.11.1", default-features = false, features = ["rl
 serde_json = "1.0.64"
 solc = { git = "https://github.com/Y-Nak/solc-rust", rev = "f18b1ce", optional = true}
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
-indexmap = "1.6.2"
+indexmap = "1.9.2"
 insta = "1.7.1"
 
 # used by ethabi, we need to force the js feature for wasm support

@@ -19,7 +19,7 @@ fe-mir = {path = "../mir", version = "^0.20.0-alpha"}
 fe-codegen = {path = "../codegen", version = "^0.20.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.20.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.20.0-alpha", features = ["solc-backend"], optional = true}
-indexmap = "1.6.2"
+indexmap = "1.9.2"
 vfs = "0.5.1"
 smol_str = "0.1.21"
 toml = "0.5.8"

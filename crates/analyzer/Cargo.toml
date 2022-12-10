@@ -18,7 +18,7 @@ strum = { version = "0.23.0", features = ["derive"] }
 semver = "1.0.0"
 salsa = "0.16.1"
 parking_lot_core = { version = "=0.8.0" } # used by salsa; version pinned for wasm compatibility
-indexmap = "1.6.2"
+indexmap = "1.9.2"
 if_chain = "1.0.1"
 smallvec = { version = "1.6.1", features = ["union"] }
 petgraph = "0.6.0"
