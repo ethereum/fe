@@ -1,8 +1,8 @@
 #![allow(unused)]
 use std::thread::Scope;
 
-use super::cgu::CguContext;
-use super::{context::Context, inst_order::InstSerializer};
+use super::inst_order::InstSerializer;
+use crate::yul::cgu::CguLowerContext;
 use fe_analyzer::namespace::items::FunctionId;
 use fe_common::numeric::to_hex_str;
 
@@ -38,20 +38,20 @@ use crate::{
     },
 };
 
-pub fn lower_function(
+pub(crate) fn lower_function(
     db: &dyn CodegenDb,
-    ctx: &mut CguContext,
-    func: CguFunction,
+    ctx: &mut CguLowerContext,
+    func: &mut CguFunction,
 ) -> yul::FunctionDefinition {
     let sig_data = &db.codegen_legalized_signature(func.sig);
-    let mut body = func.body;
-    legalize_func_body(db, &mut body);
+    let body = &mut func.body;
+    legalize_func_body(db, body);
     FuncLowerHelper::new(db, ctx, func.sig, sig_data, &body).lower_func()
 }
 
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
-    ctx: &'a mut CguContext,
+    ctx: &'a mut CguLowerContext,
     value_map: ScopedValueMap,
     sig_id: FunctionSigId,
     sig: &'a FunctionSignature,
@@ -63,7 +63,7 @@ struct FuncLowerHelper<'db, 'a> {
 impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn new(
         db: &'db dyn CodegenDb,
-        ctx: &'a mut CguContext,
+        ctx: &'a mut CguLowerContext,
         sig_id: FunctionSigId,
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,

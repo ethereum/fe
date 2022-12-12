@@ -3,11 +3,11 @@ use std::rc::Rc;
 use fe_analyzer::{
     display::Displayable,
     namespace::{
-        items::{FunctionId, Item},
+        items::Item,
         types::{Type, TypeId},
     },
 };
-use fe_mir::ir::{FunctionBody, FunctionSigId, FunctionSignature};
+use fe_mir::ir::{FunctionSigId, FunctionSignature};
 use salsa::InternKey;
 use smol_str::SmolStr;
 
@@ -19,21 +19,14 @@ pub fn legalized_signature(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<Fu
     sig.into()
 }
 
-pub fn legalized_body(db: &dyn CodegenDb, func: FunctionId) -> Rc<FunctionBody> {
-    let mut body = (*db.mir_lowered_func_body(func)).clone();
-    legalize::legalize_func_body(db, &mut body);
-    body.into()
-}
-
 pub fn symbol_name(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<String> {
     let module = function.data(db.upcast()).module_id;
     let module_name = module.name(db.upcast());
     let ingot = module.ingot(db.upcast());
     let ingot_name = ingot.name(db.upcast());
+    let func_name = format!("{}", function.name(db.upcast()),);
 
     let analyzer_func = function.analyzer_sig(db.upcast());
-    let func_name = format!("{}", analyzer_func.name(db.upcast()),);
-
     let func_name = match analyzer_func.self_item(db.upcast()) {
         Some(Item::Impl(id)) => {
             let class_name = format!(

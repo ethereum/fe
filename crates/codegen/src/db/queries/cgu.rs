@@ -22,18 +22,17 @@ use std::rc::Rc;
 
 use fe_analyzer::namespace::{
     items::FunctionSigId as AnalyzerFuncSigId,
-    items::{IngotId, Item, ModuleId},
+    items::{FunctionId, IngotId, Item, ModuleId},
 };
 use fe_mir::ir::{
     body_cursor::{BodyCursor, CursorLocation},
     function::BodyDataStore,
     inst::InstKind,
-    types::TypeParamDef,
     FunctionBody, FunctionParam, FunctionSigId, FunctionSignature, InstId, TypeId, TypeKind,
     ValueId,
 };
 use fxhash::{FxHashMap, FxHashSet};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use smol_str::SmolStr;
 
 use crate::{
@@ -46,12 +45,23 @@ pub fn generate_cgu(db: &dyn CodegenDb, ingot: IngotId) -> Rc<FxHashMap<ModuleId
 
     // Step 1.
     for &module in ingot.all_modules(db.upcast()).iter() {
-        for &function in module.all_functions(db.upcast()).iter() {
-            if !function.is_generic(db.upcast()) {
-                let sig = function.sig(db.upcast());
+        // Currently, `module.all_functions()` doesn't return all functions. See https://github.com/ethereum/fe/issues/830.
+        let mut fill_worklist = |func: FunctionId| {
+            if !func.is_generic(db.upcast()) {
+                let sig = func.sig(db.upcast());
                 let sig = db.mir_lowered_func_signature(sig);
-                let body = (*db.mir_lowered_func_body(function)).clone();
+                let body = (*db.mir_lowered_func_body(func)).clone();
                 worklist.push((sig, body));
+            }
+        };
+        for func in module.all_functions(db.upcast()).iter().cloned() {
+            fill_worklist(func)
+        }
+        for impl_ in module.all_impls(db.upcast()).iter() {
+            {
+                for func in impl_.all_functions(db.upcast()).iter().cloned() {
+                    fill_worklist(func)
+                }
             }
         }
     }
@@ -76,7 +86,7 @@ pub fn generate_cgu(db: &dyn CodegenDb, ingot: IngotId) -> Rc<FxHashMap<ModuleId
             .entry(module)
             .or_insert_with(|| CodegenUnit::new(module))
             .functions
-            .push(cgu_func_id);
+            .insert(sig, cgu_func_id);
     }
 
     Rc::new(
@@ -132,7 +142,7 @@ impl<'db> CguFunctionBuilder<'db> {
                 }
             }
         }
-        let cgu_func = CguFunction { sig, body, callees };
+        let cgu_func = CguFunction { sig, body };
         (cgu_func, mono_funcs)
     }
 
@@ -142,26 +152,27 @@ impl<'db> CguFunctionBuilder<'db> {
         store: &BodyDataStore,
         inst: InstId,
     ) -> (FunctionSigId, FunctionBody) {
-        let InstKind::Call {func: callee, args, generic_type, ..} = &store.inst_data(inst).kind else {
+        let InstKind::Call {func: callee, args, ..} = &store.inst_data(inst).kind else {
             panic!("expected a call instruction");
         };
         debug_assert!(callee.is_generic(self.db.upcast()));
 
         let callee = *callee;
-        let subst = self.get_subst(store, callee, args);
+        let substs = self.get_substs(store, callee, args);
 
-        let mono_sig = self.monomorphize_sig(caller, callee, &subst, generic_type);
-        let mono_body = self.monomorphize_body(callee, &subst);
+        let mono_sig = self
+            .db
+            .mir_intern_function(self.monomorphize_sig(caller, callee, &substs).into());
+        let mono_body = self.monomorphize_body(mono_sig, &substs);
 
-        (self.db.mir_intern_function(mono_sig.into()), mono_body)
+        (mono_sig, mono_body)
     }
 
     fn monomorphize_sig(
         &self,
         caller: FunctionSigId,
         callee: FunctionSigId,
-        subst: &FxHashMap<SmolStr, TypeId>,
-        generic_type: &Option<TypeParamDef>,
+        substs: &IndexMap<SmolStr, TypeId>,
     ) -> FunctionSignature {
         let params = callee
             .data(self.db.upcast())
@@ -169,7 +180,10 @@ impl<'db> CguFunctionBuilder<'db> {
             .iter()
             .map(|param| {
                 let ty = match &param.ty.data(self.db.upcast()).kind {
-                    TypeKind::TypeParam(def) => subst[&def.name],
+                    TypeKind::TypeParam(def) => {
+                        let ty = substs[&def.name];
+                        ty
+                    }
                     _ => param.ty,
                 };
 
@@ -184,17 +198,16 @@ impl<'db> CguFunctionBuilder<'db> {
         let return_type = callee.return_type(self.db.upcast());
         // If the callee and caller are in different ingots, we need to generate a
         // function in the caller's module.
-        let module_id = if callee.ingot(self.db.upcast()) != caller.ingot(self.db.upcast()) {
+        let module_id = if caller.ingot(self.db.upcast()) != callee.ingot(self.db.upcast()) {
             caller.module(self.db.upcast())
         } else {
             callee.module(self.db.upcast())
         };
         let linkage = callee.linkage(self.db.upcast());
-        let analyzer_id =
-            self.resolve_function(callee.analyzer_sig(self.db.upcast()), subst, generic_type);
+        let analyzer_id = self.resolve_function(callee.analyzer_sig(self.db.upcast()), substs);
 
         FunctionSignature {
-            name: self.mono_func_name(caller, analyzer_id, subst),
+            name: self.mono_func_name(caller, analyzer_id, substs),
             params,
             return_type,
             module_id,
@@ -206,7 +219,7 @@ impl<'db> CguFunctionBuilder<'db> {
     fn monomorphize_body(
         &self,
         func: FunctionSigId,
-        subst: &FxHashMap<SmolStr, TypeId>,
+        substs: &IndexMap<SmolStr, TypeId>,
     ) -> FunctionBody {
         let func_id = func
             .analyzer_sig(self.db.upcast())
@@ -216,8 +229,8 @@ impl<'db> CguFunctionBuilder<'db> {
         let mut body = (*self.db.mir_lowered_func_body(func_id)).clone();
         for value in body.store.values_mut() {
             if let TypeKind::TypeParam(def) = &value.ty().data(self.db.upcast()).kind {
-                let subst_ty = subst[&def.name];
-                *value.ty_mut() = subst_ty;
+                let substs_ty = substs[&def.name];
+                *value.ty_mut() = substs_ty;
             }
         }
 
@@ -226,19 +239,20 @@ impl<'db> CguFunctionBuilder<'db> {
 
     /// Resolve the trait function signature into the corresponding concrete
     /// implementation if the `callee` is a trait function.
+    /// TODO: We need more accurate trait resolver/collector to handle this.
     fn resolve_function(
         &self,
         callee: AnalyzerFuncSigId,
-        subst: &FxHashMap<SmolStr, TypeId>,
-        generic_type: &Option<TypeParamDef>,
+        substs: &IndexMap<SmolStr, TypeId>,
     ) -> AnalyzerFuncSigId {
         let trait_id = match callee.parent(self.db.upcast()) {
             Item::Trait(id) => id,
             _ => return callee,
         };
 
-        let concrete_type = subst[&generic_type.as_ref().unwrap().name];
-        let impl_ = concrete_type
+        // We assume the first type parameter is the receiver type.
+        let receiver = substs.values().next().unwrap();
+        let impl_ = receiver
             .analyzer_ty(self.db.upcast())
             .unwrap()
             .get_impl_for(self.db.upcast(), trait_id)
@@ -254,7 +268,7 @@ impl<'db> CguFunctionBuilder<'db> {
         &self,
         caller: FunctionSigId,
         callee: AnalyzerFuncSigId,
-        subst: &FxHashMap<SmolStr, TypeId>,
+        substs: &IndexMap<SmolStr, TypeId>,
     ) -> SmolStr {
         let callee_ingot = callee.ingot(self.db.upcast());
         let mut func_name = if caller.ingot(self.db.upcast()) != callee_ingot {
@@ -266,20 +280,19 @@ impl<'db> CguFunctionBuilder<'db> {
         } else {
             callee.name(self.db.upcast()).to_string()
         };
-        for ty in subst.values() {
-            func_name.push_str(&format!("${}", ty.as_string(self.db.upcast())))
+        for ty in substs.values() {
+            func_name.push_str(&format!("${:?}", ty.0));
         }
         func_name.into()
     }
 
-    fn get_subst(
+    fn get_substs(
         &self,
         store: &BodyDataStore,
         callee: FunctionSigId,
         args: &[ValueId],
-    ) -> FxHashMap<SmolStr, TypeId> {
+    ) -> IndexMap<SmolStr, TypeId> {
         debug_assert_eq!(callee.data(self.db.upcast()).params.len(), args.len());
-
         callee
             .data(self.db.upcast())
             .params

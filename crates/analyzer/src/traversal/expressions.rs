@@ -1698,13 +1698,13 @@ fn expr_call_method(
                 vec!["Hint: rename one of the methods to disambiguate".into()],
             );
             let return_type = first.signature(context.db()).return_type.clone()?;
-            return Ok((
+            Ok((
                 ExpressionAttributes::new(return_type),
                 CallType::ValueMethod {
                     typ: obj_type,
                     sig: *first,
                 },
-            ));
+            ))
         }
     }
 }

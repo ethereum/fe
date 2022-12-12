@@ -7,22 +7,60 @@
 //! defined inside `yul` module.
 
 use fe_analyzer::namespace::items::{ContractId, ModuleId};
-use fe_mir::ir::{inst::InstKind, FunctionSigId};
+use fe_mir::ir::{
+    inst::{CallType, InstKind},
+    FunctionSigId,
+};
 use fxhash::FxHashMap;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::{
+    graph::{DiGraph, NodeIndex},
+    visit::Dfs,
+};
 
 use crate::{cgu::CodegenUnitId, db::CodegenDb};
 
-#[derive(Default)]
-pub(super) struct DependencyGraph {
-    func_deps: DiGraph<FunctionSigId, ()>,
-    contract_deps: DiGraph<ContractId, ()>,
+#[derive(Debug, Default)]
+pub(crate) struct DependencyGraph {
+    dep_graph: DiGraph<DepNode, ()>,
     func_node_map: FxHashMap<FunctionSigId, NodeIndex>,
     contract_node_map: FxHashMap<ContractId, NodeIndex>,
     contract_scope: Option<NodeIndex>,
 }
 
+#[derive(Debug)]
+enum DepNode {
+    Func(FunctionSigId),
+    Contract(ContractId),
+}
+
 impl DependencyGraph {
+    pub fn collect_dep_funcs(&self, func: FunctionSigId) -> Vec<FunctionSigId> {
+        let mut deps = Vec::new();
+        let mut dfs = Dfs::new(&self.dep_graph, self.func_node_map[&func]);
+        while let Some(node) = dfs.next(&self.dep_graph) {
+            if let DepNode::Func(func) = self.dep_graph.node_weight(node).unwrap() {
+                deps.push(*func);
+            }
+        }
+        deps
+    }
+
+    /// Returns the list of contracts that `func` depends on.
+    /// The returned contracts are limited to immediate successors of the
+    /// functions.
+    pub fn collect_dep_contracts(&self, func: FunctionSigId) -> Vec<ContractId> {
+        self.dep_graph
+            .neighbors(self.func_node_map[&func])
+            .filter_map(|node| {
+                if let DepNode::Contract(contract) = self.dep_graph.node_weight(node).unwrap() {
+                    Some(*contract)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn update_graph_by_contract(
         &mut self,
         db: &dyn CodegenDb,
@@ -38,7 +76,7 @@ impl DependencyGraph {
 
         for func in contract.all_functions(db.upcast()).iter() {
             let func = db.mir_lowered_func_signature(func.sig(db.upcast()));
-            let sig = self.update_graph_by_func(db, codegen_units, func);
+            self.update_graph_by_func(db, codegen_units, func);
         }
 
         if let Some(prev_scope) = prev_scope {
@@ -59,26 +97,29 @@ impl DependencyGraph {
         let func_node = self.add_func_node(func);
 
         let module = func.module(db.upcast());
-        let cgu_func = cgus[&module].cgu_func(db, func);
+        let cgu = cgus[&module].data(db);
+        let cgu_func = &cgu.functions[&func];
         let body = &cgu_func.body;
 
         for block in body.order.iter_block() {
             for inst in body.order.iter_inst(block) {
                 match &body.store.inst_data(inst).kind {
-                    InstKind::Call { func: callee, .. } => {
+                    InstKind::Call {
+                        func: callee,
+                        call_type: CallType::Internal,
+                        ..
+                    } => {
                         self.update_graph_by_func(db, cgus, *callee);
                         let callee_node = self.func_node_map[&callee];
-                        self.func_deps.update_edge(func_node, callee_node, ());
+                        self.dep_graph.update_edge(func_node, callee_node, ());
                     }
 
                     InstKind::Create { contract, .. } | InstKind::Create2 { contract, .. } => {
                         self.update_graph_by_contract(db, cgus, *contract);
                         let contract_node = self.contract_node_map[&contract];
-                        self.contract_deps.update_edge(
-                            self.contract_scope.unwrap(),
-                            contract_node,
-                            (),
-                        );
+                        self.dep_graph
+                            .update_edge(self.contract_scope.unwrap(), contract_node, ());
+                        self.dep_graph.update_edge(func_node, contract_node, ());
                     }
 
                     _ => {}
@@ -89,14 +130,14 @@ impl DependencyGraph {
 
     fn add_func_node(&mut self, func: FunctionSigId) -> NodeIndex {
         debug_assert!(!self.func_node_map.contains_key(&func));
-        let node = self.func_deps.add_node(func);
+        let node = self.dep_graph.add_node(DepNode::Func(func));
         self.func_node_map.insert(func, node);
         node
     }
 
     fn add_contract_node(&mut self, contract: ContractId) -> NodeIndex {
         debug_assert!(!self.contract_node_map.contains_key(&contract));
-        let node = self.contract_deps.add_node(contract);
+        let node = self.dep_graph.add_node(DepNode::Contract(contract));
         self.contract_node_map.insert(contract, node);
         node
     }

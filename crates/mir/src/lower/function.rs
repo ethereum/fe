@@ -935,8 +935,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             AnalyzerCallType::AssociatedFunction { sig, .. } | AnalyzerCallType::Pure(sig) => {
                 let func_id = self.db.mir_lowered_func_signature(*sig);
-                self.builder
-                    .call(func_id, args, CallType::Internal, None, source)
+                self.builder.call(func_id, args, CallType::Internal, source)
             }
 
             AnalyzerCallType::ValueMethod { sig, .. } => {
@@ -944,7 +943,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder
-                    .call(func_id, method_args, CallType::Internal, None, source)
+                    .call(func_id, method_args, CallType::Internal, source)
             }
             AnalyzerCallType::TraitValueMethod {
                 trait_id,
@@ -956,21 +955,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let event = self.lower_method_receiver(func);
                 self.builder.emit(event, source)
             }
-            AnalyzerCallType::TraitValueMethod {
-                sig, generic_type, ..
-            } => {
+            AnalyzerCallType::TraitValueMethod { sig, .. } => {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*sig);
-                self.builder.call(
-                    func_id,
-                    method_args,
-                    CallType::Internal,
-                    Some(ir::types::TypeParamDef {
-                        name: generic_type.name.clone(),
-                    }),
-                    source,
-                )
+                self.builder
+                    .call(func_id, method_args, CallType::Internal, source)
             }
             AnalyzerCallType::External { sig, .. } => {
                 let receiver = self.lower_method_receiver(func);
@@ -980,7 +970,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 method_args.append(&mut args);
                 let func_id = self.db.mir_lowered_func_signature(*sig);
                 self.builder
-                    .call(func_id, method_args, CallType::External, None, source)
+                    .call(func_id, method_args, CallType::External, source)
             }
 
             AnalyzerCallType::TypeConstructor(to_ty) => {

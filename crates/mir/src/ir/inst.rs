@@ -4,8 +4,7 @@ use fe_analyzer::namespace::items::ContractId;
 use id_arena::Id;
 
 use super::{
-    basic_block::BasicBlockId, function::FunctionSigId, types::TypeParamDef, value::ValueId,
-    SourceInfo, TypeId,
+    basic_block::BasicBlockId, function::FunctionSigId, value::ValueId, SourceInfo, TypeId,
 };
 
 pub type InstId = Id<Inst>;
@@ -85,10 +84,6 @@ pub enum InstKind {
         func: FunctionSigId,
         args: Vec<ValueId>,
         call_type: CallType,
-        // Traits can not directly be used as types but can act as bounds for generics. This is the
-        // generic type that the method is called on.
-        // TODO: This is the temporary solution until we implement a trait solver.
-        generic_type: Option<TypeParamDef>,
     },
 
     /// Unconditional jump instruction.

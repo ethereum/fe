@@ -1,5 +1,6 @@
 #![allow(unused_imports, dead_code)]
 
+use fe_codegen::context::CodegenContext;
 pub use fe_codegen::db::{CodegenDb, Db};
 //use fe_codegen::yul::runtime::RuntimeProvider;
 
@@ -125,19 +126,28 @@ pub fn emit_mir(db: &mut Db, module: ModuleId) -> Result<String, CompileError> {
     Ok(String::from_utf8(text).unwrap())
 }
 
-#[cfg(feature = "solc-backend")]
 fn compile_module_id(
     db: &mut Db,
     module_id: ModuleId,
-    with_bytecode: bool,
-    optimize: bool,
+    #[allow(unused)] with_bytecode: bool,
+    #[allow(unused)] optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
+
+    let mut ctx = CodegenContext::default();
+    let module_ingot = module_id.ingot(db);
+    ctx.attach_ingot(db, module_ingot);
+    for (_, ingot) in module_ingot.external_ingots(db).iter() {
+        ctx.attach_ingot(db, *ingot);
+    }
+    ctx.compile_ingots(db);
+
     for contract in module_id.all_contracts(db.upcast()) {
         let name = &contract.data(db.upcast()).name;
         let abi = db.codegen_abi_contract(contract);
-        let yul_contract = compile_to_yul(db, contract);
+        let yul_contract = compile_to_yul(db, &mut ctx, contract);
 
+        #[cfg(feature = "solc-backend")]
         let bytecode = if with_bytecode {
             let deployable_name = db.codegen_contract_deployer_symbol_name(contract);
             compile_to_evm(deployable_name.as_str(), &yul_contract, optimize)
@@ -150,6 +160,7 @@ fn compile_module_id(
             CompiledContract {
                 json_abi: serde_json::to_string_pretty(&abi).unwrap(),
                 yul: yul_contract,
+                #[cfg(feature = "solc-backend")]
                 bytecode,
             },
         );
@@ -163,39 +174,10 @@ fn compile_module_id(
     })
 }
 
-#[cfg(not(feature = "solc-backend"))]
-fn compile_module_id(
-    db: &mut Db,
-    module_id: ModuleId,
-    _with_bytecode: bool,
-    _optimize: bool,
-) -> Result<CompiledModule, CompileError> {
-    let mut contracts = IndexMap::default();
-    for contract in module_id.all_contracts(db.upcast()) {
-        let name = &contract.data(db.upcast()).name;
-        let abi = db.codegen_abi_contract(contract);
-        let yul_contract = compile_to_yul(db, contract);
-
-        contracts.insert(
-            name.to_string(),
-            CompiledContract {
-                json_abi: serde_json::to_string_pretty(&abi).unwrap(),
-                yul: yul_contract,
-            },
-        );
-    }
-
-    Ok(CompiledModule {
-        src_ast: format!("{:#?}", module_id.ast(db)),
-        lowered_ast: format!("{:#?}", module_id.ast(db)),
-        contracts,
-        module_id,
-    })
-}
-
-fn compile_to_yul(db: &mut Db, contract: ContractId) -> String {
-    let yul_contract = fe_codegen::yul::isel::lower_contract_deployable(db, contract);
-    yul_contract.to_string().replace('"', "\\\"")
+fn compile_to_yul(db: &mut Db, ctx: &mut CodegenContext, contract: ContractId) -> String {
+    ctx.compile_contract(db, contract)
+        .to_string()
+        .replace('"', "\\\"")
 }
 
 #[cfg(feature = "solc-backend")]

@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 
-pub mod isel;
-pub mod legalize;
-pub mod runtime;
+pub(crate) mod cgu;
+pub(crate) mod dependency_graph;
+pub(crate) mod isel;
+pub(crate) mod legalize;
+pub(crate) mod runtime;
 
 mod slot_size;
 

@@ -1,14 +1,18 @@
 //! This module contains definitions for Codegen Units (CGUs) which are used to
 //! emit sonatina/yul ir.
-
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
 use fe_analyzer::namespace::items::{ContractId, ModuleId};
 use fe_common::impl_intern_key;
 use fe_mir::ir::{FunctionBody, FunctionSigId};
-use indexmap::IndexSet;
+use indexmap::IndexMap;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+use crate::db::CodegenDb;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CodegenUnit {
     pub module: ModuleId,
 
@@ -16,7 +20,7 @@ pub struct CodegenUnit {
     pub contracts: Vec<ContractId>,
 
     /// All functions in the CGU.
-    pub functions: Vec<CguFunction>,
+    pub functions: IndexMap<FunctionSigId, CguFunction>,
 }
 
 impl CodegenUnit {
@@ -24,8 +28,19 @@ impl CodegenUnit {
         Self {
             module,
             contracts: Vec::new(),
-            functions: Vec::new(),
+            functions: IndexMap::default(),
         }
+    }
+}
+
+impl Hash for CodegenUnit {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.module.hash(state);
+        self.contracts.hash(state);
+        self.functions.iter().for_each(|(sig, func)| {
+            sig.hash(state);
+            func.hash(state);
+        });
     }
 }
 
@@ -33,11 +48,16 @@ impl CodegenUnit {
 pub struct CodegenUnitId(pub u32);
 impl_intern_key!(CodegenUnitId);
 
+impl CodegenUnitId {
+    pub fn data(self, db: &dyn CodegenDb) -> Rc<CodegenUnit> {
+        db.lookup_codegen_intern_cgu(self)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CguFunction {
     pub sig: FunctionSigId,
     pub body: FunctionBody,
-    pub callees: IndexSet<FunctionSigId>,
 }
 
 impl PartialEq for CguFunction {

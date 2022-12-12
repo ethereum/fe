@@ -62,7 +62,7 @@ impl ir::FunctionSigId {
     }
 
     pub fn module(self, db: &dyn MirDb) -> analyzer_items::ModuleId {
-        self.analyzer_sig(db).module(db.upcast())
+        self.data(db).module_id
     }
 
     pub fn ingot(self, db: &dyn MirDb) -> analyzer_items::IngotId {

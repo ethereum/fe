@@ -68,7 +68,7 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionSigId) -> AbiFunction 
 
     // The "stateMutability" field is derived from the presence & mutability of
     // `self` and `ctx` params in the analyzer fn sig.
-    let analyzer_sig = sig.analyzer_func_id.signature(db.upcast());
+    let analyzer_sig = sig.analyzer_id.signature(db.upcast());
     let self_param = match analyzer_sig.self_decl {
         None => SelfParam::None,
         Some(SelfDecl { mut_: None, .. }) => SelfParam::Imm,
