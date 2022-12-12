@@ -180,10 +180,7 @@ impl<'db> CguFunctionBuilder<'db> {
             .iter()
             .map(|param| {
                 let ty = match &param.ty.data(self.db.upcast()).kind {
-                    TypeKind::TypeParam(def) => {
-                        let ty = substs[&def.name];
-                        ty
-                    }
+                    TypeKind::TypeParam(def) => substs[&def.name],
                     _ => param.ty,
                 };
 

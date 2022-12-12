@@ -110,13 +110,13 @@ impl DependencyGraph {
                         ..
                     } => {
                         self.update_graph_by_func(db, cgus, *callee);
-                        let callee_node = self.func_node_map[&callee];
+                        let callee_node = self.func_node_map[callee];
                         self.dep_graph.update_edge(func_node, callee_node, ());
                     }
 
                     InstKind::Create { contract, .. } | InstKind::Create2 { contract, .. } => {
                         self.update_graph_by_contract(db, cgus, *contract);
-                        let contract_node = self.contract_node_map[&contract];
+                        let contract_node = self.contract_node_map[contract];
                         self.dep_graph
                             .update_edge(self.contract_scope.unwrap(), contract_node, ());
                         self.dep_graph.update_edge(func_node, contract_node, ());

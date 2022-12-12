@@ -46,7 +46,7 @@ pub(crate) fn lower_function(
     let sig_data = &db.codegen_legalized_signature(func.sig);
     let body = &mut func.body;
     legalize_func_body(db, body);
-    FuncLowerHelper::new(db, ctx, func.sig, sig_data, &body).lower_func()
+    FuncLowerHelper::new(db, ctx, func.sig, sig_data, body).lower_func()
 }
 
 struct FuncLowerHelper<'db, 'a> {

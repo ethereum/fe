@@ -12,7 +12,7 @@ use indexmap::IndexMap;
 
 use crate::db::CodegenDb;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct CodegenUnit {
     pub module: ModuleId,
 
@@ -30,6 +30,14 @@ impl CodegenUnit {
             contracts: Vec::new(),
             functions: IndexMap::default(),
         }
+    }
+}
+
+impl PartialEq for CodegenUnit {
+    fn eq(&self, other: &Self) -> bool {
+        self.module == other.module
+            && self.contracts == other.contracts
+            && self.functions == other.functions
     }
 }
 
