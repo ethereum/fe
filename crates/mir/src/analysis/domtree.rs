@@ -169,7 +169,7 @@ impl DFSet {
 mod tests {
     use super::*;
 
-    use crate::ir::{body_builder::BodyBuilder, FunctionBody, FunctionId, SourceInfo, TypeId};
+    use crate::ir::{body_builder::BodyBuilder, FunctionBody, FunctionSigId, SourceInfo, TypeId};
 
     fn calc_dom(func: &FunctionBody) -> (DomTree, DFSet) {
         let cfg = ControlFlowGraph::compute(func);
@@ -179,7 +179,7 @@ mod tests {
     }
 
     fn body_builder() -> BodyBuilder {
-        BodyBuilder::new(FunctionId(0), SourceInfo::dummy())
+        BodyBuilder::new(FunctionSigId(0), SourceInfo::dummy())
     }
 
     #[test]

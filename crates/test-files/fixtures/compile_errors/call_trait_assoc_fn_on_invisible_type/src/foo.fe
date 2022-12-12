@@ -1,5 +1,5 @@
 pub trait DoThing {
-  fn do();
+  fn do()
 }
 
 struct Bar {}

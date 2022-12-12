@@ -1,5 +1,5 @@
 trait Bar {}
 
 trait Foo {
-    fn generic_fn<T: Bar>(self, val: T);
+    fn generic_fn<T: Bar>(self, val: T)
 }

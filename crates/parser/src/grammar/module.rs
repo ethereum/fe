@@ -1,15 +1,17 @@
+use super::attributes::parse_attributes;
 use super::expressions::parse_expr;
-use super::functions::parse_fn_def;
+use super::functions::{parse_fn_def, parse_fn_sig};
 use super::types::{
     parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def, parse_type_alias,
     parse_type_desc,
 };
 use super::{contracts::parse_contract_def, types::parse_enum_def};
-use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
+use crate::ast::{ConstantDecl, Extern, Module, ModuleStmt, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
 use semver::VersionReq;
+use smol_str::SmolStr;
 
 /// Parse a [`Module`].
 pub fn parse_module(par: &mut Parser) -> Node<Module> {
@@ -38,6 +40,29 @@ pub fn parse_module(par: &mut Parser) -> Node<Module> {
 
 /// Parse a [`ModuleStmt`].
 pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
+    let attrs = parse_attributes(par)?;
+    if !attrs.is_empty() {
+        let pub_span = par.optional(TokenKind::Pub).map(|tok| tok.span);
+        return match par.peek_or_err()? {
+            TokenKind::Fn | TokenKind::Unsafe => {
+                Ok(ModuleStmt::Function(parse_fn_def(par, attrs, pub_span)?))
+            }
+
+            TokenKind::Extern if pub_span.is_none() => {
+                Ok(ModuleStmt::Extern(parse_extern_block(par, attrs)?))
+            }
+
+            _ => {
+                let span = par.next().unwrap().span;
+                par.error(
+                    span,
+                    "expected a function definition or `extern` block after attributes",
+                );
+                Err(ParseFailed)
+            }
+        };
+    }
+
     let stmt = match par.peek_or_err()? {
         TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
@@ -52,7 +77,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             let pub_span = par.next()?.span;
             match par.peek_or_err()? {
                 TokenKind::Fn | TokenKind::Unsafe => {
-                    ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
+                    ModuleStmt::Function(parse_fn_def(par, vec![], Some(pub_span))?)
                 }
                 TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
                 TokenKind::Enum => ModuleStmt::Enum(parse_enum_def(par, Some(pub_span))?),
@@ -73,7 +98,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                 }
             }
         }
-        TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, None)?),
+        TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, vec![], None)?),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
@@ -272,4 +297,36 @@ pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<Pragma>> {
             Err(ParseFailed)
         }
     }
+}
+
+pub fn parse_extern_block(
+    par: &mut Parser,
+    attributes: Vec<Node<SmolStr>>,
+) -> ParseResult<Node<Extern>> {
+    let start_span = par.assert(TokenKind::Extern).span;
+    par.enter_block(start_span, "extern body")?;
+
+    let mut signatures = vec![];
+    loop {
+        par.eat_newlines();
+        let attrs = parse_attributes(par)?;
+        let pub_span = par.optional(TokenKind::Pub).map(|tok| tok.span);
+        if matches!(par.peek_or_err()?, TokenKind::Fn | TokenKind::Unsafe) {
+            signatures.push(parse_fn_sig(par, attrs, pub_span)?);
+        } else {
+            break;
+        }
+    }
+
+    let end_span = par
+        .expect(TokenKind::BraceClose, "failed to parse `extern` block")?
+        .span;
+
+    Ok(Node::new(
+        Extern {
+            attributes,
+            signatures,
+        },
+        start_span + end_span,
+    ))
 }

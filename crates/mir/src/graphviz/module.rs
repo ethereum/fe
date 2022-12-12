@@ -1,11 +1,7 @@
 use dot2::{label::Text, GraphWalk, Id, Kind, Labeller};
-use fe_analyzer::namespace::items::ModuleId;
+use fe_analyzer::namespace::items::{FunctionId, ModuleId};
 
-use crate::{
-    db::MirDb,
-    ir::{inst::BranchInfo, FunctionId},
-    pretty_print::PrettyPrint,
-};
+use crate::{db::MirDb, ir::inst::BranchInfo, pretty_print::PrettyPrint};
 
 use super::{block::BlockNode, function::FunctionNode};
 
@@ -33,7 +29,7 @@ impl<'db> GraphWalk<'db> for ModuleGraph<'db> {
             .db
             .mir_lower_module_all_functions(self.module)
             .iter()
-            .map(|id| FunctionNode::new(*id))
+            .map(|(sig, func)| FunctionNode::new(*sig, *func))
         {
             nodes.extend(func.blocks(self.db).into_iter())
         }
@@ -43,8 +39,8 @@ impl<'db> GraphWalk<'db> for ModuleGraph<'db> {
 
     fn edges(&self) -> dot2::Edges<'db, Self::Edge> {
         let mut edges = vec![];
-        for func in self.db.mir_lower_module_all_functions(self.module).iter() {
-            for block in FunctionNode::new(*func).blocks(self.db) {
+        for (sig, func) in self.db.mir_lower_module_all_functions(self.module).iter() {
+            for block in FunctionNode::new(*sig, *func).blocks(self.db) {
                 for succ in block.succs(self.db) {
                     let edge = ModuleGraphEdge {
                         from: block,
@@ -71,7 +67,7 @@ impl<'db> GraphWalk<'db> for ModuleGraph<'db> {
         self.db
             .mir_lower_module_all_functions(self.module)
             .iter()
-            .map(|id| FunctionNode::new(*id))
+            .map(|(sig, func)| FunctionNode::new(*sig, *func))
             .collect::<Vec<_>>()
             .into()
     }
@@ -129,7 +125,7 @@ pub(super) struct ModuleGraphEdge {
 
 impl ModuleGraphEdge {
     fn label(&self, db: &dyn MirDb) -> String {
-        let body = self.func.body(db);
+        let body = db.mir_lowered_func_body(self.func);
         let terminator = body.order.terminator(&body.store, self.from.block).unwrap();
         let to = self.to.block;
         match body.store.branch_info(terminator) {

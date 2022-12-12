@@ -1,9 +1,9 @@
 trait DoThing {
-  fn do();
+  fn do()
 }
 
 trait DoOtherThing {
-  fn do();
+  fn do()
 }
 
 

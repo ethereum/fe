@@ -67,6 +67,8 @@ pub enum TokenKind {
     Contract,
     #[token("fn")]
     Fn,
+    #[token("extern")]
+    Extern,
     #[token("const")]
     Const,
     #[token("else")]
@@ -235,6 +237,7 @@ impl TokenKind {
             Continue => "keyword `continue`",
             Contract => "keyword `contract`",
             Fn => "keyword `fn`",
+            Extern => "keyword `extern`",
             Const => "keyword `const`",
             Let => "keyword `let`",
             Mut => "keyword `mut`",

@@ -7,36 +7,27 @@ use fe_analyzer::{
         types::{Type, TypeId},
     },
 };
-use fe_mir::ir::{FunctionBody, FunctionId, FunctionSignature};
+use fe_mir::ir::{FunctionSigId, FunctionSignature};
 use salsa::InternKey;
 use smol_str::SmolStr;
 
 use crate::{db::CodegenDb, yul::legalize};
 
-pub fn legalized_signature(db: &dyn CodegenDb, function: FunctionId) -> Rc<FunctionSignature> {
-    let mut sig = function.signature(db.upcast()).as_ref().clone();
+pub fn legalized_signature(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<FunctionSignature> {
+    let mut sig = function.data(db.upcast()).as_ref().clone();
     legalize::legalize_func_signature(db, &mut sig);
     sig.into()
 }
 
-pub fn legalized_body(db: &dyn CodegenDb, function: FunctionId) -> Rc<FunctionBody> {
-    let mut body = function.body(db.upcast()).as_ref().clone();
-    legalize::legalize_func_body(db, &mut body);
-    body.into()
-}
-
-pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
-    let module = function.signature(db.upcast()).module_id;
+pub fn symbol_name(db: &dyn CodegenDb, function: FunctionSigId) -> Rc<String> {
+    let module = function.data(db.upcast()).module_id;
     let module_name = module.name(db.upcast());
+    let ingot = module.ingot(db.upcast());
+    let ingot_name = ingot.name(db.upcast());
+    let func_name = format!("{}", function.name(db.upcast()),);
 
-    let analyzer_func = function.analyzer_func(db.upcast());
-    let func_name = format!(
-        "{}{}",
-        analyzer_func.name(db.upcast()),
-        type_suffix(function, db)
-    );
-
-    let func_name = match analyzer_func.sig(db.upcast()).self_item(db.upcast()) {
+    let analyzer_func = function.analyzer_sig(db.upcast());
+    let func_name = match analyzer_func.self_item(db.upcast()) {
         Some(Item::Impl(id)) => {
             let class_name = format!(
                 "{}${}",
@@ -52,18 +43,7 @@ pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
         _ => func_name,
     };
 
-    format!("{}${}", module_name, func_name).into()
-}
-
-fn type_suffix(function: FunctionId, db: &dyn CodegenDb) -> SmolStr {
-    function
-        .signature(db.upcast())
-        .resolved_generics
-        .values()
-        .fold(String::new(), |acc, param| {
-            format!("{}_{}", acc, safe_name(db, *param))
-        })
-        .into()
+    format!("{}${}${}", ingot_name, module_name, func_name).into()
 }
 
 fn safe_name(db: &dyn CodegenDb, ty: TypeId) -> SmolStr {

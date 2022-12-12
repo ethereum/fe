@@ -1,7 +1,9 @@
 #![allow(unused)]
 use std::thread::Scope;
 
-use super::{context::Context, inst_order::InstSerializer};
+use super::inst_order::InstSerializer;
+use crate::yul::cgu::CguLowerContext;
+use fe_analyzer::namespace::items::FunctionId;
 use fe_common::numeric::to_hex_str;
 
 use fe_abi::function::{AbiFunction, AbiFunctionType};
@@ -12,7 +14,7 @@ use fe_mir::{
         constant::ConstantValue,
         inst::{BinOp, CallType, CastKind, InstKind, UnOp},
         value::AssignableValue,
-        Constant, FunctionBody, FunctionId, FunctionSignature, InstId, Type, TypeId, TypeKind,
+        Constant, FunctionBody, FunctionSigId, FunctionSignature, InstId, Type, TypeId, TypeKind,
         Value, ValueId,
     },
     pretty_print::PrettyPrint,
@@ -24,6 +26,8 @@ use yultsur::{
     *,
 };
 
+use crate::cgu::CguFunction;
+use crate::yul::legalize::legalize_func_body;
 use crate::{
     db::CodegenDb,
     yul::isel::inst_order::StructuralInst,
@@ -34,23 +38,22 @@ use crate::{
     },
 };
 
-pub fn lower_function(
+pub(crate) fn lower_function(
     db: &dyn CodegenDb,
-    ctx: &mut Context,
-    function: FunctionId,
+    ctx: &mut CguLowerContext,
+    func: &mut CguFunction,
 ) -> yul::FunctionDefinition {
-    debug_assert!(!ctx.lowered_functions.contains(&function));
-    ctx.lowered_functions.insert(function);
-    let sig = &db.codegen_legalized_signature(function);
-    let body = &db.codegen_legalized_body(function);
-    FuncLowerHelper::new(db, ctx, function, sig, body).lower_func()
+    let sig_data = &db.codegen_legalized_signature(func.sig);
+    let body = &mut func.body;
+    legalize_func_body(db, body);
+    FuncLowerHelper::new(db, ctx, func.sig, sig_data, body).lower_func()
 }
 
 struct FuncLowerHelper<'db, 'a> {
     db: &'db dyn CodegenDb,
-    ctx: &'a mut Context,
+    ctx: &'a mut CguLowerContext,
     value_map: ScopedValueMap,
-    func: FunctionId,
+    sig_id: FunctionSigId,
     sig: &'a FunctionSignature,
     body: &'a FunctionBody,
     ret_value: Option<yul::Identifier>,
@@ -60,8 +63,8 @@ struct FuncLowerHelper<'db, 'a> {
 impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     fn new(
         db: &'db dyn CodegenDb,
-        ctx: &'a mut Context,
-        func: FunctionId,
+        ctx: &'a mut CguLowerContext,
+        sig_id: FunctionSigId,
         sig: &'a FunctionSignature,
         body: &'a FunctionBody,
     ) -> Self {
@@ -87,7 +90,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             db,
             ctx,
             value_map,
-            func,
+            sig_id,
             sig,
             body,
             ret_value,
@@ -96,7 +99,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
     }
 
     fn lower_func(mut self) -> yul::FunctionDefinition {
-        let name = identifier! { (self.db.codegen_function_symbol_name(self.func)) };
+        let name = identifier! { (self.db.codegen_function_symbol_name(self.sig_id)) };
 
         let parameters = self
             .sig
@@ -224,7 +227,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                         // Need special handling when rhs is the string literal because it needs ptr
                         // copy.
                         if let ConstantValue::Str(s) = &constant.data(self.db.upcast()).value {
-                            self.ctx.string_constants.insert(s.to_string());
+                            self.ctx.add_string_constant(self.db, s);
                             let size = self.value_ty_size_deref(*src);
                             let lhs = self.body.store.inst_result(inst).unwrap();
                             let ptr = self.lower_assignable_value(lhs);
@@ -316,11 +319,11 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 func,
                 args,
                 call_type,
+                ..
             } => {
                 let args: Vec<_> = args.iter().map(|arg| self.value_expr(*arg)).collect();
                 let result = match call_type {
                     CallType::Internal => {
-                        self.ctx.function_dependency.insert(*func);
                         let func_name = identifier! {(self.db.codegen_function_symbol_name(*func))};
                         expression! {[func_name]([args...])}
                     }
@@ -404,8 +407,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             }
 
             InstKind::Create { value, contract } => {
-                self.ctx.contract_dependency.insert(*contract);
-
                 let value_expr = self.value_expr(*value);
                 let result = self.ctx.runtime.create(self.db, *contract, value_expr);
                 let u256_ty = yul_primitive_type(self.db);
@@ -417,8 +418,6 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                 salt,
                 contract,
             } => {
-                self.ctx.contract_dependency.insert(*contract);
-
                 let value_expr = self.value_expr(*value);
                 let salt_expr = self.value_expr(*salt);
                 let result = self
@@ -804,7 +803,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
                     literal_expression! {(to_hex_str(imm))}
                 }
                 ConstantValue::Str(s) => {
-                    self.ctx.string_constants.insert(s.to_string());
+                    self.ctx.add_string_constant(self.db, s);
                     self.ctx.runtime.string_construct(self.db, s, s.len())
                 }
                 ConstantValue::Bool(true) => {

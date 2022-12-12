@@ -1,5 +1,5 @@
 trait Double {
-  fn double(self) -> u256;
+  fn double(self) -> u256
 }
 
 struct Bar {}

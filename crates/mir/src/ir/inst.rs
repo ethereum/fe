@@ -3,7 +3,9 @@ use std::fmt;
 use fe_analyzer::namespace::items::ContractId;
 use id_arena::Id;
 
-use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};
+use super::{
+    basic_block::BasicBlockId, function::FunctionSigId, value::ValueId, SourceInfo, TypeId,
+};
 
 pub type InstId = Id<Inst>;
 
@@ -79,7 +81,7 @@ pub enum InstKind {
     },
 
     Call {
-        func: FunctionId,
+        func: FunctionSigId,
         args: Vec<ValueId>,
         call_type: CallType,
     },

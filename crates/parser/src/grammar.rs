@@ -1,3 +1,4 @@
+pub mod attributes;
 pub mod contracts;
 pub mod expressions;
 pub mod functions;

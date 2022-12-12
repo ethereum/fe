@@ -42,6 +42,7 @@ pub enum TypeKind {
     Map(MapDef),
     MPtr(TypeId),
     SPtr(TypeId),
+    TypeParam(TypeParamDef),
 }
 
 /// An interned Id for [`ArrayDef`].
@@ -117,4 +118,9 @@ pub struct EventDef {
 pub struct MapDef {
     pub key_ty: TypeId,
     pub value_ty: TypeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeParamDef {
+    pub name: SmolStr,
 }

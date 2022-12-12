@@ -25,6 +25,7 @@ pub enum ModuleStmt {
     Trait(Node<Trait>),
     Impl(Node<Impl>),
     Function(Node<Function>),
+    Extern(Node<Extern>),
     ParseError(Span),
 }
 
@@ -238,6 +239,7 @@ pub enum ContractStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct FunctionSignature {
+    pub attributes: Vec<Node<SmolStr>>,
     // qualifier order: `pub unsafe fn`
     pub pub_: Option<Span>,
     pub unsafe_: Option<Span>,
@@ -251,6 +253,19 @@ pub struct FunctionSignature {
 pub struct Function {
     pub sig: Node<FunctionSignature>,
     pub body: Vec<Node<FuncStmt>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Extern {
+    pub attributes: Vec<Node<SmolStr>>,
+    pub signatures: Vec<Node<FunctionSignature>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct RegularFunctionArg {
+    pub label: Option<Node<SmolStr>>,
+    pub name: Node<SmolStr>,
+    pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -573,6 +588,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Enum(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
+            ModuleStmt::Extern(inner) => inner.span,
             ModuleStmt::ParseError(span) => *span,
         }
     }
@@ -620,6 +636,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Enum(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Extern(node) => write!(f, "{}", node.kind),
             ModuleStmt::ParseError(span) => {
                 write!(f, "# PARSE ERROR: {}..{}", span.start, span.end)
             }
@@ -689,21 +706,24 @@ impl fmt::Display for ConstantDecl {
 
 impl fmt::Display for Trait {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "trait {}:", self.name.kind)?;
-
-        Ok(())
+        if self.pub_qual.is_some() {
+            write!(f, "pub ")?;
+        }
+        write!(f, "trait {} {{", self.name.kind)?;
+        write_nodes_line_wrapped(&mut indented(f), &self.functions)?;
+        write!(f, "}}")
     }
 }
 
 impl fmt::Display for Impl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(
+        write!(
             f,
-            "impl {} for {}",
+            "impl {} for {} {{",
             self.impl_trait.kind, self.receiver.kind
         )?;
-
-        Ok(())
+        write_nodes_line_wrapped(&mut indented(f), &self.functions)?;
+        write!(f, "}}")
     }
 }
 
@@ -878,34 +898,58 @@ impl fmt::Display for Node<Function> {
     }
 }
 
-impl fmt::Display for Function {
+impl fmt::Display for FunctionSignature {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let FunctionSignature {
-            pub_,
-            unsafe_,
-            name,
-            generic_params,
-            args,
-            return_type,
-        } = &self.sig.kind;
+        for attr in &self.attributes {
+            write!(f, "#[{}]", attr.kind)?;
+        }
 
-        if pub_.is_some() {
+        if self.pub_.is_some() {
             write!(f, "pub ")?;
         }
-        if unsafe_.is_some() {
+        if self.unsafe_.is_some() {
             write!(f, "unsafe ")?;
         }
-        write!(f, "fn {}", name.kind)?;
-        if !generic_params.kind.is_empty() {
-            write!(f, "<{}>", comma_joined(generic_params.kind.iter()))?;
+        write!(f, "fn {}", self.name.kind)?;
+        if !self.generic_params.kind.is_empty() {
+            write!(f, "<{}>", comma_joined(self.generic_params.kind.iter()))?;
         }
-        write!(f, "({})", node_comma_joined(args))?;
-
-        if let Some(return_type) = return_type.as_ref() {
+        write!(f, "({})", node_comma_joined(&self.args))?;
+        if let Some(return_type) = self.return_type.as_ref() {
             write!(f, " -> {}", return_type.kind)?;
         }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.sig.kind)?;
+
         write!(f, " {{")?;
         write_nodes_line_wrapped(&mut indented(f), &self.body)?;
+        write!(f, "}}")
+    }
+}
+
+impl fmt::Display for RegularFunctionArg {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(label) = &self.label {
+            write!(f, "{} ", label.kind)?;
+        }
+        write!(f, "{}: {}", self.name.kind, self.typ.kind)
+    }
+}
+
+impl fmt::Display for Extern {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for attr in &self.attributes {
+            write!(f, "#[{}]", attr.kind)?;
+        }
+
+        write!(f, "extern {{")?;
+        write_nodes_line_wrapped(&mut indented(f), &self.signatures)?;
         write!(f, "}}")
     }
 }
@@ -1309,7 +1353,6 @@ impl InfixBindingPower for BoolOperator {
         }
     }
 }
-
 impl InfixBindingPower for BinOperator {
     fn infix_binding_power(&self) -> (u8, u8) {
         use BinOperator::*;

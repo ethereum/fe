@@ -1,7 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(pub_contract_def), try_parse_module,\n    r#\"\npub contract Foo {\n    pub fn foo() -> u8 {\n      return 10\n    }\n}\"#)"
-
 ---
 Node(
   kind: Module(
@@ -21,6 +20,7 @@ Node(
               kind: Function(
                 sig: Node(
                   kind: FunctionSignature(
+                    attributes: [],
                     pub_: Some(Span(
                       start: 24,
                       end: 27,

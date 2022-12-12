@@ -1,5 +1,5 @@
 trait DoThing {
-  fn do(self);
+  fn do(self)
 }
 
 

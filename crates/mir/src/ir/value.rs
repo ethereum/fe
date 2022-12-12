@@ -43,6 +43,16 @@ impl Value {
         }
     }
 
+    pub fn ty_mut(&mut self) -> &mut TypeId {
+        match self {
+            Self::Local(val) => &mut val.ty,
+            Self::Immediate { ty, .. }
+            | Self::Temporary { ty, .. }
+            | Self::Unit { ty }
+            | Self::Constant { ty, .. } => ty,
+        }
+    }
+
     pub fn is_imm(&self) -> bool {
         matches!(self, Self::Immediate { .. })
     }

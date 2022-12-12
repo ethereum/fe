@@ -9,7 +9,7 @@ use std::fmt::Write;
 
 use fe_abi::types::AbiType;
 use fe_analyzer::namespace::items::ContractId;
-use fe_mir::ir::{types::ArrayDef, FunctionId, TypeId, TypeKind};
+use fe_mir::ir::{types::ArrayDef, FunctionSigId, TypeId, TypeKind};
 use indexmap::IndexMap;
 use yultsur::*;
 
@@ -59,7 +59,7 @@ pub trait RuntimeProvider {
     fn external_call(
         &mut self,
         db: &dyn CodegenDb,
-        function: FunctionId,
+        function: FunctionSigId,
         args: Vec<yul::Expression>,
     ) -> yul::Expression;
 
@@ -329,7 +329,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
     fn external_call(
         &mut self,
         db: &dyn CodegenDb,
-        function: FunctionId,
+        function: FunctionSigId,
         args: Vec<yul::Expression>,
     ) -> yul::Expression {
         let name = format!(

@@ -1,3 +1,4 @@
+use super::attributes::parse_attributes;
 use super::functions::parse_fn_def;
 use super::types::{parse_field, parse_opt_qualifier};
 
@@ -33,6 +34,7 @@ pub fn parse_contract_def(
 
     loop {
         par.eat_newlines();
+        let attrs = parse_attributes(par)?;
         let mut pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
         let const_qual = parse_opt_qualifier(par, TokenKind::Const);
         if pub_qual.is_none() && const_qual.is_some() && par.peek() == Some(TokenKind::Pub) {
@@ -44,7 +46,7 @@ pub fn parse_contract_def(
         }
 
         match par.peek_or_err()? {
-            TokenKind::Name => {
+            TokenKind::Name if attrs.is_empty() => {
                 let field = parse_field(par, vec![], pub_qual, const_qual)?;
                 if !defs.is_empty() {
                     par.error(
@@ -61,9 +63,9 @@ pub fn parse_contract_def(
                         "`const` qualifier can't be used with function definitions",
                     );
                 }
-                defs.push(ContractStmt::Function(parse_fn_def(par, pub_qual)?));
+                defs.push(ContractStmt::Function(parse_fn_def(par, attrs, pub_qual)?));
             }
-            TokenKind::BraceClose => {
+            TokenKind::BraceClose if pub_qual.is_none() && attrs.is_empty() => {
                 span += par.next()?.span;
                 break;
             }

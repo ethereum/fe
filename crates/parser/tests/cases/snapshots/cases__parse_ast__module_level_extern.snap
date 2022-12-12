@@ -1,0 +1,128 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(module_level_extern), try_parse_module,\n    r#\"\n#evm\nextern {\n    #intrinsic\n    pub unsafe fn gas_cost() -> u256\n    \n    #intrinsic\n    pub fn gas_limit() -> u256\n}\n\"#)"
+---
+Node(
+  kind: Module(
+    body: [
+      Extern(Node(
+        kind: Extern(
+          attributes: [
+            Node(
+              kind: "evm",
+              span: Span(
+                start: 1,
+                end: 5,
+              ),
+            ),
+          ],
+          signatures: [
+            Node(
+              kind: FunctionSignature(
+                attributes: [
+                  Node(
+                    kind: "intrinsic",
+                    span: Span(
+                      start: 19,
+                      end: 29,
+                    ),
+                  ),
+                ],
+                pub_: Some(Span(
+                  start: 34,
+                  end: 37,
+                )),
+                unsafe_: Some(Span(
+                  start: 38,
+                  end: 44,
+                )),
+                name: Node(
+                  kind: "gas_cost",
+                  span: Span(
+                    start: 48,
+                    end: 56,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
+                  span: Span(
+                    start: 48,
+                    end: 56,
+                  ),
+                ),
+                args: [],
+                return_type: Some(Node(
+                  kind: Base(
+                    base: "u256",
+                  ),
+                  span: Span(
+                    start: 62,
+                    end: 66,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 34,
+                end: 66,
+              ),
+            ),
+            Node(
+              kind: FunctionSignature(
+                attributes: [
+                  Node(
+                    kind: "intrinsic",
+                    span: Span(
+                      start: 76,
+                      end: 86,
+                    ),
+                  ),
+                ],
+                pub_: Some(Span(
+                  start: 91,
+                  end: 94,
+                )),
+                unsafe_: None,
+                name: Node(
+                  kind: "gas_limit",
+                  span: Span(
+                    start: 98,
+                    end: 107,
+                  ),
+                ),
+                generic_params: Node(
+                  kind: [],
+                  span: Span(
+                    start: 98,
+                    end: 107,
+                  ),
+                ),
+                args: [],
+                return_type: Some(Node(
+                  kind: Base(
+                    base: "u256",
+                  ),
+                  span: Span(
+                    start: 113,
+                    end: 117,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 91,
+                end: 117,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 6,
+          end: 119,
+        ),
+      )),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 119,
+  ),
+)

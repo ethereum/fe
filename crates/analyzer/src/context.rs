@@ -54,7 +54,8 @@ pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
     /// Resolves the given path and registers all errors
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError>;
-    /// Resolves the given path only if it is visible. Does not register any errors
+    /// Resolves the given path only if it is visible. Does not register any
+    /// errors
     fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing>;
     /// Resolves the given path. Does not register any errors
     fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing>;
@@ -490,18 +491,18 @@ pub enum CallType {
     // create, create2 (will be methods of the context struct soon)
     BuiltinAssociatedFunction {
         contract: ContractId,
-        function: ContractTypeMethod,
+        sig: ContractTypeMethod,
     },
 
-    // MyStruct.foo() (soon MyStruct::foo())
+    // MyStruct::foo()
     AssociatedFunction {
         typ: TypeId,
-        function: FunctionId,
+        sig: FunctionSigId,
     },
     // some_struct_or_contract.foo()
     ValueMethod {
         typ: TypeId,
-        method: FunctionId,
+        sig: FunctionSigId,
     },
     // some_trait.foo()
     // The reason this can not use `ValueMethod` is mainly because the trait might not have a
@@ -509,22 +510,22 @@ pub enum CallType {
     // executed. An `impl` block will decide that.
     TraitValueMethod {
         trait_id: TraitId,
-        method: FunctionSigId,
+        sig: FunctionSigId,
         // Traits can not directly be used as types but can act as bounds for generics. This is the
         // generic type that the method is called on.
         generic_type: Generic,
     },
     External {
         contract: ContractId,
-        function: FunctionId,
+        sig: FunctionSigId,
     },
-    Pure(FunctionId),
+    Pure(FunctionSigId),
     TypeConstructor(TypeId),
     EnumConstructor(EnumVariantId),
 }
 
 impl CallType {
-    pub fn function(&self) -> Option<FunctionId> {
+    pub fn function_sig(&self) -> Option<FunctionSigId> {
         use CallType::*;
         match self {
             BuiltinFunction(_)
@@ -532,11 +533,11 @@ impl CallType {
             | TypeConstructor(_)
             | EnumConstructor(_)
             | Intrinsic(_)
-            | TraitValueMethod { .. }
             | BuiltinAssociatedFunction { .. } => None,
-            AssociatedFunction { function: id, .. }
-            | ValueMethod { method: id, .. }
-            | External { function: id, .. }
+            AssociatedFunction { sig: id, .. }
+            | TraitValueMethod { sig: id, .. }
+            | ValueMethod { sig: id, .. }
+            | External { sig: id, .. }
             | Pure(id) => Some(*id),
         }
     }
@@ -546,12 +547,12 @@ impl CallType {
             CallType::BuiltinFunction(f) => f.as_ref().into(),
             CallType::Intrinsic(f) => f.as_ref().into(),
             CallType::BuiltinValueMethod { method, .. } => method.as_ref().into(),
-            CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().into(),
-            CallType::AssociatedFunction { function: id, .. }
-            | CallType::ValueMethod { method: id, .. }
-            | CallType::External { function: id, .. }
+            CallType::BuiltinAssociatedFunction { sig: function, .. } => function.as_ref().into(),
+            CallType::AssociatedFunction { sig: id, .. }
+            | CallType::ValueMethod { sig: id, .. }
+            | CallType::External { sig: id, .. }
             | CallType::Pure(id) => id.name(db),
-            CallType::TraitValueMethod { method: id, .. } => id.name(db),
+            CallType::TraitValueMethod { sig: id, .. } => id.name(db),
             CallType::TypeConstructor(typ) => typ.display(db).to_string().into(),
             CallType::EnumConstructor(variant) => {
                 let enum_name = variant.parent(db).name(db);
@@ -574,7 +575,9 @@ impl CallType {
                 false
             }
         } else {
-            self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
+            self.function_sig()
+                .map(|id| id.is_unsafe(db))
+                .unwrap_or(false)
         }
     }
 }

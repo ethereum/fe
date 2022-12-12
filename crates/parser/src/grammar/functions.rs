@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use super::expressions::parse_expr;
 use super::types::parse_type_desc;
 
@@ -13,6 +15,7 @@ use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 /// `fn`.
 pub fn parse_fn_sig(
     par: &mut Parser,
+    attributes: Vec<Node<SmolStr>>,
     mut pub_qual: Option<Span>,
 ) -> ParseResult<Node<FunctionSignature>> {
     let unsafe_qual = par.optional(TokenKind::Unsafe).map(|tok| tok.span);
@@ -90,6 +93,7 @@ pub fn parse_fn_sig(
 
     Ok(Node::new(
         FunctionSignature {
+            attributes,
             pub_: pub_qual,
             unsafe_: unsafe_qual,
             name: name.into(),
@@ -101,10 +105,15 @@ pub fn parse_fn_sig(
     ))
 }
 
-/// Parse a function definition. The optional `pub` qualifier must be parsed by
-/// the caller, and passed in. Next token must be `unsafe` or `fn`.
-pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
-    let sig = parse_fn_sig(par, pub_qual)?;
+/// Parse a function definition. The `attributes` and optional `pub` qualifier
+/// must be parsed by the caller, and passed in. Next token must be `unsafe` or
+/// `fn`.
+pub fn parse_fn_def(
+    par: &mut Parser,
+    attributes: Vec<Node<SmolStr>>,
+    pub_qual: Option<Span>,
+) -> ParseResult<Node<Function>> {
+    let sig = parse_fn_sig(par, attributes, pub_qual)?;
 
     // TODO: allow multi-line return type? `fn f()\n ->\n u8`
     par.enter_block(sig.span, "function definition")?;

@@ -1,7 +1,7 @@
 use std::traits::Dummy
 
 trait Computable {
-  fn compute(self, val: u256) -> u256;
+  fn compute(self, val: u256) -> u256
 }
 
 struct Mac {}

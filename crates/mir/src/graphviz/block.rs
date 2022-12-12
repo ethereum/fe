@@ -1,26 +1,28 @@
 use std::fmt::Write;
 
 use dot2::{label, Id};
+use fe_analyzer::namespace::items::FunctionId;
 
 use crate::{
     analysis::ControlFlowGraph,
     db::MirDb,
-    ir::{BasicBlockId, FunctionId},
+    ir::{BasicBlockId, FunctionSigId},
     pretty_print::PrettyPrint,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct BlockNode {
+    sig: FunctionSigId,
     func: FunctionId,
     pub block: BasicBlockId,
 }
 
 impl BlockNode {
-    pub(super) fn new(func: FunctionId, block: BasicBlockId) -> Self {
-        Self { func, block }
+    pub(super) fn new(sig: FunctionSigId, func: FunctionId, block: BasicBlockId) -> Self {
+        Self { sig, func, block }
     }
     pub(super) fn id(self) -> dot2::Result<Id<'static>> {
-        Id::new(format!("fn{}_bb{}", self.func.0, self.block.index()))
+        Id::new(format!("fn{}_bb{}", self.sig.0, self.block.index()))
     }
 
     pub(super) fn label(self, db: &dyn MirDb) -> label::Text<'static> {
@@ -35,7 +37,7 @@ impl BlockNode {
         .unwrap();
 
         // Write block body.
-        let func_body = self.func.body(db);
+        let func_body = db.mir_lowered_func_body(self.func);
         write!(label, r#"<tr><td align="left" balign="left">"#).unwrap();
         for inst in func_body.order.iter_inst(self.block) {
             let mut inst_string = String::new();
@@ -52,11 +54,11 @@ impl BlockNode {
     }
 
     pub(super) fn succs(self, db: &dyn MirDb) -> Vec<BlockNode> {
-        let func_body = self.func.body(db);
+        let func_body = db.mir_lowered_func_body(self.func);
         let cfg = ControlFlowGraph::compute(&func_body);
         cfg.succs(self.block)
             .iter()
-            .map(|block| Self::new(self.func, *block))
+            .map(|block| Self::new(self.sig, self.func, *block))
             .collect()
     }
 }

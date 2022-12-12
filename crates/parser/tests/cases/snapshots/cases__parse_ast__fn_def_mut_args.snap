@@ -1,7 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(fn_def_mut_args), try_parse_module,\n    \"fn transfer(mut from sender: address, to recip: address, mut val: u64) -> bool { \\n return false \\n}\")"
-
 ---
 Node(
   kind: Module(
@@ -10,6 +9,7 @@ Node(
         kind: Function(
           sig: Node(
             kind: FunctionSignature(
+              attributes: [],
               pub_: None,
               unsafe_: None,
               name: Node(

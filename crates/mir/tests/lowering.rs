@@ -19,8 +19,8 @@ macro_rules! test_lowering {
                 panic!("lowering failed")
             }
 
-            for func in db.mir_lower_module_all_functions(module).iter() {
-                let body = func.body(&db);
+            for (_, func) in db.mir_lower_module_all_functions(module).iter() {
+                let body = db.mir_lowered_func_body(*func);
                 ControlFlowGraph::compute(&body);
             }
         }
@@ -40,8 +40,8 @@ fn mir_lower_std_lib() {
     }
 
     for &module in std_ingot.all_modules(db.upcast()).iter() {
-        for func in db.mir_lower_module_all_functions(module).iter() {
-            let body = func.body(&db);
+        for (_, func) in db.mir_lower_module_all_functions(module).iter() {
+            let body = db.mir_lowered_func_body(*func);
             let cfg = ControlFlowGraph::compute(&body);
             let domtree = DomTree::compute(&cfg);
             LoopTree::compute(&cfg, &domtree);

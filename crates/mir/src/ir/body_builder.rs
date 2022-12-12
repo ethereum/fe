@@ -5,7 +5,7 @@ use crate::ir::{
     body_cursor::{BodyCursor, CursorLocation},
     inst::{BinOp, Inst, InstKind, UnOp},
     value::{AssignableValue, Local},
-    BasicBlock, BasicBlockId, FunctionBody, FunctionId, InstId, SourceInfo, TypeId,
+    BasicBlock, BasicBlockId, FunctionBody, FunctionSigId, InstId, SourceInfo, TypeId,
 };
 
 use super::{
@@ -38,7 +38,7 @@ macro_rules! impl_binary_inst {
 }
 
 impl BodyBuilder {
-    pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
+    pub fn new(fid: FunctionSigId, source: SourceInfo) -> Self {
         let body = FunctionBody::new(fid, source);
         let entry_block = body.order.entry();
         Self {
@@ -51,7 +51,7 @@ impl BodyBuilder {
         self.body
     }
 
-    pub fn func_id(&self) -> FunctionId {
+    pub fn func_id(&self) -> FunctionSigId {
         self.body.fid
     }
 
@@ -215,7 +215,7 @@ impl BodyBuilder {
 
     pub fn call(
         &mut self,
-        func: FunctionId,
+        func: FunctionSigId,
         args: Vec<ValueId>,
         call_type: CallType,
         source: SourceInfo,

@@ -1,7 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(fn_def_pub), try_parse_module,\n    \"pub fn foo21(x: bool, y: address,) -> bool { x }\")"
-
 ---
 Node(
   kind: Module(
@@ -10,6 +9,7 @@ Node(
         kind: Function(
           sig: Node(
             kind: FunctionSignature(
+              attributes: [],
               pub_: Some(Span(
                 start: 0,
                 end: 3,

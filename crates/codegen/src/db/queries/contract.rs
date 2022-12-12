@@ -16,5 +16,5 @@ pub fn symbol_name(db: &dyn CodegenDb, contract: ContractId) -> Rc<String> {
 }
 
 pub fn deployer_symbol_name(db: &dyn CodegenDb, contract: ContractId) -> Rc<String> {
-    format!("deploy_{}", symbol_name(db, contract).as_ref()).into()
+    format!("deploy${}", symbol_name(db, contract).as_ref()).into()
 }

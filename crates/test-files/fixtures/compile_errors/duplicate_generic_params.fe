@@ -1,9 +1,9 @@
 trait Computable {
-  fn compute(self, val: u256) -> u256;
+  fn compute(self, val: u256) -> u256
 }
 
 trait Computable2 {
-  fn compute2(self, val: u256) -> u256;
+  fn compute2(self, val: u256) -> u256
 }
 
 struct Yay {

@@ -76,12 +76,12 @@ struct CriticalEdge {
 
 #[cfg(test)]
 mod tests {
-    use fe_mir::ir::{body_builder::BodyBuilder, FunctionId, TypeId};
+    use fe_mir::ir::{body_builder::BodyBuilder, FunctionSigId, TypeId};
 
     use super::*;
 
     fn body_builder() -> BodyBuilder {
-        BodyBuilder::new(FunctionId(0), SourceInfo::dummy())
+        BodyBuilder::new(FunctionSigId(0), SourceInfo::dummy())
     }
 
     #[test]

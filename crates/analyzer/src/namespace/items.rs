@@ -20,6 +20,8 @@ use std::rc::Rc;
 use std::{fmt, ops::Deref};
 use strum::IntoEnumIterator;
 
+use super::types::Generic;
+
 /// A named item. This does not include things inside of
 /// a function body.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
@@ -499,6 +501,10 @@ impl ModuleId {
     /// Includes duplicate names
     pub fn all_items(&self, db: &dyn AnalyzerDb) -> Rc<[Item]> {
         db.module_all_items(*self)
+    }
+
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<[FunctionId]> {
+        db.module_all_functions(*self)
     }
 
     /// Includes duplicate names
@@ -1106,6 +1112,10 @@ impl FunctionSigId {
             Item::Type(TypeDef::Contract(cid)) => Some(types::Type::SelfContract(cid).id(db)),
             Item::Type(TypeDef::Struct(sid)) => Some(types::Type::Struct(sid).id(db)),
             Item::Type(TypeDef::Enum(sid)) => Some(types::Type::Enum(sid).id(db)),
+            Item::Trait(_) => Some(db.intern_type(Type::Generic(Generic {
+                name: "Self".into(),
+                bounds: Rc::new([]),
+            }))),
             Item::Impl(id) => Some(id.receiver(db)),
             Item::Type(TypeDef::Primitive(ty)) => Some(db.intern_type(Type::Base(ty))),
             _ => None,
@@ -1120,6 +1130,9 @@ impl FunctionSigId {
 
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.is_trait_fn(db) || self.is_impl_fn(db) || self.pub_span(db).is_some()
+    }
+    pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
+        self.unsafe_span(db).is_some()
     }
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.kind.name.kind.clone()
@@ -1154,6 +1167,11 @@ impl FunctionSigId {
             Item::Type(TypeDef::Enum(id)) => id.function(db, &self.name(db)),
             Item::Impl(id) => id.function(db, &self.name(db)),
             Item::Type(TypeDef::Contract(id)) => id.function(db, &self.name(db)),
+            Item::Module(id) => id
+                .all_functions(db)
+                .iter()
+                .find(|id| id.sig(db) == *self)
+                .copied(),
             _ => None,
         }
     }
@@ -1191,6 +1209,10 @@ impl FunctionSigId {
 
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
+    }
+
+    pub fn ingot(&self, db: &dyn AnalyzerDb) -> IngotId {
+        self.module(db).ingot(db)
     }
 
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
