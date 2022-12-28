@@ -1,0 +1,13 @@
+[package]
+name = "fe-parser2"
+version = "0.20.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Parser lib for Fe."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rowan = "0.15.10"
