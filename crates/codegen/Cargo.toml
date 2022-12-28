@@ -15,3 +15,5 @@ fxhash = "0.2.1"
 indexmap = "1.6.2"
 smol_str = "0.1.21"
 yultsur = { git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470" }
+sonatina-ir = { version = "0.0.3-alpha" }
+sonatina-codegen = { version = "0.0.3-alpha" }
