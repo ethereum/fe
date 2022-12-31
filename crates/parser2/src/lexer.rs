@@ -1,5 +1,5 @@
 use crate::{
-    parser::{SyntaxToken, TokenStream},
+    parser::token_stream::{SyntaxToken, TokenStream},
     SyntaxKind,
 };
 
@@ -24,7 +24,7 @@ impl<'s> TokenStream for Lexer<'s> {
     }
 
     fn peek(&mut self) -> Option<&Self::Token> {
-        if !self.peek.is_some() {
+        if self.peek.is_none() {
             self.peek = self.next();
         }
         self.peek.as_ref()

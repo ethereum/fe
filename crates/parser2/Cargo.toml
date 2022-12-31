@@ -12,3 +12,4 @@ description = "Parser lib for Fe."
 [dependencies]
 rowan = "0.15.10"
 logos = "0.12.1"
+fxhash = "0.2.1"
