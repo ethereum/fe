@@ -1,148 +1,214 @@
 //! This module contains the definition of the `SyntaxKind`.
 
+use logos::Logos;
+
 /// The definition of the `SyntaxKind'.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Logos)]
 #[repr(u16)]
 pub enum SyntaxKind {
     // Atom kinds. These are leaf nodes.
+    #[error]
     Error = 0,
+    #[regex(r"\n[ \t]*")]
     Newline,
+    #[regex(r"[ \s\t]")]
     WhiteSpace,
-    EOF,
     /// `foo`
+    #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
-    /// `1`
+    /// `1` or `0b1010` or `0o77` or `0xff`
+    #[regex("[0-9]+(?:_[0-9]+)*")]
+    #[regex("0[bB][0-1]+")]
+    #[regex("0[oO][0-7]+")]
+    #[regex("0[xX][0-9a-fA-F]+")]
     Int,
     /// "MyString"
+    #[regex(r#""([^"\\]|\\.)*""#)]
     String,
-
     /// `(`
+    #[token("(")]
     LParen,
     /// `)`
+    #[token(")")]
     RParen,
     /// `{`
+    #[token("{")]
     LBrace,
     /// `}`
+    #[token("}")]
     RBrace,
     /// `[`
+    #[token("[")]
     LBracket,
     /// `]`
+    #[token("]")]
     RBracket,
     /// `:`
+    #[token(":")]
     Colon,
     /// `::`
+    #[token("::")]
     Colon2,
     /// `;`
+    #[token(";")]
     SemiColon,
     /// `.`
+    #[token(".")]
     Dot,
     /// `..`
+    #[token("..")]
     Dot2,
     /// `,`
+    #[token(",")]
     Comma,
     /// `->`
+    #[token("->")]
     Arrow,
     /// `=>`
+    #[token("=>")]
     FatArrow,
     /// `_`
+    #[token("_")]
     UnderScore,
     /// `#`
+    #[token("#")]
     Pound,
     /// `// Comment`
+    #[regex(r"//[^\n]*")]
     Comment,
 
     /// `+`
+    #[token("+")]
     Plus,
     /// `-`
+    #[token("-")]
     Minus,
     /// `*`
+    #[token("*")]
     Star,
     /// `/`
+    #[token("/")]
     Slash,
     /// `%`
+    #[token("%")]
     Percent,
     /// `&`
+    #[token("&")]
     Amp,
     /// `&&`
+    #[token("&&")]
     Amp2,
     /// `|`
+    #[token("|")]
     Pipe,
     /// `||`
+    #[token("||")]
     Pipe2,
     /// `<`
+    #[token("<")]
     Lt,
     /// `<<`
+    #[token("<<")]
     Lt2,
     /// `<=`
+    #[token("<=")]
     LtEq,
     /// `<<=`
+    #[token("<<=")]
     Lt2Eq,
-    /// `<`
+    /// `>`
+    #[token(">")]
     Gt,
-    /// `<<`
+    /// `>>`
+    #[token(">>")]
     Gt2,
-    /// `<=`
+    /// `>=`
+    #[token(">=")]
     GtEq,
-    /// `<<=`
+    /// `>>=`
+    #[token(">>=")]
     Gt2Eq,
     /// `=`
+    #[token("=")]
     Eq,
     /// `==`
+    #[token("==")]
     Eq2,
     /// `!=`
+    #[token("!=")]
     NonEq,
 
     /// `true'
+    #[token("true")]
     TrueKw,
     /// `false`
+    #[token("false")]
     FalseKw,
-    /// `assert`
-    AssertKw,
     /// `break`
+    #[token("break")]
     BreakKw,
     /// `continue`
+    #[token("continue")]
     ContinueKw,
     /// `contract`
+    #[token("contract")]
     ContractKw,
     /// `fn`
+    #[token("fn")]
     FnKw,
     /// `const`
+    #[token("const")]
     ConstKw,
     /// `if`
+    #[token("if")]
     IfKw,
     /// `else`
+    #[token("else")]
     ElseKw,
     /// `match`
+    #[token("match")]
     MatchKw,
     /// `for`
+    #[token("for")]
     ForKw,
     /// `while`
+    #[token("while")]
     WhileKw,
     /// `pub`
+    #[token("pub")]
     PubKw,
     /// `return`
+    #[token("return")]
     ReturnKw,
-    /// `revert`
-    RevertKw,
     /// `self`
+    #[token("self")]
     SelfKw,
     /// `struct`
+    #[token("struct")]
     StructKw,
     /// `enum`
+    #[token("enum")]
     EnumKw,
     /// `trait`
+    #[token("trait")]
     TraitKw,
     /// `impl`
+    #[token("impl")]
     ImplKw,
     /// `type`
+    #[token("type")]
     TypeKw,
     /// `let`
+    #[token("let")]
     LetKw,
     /// `mut`
+    #[token("mut")]
     MutKw,
     /// `use`
+    #[token("use")]
     UseKw,
     /// `extern`
+    #[token("extern")]
     ExternKw,
 
     // Expressions. These are non-leaf nodes.
