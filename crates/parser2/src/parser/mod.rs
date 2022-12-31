@@ -2,7 +2,7 @@ use crate::SyntaxKind;
 
 /// This trait works as an abstraction layer to encapsulate the differences
 /// between input sources. There are mainly two types of input sources,
-/// 1. text in source file and
+/// 1. text in source file
 /// 2. tokens stream produced by procedural macros.
 pub trait TokenStream {
     type Token: SyntaxToken;
@@ -90,7 +90,7 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
         }
     }
 
-    /// Backtracks the stream by one token.
+    /// Backtracks to the last backtrack point.
     ///
     /// # Panics
     /// Panics if the `set_bt_point` method has not been called before.
