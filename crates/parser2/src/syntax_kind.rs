@@ -8,7 +8,7 @@ use logos::Logos;
 pub enum SyntaxKind {
     // Atom kinds. These are leaf nodes.
     #[error]
-    Error = 0,
+    InvalidToken = 0,
     #[regex(r"\n[ \t]*")]
     Newline,
     #[regex(r"[ \s\t]")]
@@ -76,6 +76,9 @@ pub enum SyntaxKind {
     /// `// Comment`
     #[regex(r"//[^\n]*")]
     Comment,
+    /// `/// DocComment`
+    #[regex(r"///[^\n]*")]
+    DocComment,
 
     /// `+`
     #[token("+")]
@@ -278,17 +281,10 @@ pub enum SyntaxKind {
     Fn,
     /// `struct Foo { .. }`
     Struct,
-    /// `x: i32`
-    FieldDef,
-    FieldDefList,
     /// `contract Foo { .. }`
     ContractDef,
-    /// `(i32, u32)`
-    Tuple,
     /// `enum Foo { .. }`
     Enum,
-    VariantDef,
-    VariantDefList,
     /// `type Foo = i32`
     TypeAlias,
     /// `impl Foo { .. }`
@@ -297,11 +293,6 @@ pub enum SyntaxKind {
     Trait,
     /// `impl Trait for Foo { .. }`
     TraitImpl,
-    /// `T`
-    /// `T: Trait`
-    TypeBound,
-    /// `<T: Trait, U>`
-    GenericParamList,
     /// `const FOO: i32 = 1`
     Const,
     /// `use foo::bar`
@@ -322,4 +313,39 @@ pub enum SyntaxKind {
 
     /// `pub`
     Visibility,
+
+    /// `x: i32`
+    FieldDef,
+    FieldDefList,
+
+    /// `(i32, u32)`
+    Tuple,
+
+    VariantDef,
+    VariantDefList,
+
+    /// `T`
+    /// `T: Trait`
+    TypeBound,
+    /// `<T: Trait, U>`
+    GenericParamList,
+
+    /// Root node of the input source.
+    Root,
+
+    /// Represents an error branch.
+    Error,
+}
+
+impl SyntaxKind {
+    /// Returns `true` if this is a trivia token.
+    pub fn is_trivia(self) -> bool {
+        matches!(self, SyntaxKind::WhiteSpace | SyntaxKind::Comment)
+    }
+}
+
+impl From<SyntaxKind> for rowan::SyntaxKind {
+    fn from(kind: SyntaxKind) -> Self {
+        Self(kind as u16)
+    }
 }
