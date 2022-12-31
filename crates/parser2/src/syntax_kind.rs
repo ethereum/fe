@@ -152,6 +152,12 @@ pub enum SyntaxKind {
     UnExpr,
     /// `foo(x, y)`
     CallExpr,
+    /// `(x, y)`
+    CallArgList,
+    /// `<i32, u256>`
+    CallTypeArgList,
+    /// `FOO::Bar`
+    PathExpr,
     /// `foo.bar(x, y)`
     MethodCallExpr,
     /// `foo.bar`
@@ -180,6 +186,7 @@ pub enum SyntaxKind {
     ReturnStmt,
     /// `1`
     ExprStmt,
+    StmtList,
 
     // Patterns. These are non-leaf nodes.
     /// `_`
@@ -203,41 +210,39 @@ pub enum SyntaxKind {
     // Items. These are non-leaf nodes.
     /// `fn foo(x: i32) -> i32 { .. }`
     Fn,
-
     /// `struct Foo { .. }`
     Struct,
     /// `x: i32`
     FieldDef,
     FieldDefList,
-
     /// `contract Foo { .. }`
     ContractDef,
-
     /// `(i32, u32)`
     Tuple,
-
     /// `enum Foo { .. }`
     Enum,
     VariantDef,
     VariantDefList,
-
     /// `type Foo = i32`
     TypeAlias,
-
+    /// `impl Foo { .. }`
+    Impl,
     /// `trait Foo { .. }`
     Trait,
-
     /// `impl Trait for Foo { .. }`
     TraitImpl,
-
+    /// `T`
+    /// `T: Trait`
+    TypeBound,
+    /// `<T: Trait, U>`
+    GenericParamList,
     /// `const FOO: i32 = 1`
     Const,
-
     /// `use foo::bar`
     Use,
-
     /// `extern { .. }`
     Extern,
+    ItemList,
 
     // Paths. These are non-leaf nodes.
     /// `Segment1::Segment2`
@@ -248,13 +253,6 @@ pub enum SyntaxKind {
     /// `#attr`
     Attr,
     AttrList,
-    ItemList,
-    StmtList,
-
-    /// `(x, y)`
-    CallArgList,
-    /// `<T, U>`
-    GenericParamList,
 
     /// `pub`
     Visibility,
