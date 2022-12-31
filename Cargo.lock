@@ -790,6 +790,7 @@ dependencies = [
 name = "fe-parser2"
 version = "0.20.0-alpha"
 dependencies = [
+ "logos",
  "rowan",
 ]
 
