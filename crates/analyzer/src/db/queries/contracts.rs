@@ -149,7 +149,7 @@ pub fn contract_init_function(
             labels.push(Label::secondary(dupe_span, "`__init__` redefined here"));
         }
         diagnostics.push(errors::fancy_error(
-            &format!(
+            format!(
                 "`fn __init__()` is defined multiple times in `contract {}`",
                 contract.name(db),
             ),
@@ -201,7 +201,7 @@ pub fn contract_call_function(
             labels.push(Label::secondary(dupe_span, "`__call__` redefined here"));
         }
         diagnostics.push(errors::fancy_error(
-            &format!(
+            format!(
                 "`fn __call__()` is defined multiple times in `contract {}`",
                 contract.name(db),
             ),
@@ -232,7 +232,7 @@ pub fn contract_call_function(
                 diagnostics.push(errors::fancy_error(
                     "`pub` not allowed if `__call__` is defined",
                     vec![
-                        Label::primary(func.name_span(db), &format!("`{}` can't be public", name)),
+                        Label::primary(func.name_span(db), format!("`{}` can't be public", name)),
                         Label::secondary(init_span, "`__call__` defined here"),
                     ],
                     vec![

@@ -241,7 +241,7 @@ pub fn name_conflict_error(
 ) -> Diagnostic {
     if let Some(original_span) = original_span {
         fancy_error(
-            &format!(
+            format!(
                 "{} name `{}` conflicts with previously defined {}",
                 name_kind,
                 name,
@@ -255,7 +255,7 @@ pub fn name_conflict_error(
         )
     } else {
         fancy_error(
-            &format!(
+            format!(
                 "{} name `{}` conflicts with built-in {}",
                 name_kind,
                 name,
@@ -287,7 +287,7 @@ pub fn to_mem_error(span: Span) -> Diagnostic {
 }
 pub fn self_contract_type_error(span: Span, typ: &dyn Display) -> Diagnostic {
     fancy_error(
-        &format!(
+        format!(
             "`self` can't be used where a contract of type `{}` is expected",
             typ,
         ),

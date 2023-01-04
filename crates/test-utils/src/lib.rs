@@ -279,7 +279,7 @@ pub fn validate_revert(
 ) {
     if let evm::Capture::Exit((evm::ExitReason::Revert(_), output)) = capture {
         assert_eq!(
-            format!("0x{}", hex::encode(&output)),
+            format!("0x{}", hex::encode(output)),
             format!("0x{}", hex::encode(expected_data))
         );
     } else {
@@ -293,7 +293,7 @@ pub fn validate_return(
 ) {
     if let evm::Capture::Exit((evm::ExitReason::Succeed(_), output)) = capture {
         assert_eq!(
-            format!("0x{}", hex::encode(&output)),
+            format!("0x{}", hex::encode(output)),
             format!("0x{}", hex::encode(expected_data))
         );
     } else {
@@ -705,7 +705,7 @@ fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (Exi
     let yul_code = runtime.to_yul().to_string().replace('"', "\\\"");
     let bytecode = fe_yulc::compile_single_contract("Contract", &yul_code, false)
         .expect("failed to compile Yul");
-    let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
+    let bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
 
     if let evm::Capture::Exit((reason, _, output)) = executor.create(
         address(DEFAULT_CALLER),

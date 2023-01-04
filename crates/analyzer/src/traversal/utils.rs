@@ -9,7 +9,7 @@ use crate::AnalyzerDb;
 use std::fmt::Display;
 
 fn type_label(db: &dyn AnalyzerDb, span: Span, typ: TypeId) -> Label {
-    Label::primary(span, &format!("this has type `{}`", typ.display(db)))
+    Label::primary(span, format!("this has type `{}`", typ.display(db)))
 }
 
 pub fn add_bin_operations_errors(
@@ -38,7 +38,7 @@ pub fn add_bin_operations_errors(
             ),
             vec![Label::primary(
                 rspan,
-                &format!("this has signed type `{}`", rtype.display(db)),
+                format!("this has signed type `{}`", rtype.display(db)),
             )],
             vec![],
         ),

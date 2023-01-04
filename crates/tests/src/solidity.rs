@@ -82,7 +82,7 @@ fn test_revert_errors(method: &str, params: &[ethabi::Token], reason: &[u8]) {
 )]
 fn test_revert_reason_encoding(reason_str: &str, expected_encoding: &str) {
     let encoded = encode_error_reason(reason_str);
-    assert_eq!(format!("0x{}", hex::encode(&encoded)), expected_encoding);
+    assert_eq!(format!("0x{}", hex::encode(encoded)), expected_encoding);
 }
 
 #[rstest(

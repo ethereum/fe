@@ -39,7 +39,7 @@ fn assignment_lhs_type(
             if let Some((name, span)) = name_def_span(scope, target) {
                 labels.push(Label::secondary(
                     span,
-                    &format!("consider changing this to be mutable: `mut {}`", name),
+                    format!("consider changing this to be mutable: `mut {}`", name),
                 ));
             }
             scope.fancy_error(

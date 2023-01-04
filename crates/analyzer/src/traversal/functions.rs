@@ -66,7 +66,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                         "invalid `for` loop iterator type",
                         iter.span,
                         "array",
-                        &iter_type.display(scope.db()),
+                        iter_type.display(scope.db()),
                     ))))
                 }
             };
@@ -220,11 +220,11 @@ fn match_pattern(
                         vec![
                             Label::primary(
                                 path.span,
-                                &format!("the variant is defined as {variant_kind_name}"),
+                                format!("the variant is defined as {variant_kind_name}"),
                             ),
                             Label::secondary(
                                 variant.span(scope.db()),
-                                &format! {"{} is defined here", variant.name(scope.db())},
+                                format! {"{} is defined here", variant.name(scope.db())},
                             ),
                         ],
                         vec![],
@@ -264,7 +264,7 @@ fn match_pattern(
                     &format! {"failed to resolve `{path}`"},
                     vec![Label::primary(
                         pat.span,
-                        &format!("use of undeclared type `{path}`"),
+                        format!("use of undeclared type `{path}`"),
                     )],
                     vec![],
                 );
@@ -276,7 +276,7 @@ fn match_pattern(
                     "expected enum variant or variable",
                     vec![Label::primary(
                         pat.span,
-                        &format!("`{}` is not a enum variant or variable", path.kind),
+                        format!("`{}` is not a enum variant or variable", path.kind),
                     )],
                     vec![],
                 );
@@ -313,11 +313,11 @@ fn match_pattern(
                         vec![
                             Label::primary(
                                 path.span,
-                                &format!("the variant is defined as {variant_kind_name}"),
+                                format!("the variant is defined as {variant_kind_name}"),
                             ),
                             Label::secondary(
                                 variant.span(scope.db()),
-                                &format! {"{} is defined here", variant.name(scope.db())},
+                                format! {"{} is defined here", variant.name(scope.db())},
                             ),
                         ],
                         vec![],
@@ -343,7 +343,7 @@ fn match_pattern(
                         "expected struct type",
                         vec![Label::primary(
                             pat.span,
-                            &format!("`{}` is not a struct name", path.kind),
+                            format!("`{}` is not a struct name", path.kind),
                         )],
                         vec![],
                     );
@@ -382,7 +382,7 @@ fn match_pattern(
                             &format!("variable `{}` is not bound in all sub patterns", var),
                             vec![Label::primary(
                                 subpat.span,
-                                &format!("variable `{}` is not bound here", var),
+                                format!("variable `{}` is not bound here", var),
                             )],
                             vec![],
                         ));
@@ -543,12 +543,12 @@ fn tuple_pattern(
     let emit_len_error = |actual, expected| {
         let mut labels = vec![Label::primary(
             pat_span,
-            &format! {"expected {expected} elements, but {actual}"},
+            format! {"expected {expected} elements, but {actual}"},
         )];
         if let Some(variant) = variant {
             labels.push(Label::secondary(
                 variant.span(scope.db()),
-                &format! {"{} is defined here", variant.name(scope.db())},
+                format! {"{} is defined here", variant.name(scope.db())},
             ));
         }
 
@@ -590,11 +590,11 @@ fn collect_binds_from_pat_vec(
                         vec![
                             Label::primary(
                                 bind.spans[0],
-                                &format! {"{} is already defined", bind.name },
+                                format! {"{} is already defined", bind.name },
                             ),
                             Label::secondary(
                                 original.spans[0],
-                                &format! {"{} is originally defined here", original.name },
+                                format! {"{} is originally defined here", original.name },
                             ),
                         ],
                         vec![],

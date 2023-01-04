@@ -15,7 +15,7 @@ pub fn partial_right_padded(content: &[u8], size: usize) -> String {
         .map(|(index, byte)| if index >= size { 0 } else { *byte })
         .collect();
 
-    hex::encode(&padded_output)
+    hex::encode(padded_output)
 }
 
 /// Take the first `size` number of bytes of the hash with no padding.

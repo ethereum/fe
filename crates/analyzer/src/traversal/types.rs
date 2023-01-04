@@ -333,7 +333,7 @@ pub fn apply_generic_type_args(
             ),
             vec![Label::primary(
                 name_span,
-                &format!(
+                format!(
                     "expected {} generic {}",
                     params.len(),
                     pluralize_conditionally("argument", params.len())
