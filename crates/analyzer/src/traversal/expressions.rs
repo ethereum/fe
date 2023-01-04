@@ -375,11 +375,11 @@ fn expr_named_thing(
                             vec![
                                 Label::primary(
                                     id.name_span(context.db()),
-                                    &format!("`{}` is defined here as a trait", exp.kind),
+                                    format!("`{}` is defined here as a trait", exp.kind),
                                 ),
                                 Label::primary(
                                     exp.span,
-                                    &format!("`{}` is used here as a value", exp.kind),
+                                    format!("`{}` is used here as a value", exp.kind),
                                 ),
                             ],
                             vec![],
@@ -446,12 +446,9 @@ fn expr_named_thing(
                     vec![
                         Label::primary(
                             def_span,
-                            &format!("`{}` is defined here as a {}", exp.kind, item_kind),
+                            format!("`{}` is defined here as a {}", exp.kind, item_kind),
                         ),
-                        Label::primary(
-                            exp.span,
-                            &format!("`{}` is used here as a value", exp.kind),
-                        ),
+                        Label::primary(exp.span, format!("`{}` is used here as a value", exp.kind)),
                     ],
                     vec![],
                 )
@@ -942,7 +939,7 @@ fn expr_call_name<T: std::fmt::Display>(
                     vec![
                         Label::primary(
                             function.name_span(context.db()),
-                            &format!("`{}` is defined here as a function that takes `self`", name),
+                            format!("`{}` is defined here as a function that takes `self`", name),
                         ),
                         Label::primary(
                             func.span,

@@ -159,13 +159,13 @@ pub fn module_item_map(
             let kind = item.item_kind_display_name();
             let other_kind = global_item.item_kind_display_name();
             diagnostics.push(errors::error(
-                &format!(
+                format!(
                     "{} name conflicts with the {} named \"{}\"",
                     kind, other_kind, item_name
                 ),
                 item.name_span(db)
                     .expect("user defined item is missing a name span"),
-                &format!("`{}` is already defined", item_name),
+                format!("`{}` is already defined", item_name),
             ));
             continue;
         }
@@ -199,7 +199,7 @@ pub fn module_item_map(
                     ));
                 } else {
                     diagnostics.push(errors::fancy_error(
-                        &format!(
+                        format!(
                             "a {} named \"{}\" has already been defined",
                             entry.get().item_kind_display_name(),
                             item_name
@@ -443,7 +443,7 @@ pub fn module_used_item_map(
                 for (name, (name_span, item)) in items.value.iter() {
                     if !item.is_public(db) {
                         diagnostics.push(errors::error(
-                            &format!("{} {} is private", item.item_kind_display_name(), name,),
+                            format!("{} {} is private", item.item_kind_display_name(), name,),
                             *name_span,
                             name.as_str(),
                         ));
@@ -473,12 +473,12 @@ pub fn module_used_item_map(
                 let other_kind = global_item.item_kind_display_name();
 
                 diagnostics.push(errors::error(
-                    &format!(
+                    format!(
                         "import name conflicts with the {} named \"{}\"",
                         other_kind, name
                     ),
                     name_span,
-                    &format!("`{}` is already defined", name),
+                    format!("`{}` is already defined", name),
                 ));
 
                 None
@@ -688,7 +688,7 @@ fn resolve_use_tree(
                             named_thing.item_kind_display_name(),
                         ),
                         tree.span,
-                        &format!("{} is not an item", named_thing.item_kind_display_name()),
+                        format!("{} is not an item", named_thing.item_kind_display_name()),
                     ));
                     indexmap! {}
                 }

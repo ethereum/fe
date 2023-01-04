@@ -1734,7 +1734,7 @@ impl ImplId {
             let trait_module_name = self.trait_id(db).module(db).name(db);
             let trait_name = self.trait_id(db).name(db);
             sink.push(&errors::fancy_error(
-                     &format!(
+                     format!(
                          "the trait `{}` is private",
                          trait_name,
                      ),

@@ -38,7 +38,7 @@ pub(super) fn check_match_exhaustiveness(
                 "patterns is not exhaustive",
                 vec![Label::primary(
                     match_span,
-                    &format! {"`{}` not covered", display_non_exhaustive_patterns(scope.db(), &pats)},
+                    format! {"`{}` not covered", display_non_exhaustive_patterns(scope.db(), &pats)},
                 )],
                 vec![],
             );

@@ -20,10 +20,13 @@ pub struct Context {
     pub(super) lowered_functions: FxHashSet<FunctionId>,
 }
 
+// Currently, `clippy::derivable_impls` causes false positive result,
+// see https://github.com/rust-lang/rust-clippy/issues/10158 for more details.
+#[allow(clippy::derivable_impls)]
 impl Default for Context {
     fn default() -> Self {
         Self {
-            runtime: Box::new(DefaultRuntimeProvider::default()),
+            runtime: Box::<DefaultRuntimeProvider>::default(),
             contract_dependency: IndexSet::default(),
             function_dependency: IndexSet::default(),
             string_constants: IndexSet::default(),

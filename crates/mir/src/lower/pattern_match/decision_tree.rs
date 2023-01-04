@@ -473,7 +473,7 @@ impl NecessityMatrix {
             }
         }
 
-        num as i32
+        num
     }
 
     fn compute_needed_prefix_score(&self, col: usize) -> i32 {
