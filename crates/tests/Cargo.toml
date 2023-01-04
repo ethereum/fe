@@ -10,7 +10,7 @@ repository = "https://github.com/ethereum/fe"
 
 [dev-dependencies]
 ethabi = { default-features = false, version = "17.0" }
-evm = { default-features = false, version = "0.35.0" }
+evm = { default-features = false, version = "0.36.0" }
 evm-runtime = { default-features = false, version = "0.35.0" }
 fe-analyzer = {path = "../analyzer", version = "^0.20.0-alpha"}
 fe-common = {path = "../common", version = "^0.20.0-alpha"}

@@ -493,15 +493,15 @@ dependencies = [
 
 [[package]]
 name = "evm"
-version = "0.35.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be8ff320c1e25e7f6d676858f16ffd9b0493d2cc67c3d900c6f2ed027b747f43"
+checksum = "d388bbd18050623b996cc4ba0643971e2978693ad56ca8b7603080cfa5eaf738"
 dependencies = [
  "auto_impl",
  "ethereum",
- "evm-core",
+ "evm-core 0.36.0",
  "evm-gasometer",
- "evm-runtime",
+ "evm-runtime 0.36.0",
  "log",
  "primitive-types",
  "rlp",
@@ -518,13 +518,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "evm-gasometer"
-version = "0.35.0"
+name = "evm-core"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6181da8734c86873ac9b3f9886d4e00105361039dcfb9f621be9a0ddb8f43961"
+checksum = "c5fb3a449a544a67c879d2f74e1c3d9022de3ec31c9a20817015816f687aa2af"
 dependencies = [
- "evm-core",
- "evm-runtime",
+ "primitive-types",
+]
+
+[[package]]
+name = "evm-gasometer"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "170a27b6e49b8279016afffcdc6ebae9225d5acff3a546ad8589929b091e7ac5"
+dependencies = [
+ "evm-core 0.36.0",
+ "evm-runtime 0.36.0",
  "primitive-types",
 ]
 
@@ -535,7 +544,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6157af91ca70fcf3581afaea1fa25974a71b9ef63d454c08dfba93ab0c7715d"
 dependencies = [
  "auto_impl",
- "evm-core",
+ "evm-core 0.35.0",
+ "primitive-types",
+ "sha3",
+]
+
+[[package]]
+name = "evm-runtime"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d48c2545a02e3a4d1a5184a96af11037334dce947b6bdb389b3503b3a6f8dcd"
+dependencies = [
+ "auto_impl",
+ "evm-core 0.36.0",
  "primitive-types",
  "sha3",
 ]
@@ -632,7 +653,7 @@ version = "0.20.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
- "evm-runtime",
+ "evm-runtime 0.35.0",
  "fe-analyzer",
  "fe-common",
  "fe-driver",
@@ -654,7 +675,7 @@ version = "0.20.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
- "evm-runtime",
+ "evm-runtime 0.35.0",
  "fe-analyzer",
  "fe-common",
  "fe-compiler-test-utils",
