@@ -6,6 +6,8 @@ use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
 
 pub mod token_stream;
 
+mod attr;
+mod func;
 mod item;
 
 /// Parser to build a rowan syntax tree.
@@ -17,10 +19,6 @@ pub struct Parser<S: TokenStream> {
     scopes: Vec<Box<dyn ParsingScope>>,
     errors: Vec<ParseError>,
 
-    /// The checkpoint where the scope/branch is wrapped up later by another
-    /// scope/branch when the `wrap_scope_with` method.
-    check_point: Option<(rowan::Checkpoint, usize)>,
-
     current_pos: rowan::TextSize,
 }
 
@@ -30,68 +28,54 @@ impl<S: TokenStream> Parser<S> {
         self.stream.peek()
     }
 
-    /// Enters the scope and set the `scope` to the current scope.
-    /// If `is_checkpoint` is true, the current scope/branch is wrapped up by
-    /// another scope/branch later when the [`wrap_scope_with`] method is
-    /// called.
-    pub fn enter(&mut self, scope: Box<dyn ParsingScope>, is_checkpoint: bool) {
-        if is_checkpoint {
-            self.check_point = Some((self.builder.checkpoint(), self.scopes.len()));
-        }
-
-        self.builder.start_node(scope.syntax_kind().into());
-        self.scopes.push(scope);
+    /// Returns the current token kind of the parser.
+    pub fn current_kind(&mut self) -> Option<SyntaxKind> {
+        self.current_token().map(|token| token.syntax_kind())
     }
 
-    /// Enters the errors scope and add the `msg` to the error list.
-    pub fn enter_with_error(&mut self, msg: &str) {
-        let start = self.current_pos;
-        let end = if let Some(current_token) = self.current_token() {
-            start + current_token.text_size()
-        } else {
-            start
-        };
-        let range = TextRange::new(start, end);
-
-        self.errors.push(ParseError {
-            range,
-            msg: msg.to_string(),
-        });
-        self.scopes.push(Box::new(ErrorScope()));
+    pub fn parse<T>(&mut self, mut scope: T, checkpoint: Option<rowan::Checkpoint>)
+    where
+        T: Parse + 'static,
+    {
+        let checkpoint = self.enter(scope.clone(), checkpoint);
+        scope.parse(self);
+        self.leave(checkpoint);
     }
 
-    /// Leaves the current scope/branch.
-    pub fn leave(&mut self) {
-        self.scopes.pop();
-        self.builder.finish_node();
+    /// Mark the current branch as a checkpoint.
+    /// The checked branch is wrapped up later when [`parse]` is
+    /// called with the `checkpoint`.
+    pub fn checkpoint(&mut self) -> rowan::Checkpoint {
+        self.builder.checkpoint()
     }
 
-    /// Wrap up the marked scope/branch with another scope/branch and set the
-    /// `scope` to the current scope.
-    pub fn wrap_scope_with(&mut self, scope: Box<dyn ParsingScope>) {
-        debug_assert!(self.check_point.is_some(), "No checkpoint");
-        let check_point = self.check_point.take().unwrap();
-        let syntax_kind = scope.syntax_kind();
-
-        self.scopes.truncate(check_point.1);
-        self.scopes.push(scope);
-
-        self.builder
-            .start_node_at(check_point.0, syntax_kind.into());
+    pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<rowan::Checkpoint>) {
+        let err_scope = self.error(msg);
+        let checkpoint = self.enter(err_scope, checkpoint);
+        self.recover();
+        self.leave(checkpoint);
     }
 
-    /// Bumps the current token and adds it to the current branch.
+    /// Bumps the current token and trailing trivias and adds them to the
+    /// current branch.
     pub fn bump(&mut self) {
+        self.bump_raw();
+        self.bump_trivias(false);
+    }
+
+    /// Bumps the current token adds it to the current branch.
+    pub fn bump_raw(&mut self) {
         let tok = self.stream.next().unwrap();
         self.current_pos += rowan::TextSize::of(tok.text());
         self.builder.token(tok.syntax_kind().into(), tok.text());
     }
 
     /// Bumps consecutive trivia tokens.
-    pub fn bump_trivias(&mut self) {
+    /// If `bump_newlines` is true, newlines are also bumped.
+    pub fn bump_trivias(&mut self, skip_newlines: bool) {
         while let Some(tok) = self.current_token() {
             let kind = tok.syntax_kind();
-            if kind.is_trivia() {
+            if kind.is_trivia() || (skip_newlines && kind == SyntaxKind::Newline) {
                 self.bump();
             } else {
                 break;
@@ -110,9 +94,8 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
-    /// Proceeds the parser to the recovery token of the current scope. Then
-    /// leave the current branch/scope.
-    pub fn recovery(&mut self) {
+    /// Proceeds the parser to the recovery token of the current scope.
+    pub fn recover(&mut self) {
         let mut scope_index = self.scopes.len() - 1;
         // Finds the nearest scope that has its own recovery set.
         loop {
@@ -136,8 +119,37 @@ impl<S: TokenStream> Parser<S> {
                 self.bump();
             }
         }
+    }
 
-        self.leave();
+    /// Add the `msg` to the error list.
+    fn error(&mut self, msg: &str) -> ErrorScope {
+        let start = self.current_pos;
+        let end = if let Some(current_token) = self.current_token() {
+            start + current_token.text_size()
+        } else {
+            start
+        };
+        let range = TextRange::new(start, end);
+
+        self.errors.push(ParseError {
+            range,
+            msg: msg.to_string(),
+        });
+        ErrorScope::default()
+    }
+
+    fn enter<T>(&mut self, scope: T, checkpoint: Option<rowan::Checkpoint>) -> rowan::Checkpoint
+    where
+        T: ParsingScope + 'static,
+    {
+        self.scopes.push(Box::new(scope));
+        checkpoint.unwrap_or_else(|| self.checkpoint())
+    }
+
+    fn leave(&mut self, checkpoint: rowan::Checkpoint) {
+        let scope = self.scopes.pop().unwrap();
+        self.builder
+            .start_node_at(checkpoint, scope.syntax_kind().into());
     }
 }
 
@@ -149,16 +161,14 @@ pub trait ParsingScope {
     fn syntax_kind(&self) -> SyntaxKind;
 }
 
-pub struct ErrorScope();
+pub trait Parse: ParsingScope + Clone {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>);
+}
 
-impl ParsingScope for ErrorScope {
-    fn recovery_method(&self) -> &RecoveryMethod {
-        &RecoveryMethod::Inheritance
-    }
-
-    fn syntax_kind(&self) -> SyntaxKind {
-        SyntaxKind::Error
-    }
+define_scope! {
+    ErrorScope,
+    Error,
+    Inheritance
 }
 
 /// Represents the recovery method of the current scope.
@@ -196,7 +206,7 @@ where
 
 macro_rules! define_scope {
     ($scope_name: ident, $kind: path ,Inheritance) => {
-        #[derive(Default)]
+        #[derive(Default,Debug, Clone, Copy)]
         pub(crate) struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
@@ -218,7 +228,7 @@ macro_rules! define_scope {
     };
 
     ($scope_name: ident, $kind: path, RecoverySet($($recoveries: path), *)) => {
-        #[derive(Default)]
+        #[derive(Default, Debug, Clone, Copy)]
         pub(crate) struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
