@@ -330,6 +330,9 @@ pub enum SyntaxKind {
     /// `<T: Trait, U>`
     GenericParamList,
 
+    /// Modules inside a file.
+    Module,
+
     /// Root node of the input source.
     Root,
 

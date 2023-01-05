@@ -6,6 +6,8 @@ use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
 
 pub mod token_stream;
 
+mod item;
+
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {
     /// Token stream to parse.
@@ -191,3 +193,56 @@ where
         rowan::TextSize::of(self.text())
     }
 }
+
+macro_rules! define_scope {
+    ($scope_name: ident, $kind: path ,Inheritance) => {
+        #[derive(Default)]
+        pub(crate) struct $scope_name {}
+
+        impl crate::parser::ParsingScope for $scope_name {
+            fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
+                lazy_static::lazy_static! {
+                    pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
+                        crate::parser::RecoveryMethod::Inheritance
+                    };
+                }
+
+                &RECOVERY_METHOD
+            }
+
+            fn syntax_kind(&self) -> crate::SyntaxKind {
+                use crate::SyntaxKind::*;
+                $kind
+            }
+        }
+    };
+
+    ($scope_name: ident, $kind: path, RecoverySet($($recoveries: path), *)) => {
+        #[derive(Default)]
+        pub(crate) struct $scope_name {}
+
+        impl crate::parser::ParsingScope for $scope_name {
+            fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
+                lazy_static::lazy_static! {
+                    pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
+                        use crate::SyntaxKind::*;
+                        let set: fxhash::FxHashSet<crate::SyntaxKind> = vec![
+                            $($recoveries), *
+                        ].into_iter().map(|kind| kind.into()).collect();
+
+                        crate::parser::RecoveryMethod::RecoverySet(set)
+                    };
+                }
+
+                &RECOVERY_METHOD
+            }
+
+            fn syntax_kind(&self) -> crate::SyntaxKind {
+                use crate::SyntaxKind::*;
+                $kind
+            }
+        }
+    };
+}
+
+use define_scope;
