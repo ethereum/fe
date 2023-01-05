@@ -213,6 +213,9 @@ pub enum SyntaxKind {
     /// `extern`
     #[token("extern")]
     ExternKw,
+    /// `unsafe`
+    #[token("unsafe")]
+    UnsafeKw,
 
     // Expressions. These are non-leaf nodes.
     /// `x + 1`
@@ -329,9 +332,6 @@ pub enum SyntaxKind {
     TypeBound,
     /// `<T: Trait, U>`
     GenericParamList,
-
-    /// Modules inside a file.
-    Module,
 
     /// Root node of the input source.
     Root,
