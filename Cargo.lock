@@ -750,6 +750,7 @@ name = "fe-parser2"
 version = "0.20.0-alpha"
 dependencies = [
  "fxhash",
+ "lazy_static",
  "logos",
  "rowan",
 ]
