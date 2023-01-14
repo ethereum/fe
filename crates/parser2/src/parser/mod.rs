@@ -33,6 +33,13 @@ impl<S: TokenStream> Parser<S> {
         self.current_token().map(|token| token.syntax_kind())
     }
 
+    /// Invoke the scope to parse. The scope is wrapped up by the node specified
+    /// by the scope.
+    ///
+    /// * If the checkpoint is `Some`, the marked branch is wrapped up by the
+    ///   node.
+    /// * If the checkpoint is `None`, the current branch is wrapped up by the
+    ///   node.
     pub fn parse<T>(&mut self, mut scope: T, checkpoint: Option<rowan::Checkpoint>)
     where
         T: Parse + 'static,
@@ -42,13 +49,20 @@ impl<S: TokenStream> Parser<S> {
         self.leave(checkpoint);
     }
 
-    /// Mark the current branch as a checkpoint.
+    /// Marks the current branch as a checkpoint.
     /// The checked branch is wrapped up later when [`parse]` is
     /// called with the `checkpoint`.
     pub fn checkpoint(&mut self) -> rowan::Checkpoint {
         self.builder.checkpoint()
     }
 
+    /// Add `msg` as an error to the error list, then bumps consecutive tokens
+    /// until a token in the recovery set is found.
+    ///
+    /// * If checkpoint is `Some`, the marked branch is wrapped up by an error
+    ///   node.
+    /// * If checkpoint is `None`, the current branch is wrapped up by an error
+    ///   node.
     pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<rowan::Checkpoint>) {
         let err_scope = self.error(msg);
         let checkpoint = self.enter(err_scope, checkpoint);
@@ -63,6 +77,45 @@ impl<S: TokenStream> Parser<S> {
         self.bump_trivias(false);
     }
 
+    /// Peek the next non-trivia token.
+    /// If `skip_newlines` is `true`, newlines are also treated as trivia.
+    pub fn peek_non_trivia(&mut self, skip_newlines: bool) -> Option<SyntaxKind> {
+        self.stream.set_bt_point();
+
+        while let Some(next) = self.stream.next() {
+            let kind = next.syntax_kind();
+            if kind.is_trivia() || (skip_newlines && kind == SyntaxKind::Newline) {
+                continue;
+            } else {
+                self.stream.backtrack();
+                return Some(kind);
+            }
+        }
+
+        self.stream.backtrack();
+        None
+    }
+
+    /// Bumps the current token if the current token is the `expected` kind.
+    ///
+    /// # Panics
+    /// Panics If the current token is not the `expected` kind.
+    pub fn bump_expected(&mut self, expected: SyntaxKind) {
+        assert_eq!(self.current_kind(), Some(expected));
+        self.bump();
+    }
+
+    /// Bumps the current token if the current token is the `expected` kind.
+    /// Return `true` if the current token is the `expected` kind.
+    pub fn bump_if(&mut self, expected: SyntaxKind) -> bool {
+        if self.current_kind() == Some(expected) {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Bumps the current token adds it to the current branch.
     pub fn bump_raw(&mut self) {
         let tok = self.stream.next().unwrap();
@@ -72,10 +125,10 @@ impl<S: TokenStream> Parser<S> {
 
     /// Bumps consecutive trivia tokens.
     /// If `bump_newlines` is true, newlines are also bumped.
-    pub fn bump_trivias(&mut self, skip_newlines: bool) {
+    pub fn bump_trivias(&mut self, bump_newlines: bool) {
         while let Some(tok) = self.current_token() {
             let kind = tok.syntax_kind();
-            if kind.is_trivia() || (skip_newlines && kind == SyntaxKind::Newline) {
+            if kind.is_trivia() || (bump_newlines && kind == SyntaxKind::Newline) {
                 self.bump();
             } else {
                 break;
