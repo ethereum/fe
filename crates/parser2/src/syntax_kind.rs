@@ -9,9 +9,9 @@ pub enum SyntaxKind {
     // Atom kinds. These are leaf nodes.
     #[error]
     InvalidToken = 0,
-    #[regex(r"\n[ \t]*")]
+    #[regex(r"\n|\r\n|\r")]
     Newline,
-    #[regex(r"[ \s\t]")]
+    #[regex(r"\s")]
     WhiteSpace,
     /// `foo`
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
@@ -74,10 +74,10 @@ pub enum SyntaxKind {
     #[token("#")]
     Pound,
     /// `// Comment`
-    #[regex(r"//[^\n]*")]
+    #[regex(r"//[^\n\r]*")]
     Comment,
     /// `/// DocComment`
-    #[regex(r"///[^\n]*")]
+    #[regex(r"///[^\n\r]*")]
     DocComment,
 
     /// `+`
@@ -312,6 +312,12 @@ pub enum SyntaxKind {
 
     /// `#attr`
     Attr,
+    /// `(key1: value1, key2: value2)`
+    AttrParamList,
+    /// `key: value`
+    AttrParam,
+    /// `/// Comment`
+    DocCommentAttr,
     AttrList,
 
     /// `pub`
