@@ -10,6 +10,7 @@ mod attr;
 mod func;
 mod item;
 mod path;
+mod struct_;
 
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {

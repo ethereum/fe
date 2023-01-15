@@ -9,7 +9,6 @@ define_scope! {
         Newline
     )
 }
-
 impl super::Parse for AttrListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         use SyntaxKind::*;
@@ -52,7 +51,6 @@ define_scope! {
         RParen
     )
 }
-
 impl super::Parse for AttrParamListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);

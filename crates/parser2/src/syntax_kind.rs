@@ -324,8 +324,8 @@ pub enum SyntaxKind {
     Visibility,
 
     /// `x: i32`
-    FieldDef,
-    FieldDefList,
+    StructFieldDef,
+    StructFieldDefList,
 
     /// `(i32, u32)`
     Tuple,
