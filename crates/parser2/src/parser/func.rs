@@ -7,7 +7,7 @@ define_scope! {
 }
 
 impl super::Parse for FnScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }

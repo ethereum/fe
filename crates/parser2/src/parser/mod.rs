@@ -9,6 +9,7 @@ pub mod token_stream;
 mod attr;
 mod func;
 mod item;
+mod path;
 
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {
@@ -70,11 +71,22 @@ impl<S: TokenStream> Parser<S> {
         self.leave(checkpoint);
     }
 
-    /// Bumps the current token and trailing trivias and adds them to the
+    /// Add the `msg` to the error list and bumps n token in the error branch.
+    pub fn error_and_bump(&mut self, msg: &str, bump_n: usize) {
+        let error = self.error(msg);
+        let checkpoint = self.enter(error, None);
+        for _ in 0..bump_n {
+            self.bump();
+        }
+        self.leave(checkpoint);
+    }
+
+    /// Bumps the current token and
     /// current branch.
     pub fn bump(&mut self) {
-        self.bump_raw();
-        self.bump_trivias(false);
+        let tok = self.stream.next().unwrap();
+        self.current_pos += rowan::TextSize::of(tok.text());
+        self.builder.token(tok.syntax_kind().into(), tok.text());
     }
 
     /// Peek the next non-trivia token.
@@ -114,13 +126,6 @@ impl<S: TokenStream> Parser<S> {
         } else {
             false
         }
-    }
-
-    /// Bumps the current token adds it to the current branch.
-    pub fn bump_raw(&mut self) {
-        let tok = self.stream.next().unwrap();
-        self.current_pos += rowan::TextSize::of(tok.text());
-        self.builder.token(tok.syntax_kind().into(), tok.text());
     }
 
     /// Bumps consecutive trivia tokens.
