@@ -110,7 +110,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for StructScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -121,7 +121,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for EnumScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -132,7 +132,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for TraitScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -160,7 +160,7 @@ impl super::ParsingScope for ImplScope {
     }
 }
 impl super::Parse for ImplScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -171,7 +171,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for UseScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -182,7 +182,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for ConstScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -193,7 +193,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for ExternScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
@@ -204,7 +204,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for TypeAliasScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
