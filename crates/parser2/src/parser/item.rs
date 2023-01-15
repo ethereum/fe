@@ -73,7 +73,7 @@ impl super::Parse for ItemListScope {
 
             match parser.current_kind() {
                 Some(FnKw) => parser.parse(super::func::FnScope::default(), checkpoint),
-                Some(StructKw) => parser.parse(StructScope::default(), checkpoint),
+                Some(StructKw) => parser.parse(super::struct_::StructScope::default(), checkpoint),
                 Some(EnumKw) => parser.parse(EnumScope::default(), checkpoint),
                 Some(TraitKw) => parser.parse(TraitScope::default(), checkpoint),
                 Some(ImplKw) => parser.parse(ImplScope::default(), checkpoint),
@@ -101,17 +101,6 @@ impl Modifier {
 
     fn is_unsafe(&self) -> bool {
         matches!(self, Modifier::Unsafe | Modifier::PubAndUnsafe)
-    }
-}
-
-define_scope! {
-    StructScope,
-    Struct,
-    Inheritance
-}
-impl super::Parse for StructScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
     }
 }
 
