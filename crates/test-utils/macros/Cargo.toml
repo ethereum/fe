@@ -1,0 +1,12 @@
+[package]
+name = "fe-test-utils-macros"
+version = "0.20.0-alpha"
+edition = "2021"
+
+[lib]
+proc_macro = true
+
+[dependencies]
+syn = { version = "1.0", features = ["full"] }
+proc-macro2 = "1.0"
+quote = "1.0"
