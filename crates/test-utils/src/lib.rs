@@ -1,7 +1,13 @@
+#[doc(hidden)]
+pub use fe_test_utils_macros::build_snap_tests as _build_snap_tests;
+#[doc(hidden)]
+pub use insta as _insta;
+
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;
 use fe_driver as driver;
+
 use primitive_types::{H160, U256};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -21,6 +27,20 @@ macro_rules! assert_harness_gas_report {
         let _guard = settings.bind_to_scope();
         assert_snapshot!(format!("{}", $harness.gas_reporter));
     }
+}
+
+/// Build a set of snapshot tests from a directory of fixtures.
+/// `fixture_dir` and `snapshot_dir` should be relative to the workspace root.
+#[macro_export]
+macro_rules! build_snap_tests {
+    ($fixture_dir: literal, $snapshot_dir: literal, $target_fn: path, $insta_assert_macro: path) => {
+        fe_compiler_test_utils::_build_snap_tests! {
+            fixture_dir: $fixture_dir,
+            snapshot_dir: $snapshot_dir,
+            target_fn: $target_fn,
+            insta_assert_macro: $insta_assert_macro
+        }
+    };
 }
 
 #[derive(Default, Debug)]
