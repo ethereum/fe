@@ -9,7 +9,7 @@ define_scope! {
 }
 impl super::Parse for StructScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::Struct);
+        parser.bump_expected(SyntaxKind::StructKw);
 
         parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::Ident) {
