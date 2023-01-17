@@ -8,6 +8,15 @@ pub struct Lexer<'s> {
     inner: logos::Lexer<'s, SyntaxKind>,
 }
 
+impl<'s> Lexer<'s> {
+    pub fn new(text: &'s str) -> Self {
+        Self {
+            peek: None,
+            inner: logos::Lexer::new(text),
+        }
+    }
+}
+
 impl<'s> TokenStream for Lexer<'s> {
     type Token = Token<'s>;
 

@@ -1,0 +1,103 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..225
+  ItemList@0..225
+    Struct@0..27
+      PubKw@0..3 "pub"
+      WhiteSpace@3..4 " "
+      StructKw@4..10 "struct"
+      WhiteSpace@10..11 " "
+      Ident@11..22 "EmptyStruct"
+      WhiteSpace@22..23 " "
+      StructFieldDefList@23..27
+        LBrace@23..24 "{"
+        Newline@24..26 "\n\n"
+        RBrace@26..27 "}"
+    Newline@27..29 "\n\n"
+    Struct@29..130
+      AttrList@29..85
+        DocCommentAttr@29..45
+          DocComment@29..44 "/// DocComment1"
+          Newline@44..45 "\n"
+        Attr@45..51
+          Pound@45..46 "#"
+          Ident@46..50 "attr"
+          Newline@50..51 "\n"
+        Comment@51..68 "// normal comment"
+        Newline@68..69 "\n"
+        DocCommentAttr@69..85
+          DocComment@69..84 "/// DocComment2"
+          Newline@84..85 "\n"
+      PubKw@85..88 "pub"
+      WhiteSpace@88..89 " "
+      StructKw@89..95 "struct"
+      WhiteSpace@95..96 " "
+      Ident@96..106 "StructAttr"
+      WhiteSpace@106..107 " "
+      StructFieldDefList@107..130
+        LBrace@107..108 "{"
+        Newline@108..109 "\n"
+        WhiteSpace@109..113 "    "
+        StructFieldDef@113..119
+          Ident@113..114 "x"
+          Colon@114..115 ":"
+          WhiteSpace@115..116 " "
+          Path@116..119
+            PathSegment@116..119
+              Ident@116..119 "i32"
+        WhiteSpace@119..123 "    "
+        StructFieldDef@123..129
+          Ident@123..124 "y"
+          Colon@124..125 ":"
+          WhiteSpace@125..126 " "
+          Path@126..129
+            PathSegment@126..129
+              Ident@126..129 "i32"
+        RBrace@129..130 "}"
+    Newline@130..132 "\n\n"
+    Struct@132..224
+      AttrList@132..139
+        Attr@132..139
+          Pound@132..133 "#"
+          Ident@133..138 "Event"
+          Newline@138..139 "\n"
+      PubKw@139..142 "pub"
+      WhiteSpace@142..143 " "
+      StructKw@143..149 "struct"
+      WhiteSpace@149..150 " "
+      Ident@150..165 "StructFieldAttr"
+      WhiteSpace@165..166 " "
+      StructFieldDefList@166..224
+        LBrace@166..167 "{"
+        Newline@167..168 "\n"
+        WhiteSpace@168..172 "    "
+        StructFieldDef@172..213
+          AttrList@172..207
+            DocCommentAttr@172..192
+              DocComment@172..191 "/// `x` is a topic "
+              Newline@191..192 "\n"
+            WhiteSpace@192..196 "    "
+            Attr@196..203
+              Pound@196..197 "#"
+              Ident@197..202 "topic"
+              Newline@202..203 "\n"
+            WhiteSpace@203..207 "    "
+          Ident@207..208 "x"
+          Colon@208..209 ":"
+          WhiteSpace@209..210 " "
+          Path@210..213
+            PathSegment@210..213
+              Ident@210..213 "i32"
+        WhiteSpace@213..217 "    "
+        StructFieldDef@217..223
+          Ident@217..218 "y"
+          Colon@218..219 ":"
+          WhiteSpace@219..220 " "
+          Path@220..223
+            PathSegment@220..223
+              Ident@220..223 "u32"
+        RBrace@223..224 "}"
+    Newline@224..225 "\n"
+

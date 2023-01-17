@@ -20,7 +20,7 @@ impl super::Parse for PathScope {
 
 define_scope! {
     PathSegmentScope,
-    Path,
+    PathSegment,
     Inheritance
 }
 impl super::Parse for PathSegmentScope {
