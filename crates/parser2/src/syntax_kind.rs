@@ -328,7 +328,7 @@ pub enum SyntaxKind {
     StructFieldDefList,
 
     /// `(i32, u32)`
-    Tuple,
+    TupleDef,
 
     VariantDef,
     VariantDefList,

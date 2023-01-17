@@ -2,8 +2,8 @@
 source: crates/parser2/tests/syntax_node.rs
 expression: snapshot
 ---
-Root@0..225
-  ItemList@0..225
+Root@0..348
+  ItemList@0..348
     Struct@0..27
       PubKw@0..3 "pub"
       WhiteSpace@3..4 " "
@@ -99,5 +99,73 @@ Root@0..225
             PathSegment@220..223
               Ident@220..223 "u32"
         RBrace@223..224 "}"
-    Newline@224..225 "\n"
+    Newline@224..226 "\n\n"
+    Struct@226..348
+      PubKw@226..229 "pub"
+      WhiteSpace@229..230 " "
+      StructKw@230..236 "struct"
+      WhiteSpace@236..237 " "
+      Ident@237..257 "StructWithTupleField"
+      WhiteSpace@257..258 " "
+      StructFieldDefList@258..348
+        LBrace@258..259 "{"
+        Newline@259..260 "\n"
+        WhiteSpace@260..264 "    "
+        StructFieldDef@264..277
+          Ident@264..265 "x"
+          Colon@265..266 ":"
+          WhiteSpace@266..267 " "
+          TupleDef@267..277
+            LParen@267..268 "("
+            Path@268..271
+              PathSegment@268..271
+                Ident@268..271 "i32"
+            Comma@271..272 ","
+            WhiteSpace@272..273 " "
+            Path@273..276
+              PathSegment@273..276
+                Ident@273..276 "u32"
+            RParen@276..277 ")"
+        Newline@277..278 "\n"
+        WhiteSpace@278..282 "    "
+        StructFieldDef@282..335
+          Ident@282..283 "y"
+          Colon@283..284 ":"
+          WhiteSpace@284..285 " "
+          TupleDef@285..335
+            LParen@285..286 "("
+            Newline@286..287 "\n"
+            WhiteSpace@287..295 "        "
+            Path@295..298
+              PathSegment@295..298
+                Ident@295..298 "i32"
+            Comma@298..299 ","
+            Newline@299..300 "\n"
+            WhiteSpace@300..308 "        "
+            Path@308..316
+              PathSegment@308..311
+                Ident@308..311 "foo"
+              Colon2@311..313 "::"
+              PathSegment@313..316
+                Ident@313..316 "Bar"
+            Comma@316..317 ","
+            Newline@317..318 "\n"
+            WhiteSpace@318..326 "        "
+            Path@326..329
+              PathSegment@326..329
+                Ident@326..329 "u32"
+            Newline@329..330 "\n"
+            WhiteSpace@330..334 "    "
+            RParen@334..335 ")"
+        Newline@335..336 "\n"
+        WhiteSpace@336..340 "    "
+        StructFieldDef@340..345
+          Ident@340..341 "z"
+          Colon@341..342 ":"
+          WhiteSpace@342..343 " "
+          TupleDef@343..345
+            LParen@343..344 "("
+            RParen@344..345 ")"
+        Newline@345..347 "\n\n"
+        RBrace@347..348 "}"
 
