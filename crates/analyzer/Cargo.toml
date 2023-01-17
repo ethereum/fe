@@ -25,7 +25,7 @@ petgraph = "0.6.0"
 smol_str = "0.1.21"
 
 [dev-dependencies]
-insta = { default-features = false, version = "1.7.1" }
+insta = { default-features = false, version = "1.26.0" }
 rstest = "0.6.4"
 test-files = {path = "../test-files", package = "fe-test-files" }
 fe-library = {path = "../library"}

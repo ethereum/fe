@@ -26,7 +26,7 @@ wasm-bindgen = "0.2"
 
 [dev-dependencies]
 fe-test-files = {path = "../test-files", version = "^0.20.0-alpha"}
-insta = { default-features = false, version = "1.7.1" }
+insta = { default-features = false, version = "1.26.0" }
 wasm-bindgen-test = "0.3"
 pretty_assertions = "1.0.0"
 criterion = "0.3.5"
