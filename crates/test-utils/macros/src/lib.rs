@@ -92,7 +92,7 @@ impl SnapTestBuilder {
             }
         } else {
             quote! {
-                let #snapshot = #target_fn(&input);
+                let #snapshot = format!("{}", #target_fn(&input));
             }
         };
 

@@ -9,9 +9,9 @@ pub enum SyntaxKind {
     // Atom kinds. These are leaf nodes.
     #[error]
     InvalidToken = 0,
-    #[regex(r"\n|\r\n|\r")]
+    #[regex(r"[\n|\r\n|\r]+")]
     Newline,
-    #[regex(r"\s")]
+    #[regex(r"[ ]+")]
     WhiteSpace,
     /// `foo`
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]

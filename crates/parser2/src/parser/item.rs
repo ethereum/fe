@@ -5,6 +5,17 @@ use crate::SyntaxKind;
 use super::{define_scope, token_stream::TokenStream, Parser};
 
 define_scope! {
+    RootScope,
+    Root,
+    RecoverySet()
+}
+impl super::Parse for RootScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.parse(ItemListScope::default(), None);
+    }
+}
+
+define_scope! {
     ItemListScope,
     ItemList,
     RecoverySet(
@@ -28,9 +39,13 @@ impl super::Parse for ItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         use crate::SyntaxKind::*;
 
-        while parser.current_kind().is_some() {
-            let mut checkpoint = None;
+        loop {
+            parser.bump_trivias(true);
+            if parser.current_kind().is_none() {
+                break;
+            }
 
+            let mut checkpoint = None;
             parser.bump_trivias(true);
             if let Some(DocComment) | Some(Pound) = parser.current_kind() {
                 checkpoint.get_or_insert_with(|| parser.checkpoint());
@@ -42,9 +57,10 @@ impl super::Parse for ItemListScope {
                 Some(PubKw) => {
                     checkpoint.get_or_insert_with(|| parser.checkpoint());
                     parser.bump();
+                    parser.bump_trivias(true);
 
                     if parser.current_kind() == Some(UnsafeKw) {
-                        parser.bump_trivias(true);
+                        parser.bump();
                         Modifier::PubAndUnsafe
                     } else {
                         Modifier::Pub
@@ -64,6 +80,7 @@ impl super::Parse for ItemListScope {
                     continue;
                 }
             };
+            parser.bump_trivias(true);
 
             if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
                 parser.error("expected `fn` after `unsafe` keyword");
@@ -81,7 +98,8 @@ impl super::Parse for ItemListScope {
                 Some(ConstKw) => parser.parse(ConstScope::default(), checkpoint),
                 Some(ExternKw) => parser.parse(ExternScope::default(), checkpoint),
                 Some(TypeKw) => parser.parse(TypeAliasScope::default(), checkpoint),
-                _ => parser.error_and_recover("expected item", checkpoint),
+                tok => parser
+                    .error_and_recover(&format! {"expected item: but got {:?}", tok}, checkpoint),
             }
         }
     }

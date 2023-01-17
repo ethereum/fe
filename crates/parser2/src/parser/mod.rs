@@ -1,6 +1,8 @@
+pub(crate) use item::RootScope;
+
 use fxhash::FxHashSet;
 
-use crate::{ParseError, SyntaxKind, TextRange};
+use crate::{syntax_node::SyntaxNode, ParseError, SyntaxKind, TextRange};
 
 use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
 
@@ -25,6 +27,17 @@ pub struct Parser<S: TokenStream> {
 }
 
 impl<S: TokenStream> Parser<S> {
+    /// Create a parser with the given token stream.
+    pub fn new(stream: S) -> Self {
+        Self {
+            stream: BackTrackableTokenStream::new(stream),
+            builder: rowan::GreenNodeBuilder::new(),
+            scopes: Vec::new(),
+            errors: Vec::new(),
+            current_pos: rowan::TextSize::from(0),
+        }
+    }
+
     /// Returns the current token of the parser.
     pub fn current_token(&mut self) -> Option<&S::Token> {
         self.stream.peek()
@@ -33,6 +46,13 @@ impl<S: TokenStream> Parser<S> {
     /// Returns the current token kind of the parser.
     pub fn current_kind(&mut self) -> Option<SyntaxKind> {
         self.current_token().map(|token| token.syntax_kind())
+    }
+
+    /// Finish the parsing and return the syntax tree.
+    pub fn finish(self) -> (SyntaxNode, Vec<ParseError>) {
+        debug_assert!(self.scopes.is_empty());
+
+        (SyntaxNode::new_root(self.builder.finish()), self.errors)
     }
 
     /// Invoke the scope to parse. The scope is wrapped up by the node specified
@@ -209,6 +229,7 @@ impl<S: TokenStream> Parser<S> {
         let scope = self.scopes.pop().unwrap();
         self.builder
             .start_node_at(checkpoint, scope.syntax_kind().into());
+        self.builder.finish_node();
     }
 }
 
@@ -265,7 +286,7 @@ where
 
 macro_rules! define_scope {
     ($scope_name: ident, $kind: path ,Inheritance) => {
-        #[derive(Default,Debug, Clone, Copy)]
+        #[derive(Default, Debug, Clone, Copy)]
         pub(crate) struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
@@ -294,10 +315,11 @@ macro_rules! define_scope {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
                 lazy_static::lazy_static! {
                     pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
+                        #[allow(unused)]
                         use crate::SyntaxKind::*;
                         let set: fxhash::FxHashSet<crate::SyntaxKind> = vec![
                             $($recoveries), *
-                        ].into_iter().map(|kind| kind.into()).collect();
+                        ].into_iter().map(|kind: SyntaxKind| kind.into()).collect();
 
                         crate::parser::RecoveryMethod::RecoverySet(set)
                     };
