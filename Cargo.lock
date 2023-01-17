@@ -638,6 +638,7 @@ dependencies = [
  "fe-common",
  "fe-driver",
  "fe-test-files",
+ "fe-test-utils-macros",
  "fe-yulc",
  "getrandom 0.2.8",
  "hex",
@@ -756,6 +757,15 @@ version = "0.20.0-alpha"
 dependencies = [
  "fe-library",
  "include_dir",
+]
+
+[[package]]
+name = "fe-test-utils-macros"
+version = "0.20.0-alpha"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
