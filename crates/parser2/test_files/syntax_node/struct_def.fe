@@ -19,3 +19,14 @@ pub struct StructFieldAttr {
 
     y: u32
 }
+
+pub struct StructWithTupleField {
+    x: (i32, u32)
+    y: (
+        i32,
+        foo::Bar,
+        u32
+    )
+    z: ()
+
+}

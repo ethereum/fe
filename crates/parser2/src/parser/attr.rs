@@ -62,8 +62,8 @@ impl super::Parse for AttrParamListScope {
         parser.parse(AttrParam::default(), None);
         parser.bump_trivias(true);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(AttrParam::default(), None);
             parser.bump_trivias(true);
+            parser.parse(AttrParam::default(), None);
         }
 
         parser.bump_trivias(true);

@@ -1,6 +1,6 @@
 use crate::SyntaxKind;
 
-use super::{define_scope, token_stream::TokenStream, Parser};
+use super::{define_scope, token_stream::TokenStream, tuple::TupleDefScope, Parser};
 
 define_scope! {
     StructScope,
@@ -77,7 +77,11 @@ impl super::Parse for StructFieldDefScope {
             parser.error_and_recover("expected `name: type` for the field definition", None);
         }
         parser.bump_trivias(false);
-        parser.parse(super::path::PathScope::default(), None);
+        if parser.current_kind() == Some(SyntaxKind::LParen) {
+            parser.parse(TupleDefScope::default(), None);
+        } else {
+            parser.parse(super::path::PathScope::default(), None);
+        }
         if !matches!(
             parser.peek_non_trivia(false),
             Some(SyntaxKind::Newline) | Some(SyntaxKind::RBrace)
