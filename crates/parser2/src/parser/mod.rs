@@ -13,6 +13,7 @@ mod func;
 mod item;
 mod path;
 mod struct_;
+mod tuple;
 
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {
