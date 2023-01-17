@@ -27,7 +27,7 @@ struct SnapTestBuilder {
     fixture_dir: PathBuf,
     snapshot_dir: PathBuf,
     target_fn: syn::Path,
-    insta_assert_macro: syn::Path,
+    debug_snap: bool,
 }
 
 impl SnapTestBuilder {
@@ -55,7 +55,7 @@ impl SnapTestBuilder {
             fixture_dir,
             snapshot_dir,
             target_fn: args.target_fn,
-            insta_assert_macro: args.insta_assert_macro,
+            debug_snap: args.debug_snap.value(),
         })
     }
 
@@ -85,24 +85,33 @@ impl SnapTestBuilder {
 
         let snapshot_dir = self.snapshot_dir.to_str().unwrap();
         let target_fn = &self.target_fn;
-        let insta_assert_macro = &self.insta_assert_macro;
+        let snapshot = syn::Ident::new("snapshot", proc_macro2::Span::call_site());
+        let get_snapshot = if self.debug_snap {
+            quote! {
+                let #snapshot = format!("{:#?}", #target_fn(&input));
+            }
+        } else {
+            quote! {
+                let #snapshot = #target_fn(&input);
+            }
+        };
 
         quote! {
             #[test]
             fn #test_fn_ident() {
-                let input = std::fs::read_to_string(#fixture_file).unwrap();
-                let snapshot = #target_fn(&input);
-                fe_compiler_test_utils::_insta::with_settings! (
-                {
-                    snapshot_path => #snapshot_dir,
-                    input_file => Some(#file_name.into()),
-                    prepend_module_to_snapshot => false,
-                },
-                {
-                    #insta_assert_macro!(snapshot);
-                })
-            }
+                let input = ::std::fs::read_to_string(#fixture_file).unwrap();
+                #get_snapshot
+                let mut settings = ::fe_compiler_test_utils::_macro_support::_insta::Settings::new();
+                settings.set_snapshot_path(#snapshot_dir);
+                settings.set_input_file(#file_name);
+                settings.set_prepend_module_to_snapshot(false);
 
+
+                ::fe_compiler_test_utils::_insta_assert_snapshot!{
+                    #snapshot,
+                    settings
+                }
+            }
         }
     }
 }
@@ -123,7 +132,7 @@ struct Args {
     fixture_dir: syn::LitStr,
     snapshot_dir: syn::LitStr,
     target_fn: syn::Path,
-    insta_assert_macro: syn::Path,
+    debug_snap: syn::LitBool,
 }
 
 impl syn::parse::Parse for Args {
@@ -132,7 +141,7 @@ impl syn::parse::Parse for Args {
             fixture_dir: ..,  
             snapshot_dir: ..,
             target_fn: ..,
-            insta_assert_macro: ..,
+            debug_snap: ..
         }`";
 
         let ident = input.parse::<syn::Ident>()?;
@@ -160,17 +169,17 @@ impl syn::parse::Parse for Args {
         input.parse::<syn::Token![,]>()?;
 
         let ident = input.parse::<syn::Ident>()?;
-        if ident != "insta_assert_macro" {
+        if ident != "debug_snap" {
             return Err(Error::new_spanned(ident, error_msg));
         }
         input.parse::<syn::Token![:]>()?;
-        let insta_assert_macro = input.parse::<syn::Path>()?;
+        let debug_snap = input.parse::<syn::LitBool>()?;
 
         Ok(Self {
             fixture_dir,
             snapshot_dir,
             target_fn,
-            insta_assert_macro,
+            debug_snap,
         })
     }
 }
