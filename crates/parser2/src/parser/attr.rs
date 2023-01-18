@@ -5,7 +5,7 @@ use crate::SyntaxKind;
 define_scope! {
     AttrListScope,
     AttrList,
-    RecoverySet(
+    Override(
         Newline
     )
 }
@@ -40,14 +40,13 @@ impl super::Parse for AttrScope {
         if parser.current_kind() == Some(SyntaxKind::LParen) {
             parser.parse(AttrParamListScope::default(), None);
         }
-        parser.bump_if(SyntaxKind::Newline);
     }
 }
 
 define_scope! {
     AttrParamListScope,
     AttrParamList,
-    RecoverySet(
+    Override(
         RParen
     )
 }
@@ -76,7 +75,7 @@ impl super::Parse for AttrParamListScope {
 define_scope! {
     AttrParam,
     AttrParam,
-    RecoverySet(
+    Override(
         Comma,
         RParen
     )
