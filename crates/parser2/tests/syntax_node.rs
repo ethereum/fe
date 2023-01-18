@@ -7,6 +7,7 @@ fn build_cst(input: &str) -> SyntaxNode {
         println!("{}", error.msg);
     }
     assert! {errors.is_empty()}
+    assert!(input == cst.to_string());
     cst
 }
 

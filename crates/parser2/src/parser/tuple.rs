@@ -5,7 +5,7 @@ use crate::SyntaxKind;
 define_scope! {
     TupleDefScope,
     TupleDef,
-    RecoverySet(
+    Override(
         RParen,
         Comma
     )

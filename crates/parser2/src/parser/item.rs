@@ -7,7 +7,7 @@ use super::{define_scope, token_stream::TokenStream, Parser};
 define_scope! {
     RootScope,
     Root,
-    RecoverySet()
+    Override()
 }
 impl super::Parse for RootScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
@@ -18,7 +18,7 @@ impl super::Parse for RootScope {
 define_scope! {
     ItemListScope,
     ItemList,
-    RecoverySet(
+    Override(
         FnKw,
         StructKw,
         EnumKw,
@@ -149,17 +149,19 @@ impl super::Parse for TraitScope {
 #[derive(Debug, Clone)]
 struct ImplScope {
     syntax_kind: RefCell<SyntaxKind>,
+    recovery_method: super::RecoveryMethod,
 }
 impl Default for ImplScope {
     fn default() -> Self {
         Self {
             syntax_kind: SyntaxKind::Impl.into(),
+            recovery_method: super::RecoveryMethod::inheritance_empty(),
         }
     }
 }
 impl super::ParsingScope for ImplScope {
     fn recovery_method(&self) -> &super::RecoveryMethod {
-        &super::RecoveryMethod::Inheritance
+        &self.recovery_method
     }
 
     fn syntax_kind(&self) -> SyntaxKind {

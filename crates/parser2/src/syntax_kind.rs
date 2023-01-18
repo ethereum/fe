@@ -224,10 +224,14 @@ pub enum SyntaxKind {
     UnExpr,
     /// `foo(x, y)`
     CallExpr,
-    /// `(x, y)`
+    /// `(arg: 1, y)`
     CallArgList,
+    /// `arg: 1`, `y`
+    CallArg,
     /// `<i32, u256>`
-    CallTypeArgList,
+    GenericArgList,
+    /// `T`
+    GenericArg,
     /// `FOO::Bar`
     PathExpr,
     /// `foo.bar(x, y)`
@@ -335,9 +339,17 @@ pub enum SyntaxKind {
 
     /// `T`
     /// `T: Trait`
-    TypeBound,
+    GenericParam,
     /// `<T: Trait, U>`
     GenericParamList,
+
+    /// `foo::Trait1 + Trait2`
+    TraitBoundList,
+    /// `Trait1`
+    TraitBound,
+
+    /// `1`, `"foo"`
+    Literal,
 
     /// Root node of the input source.
     Root,

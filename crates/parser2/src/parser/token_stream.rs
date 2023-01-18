@@ -80,10 +80,11 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
     /// Set a backtrack point which allows the parser to backtrack to this
     /// point.
     pub fn set_bt_point(&mut self) {
+        println!("{}", self.bt_buffer.len());
         self.bt_points.push(self.bt_buffer.len());
     }
 
-    /// Remove the last resume points.
+    /// Remove the last backtrack point.
     pub fn complete(&mut self) {
         self.bt_cursor = None;
         if !self.has_bt_point() {

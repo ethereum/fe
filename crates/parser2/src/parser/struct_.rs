@@ -1,6 +1,9 @@
 use crate::SyntaxKind;
 
-use super::{define_scope, token_stream::TokenStream, tuple::TupleDefScope, Parser};
+use super::{
+    define_scope, param::GenericParamListScope, token_stream::TokenStream, tuple::TupleDefScope,
+    Parser,
+};
 
 define_scope! {
     StructScope,
@@ -17,6 +20,11 @@ impl super::Parse for StructScope {
         }
 
         parser.bump_trivias(true);
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            parser.parse(GenericParamListScope::default(), None);
+        }
+
+        parser.bump_trivias(true);
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             parser.parse(StructFieldDefListScope::default(), None);
         } else {
@@ -28,8 +36,9 @@ impl super::Parse for StructScope {
 define_scope! {
     StructFieldDefListScope,
     StructFieldDefList,
-    RecoverySet(
-        RBrace
+    Override(
+        RBrace,
+        Newline
     )
 }
 impl super::Parse for StructFieldDefListScope {
@@ -53,9 +62,7 @@ impl super::Parse for StructFieldDefListScope {
 define_scope! {
     StructFieldDefScope,
     StructFieldDef,
-    RecoverySet(
-        Newline
-    )
+    Inheritance
 }
 impl super::Parse for StructFieldDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
@@ -86,6 +93,7 @@ impl super::Parse for StructFieldDefScope {
             parser.peek_non_trivia(false),
             Some(SyntaxKind::Newline) | Some(SyntaxKind::RBrace)
         ) {
+            println!("{:?}", parser.peek_non_trivia(false));
             parser.error_and_recover("expected newline after the field definition", None);
         }
     }
