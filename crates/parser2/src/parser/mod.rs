@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 pub(crate) use item::RootScope;
 
 use fxhash::FxHashSet;
@@ -11,6 +13,7 @@ pub mod token_stream;
 mod attr;
 mod func;
 mod item;
+mod param;
 mod path;
 mod struct_;
 mod tuple;
@@ -25,6 +28,7 @@ pub struct Parser<S: TokenStream> {
     errors: Vec<ParseError>,
 
     current_pos: rowan::TextSize,
+    next_trivias: VecDeque<S::Token>,
 }
 
 impl<S: TokenStream> Parser<S> {
@@ -36,12 +40,17 @@ impl<S: TokenStream> Parser<S> {
             scopes: Vec::new(),
             errors: Vec::new(),
             current_pos: rowan::TextSize::from(0),
+            next_trivias: VecDeque::new(),
         }
     }
 
     /// Returns the current token of the parser.
     pub fn current_token(&mut self) -> Option<&S::Token> {
-        self.stream.peek()
+        if !self.next_trivias.is_empty() {
+            Some(&self.next_trivias[0])
+        } else {
+            self.stream.peek()
+        }
     }
 
     /// Returns the current token kind of the parser.
@@ -106,7 +115,11 @@ impl<S: TokenStream> Parser<S> {
     /// Bumps the current token and
     /// current branch.
     pub fn bump(&mut self) {
-        let tok = self.stream.next().unwrap();
+        let tok = match self.next_trivias.pop_front() {
+            Some(tok) => tok,
+            None => self.stream.next().unwrap(),
+        };
+
         self.current_pos += rowan::TextSize::of(tok.text());
         self.builder.token(tok.syntax_kind().into(), tok.text());
     }
@@ -114,19 +127,24 @@ impl<S: TokenStream> Parser<S> {
     /// Peek the next non-trivia token.
     /// If `skip_newlines` is `true`, newlines are also treated as trivia.
     pub fn peek_non_trivia(&mut self, skip_newlines: bool) -> Option<SyntaxKind> {
-        self.stream.set_bt_point();
+        if !skip_newlines {
+            for tok in &self.next_trivias {
+                if tok.syntax_kind() == SyntaxKind::Newline {
+                    return Some(SyntaxKind::Newline);
+                }
+            }
+        }
 
-        while let Some(next) = self.stream.next() {
+        while let Some(next) = self.stream.peek() {
             let kind = next.syntax_kind();
             if kind.is_trivia() || (skip_newlines && kind == SyntaxKind::Newline) {
+                self.next_trivias.push_back(self.stream.next().unwrap());
                 continue;
             } else {
-                self.stream.backtrack();
                 return Some(kind);
             }
         }
 
-        self.stream.backtrack();
         None
     }
 
@@ -176,24 +194,30 @@ impl<S: TokenStream> Parser<S> {
 
     /// Proceeds the parser to the recovery token of the current scope.
     pub fn recover(&mut self) {
+        let mut recovery_set: FxHashSet<SyntaxKind> = fxhash::FxHashSet::default();
         let mut scope_index = self.scopes.len() - 1;
-        // Finds the nearest scope that has its own recovery set.
         loop {
-            if self.scopes[scope_index].recovery_method() != &RecoveryMethod::Inheritance
-                || scope_index == 0
+            match self
+                .scopes
+                .get(scope_index)
+                .map(|scope| scope.recovery_method())
             {
-                break;
-            } else {
-                scope_index -= 1;
+                Some(RecoveryMethod::Inheritance(set)) => {
+                    recovery_set.extend(set.iter());
+                    scope_index -= 1;
+                }
+                Some(RecoveryMethod::Override(set)) => {
+                    recovery_set.extend(set.iter());
+                    break;
+                }
+
+                None => break,
             }
         }
 
         while let Some(tok) = self.stream.peek() {
             let syntax_kind = tok.syntax_kind();
-            if self.scopes[scope_index]
-                .recovery_method()
-                .contains(syntax_kind)
-            {
+            if recovery_set.contains(&syntax_kind) {
                 break;
             } else {
                 self.bump();
@@ -253,22 +277,19 @@ define_scope! {
 }
 
 /// Represents the recovery method of the current scope.
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryMethod {
-    /// Uses the recovery method of the parent scope.
-    Inheritance,
+    /// Uses the recovery method of the parent scope and its own recovery set.
+    Inheritance(FxHashSet<SyntaxKind>),
 
-    /// The scope has its own recovery set.
-    RecoverySet(FxHashSet<SyntaxKind>),
+    /// The scope has its own recovery set and don't use parent scope's recovery
+    /// set.
+    Override(FxHashSet<SyntaxKind>),
 }
 
 impl RecoveryMethod {
-    /// Returns `true` if the recovery set contains the given syntax kind.
-    fn contains(&self, syntax_kind: SyntaxKind) -> bool {
-        match self {
-            RecoveryMethod::Inheritance => false,
-            RecoveryMethod::RecoverySet(set) => set.contains(&syntax_kind),
-        }
+    fn inheritance_empty() -> Self {
+        RecoveryMethod::Inheritance(fxhash::FxHashSet::default())
     }
 }
 
@@ -294,7 +315,7 @@ macro_rules! define_scope {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
                 lazy_static::lazy_static! {
                     pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
-                        crate::parser::RecoveryMethod::Inheritance
+                        crate::parser::RecoveryMethod::Inheritance(fxhash::FxHashSet::default())
                     };
                 }
 
@@ -308,7 +329,7 @@ macro_rules! define_scope {
         }
     };
 
-    ($scope_name: ident, $kind: path, RecoverySet($($recoveries: path), *)) => {
+    ($scope_name: ident, $kind: path, Inheritance($($recoveries: path), *)) => {
         #[derive(Default, Debug, Clone, Copy)]
         pub(crate) struct $scope_name {}
 
@@ -322,7 +343,35 @@ macro_rules! define_scope {
                             $($recoveries), *
                         ].into_iter().map(|kind: SyntaxKind| kind.into()).collect();
 
-                        crate::parser::RecoveryMethod::RecoverySet(set)
+                        crate::parser::RecoveryMethod::Inheritance(set)
+                    };
+                }
+
+                &RECOVERY_METHOD
+            }
+
+            fn syntax_kind(&self) -> crate::SyntaxKind {
+                use crate::SyntaxKind::*;
+                $kind
+            }
+        }
+    };
+
+    ($scope_name: ident, $kind: path, Override($($recoveries: path), *)) => {
+        #[derive(Default, Debug, Clone, Copy)]
+        pub(crate) struct $scope_name {}
+
+        impl crate::parser::ParsingScope for $scope_name {
+            fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
+                lazy_static::lazy_static! {
+                    pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
+                        #[allow(unused)]
+                        use crate::SyntaxKind::*;
+                        let set: fxhash::FxHashSet<crate::SyntaxKind> = vec![
+                            $($recoveries), *
+                        ].into_iter().map(|kind: SyntaxKind| kind.into()).collect();
+
+                        crate::parser::RecoveryMethod::Override(set)
                     };
                 }
 
