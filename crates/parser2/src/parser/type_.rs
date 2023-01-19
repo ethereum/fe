@@ -69,7 +69,6 @@ impl super::Parse for TupleTypeScope {
             parser.bump_trivias(true);
         }
 
-        parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::RParen) {
             parser.error_and_recover("expected `)`", None);
             parser.bump_if(SyntaxKind::RParen);

@@ -1,0 +1,11 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..12
+  LitPat@0..3
+    Int@0..3 "0x1"
+  Newline@3..4 "\n"
+  LitPat@4..12
+    String@4..12 "\"String\""
+
