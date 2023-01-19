@@ -42,7 +42,7 @@ impl super::Parse for LetStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.bump_trivias(false);
-        if !parse_pat(parser, None) {
+        if !parse_pat(parser) {
             parser.error_and_recover("expected pattern", None);
             return;
         }
@@ -59,9 +59,7 @@ impl super::Parse for LetStmtScope {
             parser.bump_trivias(false);
             parser.bump_expected(SyntaxKind::Eq);
             parser.bump_trivias(false);
-            if !parse_expr(parser, None) {
-                return;
-            }
+            parse_expr(parser, None);
         }
     }
 }
@@ -71,7 +69,7 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
         parser.bump_trivias(true);
-        if !parse_pat(parser, None) {
+        if !parse_pat(parser) {
             return;
         }
 
@@ -145,7 +143,7 @@ impl super::Parse for ReturnStmtScope {
 define_scope! { AssignStmtScope, AssignStmt, Inheritance }
 impl super::Parse for AssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parse_pat(parser, None) {
+        if !parse_pat(parser) {
             return;
         }
 
@@ -154,9 +152,7 @@ impl super::Parse for AssignStmtScope {
             parser.error_and_recover("expected `=` keyword", None);
             return;
         }
-        if !parse_expr(parser, None) {
-            return;
-        }
+        parse_expr(parser, None);
     }
 }
 

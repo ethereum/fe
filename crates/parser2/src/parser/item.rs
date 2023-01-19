@@ -2,18 +2,7 @@ use std::cell::RefCell;
 
 use crate::SyntaxKind;
 
-use super::{define_scope, token_stream::TokenStream, Parser};
-
-define_scope! {
-    RootScope,
-    Root,
-    Override()
-}
-impl super::Parse for RootScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(ItemListScope::default(), None);
-    }
-}
+use super::{attr, define_scope, token_stream::TokenStream, Parser};
 
 define_scope! {
     ItemListScope,
@@ -34,7 +23,6 @@ define_scope! {
         Pound
     )
 }
-
 impl super::Parse for ItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         use crate::SyntaxKind::*;
@@ -45,12 +33,8 @@ impl super::Parse for ItemListScope {
                 break;
             }
 
-            let mut checkpoint = None;
             parser.bump_trivias(true);
-            if let Some(DocComment) | Some(Pound) = parser.current_kind() {
-                checkpoint.get_or_insert_with(|| parser.checkpoint());
-                parser.parse(super::attr::AttrListScope::default(), None);
-            }
+            let mut checkpoint = attr::parse_attr_list(parser);
 
             parser.bump_trivias(true);
             let modifier = match parser.current_kind() {
@@ -89,15 +73,33 @@ impl super::Parse for ItemListScope {
             }
 
             match parser.current_kind() {
-                Some(FnKw) => parser.parse(super::func::FnScope::default(), checkpoint),
-                Some(StructKw) => parser.parse(super::struct_::StructScope::default(), checkpoint),
-                Some(EnumKw) => parser.parse(EnumScope::default(), checkpoint),
-                Some(TraitKw) => parser.parse(TraitScope::default(), checkpoint),
-                Some(ImplKw) => parser.parse(ImplScope::default(), checkpoint),
-                Some(UseKw) => parser.parse(UseScope::default(), checkpoint),
-                Some(ConstKw) => parser.parse(ConstScope::default(), checkpoint),
-                Some(ExternKw) => parser.parse(ExternScope::default(), checkpoint),
-                Some(TypeKw) => parser.parse(TypeAliasScope::default(), checkpoint),
+                Some(FnKw) => {
+                    parser.parse(super::func::FnScope::default(), checkpoint);
+                }
+                Some(StructKw) => {
+                    parser.parse(super::struct_::StructScope::default(), checkpoint);
+                }
+                Some(EnumKw) => {
+                    parser.parse(EnumScope::default(), checkpoint);
+                }
+                Some(TraitKw) => {
+                    parser.parse(TraitScope::default(), checkpoint);
+                }
+                Some(ImplKw) => {
+                    parser.parse(ImplScope::default(), checkpoint);
+                }
+                Some(UseKw) => {
+                    parser.parse(UseScope::default(), checkpoint);
+                }
+                Some(ConstKw) => {
+                    parser.parse(ConstScope::default(), checkpoint);
+                }
+                Some(ExternKw) => {
+                    parser.parse(ExternScope::default(), checkpoint);
+                }
+                Some(TypeKw) => {
+                    parser.parse(TypeAliasScope::default(), checkpoint);
+                }
                 tok => parser
                     .error_and_recover(&format! {"expected item: but got {:?}", tok}, checkpoint),
             }

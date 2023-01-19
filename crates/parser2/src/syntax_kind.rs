@@ -69,7 +69,7 @@ pub enum SyntaxKind {
     FatArrow,
     /// `_`
     #[token("_")]
-    UnderScore,
+    Underscore,
     /// `#`
     #[token("#")]
     Pound,
@@ -253,7 +253,7 @@ pub enum SyntaxKind {
     /// `[x; 1]`
     ArrayExpr,
     /// `1`
-    LiteralExpr,
+    LitExpr,
     /// `if x { 1 } else { 2 }`
     IfExpr,
     /// `match x { pat => { .. } }`
@@ -286,13 +286,15 @@ pub enum SyntaxKind {
     /// `..`
     RestPat,
     /// `x`
-    LiteralPat,
+    LitPat,
     /// `(x, y)`
     TuplePat,
     /// `Enum::Variant`
     PathPat,
     /// `Enum::Variant(x, y)`
     PathTuplePat,
+    /// `pat1 | pat2`
+    OrPat,
 
     // MatchArms.
     // `pat => { stmtlist }`
@@ -370,9 +372,6 @@ pub enum SyntaxKind {
     TraitBoundList,
     /// `Trait1`
     TraitBound,
-
-    /// `1`, `"foo"`
-    Literal,
 
     /// Root node of the input source.
     Root,

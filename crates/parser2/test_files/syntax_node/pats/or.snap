@@ -1,0 +1,126 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..117
+  OrPat@0..19
+    PathPat@0..8
+      Path@0..8
+        PathSegment@0..3
+          Ident@0..3 "Foo"
+        Colon2@3..5 "::"
+        PathSegment@5..8
+          Ident@5..8 "Bar"
+    WhiteSpace@8..9 " "
+    Pipe@9..10 "|"
+    WhiteSpace@10..11 " "
+    PathPat@11..19
+      Path@11..19
+        PathSegment@11..14
+          Ident@11..14 "FOO"
+        Colon2@14..16 "::"
+        PathSegment@16..19
+          Ident@16..19 "Baz"
+  Newline@19..21 "\n\n"
+  OrPat@21..51
+    PathPat@21..36
+      Path@21..29
+        PathSegment@21..24
+          Ident@21..24 "Foo"
+        Colon2@24..26 "::"
+        PathSegment@26..29
+          Ident@26..29 "Bar"
+      TuplePat@29..36
+        LParen@29..30 "("
+        OrPat@30..35
+          LitPat@30..31
+            Int@30..31 "1"
+          WhiteSpace@31..32 " "
+          Pipe@32..33 "|"
+          WhiteSpace@33..34 " "
+          LitPat@34..35
+            Int@34..35 "2"
+        RParen@35..36 ")"
+    WhiteSpace@36..37 " "
+    Pipe@37..38 "|"
+    WhiteSpace@38..39 " "
+    PathPat@39..51
+      Path@39..47
+        PathSegment@39..42
+          Ident@39..42 "Foo"
+        Colon2@42..44 "::"
+        PathSegment@44..47
+          Ident@44..47 "Baz"
+      TuplePat@47..51
+        LParen@47..48 "("
+        RestPat@48..50
+          Dot2@48..50 ".."
+        RParen@50..51 ")"
+  Newline@51..53 "\n\n"
+  OrPat@53..117
+    PathPat@53..68
+      Path@53..61
+        PathSegment@53..56
+          Ident@53..56 "Foo"
+        Colon2@56..58 "::"
+        PathSegment@58..61
+          Ident@58..61 "Bar"
+      TuplePat@61..68
+        LParen@61..62 "("
+        OrPat@62..67
+          LitPat@62..63
+            Int@62..63 "1"
+          WhiteSpace@63..64 " "
+          Pipe@64..65 "|"
+          WhiteSpace@65..66 " "
+          LitPat@66..67
+            Int@66..67 "2"
+        RParen@67..68 ")"
+    WhiteSpace@68..69 " "
+    Pipe@69..70 "|"
+    WhiteSpace@70..71 " "
+    PathPat@71..117
+      Path@71..79
+        PathSegment@71..74
+          Ident@71..74 "Foo"
+        Colon2@74..76 "::"
+        PathSegment@76..79
+          Ident@76..79 "Baz"
+      TuplePat@79..117
+        LParen@79..80 "("
+        OrPat@80..116
+          PathPat@80..95
+            Path@80..88
+              PathSegment@80..83
+                Ident@80..83 "Foo"
+              Colon2@83..85 "::"
+              PathSegment@85..88
+                Ident@85..88 "Bar"
+            TuplePat@88..95
+              LParen@88..89 "("
+              OrPat@89..94
+                LitPat@89..90
+                  Int@89..90 "1"
+                WhiteSpace@90..91 " "
+                Pipe@91..92 "|"
+                WhiteSpace@92..93 " "
+                LitPat@93..94
+                  Int@93..94 "2"
+              RParen@94..95 ")"
+          WhiteSpace@95..96 " "
+          Pipe@96..97 "|"
+          WhiteSpace@97..98 " "
+          PathPat@98..116
+            Path@98..106
+              PathSegment@98..101
+                Ident@98..101 "Bar"
+              Colon2@101..103 "::"
+              PathSegment@103..106
+                Ident@103..106 "Baz"
+            TuplePat@106..116
+              LParen@106..107 "("
+              LitPat@107..115
+                String@107..115 "\"STRING\""
+              RParen@115..116 ")"
+        RParen@116..117 ")"
+

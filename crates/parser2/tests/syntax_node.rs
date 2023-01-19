@@ -1,18 +1,70 @@
-use fe_parser2::syntax_node::SyntaxNode;
+use fe_parser2::{
+    lexer,
+    parser::{item::ItemListScope, parse_pat, Parser, RootScope},
+    syntax_node::SyntaxNode,
+};
 
-#[allow(unused)]
-fn build_root_cst(input: &str) -> SyntaxNode {
-    let (cst, errors) = fe_parser2::parse_source_file(input);
-    for error in &errors {
-        println!("{}", error.msg);
-    }
-    assert! {errors.is_empty()}
-    assert!(input == cst.to_string());
-    cst
+fn test_item_list(input: &str) -> SyntaxNode {
+    let runner = TestRunner::new(|parser| {
+        while parser.current_kind().is_some() {
+            parser.bump_trivias(true);
+            parser.parse(ItemListScope::default(), None);
+        }
+    });
+    runner.run(input)
 }
-
 fe_compiler_test_utils::build_debug_snap_tests! {
     "parser2/test_files/syntax_node/structs",
     "parser2/test_files/syntax_node/structs",
-    build_root_cst
+    test_item_list
+}
+
+fn test_pat(input: &str) -> SyntaxNode {
+    let runner = TestRunner::new(|parser| {
+        while parser.current_kind().is_some() {
+            parser.bump_trivias(true);
+            parse_pat(parser);
+        }
+    });
+    runner.run(input)
+}
+fe_compiler_test_utils::build_debug_snap_tests! {
+    "parser2/test_files/syntax_node/pats",
+    "parser2/test_files/syntax_node/pats",
+    test_pat
+}
+
+struct TestRunner<F>
+where
+    F: Fn(&mut Parser<lexer::Lexer>),
+{
+    f: F,
+}
+
+impl<F> TestRunner<F>
+where
+    F: Fn(&mut Parser<lexer::Lexer>),
+{
+    fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    fn run(&self, input: &str) -> SyntaxNode {
+        let lexer = lexer::Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let checkpoint = parser.enter(RootScope::default(), None);
+        (self.f)(&mut parser);
+        parser.leave(checkpoint);
+
+        let (cst, errors) = parser.finish();
+
+        for error in &errors {
+            println!("{}", error.msg);
+        }
+        assert! {errors.is_empty()}
+        assert!(input == cst.to_string());
+
+        cst
+    }
 }

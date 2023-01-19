@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-pub(crate) use item::RootScope;
+pub(crate) use item::ItemListScope;
 
 use fxhash::FxHashSet;
 
@@ -10,16 +10,18 @@ use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
 
 pub mod token_stream;
 
-mod attr;
-mod expr;
-mod func;
-mod item;
-mod param;
-mod pat;
-mod path;
-mod stmt;
-mod struct_;
-mod type_;
+pub use pat::parse_pat;
+
+pub mod attr;
+pub mod expr;
+pub mod func;
+pub mod item;
+pub mod param;
+pub mod pat;
+pub mod path;
+pub mod stmt;
+pub mod struct_;
+pub mod type_;
 
 type Checkpoint = rowan::Checkpoint;
 
@@ -94,6 +96,30 @@ impl<S: TokenStream> Parser<S> {
         error_len == self.errors.len()
     }
 
+    #[doc(hidden)]
+    /// Enter the scope and return the checkpoint. The checkpoint branch will be
+    /// wrapped up by the scope's node when [`leave`] is called.
+    // NOTE: This method is limited to testing and internal usage.
+    pub fn enter<T>(&mut self, scope: T, checkpoint: Option<Checkpoint>) -> Checkpoint
+    where
+        T: ParsingScope + 'static,
+    {
+        self.scopes.push(Box::new(scope));
+        checkpoint.unwrap_or_else(|| self.checkpoint())
+    }
+
+    #[doc(hidden)]
+    /// Leave the scope and wrap up the checkpoint by the scope's node.
+    // NOTE: This method is limited to testing and internal usage.
+    pub fn leave(&mut self, checkpoint: Checkpoint) {
+        let scope = self.scopes.pop().unwrap();
+        if !self.is_dry_run() {
+            self.builder
+                .start_node_at(checkpoint, scope.syntax_kind().into());
+            self.builder.finish_node();
+        }
+    }
+
     /// Marks the current branch as a checkpoint.
     /// The checked branch is wrapped up later when [`parse]` is
     /// called with the `checkpoint`.
@@ -112,6 +138,30 @@ impl<S: TokenStream> Parser<S> {
         let err_scope = self.error(msg);
         let checkpoint = self.enter(err_scope, checkpoint);
         self.recover();
+        self.leave(checkpoint);
+    }
+
+    /// Add `msg` as an error to the error list, then bumps consecutive tokens
+    /// until a `tok` is found or the end of the file is reached.
+    ///
+    /// * If checkpoint is `Some`, the marked branch is wrapped up by an error
+    ///   node.
+    /// * If checkpoint is `None`, the current branch is wrapped up by an error
+    ///   node.
+    pub fn error_and_bump_until(
+        &mut self,
+        msg: &str,
+        checkpoint: Option<Checkpoint>,
+        kind: SyntaxKind,
+    ) {
+        let err_scope = self.error(msg);
+        let checkpoint = self.enter(err_scope, checkpoint);
+        loop {
+            if self.current_kind() == Some(kind) || self.current_kind().is_none() {
+                break;
+            }
+            self.bump()
+        }
         self.leave(checkpoint);
     }
 
@@ -285,23 +335,6 @@ impl<S: TokenStream> Parser<S> {
     fn is_dry_run(&self) -> bool {
         !self.dry_run_states.is_empty()
     }
-
-    fn enter<T>(&mut self, scope: T, checkpoint: Option<Checkpoint>) -> Checkpoint
-    where
-        T: ParsingScope + 'static,
-    {
-        self.scopes.push(Box::new(scope));
-        checkpoint.unwrap_or_else(|| self.checkpoint())
-    }
-
-    fn leave(&mut self, checkpoint: Checkpoint) {
-        let scope = self.scopes.pop().unwrap();
-        if !self.is_dry_run() {
-            self.builder
-                .start_node_at(checkpoint, scope.syntax_kind().into());
-            self.builder.finish_node();
-        }
-    }
 }
 
 /// The current scope of parsing.
@@ -335,7 +368,11 @@ pub enum RecoveryMethod {
 
 impl RecoveryMethod {
     fn inheritance_empty() -> Self {
-        RecoveryMethod::Inheritance(fxhash::FxHashSet::default())
+        Self::Inheritance(fxhash::FxHashSet::default())
+    }
+
+    fn inheritance(tokens: &[SyntaxKind]) -> Self {
+        Self::Inheritance(tokens.iter().copied().collect())
     }
 }
 
@@ -352,16 +389,22 @@ where
     }
 }
 
+define_scope! {
+    RootScope,
+    Root,
+    Override()
+}
+
 macro_rules! define_scope {
-    ($scope_name: ident, $kind: path ,Inheritance) => {
+    ($scope_name: ident, $kind: path, Inheritance) => {
         #[derive(Default, Debug, Clone, Copy)]
-        pub(crate) struct $scope_name {}
+        pub struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
                 lazy_static::lazy_static! {
                     pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
-                        crate::parser::RecoveryMethod::Inheritance(fxhash::FxHashSet::default())
+                        crate::parser::RecoveryMethod::inheritance_empty()
                     };
                 }
 
@@ -377,7 +420,7 @@ macro_rules! define_scope {
 
     ($scope_name: ident, $kind: path, Inheritance($($recoveries: path), *)) => {
         #[derive(Default, Debug, Clone, Copy)]
-        pub(crate) struct $scope_name {}
+        pub struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
@@ -405,7 +448,7 @@ macro_rules! define_scope {
 
     ($scope_name: ident, $kind: path, Override($($recoveries: path), *)) => {
         #[derive(Default, Debug, Clone, Copy)]
-        pub(crate) struct $scope_name {}
+        pub struct $scope_name {}
 
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {

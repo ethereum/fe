@@ -1,0 +1,16 @@
+Empty()
+
+MyEnum::Empty()
+
+MyEnum::Foo(X::Foo, Z::Bar(1, 2),  _, ..)
+
+MyEnum::Foo2(
+    X::Foo, 
+    Z::Bar(1, 2), 
+     _, 
+     ..
+)
+
+MyEnum::Bind(x)
+
+MyEnum::OrTuple(Int::I32 | Int::I64 | Int::Any(10))
