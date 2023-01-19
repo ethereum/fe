@@ -1,0 +1,8 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..2
+  RestPat@0..2
+    Dot2@0..2 ".."
+
