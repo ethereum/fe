@@ -1,0 +1,77 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..170
+  ItemList@0..170
+    Struct@0..170
+      AttrList@0..56
+        DocCommentAttr@0..16
+          DocComment@0..15 "/// DocComment1"
+          Newline@15..16 "\n"
+        Attr@16..21
+          Pound@16..17 "#"
+          Ident@17..21 "attr"
+        Newline@21..22 "\n"
+        Comment@22..39 "// normal comment"
+        Newline@39..40 "\n"
+        DocCommentAttr@40..56
+          DocComment@40..55 "/// DocComment2"
+          Newline@55..56 "\n"
+      PubKw@56..59 "pub"
+      WhiteSpace@59..60 " "
+      StructKw@60..66 "struct"
+      WhiteSpace@66..67 " "
+      Ident@67..77 "StructAttr"
+      WhiteSpace@77..78 " "
+      StructFieldDefList@78..170
+        LBrace@78..79 "{"
+        Newline@79..80 "\n"
+        WhiteSpace@80..84 "    "
+        StructFieldDef@84..115
+          AttrList@84..104
+            DocCommentAttr@84..100
+              DocComment@84..99 "/// This is `x`"
+              Newline@99..100 "\n"
+            WhiteSpace@100..104 "    "
+          Ident@104..105 "x"
+          Colon@105..106 ":"
+          WhiteSpace@106..107 " "
+          PathType@107..115
+            Path@107..115
+              PathSegment@107..110
+                Ident@107..110 "foo"
+              Colon2@110..112 "::"
+              PathSegment@112..115
+                Ident@112..115 "Bar"
+        Newline@115..116 "\n"
+        WhiteSpace@116..120 "    "
+        StructFieldDef@120..168
+          AttrList@120..162
+            DocCommentAttr@120..136
+              DocComment@120..135 "/// This is `y`"
+              Newline@135..136 "\n"
+            WhiteSpace@136..140 "    "
+            Attr@140..157
+              Pound@140..141 "#"
+              Ident@141..144 "cfg"
+              AttrParamList@144..157
+                LParen@144..145 "("
+                AttrParam@145..156
+                  Ident@145..151 "target"
+                  Colon@151..152 ":"
+                  WhiteSpace@152..153 " "
+                  Ident@153..156 "evm"
+                RParen@156..157 ")"
+            Newline@157..158 "\n"
+            WhiteSpace@158..162 "    "
+          Ident@162..163 "y"
+          Colon@163..164 ":"
+          WhiteSpace@164..165 " "
+          PathType@165..168
+            Path@165..168
+              PathSegment@165..168
+                Ident@165..168 "i32"
+        Newline@168..169 "\n"
+        RBrace@169..170 "}"
+

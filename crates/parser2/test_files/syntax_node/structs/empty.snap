@@ -1,0 +1,18 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..26
+  ItemList@0..26
+    Struct@0..26
+      PubKw@0..3 "pub"
+      WhiteSpace@3..4 " "
+      StructKw@4..10 "struct"
+      WhiteSpace@10..11 " "
+      Ident@11..22 "EmptyStruct"
+      WhiteSpace@22..23 " "
+      StructFieldDefList@23..26
+        LBrace@23..24 "{"
+        Newline@24..25 "\n"
+        RBrace@25..26 "}"
+
