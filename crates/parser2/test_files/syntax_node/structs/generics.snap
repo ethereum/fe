@@ -1,0 +1,236 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..312
+  ItemList@0..312
+    Struct@0..73
+      PubKw@0..3 "pub"
+      WhiteSpace@3..4 " "
+      StructKw@4..10 "struct"
+      WhiteSpace@10..11 " "
+      Ident@11..33 "StructWithGenericParam"
+      GenericParamList@33..42
+        Lt@33..34 "<"
+        GenericParam@34..35
+          Ident@34..35 "S"
+        Comma@35..36 ","
+        WhiteSpace@36..37 " "
+        GenericParam@37..38
+          Ident@37..38 "T"
+        Comma@38..39 ","
+        WhiteSpace@39..40 " "
+        GenericParam@40..41
+          Ident@40..41 "U"
+        Gt@41..42 ">"
+      WhiteSpace@42..43 " "
+      StructFieldDefList@43..73
+        LBrace@43..44 "{"
+        Newline@44..45 "\n"
+        WhiteSpace@45..49 "    "
+        StructFieldDef@49..53
+          Ident@49..50 "x"
+          Colon@50..51 ":"
+          WhiteSpace@51..52 " "
+          PathType@52..53
+            Path@52..53
+              PathSegment@52..53
+                Ident@52..53 "S"
+        Newline@53..54 "\n"
+        WhiteSpace@54..58 "    "
+        StructFieldDef@58..62
+          Ident@58..59 "y"
+          Colon@59..60 ":"
+          WhiteSpace@60..61 " "
+          PathType@61..62
+            Path@61..62
+              PathSegment@61..62
+                Ident@61..62 "T"
+        Newline@62..63 "\n"
+        WhiteSpace@63..67 "    "
+        StructFieldDef@67..71
+          Ident@67..68 "z"
+          Colon@68..69 ":"
+          WhiteSpace@69..70 " "
+          PathType@70..71
+            Path@70..71
+              PathSegment@70..71
+                Ident@70..71 "U"
+        Newline@71..72 "\n"
+        RBrace@72..73 "}"
+    Newline@73..74 "\n"
+    WhiteSpace@74..75 " "
+    Newline@75..76 "\n"
+    Struct@76..185
+      PubKw@76..79 "pub"
+      WhiteSpace@79..80 " "
+      StructKw@80..86 "struct"
+      WhiteSpace@86..87 " "
+      Ident@87..110 "StructWithGenericParam2"
+      GenericParamList@110..145
+        Lt@110..111 "<"
+        Newline@111..112 "\n"
+        WhiteSpace@112..116 "    "
+        GenericParam@116..117
+          Ident@116..117 "S"
+        Comma@117..118 ","
+        Newline@118..119 "\n"
+        WhiteSpace@119..123 "    "
+        GenericParam@123..136
+          Ident@123..124 "T"
+          Colon@124..125 ":"
+          WhiteSpace@125..126 " "
+          TraitBoundList@126..136
+            TraitBound@126..136
+              Path@126..136
+                PathSegment@126..129
+                  Ident@126..129 "foo"
+                Colon2@129..131 "::"
+                PathSegment@131..136
+                  Ident@131..136 "Trait"
+        Comma@136..137 ","
+        Newline@137..138 "\n"
+        WhiteSpace@138..142 "    "
+        GenericParam@142..143
+          Ident@142..143 "U"
+        Newline@143..144 "\n"
+        Gt@144..145 ">"
+      WhiteSpace@145..146 " "
+      StructFieldDefList@146..185
+        LBrace@146..147 "{"
+        Newline@147..148 "\n"
+        WhiteSpace@148..152 "    "
+        StructFieldDef@152..165
+          Ident@152..153 "x"
+          Colon@153..154 ":"
+          WhiteSpace@154..155 " "
+          PtrType@155..165
+            Star@155..156 "*"
+            TupleType@156..165
+              LParen@156..157 "("
+              PathType@157..158
+                Path@157..158
+                  PathSegment@157..158
+                    Ident@157..158 "S"
+              Comma@158..159 ","
+              WhiteSpace@159..160 " "
+              PtrType@160..164
+                Star@160..161 "*"
+                PathType@161..164
+                  Path@161..164
+                    PathSegment@161..164
+                      Ident@161..164 "i32"
+              RParen@164..165 ")"
+        Newline@165..166 "\n"
+        WhiteSpace@166..170 "    "
+        StructFieldDef@170..174
+          Ident@170..171 "y"
+          Colon@171..172 ":"
+          WhiteSpace@172..173 " "
+          PathType@173..174
+            Path@173..174
+              PathSegment@173..174
+                Ident@173..174 "T"
+        Newline@174..175 "\n"
+        WhiteSpace@175..179 "    "
+        StructFieldDef@179..183
+          Ident@179..180 "z"
+          Colon@180..181 ":"
+          WhiteSpace@181..182 " "
+          PathType@182..183
+            Path@182..183
+              PathSegment@182..183
+                Ident@182..183 "U"
+        Newline@183..184 "\n"
+        RBrace@184..185 "}"
+    Newline@185..187 "\n\n"
+    Struct@187..312
+      PubKw@187..190 "pub"
+      WhiteSpace@190..191 " "
+      StructKw@191..197 "struct"
+      WhiteSpace@197..198 " "
+      Ident@198..221 "StructWithGenericParam3"
+      GenericParamList@221..281
+        Lt@221..222 "<"
+        Newline@222..223 "\n"
+        WhiteSpace@223..227 "    "
+        GenericParam@227..253
+          Ident@227..228 "S"
+          Colon@228..229 ":"
+          WhiteSpace@229..230 " "
+          TraitBoundList@230..253
+            TraitBound@230..240
+              Path@230..240
+                PathSegment@230..233
+                  Ident@230..233 "foo"
+                Colon2@233..235 "::"
+                PathSegment@235..240
+                  Ident@235..240 "Trait"
+            WhiteSpace@240..241 " "
+            Plus@241..242 "+"
+            WhiteSpace@242..243 " "
+            TraitBound@243..253
+              Path@243..253
+                PathSegment@243..246
+                  Ident@243..246 "bar"
+                Colon2@246..248 "::"
+                PathSegment@248..253
+                  Ident@248..253 "Trait"
+        Comma@253..254 ","
+        Newline@254..255 "\n"
+        WhiteSpace@255..259 "    "
+        GenericParam@259..260
+          Ident@259..260 "T"
+        Comma@260..261 ","
+        Newline@261..262 "\n"
+        WhiteSpace@262..266 "    "
+        GenericParam@266..279
+          Ident@266..267 "U"
+          Colon@267..268 ":"
+          WhiteSpace@268..269 " "
+          TraitBoundList@269..279
+            TraitBound@269..279
+              Path@269..279
+                PathSegment@269..272
+                  Ident@269..272 "bar"
+                Colon2@272..274 "::"
+                PathSegment@274..279
+                  Ident@274..279 "Trait"
+        Newline@279..280 "\n"
+        Gt@280..281 ">"
+      WhiteSpace@281..282 " "
+      StructFieldDefList@282..312
+        LBrace@282..283 "{"
+        Newline@283..284 "\n"
+        WhiteSpace@284..288 "    "
+        StructFieldDef@288..292
+          Ident@288..289 "x"
+          Colon@289..290 ":"
+          WhiteSpace@290..291 " "
+          PathType@291..292
+            Path@291..292
+              PathSegment@291..292
+                Ident@291..292 "S"
+        Newline@292..293 "\n"
+        WhiteSpace@293..297 "    "
+        StructFieldDef@297..301
+          Ident@297..298 "y"
+          Colon@298..299 ":"
+          WhiteSpace@299..300 " "
+          PathType@300..301
+            Path@300..301
+              PathSegment@300..301
+                Ident@300..301 "T"
+        Newline@301..302 "\n"
+        WhiteSpace@302..306 "    "
+        StructFieldDef@306..310
+          Ident@306..307 "z"
+          Colon@307..308 ":"
+          WhiteSpace@308..309 " "
+          PathType@309..310
+            Path@309..310
+              PathSegment@309..310
+                Ident@309..310 "U"
+        Newline@310..311 "\n"
+        RBrace@311..312 "}"
+
