@@ -174,9 +174,15 @@ pub enum SyntaxKind {
     /// `for`
     #[token("for")]
     ForKw,
+    /// `in`
+    #[token("in")]
+    InKw,
     /// `while`
     #[token("while")]
     WhileKw,
+    /// `assert`
+    #[token("assert")]
+    AssertKw,
     /// `pub`
     #[token("pub")]
     PubKw,
@@ -218,6 +224,8 @@ pub enum SyntaxKind {
     UnsafeKw,
 
     // Expressions. These are non-leaf nodes.
+    /// { statement-list }
+    BlockExpr,
     /// `x + 1`
     BinExpr,
     /// `!x`
@@ -254,15 +262,23 @@ pub enum SyntaxKind {
     // Statements. These are non-leaf nodes.
     /// `let x = 1`
     LetStmt,
+    /// `return 1`
+    AssignStmt,
     /// `for x in y {..}`
     ForStmt,
+    /// `while expr {..}`
+    WhileStmt,
+    /// `continue`
+    ContinueStmt,
+    /// `break`
+    BreakStmt,
+
     /// `assert x == 2`
     AssertStmt,
     /// `return 1`
     ReturnStmt,
     /// `1`
     ExprStmt,
-    StmtList,
 
     // Patterns. These are non-leaf nodes.
     /// `_`
@@ -308,6 +324,16 @@ pub enum SyntaxKind {
     Extern,
     ItemList,
 
+    // Types. These are non-leaf nodes.
+    /// `*i32`
+    PtrType,
+    /// `foo::Type<T, U + 2>`
+    PathType,
+    /// `Self`
+    SelfType,
+    /// `(i32, foo::Bar)`
+    TupleType,
+
     // Paths. These are non-leaf nodes.
     /// `Segment1::Segment2`
     Path,
@@ -330,9 +356,6 @@ pub enum SyntaxKind {
     /// `x: i32`
     StructFieldDef,
     StructFieldDefList,
-
-    /// `(i32, u32)`
-    TupleDef,
 
     VariantDef,
     VariantDefList,
