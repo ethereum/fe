@@ -11,12 +11,17 @@ use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
 pub mod token_stream;
 
 mod attr;
+mod expr;
 mod func;
 mod item;
 mod param;
+mod pat;
 mod path;
+mod stmt;
 mod struct_;
-mod tuple;
+mod type_;
+
+type Checkpoint = rowan::Checkpoint;
 
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {
@@ -29,6 +34,9 @@ pub struct Parser<S: TokenStream> {
 
     current_pos: rowan::TextSize,
     next_trivias: VecDeque<S::Token>,
+    /// The dry run states which holds the each state of the parser when it
+    /// enters dry run mode.
+    dry_run_states: Vec<DryRunState>,
 }
 
 impl<S: TokenStream> Parser<S> {
@@ -41,6 +49,7 @@ impl<S: TokenStream> Parser<S> {
             errors: Vec::new(),
             current_pos: rowan::TextSize::from(0),
             next_trivias: VecDeque::new(),
+            dry_run_states: Vec::new(),
         }
     }
 
@@ -61,30 +70,34 @@ impl<S: TokenStream> Parser<S> {
     /// Finish the parsing and return the syntax tree.
     pub fn finish(self) -> (SyntaxNode, Vec<ParseError>) {
         debug_assert!(self.scopes.is_empty());
+        debug_assert!(!self.is_dry_run());
 
         (SyntaxNode::new_root(self.builder.finish()), self.errors)
     }
 
     /// Invoke the scope to parse. The scope is wrapped up by the node specified
     /// by the scope.
+    /// Returns `true` if parse succeeded, otherwise `false`.
     ///
     /// * If the checkpoint is `Some`, the marked branch is wrapped up by the
     ///   node.
     /// * If the checkpoint is `None`, the current branch is wrapped up by the
     ///   node.
-    pub fn parse<T>(&mut self, mut scope: T, checkpoint: Option<rowan::Checkpoint>)
+    pub fn parse<T>(&mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> bool
     where
         T: Parse + 'static,
     {
         let checkpoint = self.enter(scope.clone(), checkpoint);
+        let error_len = self.errors.len();
         scope.parse(self);
         self.leave(checkpoint);
+        error_len == self.errors.len()
     }
 
     /// Marks the current branch as a checkpoint.
     /// The checked branch is wrapped up later when [`parse]` is
     /// called with the `checkpoint`.
-    pub fn checkpoint(&mut self) -> rowan::Checkpoint {
+    pub fn checkpoint(&mut self) -> Checkpoint {
         self.builder.checkpoint()
     }
 
@@ -95,7 +108,7 @@ impl<S: TokenStream> Parser<S> {
     ///   node.
     /// * If checkpoint is `None`, the current branch is wrapped up by an error
     ///   node.
-    pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<rowan::Checkpoint>) {
+    pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
         let err_scope = self.error(msg);
         let checkpoint = self.enter(err_scope, checkpoint);
         self.recover();
@@ -112,6 +125,30 @@ impl<S: TokenStream> Parser<S> {
         self.leave(checkpoint);
     }
 
+    /// Starts the dry run mode.
+    /// When the parser is in the dry run mode, the parser does not build the
+    /// syntax tree.
+    ///
+    /// When the [`end_dry_run`] is called, all errors occurred in the dry
+    /// run mode are discarded, and all tokens which are consumed in the
+    /// dry run mode are backtracked.
+    pub fn start_dry_run(&mut self) {
+        self.stream.set_bt_point();
+        self.dry_run_states.push(DryRunState {
+            pos: self.current_pos,
+            err_num: self.errors.len(),
+        });
+    }
+
+    /// Ends the dry run mode.
+    /// See `[start_dry_run]` for more details.
+    pub fn end_dry_run(&mut self) {
+        self.stream.backtrack();
+        let state = self.dry_run_states.pop().unwrap();
+        self.errors.truncate(state.err_num);
+        self.current_pos = state.pos;
+    }
+
     /// Bumps the current token and
     /// current branch.
     pub fn bump(&mut self) {
@@ -121,7 +158,9 @@ impl<S: TokenStream> Parser<S> {
         };
 
         self.current_pos += rowan::TextSize::of(tok.text());
-        self.builder.token(tok.syntax_kind().into(), tok.text());
+        if !self.is_dry_run() {
+            self.builder.token(tok.syntax_kind().into(), tok.text());
+        }
     }
 
     /// Peek the next non-trivia token.
@@ -242,7 +281,12 @@ impl<S: TokenStream> Parser<S> {
         ErrorScope::default()
     }
 
-    fn enter<T>(&mut self, scope: T, checkpoint: Option<rowan::Checkpoint>) -> rowan::Checkpoint
+    /// Returns `true` if the parser is in the dry run mode.
+    fn is_dry_run(&self) -> bool {
+        !self.dry_run_states.is_empty()
+    }
+
+    fn enter<T>(&mut self, scope: T, checkpoint: Option<Checkpoint>) -> Checkpoint
     where
         T: ParsingScope + 'static,
     {
@@ -250,11 +294,13 @@ impl<S: TokenStream> Parser<S> {
         checkpoint.unwrap_or_else(|| self.checkpoint())
     }
 
-    fn leave(&mut self, checkpoint: rowan::Checkpoint) {
+    fn leave(&mut self, checkpoint: Checkpoint) {
         let scope = self.scopes.pop().unwrap();
-        self.builder
-            .start_node_at(checkpoint, scope.syntax_kind().into());
-        self.builder.finish_node();
+        if !self.is_dry_run() {
+            self.builder
+                .start_node_at(checkpoint, scope.syntax_kind().into());
+            self.builder.finish_node();
+        }
     }
 }
 
@@ -369,7 +415,7 @@ macro_rules! define_scope {
                         use crate::SyntaxKind::*;
                         let set: fxhash::FxHashSet<crate::SyntaxKind> = vec![
                             $($recoveries), *
-                        ].into_iter().map(|kind: SyntaxKind| kind.into()).collect();
+                        ].into_iter().map(|kind: $crate::SyntaxKind| kind.into()).collect();
 
                         crate::parser::RecoveryMethod::Override(set)
                     };
@@ -384,6 +430,13 @@ macro_rules! define_scope {
             }
         }
     };
+}
+
+struct DryRunState {
+    /// The text position is the position when the dry run started.
+    pos: rowan::TextSize,
+    /// The number of errors when the dry run started.
+    err_num: usize,
 }
 
 use define_scope;
