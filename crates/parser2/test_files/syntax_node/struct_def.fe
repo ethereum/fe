@@ -41,7 +41,7 @@ pub struct StructWithGenericParam2<
     T: foo::Trait,
     U
 > {
-    x: S
+    x: *(S, *i32)
     y: T
     z: U
 }
