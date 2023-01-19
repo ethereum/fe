@@ -1,6 +1,16 @@
-use super::{define_scope, token_stream::TokenStream, Parser};
+use super::{define_scope, token_stream::TokenStream, Checkpoint, Parser};
 
 use crate::SyntaxKind;
+
+pub(super) fn parse_attr_list<S: TokenStream>(parser: &mut Parser<S>) -> Option<Checkpoint> {
+    if let Some(SyntaxKind::DocComment) | Some(SyntaxKind::Pound) = parser.current_kind() {
+        let checkpoint = parser.checkpoint();
+        parser.parse(super::attr::AttrListScope::default(), None);
+        Some(checkpoint)
+    } else {
+        None
+    }
+}
 
 define_scope! {
     AttrListScope,
@@ -19,7 +29,7 @@ impl super::Parse for AttrListScope {
                 Some(Pound) => parser.parse(AttrScope::default(), None),
                 Some(DocComment) => parser.parse(DocCommentAttrScope::default(), None),
                 _ => break,
-            }
+            };
         }
     }
 }

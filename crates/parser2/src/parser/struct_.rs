@@ -1,8 +1,8 @@
 use crate::SyntaxKind;
 
 use super::{
-    define_scope, param::GenericParamListScope, token_stream::TokenStream, tuple::TupleDefScope,
-    Parser,
+    attr::parse_attr_list, define_scope, param::GenericParamListScope, token_stream::TokenStream,
+    type_::parse_type, Parser,
 };
 
 define_scope! {
@@ -66,12 +66,7 @@ define_scope! {
 }
 impl super::Parse for StructFieldDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if matches!(
-            parser.current_kind(),
-            Some(SyntaxKind::Pound | SyntaxKind::DocComment)
-        ) {
-            parser.parse(super::attr::AttrListScope::default(), None);
-        }
+        parse_attr_list(parser);
         parser.bump_trivias(true);
 
         parser.bump_if(SyntaxKind::PubKw);
@@ -84,16 +79,11 @@ impl super::Parse for StructFieldDefScope {
             parser.error_and_recover("expected `name: type` for the field definition", None);
         }
         parser.bump_trivias(false);
-        if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(TupleDefScope::default(), None);
-        } else {
-            parser.parse(super::path::PathScope::default(), None);
-        }
+        parse_type(parser, None);
         if !matches!(
             parser.peek_non_trivia(false),
             Some(SyntaxKind::Newline) | Some(SyntaxKind::RBrace)
         ) {
-            println!("{:?}", parser.peek_non_trivia(false));
             parser.error_and_recover("expected newline after the field definition", None);
         }
     }
