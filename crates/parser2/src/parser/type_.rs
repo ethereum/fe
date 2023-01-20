@@ -11,7 +11,7 @@ pub(super) fn parse_type<S: TokenStream>(
 ) -> bool {
     match parser.current_kind() {
         Some(SyntaxKind::Star) => parser.parse(PtrTypeScope::default(), checkpoint),
-        Some(SyntaxKind::SelfKw) => parser.parse(SelfTypeScope::default(), checkpoint),
+        Some(SyntaxKind::SelfTypeKw) => parser.parse(SelfTypeScope::default(), checkpoint),
         Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::default(), checkpoint),
         _ => parser.parse(PathTypeScope::default(), checkpoint),
     }
@@ -42,7 +42,7 @@ impl super::Parse for PathTypeScope {
 define_scope!(SelfTypeScope, SelfType, Inheritance);
 impl super::Parse for SelfTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::SelfKw);
+        parser.bump_expected(SyntaxKind::SelfTypeKw);
     }
 }
 define_scope! {

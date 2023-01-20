@@ -23,6 +23,8 @@ pub mod stmt;
 pub mod struct_;
 pub mod type_;
 
+mod expr_atom;
+
 type Checkpoint = rowan::Checkpoint;
 
 /// Parser to build a rowan syntax tree.
@@ -373,6 +375,10 @@ impl RecoveryMethod {
 
     fn inheritance(tokens: &[SyntaxKind]) -> Self {
         Self::Inheritance(tokens.iter().copied().collect())
+    }
+
+    fn override_(tokens: &[SyntaxKind]) -> Self {
+        Self::Override(tokens.iter().copied().collect())
     }
 }
 
