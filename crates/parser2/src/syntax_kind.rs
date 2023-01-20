@@ -192,6 +192,8 @@ pub enum SyntaxKind {
     /// `self`
     #[token("self")]
     SelfKw,
+    #[token("Self")]
+    SelfTypeKw,
     /// `struct`
     #[token("struct")]
     StructKw,
@@ -250,14 +252,18 @@ pub enum SyntaxKind {
     IndexExpr,
     /// `(x ,y)`
     TupleExpr,
-    /// `[x; 1]`
+    /// `[x, y, z]`
     ArrayExpr,
+    /// `[x; 4]`
+    ArrayRepExpr,
     /// `1`
     LitExpr,
     /// `if x { 1 } else { 2 }`
     IfExpr,
     /// `match x { pat => { .. } }`
     MatchExpr,
+    /// `(1 + 2)`
+    ParenExpr,
 
     // Statements. These are non-leaf nodes.
     /// `let x = 1`
