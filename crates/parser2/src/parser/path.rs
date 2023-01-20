@@ -25,8 +25,14 @@ define_scope! {
 }
 impl super::Parse for PathSegmentScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected path segment", None);
-        }
+        debug_assert!(is_path_header(parser.current_kind().unwrap()));
+        parser.bump()
     }
+}
+
+pub(super) fn is_path_header(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::SelfType | SyntaxKind::SelfKw | SyntaxKind::Ident
+    )
 }
