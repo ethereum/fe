@@ -5,6 +5,7 @@ expression: snapshot
 Root@0..117
   ItemList@0..117
     Struct@0..117
+      ItemModifier@0..0
       StructKw@0..6 "struct"
       WhiteSpace@6..7 " "
       Ident@7..27 "StructWithTupleField"

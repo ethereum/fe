@@ -6,19 +6,20 @@ Root@0..170
   ItemList@0..170
     Struct@0..170
       AttrList@0..56
-        DocCommentAttr@0..16
+        DocCommentAttr@0..15
           DocComment@0..15 "/// DocComment1"
-          Newline@15..16 "\n"
+        Newline@15..16 "\n"
         Attr@16..21
           Pound@16..17 "#"
           Ident@17..21 "attr"
         Newline@21..22 "\n"
         Comment@22..39 "// normal comment"
         Newline@39..40 "\n"
-        DocCommentAttr@40..56
+        DocCommentAttr@40..55
           DocComment@40..55 "/// DocComment2"
-          Newline@55..56 "\n"
-      PubKw@56..59 "pub"
+        Newline@55..56 "\n"
+      ItemModifier@56..59
+        PubKw@56..59 "pub"
       WhiteSpace@59..60 " "
       StructKw@60..66 "struct"
       WhiteSpace@66..67 " "
@@ -29,11 +30,11 @@ Root@0..170
         Newline@79..80 "\n"
         WhiteSpace@80..84 "    "
         StructFieldDef@84..115
-          AttrList@84..104
-            DocCommentAttr@84..100
+          AttrList@84..100
+            DocCommentAttr@84..99
               DocComment@84..99 "/// This is `x`"
-              Newline@99..100 "\n"
-            WhiteSpace@100..104 "    "
+            Newline@99..100 "\n"
+          WhiteSpace@100..104 "    "
           Ident@104..105 "x"
           Colon@105..106 ":"
           WhiteSpace@106..107 " "
@@ -47,10 +48,10 @@ Root@0..170
         Newline@115..116 "\n"
         WhiteSpace@116..120 "    "
         StructFieldDef@120..168
-          AttrList@120..162
-            DocCommentAttr@120..136
+          AttrList@120..158
+            DocCommentAttr@120..135
               DocComment@120..135 "/// This is `y`"
-              Newline@135..136 "\n"
+            Newline@135..136 "\n"
             WhiteSpace@136..140 "    "
             Attr@140..157
               Pound@140..141 "#"
@@ -64,7 +65,7 @@ Root@0..170
                   Ident@153..156 "evm"
                 RParen@156..157 ")"
             Newline@157..158 "\n"
-            WhiteSpace@158..162 "    "
+          WhiteSpace@158..162 "    "
           Ident@162..163 "y"
           Colon@163..164 ":"
           WhiteSpace@164..165 " "

@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::Cell;
 
 use crate::SyntaxKind;
 
@@ -28,43 +28,15 @@ impl super::Parse for ItemListScope {
         use crate::SyntaxKind::*;
 
         loop {
-            parser.bump_trivias(true);
             if parser.current_kind().is_none() {
                 break;
             }
 
-            parser.bump_trivias(true);
             let mut checkpoint = attr::parse_attr_list(parser);
-
-            parser.bump_trivias(true);
-            let modifier = match parser.current_kind() {
-                Some(PubKw) => {
-                    checkpoint.get_or_insert_with(|| parser.checkpoint());
-                    parser.bump();
-                    parser.bump_trivias(true);
-
-                    if parser.current_kind() == Some(UnsafeKw) {
-                        parser.bump();
-                        Modifier::PubAndUnsafe
-                    } else {
-                        Modifier::Pub
-                    }
-                }
-
-                Some(UnsafeKw) => {
-                    checkpoint.get_or_insert_with(|| parser.checkpoint());
-                    parser.bump();
-                    Modifier::Unsafe
-                }
-
-                Some(_) => Modifier::None,
-
-                None => {
-                    parser.error_and_recover("expected item", checkpoint);
-                    continue;
-                }
-            };
-            parser.bump_trivias(true);
+            let modifier_scope = ItemModifierScope::default();
+            let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
+            checkpoint.get_or_insert(modifier_checkpoint);
+            let modifier = modifier_scope.kind.get();
 
             if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
                 parser.error("expected `fn` after `unsafe` keyword");
@@ -107,113 +79,92 @@ impl super::Parse for ItemListScope {
     }
 }
 
-enum Modifier {
+define_scope! {
+    ItemModifierScope {kind: Cell<ModifierKind>},
+    ItemModifier,
+    Inheritance
+}
+impl super::Parse for ItemModifierScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if parser.bump_if(SyntaxKind::PubKw) {
+            if parser.bump_if(SyntaxKind::UnsafeKw) {
+                self.kind.set(ModifierKind::PubAndUnsafe);
+            } else {
+                self.kind.set(ModifierKind::Pub);
+            }
+        } else if parser.bump_if(SyntaxKind::UnsafeKw) {
+            self.kind.set(ModifierKind::Unsafe);
+        } else {
+            self.kind.set(ModifierKind::None);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ModifierKind {
     None,
     Pub,
     Unsafe,
     PubAndUnsafe,
 }
-
-impl Modifier {
+impl Default for ModifierKind {
+    fn default() -> Self {
+        Self::None
+    }
+}
+impl ModifierKind {
     fn is_pub(&self) -> bool {
-        matches!(self, Modifier::Pub | Modifier::PubAndUnsafe)
+        matches!(self, Self::Pub | Self::PubAndUnsafe)
     }
 
     fn is_unsafe(&self) -> bool {
-        matches!(self, Modifier::Unsafe | Modifier::PubAndUnsafe)
+        matches!(self, Self::Unsafe | Self::PubAndUnsafe)
     }
 }
 
-define_scope! {
-    EnumScope,
-    Enum,
-    Inheritance
-}
+define_scope! { EnumScope, Enum, Inheritance }
 impl super::Parse for EnumScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-define_scope! {
-    TraitScope,
-    Trait,
-    Inheritance
-}
+define_scope! { TraitScope, Trait, Inheritance }
 impl super::Parse for TraitScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-// We can't use `define_scope` here since the `syntax_kind` of the scope can be
-// determined after parsing.
-#[derive(Debug, Clone)]
-struct ImplScope {
-    syntax_kind: RefCell<SyntaxKind>,
-    recovery_method: super::RecoveryMethod,
-}
-impl Default for ImplScope {
-    fn default() -> Self {
-        Self {
-            syntax_kind: SyntaxKind::Impl.into(),
-            recovery_method: super::RecoveryMethod::inheritance_empty(),
-        }
-    }
-}
-impl super::ParsingScope for ImplScope {
-    fn recovery_method(&self) -> &super::RecoveryMethod {
-        &self.recovery_method
-    }
-
-    fn syntax_kind(&self) -> SyntaxKind {
-        *self.syntax_kind.borrow()
-    }
-}
+define_scope! { ImplScope, Impl, Inheritance }
 impl super::Parse for ImplScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-define_scope! {
-    UseScope,
-    Use,
-    Inheritance
-}
+define_scope! { UseScope, Use, Inheritance }
 impl super::Parse for UseScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-define_scope! {
-    ConstScope,
-    Const,
-    Inheritance
-}
+define_scope! { ConstScope, Const, Inheritance }
 impl super::Parse for ConstScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-define_scope! {
-    ExternScope,
-    Extern,
-    Inheritance
-}
+define_scope! { ExternScope, Extern, Inheritance }
 impl super::Parse for ExternScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()
     }
 }
 
-define_scope! {
-    TypeAliasScope,
-    TypeAlias,
-    Inheritance
-}
+define_scope! { TypeAliasScope, TypeAlias, Inheritance }
 impl super::Parse for TypeAliasScope {
     fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
         todo!()

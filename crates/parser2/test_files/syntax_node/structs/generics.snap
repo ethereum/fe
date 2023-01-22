@@ -5,7 +5,8 @@ expression: snapshot
 Root@0..312
   ItemList@0..312
     Struct@0..73
-      PubKw@0..3 "pub"
+      ItemModifier@0..3
+        PubKw@0..3 "pub"
       WhiteSpace@3..4 " "
       StructKw@4..10 "struct"
       WhiteSpace@10..11 " "
@@ -62,7 +63,8 @@ Root@0..312
     WhiteSpace@74..75 " "
     Newline@75..76 "\n"
     Struct@76..185
-      PubKw@76..79 "pub"
+      ItemModifier@76..79
+        PubKw@76..79 "pub"
       WhiteSpace@79..80 " "
       StructKw@80..86 "struct"
       WhiteSpace@86..87 " "
@@ -145,7 +147,8 @@ Root@0..312
         RBrace@184..185 "}"
     Newline@185..187 "\n\n"
     Struct@187..312
-      PubKw@187..190 "pub"
+      ItemModifier@187..190
+        PubKw@187..190 "pub"
       WhiteSpace@190..191 " "
       StructKw@191..197 "struct"
       WhiteSpace@197..198 " "

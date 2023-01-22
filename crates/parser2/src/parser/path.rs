@@ -9,9 +9,9 @@ define_scope! {
 }
 impl super::Parse for PathScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.parse(PathSegmentScope::default(), None);
-        while parser.peek_non_trivia(false) == Some(SyntaxKind::Colon2) {
-            parser.bump_trivias(false);
+        while parser.current_kind() == Some(SyntaxKind::Colon2) {
             parser.bump_expected(SyntaxKind::Colon2);
             parser.parse(PathSegmentScope::default(), None);
         }
@@ -25,6 +25,7 @@ define_scope! {
 }
 impl super::Parse for PathSegmentScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        dbg! {"{:?}", parser.current_kind()};
         debug_assert!(is_path_header(parser.current_kind().unwrap()));
         parser.bump()
     }

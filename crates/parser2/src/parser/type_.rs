@@ -15,13 +15,14 @@ pub(super) fn parse_type<S: TokenStream>(
         Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::default(), checkpoint),
         _ => parser.parse(PathTypeScope::default(), checkpoint),
     }
+    .0
 }
 
 define_scope!(PtrTypeScope, PtrType, Inheritance);
 impl super::Parse for PtrTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::Star);
-        parser.bump_trivias(false);
+        parser.set_newline_as_trivia(false);
         parse_type(parser, None);
     }
 }
@@ -29,11 +30,12 @@ impl super::Parse for PtrTypeScope {
 define_scope!(PathTypeScope, PathType, Inheritance);
 impl super::Parse for PathTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.parse(PathScope::default(), None) {
+        if !parser.parse(PathScope::default(), None).0 {
             return;
         }
 
-        if parser.peek_non_trivia(false) == Some(SyntaxKind::Lt) {
+        parser.set_newline_as_trivia(false);
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
             parser.parse(GenericArgListScope::default(), None);
         }
     }
@@ -56,17 +58,13 @@ define_scope! {
 impl super::Parse for TupleTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
-        parser.bump_trivias(true);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
         }
 
         parse_type(parser, None);
-        parser.bump_trivias(true);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.bump_trivias(true);
             parse_type(parser, None);
-            parser.bump_trivias(true);
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {

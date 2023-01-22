@@ -5,7 +5,8 @@ expression: snapshot
 Root@0..26
   ItemList@0..26
     Struct@0..26
-      PubKw@0..3 "pub"
+      ItemModifier@0..3
+        PubKw@0..3 "pub"
       WhiteSpace@3..4 " "
       StructKw@4..10 "struct"
       WhiteSpace@10..11 " "
