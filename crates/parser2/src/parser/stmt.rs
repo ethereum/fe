@@ -1,11 +1,7 @@
 use crate::SyntaxKind;
 
 use super::{
-    define_scope,
-    expr::{parse_expr, BlockExprScope},
-    pat::parse_pat,
-    token_stream::TokenStream,
-    type_::parse_type,
+    define_scope, expr::parse_expr, pat::parse_pat, token_stream::TokenStream, type_::parse_type,
     Checkpoint, Parser,
 };
 
@@ -25,41 +21,37 @@ pub(super) fn parse_stmt<S: TokenStream>(
         Some(ReturnKw) => parser.parse(ReturnStmtScope::default(), checkpoint),
         _ => {
             parser.start_dry_run();
-            if parser.parse(AssignStmtScope::default(), checkpoint) {
+            if parser.parse(AssignStmtScope::default(), checkpoint).0 {
                 parser.end_dry_run();
-                assert!(parser.parse(AssignStmtScope::default(), checkpoint));
-                true
+                parser.parse(AssignStmtScope::default(), checkpoint)
             } else {
                 parser.end_dry_run();
                 parser.parse(ExprStmtScope::default(), checkpoint)
             }
         }
     }
+    .0
 }
 
 define_scope! { LetStmtScope, LetStmt, Inheritance }
 impl super::Parse for LetStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LetKw);
-        parser.bump_trivias(false);
+        parser.set_newline_as_trivia(false);
         if !parse_pat(parser) {
             parser.error_and_recover("expected pattern", None);
             return;
         }
-        if parser.peek_non_trivia(false) == Some(SyntaxKind::Colon) {
-            parser.bump_trivias(false);
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
-            parser.bump_trivias(false);
             if !parse_type(parser, None) {
                 return;
             }
         }
 
-        if parser.peek_non_trivia(false) == Some(SyntaxKind::Eq) {
-            parser.bump_trivias(false);
+        if parser.current_kind() == Some(SyntaxKind::Eq) {
             parser.bump_expected(SyntaxKind::Eq);
-            parser.bump_trivias(false);
-            parse_expr(parser, None);
+            parse_expr(parser);
         }
     }
 }
@@ -68,26 +60,23 @@ define_scope! { ForStmtScope, ForStmt, Inheritance }
 impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
-        parser.bump_trivias(true);
         if !parse_pat(parser) {
             return;
         }
 
-        parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::InKw) {
             parser.error_and_recover("expected `in` keyword", None);
             return;
         }
-        parser.bump_trivias(true);
-        if !parse_expr(parser, None) {
+        if !parse_expr(parser) {
             return;
         }
 
-        if parser.peek_non_trivia(true) != Some(SyntaxKind::LBrace) {
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
             return;
         }
-        parser.parse(BlockExprScope::default(), None);
+        parse_expr(parser);
     }
 }
 
@@ -95,16 +84,15 @@ define_scope! { WhileStmtScope, WhileStmt, Inheritance }
 impl super::Parse for WhileStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhileKw);
-        parser.bump_trivias(true);
-        if !parse_expr(parser, None) {
+        if !parse_expr(parser) {
             return;
         }
 
-        if parser.peek_non_trivia(true) != Some(SyntaxKind::LBrace) {
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
             return;
         }
-        parser.parse(BlockExprScope::default(), None);
+        parse_expr(parser);
     }
 }
 
@@ -126,8 +114,8 @@ define_scope! { AssertStmtScope, AssertStmt, Inheritance }
 impl super::Parse for AssertStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::AssertKw);
-        parser.bump_trivias(false);
-        parse_expr(parser, None);
+        parser.set_newline_as_trivia(false);
+        parse_expr(parser);
     }
 }
 
@@ -135,8 +123,8 @@ define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
 impl super::Parse for ReturnStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ReturnStmt);
-        parser.bump_trivias(false);
-        parse_expr(parser, None);
+        parser.set_newline_as_trivia(false);
+        parse_expr(parser);
     }
 }
 
@@ -146,19 +134,18 @@ impl super::Parse for AssignStmtScope {
         if !parse_pat(parser) {
             return;
         }
-
-        parser.bump_trivias(true);
+        parser.set_newline_as_trivia(false);
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` keyword", None);
             return;
         }
-        parse_expr(parser, None);
+        parse_expr(parser);
     }
 }
 
 define_scope! { ExprStmtScope, ExprStmt, Inheritance }
 impl super::Parse for ExprStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_expr(parser, None);
+        parse_expr(parser);
     }
 }

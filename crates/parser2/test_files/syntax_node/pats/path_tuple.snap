@@ -114,9 +114,9 @@ Root@0..203
       WhiteSpace@122..123 " "
       Newline@123..124 "\n"
       WhiteSpace@124..129 "     "
-      RestPat@129..132
+      RestPat@129..131
         Dot2@129..131 ".."
-        Newline@131..132 "\n"
+      Newline@131..132 "\n"
       RParen@132..133 ")"
   Newline@133..135 "\n\n"
   PathPat@135..150
