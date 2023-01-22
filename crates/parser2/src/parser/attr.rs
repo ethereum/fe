@@ -4,9 +4,7 @@ use crate::SyntaxKind;
 
 pub(super) fn parse_attr_list<S: TokenStream>(parser: &mut Parser<S>) -> Option<Checkpoint> {
     if let Some(SyntaxKind::DocComment) | Some(SyntaxKind::Pound) = parser.current_kind() {
-        let checkpoint = parser.checkpoint();
-        parser.parse(super::attr::AttrListScope::default(), None);
-        Some(checkpoint)
+        Some(parser.parse(super::attr::AttrListScope::default(), None).1)
     } else {
         None
     }
@@ -21,15 +19,17 @@ define_scope! {
 }
 impl super::Parse for AttrListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        use SyntaxKind::*;
-
         loop {
-            parser.bump_trivias(true);
+            parser.set_newline_as_trivia(true);
             match parser.current_kind() {
-                Some(Pound) => parser.parse(AttrScope::default(), None),
-                Some(DocComment) => parser.parse(DocCommentAttrScope::default(), None),
+                Some(SyntaxKind::Pound) => parser.parse(AttrScope::default(), None),
+                Some(SyntaxKind::DocComment) => parser.parse(DocCommentAttrScope::default(), None),
                 _ => break,
             };
+            parser.set_newline_as_trivia(false);
+            if !parser.bump_if(SyntaxKind::Newline) {
+                parser.error_and_recover("expected newline after Attribute", None)
+            }
         }
     }
 }
@@ -41,6 +41,7 @@ define_scope! {
 }
 impl super::Parse for AttrScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Pound);
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected attribute name", None);
@@ -63,19 +64,15 @@ define_scope! {
 impl super::Parse for AttrParamListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
-        parser.bump_trivias(true);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
         }
 
         parser.parse(AttrParam::default(), None);
-        parser.bump_trivias(true);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.bump_trivias(true);
             parser.parse(AttrParam::default(), None);
         }
 
-        parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::RParen) {
             parser.error_and_recover("expected `)`", None);
         }
@@ -96,17 +93,15 @@ impl super::Parse for AttrParam {
             parser.error_and_recover("expected `key: value`", None);
         }
 
-        parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::Colon) {
             parser.error_and_recover("expected `key: value`", None);
         }
 
-        parser.bump_trivias(true);
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected `ident`", None)
         }
 
-        match parser.peek_non_trivia(true) {
+        match parser.current_kind() {
             Some(SyntaxKind::Comma) | Some(SyntaxKind::RParen) | None => {}
 
             _ => parser.error_and_recover("unexpected token", None),

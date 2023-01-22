@@ -89,12 +89,20 @@ pub enum SyntaxKind {
     /// `*`
     #[token("*")]
     Star,
+    #[token("**")]
+    Star2,
     /// `/`
     #[token("/")]
     Slash,
     /// `%`
     #[token("%")]
     Percent,
+    #[token("~")]
+    Tilde,
+    #[token("!")]
+    Not,
+    #[token("^")]
+    Hat,
     /// `&`
     #[token("&")]
     Amp,
@@ -139,7 +147,7 @@ pub enum SyntaxKind {
     Eq2,
     /// `!=`
     #[token("!=")]
-    NonEq,
+    NotEq,
 
     /// `true'
     #[token("true")]
@@ -238,15 +246,21 @@ pub enum SyntaxKind {
     CallArgList,
     /// `arg: 1`, `y`
     CallArg,
-    /// `<i32, u256>`
+    /// `foo.bar(x, y)`
+    MethodCallExpr,
+    /// `<i32, u256, N + 2>`
     GenericArgList,
     /// `T`
     GenericArg,
     /// `FOO::Bar`
     PathExpr,
-    /// `foo.bar(x, y)`
-    MethodCallExpr,
-    /// `foo.bar`
+    /// `Foo { x: 1, y: "String"` }`
+    RecordInitExpr,
+    /// `{ x: 1, y: "String"` }`
+    RecordFieldList,
+    /// `x: 1`
+    RecordField,
+    /// `foo.bar` or `foo.0`
     FieldExpr,
     /// `foo[1]`
     IndexExpr,
@@ -331,6 +345,9 @@ pub enum SyntaxKind {
     /// `extern { .. }`
     Extern,
     ItemList,
+
+    /// `pub unsafe `
+    ItemModifier,
 
     // Types. These are non-leaf nodes.
     /// `*i32`

@@ -7,7 +7,6 @@ use fe_parser2::{
 fn test_item_list(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
         while parser.current_kind().is_some() {
-            parser.bump_trivias(true);
             parser.parse(ItemListScope::default(), None);
         }
     });
@@ -22,7 +21,6 @@ fe_compiler_test_utils::build_debug_snap_tests! {
 fn test_pat(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
         while parser.current_kind().is_some() {
-            parser.bump_trivias(true);
             parse_pat(parser);
         }
     });
