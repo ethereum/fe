@@ -309,12 +309,20 @@ pub enum SyntaxKind {
     LitPat,
     /// `(x, y)`
     TuplePat,
+    /// `(x, y)`
+    TuplePatElemList,
+    /// `x`
+    TuplePatElem,
     /// `Enum::Variant`
     PathPat,
     /// `Enum::Variant(x, y)`
     PathTuplePat,
     /// `Struct {x, y}`
     RecordPat,
+    /// `{a: b, y}`
+    RecordPatFieldList,
+    /// `a: b`
+    RecordPatField,
     /// `pat1 | pat2`
     OrPat,
 
