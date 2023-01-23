@@ -1,0 +1,130 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..96
+  RecordPat@0..9
+    Path@0..6
+      PathSegment@0..6
+        Ident@0..6 "Record"
+    WhiteSpace@6..7 " "
+    RecordPatFieldList@7..9
+      LBrace@7..8 "{"
+      RBrace@8..9 "}"
+  Newline@9..11 "\n\n"
+  RecordPat@11..25
+    Path@11..21
+      PathSegment@11..14
+        Ident@11..14 "foo"
+      Colon2@14..16 "::"
+      PathSegment@16..21
+        Ident@16..21 "Empty"
+    WhiteSpace@21..22 " "
+    RecordPatFieldList@22..25
+      LBrace@22..23 "{"
+      WhiteSpace@23..24 " "
+      RBrace@24..25 "}"
+  Newline@25..27 "\n\n"
+  RecordPat@27..42
+    Path@27..33
+      PathSegment@27..33
+        Ident@27..33 "Record"
+    WhiteSpace@33..34 " "
+    RecordPatFieldList@34..42
+      LBrace@34..35 "{"
+      WhiteSpace@35..36 " "
+      RecordPatField@36..37
+        PathPat@36..37
+          Path@36..37
+            PathSegment@36..37
+              Ident@36..37 "a"
+      Comma@37..38 ","
+      WhiteSpace@38..39 " "
+      RecordPatField@39..40
+        PathPat@39..40
+          Path@39..40
+            PathSegment@39..40
+              Ident@39..40 "b"
+      WhiteSpace@40..41 " "
+      RBrace@41..42 "}"
+  Newline@42..43 "\n"
+  RecordPat@43..64
+    Path@43..49
+      PathSegment@43..49
+        Ident@43..49 "Record"
+    WhiteSpace@49..50 " "
+    RecordPatFieldList@50..64
+      LBrace@50..51 "{"
+      WhiteSpace@51..52 " "
+      RecordPatField@52..56
+        Ident@52..53 "a"
+        Colon@53..54 ":"
+        WhiteSpace@54..55 " "
+        PathPat@55..56
+          Path@55..56
+            PathSegment@55..56
+              Ident@55..56 "x"
+      Comma@56..57 ","
+      WhiteSpace@57..58 " "
+      RecordPatField@58..62
+        Ident@58..59 "b"
+        Colon@59..60 ":"
+        WhiteSpace@60..61 " "
+        PathPat@61..62
+          Path@61..62
+            PathSegment@61..62
+              Ident@61..62 "y"
+      WhiteSpace@62..63 " "
+      RBrace@63..64 "}"
+  Newline@64..65 "\n"
+  RecordPat@65..96
+    Path@65..71
+      PathSegment@65..71
+        Ident@65..71 "Record"
+    WhiteSpace@71..72 " "
+    RecordPatFieldList@72..96
+      LBrace@72..73 "{"
+      RecordPatField@73..82
+        Ident@73..74 "x"
+        Colon@74..75 ":"
+        WhiteSpace@75..76 " "
+        TuplePat@76..82
+          TuplePatElemList@76..82
+            LParen@76..77 "("
+            TuplePatElem@77..78
+              LitPat@77..78
+                Int@77..78 "1"
+            Comma@78..79 ","
+            WhiteSpace@79..80 " "
+            TuplePatElem@80..81
+              PathPat@80..81
+                Path@80..81
+                  PathSegment@80..81
+                    Ident@80..81 "a"
+            RParen@81..82 ")"
+      Comma@82..83 ","
+      WhiteSpace@83..84 " "
+      RecordPatField@84..94
+        RecordPat@84..94
+          Path@84..87
+            PathSegment@84..87
+              Ident@84..87 "Foo"
+          WhiteSpace@87..88 " "
+          RecordPatFieldList@88..94
+            LBrace@88..89 "{"
+            RecordPatField@89..90
+              PathPat@89..90
+                Path@89..90
+                  PathSegment@89..90
+                    Ident@89..90 "x"
+            Comma@90..91 ","
+            WhiteSpace@91..92 " "
+            RecordPatField@92..93
+              PathPat@92..93
+                Path@92..93
+                  PathSegment@92..93
+                    Ident@92..93 "y"
+            RBrace@93..94 "}"
+      WhiteSpace@94..95 " "
+      RBrace@95..96 "}"
+
