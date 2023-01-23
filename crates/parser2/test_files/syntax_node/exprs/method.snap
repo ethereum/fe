@@ -1,0 +1,127 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..75
+  MethodCallExpr@0..5
+    Path@0..1
+      PathSegment@0..1
+        Ident@0..1 "x"
+    Dot@1..2 "."
+    Ident@2..3 "y"
+    CallArgList@3..5
+      LParen@3..4 "("
+      RParen@4..5 ")"
+  Newline@5..6 "\n"
+  MethodCallExpr@6..15
+    Path@6..7
+      PathSegment@6..7
+        Ident@6..7 "x"
+    Dot@7..8 "."
+    Ident@8..9 "y"
+    CallArgList@9..15
+      LParen@9..10 "("
+      CallArg@10..11
+        LitExpr@10..11
+          Int@10..11 "1"
+      Comma@11..12 ","
+      WhiteSpace@12..13 " "
+      CallArg@13..14
+        LitExpr@13..14
+          Int@13..14 "2"
+      RParen@14..15 ")"
+  Newline@15..17 "\n\n"
+  MethodCallExpr@17..34
+    FieldExpr@17..20
+      Path@17..18
+        PathSegment@17..18
+          Ident@17..18 "x"
+      Dot@18..19 "."
+      Ident@19..20 "y"
+    Dot@20..21 "."
+    Ident@21..22 "z"
+    CallArgList@22..34
+      LParen@22..23 "("
+      CallArg@23..27
+        Ident@23..24 "x"
+        Colon@24..25 ":"
+        WhiteSpace@25..26 " "
+        LitExpr@26..27
+          Int@26..27 "1"
+      Comma@27..28 ","
+      WhiteSpace@28..29 " "
+      CallArg@29..33
+        Ident@29..30 "y"
+        Colon@30..31 ":"
+        WhiteSpace@31..32 " "
+        LitExpr@32..33
+          Int@32..33 "2"
+      RParen@33..34 ")"
+  Newline@34..35 "\n"
+  MethodCallExpr@35..47
+    IndexExpr@35..39
+      Path@35..36
+        PathSegment@35..36
+          Ident@35..36 "x"
+      LBracket@36..37 "["
+      LitExpr@37..38
+        Int@37..38 "0"
+      RBracket@38..39 "]"
+    Dot@39..40 "."
+    Ident@40..41 "z"
+    CallArgList@41..47
+      LParen@41..42 "("
+      CallArg@42..46
+        Ident@42..43 "x"
+        Colon@43..44 ":"
+        WhiteSpace@44..45 " "
+        LitExpr@45..46
+          Int@45..46 "1"
+      RParen@46..47 ")"
+  Newline@47..49 "\n\n"
+  MethodCallExpr@49..75
+    Path@49..50
+      PathSegment@49..50
+        Ident@49..50 "x"
+    Dot@50..51 "."
+    Ident@51..52 "y"
+    GenericParamList@52..66
+      Lt@52..53 "<"
+      GenericParam@53..56
+        Path@53..56
+          PathSegment@53..56
+            Ident@53..56 "i32"
+      Comma@56..57 ","
+      WhiteSpace@57..58 " "
+      GenericParam@58..65
+        BlockExpr@58..65
+          LBrace@58..59 "{"
+          ExprStmt@59..64
+            BinExpr@59..64
+              Path@59..60
+                PathSegment@59..60
+                  Ident@59..60 "x"
+              WhiteSpace@60..61 " "
+              Plus@61..62 "+"
+              WhiteSpace@62..63 " "
+              Path@63..64
+                PathSegment@63..64
+                  Ident@63..64 "y"
+          RBrace@64..65 "}"
+      Gt@65..66 ">"
+    CallArgList@66..75
+      LParen@66..67 "("
+      CallArg@67..71
+        Ident@67..68 "x"
+        Colon@68..69 ":"
+        WhiteSpace@69..70 " "
+        LitExpr@70..71
+          Int@70..71 "1"
+      Comma@71..72 ","
+      WhiteSpace@72..73 " "
+      CallArg@73..74
+        Path@73..74
+          PathSegment@73..74
+            Ident@73..74 "y"
+      RParen@74..75 ")"
+
