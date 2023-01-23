@@ -288,7 +288,7 @@ impl<S: TokenStream> Parser<S> {
         }
 
         while let Some(kind) = self.current_kind() {
-            if recovery_set.contains(&kind) {
+            if recovery_set.contains(&kind) | self.auxiliary_recovery_set.contains(&kind) {
                 break;
             } else {
                 self.bump();
