@@ -313,6 +313,8 @@ pub enum SyntaxKind {
     PathPat,
     /// `Enum::Variant(x, y)`
     PathTuplePat,
+    /// `Struct {x, y}`
+    RecordPat,
     /// `pat1 | pat2`
     OrPat,
 
@@ -358,6 +360,8 @@ pub enum SyntaxKind {
     SelfType,
     /// `(i32, foo::Bar)`
     TupleType,
+    /// `[i32; 4]`
+    ArrayType,
 
     // Paths. These are non-leaf nodes.
     /// `Segment1::Segment2`
@@ -407,6 +411,14 @@ impl SyntaxKind {
     /// Returns `true` if this is a trivia token.
     pub fn is_trivia(self) -> bool {
         matches!(self, SyntaxKind::WhiteSpace | SyntaxKind::Comment)
+    }
+
+    /// Returns `true` if the token is a literal leaf.
+    pub fn is_literal_leaf(self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::Int | SyntaxKind::String | SyntaxKind::TrueKw | SyntaxKind::FalseKw
+        )
     }
 }
 
