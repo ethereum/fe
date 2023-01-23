@@ -1,8 +1,6 @@
-use std::cell::RefCell;
-
 use crate::SyntaxKind;
 
-use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser, RecoveryMethod};
+use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
 
 pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
@@ -48,17 +46,24 @@ impl super::Parse for LitPatScope {
     }
 }
 
-define_scope! { TuplePatScope, TuplePat, Override(RParen) }
+define_scope! { TuplePatScope, TuplePat, Inheritance }
 impl super::Parse for TuplePatScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.parse(TuplePatElemListScope::default(), None);
+    }
+}
+
+define_scope! { TuplePatElemListScope, TuplePatElemList, Override(RParen) }
+impl super::Parse for TuplePatElemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
         }
 
-        parse_pat(parser);
+        parser.parse(TuplePatElemScope::default(), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parse_pat(parser);
+            parser.parse(TuplePatElemScope::default(), None);
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {
@@ -68,31 +73,14 @@ impl super::Parse for TuplePatScope {
     }
 }
 
-// We can't use `define_scope` here since the `syntax_kind` of the scope can be
-// determined after parsing.
-#[derive(Debug, Clone)]
-struct PathPatScope {
-    syntax_kind: RefCell<SyntaxKind>,
-    recovery_method: RecoveryMethod,
-}
-impl Default for PathPatScope {
-    fn default() -> Self {
-        Self {
-            syntax_kind: SyntaxKind::PathPat.into(),
-            recovery_method: RecoveryMethod::inheritance(&[SyntaxKind::Pipe]),
-        }
+define_scope! { TuplePatElemScope, TuplePatElem, Inheritance }
+impl super::Parse for TuplePatElemScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parse_pat(parser);
     }
 }
-impl super::ParsingScope for PathPatScope {
-    /// Returns the recovery method of the current scope.
-    fn recovery_method(&self) -> &RecoveryMethod {
-        &self.recovery_method
-    }
 
-    fn syntax_kind(&self) -> SyntaxKind {
-        *self.syntax_kind.borrow()
-    }
-}
+define_scope! { PathPatScope, PathPat, Inheritance(Pipe) }
 impl super::Parse for PathPatScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         if !parser.parse(PathScope::default(), None).0 {
@@ -101,9 +89,47 @@ impl super::Parse for PathPatScope {
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(TuplePatScope::default(), None);
-            *self.syntax_kind.borrow_mut() = SyntaxKind::PathTuplePat;
+            self.set_kind(SyntaxKind::PathTuplePat);
+            parser.parse(TuplePatElemListScope::default(), None);
+        } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            self.set_kind(SyntaxKind::RecordPat);
+            parser.parse(RecordPatFieldListScope::default(), None);
         }
+    }
+}
+
+define_scope! { RecordPatFieldListScope, RecordPatFieldList, Override(Comma, RBrace) }
+impl super::Parse for RecordPatFieldListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBrace);
+        if parser.bump_if(SyntaxKind::RBrace) {
+            return;
+        }
+
+        parser.parse(RecordPatFieldScope::default(), None);
+        while parser.bump_if(SyntaxKind::Comma) {
+            parser.parse(RecordPatFieldScope::default(), None);
+        }
+        parser.remove_recovery_token(SyntaxKind::Comma);
+
+        if !parser.bump_if(SyntaxKind::RBrace) {
+            parser.error_and_recover("expected `}`", None);
+            parser.bump_if(SyntaxKind::RBrace);
+        }
+    }
+}
+
+define_scope! { RecordPatFieldScope, RecordPatField, Override(Comma, RBrace) }
+impl super::Parse for RecordPatFieldScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.start_dry_run();
+        let has_label = parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon);
+        parser.end_dry_run();
+        if has_label {
+            parser.bump_expected(SyntaxKind::Ident);
+            parser.bump_expected(SyntaxKind::Colon);
+        }
+        parse_pat(parser);
     }
 }
 
