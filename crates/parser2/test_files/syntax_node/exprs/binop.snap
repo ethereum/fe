@@ -1,0 +1,186 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..140
+  BinExpr@0..9
+    LitExpr@0..1
+      Int@0..1 "1"
+    WhiteSpace@1..2 " "
+    Plus@2..3 "+"
+    WhiteSpace@3..4 " "
+    BinExpr@4..9
+      LitExpr@4..5
+        Int@4..5 "2"
+      WhiteSpace@5..6 " "
+      Star@6..7 "*"
+      WhiteSpace@7..8 " "
+      LitExpr@8..9
+        Int@8..9 "3"
+  Newline@9..10 "\n"
+  BinExpr@10..19
+    BinExpr@10..15
+      LitExpr@10..11
+        Int@10..11 "1"
+      WhiteSpace@11..12 " "
+      Star@12..13 "*"
+      WhiteSpace@13..14 " "
+      LitExpr@14..15
+        Int@14..15 "2"
+    WhiteSpace@15..16 " "
+    Plus@16..17 "+"
+    WhiteSpace@17..18 " "
+    LitExpr@18..19
+      Int@18..19 "3"
+  Newline@19..20 "\n"
+  BinExpr@20..25
+    LitExpr@20..21
+      Int@20..21 "1"
+    WhiteSpace@21..22 " "
+    Lt@22..23 "<"
+    WhiteSpace@23..24 " "
+    LitExpr@24..25
+      Int@24..25 "2"
+  Newline@25..26 "\n"
+  BinExpr@26..37
+    LitExpr@26..27
+      Int@26..27 "1"
+    WhiteSpace@27..28 " "
+    Lt@28..29 "<"
+    WhiteSpace@29..30 " "
+    ParenExpr@30..37
+      LParen@30..31 "("
+      BinExpr@31..36
+        LitExpr@31..32
+          Int@31..32 "2"
+        WhiteSpace@32..33 " "
+        Plus@33..34 "+"
+        WhiteSpace@34..35 " "
+        LitExpr@35..36
+          Int@35..36 "3"
+      RParen@36..37 ")"
+  Newline@37..38 "\n"
+  BinExpr@38..60
+    LitExpr@38..42
+      TrueKw@38..42 "true"
+    WhiteSpace@42..43 " "
+    Pipe2@43..45 "||"
+    WhiteSpace@45..46 " "
+    BinExpr@46..60
+      LitExpr@46..51
+        FalseKw@46..51 "false"
+      WhiteSpace@51..52 " "
+      Amp2@52..54 "&&"
+      WhiteSpace@54..55 " "
+      BinExpr@55..60
+        LitExpr@55..56
+          Int@55..56 "1"
+        WhiteSpace@56..57 " "
+        Lt@57..58 "<"
+        WhiteSpace@58..59 " "
+        LitExpr@59..60
+          Int@59..60 "2"
+  Newline@60..61 "\n"
+  BinExpr@61..93
+    LitExpr@61..65
+      TrueKw@61..65 "true"
+    WhiteSpace@65..66 " "
+    Pipe2@66..68 "||"
+    WhiteSpace@68..69 " "
+    BinExpr@69..93
+      LitExpr@69..74
+        FalseKw@69..74 "false"
+      WhiteSpace@74..75 " "
+      Amp2@75..77 "&&"
+      WhiteSpace@77..78 " "
+      BinExpr@78..93
+        ParenExpr@78..85
+          LParen@78..79 "("
+          BinExpr@79..84
+            LitExpr@79..80
+              Int@79..80 "1"
+            WhiteSpace@80..81 " "
+            Lt@81..82 "<"
+            WhiteSpace@82..83 " "
+            LitExpr@83..84
+              Int@83..84 "2"
+          RParen@84..85 ")"
+        WhiteSpace@85..86 " "
+        Gt@86..87 ">"
+        WhiteSpace@87..88 " "
+        BinExpr@88..93
+          LitExpr@88..89
+            Int@88..89 "3"
+          WhiteSpace@89..90 " "
+          Hat@90..91 "^"
+          WhiteSpace@91..92 " "
+          LitExpr@92..93
+            Int@92..93 "2"
+  Newline@93..94 "\n"
+  BinExpr@94..105
+    Path@94..95
+      PathSegment@94..95
+        Ident@94..95 "a"
+    WhiteSpace@95..96 " "
+    Star2@96..98 "**"
+    WhiteSpace@98..99 " "
+    BinExpr@99..105
+      LitExpr@99..100
+        Int@99..100 "2"
+      WhiteSpace@100..101 " "
+      Star2@101..103 "**"
+      WhiteSpace@103..104 " "
+      LitExpr@104..105
+        Int@104..105 "3"
+  Newline@105..106 "\n"
+  BinExpr@106..115
+    BinExpr@106..111
+      LitExpr@106..107
+        Int@106..107 "1"
+      WhiteSpace@107..108 " "
+      Minus@108..109 "-"
+      WhiteSpace@109..110 " "
+      LitExpr@110..111
+        Int@110..111 "2"
+    WhiteSpace@111..112 " "
+    Minus@112..113 "-"
+    WhiteSpace@113..114 " "
+    LitExpr@114..115
+      Int@114..115 "3"
+  Newline@115..116 "\n"
+  BinExpr@116..127
+    BinExpr@116..122
+      LitExpr@116..117
+        Int@116..117 "1"
+      WhiteSpace@117..118 " "
+      Lt2@118..120 "<<"
+      WhiteSpace@120..121 " "
+      LitExpr@121..122
+        Int@121..122 "3"
+    WhiteSpace@122..123 " "
+    Gt2@123..125 ">>"
+    WhiteSpace@125..126 " "
+    LitExpr@126..127
+      Int@126..127 "2"
+  Newline@127..128 "\n"
+  FieldExpr@128..133
+    FieldExpr@128..131
+      Path@128..129
+        PathSegment@128..129
+          Ident@128..129 "a"
+      Dot@129..130 "."
+      Ident@130..131 "b"
+    Dot@131..132 "."
+    Ident@132..133 "c"
+  Newline@133..134 "\n"
+  FieldExpr@134..139
+    FieldExpr@134..137
+      Path@134..135
+        PathSegment@134..135
+          Ident@134..135 "a"
+      Dot@135..136 "."
+      Int@136..137 "0"
+    Dot@137..138 "."
+    Ident@138..139 "c"
+  Newline@139..140 "\n"
+

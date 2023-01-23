@@ -191,6 +191,7 @@ impl super::Parse for BinExprScope {
 define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }
 impl super::Parse for IndexExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBracket);
         parse_expr(parser);
         if !parser.bump_if(SyntaxKind::RBracket) {
             parser.error_and_recover("expected `]`", None);
@@ -220,7 +221,7 @@ impl super::Parse for MethodExprScope {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot);
 
-        if parser.bump_if(SyntaxKind::Ident) {
+        if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected identifier", None);
         }
 

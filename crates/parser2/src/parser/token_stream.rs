@@ -91,7 +91,7 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
     /// point.
     pub fn set_bt_point(&mut self) {
         if self.has_parent() {
-            self.bt_points.push(self.bt_buffer.len());
+            self.bt_points.push(self.bt_cursor.unwrap());
         } else {
             self.bt_points.push(0);
         }
