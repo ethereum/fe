@@ -1,8 +1,8 @@
 use crate::SyntaxKind;
 
 use super::{
-    define_scope, param::GenericArgListScope, path::PathScope, token_stream::TokenStream,
-    Checkpoint, Parser,
+    define_scope, expr::parse_expr, param::GenericArgListScope, path::PathScope,
+    token_stream::TokenStream, Checkpoint, Parser,
 };
 
 pub(super) fn parse_type<S: TokenStream>(
@@ -13,6 +13,7 @@ pub(super) fn parse_type<S: TokenStream>(
         Some(SyntaxKind::Star) => parser.parse(PtrTypeScope::default(), checkpoint),
         Some(SyntaxKind::SelfTypeKw) => parser.parse(SelfTypeScope::default(), checkpoint),
         Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::default(), checkpoint),
+        Some(SyntaxKind::LBracket) => parser.parse(ArrayTypeScope::default(), checkpoint),
         _ => parser.parse(PathTypeScope::default(), checkpoint),
     }
     .0
@@ -70,6 +71,34 @@ impl super::Parse for TupleTypeScope {
         if !parser.bump_if(SyntaxKind::RParen) {
             parser.error_and_recover("expected `)`", None);
             parser.bump_if(SyntaxKind::RParen);
+        }
+    }
+}
+
+define_scope! {
+    ArrayTypeScope,
+    ArrayType,
+    Override(RBracket)
+}
+impl super::Parse for ArrayTypeScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBracket);
+
+        parser.add_recovery_token(SyntaxKind::SemiColon);
+        parse_type(parser, None);
+        parser.remove_recovery_token(SyntaxKind::SemiColon);
+
+        if !parser.bump_if(SyntaxKind::SemiColon) {
+            parser.error_and_recover("expected `;`", None);
+            parser.bump_if(SyntaxKind::LBracket);
+            return;
+        }
+
+        parse_expr(parser);
+
+        if !parser.bump_if(SyntaxKind::RBracket) {
+            parser.error_and_recover("expected closing `]`", None);
+            parser.bump_if(SyntaxKind::RBracket);
         }
     }
 }

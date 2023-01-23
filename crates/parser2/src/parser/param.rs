@@ -1,7 +1,14 @@
 use crate::SyntaxKind;
 
-use super::{define_scope, expr::parse_expr, path::PathScope, token_stream::TokenStream, Parser};
-
+use super::{
+    define_scope,
+    expr::parse_expr,
+    expr_atom::{BlockExprScope, LitExprScope},
+    path::PathScope,
+    token_stream::TokenStream,
+    type_::parse_type,
+    Parser,
+};
 define_scope! {
     GenericParamListScope,
     GenericParamList,
@@ -100,6 +107,60 @@ impl super::Parse for GenericArgListScope {
 define_scope! { GenericArgScope, GenericParam, Inheritance}
 impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        match parser.current_kind() {
+            Some(SyntaxKind::LBrace) => {
+                parser.parse(BlockExprScope::default(), None);
+            }
+
+            Some(SyntaxKind::Star | SyntaxKind::LBracket | SyntaxKind::LParen) => {
+                parse_type(parser, None);
+            }
+
+            Some(kind) if kind.is_literal_leaf() => {
+                parser.parse(LitExprScope::default(), None);
+            }
+
+            _ => {
+                parser.parse(PathScope::default(), None);
+            }
+        }
+    }
+}
+
+define_scope! { CallArgListScope, CallArgList, Override(RParen, Comma) }
+impl super::Parse for CallArgListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LParen);
+
+        if parser.bump_if(SyntaxKind::RParen) {
+            return;
+        }
+
+        parser.parse(CallArgScope::default(), None);
+        while parser.bump_if(SyntaxKind::Comma) {
+            parser.parse(CallArgScope::default(), None);
+        }
+
+        if !parser.bump_if(SyntaxKind::RParen) {
+            parser.error_and_bump_until("expected closing `)`", None, SyntaxKind::RParen);
+            parser.bump_if(SyntaxKind::RParen);
+        }
+    }
+}
+
+define_scope! { CallArgScope, CallArg, Inheritance }
+impl super::Parse for CallArgScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
+
+        parser.start_dry_run();
+        let has_label = parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon);
+        parser.end_dry_run();
+
+        if has_label {
+            parser.bump_expected(SyntaxKind::Ident);
+            parser.bump_expected(SyntaxKind::Colon);
+        }
         parse_expr(parser);
     }
 }
