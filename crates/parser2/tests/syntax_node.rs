@@ -1,7 +1,8 @@
 use fe_parser2::{
     lexer,
-    parser::{item::ItemListScope, parse_pat, Parser, RootScope},
+    parser::{expr::parse_expr, item::ItemListScope, parse_pat, Parser, RootScope},
     syntax_node::SyntaxNode,
+    SyntaxKind,
 };
 
 fn test_item_list(input: &str) -> SyntaxNode {
@@ -30,6 +31,30 @@ fe_compiler_test_utils::build_debug_snap_tests! {
     "parser2/test_files/syntax_node/pats",
     "parser2/test_files/syntax_node/pats",
     test_pat
+}
+
+fn test_expr(input: &str) -> SyntaxNode {
+    let runner = TestRunner::new(|parser| {
+        parser.set_newline_as_trivia(false);
+
+        fn bump_newlines(parser: &mut Parser<lexer::Lexer>) {
+            while parser.current_kind() == Some(SyntaxKind::Newline) {
+                parser.bump();
+            }
+        }
+        bump_newlines(parser);
+        while parser.current_kind().is_some() {
+            bump_newlines(parser);
+            parse_expr(parser);
+            bump_newlines(parser);
+        }
+    });
+    runner.run(input)
+}
+fe_compiler_test_utils::build_debug_snap_tests! {
+    "parser2/test_files/syntax_node/exprs",
+    "parser2/test_files/syntax_node/exprs",
+    test_expr
 }
 
 struct TestRunner<F>

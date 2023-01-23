@@ -1,0 +1,35 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..20
+  ArrayExpr@0..12
+    LBracket@0..1 "["
+    LitExpr@1..2
+      Int@1..2 "1"
+    Comma@2..3 ","
+    WhiteSpace@3..4 " "
+    BlockExpr@4..11
+      LBrace@4..5 "{"
+      ExprStmt@5..10
+        BinExpr@5..10
+          LitExpr@5..6
+            Int@5..6 "1"
+          WhiteSpace@6..7 " "
+          Plus@7..8 "+"
+          WhiteSpace@8..9 " "
+          LitExpr@9..10
+            Int@9..10 "2"
+      RBrace@10..11 "}"
+    RBracket@11..12 "]"
+  Newline@12..13 "\n"
+  ArrayRepExpr@13..20
+    LBracket@13..14 "["
+    LitExpr@14..15
+      Int@14..15 "1"
+    SemiColon@15..16 ";"
+    WhiteSpace@16..17 " "
+    LitExpr@17..19
+      Int@17..19 "16"
+    RBracket@19..20 "]"
+
