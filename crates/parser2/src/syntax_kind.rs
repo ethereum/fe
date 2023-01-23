@@ -124,9 +124,6 @@ pub enum SyntaxKind {
     /// `<=`
     #[token("<=")]
     LtEq,
-    /// `<<=`
-    #[token("<<=")]
-    Lt2Eq,
     /// `>`
     #[token(">")]
     Gt,
@@ -136,9 +133,6 @@ pub enum SyntaxKind {
     /// `>=`
     #[token(">=")]
     GtEq,
-    /// `>>=`
-    #[token(">>=")]
-    Gt2Eq,
     /// `=`
     #[token("=")]
     Eq,
@@ -282,8 +276,10 @@ pub enum SyntaxKind {
     // Statements. These are non-leaf nodes.
     /// `let x = 1`
     LetStmt,
-    /// `return 1`
+    /// `x = 1`
     AssignStmt,
+    /// `x += 1`
+    AugAssignStmt,
     /// `for x in y {..}`
     ForStmt,
     /// `while expr {..}`

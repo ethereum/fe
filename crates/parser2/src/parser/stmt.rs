@@ -9,10 +9,7 @@ use super::{
     Checkpoint, Parser,
 };
 
-pub(super) fn parse_stmt<S: TokenStream>(
-    parser: &mut Parser<S>,
-    checkpoint: Option<Checkpoint>,
-) -> bool {
+pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Checkpoint>) -> bool {
     use SyntaxKind::*;
 
     match parser.current_kind() {
@@ -42,6 +39,7 @@ impl super::Parse for LetStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.set_newline_as_trivia(false);
+        parser.bump_if(SyntaxKind::MutKw);
         if !parse_pat(parser) {
             parser.error_and_recover("expected pattern", None);
             return;
@@ -149,8 +147,17 @@ impl super::Parse for AssignStmtScope {
         parser.remove_recovery_token(SyntaxKind::Eq);
 
         parser.set_newline_as_trivia(false);
+        if parser
+            .current_kind()
+            .map(|kind| is_aug_assign_kind(kind))
+            .unwrap_or_default()
+        {
+            parser.bump();
+            self.set_kind(SyntaxKind::AugAssignStmt);
+        }
+
         if !parser.bump_if(SyntaxKind::Eq) {
-            parser.error_and_recover("expected `=` keyword", None);
+            parser.error_and_recover("expected `=`", None);
             return;
         }
 
@@ -163,4 +170,12 @@ impl super::Parse for ExprStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parse_expr(parser);
     }
+}
+
+fn is_aug_assign_kind(kind: SyntaxKind) -> bool {
+    use SyntaxKind::*;
+    matches!(
+        kind,
+        Pipe | Hat | Amp | Lt2 | Gt2 | Plus | Minus | Star | Slash | Percent | Star2
+    )
 }
