@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::SyntaxKind;
 
 /// This trait works as an abstraction layer to encapsulate the differences
@@ -28,7 +30,7 @@ pub trait SyntaxToken: Clone {
 pub struct BackTrackableTokenStream<T: TokenStream> {
     stream: T,
     /// Backtrack buffer which stores tokens that have been already consumed.
-    bt_buffer: Vec<T::Token>,
+    bt_buffer: VecDeque<T::Token>,
     bt_points: Vec<usize>,
     /// Points to the current position of the backtrack buffer.
     bt_cursor: Option<usize>,
@@ -39,7 +41,7 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
     pub fn new(stream: T) -> Self {
         Self {
             stream,
-            bt_buffer: Vec::new(),
+            bt_buffer: VecDeque::new(),
             bt_points: Vec::new(),
             bt_cursor: None,
         }
@@ -48,21 +50,29 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
     /// Returns the next token in the stream.
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<T::Token> {
+        if !self.has_parent() {
+            if let Some(bt_buffer) = self.bt_buffer.pop_front() {
+                return Some(bt_buffer);
+            } else {
+                return self.stream.next();
+            }
+        }
+
         if let Some(cursor) = self.bt_cursor {
             if cursor < self.bt_buffer.len() {
                 let token = self.bt_buffer.get(cursor).cloned();
                 self.bt_cursor = Some(cursor + 1);
                 return token;
+            } else {
+                self.bt_cursor = Some(cursor + 1);
             }
         }
 
         let token = self.stream.next()?;
-        if self.has_bt_point() {
-            self.bt_buffer.push(token.clone());
+        if self.has_parent() {
+            self.bt_buffer.push_back(token.clone());
         }
-        if let Some(cursor) = self.bt_cursor {
-            self.bt_cursor = Some(cursor + 1);
-        }
+
         Some(token)
     }
 
@@ -80,15 +90,10 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
     /// Set a backtrack point which allows the parser to backtrack to this
     /// point.
     pub fn set_bt_point(&mut self) {
-        println!("{}", self.bt_buffer.len());
-        self.bt_points.push(self.bt_buffer.len());
-    }
-
-    /// Remove the last backtrack point.
-    pub fn complete(&mut self) {
-        self.bt_cursor = None;
-        if !self.has_bt_point() {
-            self.bt_buffer.clear();
+        if self.has_parent() {
+            self.bt_points.push(self.bt_buffer.len());
+        } else {
+            self.bt_points.push(0);
         }
     }
 
@@ -103,6 +108,10 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
 
     /// Returns `true` if the stream has a backtrack point.
     pub fn has_bt_point(&mut self) -> bool {
+        !self.bt_points.is_empty()
+    }
+
+    pub fn has_parent(&mut self) -> bool {
         !self.bt_points.is_empty()
     }
 }

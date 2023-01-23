@@ -1,7 +1,11 @@
 use crate::SyntaxKind;
 
 use super::{
-    define_scope, expr::parse_expr, pat::parse_pat, token_stream::TokenStream, type_::parse_type,
+    define_scope,
+    expr::{parse_expr, parse_expr_no_struct},
+    pat::parse_pat,
+    token_stream::TokenStream,
+    type_::parse_type,
     Checkpoint, Parser,
 };
 
@@ -44,13 +48,12 @@ impl super::Parse for LetStmtScope {
         }
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
-            if !parse_type(parser, None) {
-                return;
-            }
+            parser.add_recovery_token(SyntaxKind::Eq);
+            parse_type(parser, None);
+            parser.remove_recovery_token(SyntaxKind::Eq);
         }
 
-        if parser.current_kind() == Some(SyntaxKind::Eq) {
-            parser.bump_expected(SyntaxKind::Eq);
+        if parser.bump_if(SyntaxKind::Eq) {
             parse_expr(parser);
         }
     }
@@ -60,17 +63,19 @@ define_scope! { ForStmtScope, ForStmt, Inheritance }
 impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
-        if !parse_pat(parser) {
-            return;
-        }
+
+        parser.add_recovery_token(SyntaxKind::InKw);
+        parse_pat(parser);
+        parser.remove_recovery_token(SyntaxKind::InKw);
 
         if !parser.bump_if(SyntaxKind::InKw) {
             parser.error_and_recover("expected `in` keyword", None);
             return;
         }
-        if !parse_expr(parser) {
-            return;
-        }
+
+        parser.add_recovery_token(SyntaxKind::LBrace);
+        parse_expr_no_struct(parser);
+        parser.remove_recovery_token(SyntaxKind::LBrace);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -84,9 +89,10 @@ define_scope! { WhileStmtScope, WhileStmt, Inheritance }
 impl super::Parse for WhileStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhileKw);
-        if !parse_expr(parser) {
-            return;
-        }
+
+        parser.add_recovery_token(SyntaxKind::LBrace);
+        parse_expr_no_struct(parser);
+        parser.remove_recovery_token(SyntaxKind::LBrace);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -122,23 +128,32 @@ impl super::Parse for AssertStmtScope {
 define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
 impl super::Parse for ReturnStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::ReturnStmt);
+        parser.bump_expected(SyntaxKind::ReturnKw);
         parser.set_newline_as_trivia(false);
-        parse_expr(parser);
+
+        parser.start_dry_run();
+        if parse_expr(parser) {
+            parser.end_dry_run();
+            parse_expr(parser);
+        } else {
+            parser.end_dry_run();
+        }
     }
 }
 
 define_scope! { AssignStmtScope, AssignStmt, Inheritance }
 impl super::Parse for AssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parse_pat(parser) {
-            return;
-        }
+        parser.add_recovery_token(SyntaxKind::Eq);
+        parse_pat(parser);
+        parser.remove_recovery_token(SyntaxKind::Eq);
+
         parser.set_newline_as_trivia(false);
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` keyword", None);
             return;
         }
+
         parse_expr(parser);
     }
 }

@@ -45,7 +45,9 @@ pub struct Parser<S: TokenStream> {
     current_pos: rowan::TextSize,
     /// The dry run states which holds the each state of the parser when it
     /// enters dry run mode.
-    dry_run_states: Vec<DryRunState>,
+    dry_run_states: Vec<DryRunState<S>>,
+
+    auxiliary_recovery_set: FxHashSet<SyntaxKind>,
 }
 
 impl<S: TokenStream> Parser<S> {
@@ -60,6 +62,7 @@ impl<S: TokenStream> Parser<S> {
             is_newline_trivia: true,
             next_trivias: VecDeque::new(),
             dry_run_states: Vec::new(),
+            auxiliary_recovery_set: FxHashSet::default(),
         }
     }
 
@@ -80,8 +83,10 @@ impl<S: TokenStream> Parser<S> {
 
     /// Sets the newline kind as trivia if `is_trivia` is `true`. Otherwise, the
     /// newline kind is not regarded as a trivia.
-    pub fn set_newline_as_trivia(&mut self, is_trivia: bool) {
-        self.is_newline_trivia = is_trivia;
+    ///
+    /// Returns previous value.
+    pub fn set_newline_as_trivia(&mut self, is_trivia: bool) -> bool {
+        std::mem::replace(&mut self.is_newline_trivia, is_trivia)
     }
 
     /// Finish the parsing and return the syntax tree.
@@ -112,7 +117,7 @@ impl<S: TokenStream> Parser<S> {
     {
         let checkpoint = self.enter(scope.clone(), checkpoint);
         let error_len = self.errors.len();
-        let start_checkpoint = self.builder.checkpoint();
+        let start_checkpoint = self.checkpoint();
         scope.parse(self);
         self.leave(checkpoint);
         (error_len == self.errors.len(), start_checkpoint)
@@ -133,7 +138,15 @@ impl<S: TokenStream> Parser<S> {
         self.parents.push((Box::new(scope), self.is_newline_trivia));
         // `is_newline_trivia` is always `true` when entering a scope.
         self.is_newline_trivia = true;
-        checkpoint.unwrap_or_else(|| self.builder.checkpoint())
+        checkpoint.unwrap_or_else(|| self.checkpoint())
+    }
+
+    pub fn add_recovery_token(&mut self, token: SyntaxKind) {
+        self.auxiliary_recovery_set.insert(token);
+    }
+
+    pub fn remove_recovery_token(&mut self, token: SyntaxKind) {
+        self.auxiliary_recovery_set.remove(&token);
     }
 
     #[doc(hidden)]
@@ -149,6 +162,7 @@ impl<S: TokenStream> Parser<S> {
             self.bump_trivias()
         }
 
+        self.auxiliary_recovery_set.clear();
         if !self.is_dry_run() {
             self.builder
                 .start_node_at(checkpoint, scope.syntax_kind().into());
@@ -206,6 +220,8 @@ impl<S: TokenStream> Parser<S> {
         self.dry_run_states.push(DryRunState {
             pos: self.current_pos,
             err_num: self.errors.len(),
+            next_trivias: self.next_trivias.clone(),
+            auxiliary_recovery_set: self.auxiliary_recovery_set.clone(),
         });
     }
 
@@ -216,6 +232,8 @@ impl<S: TokenStream> Parser<S> {
         let state = self.dry_run_states.pop().unwrap();
         self.errors.truncate(state.err_num);
         self.current_pos = state.pos;
+        self.next_trivias = state.next_trivias;
+        self.auxiliary_recovery_set = state.auxiliary_recovery_set;
     }
 
     /// Bumps the current token and its leading trivias.
@@ -276,6 +294,10 @@ impl<S: TokenStream> Parser<S> {
                 self.bump();
             }
         }
+    }
+
+    fn checkpoint(&mut self) -> Checkpoint {
+        self.builder.checkpoint()
     }
 
     /// Bumps the current token and
@@ -372,11 +394,14 @@ pub trait Parse: ParsingScope + Clone {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>);
 }
 
-struct DryRunState {
+struct DryRunState<S: TokenStream> {
     /// The text position is the position when the dry run started.
     pos: rowan::TextSize,
     /// The number of errors when the dry run started.
     err_num: usize,
+    /// The stored trivias when the dry run started.
+    next_trivias: VecDeque<S::Token>,
+    auxiliary_recovery_set: FxHashSet<SyntaxKind>,
 }
 
 /// Represents the recovery method of the current scope.
@@ -474,7 +499,7 @@ macro_rules! define_scope_struct {
     ($scope_name: ident { $($field: ident: $ty: ty),* } , $kind: path) => {
         #[derive(Debug, Clone)]
         pub struct $scope_name {
-            __inner: std::cell::Cell<crate::SyntaxKind>,
+            __inner: std::rc::Rc<std::cell::Cell<crate::SyntaxKind>>,
             $($field: $ty),*
         }
         impl $scope_name {
@@ -487,7 +512,7 @@ macro_rules! define_scope_struct {
             fn default() -> Self {
                 use crate::SyntaxKind::*;
                 Self {
-                    __inner: std::cell::Cell::new($kind),
+                    __inner: std::cell::Cell::new($kind).into(),
                     $($field: Default::default()),*
                 }
             }
