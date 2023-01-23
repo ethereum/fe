@@ -1,0 +1,23 @@
+let x
+
+let x = 1
+let x: i32 = 1
+let mut x: i32 = 1
+
+x += 1 + 1
+y <<= 1 >> 2
+
+let MyEnum::Foo(x, y) = e
+
+let S {x, y: z} = s
+
+let x = if b {
+    y
+} else {
+    z
+}
+
+let x = match b {
+    MyEnum::A(x) | MyEnum::B(x) => x
+    _ => 0
+}
