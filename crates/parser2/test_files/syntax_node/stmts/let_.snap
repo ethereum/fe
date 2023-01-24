@@ -165,7 +165,7 @@ Root@0..231
       PathSegment@122..123
         Ident@122..123 "s"
   Newline@123..125 "\n\n"
-  LetStmt@125..152
+  LetStmt@125..162
     LetKw@125..128 "let"
     WhiteSpace@128..129 " "
     PathPat@129..130
@@ -175,7 +175,7 @@ Root@0..231
     WhiteSpace@130..131 " "
     Eq@131..132 "="
     WhiteSpace@132..133 " "
-    IfExpr@133..152
+    IfExpr@133..162
       IfKw@133..135 "if"
       WhiteSpace@135..136 " "
       Path@136..137
@@ -194,18 +194,17 @@ Root@0..231
         RBrace@146..147 "}"
       WhiteSpace@147..148 " "
       ElseKw@148..152 "else"
-  WhiteSpace@152..153 " "
-  ExprStmt@153..162
-    BlockExpr@153..162
-      LBrace@153..154 "{"
-      Newline@154..155 "\n"
-      WhiteSpace@155..159 "    "
-      ExprStmt@159..160
-        Path@159..160
-          PathSegment@159..160
-            Ident@159..160 "z"
-      Newline@160..161 "\n"
-      RBrace@161..162 "}"
+      WhiteSpace@152..153 " "
+      BlockExpr@153..162
+        LBrace@153..154 "{"
+        Newline@154..155 "\n"
+        WhiteSpace@155..159 "    "
+        ExprStmt@159..160
+          Path@159..160
+            PathSegment@159..160
+              Ident@159..160 "z"
+        Newline@160..161 "\n"
+        RBrace@161..162 "}"
   Newline@162..164 "\n\n"
   LetStmt@164..231
     LetKw@164..167 "let"
