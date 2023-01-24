@@ -1,0 +1,9 @@
+trait Marker {}
+
+pub trait Foo {
+    fn foo<T: Trait, const U: i32>(t: T, u: U)
+
+    fn default_method<T: Add + Sub>(lhs: T, rhs: T)  -> i32 {
+        lhs + lhs - (rhs + rhs)
+    }
+}
