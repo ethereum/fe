@@ -10,7 +10,7 @@ use super::{
     Parser,
 };
 define_scope! {
-    GenericParamListScope,
+    pub(crate) GenericParamListScope,
     GenericParamList,
     Override(Gt)
 }
@@ -80,7 +80,7 @@ impl super::Parse for TraitBoundScope {
 }
 
 define_scope! {
-    GenericArgListScope,
+    pub(crate) GenericArgListScope,
     GenericParamList,
     Override(Gt, Comma)
 }
@@ -127,7 +127,7 @@ impl super::Parse for GenericArgScope {
     }
 }
 
-define_scope! { CallArgListScope, CallArgList, Override(RParen, Comma) }
+define_scope! { pub(crate) CallArgListScope, CallArgList, Override(RParen, Comma) }
 impl super::Parse for CallArgListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);

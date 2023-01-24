@@ -6,7 +6,7 @@ use super::{
 };
 
 define_scope! {
-    StructScope,
+    pub(crate) StructScope,
     Struct,
     Inheritance
 }
