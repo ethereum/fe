@@ -1,7 +1,7 @@
 use super::{define_scope, token_stream::TokenStream, Parser};
 
 define_scope! {
-    FnScope,
+    pub(crate) FnScope,
     Fn,
     Inheritance
 }

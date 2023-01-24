@@ -3,7 +3,8 @@ use crate::SyntaxKind;
 use super::{define_scope, token_stream::TokenStream, Parser};
 
 define_scope! {
-    PathScope,
+    #[doc(hidden)]
+    pub PathScope,
     Path,
     Inheritance
 }

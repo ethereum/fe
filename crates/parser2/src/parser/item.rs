@@ -2,10 +2,13 @@ use std::cell::Cell;
 
 use crate::SyntaxKind;
 
-use super::{attr, define_scope, token_stream::TokenStream, Parser};
+use super::{
+    attr, define_scope, expr::parse_expr, token_stream::TokenStream, type_::parse_type, Parser,
+};
 
 define_scope! {
-    ItemListScope,
+    #[doc(hidden)]
+    pub ItemListScope,
     ItemList,
     Override(
         FnKw,
@@ -152,8 +155,31 @@ impl super::Parse for UseScope {
 
 define_scope! { ConstScope, Const, Inheritance }
 impl super::Parse for ConstScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::ConstKw);
+
+        parser.set_newline_as_trivia(true);
+
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected identifier", None);
+            return;
+        }
+
+        if !parser.bump_if(SyntaxKind::Colon) {
+            parser.error_and_recover("expected type annotation for `const`", None);
+            return;
+        }
+
+        if !parse_type(parser, None) {
+            return;
+        }
+
+        if !parser.bump_if(SyntaxKind::Eq) {
+            parser.error_and_recover("expected `=` for const value definition", None);
+            return;
+        }
+
+        parse_expr(parser);
     }
 }
 
