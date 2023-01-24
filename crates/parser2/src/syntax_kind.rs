@@ -336,7 +336,7 @@ pub enum SyntaxKind {
     /// `struct Foo { .. }`
     Struct,
     /// `contract Foo { .. }`
-    ContractDef,
+    Contract,
     /// `enum Foo { .. }`
     Enum,
     /// `type Foo = i32`
@@ -400,8 +400,9 @@ pub enum SyntaxKind {
     Visibility,
 
     /// `x: i32`
-    StructFieldDef,
-    StructFieldDefList,
+    RecordFieldDef,
+    /// `{x: i32, y: u32}`
+    RecordFieldDefList,
 
     VariantDef,
     VariantDefList,

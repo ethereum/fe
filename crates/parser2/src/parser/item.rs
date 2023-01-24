@@ -3,8 +3,8 @@ use std::cell::Cell;
 use crate::SyntaxKind;
 
 use super::{
-    attr, define_scope, expr::parse_expr, token_stream::TokenStream, type_::parse_type,
-    use_tree::UseTreeScope, Parser,
+    attr, define_scope, expr::parse_expr, struct_::RecordFieldDefListScope,
+    token_stream::TokenStream, type_::parse_type, use_tree::UseTreeScope, Parser,
 };
 
 define_scope! {
@@ -14,6 +14,7 @@ define_scope! {
     Override(
         FnKw,
         StructKw,
+        ContractKw,
         EnumKw,
         TraitKw,
         ImplKw,
@@ -55,6 +56,9 @@ impl super::Parse for ItemListScope {
                 }
                 Some(StructKw) => {
                     parser.parse(super::struct_::StructScope::default(), checkpoint);
+                }
+                Some(ContractKw) => {
+                    parser.parse(ContractScope::default(), checkpoint);
                 }
                 Some(EnumKw) => {
                     parser.parse(EnumScope::default(), checkpoint);
@@ -129,6 +133,23 @@ impl ModifierKind {
 
     fn is_unsafe(&self) -> bool {
         matches!(self, Self::Unsafe | Self::PubAndUnsafe)
+    }
+}
+
+define_scope! { ContractScope, Contract, Inheritance }
+impl super::Parse for ContractScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::ContractKw);
+
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected ident for the struct name", None)
+        }
+
+        if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            parser.parse(RecordFieldDefListScope::default(), None);
+        } else {
+            parser.error_and_recover("expected contract field definition", None);
+        }
     }
 }
 
