@@ -10,11 +10,11 @@ Root@0..117
       WhiteSpace@6..7 " "
       Ident@7..27 "StructWithTupleField"
       WhiteSpace@27..28 " "
-      StructFieldDefList@28..117
+      RecordFieldDefList@28..117
         LBrace@28..29 "{"
         Newline@29..30 "\n"
         WhiteSpace@30..34 "    "
-        StructFieldDef@34..47
+        RecordFieldDef@34..47
           Ident@34..35 "x"
           Colon@35..36 ":"
           WhiteSpace@36..37 " "
@@ -33,7 +33,7 @@ Root@0..117
             RParen@46..47 ")"
         Newline@47..48 "\n"
         WhiteSpace@48..52 "    "
-        StructFieldDef@52..105
+        RecordFieldDef@52..105
           Ident@52..53 "y"
           Colon@53..54 ":"
           WhiteSpace@54..55 " "
@@ -67,7 +67,7 @@ Root@0..117
             RParen@104..105 ")"
         Newline@105..106 "\n"
         WhiteSpace@106..110 "    "
-        StructFieldDef@110..115
+        RecordFieldDef@110..115
           Ident@110..111 "z"
           Colon@111..112 ":"
           WhiteSpace@112..113 " "

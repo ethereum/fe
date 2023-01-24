@@ -23,22 +23,22 @@ impl super::Parse for StructScope {
         }
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            parser.parse(StructFieldDefListScope::default(), None);
+            parser.parse(RecordFieldDefListScope::default(), None);
         } else {
-            parser.error_and_recover("expected the struct field definition", None);
+            parser.error_and_recover("expected struct field definition", None);
         }
     }
 }
 
 define_scope! {
-    StructFieldDefListScope,
-    StructFieldDefList,
+    pub(crate) RecordFieldDefListScope,
+    RecordFieldDefList,
     Override(
         RBrace,
         Newline
     )
 }
-impl super::Parse for StructFieldDefListScope {
+impl super::Parse for RecordFieldDefListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
 
@@ -48,7 +48,7 @@ impl super::Parse for StructFieldDefListScope {
             {
                 break;
             }
-            parser.parse(StructFieldDefScope::default(), None);
+            parser.parse(RecordFieldDefScope::default(), None);
             parser.set_newline_as_trivia(false);
             if !parser.bump_if(SyntaxKind::Newline)
                 && parser.current_kind() != Some(SyntaxKind::RBrace)
@@ -67,11 +67,11 @@ impl super::Parse for StructFieldDefListScope {
 }
 
 define_scope! {
-    StructFieldDefScope,
-    StructFieldDef,
+    RecordFieldDefScope,
+    RecordFieldDef,
     Inheritance
 }
-impl super::Parse for StructFieldDefScope {
+impl super::Parse for RecordFieldDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parse_attr_list(parser);
 
