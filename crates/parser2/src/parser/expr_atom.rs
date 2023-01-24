@@ -108,7 +108,9 @@ impl super::Parse for IfExprScope {
                 Some(SyntaxKind::LBrace | SyntaxKind::IfKw)
             ) {
                 parser.error_and_recover("expected `{` or `if` after `else`", None);
+                return;
             }
+            parse_expr(parser);
         }
     }
 }

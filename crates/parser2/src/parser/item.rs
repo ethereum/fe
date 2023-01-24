@@ -187,21 +187,20 @@ impl super::Parse for ConstScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ConstKw);
 
-        parser.set_newline_as_trivia(true);
+        parser.set_newline_as_trivia(false);
 
+        parser.add_recovery_token(SyntaxKind::Colon);
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected identifier", None);
-            return;
         }
+        parser.remove_recovery_token(SyntaxKind::Colon);
 
+        parser.add_recovery_token(SyntaxKind::Eq);
         if !parser.bump_if(SyntaxKind::Colon) {
             parser.error_and_recover("expected type annotation for `const`", None);
-            return;
         }
-
-        if !parse_type(parser, None) {
-            return;
-        }
+        parse_type(parser, None);
+        parser.remove_recovery_token(SyntaxKind::Eq);
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` for const value definition", None);
