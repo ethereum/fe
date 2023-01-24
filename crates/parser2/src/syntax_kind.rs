@@ -365,6 +365,8 @@ pub enum SyntaxKind {
     UseTreeRename,
     /// `extern { .. }`
     Extern,
+    /// `extern { .. }`
+    ExternItemList,
     ItemList,
 
     /// `pub unsafe `
