@@ -16,7 +16,7 @@ pub enum SyntaxKind {
     /// `foo`
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
-    /// `1` or `0b1010` or `0o77` or `0xff`
+    /// `1`, `0b1010`, `0o77`, `0xff`
     #[regex("[0-9]+(?:_[0-9]+)*")]
     #[regex("0[bB][0-1]+")]
     #[regex("0[oO][0-7]+")]
@@ -257,7 +257,7 @@ pub enum SyntaxKind {
     RecordFieldList,
     /// `x: 1`
     RecordField,
-    /// `foo.bar` or `foo.0`
+    /// `foo.bar`, `foo.0`
     FieldExpr,
     /// `foo[1]`
     IndexExpr,
@@ -349,12 +349,18 @@ pub enum SyntaxKind {
     TraitImpl,
     /// `const FOO: i32 = 1`
     Const,
-    /// `use foo::{Foo, bar::Baz}`
+    /// `use foo::{Foo as Foo1, bar::Baz}`
     Use,
-    /// `foo::{Foo, bar::Bar`
+    /// `foo::{Foo as Foo1, bar::Baz}`
     UseTree,
-    /// `{foo::bar, `
+    /// `{Foo as Foo1, bar::Baz}`
     UseTreeList,
+    /// `Foo::Bar`, `Foo::*`,`*`.
+    UsePath,
+    /// `Foo`, `self`
+    UsePathSegment,
+    /// `as Foo`
+    UseTreeRename,
     /// `extern { .. }`
     Extern,
     ItemList,

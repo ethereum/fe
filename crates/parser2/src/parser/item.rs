@@ -3,7 +3,8 @@ use std::cell::Cell;
 use crate::SyntaxKind;
 
 use super::{
-    attr, define_scope, expr::parse_expr, token_stream::TokenStream, type_::parse_type, Parser,
+    attr, define_scope, expr::parse_expr, token_stream::TokenStream, type_::parse_type,
+    use_tree::UseTreeScope, Parser,
 };
 
 define_scope! {
@@ -31,6 +32,7 @@ impl super::Parse for ItemListScope {
         use crate::SyntaxKind::*;
 
         loop {
+            parser.set_newline_as_trivia(true);
             if parser.current_kind().is_none() {
                 break;
             }
@@ -77,6 +79,11 @@ impl super::Parse for ItemListScope {
                 }
                 tok => parser
                     .error_and_recover(&format! {"expected item: but got {:?}", tok}, checkpoint),
+            }
+
+            parser.set_newline_as_trivia(false);
+            if parser.current_kind().is_some() && !parser.bump_if(SyntaxKind::Newline) {
+                parser.error_and_recover("expected newline after item definition", checkpoint)
             }
         }
     }
@@ -148,8 +155,9 @@ impl super::Parse for ImplScope {
 
 define_scope! { UseScope, Use, Inheritance }
 impl super::Parse for UseScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::UseKw);
+        parser.parse(UseTreeScope::default(), None);
     }
 }
 

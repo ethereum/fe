@@ -6,7 +6,7 @@ define_scope! {
     #[doc(hidden)]
     pub PathScope,
     Path,
-    Inheritance
+    Inheritance(Colon2)
 }
 impl super::Parse for PathScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
