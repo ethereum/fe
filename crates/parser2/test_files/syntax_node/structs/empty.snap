@@ -12,7 +12,7 @@ Root@0..26
       WhiteSpace@10..11 " "
       Ident@11..22 "EmptyStruct"
       WhiteSpace@22..23 " "
-      StructFieldDefList@23..26
+      RecordFieldDefList@23..26
         LBrace@23..24 "{"
         Newline@24..25 "\n"
         RBrace@25..26 "}"

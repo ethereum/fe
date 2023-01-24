@@ -25,11 +25,11 @@ Root@0..312
           Ident@40..41 "U"
         Gt@41..42 ">"
       WhiteSpace@42..43 " "
-      StructFieldDefList@43..73
+      RecordFieldDefList@43..73
         LBrace@43..44 "{"
         Newline@44..45 "\n"
         WhiteSpace@45..49 "    "
-        StructFieldDef@49..53
+        RecordFieldDef@49..53
           Ident@49..50 "x"
           Colon@50..51 ":"
           WhiteSpace@51..52 " "
@@ -39,7 +39,7 @@ Root@0..312
                 Ident@52..53 "S"
         Newline@53..54 "\n"
         WhiteSpace@54..58 "    "
-        StructFieldDef@58..62
+        RecordFieldDef@58..62
           Ident@58..59 "y"
           Colon@59..60 ":"
           WhiteSpace@60..61 " "
@@ -49,7 +49,7 @@ Root@0..312
                 Ident@61..62 "T"
         Newline@62..63 "\n"
         WhiteSpace@63..67 "    "
-        StructFieldDef@67..71
+        RecordFieldDef@67..71
           Ident@67..68 "z"
           Colon@68..69 ":"
           WhiteSpace@69..70 " "
@@ -98,11 +98,11 @@ Root@0..312
         Newline@143..144 "\n"
         Gt@144..145 ">"
       WhiteSpace@145..146 " "
-      StructFieldDefList@146..185
+      RecordFieldDefList@146..185
         LBrace@146..147 "{"
         Newline@147..148 "\n"
         WhiteSpace@148..152 "    "
-        StructFieldDef@152..165
+        RecordFieldDef@152..165
           Ident@152..153 "x"
           Colon@153..154 ":"
           WhiteSpace@154..155 " "
@@ -125,7 +125,7 @@ Root@0..312
               RParen@164..165 ")"
         Newline@165..166 "\n"
         WhiteSpace@166..170 "    "
-        StructFieldDef@170..174
+        RecordFieldDef@170..174
           Ident@170..171 "y"
           Colon@171..172 ":"
           WhiteSpace@172..173 " "
@@ -135,7 +135,7 @@ Root@0..312
                 Ident@173..174 "T"
         Newline@174..175 "\n"
         WhiteSpace@175..179 "    "
-        StructFieldDef@179..183
+        RecordFieldDef@179..183
           Ident@179..180 "z"
           Colon@180..181 ":"
           WhiteSpace@181..182 " "
@@ -202,11 +202,11 @@ Root@0..312
         Newline@279..280 "\n"
         Gt@280..281 ">"
       WhiteSpace@281..282 " "
-      StructFieldDefList@282..312
+      RecordFieldDefList@282..312
         LBrace@282..283 "{"
         Newline@283..284 "\n"
         WhiteSpace@284..288 "    "
-        StructFieldDef@288..292
+        RecordFieldDef@288..292
           Ident@288..289 "x"
           Colon@289..290 ":"
           WhiteSpace@290..291 " "
@@ -216,7 +216,7 @@ Root@0..312
                 Ident@291..292 "S"
         Newline@292..293 "\n"
         WhiteSpace@293..297 "    "
-        StructFieldDef@297..301
+        RecordFieldDef@297..301
           Ident@297..298 "y"
           Colon@298..299 ":"
           WhiteSpace@299..300 " "
@@ -226,7 +226,7 @@ Root@0..312
                 Ident@300..301 "T"
         Newline@301..302 "\n"
         WhiteSpace@302..306 "    "
-        StructFieldDef@306..310
+        RecordFieldDef@306..310
           Ident@306..307 "z"
           Colon@307..308 ":"
           WhiteSpace@308..309 " "

@@ -25,11 +25,11 @@ Root@0..170
       WhiteSpace@66..67 " "
       Ident@67..77 "StructAttr"
       WhiteSpace@77..78 " "
-      StructFieldDefList@78..170
+      RecordFieldDefList@78..170
         LBrace@78..79 "{"
         Newline@79..80 "\n"
         WhiteSpace@80..84 "    "
-        StructFieldDef@84..115
+        RecordFieldDef@84..115
           AttrList@84..100
             DocCommentAttr@84..99
               DocComment@84..99 "/// This is `x`"
@@ -47,7 +47,7 @@ Root@0..170
                 Ident@112..115 "Bar"
         Newline@115..116 "\n"
         WhiteSpace@116..120 "    "
-        StructFieldDef@120..168
+        RecordFieldDef@120..168
           AttrList@120..158
             DocCommentAttr@120..135
               DocComment@120..135 "/// This is `y`"

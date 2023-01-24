@@ -1,0 +1,7 @@
+contract Empty {}
+
+pub contract C {
+    x: i32
+    y: u256
+    z: MyStruct::Encodable
+}
