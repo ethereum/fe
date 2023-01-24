@@ -3,8 +3,9 @@ use std::cell::Cell;
 use crate::SyntaxKind;
 
 use super::{
-    attr, define_scope, expr::parse_expr, struct_::RecordFieldDefListScope,
-    token_stream::TokenStream, type_::parse_type, use_tree::UseTreeScope, Parser,
+    attr, define_scope, expr::parse_expr, param::GenericParamListScope,
+    struct_::RecordFieldDefListScope, token_stream::TokenStream, type_::parse_type,
+    use_tree::UseTreeScope, Parser,
 };
 
 define_scope! {
@@ -220,7 +221,27 @@ impl super::Parse for ExternScope {
 
 define_scope! { TypeAliasScope, TypeAlias, Inheritance }
 impl super::Parse for TypeAliasScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::TypeKw);
+
+        parser.add_recovery_token(SyntaxKind::Lt);
+        parser.add_recovery_token(SyntaxKind::Eq);
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected identifier for type alias name", None)
+        }
+        parser.remove_recovery_token(SyntaxKind::Lt);
+
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            parser.parse(GenericParamListScope::default(), None);
+        }
+        parser.remove_recovery_token(SyntaxKind::Eq);
+
+        if !parser.bump_if(SyntaxKind::Eq) {
+            parser.error_and_recover("expected `=` for type alias definition", None);
+            return;
+        }
+
+        parse_type(parser, None);
     }
 }
