@@ -1,0 +1,85 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..98
+  ItemList@0..98
+    TypeAlias@0..18
+      ItemModifier@0..3
+        PubKw@0..3 "pub"
+      WhiteSpace@3..4 " "
+      TypeKw@4..8 "type"
+      WhiteSpace@8..9 " "
+      Ident@9..12 "Int"
+      WhiteSpace@12..13 " "
+      Eq@13..14 "="
+      WhiteSpace@14..15 " "
+      PathType@15..18
+        Path@15..18
+          PathSegment@15..18
+            Ident@15..18 "i32"
+    WhiteSpace@18..19 " "
+    Newline@19..21 "\n\n"
+    TypeAlias@21..54
+      ItemModifier@21..21
+      TypeKw@21..25 "type"
+      WhiteSpace@25..26 " "
+      Ident@26..32 "Result"
+      GenericParamList@32..35
+        Lt@32..33 "<"
+        GenericParam@33..34
+          Ident@33..34 "T"
+        Gt@34..35 ">"
+      WhiteSpace@35..36 " "
+      Eq@36..37 "="
+      WhiteSpace@37..38 " "
+      PathType@38..54
+        Path@38..44
+          PathSegment@38..44
+            Ident@38..44 "Result"
+        GenericParamList@44..54
+          Lt@44..45 "<"
+          GenericParam@45..46
+            Path@45..46
+              PathSegment@45..46
+                Ident@45..46 "T"
+          Comma@46..47 ","
+          WhiteSpace@47..48 " "
+          GenericParam@48..53
+            Path@48..53
+              PathSegment@48..53
+                Ident@48..53 "Error"
+          Gt@53..54 ">"
+    Newline@54..56 "\n\n"
+    TypeAlias@56..98
+      ItemModifier@56..56
+      TypeKw@56..60 "type"
+      WhiteSpace@60..61 " "
+      Ident@61..70 "WithBound"
+      GenericParamList@70..85
+        Lt@70..71 "<"
+        GenericParam@71..84
+          Ident@71..72 "T"
+          Colon@72..73 ":"
+          WhiteSpace@73..74 " "
+          TraitBoundList@74..84
+            TraitBound@74..84
+              Path@74..84
+                PathSegment@74..84
+                  Ident@74..84 "TraitBound"
+        Gt@84..85 ">"
+      WhiteSpace@85..86 " "
+      Eq@86..87 "="
+      WhiteSpace@87..88 " "
+      PathType@88..98
+        Path@88..95
+          PathSegment@88..95
+            Ident@88..95 "NoBound"
+        GenericParamList@95..98
+          Lt@95..96 "<"
+          GenericParam@96..97
+            Path@96..97
+              PathSegment@96..97
+                Ident@96..97 "T"
+          Gt@97..98 ">"
+
