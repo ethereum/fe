@@ -100,6 +100,8 @@ define_scope! {
 }
 impl super::Parse for GenericParamScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_if(SyntaxKind::ConstKw);
+
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected type parameter", None);
         }

@@ -343,10 +343,12 @@ pub enum SyntaxKind {
     TypeAlias,
     /// `impl Foo { .. }`
     Impl,
-    /// `trait Foo { .. }`
+    /// `trait Foo {..}`
     Trait,
+    /// `{ fn foo() {..} }`
+    TraitItemList,
     /// `impl Trait for Foo { .. }`
-    TraitImpl,
+    ImplTrait,
     /// `const FOO: i32 = 1`
     Const,
     /// `use foo::{Foo as Foo1, bar::Baz}`

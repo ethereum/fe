@@ -1,0 +1,170 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..182
+  ItemList@0..182
+    Trait@0..15
+      ItemModifier@0..0
+      TraitKw@0..5 "trait"
+      WhiteSpace@5..6 " "
+      Ident@6..12 "Marker"
+      WhiteSpace@12..13 " "
+      TraitItemList@13..15
+        LBrace@13..14 "{"
+        RBrace@14..15 "}"
+    Newline@15..17 "\n\n"
+    Trait@17..182
+      ItemModifier@17..20
+        PubKw@17..20 "pub"
+      WhiteSpace@20..21 " "
+      TraitKw@21..26 "trait"
+      WhiteSpace@26..27 " "
+      Ident@27..30 "Foo"
+      WhiteSpace@30..31 " "
+      TraitItemList@31..182
+        LBrace@31..32 "{"
+        Newline@32..33 "\n"
+        WhiteSpace@33..37 "    "
+        Fn@37..79
+          FnKw@37..39 "fn"
+          WhiteSpace@39..40 " "
+          Ident@40..43 "foo"
+          GenericParamList@43..67
+            Lt@43..44 "<"
+            GenericParam@44..52
+              Ident@44..45 "T"
+              Colon@45..46 ":"
+              WhiteSpace@46..47 " "
+              TraitBoundList@47..52
+                TraitBound@47..52
+                  Path@47..52
+                    PathSegment@47..52
+                      Ident@47..52 "Trait"
+            Comma@52..53 ","
+            WhiteSpace@53..54 " "
+            GenericParam@54..66
+              ConstKw@54..59 "const"
+              WhiteSpace@59..60 " "
+              Ident@60..61 "U"
+              Colon@61..62 ":"
+              WhiteSpace@62..63 " "
+              TraitBoundList@63..66
+                TraitBound@63..66
+                  Path@63..66
+                    PathSegment@63..66
+                      Ident@63..66 "i32"
+            Gt@66..67 ">"
+          FnArgList@67..79
+            LParen@67..68 "("
+            FnArg@68..72
+              Ident@68..69 "t"
+              Colon@69..70 ":"
+              WhiteSpace@70..71 " "
+              PathType@71..72
+                Path@71..72
+                  PathSegment@71..72
+                    Ident@71..72 "T"
+            Comma@72..73 ","
+            WhiteSpace@73..74 " "
+            FnArg@74..78
+              Ident@74..75 "u"
+              Colon@75..76 ":"
+              WhiteSpace@76..77 " "
+              PathType@77..78
+                Path@77..78
+                  PathSegment@77..78
+                    Ident@77..78 "U"
+            RParen@78..79 ")"
+        Newline@79..81 "\n\n"
+        WhiteSpace@81..85 "    "
+        Fn@85..180
+          FnKw@85..87 "fn"
+          WhiteSpace@87..88 " "
+          Ident@88..102 "default_method"
+          GenericParamList@102..116
+            Lt@102..103 "<"
+            GenericParam@103..115
+              Ident@103..104 "T"
+              Colon@104..105 ":"
+              WhiteSpace@105..106 " "
+              TraitBoundList@106..115
+                TraitBound@106..109
+                  Path@106..109
+                    PathSegment@106..109
+                      Ident@106..109 "Add"
+                WhiteSpace@109..110 " "
+                Plus@110..111 "+"
+                WhiteSpace@111..112 " "
+                TraitBound@112..115
+                  Path@112..115
+                    PathSegment@112..115
+                      Ident@112..115 "Sub"
+            Gt@115..116 ">"
+          FnArgList@116..132
+            LParen@116..117 "("
+            FnArg@117..123
+              Ident@117..120 "lhs"
+              Colon@120..121 ":"
+              WhiteSpace@121..122 " "
+              PathType@122..123
+                Path@122..123
+                  PathSegment@122..123
+                    Ident@122..123 "T"
+            Comma@123..124 ","
+            WhiteSpace@124..125 " "
+            FnArg@125..131
+              Ident@125..128 "rhs"
+              Colon@128..129 ":"
+              WhiteSpace@129..130 " "
+              PathType@130..131
+                Path@130..131
+                  PathSegment@130..131
+                    Ident@130..131 "T"
+            RParen@131..132 ")"
+          WhiteSpace@132..134 "  "
+          Arrow@134..136 "->"
+          WhiteSpace@136..137 " "
+          PathType@137..140
+            Path@137..140
+              PathSegment@137..140
+                Ident@137..140 "i32"
+          WhiteSpace@140..141 " "
+          BlockExpr@141..180
+            LBrace@141..142 "{"
+            Newline@142..143 "\n"
+            WhiteSpace@143..151 "        "
+            ExprStmt@151..174
+              BinExpr@151..174
+                BinExpr@151..160
+                  Path@151..154
+                    PathSegment@151..154
+                      Ident@151..154 "lhs"
+                  WhiteSpace@154..155 " "
+                  Plus@155..156 "+"
+                  WhiteSpace@156..157 " "
+                  Path@157..160
+                    PathSegment@157..160
+                      Ident@157..160 "lhs"
+                WhiteSpace@160..161 " "
+                Minus@161..162 "-"
+                WhiteSpace@162..163 " "
+                ParenExpr@163..174
+                  LParen@163..164 "("
+                  BinExpr@164..173
+                    Path@164..167
+                      PathSegment@164..167
+                        Ident@164..167 "rhs"
+                    WhiteSpace@167..168 " "
+                    Plus@168..169 "+"
+                    WhiteSpace@169..170 " "
+                    Path@170..173
+                      PathSegment@170..173
+                        Ident@170..173 "rhs"
+                  RParen@173..174 ")"
+            Newline@174..175 "\n"
+            WhiteSpace@175..179 "    "
+            RBrace@179..180 "}"
+        Newline@180..181 "\n"
+        RBrace@181..182 "}"
+
