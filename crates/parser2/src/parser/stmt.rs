@@ -149,7 +149,7 @@ impl super::Parse for AssignStmtScope {
         parser.set_newline_as_trivia(false);
         if parser
             .current_kind()
-            .map(|kind| is_aug_assign_kind(kind))
+            .map(is_aug_assign_kind)
             .unwrap_or_default()
         {
             parser.bump();
