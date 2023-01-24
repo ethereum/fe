@@ -171,14 +171,15 @@ impl super::Parse for TraitScope {
         }
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected trait body", None)
+            parser.error_and_recover("expected trait body", None);
+            return;
         }
 
         parser.parse(TraitItemListScope::default(), None);
     }
 }
 
-define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline) }
+define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
@@ -260,8 +261,55 @@ impl super::Parse for ConstScope {
 
 define_scope! { ExternScope, Extern, Inheritance }
 impl super::Parse for ExternScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::ExternKw);
+
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
+            parser.error_and_recover("expected extern block", None)
+        }
+
+        parser.parse(ExternItemListScope::default(), None);
+    }
+}
+
+define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, Newline, FnKw) }
+impl super::Parse for ExternItemListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBrace);
+
+        loop {
+            parser.set_newline_as_trivia(true);
+            if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
+                break;
+            }
+
+            let mut checkpoint = attr::parse_attr_list(parser);
+            let modifier_scope = ItemModifierScope::default();
+            let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
+            checkpoint.get_or_insert(modifier_checkpoint);
+
+            match parser.current_kind() {
+                Some(SyntaxKind::FnKw) => {
+                    parser.parse(FnScope::disallow_def(), checkpoint);
+                }
+                _ => {
+                    parser.error_and_recover("extern item is restricted to `fn`", checkpoint);
+                }
+            }
+
+            parser.set_newline_as_trivia(false);
+            if !matches!(
+                parser.current_kind(),
+                Some(SyntaxKind::RBrace | SyntaxKind::Newline)
+            ) {
+                parser
+                    .error_and_recover("expected newline after extern item definition", checkpoint)
+            }
+        }
+
+        if !parser.bump_if(SyntaxKind::RBrace) {
+            parser.error_and_recover("expected `}` to close the extern body", None)
+        }
     }
 }
 
