@@ -9,6 +9,66 @@ use super::{
     type_::parse_type,
     Parser,
 };
+
+define_scope! {
+    pub(crate) FnArgListScope,
+    FnArgList,
+    Override(RParen, Comma)
+}
+impl super::Parse for FnArgListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LParen);
+        if parser.bump_if(SyntaxKind::RParen) {
+            return;
+        }
+
+        parser.parse(FnArgScope::default(), None);
+        while parser.bump_if(SyntaxKind::Comma) {
+            parser.parse(FnArgScope::default(), None);
+        }
+
+        if !parser.bump_if(SyntaxKind::RParen) {
+            parser.error_and_bump_until("expected closing `)`", None, SyntaxKind::RParen);
+            parser.bump_if(SyntaxKind::LParen);
+        }
+    }
+}
+
+define_scope! {
+    FnArgScope,
+    FnArg,
+    Inheritance
+}
+impl super::Parse for FnArgScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_if(SyntaxKind::MutKw);
+
+        parser.add_recovery_token(SyntaxKind::Colon);
+        match parser.current_kind() {
+            Some(SyntaxKind::SelfKw) => {
+                parser.bump_expected(SyntaxKind::SelfKw);
+                return;
+            }
+            Some(SyntaxKind::Ident | SyntaxKind::Underscore) => {
+                parser.bump();
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.bump_if(SyntaxKind::Underscore);
+                }
+            }
+            _ => {
+                parser.error_and_recover("expected identifier for argument name", None);
+            }
+        }
+        parser.remove_recovery_token(SyntaxKind::Colon);
+
+        if !parser.bump_if(SyntaxKind::Colon) {
+            parser.error_and_recover("expected `:` after argument name", None);
+        }
+
+        parse_type(parser, None);
+    }
+}
+
 define_scope! {
     pub(crate) GenericParamListScope,
     GenericParamList,
