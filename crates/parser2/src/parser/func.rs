@@ -10,9 +10,19 @@ use super::{
 };
 
 define_scope! {
-    pub(crate) FnScope,
+    pub(crate) FnScope {
+        disallow_def: bool
+    },
     Fn,
     Inheritance
+}
+impl FnScope {
+    pub(crate) fn disallow_def() -> Self {
+        Self {
+            disallow_def: true,
+            ..Self::default()
+        }
+    }
 }
 impl super::Parse for FnScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
@@ -30,7 +40,9 @@ impl super::Parse for FnScope {
         }
         parser.remove_recovery_token(SyntaxKind::LParen);
 
-        parser.add_recovery_token(SyntaxKind::LBrace);
+        if !self.disallow_def {
+            parser.add_recovery_token(SyntaxKind::LBrace);
+        }
         parser.add_recovery_token(SyntaxKind::Arrow);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
             parser.parse(FnArgListScope::default(), None);
@@ -42,9 +54,14 @@ impl super::Parse for FnScope {
         if parser.bump_if(SyntaxKind::Arrow) {
             parse_type(parser, None);
         }
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        if !self.disallow_def {
+            parser.remove_recovery_token(SyntaxKind::LBrace);
+        }
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            if self.disallow_def {
+                parser.error_and_recover("function definition is not allowed", None);
+            }
             parser.parse(BlockExprScope::default(), None);
         }
     }
