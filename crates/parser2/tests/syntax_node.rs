@@ -7,6 +7,11 @@ use fe_parser2::{
     SyntaxKind,
 };
 
+fe_compiler_test_utils::build_debug_snap_tests! {
+    "parser2/test_files/syntax_node/structs",
+    "parser2/test_files/syntax_node/structs",
+    test_item_list
+}
 fn test_item_list(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
         while parser.current_kind().is_some() {
@@ -15,12 +20,12 @@ fn test_item_list(input: &str) -> SyntaxNode {
     });
     runner.run(input)
 }
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/structs",
-    "parser2/test_files/syntax_node/structs",
-    test_item_list
-}
 
+fe_compiler_test_utils::build_debug_snap_tests! {
+    "parser2/test_files/syntax_node/pats",
+    "parser2/test_files/syntax_node/pats",
+    test_pat
+}
 fn test_pat(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
         while parser.current_kind().is_some() {
@@ -29,12 +34,12 @@ fn test_pat(input: &str) -> SyntaxNode {
     });
     runner.run(input)
 }
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/pats",
-    "parser2/test_files/syntax_node/pats",
-    test_pat
-}
 
+fe_compiler_test_utils::build_debug_snap_tests! {
+    "parser2/test_files/syntax_node/exprs",
+    "parser2/test_files/syntax_node/exprs",
+    test_expr
+}
 fn test_expr(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
         parser.set_newline_as_trivia(false);
@@ -50,9 +55,9 @@ fn test_expr(input: &str) -> SyntaxNode {
 }
 
 fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/exprs",
-    "parser2/test_files/syntax_node/exprs",
-    test_expr
+    "parser2/test_files/syntax_node/stmts",
+    "parser2/test_files/syntax_node/stmts",
+    test_stmt
 }
 
 fn test_stmt(input: &str) -> SyntaxNode {
@@ -68,11 +73,12 @@ fn test_stmt(input: &str) -> SyntaxNode {
     });
     runner.run(input)
 }
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/stmts",
-    "parser2/test_files/syntax_node/stmts",
-    test_stmt
-}
+
+fe_compiler_test_utils::build_debug_snap_tests!(
+    "parser2/test_files/syntax_node/items",
+    "parser2/test_files/syntax_node/items",
+    test_item_list
+);
 
 struct TestRunner<F>
 where
