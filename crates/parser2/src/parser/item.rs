@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use crate::SyntaxKind;
+use crate::{parser::func::FnScope, SyntaxKind};
 
 use super::{
     attr, define_scope, expr::parse_expr, param::GenericParamListScope,
@@ -53,7 +53,7 @@ impl super::Parse for ItemListScope {
 
             match parser.current_kind() {
                 Some(FnKw) => {
-                    parser.parse(super::func::FnScope::default(), checkpoint);
+                    parser.parse(FnScope::default(), checkpoint);
                 }
                 Some(StructKw) => {
                     parser.parse(super::struct_::StructScope::default(), checkpoint);
@@ -163,8 +163,54 @@ impl super::Parse for EnumScope {
 
 define_scope! { TraitScope, Trait, Inheritance }
 impl super::Parse for TraitScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::TraitKw);
+
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected ident for the trait name", None)
+        }
+
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
+            parser.error_and_recover("expected trait body", None)
+        }
+
+        parser.parse(TraitItemListScope::default(), None);
+    }
+}
+
+define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline) }
+impl super::Parse for TraitItemListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBrace);
+        loop {
+            parser.set_newline_as_trivia(true);
+            if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
+                break;
+            }
+
+            let checkpoint = attr::parse_attr_list(parser);
+
+            match parser.current_kind() {
+                Some(SyntaxKind::FnKw) => {
+                    parser.parse(FnScope::default(), checkpoint);
+                }
+                _ => {
+                    parser.error_and_recover("trait item is restricted to `fn`", checkpoint);
+                }
+            }
+
+            parser.set_newline_as_trivia(false);
+            if !matches!(
+                parser.current_kind(),
+                Some(SyntaxKind::RBrace | SyntaxKind::Newline)
+            ) {
+                parser.error_and_recover("expected newline after trait item definition", checkpoint)
+            }
+        }
+
+        if !parser.bump_if(SyntaxKind::RBrace) {
+            parser.error_and_recover("expected `}` to close the trait body", None)
+        }
     }
 }
 
