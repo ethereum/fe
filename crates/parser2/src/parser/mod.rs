@@ -382,7 +382,6 @@ impl<S: TokenStream> Parser<S> {
     }
 }
 
-/// The current scope of parsing.
 pub trait ParsingScope {
     /// Returns the recovery method of the current scope.
     fn recovery_method(&self) -> &RecoveryMethod;
@@ -445,14 +444,19 @@ define_scope! {
 }
 
 define_scope! {
-    RootScope,
+    pub RootScope,
     Root,
     Override()
 }
 
 macro_rules! define_scope {
-    ($scope_name: ident $({ $($field: ident: $ty: ty),* })?, $kind: path, Inheritance $(($($recoveries: path), *))?) => {
-        crate::parser::define_scope_struct! {$scope_name {$($($field: $ty), *)?}, $kind}
+    (
+        $(#[$attrs: expr])*
+        $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
+        $kind: path,
+        Inheritance $(($($recoveries: path), *))?
+    ) => {
+        crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
                 lazy_static::lazy_static! {
@@ -472,8 +476,13 @@ macro_rules! define_scope {
         }
     };
 
-    ($scope_name: ident $({ $($field: ident: $ty: ty),* })?, $kind: path, Override($($recoveries: path), *)) => {
-        crate::parser::define_scope_struct! {$scope_name {$($($field: $ty), *)?}, $kind}
+    (
+        $(#[$attrs: expr])*
+        $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
+        $kind: path,
+        Override($($recoveries: path), *)
+    ) => {
+        crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
 
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
@@ -496,9 +505,14 @@ macro_rules! define_scope {
 }
 
 macro_rules! define_scope_struct {
-    ($scope_name: ident { $($field: ident: $ty: ty),* } , $kind: path) => {
+    (
+        $(#[$attrs: expr])*
+        $visibility: vis $scope_name: ident { $($field: ident: $ty: ty),* },
+        $kind: path
+    ) => {
+        $(#[$attrs])*
         #[derive(Debug, Clone)]
-        pub struct $scope_name {
+        $visibility struct $scope_name {
             __inner: std::rc::Rc<std::cell::Cell<crate::SyntaxKind>>,
             $($field: $ty),*
         }

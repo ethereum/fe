@@ -7,10 +7,12 @@ use super::{
     Checkpoint, Parser,
 };
 
+/// Parses expression.
 pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parse_expr_with_min_bp(parser, 0, true)
 }
 
+/// Parses expression except for `struct` initialization expression.
 pub fn parse_expr_no_struct<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parse_expr_with_min_bp(parser, 0, false)
 }

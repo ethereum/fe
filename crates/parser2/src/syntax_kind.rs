@@ -143,6 +143,9 @@ pub enum SyntaxKind {
     #[token("!=")]
     NotEq,
 
+    /// `as`'
+    #[token("as")]
+    AsKw,
     /// `true'
     #[token("true")]
     TrueKw,
@@ -346,8 +349,12 @@ pub enum SyntaxKind {
     TraitImpl,
     /// `const FOO: i32 = 1`
     Const,
-    /// `use foo::bar`
+    /// `use foo::{Foo, bar::Baz}`
     Use,
+    /// `foo::{Foo, bar::Bar`
+    UseTree,
+    /// `{foo::bar, `
+    UseTreeList,
     /// `extern { .. }`
     Extern,
     ItemList,

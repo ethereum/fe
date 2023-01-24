@@ -41,7 +41,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
 }
 
 define_scope! {
-    BlockExprScope,
+    pub(crate) BlockExprScope,
     BlockExpr,
     Override(
         RBrace,
@@ -176,7 +176,7 @@ impl super::Parse for MatchArmScope {
     }
 }
 
-define_scope! { LitExprScope, LitExpr, Inheritance }
+define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
 impl super::Parse for LitExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         match parser.current_kind() {
