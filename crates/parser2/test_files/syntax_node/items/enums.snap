@@ -5,7 +5,6 @@ expression: snapshot
 Root@0..174
   ItemList@0..174
     Enum@0..13
-      ItemModifier@0..0
       EnumKw@0..4 "enum"
       WhiteSpace@4..5 " "
       Ident@5..10 "Empty"
@@ -15,7 +14,6 @@ Root@0..174
         RBrace@12..13 "}"
     Newline@13..15 "\n\n"
     Enum@15..56
-      ItemModifier@15..15
       EnumKw@15..19 "enum"
       WhiteSpace@19..20 " "
       Ident@20..25 "Basic"
@@ -47,7 +45,6 @@ Root@0..174
         RBrace@55..56 "}"
     Newline@56..58 "\n\n"
     Enum@58..97
-      ItemModifier@58..58
       EnumKw@58..62 "enum"
       WhiteSpace@62..63 " "
       Ident@63..69 "Option"
@@ -78,7 +75,6 @@ Root@0..174
         RBrace@96..97 "}"
     Newline@97..99 "\n\n"
     Enum@99..174
-      ItemModifier@99..99
       EnumKw@99..103 "enum"
       WhiteSpace@103..104 " "
       Ident@104..113 "BoundEnum"
@@ -86,9 +82,9 @@ Root@0..174
         Lt@113..114 "<"
         GenericParam@114..126
           Ident@114..115 "T"
-          Colon@115..116 ":"
-          WhiteSpace@116..117 " "
-          TraitBoundList@117..126
+          TraitBoundList@115..126
+            Colon@115..116 ":"
+            WhiteSpace@116..117 " "
             TraitBound@117..120
               Path@117..120
                 PathSegment@117..120
@@ -105,9 +101,9 @@ Root@0..174
         WhiteSpace@128..129 " "
         GenericParam@129..141
           Ident@129..130 "U"
-          Colon@130..131 ":"
-          WhiteSpace@131..132 " "
-          TraitBoundList@132..141
+          TraitBoundList@130..141
+            Colon@130..131 ":"
+            WhiteSpace@131..132 " "
             TraitBound@132..135
               Path@132..135
                 PathSegment@132..135

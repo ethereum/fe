@@ -5,7 +5,6 @@ expression: snapshot
 Root@0..182
   ItemList@0..182
     Trait@0..15
-      ItemModifier@0..0
       TraitKw@0..5 "trait"
       WhiteSpace@5..6 " "
       Ident@6..12 "Marker"
@@ -34,9 +33,9 @@ Root@0..182
             Lt@43..44 "<"
             GenericParam@44..52
               Ident@44..45 "T"
-              Colon@45..46 ":"
-              WhiteSpace@46..47 " "
-              TraitBoundList@47..52
+              TraitBoundList@45..52
+                Colon@45..46 ":"
+                WhiteSpace@46..47 " "
                 TraitBound@47..52
                   Path@47..52
                     PathSegment@47..52
@@ -47,9 +46,9 @@ Root@0..182
               ConstKw@54..59 "const"
               WhiteSpace@59..60 " "
               Ident@60..61 "U"
-              Colon@61..62 ":"
-              WhiteSpace@62..63 " "
-              TraitBoundList@63..66
+              TraitBoundList@61..66
+                Colon@61..62 ":"
+                WhiteSpace@62..63 " "
                 TraitBound@63..66
                   Path@63..66
                     PathSegment@63..66
@@ -86,9 +85,9 @@ Root@0..182
             Lt@102..103 "<"
             GenericParam@103..115
               Ident@103..104 "T"
-              Colon@104..105 ":"
-              WhiteSpace@105..106 " "
-              TraitBoundList@106..115
+              TraitBoundList@104..115
+                Colon@104..105 ":"
+                WhiteSpace@105..106 " "
                 TraitBound@106..109
                   Path@106..109
                     PathSegment@106..109

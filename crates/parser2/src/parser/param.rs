@@ -28,7 +28,7 @@ impl super::Parse for FnArgListScope {
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_bump_until("expected closing `)`", None, SyntaxKind::RParen);
+            parser.error_and_recover("expected closing `)`", None);
             parser.bump_if(SyntaxKind::LParen);
         }
     }
@@ -43,29 +43,34 @@ impl super::Parse for FnArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_if(SyntaxKind::MutKw);
 
-        parser.add_recovery_token(SyntaxKind::Colon);
-        match parser.current_kind() {
-            Some(SyntaxKind::SelfKw) => {
-                parser.bump_expected(SyntaxKind::SelfKw);
-                return;
-            }
-            Some(SyntaxKind::Ident | SyntaxKind::Underscore) => {
-                parser.bump();
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.bump_if(SyntaxKind::Underscore);
+        let is_self = parser.with_recovery_tokens(&[SyntaxKind::Colon], |parser| {
+            match parser.current_kind() {
+                Some(SyntaxKind::SelfKw) => {
+                    parser.bump_expected(SyntaxKind::SelfKw);
+                    true
+                }
+                Some(SyntaxKind::Ident | SyntaxKind::Underscore) => {
+                    parser.bump();
+                    if !parser.bump_if(SyntaxKind::Ident) {
+                        parser.bump_if(SyntaxKind::Underscore);
+                    }
+                    false
+                }
+                _ => {
+                    parser.error_and_recover("expected identifier for argument name", None);
+                    false
                 }
             }
-            _ => {
-                parser.error_and_recover("expected identifier for argument name", None);
-            }
+        });
+        if is_self {
+            return;
         }
-        parser.remove_recovery_token(SyntaxKind::Colon);
 
         if !parser.bump_if(SyntaxKind::Colon) {
             parser.error_and_recover("expected `:` after argument name", None);
         }
 
-        parse_type(parser, None);
+        parse_type(parser, None, false);
     }
 }
 
@@ -87,7 +92,7 @@ impl super::Parse for GenericParamListScope {
         }
 
         if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_bump_until("expected closing `>`", None, SyntaxKind::Gt);
+            parser.error_and_recover("expected closing `>`", None);
             parser.bump_if(SyntaxKind::Gt);
         }
     }
@@ -107,7 +112,6 @@ impl super::Parse for GenericParamScope {
         }
 
         if parser.current_kind() == Some(SyntaxKind::Colon) {
-            parser.bump_expected(SyntaxKind::Colon);
             parser.parse(TraitBoundListScope::default(), None);
         }
     }
@@ -120,6 +124,8 @@ define_scope! {
 }
 impl super::Parse for TraitBoundListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::Colon);
+
         parser.parse(TraitBoundScope::default(), None);
         while parser.current_kind() == Some(SyntaxKind::Plus) {
             parser.bump_expected(SyntaxKind::Plus);
@@ -136,14 +142,15 @@ define_scope! {
 impl super::Parse for TraitBoundScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(PathScope::default(), None);
-        // TODO: Allow trait bound with associated type bound.
-        // `Trait<Item = Type>`.
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            parser.parse(GenericArgListScope::new(false), None);
+        }
     }
 }
 
 define_scope! {
-    pub(crate) GenericArgListScope,
-    GenericParamList,
+    pub(crate) GenericArgListScope{ allow_bounds: bool },
+    GenericArgList,
     Override(Gt, Comma)
 }
 impl super::Parse for GenericArgListScope {
@@ -154,19 +161,23 @@ impl super::Parse for GenericArgListScope {
             return;
         }
 
-        parser.parse(GenericArgScope::default(), None);
+        parser.parse(GenericArgScope::new(self.allow_bounds), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericArgScope::default(), None);
+            parser.parse(GenericArgScope::new(self.allow_bounds), None);
         }
 
         if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_bump_until("expected closing `>`", None, SyntaxKind::Gt);
+            parser.error_and_recover("expected closing `>`", None);
             parser.bump_if(SyntaxKind::Gt);
         }
     }
 }
 
-define_scope! { GenericArgScope, GenericParam, Inheritance}
+define_scope! {
+    GenericArgScope{ allow_bounds: bool },
+    GenericArg,
+    Inheritance
+}
 impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         match parser.current_kind() {
@@ -174,16 +185,19 @@ impl super::Parse for GenericArgScope {
                 parser.parse(BlockExprScope::default(), None);
             }
 
-            Some(SyntaxKind::Star | SyntaxKind::LBracket | SyntaxKind::LParen) => {
-                parse_type(parser, None);
-            }
-
             Some(kind) if kind.is_literal_leaf() => {
                 parser.parse(LitExprScope::default(), None);
             }
 
             _ => {
-                parser.parse(PathScope::default(), None);
+                parse_type(parser, None, self.allow_bounds);
+                if parser.current_kind() == Some(SyntaxKind::Colon) {
+                    if !self.allow_bounds {
+                        parser.error_and_recover("type bounds are not allowed here", None);
+                    } else {
+                        parser.parse(TraitBoundListScope::default(), None);
+                    }
+                }
             }
         }
     }
@@ -204,7 +218,7 @@ impl super::Parse for CallArgListScope {
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_bump_until("expected closing `)`", None, SyntaxKind::RParen);
+            parser.error_and_recover("expected closing `)`", None);
             parser.bump_if(SyntaxKind::RParen);
         }
     }

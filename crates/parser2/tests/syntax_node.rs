@@ -14,9 +14,7 @@ fe_compiler_test_utils::build_debug_snap_tests! {
 }
 fn test_item_list(input: &str) -> SyntaxNode {
     let runner = TestRunner::new(|parser| {
-        while parser.current_kind().is_some() {
-            parser.parse(ItemListScope::default(), None);
-        }
+        parser.parse(ItemListScope::default(), None);
     });
     runner.run(input)
 }
@@ -106,7 +104,7 @@ where
         let (cst, errors) = parser.finish();
 
         for error in &errors {
-            println!("{}", error.msg);
+            println!("{}@{:?}", error.msg, error.range);
         }
         assert! {errors.is_empty()}
         assert!(input == cst.to_string());

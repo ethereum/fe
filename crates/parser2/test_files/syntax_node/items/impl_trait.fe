@@ -1,0 +1,11 @@
+impl Trait<T> for F<T> {
+    fn foo() {
+        return 1
+    }
+}
+
+impl Trait<T, U> for F<T> {
+    fn foo<T: OtherTrait<U>>(t: T) {
+        do_something<i32>(t)
+    }
+}

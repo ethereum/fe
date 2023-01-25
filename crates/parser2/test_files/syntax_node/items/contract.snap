@@ -5,7 +5,6 @@ expression: snapshot
 Root@0..87
   ItemList@0..87
     Contract@0..17
-      ItemModifier@0..0
       ContractKw@0..8 "contract"
       WhiteSpace@8..9 " "
       Ident@9..14 "Empty"

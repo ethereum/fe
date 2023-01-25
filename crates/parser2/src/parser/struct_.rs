@@ -14,17 +14,17 @@ impl super::Parse for StructScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::StructKw);
 
-        parser.add_recovery_token(SyntaxKind::Lt);
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the struct name", None)
-        }
-        parser.remove_recovery_token(SyntaxKind::Lt);
+        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::LBrace], |parser| {
+            if !parser.bump_if(SyntaxKind::Ident) {
+                parser.error_and_recover("expected ident for the struct name", None)
+            }
+        });
 
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericParamListScope::default(), None);
-        }
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        });
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             parser.parse(RecordFieldDefListScope::default(), None);
@@ -87,6 +87,6 @@ impl super::Parse for RecordFieldDefScope {
         if !parser.bump_if(SyntaxKind::Colon) {
             parser.error_and_recover("expected `name: type` for the field definition", None);
         }
-        parse_type(parser, None);
+        parse_type(parser, None, false);
     }
 }

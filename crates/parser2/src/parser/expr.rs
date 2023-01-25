@@ -87,7 +87,8 @@ fn parse_expr_with_min_bp<S: TokenStream>(
             }
             None => {}
         }
-        if let Some((lbp, _)) = infix_binding_power(kind) {
+
+        if let Some((lbp, _)) = infix_binding_power(parser) {
             if lbp < min_bp {
                 break;
             }
@@ -145,26 +146,40 @@ fn postfix_binding_power(kind: SyntaxKind) -> Option<u8> {
 
 /// Specifies how tightly does an infix operator bind to its left and right
 /// operands.
-fn infix_binding_power(kind: SyntaxKind) -> Option<(u8, u8)> {
+fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8)> {
     use SyntaxKind::*;
 
-    let bp = match kind {
+    let bp = match parser.current_kind()? {
         Pipe2 => (50, 51),
         Amp2 => (60, 61),
-
-        // all comparisons are the same
-        Lt | LtEq | Gt | GtEq | NotEq | Eq2 => (70, 71),
-
+        NotEq | Eq2 => (70, 71),
+        Lt => {
+            if is_lshift(parser) {
+                (110, 111)
+            } else {
+                // `LT` and `LtEq` has the same binding power.
+                (70, 71)
+            }
+        }
+        Gt => {
+            if is_rshift(parser) {
+                (110, 111)
+            } else {
+                // `Gt` and `GtEq` has the same binding power.
+                (70, 71)
+            }
+        }
         Pipe => (80, 81),
         Hat => (90, 91),
         Amp => (100, 101),
-        Lt2 | Gt2 => (110, 111),
+        LShift | RShift => (110, 111),
         Plus | Minus => (120, 121),
         Star | Slash | Percent => (130, 131),
         Star2 => (141, 140),
         Dot => (151, 150),
         _ => return None,
     };
+
     Some(bp)
 }
 
@@ -183,9 +198,10 @@ define_scope! { BinExprScope, BinExpr, Inheritance }
 impl super::Parse for BinExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        let kind = parser.current_kind().unwrap();
-        let (_, rbp) = infix_binding_power(kind).unwrap();
-        parser.bump();
+
+        let (_, rbp) = infix_binding_power(parser).unwrap();
+        bump_bin_op(parser);
+
         parse_expr_with_min_bp(parser, rbp, true);
     }
 }
@@ -261,6 +277,108 @@ impl super::Parse for FieldExprScope {
             _ => {
                 parser.error_and_recover("expected identifier or integer literal", None);
             }
+        }
+    }
+}
+
+define_scope! { pub(super) LShiftScope, LShift, Inheritance }
+impl super::Parse for LShiftScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if !parser.bump_if(SyntaxKind::Lt) {
+            parser.error_and_recover("expected `<<`", None);
+        }
+        if !parser.bump_if(SyntaxKind::Lt) {
+            parser.error_and_recover("expected `<<`", None);
+        }
+    }
+}
+
+define_scope! { pub(super) RShiftScope, RShift, Inheritance }
+impl super::Parse for RShiftScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if !parser.bump_if(SyntaxKind::Gt) {
+            parser.error_and_recover("expected `>>`", None);
+        }
+        if !parser.bump_if(SyntaxKind::Gt) {
+            parser.error_and_recover("expected `>>`", None);
+        }
+    }
+}
+
+define_scope! { pub(super) LtEqScope, LtEq, Inheritance }
+impl super::Parse for LtEqScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if !parser.bump_if(SyntaxKind::Lt) {
+            parser.error_and_recover("expected `<=`", None);
+        }
+        if !parser.bump_if(SyntaxKind::Eq) {
+            parser.error_and_recover("expected `<=`", None);
+        }
+    }
+}
+
+define_scope! { pub(super) GtEqScope, GtEq, Inheritance }
+impl super::Parse for GtEqScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if !parser.bump_if(SyntaxKind::Gt) {
+            parser.error_and_recover("expected `>=`", None);
+        }
+        if !parser.bump_if(SyntaxKind::Eq) {
+            parser.error_and_recover("expected `>=`", None);
+        }
+    }
+}
+
+pub(crate) fn is_lshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.start_dry_run();
+    let is_lshift = parser.parse(LShiftScope::default(), None).0;
+    parser.end_dry_run();
+    is_lshift
+}
+
+pub(crate) fn is_rshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.start_dry_run();
+    let is_rshift = parser.parse(RShiftScope::default(), None).0;
+    parser.end_dry_run();
+    is_rshift
+}
+
+fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.start_dry_run();
+    let is_lt_eq = parser.parse(LtEqScope::default(), None).0;
+    parser.end_dry_run();
+    is_lt_eq
+}
+
+fn is_gt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.start_dry_run();
+    let is_gt_eq = parser.parse(GtEqScope::default(), None).0;
+    parser.end_dry_run();
+    is_gt_eq
+}
+
+fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
+    match parser.current_kind() {
+        Some(SyntaxKind::Lt) => {
+            if is_lshift(parser) {
+                parser.parse(LShiftScope::default(), None);
+            } else if is_lt_eq(parser) {
+                parser.parse(LtEqScope::default(), None);
+            } else {
+                parser.bump();
+            }
+        }
+        Some(SyntaxKind::Gt) => {
+            if is_rshift(parser) {
+                parser.parse(RShiftScope::default(), None);
+            } else if is_gt_eq(parser) {
+                parser.parse(GtEqScope::default(), None);
+            } else {
+                parser.bump();
+            }
+        }
+        _ => {
+            parser.bump();
         }
     }
 }
