@@ -38,6 +38,6 @@ impl super::Parse for PathSegmentScope {
 pub(super) fn is_path_segment(kind: SyntaxKind) -> bool {
     matches!(
         kind,
-        SyntaxKind::SelfType | SyntaxKind::SelfKw | SyntaxKind::Ident
+        SyntaxKind::SelfTypeKw | SyntaxKind::SelfKw | SyntaxKind::Ident
     )
 }

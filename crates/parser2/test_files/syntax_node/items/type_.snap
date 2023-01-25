@@ -21,7 +21,6 @@ Root@0..98
     WhiteSpace@18..19 " "
     Newline@19..21 "\n\n"
     TypeAlias@21..54
-      ItemModifier@21..21
       TypeKw@21..25 "type"
       WhiteSpace@25..26 " "
       Ident@26..32 "Result"
@@ -37,22 +36,23 @@ Root@0..98
         Path@38..44
           PathSegment@38..44
             Ident@38..44 "Result"
-        GenericParamList@44..54
+        GenericArgList@44..54
           Lt@44..45 "<"
-          GenericParam@45..46
-            Path@45..46
-              PathSegment@45..46
-                Ident@45..46 "T"
+          GenericArg@45..46
+            PathType@45..46
+              Path@45..46
+                PathSegment@45..46
+                  Ident@45..46 "T"
           Comma@46..47 ","
           WhiteSpace@47..48 " "
-          GenericParam@48..53
-            Path@48..53
-              PathSegment@48..53
-                Ident@48..53 "Error"
+          GenericArg@48..53
+            PathType@48..53
+              Path@48..53
+                PathSegment@48..53
+                  Ident@48..53 "Error"
           Gt@53..54 ">"
     Newline@54..56 "\n\n"
     TypeAlias@56..98
-      ItemModifier@56..56
       TypeKw@56..60 "type"
       WhiteSpace@60..61 " "
       Ident@61..70 "WithBound"
@@ -60,9 +60,9 @@ Root@0..98
         Lt@70..71 "<"
         GenericParam@71..84
           Ident@71..72 "T"
-          Colon@72..73 ":"
-          WhiteSpace@73..74 " "
-          TraitBoundList@74..84
+          TraitBoundList@72..84
+            Colon@72..73 ":"
+            WhiteSpace@73..74 " "
             TraitBound@74..84
               Path@74..84
                 PathSegment@74..84
@@ -75,11 +75,12 @@ Root@0..98
         Path@88..95
           PathSegment@88..95
             Ident@88..95 "NoBound"
-        GenericParamList@95..98
+        GenericArgList@95..98
           Lt@95..96 "<"
-          GenericParam@96..97
-            Path@96..97
-              PathSegment@96..97
-                Ident@96..97 "T"
+          GenericArg@96..97
+            PathType@96..97
+              Path@96..97
+                PathSegment@96..97
+                  Ident@96..97 "T"
           Gt@97..98 ">"
 

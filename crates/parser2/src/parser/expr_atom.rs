@@ -58,7 +58,6 @@ define_scope! {
 impl super::Parse for BlockExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
-        parser.set_newline_as_trivia(false);
 
         loop {
             parser.set_newline_as_trivia(true);
@@ -76,11 +75,13 @@ impl super::Parse for BlockExprScope {
                 && parser.current_kind() != Some(SyntaxKind::RBrace)
             {
                 parser.error_and_recover("expected newline after statement", None);
+                parser.bump_if(SyntaxKind::Newline);
             }
         }
 
         if !parser.bump_if(SyntaxKind::RBrace) {
             parser.error_and_bump_until("expected `}`", None, SyntaxKind::RBrace);
+            parser.bump_if(SyntaxKind::RBrace);
         }
     }
 }
@@ -90,9 +91,7 @@ impl super::Parse for IfExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::IfKw);
 
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        parse_expr_no_struct(parser);
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -120,9 +119,7 @@ impl super::Parse for MatchExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::MatchKw);
 
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        parse_expr_no_struct(parser);
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -165,9 +162,7 @@ impl super::Parse for MatchArmScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
 
-        parser.add_recovery_token(SyntaxKind::FatArrow);
-        parse_pat(parser);
-        parser.remove_recovery_token(SyntaxKind::FatArrow);
+        parser.with_recovery_tokens(&[SyntaxKind::FatArrow], parse_pat);
 
         if !parser.bump_if(SyntaxKind::FatArrow) {
             parser.error_and_recover("expected `=>`", None);

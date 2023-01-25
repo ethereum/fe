@@ -5,7 +5,6 @@ expression: snapshot
 Root@0..278
   ItemList@0..278
     Use@0..12
-      ItemModifier@0..0
       UseKw@0..3 "use"
       WhiteSpace@3..4 " "
       UseTree@4..12
@@ -31,7 +30,6 @@ Root@0..278
             Ident@26..29 "Bar"
     Newline@29..30 "\n"
     Use@30..40
-      ItemModifier@30..30
       UseKw@30..33 "use"
       WhiteSpace@33..34 " "
       UseTree@34..40
@@ -42,7 +40,6 @@ Root@0..278
         Star@39..40 "*"
     Newline@40..41 "\n"
     Use@41..61
-      ItemModifier@41..41
       UseKw@41..44 "use"
       WhiteSpace@44..45 " "
       UseTree@45..61
@@ -59,7 +56,6 @@ Root@0..278
           Ident@57..61 "Bar1"
     Newline@61..62 "\n"
     Use@62..81
-      ItemModifier@62..62
       UseKw@62..65 "use"
       WhiteSpace@65..66 " "
       UseTree@66..81
@@ -76,7 +72,6 @@ Root@0..278
           Underscore@80..81 "_"
     Newline@81..83 "\n\n"
     Use@83..102
-      ItemModifier@83..83
       UseKw@83..86 "use"
       WhiteSpace@86..87 " "
       UseTree@87..102
@@ -99,7 +94,6 @@ Root@0..278
           RBrace@101..102 "}"
     Newline@102..103 "\n"
     Use@103..123
-      ItemModifier@103..103
       UseKw@103..106 "use"
       WhiteSpace@106..107 " "
       UseTree@107..123
@@ -122,7 +116,6 @@ Root@0..278
           RBrace@122..123 "}"
     Newline@123..124 "\n"
     Use@124..152
-      ItemModifier@124..124
       UseKw@124..127 "use"
       WhiteSpace@127..128 " "
       UseTree@128..152
@@ -150,7 +143,6 @@ Root@0..278
           RBrace@151..152 "}"
     Newline@152..153 "\n"
     Use@153..202
-      ItemModifier@153..153
       UseKw@153..156 "use"
       WhiteSpace@156..157 " "
       UseTree@157..202
@@ -201,7 +193,6 @@ Root@0..278
           RBrace@201..202 "}"
     Newline@202..204 "\n\n"
     Use@204..272
-      ItemModifier@204..204
       UseKw@204..207 "use"
       WhiteSpace@207..208 " "
       UseTree@208..272
@@ -259,7 +250,6 @@ Root@0..278
           RBrace@271..272 "}"
     Newline@272..273 "\n"
     Use@273..278
-      ItemModifier@273..273
       UseKw@273..276 "use"
       WhiteSpace@276..277 " "
       UseTree@277..278

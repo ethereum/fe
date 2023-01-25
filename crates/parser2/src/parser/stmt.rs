@@ -1,4 +1,4 @@
-use crate::SyntaxKind;
+use crate::{parser::expr, SyntaxKind};
 
 use super::{
     define_scope,
@@ -46,9 +46,7 @@ impl super::Parse for LetStmtScope {
         }
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
-            parser.add_recovery_token(SyntaxKind::Eq);
-            parse_type(parser, None);
-            parser.remove_recovery_token(SyntaxKind::Eq);
+            parse_type(parser, None, false);
         }
 
         if parser.bump_if(SyntaxKind::Eq) {
@@ -62,18 +60,14 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.add_recovery_token(SyntaxKind::InKw);
-        parse_pat(parser);
-        parser.remove_recovery_token(SyntaxKind::InKw);
+        parser.with_recovery_tokens(&[SyntaxKind::InKw], parse_pat);
 
         if !parser.bump_if(SyntaxKind::InKw) {
             parser.error_and_recover("expected `in` keyword", None);
             return;
         }
 
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        parse_expr_no_struct(parser);
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -88,9 +82,7 @@ impl super::Parse for WhileStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhileKw);
 
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        parse_expr_no_struct(parser);
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -142,17 +134,10 @@ impl super::Parse for ReturnStmtScope {
 define_scope! { AssignStmtScope, AssignStmt, Inheritance }
 impl super::Parse for AssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.add_recovery_token(SyntaxKind::Eq);
-        parse_pat(parser);
-        parser.remove_recovery_token(SyntaxKind::Eq);
+        parser.with_recovery_tokens(&[SyntaxKind::Eq], parse_pat);
 
         parser.set_newline_as_trivia(false);
-        if parser
-            .current_kind()
-            .map(is_aug_assign_kind)
-            .unwrap_or_default()
-        {
-            parser.bump();
+        if bump_aug_assign_op_opt(parser) {
             self.set_kind(SyntaxKind::AugAssignStmt);
         }
 
@@ -172,10 +157,29 @@ impl super::Parse for ExprStmtScope {
     }
 }
 
-fn is_aug_assign_kind(kind: SyntaxKind) -> bool {
+fn bump_aug_assign_op_opt<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
-    matches!(
-        kind,
-        Pipe | Hat | Amp | Lt2 | Gt2 | Plus | Minus | Star | Slash | Percent | Star2
-    )
+    match parser.current_kind() {
+        Some(Pipe | Hat | Amp | Plus | Minus | Star | Slash | Percent | Star2) => {
+            parser.bump();
+            true
+        }
+        Some(Lt) => {
+            if expr::is_lshift(parser) {
+                parser.parse(expr::LShiftScope::default(), None);
+                true
+            } else {
+                false
+            }
+        }
+        Some(Gt) => {
+            if expr::is_rshift(parser) {
+                parser.parse(expr::RShiftScope::default(), None);
+                true
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
 }

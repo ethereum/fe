@@ -1,0 +1,172 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..167
+  ItemList@0..167
+    ImplTrait@0..64
+      ImplKw@0..4 "impl"
+      WhiteSpace@4..5 " "
+      PathType@5..13
+        Path@5..10
+          PathSegment@5..10
+            Ident@5..10 "Trait"
+        GenericArgList@10..13
+          Lt@10..11 "<"
+          GenericArg@11..12
+            PathType@11..12
+              Path@11..12
+                PathSegment@11..12
+                  Ident@11..12 "T"
+          Gt@12..13 ">"
+      WhiteSpace@13..14 " "
+      ForKw@14..17 "for"
+      WhiteSpace@17..18 " "
+      PathType@18..22
+        Path@18..19
+          PathSegment@18..19
+            Ident@18..19 "F"
+        GenericArgList@19..22
+          Lt@19..20 "<"
+          GenericArg@20..21
+            PathType@20..21
+              Path@20..21
+                PathSegment@20..21
+                  Ident@20..21 "T"
+          Gt@21..22 ">"
+      WhiteSpace@22..23 " "
+      ImplTraitItemList@23..64
+        LBrace@23..24 "{"
+        Newline@24..25 "\n"
+        WhiteSpace@25..29 "    "
+        Fn@29..62
+          FnKw@29..31 "fn"
+          WhiteSpace@31..32 " "
+          Ident@32..35 "foo"
+          FnArgList@35..37
+            LParen@35..36 "("
+            RParen@36..37 ")"
+          WhiteSpace@37..38 " "
+          BlockExpr@38..62
+            LBrace@38..39 "{"
+            Newline@39..40 "\n"
+            WhiteSpace@40..48 "        "
+            ReturnStmt@48..56
+              ReturnKw@48..54 "return"
+              WhiteSpace@54..55 " "
+              LitExpr@55..56
+                Int@55..56 "1"
+            Newline@56..57 "\n"
+            WhiteSpace@57..61 "    "
+            RBrace@61..62 "}"
+        Newline@62..63 "\n"
+        RBrace@63..64 "}"
+    Newline@64..66 "\n\n"
+    ImplTrait@66..167
+      ImplKw@66..70 "impl"
+      WhiteSpace@70..71 " "
+      PathType@71..82
+        Path@71..76
+          PathSegment@71..76
+            Ident@71..76 "Trait"
+        GenericArgList@76..82
+          Lt@76..77 "<"
+          GenericArg@77..78
+            PathType@77..78
+              Path@77..78
+                PathSegment@77..78
+                  Ident@77..78 "T"
+          Comma@78..79 ","
+          WhiteSpace@79..80 " "
+          GenericArg@80..81
+            PathType@80..81
+              Path@80..81
+                PathSegment@80..81
+                  Ident@80..81 "U"
+          Gt@81..82 ">"
+      WhiteSpace@82..83 " "
+      ForKw@83..86 "for"
+      WhiteSpace@86..87 " "
+      PathType@87..91
+        Path@87..88
+          PathSegment@87..88
+            Ident@87..88 "F"
+        GenericArgList@88..91
+          Lt@88..89 "<"
+          GenericArg@89..90
+            PathType@89..90
+              Path@89..90
+                PathSegment@89..90
+                  Ident@89..90 "T"
+          Gt@90..91 ">"
+      WhiteSpace@91..92 " "
+      ImplTraitItemList@92..167
+        LBrace@92..93 "{"
+        Newline@93..94 "\n"
+        WhiteSpace@94..98 "    "
+        Fn@98..165
+          FnKw@98..100 "fn"
+          WhiteSpace@100..101 " "
+          Ident@101..104 "foo"
+          GenericParamList@104..122
+            Lt@104..105 "<"
+            GenericParam@105..121
+              Ident@105..106 "T"
+              TraitBoundList@106..121
+                Colon@106..107 ":"
+                WhiteSpace@107..108 " "
+                TraitBound@108..121
+                  Path@108..118
+                    PathSegment@108..118
+                      Ident@108..118 "OtherTrait"
+                  GenericArgList@118..121
+                    Lt@118..119 "<"
+                    GenericArg@119..120
+                      PathType@119..120
+                        Path@119..120
+                          PathSegment@119..120
+                            Ident@119..120 "U"
+                    Gt@120..121 ">"
+            Gt@121..122 ">"
+          FnArgList@122..128
+            LParen@122..123 "("
+            FnArg@123..127
+              Ident@123..124 "t"
+              Colon@124..125 ":"
+              WhiteSpace@125..126 " "
+              PathType@126..127
+                Path@126..127
+                  PathSegment@126..127
+                    Ident@126..127 "T"
+            RParen@127..128 ")"
+          WhiteSpace@128..129 " "
+          BlockExpr@129..165
+            LBrace@129..130 "{"
+            Newline@130..131 "\n"
+            WhiteSpace@131..139 "        "
+            ExprStmt@139..159
+              CallExpr@139..159
+                Path@139..151
+                  PathSegment@139..151
+                    Ident@139..151 "do_something"
+                GenericArgList@151..156
+                  Lt@151..152 "<"
+                  GenericArg@152..155
+                    PathType@152..155
+                      Path@152..155
+                        PathSegment@152..155
+                          Ident@152..155 "i32"
+                  Gt@155..156 ">"
+                CallArgList@156..159
+                  LParen@156..157 "("
+                  CallArg@157..158
+                    Path@157..158
+                      PathSegment@157..158
+                        Ident@157..158 "t"
+                  RParen@158..159 ")"
+            Newline@159..160 "\n"
+            WhiteSpace@160..164 "    "
+            RBrace@164..165 "}"
+        Newline@165..166 "\n"
+        RBrace@166..167 "}"
+

@@ -80,9 +80,9 @@ Root@0..312
         WhiteSpace@119..123 "    "
         GenericParam@123..136
           Ident@123..124 "T"
-          Colon@124..125 ":"
-          WhiteSpace@125..126 " "
-          TraitBoundList@126..136
+          TraitBoundList@124..136
+            Colon@124..125 ":"
+            WhiteSpace@125..126 " "
             TraitBound@126..136
               Path@126..136
                 PathSegment@126..129
@@ -159,9 +159,9 @@ Root@0..312
         WhiteSpace@223..227 "    "
         GenericParam@227..253
           Ident@227..228 "S"
-          Colon@228..229 ":"
-          WhiteSpace@229..230 " "
-          TraitBoundList@230..253
+          TraitBoundList@228..253
+            Colon@228..229 ":"
+            WhiteSpace@229..230 " "
             TraitBound@230..240
               Path@230..240
                 PathSegment@230..233
@@ -189,9 +189,9 @@ Root@0..312
         WhiteSpace@262..266 "    "
         GenericParam@266..279
           Ident@266..267 "U"
-          Colon@267..268 ":"
-          WhiteSpace@268..269 " "
-          TraitBoundList@269..279
+          TraitBoundList@267..279
+            Colon@267..268 ":"
+            WhiteSpace@268..269 " "
             TraitBound@269..279
               Path@269..279
                 PathSegment@269..272

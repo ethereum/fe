@@ -5,7 +5,6 @@ expression: snapshot
 Root@0..146
   ItemList@0..146
     Extern@0..11
-      ItemModifier@0..0
       ExternKw@0..6 "extern"
       WhiteSpace@6..7 " "
       ExternItemList@7..11
@@ -14,7 +13,6 @@ Root@0..146
         RBrace@10..11 "}"
     Newline@11..13 "\n\n"
     Extern@13..146
-      ItemModifier@13..13
       ExternKw@13..19 "extern"
       WhiteSpace@19..20 " "
       ExternItemList@20..146
@@ -104,7 +102,6 @@ Root@0..146
         Newline@131..132 "\n"
         WhiteSpace@132..136 "    "
         Fn@136..144
-          ItemModifier@136..136
           FnKw@136..138 "fn"
           WhiteSpace@138..139 " "
           Ident@139..142 "foo"

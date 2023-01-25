@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{cell::Cell, rc::Rc};
 
 use crate::{parser::func::FnScope, SyntaxKind};
 
@@ -46,9 +46,14 @@ impl super::Parse for ItemListScope {
 
             let mut checkpoint = attr::parse_attr_list(parser);
             let modifier_scope = ItemModifierScope::default();
-            let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
-            checkpoint.get_or_insert(modifier_checkpoint);
-            let modifier = modifier_scope.kind.get();
+            let modifier = match parser.current_kind() {
+                Some(kind) if is_modifier_head(kind) => {
+                    let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
+                    checkpoint.get_or_insert(modifier_checkpoint);
+                    modifier_scope.kind.get()
+                }
+                _ => ModifierKind::None,
+            };
 
             if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
                 parser.error("expected `fn` after `unsafe` keyword");
@@ -100,7 +105,7 @@ impl super::Parse for ItemListScope {
 }
 
 define_scope! {
-    ItemModifierScope {kind: Cell<ModifierKind>},
+    ItemModifierScope {kind: Rc<Cell<ModifierKind>>},
     ItemModifier,
     Inheritance
 }
@@ -164,17 +169,17 @@ impl super::Parse for EnumScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::EnumKw);
 
-        parser.add_recovery_token(SyntaxKind::Lt);
-        parser.add_recovery_token(SyntaxKind::LBrace);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the enum name", None)
-        }
-        parser.remove_recovery_token(SyntaxKind::Lt);
+        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::LBrace], |parser| {
+            if !parser.bump_if(SyntaxKind::Ident) {
+                parser.error_and_recover("expected ident for the enum name", None)
+            }
+        });
 
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericParamListScope::default(), None);
-        }
-        parser.remove_recovery_token(SyntaxKind::LBrace);
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        });
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected enum body", None);
@@ -285,8 +290,46 @@ impl super::Parse for TraitItemListScope {
 
 define_scope! { ImplScope, Impl, Inheritance }
 impl super::Parse for ImplScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::ImplKw);
+
+        parser.start_dry_run();
+        let is_trait_impl = parse_type(parser, None, true) && parser.bump_if(SyntaxKind::ForKw);
+        parser.end_dry_run();
+
+        if is_trait_impl {
+            self.set_kind(SyntaxKind::ImplTrait);
+            parse_type(parser, None, false);
+            parser.bump_expected(SyntaxKind::ForKw);
+            parse_type(parser, None, false);
+        } else {
+            parse_type(parser, None, true);
+        }
+
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
+            parser.error_and_recover("expected impl body", None);
+            return;
+        }
+
+        if is_trait_impl {
+            parser.parse(ImplTraitItemListScope::default(), None);
+        } else {
+            parser.parse(ImplItemListScope::default(), None);
+        }
+    }
+}
+
+define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
+impl super::Parse for ImplTraitItemListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parse_fn_item_block(parser, false, true)
+    }
+}
+
+define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
+impl super::Parse for ImplItemListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parse_fn_item_block(parser, true, true)
     }
 }
 
@@ -305,18 +348,18 @@ impl super::Parse for ConstScope {
 
         parser.set_newline_as_trivia(false);
 
-        parser.add_recovery_token(SyntaxKind::Colon);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected identifier", None);
-        }
-        parser.remove_recovery_token(SyntaxKind::Colon);
+        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+            if !parser.bump_if(SyntaxKind::Ident) {
+                parser.error_and_recover("expected identifier", None);
+            }
+        });
 
-        parser.add_recovery_token(SyntaxKind::Eq);
-        if !parser.bump_if(SyntaxKind::Colon) {
-            parser.error_and_recover("expected type annotation for `const`", None);
-        }
-        parse_type(parser, None);
-        parser.remove_recovery_token(SyntaxKind::Eq);
+        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+            if !parser.bump_if(SyntaxKind::Colon) {
+                parser.error_and_recover("expected type annotation for `const`", None);
+            }
+            parse_type(parser, None, false);
+        });
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` for const value definition", None);
@@ -340,44 +383,10 @@ impl super::Parse for ExternScope {
     }
 }
 
-define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, Newline, FnKw) }
+define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, FnKw) }
 impl super::Parse for ExternItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
-
-        loop {
-            parser.set_newline_as_trivia(true);
-            if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
-                break;
-            }
-
-            let mut checkpoint = attr::parse_attr_list(parser);
-            let modifier_scope = ItemModifierScope::default();
-            let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
-            checkpoint.get_or_insert(modifier_checkpoint);
-
-            match parser.current_kind() {
-                Some(SyntaxKind::FnKw) => {
-                    parser.parse(FnScope::disallow_def(), checkpoint);
-                }
-                _ => {
-                    parser.error_and_recover("extern item is restricted to `fn`", checkpoint);
-                }
-            }
-
-            parser.set_newline_as_trivia(false);
-            if !matches!(
-                parser.current_kind(),
-                Some(SyntaxKind::RBrace | SyntaxKind::Newline)
-            ) {
-                parser
-                    .error_and_recover("expected newline after extern item definition", checkpoint)
-            }
-        }
-
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover("expected `}` to close the extern body", None)
-        }
+        parse_fn_item_block(parser, true, false);
     }
 }
 
@@ -387,23 +396,87 @@ impl super::Parse for TypeAliasScope {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::TypeKw);
 
-        parser.add_recovery_token(SyntaxKind::Lt);
-        parser.add_recovery_token(SyntaxKind::Eq);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected identifier for type alias name", None)
-        }
-        parser.remove_recovery_token(SyntaxKind::Lt);
+        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::Eq], |parser| {
+            if !parser.bump_if(SyntaxKind::Ident) {
+                parser.error_and_recover("expected identifier for type alias name", None)
+            }
+        });
 
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericParamListScope::default(), None);
-        }
-        parser.remove_recovery_token(SyntaxKind::Eq);
+        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        });
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` for type alias definition", None);
             return;
         }
 
-        parse_type(parser, None);
+        parse_type(parser, None, false);
     }
+}
+
+/// Currently, `impl` block, `impl trait` block, `trait` block and `extern`
+/// block only allow `fn` as their items. This function is used to parse the
+/// `fn` item in these blocks. NOTE: This function will be invalidated when
+/// these block have their own allowed items, eg. `trait` block will allow
+/// `type` item.
+fn parse_fn_item_block<S: TokenStream>(
+    parser: &mut Parser<S>,
+    allow_modifier: bool,
+    allow_fn_def: bool,
+) {
+    parser.bump_expected(SyntaxKind::LBrace);
+    loop {
+        parser.set_newline_as_trivia(true);
+        if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
+            break;
+        }
+
+        let mut checkpoint = attr::parse_attr_list(parser);
+        let modifier_scope = ItemModifierScope::default();
+        match parser.current_kind() {
+            Some(kind) if is_modifier_head(kind) && allow_modifier => {
+                if allow_modifier {
+                    let (_, modifier_checkpoint) = parser.parse(modifier_scope, None);
+                    checkpoint.get_or_insert(modifier_checkpoint);
+                } else {
+                    parser.error_and_recover("modifier is not allowed in the block", checkpoint);
+                }
+            }
+            _ => {}
+        }
+
+        match parser.current_kind() {
+            Some(SyntaxKind::FnKw) => {
+                let scope = if allow_fn_def {
+                    FnScope::default()
+                } else {
+                    FnScope::disallow_def()
+                };
+                parser.parse(scope, checkpoint);
+            }
+            _ => {
+                parser.error_and_recover("only `fn` is allowed in the block", checkpoint);
+            }
+        }
+
+        parser.set_newline_as_trivia(false);
+        if !matches!(
+            parser.current_kind(),
+            Some(SyntaxKind::RBrace | SyntaxKind::Newline)
+        ) {
+            parser.error_and_recover("expected newline after item definition", checkpoint)
+        }
+    }
+
+    if !parser.bump_if(SyntaxKind::RBrace) {
+        parser.error_and_recover("expected `}` to close the block", None);
+        parser.bump_if(SyntaxKind::RBrace);
+    }
+}
+
+fn is_modifier_head(kind: SyntaxKind) -> bool {
+    matches!(kind, SyntaxKind::PubKw | SyntaxKind::UnsafeKw)
 }

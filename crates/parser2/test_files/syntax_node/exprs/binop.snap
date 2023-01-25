@@ -2,7 +2,7 @@
 source: crates/parser2/tests/syntax_node.rs
 expression: snapshot
 ---
-Root@0..140
+Root@0..153
   BinExpr@0..9
     LitExpr@0..1
       Int@0..1 "1"
@@ -60,127 +60,152 @@ Root@0..140
           Int@35..36 "3"
       RParen@36..37 ")"
   Newline@37..38 "\n"
-  BinExpr@38..60
-    LitExpr@38..42
-      TrueKw@38..42 "true"
+  BinExpr@38..44
+    LitExpr@38..39
+      Int@38..39 "1"
+    WhiteSpace@39..40 " "
+    LtEq@40..42
+      Lt@40..41 "<"
+      Eq@41..42 "="
     WhiteSpace@42..43 " "
-    Pipe2@43..45 "||"
-    WhiteSpace@45..46 " "
-    BinExpr@46..60
-      LitExpr@46..51
-        FalseKw@46..51 "false"
-      WhiteSpace@51..52 " "
-      Amp2@52..54 "&&"
-      WhiteSpace@54..55 " "
-      BinExpr@55..60
-        LitExpr@55..56
-          Int@55..56 "1"
-        WhiteSpace@56..57 " "
-        Lt@57..58 "<"
-        WhiteSpace@58..59 " "
-        LitExpr@59..60
-          Int@59..60 "2"
-  Newline@60..61 "\n"
-  BinExpr@61..93
-    LitExpr@61..65
-      TrueKw@61..65 "true"
-    WhiteSpace@65..66 " "
-    Pipe2@66..68 "||"
-    WhiteSpace@68..69 " "
-    BinExpr@69..93
-      LitExpr@69..74
-        FalseKw@69..74 "false"
-      WhiteSpace@74..75 " "
-      Amp2@75..77 "&&"
-      WhiteSpace@77..78 " "
-      BinExpr@78..93
-        ParenExpr@78..85
-          LParen@78..79 "("
-          BinExpr@79..84
-            LitExpr@79..80
-              Int@79..80 "1"
-            WhiteSpace@80..81 " "
-            Lt@81..82 "<"
-            WhiteSpace@82..83 " "
-            LitExpr@83..84
-              Int@83..84 "2"
-          RParen@84..85 ")"
-        WhiteSpace@85..86 " "
-        Gt@86..87 ">"
-        WhiteSpace@87..88 " "
-        BinExpr@88..93
-          LitExpr@88..89
-            Int@88..89 "3"
-          WhiteSpace@89..90 " "
-          Hat@90..91 "^"
-          WhiteSpace@91..92 " "
-          LitExpr@92..93
-            Int@92..93 "2"
-  Newline@93..94 "\n"
-  BinExpr@94..105
-    Path@94..95
-      PathSegment@94..95
-        Ident@94..95 "a"
-    WhiteSpace@95..96 " "
-    Star2@96..98 "**"
-    WhiteSpace@98..99 " "
-    BinExpr@99..105
-      LitExpr@99..100
-        Int@99..100 "2"
-      WhiteSpace@100..101 " "
-      Star2@101..103 "**"
-      WhiteSpace@103..104 " "
-      LitExpr@104..105
-        Int@104..105 "3"
-  Newline@105..106 "\n"
-  BinExpr@106..115
-    BinExpr@106..111
-      LitExpr@106..107
-        Int@106..107 "1"
-      WhiteSpace@107..108 " "
-      Minus@108..109 "-"
-      WhiteSpace@109..110 " "
-      LitExpr@110..111
-        Int@110..111 "2"
-    WhiteSpace@111..112 " "
-    Minus@112..113 "-"
-    WhiteSpace@113..114 " "
-    LitExpr@114..115
-      Int@114..115 "3"
-  Newline@115..116 "\n"
-  BinExpr@116..127
-    BinExpr@116..122
-      LitExpr@116..117
-        Int@116..117 "1"
+    LitExpr@43..44
+      Int@43..44 "2"
+  Newline@44..45 "\n"
+  BinExpr@45..51
+    LitExpr@45..46
+      Int@45..46 "1"
+    WhiteSpace@46..47 " "
+    GtEq@47..49
+      Gt@47..48 ">"
+      Eq@48..49 "="
+    WhiteSpace@49..50 " "
+    LitExpr@50..51
+      Int@50..51 "2"
+  Newline@51..52 "\n"
+  BinExpr@52..74
+    LitExpr@52..56
+      TrueKw@52..56 "true"
+    WhiteSpace@56..57 " "
+    Pipe2@57..59 "||"
+    WhiteSpace@59..60 " "
+    BinExpr@60..74
+      LitExpr@60..65
+        FalseKw@60..65 "false"
+      WhiteSpace@65..66 " "
+      Amp2@66..68 "&&"
+      WhiteSpace@68..69 " "
+      BinExpr@69..74
+        LitExpr@69..70
+          Int@69..70 "1"
+        WhiteSpace@70..71 " "
+        Lt@71..72 "<"
+        WhiteSpace@72..73 " "
+        LitExpr@73..74
+          Int@73..74 "2"
+  Newline@74..75 "\n"
+  BinExpr@75..107
+    LitExpr@75..79
+      TrueKw@75..79 "true"
+    WhiteSpace@79..80 " "
+    Pipe2@80..82 "||"
+    WhiteSpace@82..83 " "
+    BinExpr@83..107
+      LitExpr@83..88
+        FalseKw@83..88 "false"
+      WhiteSpace@88..89 " "
+      Amp2@89..91 "&&"
+      WhiteSpace@91..92 " "
+      BinExpr@92..107
+        ParenExpr@92..99
+          LParen@92..93 "("
+          BinExpr@93..98
+            LitExpr@93..94
+              Int@93..94 "1"
+            WhiteSpace@94..95 " "
+            Lt@95..96 "<"
+            WhiteSpace@96..97 " "
+            LitExpr@97..98
+              Int@97..98 "2"
+          RParen@98..99 ")"
+        WhiteSpace@99..100 " "
+        Gt@100..101 ">"
+        WhiteSpace@101..102 " "
+        BinExpr@102..107
+          LitExpr@102..103
+            Int@102..103 "3"
+          WhiteSpace@103..104 " "
+          Hat@104..105 "^"
+          WhiteSpace@105..106 " "
+          LitExpr@106..107
+            Int@106..107 "2"
+  Newline@107..108 "\n"
+  BinExpr@108..119
+    Path@108..109
+      PathSegment@108..109
+        Ident@108..109 "a"
+    WhiteSpace@109..110 " "
+    Star2@110..112 "**"
+    WhiteSpace@112..113 " "
+    BinExpr@113..119
+      LitExpr@113..114
+        Int@113..114 "2"
+      WhiteSpace@114..115 " "
+      Star2@115..117 "**"
       WhiteSpace@117..118 " "
-      Lt2@118..120 "<<"
-      WhiteSpace@120..121 " "
-      LitExpr@121..122
-        Int@121..122 "3"
-    WhiteSpace@122..123 " "
-    Gt2@123..125 ">>"
+      LitExpr@118..119
+        Int@118..119 "3"
+  Newline@119..120 "\n"
+  BinExpr@120..129
+    BinExpr@120..125
+      LitExpr@120..121
+        Int@120..121 "1"
+      WhiteSpace@121..122 " "
+      Minus@122..123 "-"
+      WhiteSpace@123..124 " "
+      LitExpr@124..125
+        Int@124..125 "2"
     WhiteSpace@125..126 " "
-    LitExpr@126..127
-      Int@126..127 "2"
-  Newline@127..128 "\n"
-  FieldExpr@128..133
-    FieldExpr@128..131
-      Path@128..129
-        PathSegment@128..129
-          Ident@128..129 "a"
-      Dot@129..130 "."
-      Ident@130..131 "b"
-    Dot@131..132 "."
-    Ident@132..133 "c"
-  Newline@133..134 "\n"
-  FieldExpr@134..139
-    FieldExpr@134..137
-      Path@134..135
-        PathSegment@134..135
-          Ident@134..135 "a"
-      Dot@135..136 "."
-      Int@136..137 "0"
-    Dot@137..138 "."
-    Ident@138..139 "c"
-  Newline@139..140 "\n"
+    Minus@126..127 "-"
+    WhiteSpace@127..128 " "
+    LitExpr@128..129
+      Int@128..129 "3"
+  Newline@129..130 "\n"
+  BinExpr@130..141
+    BinExpr@130..136
+      LitExpr@130..131
+        Int@130..131 "1"
+      WhiteSpace@131..132 " "
+      LShift@132..134
+        Lt@132..133 "<"
+        Lt@133..134 "<"
+      WhiteSpace@134..135 " "
+      LitExpr@135..136
+        Int@135..136 "3"
+    WhiteSpace@136..137 " "
+    RShift@137..139
+      Gt@137..138 ">"
+      Gt@138..139 ">"
+    WhiteSpace@139..140 " "
+    LitExpr@140..141
+      Int@140..141 "2"
+  Newline@141..142 "\n"
+  FieldExpr@142..147
+    FieldExpr@142..145
+      Path@142..143
+        PathSegment@142..143
+          Ident@142..143 "a"
+      Dot@143..144 "."
+      Ident@144..145 "b"
+    Dot@145..146 "."
+    Ident@146..147 "c"
+  Newline@147..148 "\n"
+  FieldExpr@148..153
+    FieldExpr@148..151
+      Path@148..149
+        PathSegment@148..149
+          Ident@148..149 "a"
+      Dot@149..150 "."
+      Int@150..151 "0"
+    Dot@151..152 "."
+    Ident@152..153 "c"
 

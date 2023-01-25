@@ -124,21 +124,23 @@ Root@0..169
     Path@88..91
       PathSegment@88..91
         Ident@88..91 "foo"
-    GenericParamList@91..109
+    GenericArgList@91..109
       Lt@91..92 "<"
-      GenericParam@92..95
-        Path@92..95
-          PathSegment@92..95
-            Ident@92..95 "i32"
+      GenericArg@92..95
+        PathType@92..95
+          Path@92..95
+            PathSegment@92..95
+              Ident@92..95 "i32"
       Comma@95..96 ","
       WhiteSpace@96..97 " "
-      GenericParam@97..108
-        Path@97..108
-          PathSegment@97..100
-            Ident@97..100 "foo"
-          Colon2@100..102 "::"
-          PathSegment@102..108
-            Ident@102..108 "MyType"
+      GenericArg@97..108
+        PathType@97..108
+          Path@97..108
+            PathSegment@97..100
+              Ident@97..100 "foo"
+            Colon2@100..102 "::"
+            PathSegment@102..108
+              Ident@102..108 "MyType"
       Gt@108..109 ">"
     CallArgList@109..134
       LParen@109..110 "("
@@ -162,9 +164,9 @@ Root@0..169
     Path@135..138
       PathSegment@135..138
         Ident@135..138 "foo"
-    GenericParamList@138..157
+    GenericArgList@138..157
       Lt@138..139 "<"
-      GenericParam@139..147
+      GenericArg@139..147
         ArrayType@139..147
           LBracket@139..140 "["
           PathType@140..143
@@ -178,7 +180,7 @@ Root@0..169
           RBracket@146..147 "]"
       Comma@147..148 ","
       WhiteSpace@148..149 " "
-      GenericParam@149..156
+      GenericArg@149..156
         BlockExpr@149..156
           LBrace@149..150 "{"
           ExprStmt@150..155

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 pub(crate) use item::ItemListScope;
 
-use fxhash::FxHashSet;
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{syntax_node::SyntaxNode, ParseError, SyntaxKind, TextRange};
 
@@ -48,7 +48,7 @@ pub struct Parser<S: TokenStream> {
     /// enters dry run mode.
     dry_run_states: Vec<DryRunState<S>>,
 
-    auxiliary_recovery_set: FxHashSet<SyntaxKind>,
+    auxiliary_recovery_set: FxHashMap<SyntaxKind, usize>,
 }
 
 impl<S: TokenStream> Parser<S> {
@@ -63,18 +63,13 @@ impl<S: TokenStream> Parser<S> {
             is_newline_trivia: true,
             next_trivias: VecDeque::new(),
             dry_run_states: Vec::new(),
-            auxiliary_recovery_set: FxHashSet::default(),
+            auxiliary_recovery_set: FxHashMap::default(),
         }
     }
 
     /// Returns the current token of the parser.
     pub fn current_token(&mut self) -> Option<S::Token> {
         self.peek_non_trivia()
-        // if !self.next_trivias.is_empty() {
-        //     Some(&self.next_trivias[0])
-        // } else {
-        //     self.stream.peek()
-        // }
     }
 
     /// Returns the current non-trivia token kind of the parser.
@@ -96,6 +91,23 @@ impl<S: TokenStream> Parser<S> {
         debug_assert!(!self.is_dry_run());
 
         (SyntaxNode::new_root(self.builder.finish()), self.errors)
+    }
+
+    pub fn with_recovery_tokens<F, R>(&mut self, recovery_tokens: &[SyntaxKind], f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        for token in recovery_tokens {
+            self.add_recovery_token(*token);
+        }
+
+        let r = f(self);
+
+        for token in recovery_tokens {
+            self.remove_recovery_token(*token);
+        }
+
+        r
     }
 
     /// Invoke the scope to parse. The scope is wrapped up by the node specified
@@ -142,14 +154,6 @@ impl<S: TokenStream> Parser<S> {
         checkpoint.unwrap_or_else(|| self.checkpoint())
     }
 
-    pub fn add_recovery_token(&mut self, token: SyntaxKind) {
-        self.auxiliary_recovery_set.insert(token);
-    }
-
-    pub fn remove_recovery_token(&mut self, token: SyntaxKind) {
-        self.auxiliary_recovery_set.remove(&token);
-    }
-
     #[doc(hidden)]
     /// Leave the scope and wrap up the checkpoint by the scope's node.
     // NOTE: This method is limited to testing and internal usage.
@@ -163,7 +167,6 @@ impl<S: TokenStream> Parser<S> {
             self.bump_trivias()
         }
 
-        self.auxiliary_recovery_set.clear();
         if !self.is_dry_run() {
             self.builder
                 .start_node_at(checkpoint, scope.syntax_kind().into());
@@ -289,7 +292,7 @@ impl<S: TokenStream> Parser<S> {
         }
 
         while let Some(kind) = self.current_kind() {
-            if recovery_set.contains(&kind) | self.auxiliary_recovery_set.contains(&kind) {
+            if recovery_set.contains(&kind) || self.auxiliary_recovery_set.contains_key(&kind) {
                 break;
             } else {
                 self.bump();
@@ -381,6 +384,19 @@ impl<S: TokenStream> Parser<S> {
     fn is_trivia(&self, kind: SyntaxKind) -> bool {
         kind.is_trivia() || (self.is_newline_trivia && kind == SyntaxKind::Newline)
     }
+
+    fn add_recovery_token(&mut self, token: SyntaxKind) {
+        *self.auxiliary_recovery_set.entry(token).or_insert(0) += 1;
+    }
+
+    fn remove_recovery_token(&mut self, token: SyntaxKind) {
+        if let Some(num) = self.auxiliary_recovery_set.get_mut(&token) {
+            *num -= 1;
+        }
+        if self.auxiliary_recovery_set.get(&token) == Some(&0) {
+            self.auxiliary_recovery_set.remove(&token);
+        }
+    }
 }
 
 pub trait ParsingScope {
@@ -401,7 +417,7 @@ struct DryRunState<S: TokenStream> {
     err_num: usize,
     /// The stored trivias when the dry run started.
     next_trivias: VecDeque<S::Token>,
-    auxiliary_recovery_set: FxHashSet<SyntaxKind>,
+    auxiliary_recovery_set: FxHashMap<SyntaxKind, usize>,
 }
 
 /// Represents the recovery method of the current scope.
@@ -518,6 +534,14 @@ macro_rules! define_scope_struct {
             $($field: $ty),*
         }
         impl $scope_name {
+            #[allow(unused)]
+            $visibility fn new($($field: $ty),*) -> Self {
+                use crate::SyntaxKind::*;
+                Self {
+                    $($field,)*
+                    __inner: std::cell::Cell::new($kind).into(),
+                }
+            }
             #[allow(unused)]
             fn set_kind(&mut self, kind: crate::SyntaxKind) {
                 self.__inner.set(kind);
