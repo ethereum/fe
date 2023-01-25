@@ -243,6 +243,12 @@ impl super::Parse for TraitScope {
             parser.error_and_recover("expected ident for the trait name", None)
         }
 
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        });
+
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected trait body", None);
             return;
