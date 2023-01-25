@@ -7,3 +7,18 @@ pub trait Foo {
         lhs + lhs - (rhs + rhs)
     }
 }
+
+pub trait Add<RHS> {
+    fn add(self, rhs: Rhs) -> Self
+}
+
+
+pub trait Parse {
+    fn parse<S: TokenStream>(mut self, mut parser: Parser<S>)
+}
+
+impl Parser<S: TokenStream> {
+    pub fn parse<T: Parse>(mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> (bool, Checkpoint) {
+        (SyntaxNode::new_root(self.builder.finish()), self.errors)
+    }
+}
