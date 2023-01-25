@@ -3,9 +3,14 @@ use std::cell::Cell;
 use crate::{parser::func::FnScope, SyntaxKind};
 
 use super::{
-    attr, define_scope, expr::parse_expr, param::GenericParamListScope,
-    struct_::RecordFieldDefListScope, token_stream::TokenStream, type_::parse_type,
-    use_tree::UseTreeScope, Parser,
+    attr, define_scope,
+    expr::parse_expr,
+    param::GenericParamListScope,
+    struct_::RecordFieldDefListScope,
+    token_stream::TokenStream,
+    type_::{parse_type, TupleTypeScope},
+    use_tree::UseTreeScope,
+    Parser,
 };
 
 define_scope! {
@@ -156,8 +161,71 @@ impl super::Parse for ContractScope {
 
 define_scope! { EnumScope, Enum, Inheritance }
 impl super::Parse for EnumScope {
-    fn parse<S: TokenStream>(&mut self, _parser: &mut Parser<S>) {
-        todo!()
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::EnumKw);
+
+        parser.add_recovery_token(SyntaxKind::Lt);
+        parser.add_recovery_token(SyntaxKind::LBrace);
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected ident for the enum name", None)
+        }
+        parser.remove_recovery_token(SyntaxKind::Lt);
+
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            parser.parse(GenericParamListScope::default(), None);
+        }
+        parser.remove_recovery_token(SyntaxKind::LBrace);
+
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
+            parser.error_and_recover("expected enum body", None);
+            return;
+        }
+
+        parser.parse(VariantDefListScope::default(), None);
+    }
+}
+
+define_scope! { VariantDefListScope, VariantDefList, Override(RBrace, Newline) }
+impl super::Parse for VariantDefListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::LBrace);
+
+        loop {
+            parser.set_newline_as_trivia(true);
+            if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
+            {
+                break;
+            }
+            parser.parse(VariantDefScope::default(), None);
+            parser.set_newline_as_trivia(false);
+            if !parser.bump_if(SyntaxKind::Newline)
+                && parser.current_kind() != Some(SyntaxKind::RBrace)
+            {
+                parser.error_and_recover("expected newline after variant definition", None);
+            }
+        }
+
+        if !parser.bump_if(SyntaxKind::RBrace) {
+            parser.error_and_recover(
+                "expected the closing brace of the enum variants definition",
+                None,
+            );
+            parser.bump_if(SyntaxKind::RBrace);
+        }
+    }
+}
+
+define_scope! { VariantDefScope, VariantDef, Override(RBrace, Newline) }
+impl super::Parse for VariantDefScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if !parser.bump_if(SyntaxKind::Ident) {
+            parser.error_and_recover("expected ident for the variant name", None);
+            return;
+        }
+
+        if parser.current_kind() == Some(SyntaxKind::LParen) {
+            parser.parse(TupleTypeScope::default(), None);
+        }
     }
 }
 

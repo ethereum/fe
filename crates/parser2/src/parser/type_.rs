@@ -49,7 +49,7 @@ impl super::Parse for SelfTypeScope {
     }
 }
 define_scope! {
-    TupleTypeScope,
+    pub(crate) TupleTypeScope,
     TupleType,
     Override(
         RParen,

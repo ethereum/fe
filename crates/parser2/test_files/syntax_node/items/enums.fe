@@ -1,0 +1,16 @@
+enum Empty {}
+
+enum Basic {
+    Unit
+    Tup(i32, u32)
+}
+
+enum Option<T> {
+    Some(T)
+    None
+}
+
+enum BoundEnum<T: Add + Mul , U: Sub + Div> {
+    AddMul(T)
+    SubDiv(U)
+}

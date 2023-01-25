@@ -66,6 +66,7 @@ impl super::Parse for RecordFieldDefListScope {
                 "expected the closing brace of the struct field definition",
                 None,
             );
+            parser.bump_if(SyntaxKind::RBrace);
         }
     }
 }
