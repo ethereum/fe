@@ -8,27 +8,28 @@ use super::{
 pub(super) fn parse_type<S: TokenStream>(
     parser: &mut Parser<S>,
     checkpoint: Option<Checkpoint>,
+    allow_bounds: bool,
 ) -> bool {
     match parser.current_kind() {
-        Some(SyntaxKind::Star) => parser.parse(PtrTypeScope::default(), checkpoint),
-        Some(SyntaxKind::SelfTypeKw) => parser.parse(SelfTypeScope::default(), checkpoint),
-        Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::default(), checkpoint),
-        Some(SyntaxKind::LBracket) => parser.parse(ArrayTypeScope::default(), checkpoint),
-        _ => parser.parse(PathTypeScope::default(), checkpoint),
+        Some(SyntaxKind::Star) => parser.parse(PtrTypeScope::new(allow_bounds), checkpoint),
+        Some(SyntaxKind::SelfTypeKw) => parser.parse(SelfTypeScope::new(), checkpoint),
+        Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::new(allow_bounds), checkpoint),
+        Some(SyntaxKind::LBracket) => parser.parse(ArrayTypeScope::new(allow_bounds), checkpoint),
+        _ => parser.parse(PathTypeScope::new(allow_bounds), checkpoint),
     }
     .0
 }
 
-define_scope!(PtrTypeScope, PtrType, Inheritance);
+define_scope!(PtrTypeScope { allow_bounds: bool }, PtrType, Inheritance);
 impl super::Parse for PtrTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::Star);
         parser.set_newline_as_trivia(false);
-        parse_type(parser, None);
+        parse_type(parser, None, self.allow_bounds);
     }
 }
 
-define_scope!(PathTypeScope, PathType, Inheritance);
+define_scope!(PathTypeScope { allow_bounds: bool }, PathType, Inheritance);
 impl super::Parse for PathTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         if !parser.parse(PathScope::default(), None).0 {
@@ -37,7 +38,7 @@ impl super::Parse for PathTypeScope {
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
+            parser.parse(GenericArgListScope::new(self.allow_bounds), None);
         }
     }
 }
@@ -49,7 +50,7 @@ impl super::Parse for SelfTypeScope {
     }
 }
 define_scope! {
-    pub(crate) TupleTypeScope,
+    pub(crate) TupleTypeScope{ allow_bounds: bool },
     TupleType,
     Override(
         RParen,
@@ -63,9 +64,9 @@ impl super::Parse for TupleTypeScope {
             return;
         }
 
-        parse_type(parser, None);
+        parse_type(parser, None, self.allow_bounds);
         while parser.bump_if(SyntaxKind::Comma) {
-            parse_type(parser, None);
+            parse_type(parser, None, self.allow_bounds);
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {
@@ -76,7 +77,7 @@ impl super::Parse for TupleTypeScope {
 }
 
 define_scope! {
-    ArrayTypeScope,
+    ArrayTypeScope{ allow_bounds: bool },
     ArrayType,
     Override(RBracket)
 }
@@ -84,9 +85,9 @@ impl super::Parse for ArrayTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBracket);
 
-        parser.add_recovery_token(SyntaxKind::SemiColon);
-        parse_type(parser, None);
-        parser.remove_recovery_token(SyntaxKind::SemiColon);
+        parser.with_recovery_tokens(&[SyntaxKind::SemiColon], |parser| {
+            parse_type(parser, None, self.allow_bounds)
+        });
 
         if !parser.bump_if(SyntaxKind::SemiColon) {
             parser.error_and_recover("expected `;`", None);

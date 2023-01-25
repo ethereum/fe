@@ -110,7 +110,6 @@ impl super::Parse for RecordPatFieldListScope {
         while parser.bump_if(SyntaxKind::Comma) {
             parser.parse(RecordPatFieldScope::default(), None);
         }
-        parser.remove_recovery_token(SyntaxKind::Comma);
 
         if !parser.bump_if(SyntaxKind::RBrace) {
             parser.error_and_recover("expected `}`", None);

@@ -35,7 +35,6 @@ Root@0..292
         RBrace@29..30 "}"
     Newline@30..32 "\n\n"
     Fn@32..80
-      ItemModifier@32..32
       FnKw@32..34 "fn"
       WhiteSpace@34..35 " "
       Ident@35..38 "bar"
@@ -81,7 +80,6 @@ Root@0..292
         RBrace@79..80 "}"
     Newline@80..82 "\n\n"
     Fn@82..178
-      ItemModifier@82..82
       FnKw@82..84 "fn"
       WhiteSpace@84..85 " "
       Ident@85..88 "baz"
@@ -155,7 +153,6 @@ Root@0..292
         RBrace@177..178 "}"
     Newline@178..180 "\n\n"
     Fn@180..240
-      ItemModifier@180..180
       FnKw@180..182 "fn"
       WhiteSpace@182..183 " "
       Ident@183..192 "generics1"
@@ -163,9 +160,9 @@ Root@0..292
         Lt@192..193 "<"
         GenericParam@193..201
           Ident@193..194 "T"
-          Colon@194..195 ":"
-          WhiteSpace@195..196 " "
-          TraitBoundList@196..201
+          TraitBoundList@194..201
+            Colon@194..195 ":"
+            WhiteSpace@195..196 " "
             TraitBound@196..201
               Path@196..201
                 PathSegment@196..201
@@ -195,12 +192,13 @@ Root@0..292
             Path@215..221
               PathSegment@215..221
                 Ident@215..221 "Option"
-            GenericParamList@221..224
+            GenericArgList@221..224
               Lt@221..222 "<"
-              GenericParam@222..223
-                Path@222..223
-                  PathSegment@222..223
-                    Ident@222..223 "U"
+              GenericArg@222..223
+                PathType@222..223
+                  Path@222..223
+                    PathSegment@222..223
+                      Ident@222..223 "U"
               Gt@223..224 ">"
         RParen@224..225 ")"
       WhiteSpace@225..226 " "
@@ -223,7 +221,6 @@ Root@0..292
         RBrace@239..240 "}"
     Newline@240..242 "\n\n"
     Fn@242..292
-      ItemModifier@242..242
       FnKw@242..244 "fn"
       WhiteSpace@244..245 " "
       Ident@245..249 "decl"
@@ -246,18 +243,20 @@ Root@0..292
             Path@259..267
               PathSegment@259..267
                 Ident@259..267 "MyStruct"
-            GenericParamList@267..273
+            GenericArgList@267..273
               Lt@267..268 "<"
-              GenericParam@268..269
-                Path@268..269
-                  PathSegment@268..269
-                    Ident@268..269 "T"
+              GenericArg@268..269
+                PathType@268..269
+                  Path@268..269
+                    PathSegment@268..269
+                      Ident@268..269 "T"
               Comma@269..270 ","
               WhiteSpace@270..271 " "
-              GenericParam@271..272
-                Path@271..272
-                  PathSegment@271..272
-                    Ident@271..272 "U"
+              GenericArg@271..272
+                PathType@271..272
+                  Path@271..272
+                    PathSegment@271..272
+                      Ident@271..272 "U"
               Gt@272..273 ">"
         RParen@273..274 ")"
       WhiteSpace@274..275 " "
@@ -267,17 +266,19 @@ Root@0..292
         Path@278..284
           PathSegment@278..284
             Ident@278..284 "Result"
-        GenericParamList@284..292
+        GenericArgList@284..292
           Lt@284..285 "<"
-          GenericParam@285..286
-            Path@285..286
-              PathSegment@285..286
-                Ident@285..286 "T"
+          GenericArg@285..286
+            PathType@285..286
+              Path@285..286
+                PathSegment@285..286
+                  Ident@285..286 "T"
           Comma@286..287 ","
           WhiteSpace@287..288 " "
-          GenericParam@288..291
-            Path@288..291
-              PathSegment@288..291
-                Ident@288..291 "Err"
+          GenericArg@288..291
+            PathType@288..291
+              Path@288..291
+                PathSegment@288..291
+                  Ident@288..291 "Err"
           Gt@291..292 ">"
 

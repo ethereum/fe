@@ -24,7 +24,6 @@ Root@0..160
         Int@21..22 "1"
     Newline@22..24 "\n\n"
     Const@24..159
-      ItemModifier@24..24
       ConstKw@24..29 "const"
       WhiteSpace@29..30 " "
       Ident@30..33 "BAR"

@@ -1,0 +1,13 @@
+impl Foo::Bar<T: Add> {
+    pub fn add(self, rhs: Self) -> Self {
+        Self {
+            val: self.val + rhs.val
+        }
+    }
+}
+
+impl Foo<T> {
+    fn add<U: Add<T>>(self, rhs: U) {
+        (rhs - self.t)
+    }
+}

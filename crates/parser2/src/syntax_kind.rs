@@ -118,21 +118,9 @@ pub enum SyntaxKind {
     /// `<`
     #[token("<")]
     Lt,
-    /// `<<`
-    #[token("<<")]
-    Lt2,
-    /// `<=`
-    #[token("<=")]
-    LtEq,
     /// `>`
     #[token(">")]
     Gt,
-    /// `>>`
-    #[token(">>")]
-    Gt2,
-    /// `>=`
-    #[token(">=")]
-    GtEq,
     /// `=`
     #[token("=")]
     Eq,
@@ -229,6 +217,15 @@ pub enum SyntaxKind {
     /// `unsafe`
     #[token("unsafe")]
     UnsafeKw,
+
+    /// `<<`
+    LShift,
+    /// `>>`
+    RShift,
+    /// `<=`
+    LtEq,
+    /// `>=`
+    GtEq,
 
     // Expressions. These are non-leaf nodes.
     /// { statement-list }
@@ -343,12 +340,16 @@ pub enum SyntaxKind {
     TypeAlias,
     /// `impl Foo { .. }`
     Impl,
+    /// `{ fn ... }`
+    ImplItemList,
     /// `trait Foo {..}`
     Trait,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
     ImplTrait,
+    /// `{ fn foo() {..} }`
+    ImplTraitItemList,
     /// `const FOO: i32 = 1`
     Const,
     /// `use foo::{Foo as Foo1, bar::Baz}`
