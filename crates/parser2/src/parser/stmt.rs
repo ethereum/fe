@@ -21,12 +21,11 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Che
         Some(AssertKw) => parser.parse(AssertStmtScope::default(), checkpoint),
         Some(ReturnKw) => parser.parse(ReturnStmtScope::default(), checkpoint),
         _ => {
-            parser.start_dry_run();
-            if parser.parse(AssignStmtScope::default(), checkpoint).0 {
-                parser.end_dry_run();
+            let is_assign_stmt =
+                parser.dry_run(|parser| parser.parse(AssignStmtScope::default(), None).0);
+            if is_assign_stmt {
                 parser.parse(AssignStmtScope::default(), checkpoint)
             } else {
-                parser.end_dry_run();
                 parser.parse(ExprStmtScope::default(), checkpoint)
             }
         }
@@ -121,12 +120,9 @@ impl super::Parse for ReturnStmtScope {
         parser.bump_expected(SyntaxKind::ReturnKw);
         parser.set_newline_as_trivia(false);
 
-        parser.start_dry_run();
-        if parse_expr(parser) {
-            parser.end_dry_run();
+        let has_val = parser.dry_run(parse_expr);
+        if has_val {
             parse_expr(parser);
-        } else {
-            parser.end_dry_run();
         }
     }
 }

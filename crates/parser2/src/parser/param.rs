@@ -229,9 +229,9 @@ impl super::Parse for CallArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
 
-        parser.start_dry_run();
-        let has_label = parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon);
-        parser.end_dry_run();
+        let has_label = parser.dry_run(|parser| {
+            parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+        });
 
         if has_label {
             parser.bump_expected(SyntaxKind::Ident);
