@@ -93,6 +93,11 @@ impl<S: TokenStream> Parser<S> {
         (SyntaxNode::new_root(self.builder.finish()), self.errors)
     }
 
+    /// Passes the `recovery_tokens` to the parser temporarily.
+    /// The passed recovery tokens are removed when the closure returns.
+    ///
+    /// This is useful when you want to specify auxiliary recovery tokens which
+    /// are valid only in a limited part of the scope.
     pub fn with_recovery_tokens<F, R>(&mut self, recovery_tokens: &[SyntaxKind], f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
@@ -212,14 +217,14 @@ impl<S: TokenStream> Parser<S> {
         self.leave(checkpoint);
     }
 
-    /// Starts the dry run mode.
-    /// When the parser is in the dry run mode, the parser does not build the
-    /// syntax tree.
+    /// Runs the parser in the dry run mode.
     ///
-    /// When the [`end_dry_run`] is called, all errors occurred in the dry
-    /// run mode are discarded, and all tokens which are consumed in the
-    /// dry run mode are backtracked.
-    pub fn start_dry_run(&mut self) {
+    /// Any changes to the parser state will be reverted.
+    pub fn dry_run<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        // Enters the dry run mode.
         self.stream.set_bt_point();
         self.dry_run_states.push(DryRunState {
             pos: self.current_pos,
@@ -227,17 +232,18 @@ impl<S: TokenStream> Parser<S> {
             next_trivias: self.next_trivias.clone(),
             auxiliary_recovery_set: self.auxiliary_recovery_set.clone(),
         });
-    }
 
-    /// Ends the dry run mode.
-    /// See `[start_dry_run]` for more details.
-    pub fn end_dry_run(&mut self) {
+        let r = f(self);
+
+        // Leaves the dry run mode.
         self.stream.backtrack();
         let state = self.dry_run_states.pop().unwrap();
         self.errors.truncate(state.err_num);
         self.current_pos = state.pos;
         self.next_trivias = state.next_trivias;
         self.auxiliary_recovery_set = state.auxiliary_recovery_set;
+
+        r
     }
 
     /// Bumps the current token and its leading trivias.

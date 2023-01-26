@@ -76,10 +76,10 @@ impl super::Parse for UsePathScope {
         parser.parse(UsePathSegmentScope::default(), None);
 
         loop {
-            parser.start_dry_run();
-            let is_path_segment = parser.bump_if(SyntaxKind::Colon2)
-                && parser.parse(UsePathSegmentScope::default(), None).0;
-            parser.end_dry_run();
+            let is_path_segment = parser.dry_run(|parser| {
+                parser.bump_if(SyntaxKind::Colon2)
+                    && parser.parse(UsePathSegmentScope::default(), None).0
+            });
             if is_path_segment {
                 parser.bump_expected(SyntaxKind::Colon2);
                 parser.parse(UsePathSegmentScope::default(), None);

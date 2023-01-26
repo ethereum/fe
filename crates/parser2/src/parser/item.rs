@@ -299,9 +299,8 @@ impl super::Parse for ImplScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ImplKw);
 
-        parser.start_dry_run();
-        let is_trait_impl = parse_type(parser, None, true) && parser.bump_if(SyntaxKind::ForKw);
-        parser.end_dry_run();
+        let is_trait_impl = parser
+            .dry_run(|parser| parse_type(parser, None, true) && parser.bump_if(SyntaxKind::ForKw));
 
         if is_trait_impl {
             self.set_kind(SyntaxKind::ImplTrait);
