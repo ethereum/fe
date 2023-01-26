@@ -3,7 +3,7 @@ use crate::SyntaxKind;
 use super::{
     define_scope,
     expr_atom::BlockExprScope,
-    param::{FnArgListScope, GenericParamListScope},
+    param::{parse_where_clause_opt, FnArgListScope, GenericParamListScope},
     token_stream::TokenStream,
     type_::parse_type,
     Parser,
@@ -40,19 +40,27 @@ impl super::Parse for FnScope {
             }
         });
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::Arrow], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FnArgListScope::default(), None);
-            } else {
-                parser.error_and_recover("expected `(` for the function arguments", None);
-            }
-        });
+        parser.with_recovery_tokens(
+            &[
+                SyntaxKind::LBrace,
+                SyntaxKind::Arrow,
+                SyntaxKind::WhereClause,
+            ],
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::LParen) {
+                    parser.parse(FnArgListScope::default(), None);
+                } else {
+                    parser.error_and_recover("expected `(` for the function arguments", None);
+                }
+            },
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if parser.bump_if(SyntaxKind::Arrow) {
                 parse_type(parser, None, false);
             }
         });
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             if self.disallow_def {

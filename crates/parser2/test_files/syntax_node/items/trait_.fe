@@ -8,8 +8,10 @@ pub trait Foo {
     }
 }
 
-pub trait Add<RHS> {
-    fn add(self, rhs: Rhs) -> Self
+pub trait Add<RHS: Add> 
+{
+    fn add(self, rhs: Rhs) -> Self 
+        where RHS: Sub
 }
 
 
@@ -17,7 +19,9 @@ pub trait Parse {
     fn parse<S: TokenStream>(mut self, mut parser: Parser<S>)
 }
 
-impl Parser<S: TokenStream> {
+impl Parser<S: TokenStream> 
+    where S: Clone
+{
     pub fn parse<T: Parse>(mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> (bool, Checkpoint) {
         (SyntaxNode::new_root(self.builder.finish()), self.errors)
     }

@@ -1,8 +1,12 @@
 use crate::SyntaxKind;
 
 use super::{
-    attr::parse_attr_list, define_scope, param::GenericParamListScope, token_stream::TokenStream,
-    type_::parse_type, Parser,
+    attr::parse_attr_list,
+    define_scope,
+    param::{parse_where_clause_opt, GenericParamListScope},
+    token_stream::TokenStream,
+    type_::parse_type,
+    Parser,
 };
 
 define_scope! {
@@ -14,17 +18,22 @@ impl super::Parse for StructScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::StructKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::LBrace], |parser| {
-            if !parser.bump_if(SyntaxKind::Ident) {
-                parser.error_and_recover("expected ident for the struct name", None)
-            }
-        });
+        parser.with_recovery_tokens(
+            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            |parser| {
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.error_and_recover("expected ident for the struct name", None)
+                }
+            },
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if parser.current_kind() == Some(SyntaxKind::Lt) {
                 parser.parse(GenericParamListScope::default(), None);
             }
         });
+
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             parser.parse(RecordFieldDefListScope::default(), None);

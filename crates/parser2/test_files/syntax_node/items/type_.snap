@@ -60,10 +60,10 @@ Root@0..98
         Lt@70..71 "<"
         GenericParam@71..84
           Ident@71..72 "T"
-          TraitBoundList@72..84
+          TypeBoundList@72..84
             Colon@72..73 ":"
             WhiteSpace@73..74 " "
-            TraitBound@74..84
+            TypeBound@74..84
               Path@74..84
                 PathSegment@74..84
                   Ident@74..84 "TraitBound"
