@@ -1,4 +1,5 @@
-pub struct StructWithGenericParam<S, T, U> {
+pub struct StructWithGenericParam<S, T, U> 
+{
     x: S
     y: T
     z: U
@@ -18,7 +19,11 @@ pub struct StructWithGenericParam3<
     S: foo::Trait + bar::Trait,
     T,
     U: bar::Trait
-> {
+> where
+    T: Trait1 + Trait2
+    Option<T>: Trait1 + Trait2
+    Result<U>: Trait2 + Trait3
+{
     x: S
     y: T
     z: U

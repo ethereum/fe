@@ -4,7 +4,7 @@ use super::{
     define_scope,
     expr::parse_expr,
     expr_atom::{BlockExprScope, LitExprScope},
-    path::PathScope,
+    path::{is_path_segment, PathScope},
     token_stream::TokenStream,
     type_::parse_type,
     Parser,
@@ -112,34 +112,34 @@ impl super::Parse for GenericParamScope {
         }
 
         if parser.current_kind() == Some(SyntaxKind::Colon) {
-            parser.parse(TraitBoundListScope::default(), None);
+            parser.parse(TypeBoundListScope::default(), None);
         }
     }
 }
 
 define_scope! {
-    TraitBoundListScope,
-    TraitBoundList,
+    TypeBoundListScope,
+    TypeBoundList,
     Inheritance(Plus)
 }
-impl super::Parse for TraitBoundListScope {
+impl super::Parse for TypeBoundListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::Colon);
 
-        parser.parse(TraitBoundScope::default(), None);
+        parser.parse(TypeBoundScope::default(), None);
         while parser.current_kind() == Some(SyntaxKind::Plus) {
             parser.bump_expected(SyntaxKind::Plus);
-            parser.parse(TraitBoundScope::default(), None);
+            parser.parse(TypeBoundScope::default(), None);
         }
     }
 }
 
 define_scope! {
-    TraitBoundScope,
-    TraitBound,
+    TypeBoundScope,
+    TypeBound,
     Inheritance
 }
-impl super::Parse for TraitBoundScope {
+impl super::Parse for TypeBoundScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(PathScope::default(), None);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
@@ -195,7 +195,7 @@ impl super::Parse for GenericArgScope {
                     if !self.allow_bounds {
                         parser.error_and_recover("type bounds are not allowed here", None);
                     } else {
-                        parser.parse(TraitBoundListScope::default(), None);
+                        parser.parse(TypeBoundListScope::default(), None);
                     }
                 }
             }
@@ -239,4 +239,38 @@ impl super::Parse for CallArgScope {
         }
         parse_expr(parser);
     }
+}
+
+define_scope! { WhereClauseScope, WhereClause, Inheritance(Newline) }
+impl super::Parse for WhereClauseScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::WhereKw);
+
+        loop {
+            parser.set_newline_as_trivia(true);
+            match parser.current_kind() {
+                Some(kind) if is_path_segment(kind) => {
+                    parse_type(parser, None, false);
+                    if parser.current_kind() == Some(SyntaxKind::Colon) {
+                        parser.parse(TypeBoundListScope::default(), None);
+                        parser.set_newline_as_trivia(false);
+                        if !parser.bump_if(SyntaxKind::Newline) {
+                            parser.error_and_recover("expected newline after type bounds", None);
+                        }
+                    } else {
+                        parser.error_and_recover("expected `:` for type bounds", None);
+                    }
+                }
+                _ => break,
+            }
+        }
+    }
+}
+
+pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
+    let newline_as_trivia = parser.set_newline_as_trivia(true);
+    if parser.current_kind() == Some(SyntaxKind::WhereKw) {
+        parser.parse(WhereClauseScope::default(), None);
+    }
+    parser.set_newline_as_trivia(newline_as_trivia);
 }

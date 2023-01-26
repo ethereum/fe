@@ -170,6 +170,9 @@ pub enum SyntaxKind {
     /// `in`
     #[token("in")]
     InKw,
+    /// `where`
+    #[token("where")]
+    WhereKw,
     /// `while`
     #[token("while")]
     WhileKw,
@@ -425,9 +428,11 @@ pub enum SyntaxKind {
     FnArg,
 
     /// `foo::Trait1 + Trait2`
-    TraitBoundList,
+    TypeBoundList,
     /// `Trait1`
-    TraitBound,
+    TypeBound,
+    /// `where Option<T>: Trait1 + Trait2`
+    WhereClause,
 
     /// Root node of the input source.
     Root,
