@@ -312,9 +312,9 @@ impl super::Parse for ImplScope {
         parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if is_trait_impl {
                 self.set_kind(SyntaxKind::ImplTrait);
-                parse_type(parser, None, false);
+                parse_type(parser, None, true);
                 parser.bump_expected(SyntaxKind::ForKw);
-                parse_type(parser, None, false);
+                parse_type(parser, None, true);
             } else {
                 parse_type(parser, None, true);
             }
