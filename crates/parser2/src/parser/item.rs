@@ -5,7 +5,7 @@ use crate::{parser::func::FnScope, SyntaxKind};
 use super::{
     attr, define_scope,
     expr::parse_expr,
-    param::GenericParamListScope,
+    param::{parse_where_clause_opt, GenericParamListScope},
     struct_::RecordFieldDefListScope,
     token_stream::TokenStream,
     type_::{parse_type, TupleTypeScope},
@@ -169,17 +169,22 @@ impl super::Parse for EnumScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::EnumKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::LBrace], |parser| {
-            if !parser.bump_if(SyntaxKind::Ident) {
-                parser.error_and_recover("expected ident for the enum name", None)
-            }
-        });
+        parser.with_recovery_tokens(
+            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            |parser| {
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.error_and_recover("expected ident for the enum name", None)
+                }
+            },
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if parser.current_kind() == Some(SyntaxKind::Lt) {
                 parser.parse(GenericParamListScope::default(), None);
             }
         });
+
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected enum body", None);
@@ -243,11 +248,13 @@ impl super::Parse for TraitScope {
             parser.error_and_recover("expected ident for the trait name", None)
         }
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], |parser| {
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if parser.current_kind() == Some(SyntaxKind::Lt) {
                 parser.parse(GenericParamListScope::default(), None);
             }
         });
+
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected trait body", None);
@@ -302,14 +309,18 @@ impl super::Parse for ImplScope {
         let is_trait_impl = parser
             .dry_run(|parser| parse_type(parser, None, true) && parser.bump_if(SyntaxKind::ForKw));
 
-        if is_trait_impl {
-            self.set_kind(SyntaxKind::ImplTrait);
-            parse_type(parser, None, false);
-            parser.bump_expected(SyntaxKind::ForKw);
-            parse_type(parser, None, false);
-        } else {
-            parse_type(parser, None, true);
-        }
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
+            if is_trait_impl {
+                self.set_kind(SyntaxKind::ImplTrait);
+                parse_type(parser, None, false);
+                parser.bump_expected(SyntaxKind::ForKw);
+                parse_type(parser, None, false);
+            } else {
+                parse_type(parser, None, true);
+            }
+        });
+
+        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected impl body", None);

@@ -5,12 +5,16 @@ enum Basic {
     Tup(i32, u32)
 }
 
-enum Option<T> {
+enum Option<T> 
+    where T: Clone
+{
     Some(T)
     None
 }
 
-enum BoundEnum<T: Add + Mul , U: Sub + Div> {
+enum BoundEnum<T: Add + Mul , U: Sub + Div> 
+where Foo::Bar<T>: Trait
+{
     AddMul(T)
     SubDiv(U)
 }
