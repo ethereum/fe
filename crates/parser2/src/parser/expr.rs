@@ -44,26 +44,22 @@ fn parse_expr_with_min_bp<S: TokenStream>(
             Some(_) => {
                 match kind {
                     SyntaxKind::LBracket => {
-                        if parser.parse(IndexExprScope::default(), Some(checkpoint)).0 {
-                            continue;
-                        } else {
-                            return false;
-                        }
+                        parser.parse(IndexExprScope::default(), Some(checkpoint));
+                        continue;
                     }
 
                     SyntaxKind::LParen => {
                         if parser.parse(CallExprScope::default(), Some(checkpoint)).0 {
                             continue;
-                        } else {
-                            return false;
                         }
                     }
 
                     // `expr<generic_param_args>()`.
                     SyntaxKind::Lt => {
-                        let is_call_expr =
-                            parser.dry_run(|parser| parser.parse(CallExprScope::default(), None).0);
-                        if is_call_expr {
+                        //let is_call_expr =
+                        //    parser.dry_run(|parser| parser.parse(CallExprScope::default(),
+                        // None).0);
+                        if is_call_expr(parser) {
                             parser.parse(CallExprScope::default(), Some(checkpoint));
                             continue;
                         }
@@ -71,9 +67,7 @@ fn parse_expr_with_min_bp<S: TokenStream>(
 
                     // `expr.method<T, i32>()`
                     SyntaxKind::Dot => {
-                        let is_method_call = parser
-                            .dry_run(|parser| parser.parse(MethodExprScope::default(), None).0);
-                        if is_method_call {
+                        if is_method_call(parser) {
                             parser.parse(MethodExprScope::default(), Some(checkpoint));
                             continue;
                         }
@@ -218,7 +212,9 @@ impl super::Parse for CallExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
+            parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
+                parser.parse(GenericArgListScope::default(), None);
+            });
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
@@ -239,9 +235,11 @@ impl super::Parse for MethodExprScope {
             parser.error_and_recover("expected identifier", None);
         }
 
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
-        }
+        parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericArgListScope::default(), None);
+            }
+        });
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             parser.error_and_recover("expected `(`", None);
@@ -365,4 +363,46 @@ fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
             parser.bump();
         }
     }
+}
+
+fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.dry_run(|parser| {
+        parser.set_newline_as_trivia(false);
+
+        let mut is_call = true;
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            is_call &= parser.parse(GenericArgListScope::default(), None).0;
+        }
+
+        if parser.current_kind() != Some(SyntaxKind::LParen) {
+            false
+        } else {
+            is_call && parser.parse(CallArgListScope::default(), None).0
+        }
+    })
+}
+
+fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.dry_run(|parser| {
+        parser.set_newline_as_trivia(false);
+        if !parser.bump_if(SyntaxKind::Dot) {
+            return false;
+        }
+
+        if !parser.bump_if(SyntaxKind::Ident) {
+            return false;
+        }
+
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            if !parser.parse(GenericArgListScope::default(), None).0 {
+                return false;
+            }
+        }
+
+        if parser.current_kind() != Some(SyntaxKind::LParen) {
+            false
+        } else {
+            parser.parse(CallArgListScope::default(), None).0
+        }
+    })
 }

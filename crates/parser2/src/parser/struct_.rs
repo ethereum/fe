@@ -87,15 +87,17 @@ define_scope! {
 }
 impl super::Parse for RecordFieldDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parse_attr_list(parser);
 
         parser.bump_if(SyntaxKind::PubKw);
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected ident for the field name", None);
         }
-        if !parser.bump_if(SyntaxKind::Colon) {
+        if parser.bump_if(SyntaxKind::Colon) {
+            parse_type(parser, None, false);
+        } else {
             parser.error_and_recover("expected `name: type` for the field definition", None);
         }
-        parse_type(parser, None, false);
     }
 }

@@ -2,7 +2,7 @@
 source: crates/parser2/tests/syntax_node.rs
 expression: snapshot
 ---
-Root@0..169
+Root@0..270
   CallExpr@0..5
     Path@0..3
       PathSegment@0..3
@@ -211,4 +211,42 @@ Root@0..169
         LitExpr@167..168
           Int@167..168 "2"
       RParen@168..169 ")"
+  Newline@169..171 "\n\n"
+  Comment@171..245 "// Ths should be pars ..."
+  Newline@245..246 "\n"
+  ParenExpr@246..270
+    LParen@246..247 "("
+    CallExpr@247..269
+      Path@247..250
+        PathSegment@247..250
+          Ident@247..250 "foo"
+      WhiteSpace@250..251 " "
+      GenericArgList@251..265
+        Lt@251..252 "<"
+        WhiteSpace@252..253 " "
+        GenericArg@253..256
+          PathType@253..256
+            Path@253..256
+              PathSegment@253..256
+                Ident@253..256 "i32"
+        Comma@256..257 ","
+        WhiteSpace@257..258 " "
+        GenericArg@258..263
+          TupleType@258..263
+            LParen@258..259 "("
+            PathType@259..262
+              Path@259..262
+                PathSegment@259..262
+                  Ident@259..262 "u32"
+            RParen@262..263 ")"
+        WhiteSpace@263..264 " "
+        Gt@264..265 ">"
+      WhiteSpace@265..266 " "
+      CallArgList@266..269
+        LParen@266..267 "("
+        CallArg@267..268
+          LitExpr@267..268
+            Int@267..268 "1"
+        RParen@268..269 ")"
+    RParen@269..270 ")"
 

@@ -94,6 +94,7 @@ impl<T: TokenStream> BackTrackableTokenStream<T> {
             self.bt_points.push(self.bt_cursor.unwrap());
         } else {
             self.bt_points.push(0);
+            self.bt_cursor = Some(0);
         }
     }
 

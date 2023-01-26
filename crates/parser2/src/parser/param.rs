@@ -105,15 +105,20 @@ define_scope! {
 }
 impl super::Parse for GenericParamScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_if(SyntaxKind::ConstKw);
 
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected type parameter", None);
-        }
+        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::Gt], |parser| {
+            if !parser.bump_if(SyntaxKind::Ident) {
+                parser.error_and_recover("expected type parameter", None);
+            }
 
-        if parser.current_kind() == Some(SyntaxKind::Colon) {
-            parser.parse(TypeBoundListScope::default(), None);
-        }
+            if parser.current_kind() == Some(SyntaxKind::Colon) {
+                parser.parse(TypeBoundListScope::default(), None);
+            }
+
+            parser.set_newline_as_trivia(true);
+        });
     }
 }
 
@@ -180,26 +185,30 @@ define_scope! {
 }
 impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        match parser.current_kind() {
-            Some(SyntaxKind::LBrace) => {
-                parser.parse(BlockExprScope::default(), None);
-            }
+        parser.set_newline_as_trivia(false);
+        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::Gt], |parser| {
+            match parser.current_kind() {
+                Some(SyntaxKind::LBrace) => {
+                    parser.parse(BlockExprScope::default(), None);
+                }
 
-            Some(kind) if kind.is_literal_leaf() => {
-                parser.parse(LitExprScope::default(), None);
-            }
+                Some(kind) if kind.is_literal_leaf() => {
+                    parser.parse(LitExprScope::default(), None);
+                }
 
-            _ => {
-                parse_type(parser, None, self.allow_bounds);
-                if parser.current_kind() == Some(SyntaxKind::Colon) {
-                    if !self.allow_bounds {
-                        parser.error_and_recover("type bounds are not allowed here", None);
-                    } else {
-                        parser.parse(TypeBoundListScope::default(), None);
+                _ => {
+                    parse_type(parser, None, self.allow_bounds);
+                    if parser.current_kind() == Some(SyntaxKind::Colon) {
+                        if !self.allow_bounds {
+                            parser.error_and_recover("type bounds are not allowed here", None);
+                        } else {
+                            parser.parse(TypeBoundListScope::default(), None);
+                        }
                     }
                 }
             }
-        }
+            parser.set_newline_as_trivia(true);
+        });
     }
 }
 
@@ -227,17 +236,19 @@ impl super::Parse for CallArgListScope {
 define_scope! { CallArgScope, CallArg, Inheritance }
 impl super::Parse for CallArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.set_newline_as_trivia(false);
+        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::RParen], |parser| {
+            parser.set_newline_as_trivia(false);
+            let has_label = parser.dry_run(|parser| {
+                parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+            });
 
-        let has_label = parser.dry_run(|parser| {
-            parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+            if has_label {
+                parser.bump_expected(SyntaxKind::Ident);
+                parser.bump_expected(SyntaxKind::Colon);
+            }
+            parse_expr(parser);
+            parser.set_newline_as_trivia(true);
         });
-
-        if has_label {
-            parser.bump_expected(SyntaxKind::Ident);
-            parser.bump_expected(SyntaxKind::Colon);
-        }
-        parse_expr(parser);
     }
 }
 
@@ -251,9 +262,9 @@ impl super::Parse for WhereClauseScope {
             match parser.current_kind() {
                 Some(kind) if is_path_segment(kind) => {
                     parse_type(parser, None, false);
+                    parser.set_newline_as_trivia(false);
                     if parser.current_kind() == Some(SyntaxKind::Colon) {
                         parser.parse(TypeBoundListScope::default(), None);
-                        parser.set_newline_as_trivia(false);
                         if !parser.bump_if(SyntaxKind::Newline) {
                             parser.error_and_recover("expected newline after type bounds", None);
                         }

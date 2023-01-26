@@ -1,0 +1,109 @@
+---
+source: crates/parser2/tests/errro_recovery.rs
+expression: snapshot
+---
+Root@0..94
+  MatchExpr@0..40
+    MatchKw@0..5 "match"
+    WhiteSpace@5..6 " "
+    Path@6..7
+      PathSegment@6..7
+        Ident@6..7 "X"
+    WhiteSpace@7..9 "  "
+    Error@9..11
+      FatArrow@9..11 "=>"
+    WhiteSpace@11..12 " "
+    MatchArmList@12..40
+      LBrace@12..13 "{"
+      WhiteSpace@13..14 " "
+      Newline@14..15 "\n"
+      WhiteSpace@15..18 "   "
+      MatchArm@18..31
+        PathTuplePat@18..23
+          Path@18..21
+            PathSegment@18..21
+              Ident@18..21 "Foo"
+          TuplePatElemList@21..23
+            LParen@21..22 "("
+            RParen@22..23 ")"
+        WhiteSpace@23..24 " "
+        FatArrow@24..26 "=>"
+        WhiteSpace@26..27 " "
+        LitExpr@27..31
+          TrueKw@27..31 "true"
+      Newline@31..32 "\n"
+      WhiteSpace@32..35 "   "
+      MatchArm@35..38
+        PathPat@35..38
+          Path@35..38
+            PathSegment@35..38
+              Ident@35..38 "Bar"
+        Error@38..38
+        Error@38..38
+      Newline@38..39 "\n"
+      RBrace@39..40 "}"
+  WhiteSpace@40..41 " "
+  Newline@41..43 "\n\n"
+  MatchExpr@43..93
+    MatchKw@43..48 "match"
+    WhiteSpace@48..49 " "
+    Path@49..50
+      PathSegment@49..50
+        Ident@49..50 "X"
+    WhiteSpace@50..52 "  "
+    MatchArmList@52..93
+      LBrace@52..53 "{"
+      WhiteSpace@53..54 " "
+      Newline@54..55 "\n"
+      WhiteSpace@55..58 "   "
+      MatchArm@58..77
+        PathTuplePat@58..70
+          Path@58..61
+            PathSegment@58..61
+              Ident@58..61 "Foo"
+          TuplePatElemList@61..70
+            LParen@61..62 "("
+            TuplePatElem@62..63
+              PathPat@62..63
+                Path@62..63
+                  PathSegment@62..63
+                    Ident@62..63 "i"
+            Comma@63..64 ","
+            WhiteSpace@64..65 " "
+            TuplePatElem@65..66
+              PathPat@65..66
+                Path@65..66
+                  PathSegment@65..66
+                    Ident@65..66 "j"
+            Comma@66..67 ","
+            WhiteSpace@67..70 "   "
+            TuplePatElem@70..70
+              PathPat@70..70
+                Path@70..70
+                  PathSegment@70..70
+                    Error@70..70
+            Error@70..70
+        FatArrow@70..72 "=>"
+        WhiteSpace@72..73 " "
+        LitExpr@73..77
+          TrueKw@73..77 "true"
+      WhiteSpace@77..78 " "
+      Error@78..79
+        Ident@78..79 "x"
+      Newline@79..80 "\n"
+      WhiteSpace@80..83 "   "
+      MatchArm@83..91
+        PathPat@83..86
+          Path@83..86
+            PathSegment@83..86
+              Ident@83..86 "Bar"
+        WhiteSpace@86..87 " "
+        FatArrow@87..89 "=>"
+        WhiteSpace@89..90 " "
+        Path@90..91
+          PathSegment@90..91
+            Ident@90..91 "x"
+      Newline@91..92 "\n"
+      RBrace@92..93 "}"
+  WhiteSpace@93..94 " "
+

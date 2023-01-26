@@ -454,6 +454,25 @@ impl SyntaxKind {
             SyntaxKind::Int | SyntaxKind::String | SyntaxKind::TrueKw | SyntaxKind::FalseKw
         )
     }
+
+    pub fn is_open_bracket_kind(self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::LBrace | SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Lt
+        )
+    }
+
+    /// Returns its corresponding open bracket kind if it is a close bracket
+    /// kind.
+    pub fn corresponding_open_bracket_kind(self) -> Option<Self> {
+        match self {
+            SyntaxKind::RBrace => Some(SyntaxKind::LBrace),
+            SyntaxKind::RParen => Some(SyntaxKind::LParen),
+            SyntaxKind::RBracket => Some(SyntaxKind::LBracket),
+            SyntaxKind::Gt => Some(SyntaxKind::Lt),
+            _ => None,
+        }
+    }
 }
 
 impl From<SyntaxKind> for rowan::SyntaxKind {
