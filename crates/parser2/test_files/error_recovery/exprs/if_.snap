@@ -1,0 +1,107 @@
+---
+source: crates/parser2/tests/errro_recovery.rs
+expression: snapshot
+---
+Root@0..101
+  IfExpr@0..10
+    IfKw@0..2 "if"
+    WhiteSpace@2..3 " "
+    Path@3..4
+      PathSegment@3..4
+        Ident@3..4 "x"
+    WhiteSpace@4..5 " "
+    Error@5..6
+      Ident@5..6 "y"
+    WhiteSpace@6..7 " "
+    BlockExpr@7..10
+      LBrace@7..8 "{"
+      Newline@8..9 "\n"
+      RBrace@9..10 "}"
+  Newline@10..12 "\n\n"
+  IfExpr@12..31
+    IfKw@12..14 "if"
+    WhiteSpace@14..15 " "
+    Path@15..16
+      PathSegment@15..16
+        Ident@15..16 "x"
+    WhiteSpace@16..17 " "
+    BlockExpr@17..21
+      LBrace@17..18 "{"
+      Newline@18..20 "\n\n"
+      RBrace@20..21 "}"
+    WhiteSpace@21..22 " "
+    ElseKw@22..26 "else"
+    WhiteSpace@26..27 " "
+    Error@27..28
+      Ident@27..28 "x"
+    WhiteSpace@28..29 " "
+    BlockExpr@29..31
+      LBrace@29..30 "{"
+      RBrace@30..31 "}"
+  Newline@31..33 "\n\n"
+  IfExpr@33..66
+    IfKw@33..35 "if"
+    WhiteSpace@35..36 " "
+    Path@36..37
+      PathSegment@36..37
+        Ident@36..37 "x"
+    WhiteSpace@37..38 " "
+    BlockExpr@38..41
+      LBrace@38..39 "{"
+      WhiteSpace@39..40 " "
+      RBrace@40..41 "}"
+    WhiteSpace@41..42 " "
+    ElseKw@42..46 "else"
+    WhiteSpace@46..47 " "
+    Error@47..48
+      Ident@47..48 "x"
+    WhiteSpace@48..49 " "
+    IfExpr@49..66
+      IfKw@49..51 "if"
+      WhiteSpace@51..52 " "
+      Path@52..53
+        PathSegment@52..53
+          Ident@52..53 "x"
+      WhiteSpace@53..54 " "
+      BlockExpr@54..57
+        LBrace@54..55 "{"
+        WhiteSpace@55..56 " "
+        RBrace@56..57 "}"
+      WhiteSpace@57..58 " "
+      ElseKw@58..62 "else"
+      WhiteSpace@62..63 " "
+      BlockExpr@63..66
+        LBrace@63..64 "{"
+        WhiteSpace@64..65 " "
+        RBrace@65..66 "}"
+  Newline@66..68 "\n\n"
+  IfExpr@68..100
+    IfKw@68..70 "if"
+    WhiteSpace@70..71 " "
+    Path@71..72
+      PathSegment@71..72
+        Ident@71..72 "x"
+    WhiteSpace@72..73 " "
+    BlockExpr@73..100
+      LBrace@73..74 "{"
+      Newline@74..75 "\n"
+      WhiteSpace@75..79 "    "
+      ExprStmt@79..81
+        LitExpr@79..81
+          Int@79..81 "10"
+      WhiteSpace@81..85 "    "
+      Newline@85..86 "\n"
+      ExprStmt@86..92
+        Error@86..92
+          ElseKw@86..90 "else"
+          WhiteSpace@90..91 " "
+          LBrace@91..92 "{"
+      Newline@92..93 "\n"
+      WhiteSpace@93..97 "    "
+      ExprStmt@97..98
+        LitExpr@97..98
+          Int@97..98 "1"
+      Newline@98..99 "\n"
+      RBrace@99..100 "}"
+  Newline@100..101 "\n"
+

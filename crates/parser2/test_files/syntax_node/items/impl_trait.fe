@@ -12,3 +12,10 @@ where T: Clone
         do_something<i32>(t)
     }
 }
+
+impl Trait<T: Clone, U: Bar> for F<U: Bar> 
+{
+    fn foo<T: OtherTrait<U>>(t: T) {
+        do_something<i32>(t)
+    }
+}

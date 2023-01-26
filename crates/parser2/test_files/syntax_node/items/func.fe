@@ -18,4 +18,4 @@ fn generics1<T: Trait, U>(t: T, u: Option<U>) -> T
     t
 }
 
-fn decl<T, U>(t: MyStruct<T, U>) -> Result<T, Err>
+fn decl<T, U>(t: MyStruct<T, U>) -> Result<T, Err> {}

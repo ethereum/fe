@@ -1,14 +1,12 @@
 use fe_parser2::{
-    parser::{expr::parse_expr, item::ItemListScope, parse_pat, stmt::parse_stmt},
+    parser::{expr::parse_expr, item::ItemListScope, stmt::parse_stmt},
     syntax_node::SyntaxNode,
 };
-
 mod test_runner;
 use test_runner::*;
-
 fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/structs",
-    "parser2/test_files/syntax_node/structs",
+    "parser2/test_files/error_recovery/items",
+    "parser2/test_files/error_recovery/items",
     test_item_list
 }
 fn test_item_list(input: &str) -> SyntaxNode {
@@ -16,31 +14,14 @@ fn test_item_list(input: &str) -> SyntaxNode {
         |parser| {
             parser.parse(ItemListScope::default(), None);
         },
-        true,
+        false,
     );
     runner.run(input)
 }
 
 fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/pats",
-    "parser2/test_files/syntax_node/pats",
-    test_pat
-}
-fn test_pat(input: &str) -> SyntaxNode {
-    let runner = TestRunner::new(
-        |parser| {
-            while parser.current_kind().is_some() {
-                parse_pat(parser);
-            }
-        },
-        true,
-    );
-    runner.run(input)
-}
-
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/exprs",
-    "parser2/test_files/syntax_node/exprs",
+    "parser2/test_files/error_recovery/exprs",
+    "parser2/test_files/error_recovery/exprs",
     test_expr
 }
 fn test_expr(input: &str) -> SyntaxNode {
@@ -55,14 +36,14 @@ fn test_expr(input: &str) -> SyntaxNode {
                 bump_newlines(parser);
             }
         },
-        true,
+        false,
     );
     runner.run(input)
 }
 
 fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/syntax_node/stmts",
-    "parser2/test_files/syntax_node/stmts",
+    "parser2/test_files/error_recovery/stmts",
+    "parser2/test_files/error_recovery/stmts",
     test_stmt
 }
 fn test_stmt(input: &str) -> SyntaxNode {
@@ -77,13 +58,7 @@ fn test_stmt(input: &str) -> SyntaxNode {
                 bump_newlines(parser);
             }
         },
-        true,
+        false,
     );
     runner.run(input)
 }
-
-fe_compiler_test_utils::build_debug_snap_tests!(
-    "parser2/test_files/syntax_node/items",
-    "parser2/test_files/syntax_node/items",
-    test_item_list
-);

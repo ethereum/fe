@@ -5,6 +5,7 @@ use crate::{parser::func::FnScope, SyntaxKind};
 use super::{
     attr, define_scope,
     expr::parse_expr,
+    func::FnDefScope,
     param::{parse_where_clause_opt, GenericParamListScope},
     struct_::RecordFieldDefListScope,
     token_stream::TokenStream,
@@ -225,7 +226,7 @@ impl super::Parse for VariantDefListScope {
     }
 }
 
-define_scope! { VariantDefScope, VariantDef, Override(RBrace, Newline) }
+define_scope! { VariantDefScope, VariantDef, Inheritance }
 impl super::Parse for VariantDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         if !parser.bump_if(SyntaxKind::Ident) {
@@ -248,13 +249,13 @@ impl super::Parse for TraitScope {
             parser.error_and_recover("expected ident for the trait name", None)
         }
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
             if parser.current_kind() == Some(SyntaxKind::Lt) {
                 parser.parse(GenericParamListScope::default(), None);
             }
         });
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected trait body", None);
@@ -268,36 +269,7 @@ impl super::Parse for TraitScope {
 define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
-        loop {
-            parser.set_newline_as_trivia(true);
-            if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
-                break;
-            }
-
-            let checkpoint = attr::parse_attr_list(parser);
-
-            match parser.current_kind() {
-                Some(SyntaxKind::FnKw) => {
-                    parser.parse(FnScope::default(), checkpoint);
-                }
-                _ => {
-                    parser.error_and_recover("trait item is restricted to `fn`", checkpoint);
-                }
-            }
-
-            parser.set_newline_as_trivia(false);
-            if !matches!(
-                parser.current_kind(),
-                Some(SyntaxKind::RBrace | SyntaxKind::Newline)
-            ) {
-                parser.error_and_recover("expected newline after trait item definition", checkpoint)
-            }
-        }
-
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover("expected `}` to close the trait body", None)
-        }
+        parse_fn_item_block(parser, false, FnDefScope::TraitDef)
     }
 }
 
@@ -306,28 +278,34 @@ impl super::Parse for ImplScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ImplKw);
 
-        let is_trait_impl = parser
-            .dry_run(|parser| parse_type(parser, None, true) && parser.bump_if(SyntaxKind::ForKw));
+        parser.with_next_expected_tokens(
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
+            |parser| {
+                parse_type(parser, None, true);
+            },
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-            if is_trait_impl {
-                self.set_kind(SyntaxKind::ImplTrait);
-                parse_type(parser, None, true);
-                parser.bump_expected(SyntaxKind::ForKw);
-                parse_type(parser, None, true);
-            } else {
-                parse_type(parser, None, true);
-            }
-        });
+        let is_impl_trait = parser.with_next_expected_tokens(
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            |parser| {
+                if parser.bump_if(SyntaxKind::ForKw) {
+                    self.set_kind(SyntaxKind::ImplTrait);
+                    parse_type(parser, None, true);
+                    true
+                } else {
+                    false
+                }
+            },
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected impl body", None);
             return;
         }
 
-        if is_trait_impl {
+        if is_impl_trait {
             parser.parse(ImplTraitItemListScope::default(), None);
         } else {
             parser.parse(ImplItemListScope::default(), None);
@@ -338,14 +316,14 @@ impl super::Parse for ImplScope {
 define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, false, true)
+        parse_fn_item_block(parser, false, FnDefScope::Normal)
     }
 }
 
 define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, true)
+        parse_fn_item_block(parser, true, FnDefScope::Normal)
     }
 }
 
@@ -364,13 +342,13 @@ impl super::Parse for ConstScope {
 
         parser.set_newline_as_trivia(false);
 
-        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+        parser.with_next_expected_tokens(&[SyntaxKind::Colon, SyntaxKind::Eq], |parser| {
             if !parser.bump_if(SyntaxKind::Ident) {
                 parser.error_and_recover("expected identifier", None);
             }
         });
 
-        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+        parser.with_next_expected_tokens(&[SyntaxKind::Eq], |parser| {
             if !parser.bump_if(SyntaxKind::Colon) {
                 parser.error_and_recover("expected type annotation for `const`", None);
             }
@@ -402,7 +380,7 @@ impl super::Parse for ExternScope {
 define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, FnKw) }
 impl super::Parse for ExternItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, false);
+        parse_fn_item_block(parser, true, FnDefScope::Extern);
     }
 }
 
@@ -412,13 +390,13 @@ impl super::Parse for TypeAliasScope {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::TypeKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::Lt, SyntaxKind::Eq], |parser| {
+        parser.with_next_expected_tokens(&[SyntaxKind::Lt, SyntaxKind::Eq], |parser| {
             if !parser.bump_if(SyntaxKind::Ident) {
                 parser.error_and_recover("expected identifier for type alias name", None)
             }
         });
 
-        parser.with_recovery_tokens(&[SyntaxKind::Eq], |parser| {
+        parser.with_next_expected_tokens(&[SyntaxKind::Eq], |parser| {
             if parser.current_kind() == Some(SyntaxKind::Lt) {
                 parser.parse(GenericParamListScope::default(), None);
             }
@@ -441,7 +419,7 @@ impl super::Parse for TypeAliasScope {
 fn parse_fn_item_block<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_modifier: bool,
-    allow_fn_def: bool,
+    fn_def_scope: FnDefScope,
 ) {
     parser.bump_expected(SyntaxKind::LBrace);
     loop {
@@ -466,12 +444,7 @@ fn parse_fn_item_block<S: TokenStream>(
 
         match parser.current_kind() {
             Some(SyntaxKind::FnKw) => {
-                let scope = if allow_fn_def {
-                    FnScope::default()
-                } else {
-                    FnScope::disallow_def()
-                };
-                parser.parse(scope, checkpoint);
+                parser.parse(FnScope::new(fn_def_scope), checkpoint);
             }
             _ => {
                 parser.error_and_recover("only `fn` is allowed in the block", checkpoint);
@@ -483,7 +456,7 @@ fn parse_fn_item_block<S: TokenStream>(
             parser.current_kind(),
             Some(SyntaxKind::RBrace | SyntaxKind::Newline)
         ) {
-            parser.error_and_recover("expected newline after item definition", checkpoint)
+            parser.error_and_recover("expected newline after item definition", None)
         }
     }
 
