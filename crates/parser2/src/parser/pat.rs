@@ -121,9 +121,9 @@ impl super::Parse for RecordPatFieldListScope {
 define_scope! { RecordPatFieldScope, RecordPatField, Override(Comma, RBrace) }
 impl super::Parse for RecordPatFieldScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.start_dry_run();
-        let has_label = parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon);
-        parser.end_dry_run();
+        let has_label = parser.dry_run(|parser| {
+            parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+        });
         if has_label {
             parser.bump_expected(SyntaxKind::Ident);
             parser.bump_expected(SyntaxKind::Colon);

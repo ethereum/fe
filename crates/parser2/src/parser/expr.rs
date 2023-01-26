@@ -61,25 +61,21 @@ fn parse_expr_with_min_bp<S: TokenStream>(
 
                     // `expr<generic_param_args>()`.
                     SyntaxKind::Lt => {
-                        parser.start_dry_run();
-                        if parser.parse(CallExprScope::default(), Some(checkpoint)).0 {
-                            parser.end_dry_run();
+                        let is_call_expr =
+                            parser.dry_run(|parser| parser.parse(CallExprScope::default(), None).0);
+                        if is_call_expr {
                             parser.parse(CallExprScope::default(), Some(checkpoint));
                             continue;
-                        } else {
-                            parser.end_dry_run();
                         }
                     }
 
                     // `expr.method<T, i32>()`
                     SyntaxKind::Dot => {
-                        parser.start_dry_run();
-                        if parser.parse(MethodExprScope::default(), Some(checkpoint)).0 {
-                            parser.end_dry_run();
+                        let is_method_call = parser
+                            .dry_run(|parser| parser.parse(MethodExprScope::default(), None).0);
+                        if is_method_call {
                             parser.parse(MethodExprScope::default(), Some(checkpoint));
                             continue;
-                        } else {
-                            parser.end_dry_run();
                         }
                     }
                     _ => unreachable!(),
@@ -330,31 +326,19 @@ impl super::Parse for GtEqScope {
 }
 
 pub(crate) fn is_lshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.start_dry_run();
-    let is_lshift = parser.parse(LShiftScope::default(), None).0;
-    parser.end_dry_run();
-    is_lshift
+    parser.dry_run(|parser| parser.parse(LShiftScope::default(), None).0)
 }
 
 pub(crate) fn is_rshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.start_dry_run();
-    let is_rshift = parser.parse(RShiftScope::default(), None).0;
-    parser.end_dry_run();
-    is_rshift
+    parser.dry_run(|parser| parser.parse(RShiftScope::default(), None).0)
 }
 
 fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.start_dry_run();
-    let is_lt_eq = parser.parse(LtEqScope::default(), None).0;
-    parser.end_dry_run();
-    is_lt_eq
+    parser.dry_run(|parser| parser.parse(LtEqScope::default(), None).0)
 }
 
 fn is_gt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.start_dry_run();
-    let is_gt_eq = parser.parse(GtEqScope::default(), None).0;
-    parser.end_dry_run();
-    is_gt_eq
+    parser.dry_run(|parser| parser.parse(GtEqScope::default(), None).0)
 }
 
 fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
