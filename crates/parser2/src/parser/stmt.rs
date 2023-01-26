@@ -59,14 +59,13 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::InKw], parse_pat);
+        parser.with_next_expected_tokens(&[SyntaxKind::InKw, SyntaxKind::LBrace], parse_pat);
 
         if !parser.bump_if(SyntaxKind::InKw) {
             parser.error_and_recover("expected `in` keyword", None);
-            return;
         }
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -81,7 +80,7 @@ impl super::Parse for WhileStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhileKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);

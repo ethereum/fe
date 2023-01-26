@@ -1,0 +1,46 @@
+---
+source: crates/parser2/tests/errro_recovery.rs
+expression: snapshot
+---
+Root@0..43
+  BlockExpr@0..43
+    LBrace@0..1 "{"
+    Newline@1..2 "\n"
+    WhiteSpace@2..6 "    "
+    LetStmt@6..16
+      LetKw@6..9 "let"
+      WhiteSpace@9..10 " "
+      PathPat@10..11
+        Path@10..11
+          PathSegment@10..11
+            Ident@10..11 "x"
+      Colon@11..12 ":"
+      WhiteSpace@12..13 " "
+      PathType@13..16
+        Path@13..16
+          PathSegment@13..16
+            Ident@13..16 "i32"
+    WhiteSpace@16..17 " "
+    Error@17..25
+      Ident@17..20 "u32"
+      WhiteSpace@20..21 " "
+      Eq@21..22 "="
+      WhiteSpace@22..23 " "
+      Int@23..25 "10"
+    Newline@25..26 "\n"
+    WhiteSpace@26..30 "    "
+    LetStmt@30..40
+      LetKw@30..33 "let"
+      WhiteSpace@33..34 " "
+      PathPat@34..35
+        Path@34..35
+          PathSegment@34..35
+            Ident@34..35 "y"
+      WhiteSpace@35..36 " "
+      Eq@36..37 "="
+      WhiteSpace@37..38 " "
+      LitExpr@38..40
+        Int@38..40 "10"
+    Newline@40..42 "\n\n"
+    RBrace@42..43 "}"
+

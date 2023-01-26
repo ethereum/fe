@@ -37,6 +37,7 @@ pub struct Parser<S: TokenStream> {
     /// The second element holds `is_newline_trivia` of the parent.
     parents: Vec<(Box<dyn ParsingScope>, bool)>,
     errors: Vec<ParseError>,
+    is_err: bool,
 
     next_trivias: VecDeque<S::Token>,
     /// if `is_newline_trivia` is `true`, `Newline` is also regarded as a trivia
@@ -59,6 +60,7 @@ impl<S: TokenStream> Parser<S> {
             builder: rowan::GreenNodeBuilder::new(),
             parents: Vec::new(),
             errors: Vec::new(),
+            is_err: false,
             current_pos: rowan::TextSize::from(0),
             is_newline_trivia: true,
             next_trivias: VecDeque::new(),
@@ -93,8 +95,9 @@ impl<S: TokenStream> Parser<S> {
         (SyntaxNode::new_root(self.builder.finish()), self.errors)
     }
 
-    /// Passes the `recovery_tokens` to the parser temporarily.
-    /// The passed recovery tokens are removed when the closure returns.
+    /// Adds the `recovery_tokens` as a temporary recovery token set.
+    /// These tokens are used as a recovery token set in addition to scope's
+    /// recovery token set.
     ///
     /// This is useful when you want to specify auxiliary recovery tokens which
     /// are valid only in a limited part of the scope.
@@ -115,6 +118,38 @@ impl<S: TokenStream> Parser<S> {
         r
     }
 
+    /// Adds `expected_tokens` as a temporary recovery token set, the invokes
+    /// the `f` closure. If the `f` closure fails to parse,
+    /// `expected_tokens` are also used as a recovery token set in addition to
+    /// scope's recovery token set.
+    ///
+    /// If `current_token()` is not in `expected_tokens` after `f` returns, an
+    /// error is reported and try to recover with `expected_tokens` and scope's
+    /// recovery token set.
+    pub fn with_next_expected_tokens<F, R>(&mut self, expected_tokens: &[SyntaxKind], f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        for token in expected_tokens {
+            self.add_recovery_token(*token);
+        }
+
+        let r = f(self);
+
+        if self.current_kind().is_some()
+            && expected_tokens
+                .iter()
+                .all(|token| *token != self.current_kind().unwrap())
+        {
+            self.error_and_recover("unexpected token", None);
+        }
+
+        for token in expected_tokens {
+            self.remove_recovery_token(*token);
+        }
+
+        r
+    }
     /// Invoke the scope to parse. The scope is wrapped up by the node specified
     /// by the scope.
     ///
@@ -133,12 +168,13 @@ impl<S: TokenStream> Parser<S> {
     where
         T: Parse + 'static,
     {
+        let mut is_err = std::mem::take(&mut self.is_err);
         let checkpoint = self.enter(scope.clone(), checkpoint);
-        let error_len = self.errors.len();
         let start_checkpoint = self.checkpoint();
         scope.parse(self);
         self.leave(checkpoint);
-        (error_len == self.errors.len(), start_checkpoint)
+        std::mem::swap(&mut self.is_err, &mut is_err);
+        (!is_err, start_checkpoint)
     }
 
     #[doc(hidden)]
@@ -231,6 +267,7 @@ impl<S: TokenStream> Parser<S> {
             err_num: self.errors.len(),
             next_trivias: self.next_trivias.clone(),
             auxiliary_recovery_set: self.auxiliary_recovery_set.clone(),
+            is_err: self.is_err,
         });
 
         let r = f(self);
@@ -242,6 +279,7 @@ impl<S: TokenStream> Parser<S> {
         self.current_pos = state.pos;
         self.next_trivias = state.next_trivias;
         self.auxiliary_recovery_set = state.auxiliary_recovery_set;
+        self.is_err = state.is_err;
 
         r
     }
@@ -297,13 +335,29 @@ impl<S: TokenStream> Parser<S> {
             }
         }
 
+        let is_newline_trivia = self.set_newline_as_trivia(false);
+        self.auxiliary_recovery_set.insert(SyntaxKind::Newline, 1);
+        let mut open_brackets_in_error = FxHashMap::default();
         while let Some(kind) = self.current_kind() {
-            if recovery_set.contains(&kind) || self.auxiliary_recovery_set.contains_key(&kind) {
-                break;
-            } else {
-                self.bump();
+            if kind.is_open_bracket_kind() {
+                *open_brackets_in_error.entry(kind).or_insert(0) += 1;
             }
+            if recovery_set.contains(&kind) || self.auxiliary_recovery_set.contains_key(&kind) {
+                if let Some(open_bracket) = kind.corresponding_open_bracket_kind() {
+                    if open_brackets_in_error.get(&open_bracket).unwrap_or(&0) != &0 {
+                        *open_brackets_in_error.get_mut(&open_bracket).unwrap() -= 1;
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            self.bump();
         }
+
+        self.set_newline_as_trivia(is_newline_trivia);
     }
 
     fn checkpoint(&mut self) -> Checkpoint {
@@ -367,6 +421,7 @@ impl<S: TokenStream> Parser<S> {
 
     /// Add the `msg` to the error list.
     fn error(&mut self, msg: &str) -> ErrorScope {
+        self.is_err = true;
         let start = self.current_pos;
         let end = if let Some(current_token) = self.current_token() {
             start + current_token.text_size()
@@ -424,6 +479,7 @@ struct DryRunState<S: TokenStream> {
     /// The stored trivias when the dry run started.
     next_trivias: VecDeque<S::Token>,
     auxiliary_recovery_set: FxHashMap<SyntaxKind, usize>,
+    is_err: bool,
 }
 
 /// Represents the recovery method of the current scope.

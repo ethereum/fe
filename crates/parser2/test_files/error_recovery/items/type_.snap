@@ -1,0 +1,42 @@
+---
+source: crates/parser2/tests/error_recovery.rs
+expression: snapshot
+---
+Root@0..29
+  ItemList@0..29
+    TypeAlias@0..29
+      TypeKw@0..4 "type"
+      WhiteSpace@4..5 " "
+      Ident@5..11 "Result"
+      GenericParamList@11..15
+        Lt@11..12 "<"
+        GenericParam@12..13
+          Ident@12..13 "T"
+        Comma@13..14 ","
+        WhiteSpace@14..15 " "
+        GenericParam@15..15
+          Error@15..15
+          Error@15..15
+        Error@15..15
+      Eq@15..16 "="
+      WhiteSpace@16..17 " "
+      PathType@17..29
+        Path@17..23
+          PathSegment@17..23
+            Ident@17..23 "Result"
+        GenericArgList@23..29
+          Lt@23..24 "<"
+          GenericArg@24..25
+            PathType@24..25
+              Path@24..25
+                PathSegment@24..25
+                  Ident@24..25 "T"
+          Comma@25..26 ","
+          WhiteSpace@26..27 " "
+          GenericArg@27..28
+            PathType@27..28
+              Path@27..28
+                PathSegment@27..28
+                  Ident@27..28 "E"
+          Gt@28..29 ">"
+

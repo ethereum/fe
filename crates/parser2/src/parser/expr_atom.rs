@@ -91,7 +91,7 @@ impl super::Parse for IfExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::IfKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -100,7 +100,9 @@ impl super::Parse for IfExprScope {
         parser.parse(BlockExprScope::default(), None);
 
         if parser.current_kind() == Some(SyntaxKind::ElseKw) {
-            parser.bump_expected(SyntaxKind::ElseKw);
+            parser.with_next_expected_tokens(&[SyntaxKind::LBrace, SyntaxKind::IfKw], |parser| {
+                parser.bump_expected(SyntaxKind::ElseKw);
+            });
 
             if !matches!(
                 parser.current_kind(),
@@ -119,7 +121,9 @@ impl super::Parse for MatchExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::MatchKw);
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], |parser| {
+            parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct)
+        });
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -162,7 +166,7 @@ impl super::Parse for MatchArmScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
 
-        parser.with_recovery_tokens(&[SyntaxKind::FatArrow], parse_pat);
+        parser.with_next_expected_tokens(&[SyntaxKind::FatArrow], parse_pat);
 
         if !parser.bump_if(SyntaxKind::FatArrow) {
             parser.error_and_recover("expected `=>`", None);
@@ -201,9 +205,14 @@ impl super::Parse for RecordFieldListScope {
             return;
         }
 
-        parser.parse(RecordFieldScope::default(), None);
+        parser.with_next_expected_tokens(&[SyntaxKind::RBrace, SyntaxKind::Comma], |parser| {
+            parser.parse(RecordFieldScope::default(), None)
+        });
+
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(RecordFieldScope::default(), None);
+            parser.with_next_expected_tokens(&[SyntaxKind::RBrace, SyntaxKind::Comma], |parser| {
+                parser.parse(RecordFieldScope::default(), None);
+            })
         }
 
         if !parser.bump_if(SyntaxKind::RBrace) {
@@ -215,15 +224,14 @@ impl super::Parse for RecordFieldListScope {
 define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         if !parser.bump_if(SyntaxKind::Ident) {
             parser.error_and_recover("expected identifier", None);
         }
 
-        if !parser.bump_if(SyntaxKind::Colon) {
-            parser.error_and_recover("expected `:`", None);
+        if parser.bump_if(SyntaxKind::Colon) {
+            parse_expr(parser);
         }
-
-        parse_expr(parser);
     }
 }
 
@@ -265,14 +273,24 @@ impl super::Parse for ArrayScope {
             return;
         }
 
-        parse_expr(parser);
+        parser.with_next_expected_tokens(
+            &[
+                SyntaxKind::SemiColon,
+                SyntaxKind::Comma,
+                SyntaxKind::RBracket,
+            ],
+            parse_expr,
+        );
 
         if parser.bump_if(SyntaxKind::SemiColon) {
             self.set_kind(SyntaxKind::ArrayRepExpr);
-            parse_expr(parser);
+            parser.with_next_expected_tokens(&[SyntaxKind::RBracket], parse_expr);
         } else {
             while parser.bump_if(SyntaxKind::Comma) {
-                parse_expr(parser);
+                parser.with_next_expected_tokens(
+                    &[SyntaxKind::Comma, SyntaxKind::RBracket],
+                    parse_expr,
+                );
             }
         }
 

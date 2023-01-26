@@ -2,8 +2,8 @@
 source: crates/parser2/tests/syntax_node.rs
 expression: snapshot
 ---
-Root@0..358
-  ItemList@0..358
+Root@0..361
+  ItemList@0..361
     Fn@0..30
       ItemModifier@0..3
         PubKw@0..3 "pub"
@@ -268,7 +268,7 @@ Root@0..358
         Newline@304..305 "\n"
         RBrace@305..306 "}"
     Newline@306..308 "\n\n"
-    Fn@308..358
+    Fn@308..361
       FnKw@308..310 "fn"
       WhiteSpace@310..311 " "
       Ident@311..315 "decl"
@@ -329,4 +329,8 @@ Root@0..358
                 PathSegment@354..357
                   Ident@354..357 "Err"
           Gt@357..358 ">"
+      WhiteSpace@358..359 " "
+      BlockExpr@359..361
+        LBrace@359..360 "{"
+        RBrace@360..361 "}"
 
