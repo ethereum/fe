@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/stress.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 build_my_tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)]) used 598 gas
 read_my_tuple_item0([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 457 gas

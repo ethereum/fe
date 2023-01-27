@@ -535,7 +535,7 @@ fn test_map(fixture_file: &str) {
             &[uint_token(26)],
             Some(&uint_token(12)),
         );
-        assert_harness_gas_report!(harness);
+        assert_harness_gas_report!(harness, fixture_file);
     })
 }
 
@@ -1776,7 +1776,7 @@ fn aug_assign(target: u64, op: &str, value: u64, expected: u64) {
             &[uint_token(target), uint_token(value)],
             Some(&uint_token(expected)),
         );
-        assert_harness_gas_report!(harness);
+        assert_harness_gas_report!(harness, op);
     });
 }
 
@@ -2157,7 +2157,7 @@ fn signext_int_array1(method: &str, params: &[ethabi::Token], expected: Option<e
 
         harness.test_function(&mut executor, method, params, expected.as_ref());
 
-        assert_harness_gas_report!(harness);
+        assert_harness_gas_report!(harness, params);
     })
 }
 
@@ -2173,7 +2173,7 @@ fn signext_int_array2(method: &str, value: ethabi::Token) {
 
         harness.test_function(&mut executor, method, &[value.clone()], Some(&value));
 
-        assert_harness_gas_report!(harness);
+        assert_harness_gas_report!(harness, method);
     })
 }
 
@@ -2250,7 +2250,7 @@ fn execution_tests(fixture_file: &str) {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, fixture_file, "Example", &[]);
         harness.test_function(&mut executor, "run_test", &[], None);
-        assert_harness_gas_report!(harness);
+        assert_harness_gas_report!(harness, fixture_file);
     })
 }
 

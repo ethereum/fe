@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 static_complex([]) used 948 gas
 string_complex([]) used 1724 gas

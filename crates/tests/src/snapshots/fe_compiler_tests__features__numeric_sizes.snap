@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 get_u8_min([]) used 123 gas
 get_u8_const_min([]) used 145 gas

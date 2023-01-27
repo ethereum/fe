@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 decode_static_complex([Tuple([Tuple([Int(10), Int(20)]), Int(30)])]) used 1122 gas
 decode_string_complex([Tuple([String("Hello"), Int(30)])]) used 1786 gas

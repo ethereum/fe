@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/stress.rs
 expression: "format!(\"{}\", proxy_harness.gas_reporter)"
-
 ---
 call_set_my_string([String("hello world")]) used 52901 gas
 call_get_my_string([]) used 3846 gas

@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/demo_erc20.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 name([]) used 1546 gas
 symbol([]) used 1580 gas

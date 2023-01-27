@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 write_bar([Address(0x1000000000000000000000000000000000000001), Address(0x2000000000000000000000000000000000000002), Uint(12)]) used 22596 gas
 write_bar([Address(0x1000000000000000000000000000000000000001), Address(0x3000000000000000000000000000000000000003), Uint(13)]) used 22596 gas

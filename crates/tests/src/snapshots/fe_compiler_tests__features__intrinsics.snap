@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 add([Uint(10), Uint(100)]) used 223 gas
 self_balance([]) used 209 gas

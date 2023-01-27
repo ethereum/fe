@@ -1,7 +1,6 @@
 ---
 source: crates/tests/src/stress.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
-
 ---
 set_my_vals([String("my string"), String("my other string"), Uint(26), Uint(42)]) used 138316 gas
 emit_my_event([]) used 4073 gas
