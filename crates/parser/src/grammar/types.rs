@@ -34,7 +34,8 @@ pub fn parse_struct_def(
         let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
             let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
                 vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
-            // This hints to a future where we would support multiple attributes per field. For now we don't need it.
+            // This hints to a future where we would support multiple attributes per field.
+            // For now we don't need it.
             vec![Node::new(attr_name.text.into(), attr.span + attr_name.span)]
         } else {
             vec![]

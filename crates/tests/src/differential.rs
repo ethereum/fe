@@ -1,4 +1,5 @@
-//! Tests that check for differences between Solidity and Fe implementations of similar contracts
+//! Tests that check for differences between Solidity and Fe implementations of
+//! similar contracts
 #![cfg(feature = "solc-backend")]
 use proptest::prelude::*;
 

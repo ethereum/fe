@@ -94,7 +94,7 @@ impl super::Parse for ItemListScope {
                     parser.parse(TypeAliasScope::default(), checkpoint);
                 }
                 tok => parser
-                    .error_and_recover(&format! {"expected item: but got {:?}", tok}, checkpoint),
+                    .error_and_recover(&format! {"expected item: but got {tok:?}"}, checkpoint),
             }
 
             parser.set_newline_as_trivia(false);

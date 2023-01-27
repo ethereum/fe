@@ -11,18 +11,21 @@ use std::fmt::Display;
 /// in [`crate::namespace::types`] is sometimes represented as a
 /// `Result<Type, TypeError>`.
 ///
-/// If, for example, a function parameter has an undefined type, we emit a [`Diagnostic`] message,
-/// give that parameter a "type" of `Err(TypeError)`, and carry on. If/when that parameter is
-/// used in the function body, we assume that a diagnostic message about the undefined type
-/// has already been emitted, and halt the analysis of the function body.
+/// If, for example, a function parameter has an undefined type, we emit a
+/// [`Diagnostic`] message, give that parameter a "type" of `Err(TypeError)`,
+/// and carry on. If/when that parameter is used in the function body, we assume
+/// that a diagnostic message about the undefined type has already been emitted,
+/// and halt the analysis of the function body.
 ///
-/// To ensure that that assumption is sound, a diagnostic *must* be emitted before creating
-/// a `TypeError`. So that the rust compiler can help us enforce this rule, a `TypeError`
-/// cannot be constructed without providing a [`DiagnosticVoucher`]. A voucher can be obtained
-/// by calling an error function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
+/// To ensure that that assumption is sound, a diagnostic *must* be emitted
+/// before creating a `TypeError`. So that the rust compiler can help us enforce
+/// this rule, a `TypeError` cannot be constructed without providing a
+/// [`DiagnosticVoucher`]. A voucher can be obtained by calling an error
+/// function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
 /// Please don't try to work around this restriction.
 ///
-/// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
+/// Example: `TypeError::new(context.error("something is wrong", some_span,
+/// "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeError(DiagnosticVoucher);
 impl TypeError {
@@ -44,15 +47,16 @@ impl From<ConstEvalError> for TypeError {
     }
 }
 
-/// Error to be returned when otherwise no meaningful information can be returned.
-/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
-/// has been obtained. (See comment on [`TypeError`])
+/// Error to be returned when otherwise no meaningful information can be
+/// returned. Can't be created unless a diagnostic has been emitted, and thus a
+/// [`DiagnosticVoucher`] has been obtained. (See comment on [`TypeError`])
 #[derive(Debug)]
 pub struct FatalError(DiagnosticVoucher);
 
 impl FatalError {
     /// Create a `FatalError` instance, given a "voucher"
-    /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
+    /// obtained by emitting an error via an
+    /// [`AnalyzerContext`](crate::context::AnalyzerContext).
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
     }
@@ -77,8 +81,8 @@ impl From<AlreadyDefined> for FatalError {
 /// 2. arithmetic overflow occurred during evaluation
 /// 3. zero division is detected during evaluation
 ///
-/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
-/// has been obtained. (See comment on [`TypeError`])
+/// Can't be created unless a diagnostic has been emitted, and thus a
+/// [`DiagnosticVoucher`] has been obtained. (See comment on [`TypeError`])
 ///
 /// NOTE: `Clone` is required because these are stored in a salsa db.
 /// Please don't clone these manually.
@@ -109,10 +113,11 @@ impl From<IncompleteItem> for ConstEvalError {
     }
 }
 
-/// Error returned by `ModuleId::resolve_name` if the name is not found, and parsing of the module
-/// failed. In this case, emitting an error message about failure to resolve the name might be misleading,
-/// because the file may in fact contain an item with the given name, somewhere after the syntax error that caused
-/// parsing to fail.
+/// Error returned by `ModuleId::resolve_name` if the name is not found, and
+/// parsing of the module failed. In this case, emitting an error message about
+/// failure to resolve the name might be misleading, because the file may in
+/// fact contain an item with the given name, somewhere after the syntax error
+/// that caused parsing to fail.
 #[derive(Debug)]
 pub struct IncompleteItem(DiagnosticVoucher);
 impl IncompleteItem {
