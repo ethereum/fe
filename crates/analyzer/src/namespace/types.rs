@@ -167,9 +167,10 @@ impl TypeId {
         db.impl_for(*self, trait_)
     }
 
-    /// Looks up all possible candidates of the given function name that are implemented via traits.
-    /// Groups results in two lists, the first contains all theoretical possible candidates and
-    /// the second contains only those that are actually callable because the trait is in scope.
+    /// Looks up all possible candidates of the given function name that are
+    /// implemented via traits. Groups results in two lists, the first
+    /// contains all theoretical possible candidates and the second contains
+    /// only those that are actually callable because the trait is in scope.
     pub fn trait_function_candidates(
         &self,
         context: &mut dyn AnalyzerContext,
@@ -200,8 +201,8 @@ impl TypeId {
         (candidates, in_scope_candidates)
     }
 
-    /// Signature for the function with the given name defined directly on the type.
-    /// Does not consider trait impls.
+    /// Signature for the function with the given name defined directly on the
+    /// type. Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
             Type::SPtr(inner) => inner.function_sig(db, name),
@@ -742,7 +743,7 @@ impl fmt::Display for Base {
             Base::Address => "address",
             Base::Unit => "()",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 
@@ -762,7 +763,7 @@ impl fmt::Display for Integer {
             Integer::I16 => "i16",
             Integer::I8 => "i8",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 

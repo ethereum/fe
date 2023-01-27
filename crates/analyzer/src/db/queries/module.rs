@@ -159,13 +159,10 @@ pub fn module_item_map(
             let kind = item.item_kind_display_name();
             let other_kind = global_item.item_kind_display_name();
             diagnostics.push(errors::error(
-                format!(
-                    "{} name conflicts with the {} named \"{}\"",
-                    kind, other_kind, item_name
-                ),
+                format!("{kind} name conflicts with the {other_kind} named \"{item_name}\""),
                 item.name_span(db)
                     .expect("user defined item is missing a name span"),
-                format!("`{}` is already defined", item_name),
+                format!("`{item_name}` is already defined"),
             ));
             continue;
         }
@@ -473,12 +470,9 @@ pub fn module_used_item_map(
                 let other_kind = global_item.item_kind_display_name();
 
                 diagnostics.push(errors::error(
-                    format!(
-                        "import name conflicts with the {} named \"{}\"",
-                        other_kind, name
-                    ),
+                    format!("import name conflicts with the {other_kind} named \"{name}\""),
                     name_span,
-                    format!("`{}` is already defined", name),
+                    format!("`{name}` is already defined"),
                 ));
 
                 None

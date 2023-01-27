@@ -11,18 +11,21 @@ use std::fmt::Display;
 /// in [`crate::namespace::types`] is sometimes represented as a
 /// `Result<Type, TypeError>`.
 ///
-/// If, for example, a function parameter has an undefined type, we emit a [`Diagnostic`] message,
-/// give that parameter a "type" of `Err(TypeError)`, and carry on. If/when that parameter is
-/// used in the function body, we assume that a diagnostic message about the undefined type
-/// has already been emitted, and halt the analysis of the function body.
+/// If, for example, a function parameter has an undefined type, we emit a
+/// [`Diagnostic`] message, give that parameter a "type" of `Err(TypeError)`,
+/// and carry on. If/when that parameter is used in the function body, we assume
+/// that a diagnostic message about the undefined type has already been emitted,
+/// and halt the analysis of the function body.
 ///
-/// To ensure that that assumption is sound, a diagnostic *must* be emitted before creating
-/// a `TypeError`. So that the rust compiler can help us enforce this rule, a `TypeError`
-/// cannot be constructed without providing a [`DiagnosticVoucher`]. A voucher can be obtained
-/// by calling an error function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
+/// To ensure that that assumption is sound, a diagnostic *must* be emitted
+/// before creating a `TypeError`. So that the rust compiler can help us enforce
+/// this rule, a `TypeError` cannot be constructed without providing a
+/// [`DiagnosticVoucher`]. A voucher can be obtained by calling an error
+/// function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
 /// Please don't try to work around this restriction.
 ///
-/// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
+/// Example: `TypeError::new(context.error("something is wrong", some_span,
+/// "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeError(DiagnosticVoucher);
 impl TypeError {
@@ -44,15 +47,16 @@ impl From<ConstEvalError> for TypeError {
     }
 }
 
-/// Error to be returned when otherwise no meaningful information can be returned.
-/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
-/// has been obtained. (See comment on [`TypeError`])
+/// Error to be returned when otherwise no meaningful information can be
+/// returned. Can't be created unless a diagnostic has been emitted, and thus a
+/// [`DiagnosticVoucher`] has been obtained. (See comment on [`TypeError`])
 #[derive(Debug)]
 pub struct FatalError(DiagnosticVoucher);
 
 impl FatalError {
     /// Create a `FatalError` instance, given a "voucher"
-    /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
+    /// obtained by emitting an error via an
+    /// [`AnalyzerContext`](crate::context::AnalyzerContext).
     pub fn new(voucher: DiagnosticVoucher) -> Self {
         Self(voucher)
     }
@@ -77,8 +81,8 @@ impl From<AlreadyDefined> for FatalError {
 /// 2. arithmetic overflow occurred during evaluation
 /// 3. zero division is detected during evaluation
 ///
-/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
-/// has been obtained. (See comment on [`TypeError`])
+/// Can't be created unless a diagnostic has been emitted, and thus a
+/// [`DiagnosticVoucher`] has been obtained. (See comment on [`TypeError`])
 ///
 /// NOTE: `Clone` is required because these are stored in a salsa db.
 /// Please don't clone these manually.
@@ -109,10 +113,11 @@ impl From<IncompleteItem> for ConstEvalError {
     }
 }
 
-/// Error returned by `ModuleId::resolve_name` if the name is not found, and parsing of the module
-/// failed. In this case, emitting an error message about failure to resolve the name might be misleading,
-/// because the file may in fact contain an item with the given name, somewhere after the syntax error that caused
-/// parsing to fail.
+/// Error returned by `ModuleId::resolve_name` if the name is not found, and
+/// parsing of the module failed. In this case, emitting an error message about
+/// failure to resolve the name might be misleading, because the file may in
+/// fact contain an item with the given name, somewhere after the syntax error
+/// that caused parsing to fail.
 #[derive(Debug)]
 pub struct IncompleteItem(DiagnosticVoucher);
 impl IncompleteItem {
@@ -204,13 +209,13 @@ pub fn type_error(
     error(
         message,
         span,
-        format!("this has type `{}`; expected type `{}`", actual, expected),
+        format!("this has type `{actual}`; expected type `{expected}`"),
     )
 }
 
 pub fn not_yet_implemented(feature: impl Display, span: Span) -> Diagnostic {
     error(
-        format!("feature not yet implemented: {}", feature),
+        format!("feature not yet implemented: {feature}"),
         span,
         "not yet implemented",
     )
@@ -225,8 +230,8 @@ pub fn duplicate_name_error(
     fancy_error(
         message,
         vec![
-            Label::primary(original, format!("`{}` first defined here", name)),
-            Label::secondary(duplicate, format!("`{}` redefined here", name)),
+            Label::primary(original, format!("`{name}` first defined here")),
+            Label::secondary(duplicate, format!("`{name}` redefined here")),
         ],
         vec![],
     )
@@ -248,8 +253,8 @@ pub fn name_conflict_error(
                 original.item_kind_display_name()
             ),
             vec![
-                Label::primary(original_span, format!("`{}` first defined here", name)),
-                Label::secondary(duplicate_span, format!("`{}` redefined here", name)),
+                Label::primary(original_span, format!("`{name}` first defined here")),
+                Label::secondary(duplicate_span, format!("`{name}` redefined here")),
             ],
             vec![],
         )
@@ -287,15 +292,11 @@ pub fn to_mem_error(span: Span) -> Diagnostic {
 }
 pub fn self_contract_type_error(span: Span, typ: &dyn Display) -> Diagnostic {
     fancy_error(
-        format!(
-            "`self` can't be used where a contract of type `{}` is expected",
-            typ,
-        ),
+        format!("`self` can't be used where a contract of type `{typ}` is expected",),
         vec![Label::primary(span, "cannot use `self` here")],
         vec![format!(
-            "Hint: Values of type `{t}` represent external contracts.\n\
-             To treat `self` as an external contract, use `{t}(ctx.self_address())`.",
-            t = typ
+            "Hint: Values of type `{typ}` represent external contracts.\n\
+             To treat `self` as an external contract, use `{typ}(ctx.self_address())`."
         )],
     )
 }

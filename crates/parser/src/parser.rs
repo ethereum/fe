@@ -266,7 +266,7 @@ impl<'a> Parser<'a> {
             Ok(())
         } else {
             self.fancy_error(
-                format!("{} must start with `{{`", context_name),
+                format!("{context_name} must start with `{{`"),
                 vec![Label::primary(
                     Span::new(self.file_id, context_span.end, context_span.end),
                     "expected `{` here",
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
                 let tok = self.next()?;
                 self.unexpected_token_error(
                     &tok,
-                    format!("unexpected token while parsing {}", context_name),
+                    format!("unexpected token while parsing {context_name}"),
                     vec![format!(
                         "expected a newline; found {} instead",
                         tok.kind.describe()

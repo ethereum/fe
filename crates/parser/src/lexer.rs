@@ -57,9 +57,7 @@ mod tests {
 
         assert!(
             actual.iter().eq(expected.iter()),
-            "\nexpected: {:?}\n  actual: {:?}",
-            expected,
-            actual
+            "\nexpected: {expected:?}\n  actual: {actual:?}"
         );
     }
 

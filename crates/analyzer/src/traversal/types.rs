@@ -17,8 +17,9 @@ use fe_parser::ast;
 use fe_parser::node::{Node, Span};
 use std::cmp::Ordering;
 
-/// Try to perform an explicit type cast, eg `u256(my_address)` or `address(my_contract)`.
-/// Returns nothing. Emits an error if the cast fails; explicit cast failures are not fatal.
+/// Try to perform an explicit type cast, eg `u256(my_address)` or
+/// `address(my_contract)`. Returns nothing. Emits an error if the cast fails;
+/// explicit cast failures are not fatal.
 pub fn try_cast_type(
     context: &mut dyn AnalyzerContext,
     from: TypeId,
@@ -72,7 +73,7 @@ pub fn try_cast_type(
         (Type::Base(Base::Address), Type::Base(Base::Numeric(into))) => {
             if into != Integer::U256 {
                 context.error(
-                    &format!("can't cast `address` to `{}`", into),
+                    &format!("can't cast `address` to `{into}`"),
                     into_span,
                     "try `u256` here",
                 );

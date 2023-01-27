@@ -572,7 +572,7 @@ impl fmt::Display for YulIntrinsicOp {
             Self::Gaslimit => "__gaslimit",
         };
 
-        write!(w, "{}", op)
+        write!(w, "{op}")
     }
 }
 

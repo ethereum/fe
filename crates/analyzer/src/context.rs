@@ -54,7 +54,8 @@ pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str, span: Span) -> Result<Option<NamedThing>, IncompleteItem>;
     /// Resolves the given path and registers all errors
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError>;
-    /// Resolves the given path only if it is visible. Does not register any errors
+    /// Resolves the given path only if it is visible. Does not register any
+    /// errors
     fn resolve_visible_path(&self, path: &ast::Path) -> Option<NamedThing>;
     /// Resolves the given path. Does not register any errors
     fn resolve_any_path(&self, path: &ast::Path) -> Option<NamedThing>;
@@ -468,7 +469,7 @@ impl crate::display::DisplayWithDb for ExpressionAttributes {
         } = self;
         write!(f, "{}", typ.display(db))?;
         if let Some(val) = &const_value {
-            write!(f, " = {:?}", val)?;
+            write!(f, " = {val:?}")?;
         }
         for adj in type_adjustments {
             write!(f, " -{:?}-> {}", adj.kind, adj.into.display(db))?;
@@ -581,7 +582,7 @@ impl CallType {
 
 impl fmt::Display for CallType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

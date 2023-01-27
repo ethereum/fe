@@ -10,7 +10,7 @@ pub fn deploy_ingot(
 ) -> ContractHarness {
     test_utils::deploy_contract_from_ingot(
         executor,
-        &format!("ingots/{}/src", fixture),
+        &format!("ingots/{fixture}/src"),
         contract_name,
         init_params,
     )

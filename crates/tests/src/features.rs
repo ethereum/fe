@@ -22,14 +22,14 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     test_utils::deploy_contract(
         executor,
-        &format!("features/{}", fixture),
+        &format!("features/{fixture}"),
         contract_name,
         init_params,
     )
 }
 
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    test_utils::load_contract(address, &format!("features/{}", fixture), contract_name)
+    test_utils::load_contract(address, &format!("features/{fixture}"), contract_name)
 }
 
 #[test]

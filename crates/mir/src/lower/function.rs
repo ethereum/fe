@@ -264,8 +264,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
                     let (init, _init_ty) = self.lower_expr(init);
-                    // debug_assert_eq!(ty.deref(self.db), init_ty, "vardecl init type mismatch: {} != {}",
-                    //                  ty.as_string(self.db),
+                    // debug_assert_eq!(ty.deref(self.db), init_ty, "vardecl init type mismatch: {}
+                    // != {}",                  ty.as_string(self.db),
                     //                  init_ty.as_string(self.db));
                     self.builder.map_result(init, value.into());
                 }
@@ -830,7 +830,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let lhs = self.lower_expr_to_value(lhs);
         let tmp = self
             .builder
-            .declare(Local::tmp_local(format!("${}_tmp", op).into(), ty));
+            .declare(Local::tmp_local(format!("${op}_tmp").into(), ty));
 
         match op {
             ast::BoolOperator::And => {

@@ -76,7 +76,8 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
         }
     };
 
-    // selector and state mutability is independent we can set has_self and has_ctx any value.
+    // selector and state mutability is independent we can set has_self and has_ctx
+    // any value.
     let selector = AbiFunction::new(
         AbiFunctionType::Function,
         name.to_string(),
@@ -86,5 +87,5 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
     )
     .selector();
     let type_sig = selector.hex();
-    literal_expression! {(format!{"0x{}", type_sig })}
+    literal_expression! {(format!{"0x{type_sig}" })}
 }

@@ -59,7 +59,7 @@ impl FunctionNode {
         for (i, param) in params.iter().enumerate() {
             let name = &param.name;
             let ty = param.ty;
-            write!(&mut sig, "{}: ", name).unwrap();
+            write!(&mut sig, "{name}: ").unwrap();
             ty.pretty_print(db, &body.store, &mut sig).unwrap();
             if param_len - 1 != i {
                 write!(sig, ", ").unwrap();

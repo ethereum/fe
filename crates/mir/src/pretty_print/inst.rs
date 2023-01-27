@@ -32,13 +32,13 @@ impl PrettyPrint for InstId {
             }
 
             InstKind::Unary { op, value } => {
-                write!(w, "{}", op)?;
+                write!(w, "{op}")?;
                 value.pretty_print(db, store, w)
             }
 
             InstKind::Binary { op, lhs, rhs } => {
                 lhs.pretty_print(db, store, w)?;
-                write!(w, " {} ", op)?;
+                write!(w, " {op} ")?;
                 rhs.pretty_print(db, store, w)
             }
 
@@ -57,7 +57,7 @@ impl PrettyPrint for InstId {
 
                 let arg_len = args.len();
                 for (arg_idx, arg) in args.iter().enumerate().take(arg_len - 1) {
-                    write!(w, "<{}>: ", arg_idx)?;
+                    write!(w, "<{arg_idx}>: ")?;
                     arg.pretty_print(db, store, w)?;
                     write!(w, ", ")?;
                 }
@@ -105,7 +105,7 @@ impl PrettyPrint for InstId {
                 call_type,
             } => {
                 let name = func.debug_name(db);
-                write!(w, "{}@{}(", name, call_type)?;
+                write!(w, "{name}@{call_type}(")?;
                 args.as_slice().pretty_print(db, store, w)?;
                 write!(w, ")")
             }
@@ -179,7 +179,7 @@ impl PrettyPrint for InstId {
             InstKind::Create { value, contract } => {
                 write!(w, "create ")?;
                 let contract_name = contract.name(db.upcast());
-                write!(w, "{} ", contract_name)?;
+                write!(w, "{contract_name} ")?;
                 value.pretty_print(db, store, w)
             }
 
@@ -190,14 +190,14 @@ impl PrettyPrint for InstId {
             } => {
                 write!(w, "create2 ")?;
                 let contract_name = contract.name(db.upcast());
-                write!(w, "{} ", contract_name)?;
+                write!(w, "{contract_name} ")?;
                 value.pretty_print(db, store, w)?;
                 write!(w, " ")?;
                 salt.pretty_print(db, store, w)
             }
 
             InstKind::YulIntrinsic { op, args } => {
-                write!(w, "{}(", op)?;
+                write!(w, "{op}(")?;
                 args.as_slice().pretty_print(db, store, w)?;
                 write!(w, ")")
             }

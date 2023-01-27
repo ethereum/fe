@@ -1609,7 +1609,7 @@ impl DisplayWithDb for EnumVariantKind {
                 write!(f, "(")?;
                 let mut delim = "";
                 for ty in elts {
-                    write!(f, "{}", delim)?;
+                    write!(f, "{delim}")?;
                     ty.format(db, f)?;
                     delim = ", ";
                 }
@@ -1735,15 +1735,14 @@ impl ImplId {
             let trait_name = self.trait_id(db).name(db);
             sink.push(&errors::fancy_error(
                      format!(
-                         "the trait `{}` is private",
-                         trait_name,
+                         "the trait `{trait_name}` is private",
                      ),
                      vec![
                          Label::primary(self.trait_id(db).data(db).ast.kind.name.span, "this trait is not `pub`"),
                      ],
                      vec![
-                         format!("`{}` can only be used within `{}`", trait_name, trait_module_name),
-                         format!("Hint: use `pub trait {trait_}` to make `{trait_}` visible from outside of `{module}`", trait_=trait_name, module=trait_module_name),
+                         format!("`{trait_name}` can only be used within `{trait_module_name}`"),
+                         format!("Hint: use `pub trait {trait_name}` to make `{trait_name}` visible from outside of `{trait_module_name}`"),
                      ],
                  ));
         }
@@ -1827,11 +1826,11 @@ impl ImplId {
                         vec![
                             Label::primary(
                                 selfy_span,
-                                format!("`self` declared on the `{}`", selfy_thing),
+                                format!("`self` declared on the `{selfy_thing}`"),
                             ),
                             Label::primary(
                                 non_selfy_span,
-                                format!("no `self` declared on the `{}`", non_selfy_thing),
+                                format!("no `self` declared on the `{non_selfy_thing}`"),
                             ),
                         ],
                         vec![],

@@ -646,7 +646,7 @@ fn field_type(
         Type::SelfContract(id) => match id.field_type(context.db(), field_name) {
             Some(typ) => Ok(typ?.make_sptr(context.db())),
             None => Err(FatalError::new(context.fancy_error(
-                &format!("No field `{}` exists on this contract", field_name),
+                &format!("No field `{field_name}` exists on this contract"),
                 vec![Label::primary(field_span, "undefined field")],
                 vec![],
             ))),
@@ -682,7 +682,7 @@ fn field_type(
         Type::Tuple(tuple) => {
             let item_index = tuple_item_index(field_name).ok_or_else(||
                     FatalError::new(context.fancy_error(
-                        &format!("No field `{}` exists on this tuple", field_name),
+                        &format!("No field `{field_name}` exists on this tuple"),
                         vec![
                             Label::primary(
                                 field_span,
@@ -694,7 +694,7 @@ fn field_type(
 
             tuple.items.get(item_index).copied().ok_or_else(|| {
                 FatalError::new(context.fancy_error(
-                    &format!("No field `item{}` exists on this tuple", item_index),
+                    &format!("No field `item{item_index}` exists on this tuple"),
                     vec![Label::primary(field_span, "unknown field")],
                     vec![format!(
                         "Note: The highest possible field for this tuple is `item{}`",
@@ -818,8 +818,7 @@ fn expr_unary_operation(
                         "Can not apply unary operator",
                         op.span + operand.span,
                         &format!(
-                            "Expected unsigned type `{}`. Unary operator `-` can not be used here.",
-                            expected_int_type,
+                            "Expected unsigned type `{expected_int_type}`. Unary operator `-` can not be used here.",
                         ),
                     );
                 }
@@ -935,27 +934,26 @@ fn expr_call_name<T: std::fmt::Display>(
             {
                 // TODO: this doesn't have to be fatal
                 FatalError::new(context.fancy_error(
-                    &format!("`{}` must be called via `self`", name),
+                    &format!("`{name}` must be called via `self`"),
                     vec![
                         Label::primary(
                             function.name_span(context.db()),
-                            format!("`{}` is defined here as a function that takes `self`", name),
+                            format!("`{name}` is defined here as a function that takes `self`"),
                         ),
                         Label::primary(
                             func.span,
-                            format!("`{}` is called here as a standalone function", name),
+                            format!("`{name}` is called here as a standalone function"),
                         ),
                     ],
                     vec![format!(
-                        "Suggestion: use `self.{}(...)` instead of `{}(...)`",
-                        name, name
+                        "Suggestion: use `self.{name}(...)` instead of `{name}(...)`"
                     )],
                 ))
             } else {
                 FatalError::new(context.error(
-                    &format!("`{}` is not defined", name),
+                    &format!("`{name}` is not defined"),
                     func.span,
-                    &format!("`{}` has not been defined in this context", name),
+                    &format!("`{name}` has not been defined in this context"),
                 ))
             }
         } else {
@@ -983,8 +981,8 @@ fn expr_call_path<T: std::fmt::Display>(
             validate_has_no_conflicting_trait_in_scope(context, &named_thing, path, func)?;
             expr_call_named_thing(context, named_thing, func, generic_args, args)
         }
-        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance that `do_thing`
-        // still exists as as a trait associated function for `foo::Bar`.
+        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance
+        // that `do_thing` still exists as as a trait associated function for `foo::Bar`.
         None => expr_call_trait_associated_function(context, path, func, generic_args, args),
     }
 }
@@ -1081,7 +1079,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                         .into(),
                 ],
             );
-            // We arbitrarily carry on with the first candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with the first candidate since the error doesn't need
+            // to be fatal
             let (fun, _) = in_scope_candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.is_empty() && !candidates.is_empty() {
@@ -1096,7 +1095,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                 }).collect(),
                 vec!["Hint: Bring one of these candidates in scope via `use module_name::trait_name`".into()],
             );
-            // We arbitrarily carry on with an applicable candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with an applicable candidate since the error doesn't
+            // need to be fatal
             let (fun, _) = candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.len() == 1 {
@@ -1105,8 +1105,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
         }
     }
 
-    // At this point, we will have an error so we run `resolve_path` to register any errors that we
-    // did not report yet
+    // At this point, we will have an error so we run `resolve_path` to register any
+    // errors that we did not report yet
     context.resolve_path(path, func.span)?;
 
     Err(FatalError::new(context.error(
@@ -1338,18 +1338,15 @@ fn validate_visibility_of_called_fn(
                 Label::primary(call_span, "this function is not `pub`"),
                 Label::secondary(
                     called_fn.name_span(context.db()),
-                    format!("`{}` is defined here", name),
+                    format!("`{name}` is defined here"),
                 ),
             ],
             vec![
                 format!(
-                    "`{}` can only be called from other functions within `{}`",
-                    name, parent_name
+                    "`{name}` can only be called from other functions within `{parent_name}`"
                 ),
                 format!(
-                    "Hint: use `pub fn {fun}(..)` to make `{fun}` callable from outside of `{parent}`",
-                    fun = name,
-                    parent = parent_name
+                    "Hint: use `pub fn {name}(..)` to make `{name}` callable from outside of `{parent_name}`"
                 ),
             ],
         );
@@ -1369,7 +1366,7 @@ fn expr_call_pure(
     let fn_name = function.name(context.db());
     if let Some(args) = generic_args {
         context.fancy_error(
-            &format!("`{}` function is not generic", fn_name),
+            &format!("`{fn_name}` function is not generic"),
             vec![Label::primary(
                 args.span,
                 "unexpected generic argument list",
@@ -1449,7 +1446,7 @@ fn expr_call_struct_constructor(
                 if !field.is_public(context.db()) {
                     Some(Label::primary(
                         field.span(context.db()),
-                        format!("Field `{}` is private", name),
+                        format!("Field `{name}` is private"),
                     ))
                 } else {
                     None
@@ -1459,13 +1456,11 @@ fn expr_call_struct_constructor(
 
         context.fancy_error(
             &format!(
-                "Can not call private constructor of struct `{}` ",
-                name
+                "Can not call private constructor of struct `{name}` "
             ),
             labels,
             vec![format!(
-                "Suggestion: implement a method `new(...)` on struct `{}` to call the constructor and return the struct",
-                name
+                "Suggestion: implement a method `new(...)` on struct `{name}` to call the constructor and return the struct"
             )],
         );
     }
@@ -1646,10 +1641,7 @@ fn expr_call_method(
                                     Label::primary(target.span, "this value is in storage"),
                                     Label::secondary(
                                         field.span,
-                                        format!(
-                                            "hint: copy the {} to memory with `.to_mem()`",
-                                            kind
-                                        ),
+                                        format!("hint: copy the {kind} to memory with `.to_mem()`"),
                                     ),
                                 ],
                                 vec![],
@@ -1724,8 +1716,8 @@ fn validate_trait_in_scope(
                 type_name
             ),
             vec![
-                Label::primary(name_span, format!("method not found in `{}`", type_name)),
-                Label::secondary(called_fn.name_span(context.db()), format!("the method is available for `{}` here", type_name))
+                Label::primary(name_span, format!("method not found in `{type_name}`")),
+                Label::secondary(called_fn.name_span(context.db()), format!("the method is available for `{type_name}` here"))
             ],
             vec![
                 "Hint: items from traits can only be used if the trait is in scope".into(),
@@ -2069,7 +2061,7 @@ fn check_for_call_to_special_fns(
             "Note: `__call__` is not part of the contract's interface, and can't be called."
         };
         Err(FatalError::new(context.fancy_error(
-            &format!("`{}()` is not directly callable", name),
+            &format!("`{name}()` is not directly callable"),
             vec![Label::primary(span, "")],
             vec![label.into()],
         )))
@@ -2086,9 +2078,9 @@ fn validate_numeric_literal_fits_type(
 ) {
     if !int_type.fits(num) {
         context.error(
-            &format!("literal out of range for `{}`", int_type),
+            &format!("literal out of range for `{int_type}`"),
             span,
-            &format!("does not fit into type `{}`", int_type),
+            &format!("does not fit into type `{int_type}`"),
         );
     }
 }

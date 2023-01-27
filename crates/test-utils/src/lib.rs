@@ -37,7 +37,7 @@ impl GasReporter {
     }
 
     pub fn add_func_call_record(&self, function: &str, input: &[ethabi::Token], gas_used: u64) {
-        let description = format!("{}({:?})", function, input);
+        let description = format!("{function}({input:?})");
         self.add_record(&description, gas_used)
     }
 }
@@ -119,7 +119,7 @@ impl ContractHarness {
         let function = &self.abi.functions[name][0];
         function
             .encode_input(input)
-            .unwrap_or_else(|reason| panic!("Unable to encode input for {}: {:?}", name, reason))
+            .unwrap_or_else(|reason| panic!("Unable to encode input for {name}: {reason:?}"))
     }
 
     pub fn capture_call_raw_bytes(
@@ -148,8 +148,7 @@ impl ContractHarness {
         assert_eq!(
             output.map(ToOwned::to_owned),
             actual_output,
-            "unexpected output from `fn {}`",
-            name
+            "unexpected output from `fn {name}`"
         )
     }
 
@@ -171,7 +170,7 @@ impl ContractHarness {
                 .decode_output(&output)
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
                 .pop(),
-            evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
+            evm::Capture::Exit((reason, _)) => panic!("failed to run \"{name}\": {reason:?}"),
             evm::Capture::Trap(_) => panic!("trap"),
         }
     }
@@ -234,10 +233,9 @@ impl ContractHarness {
                 .collect::<Vec<_>>();
 
             if !outputs_for_event.iter().any(|v| v == expected_output) {
-                println!("raw logs dump: {:?}", raw_logs);
+                println!("raw logs dump: {raw_logs:?}");
                 panic!(
-                    "no \"{}\" logs matching: {:?}\nfound: {:?}",
-                    name, expected_output, outputs_for_event
+                    "no \"{name}\" logs matching: {expected_output:?}\nfound: {outputs_for_event:?}"
                 )
             }
         }
@@ -347,7 +345,7 @@ pub fn deploy_contract(
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&db, &error.0);
-            panic!("failed to compile module: {}", fixture)
+            panic!("failed to compile module: {fixture}")
         }
     };
 
@@ -378,7 +376,7 @@ pub fn deploy_contract_from_ingot(
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&db, &error.0);
-            panic!("failed to compile ingot: {}", path)
+            panic!("failed to compile ingot: {path}")
         }
     };
 
@@ -425,7 +423,7 @@ pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     for param in input {
         let encoded = match param {
             ethabi::Token::Uint(val) | ethabi::Token::Int(val) => {
-                format!("{:0>64}", format!("{:x}", val))
+                format!("{:0>64}", format!("{val:x}"))
             }
             ethabi::Token::Bool(val) => format!("{:0>64x}", *val as i32),
             ethabi::Token::String(val) => {
@@ -443,7 +441,7 @@ pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
                 // bytes
                 let string_bytes = hex::encode(&string_bytes);
 
-                format!("{}{}{}", DATA_OFFSET, string_len, string_bytes)
+                format!("{DATA_OFFSET}{string_len}{string_bytes}")
             }
             _ => todo!("Other ABI types not supported yet"),
         };
@@ -589,7 +587,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
         driver::compile_single_file(&mut db, fixture, test_files::fixture(fixture), true, true)
             .unwrap_or_else(|err| {
                 print_diagnostics(&db, &err.0);
-                panic!("failed to compile fixture: {}", fixture);
+                panic!("failed to compile fixture: {fixture}");
             });
     let compiled_contract = compiled_module
         .contracts
@@ -751,13 +749,13 @@ pub fn string_token(s: &str) -> ethabi::Token {
 
 #[allow(dead_code)]
 pub fn address(s: &str) -> H160 {
-    H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
+    H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {s}"))
 }
 
 #[allow(dead_code)]
 pub fn address_token(s: &str) -> ethabi::Token {
     // left pads to 40 characters
-    ethabi::Token::Address(address(&format!("{:0>40}", s)))
+    ethabi::Token::Address(address(&format!("{s:0>40}")))
 }
 
 #[allow(dead_code)]
