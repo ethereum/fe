@@ -18,9 +18,16 @@ use yultsur::*;
 
 #[macro_export]
 macro_rules! assert_harness_gas_report {
-    ($harness:ident) => {
+    ($harness: expr) => {
         assert_snapshot!(format!("{}", $harness.gas_reporter));
     };
+
+    ($harness: expr, $($expr:expr),*) => {
+        let mut settings = insta::Settings::clone_current();
+        settings.set_snapshot_suffix(format!("{:?}", $($expr,)*));
+        let _guard = settings.bind_to_scope();
+        assert_snapshot!(format!("{}", $harness.gas_reporter));
+    }
 }
 
 #[derive(Default, Debug)]
