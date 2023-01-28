@@ -53,6 +53,7 @@ Root@0..74
         RecordFieldDef@51..54
           Ident@51..54 "foo"
           Error@54..54
+          Error@54..54
         Newline@54..55 "\n"
         WhiteSpace@55..59 "    "
         RecordFieldDef@59..72

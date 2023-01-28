@@ -22,15 +22,18 @@ impl super::Parse for FnArgListScope {
             return;
         }
 
-        parser.parse(FnArgScope::default(), None);
+        parser.with_next_expected_tokens(
+            |parser| parser.parse(FnArgScope::default(), None),
+            &[SyntaxKind::Comma, SyntaxKind::RParen],
+        );
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(FnArgScope::default(), None);
+            parser.with_next_expected_tokens(
+                |parser| parser.parse(FnArgScope::default(), None),
+                &[SyntaxKind::Comma, SyntaxKind::RParen],
+            );
         }
 
-        if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_recover("expected closing `)`", None);
-            parser.bump_if(SyntaxKind::LParen);
-        }
+        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
     }
 }
 
@@ -43,32 +46,35 @@ impl super::Parse for FnArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_if(SyntaxKind::MutKw);
 
-        let is_self = parser.with_recovery_tokens(&[SyntaxKind::Colon], |parser| {
-            match parser.current_kind() {
+        let is_self = parser.with_recovery_tokens(
+            |parser| match parser.current_kind() {
                 Some(SyntaxKind::SelfKw) => {
                     parser.bump_expected(SyntaxKind::SelfKw);
                     true
                 }
-                Some(SyntaxKind::Ident | SyntaxKind::Underscore) => {
-                    parser.bump();
-                    if !parser.bump_if(SyntaxKind::Ident) {
-                        parser.bump_if(SyntaxKind::Underscore);
-                    }
-                    false
-                }
+                Some(SyntaxKind::Ident | SyntaxKind::Underscore) => parser
+                    .with_next_expected_tokens(
+                        |parser| {
+                            parser.bump();
+                            if !parser.bump_if(SyntaxKind::Ident) {
+                                parser.bump_if(SyntaxKind::Underscore);
+                            }
+                            false
+                        },
+                        &[SyntaxKind::Colon],
+                    ),
                 _ => {
                     parser.error_and_recover("expected identifier for argument name", None);
                     false
                 }
-            }
-        });
+            },
+            &[SyntaxKind::Colon],
+        );
         if is_self {
             return;
         }
 
-        if !parser.bump_if(SyntaxKind::Colon) {
-            parser.error_and_recover("expected `:` after argument name", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
 
         parse_type(parser, None, false);
     }
@@ -91,10 +97,7 @@ impl super::Parse for GenericParamListScope {
             parser.parse(GenericParamScope::default(), None);
         }
 
-        if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_recover("expected closing `>`", None);
-            parser.bump_if(SyntaxKind::Gt);
-        }
+        parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
     }
 }
 
@@ -108,17 +111,20 @@ impl super::Parse for GenericParamScope {
         parser.set_newline_as_trivia(false);
         parser.bump_if(SyntaxKind::ConstKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::Gt], |parser| {
-            if !parser.bump_if(SyntaxKind::Ident) {
-                parser.error_and_recover("expected type parameter", None);
-            }
+        parser.with_next_expected_tokens(
+            |parser| {
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.error_and_recover("expected type parameter", None);
+                }
 
-            if parser.current_kind() == Some(SyntaxKind::Colon) {
-                parser.parse(TypeBoundListScope::default(), None);
-            }
+                if parser.current_kind() == Some(SyntaxKind::Colon) {
+                    parser.parse(TypeBoundListScope::default(), None);
+                }
 
-            parser.set_newline_as_trivia(true);
-        });
+                parser.set_newline_as_trivia(true);
+            },
+            &[SyntaxKind::Comma, SyntaxKind::Gt],
+        );
     }
 }
 
@@ -171,10 +177,7 @@ impl super::Parse for GenericArgListScope {
             parser.parse(GenericArgScope::new(self.allow_bounds), None);
         }
 
-        if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_recover("expected closing `>`", None);
-            parser.bump_if(SyntaxKind::Gt);
-        }
+        parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
     }
 }
 
@@ -186,29 +189,32 @@ define_scope! {
 impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::Gt], |parser| {
-            match parser.current_kind() {
-                Some(SyntaxKind::LBrace) => {
-                    parser.parse(BlockExprScope::default(), None);
-                }
+        parser.with_next_expected_tokens(
+            |parser| {
+                match parser.current_kind() {
+                    Some(SyntaxKind::LBrace) => {
+                        parser.parse(BlockExprScope::default(), None);
+                    }
 
-                Some(kind) if kind.is_literal_leaf() => {
-                    parser.parse(LitExprScope::default(), None);
-                }
+                    Some(kind) if kind.is_literal_leaf() => {
+                        parser.parse(LitExprScope::default(), None);
+                    }
 
-                _ => {
-                    parse_type(parser, None, self.allow_bounds);
-                    if parser.current_kind() == Some(SyntaxKind::Colon) {
-                        if !self.allow_bounds {
-                            parser.error_and_recover("type bounds are not allowed here", None);
-                        } else {
-                            parser.parse(TypeBoundListScope::default(), None);
+                    _ => {
+                        parse_type(parser, None, self.allow_bounds);
+                        if parser.current_kind() == Some(SyntaxKind::Colon) {
+                            if !self.allow_bounds {
+                                parser.error_and_recover("type bounds are not allowed here", None);
+                            } else {
+                                parser.parse(TypeBoundListScope::default(), None);
+                            }
                         }
                     }
                 }
-            }
-            parser.set_newline_as_trivia(true);
-        });
+                parser.set_newline_as_trivia(true);
+            },
+            &[SyntaxKind::Comma, SyntaxKind::Gt],
+        );
     }
 }
 
@@ -226,29 +232,29 @@ impl super::Parse for CallArgListScope {
             parser.parse(CallArgScope::default(), None);
         }
 
-        if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_recover("expected closing `)`", None);
-            parser.bump_if(SyntaxKind::RParen);
-        }
+        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
     }
 }
 
 define_scope! { CallArgScope, CallArg, Inheritance }
 impl super::Parse for CallArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_next_expected_tokens(&[SyntaxKind::Comma, SyntaxKind::RParen], |parser| {
-            parser.set_newline_as_trivia(false);
-            let has_label = parser.dry_run(|parser| {
-                parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
-            });
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.set_newline_as_trivia(false);
+                let has_label = parser.dry_run(|parser| {
+                    parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+                });
 
-            if has_label {
-                parser.bump_expected(SyntaxKind::Ident);
-                parser.bump_expected(SyntaxKind::Colon);
-            }
-            parse_expr(parser);
-            parser.set_newline_as_trivia(true);
-        });
+                if has_label {
+                    parser.bump_expected(SyntaxKind::Ident);
+                    parser.bump_expected(SyntaxKind::Colon);
+                }
+                parse_expr(parser);
+                parser.set_newline_as_trivia(true);
+            },
+            &[SyntaxKind::Comma, SyntaxKind::RParen],
+        );
     }
 }
 

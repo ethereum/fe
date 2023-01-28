@@ -1,2 +1,3 @@
 Struct {x, y}
 Struct {x: 1 + 2}
+Empty {}

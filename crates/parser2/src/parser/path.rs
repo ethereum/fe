@@ -12,8 +12,7 @@ impl super::Parse for PathScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
         parser.parse(PathSegmentScope::default(), None);
-        while parser.current_kind() == Some(SyntaxKind::Colon2) {
-            parser.bump_expected(SyntaxKind::Colon2);
+        while parser.bump_if(SyntaxKind::Colon2) {
             parser.parse(PathSegmentScope::default(), None);
         }
     }

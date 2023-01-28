@@ -59,13 +59,11 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::InKw, SyntaxKind::LBrace], parse_pat);
+        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::InKw, SyntaxKind::LBrace]);
 
-        if !parser.bump_if(SyntaxKind::InKw) {
-            parser.error_and_recover("expected `in` keyword", None);
-        }
+        parser.bump_or_recover(SyntaxKind::InKw, "expected `in` keyword", None);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -80,7 +78,7 @@ impl super::Parse for WhileStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhileKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);
@@ -129,12 +127,17 @@ impl super::Parse for ReturnStmtScope {
 define_scope! { AssignStmtScope, AssignStmt, Inheritance }
 impl super::Parse for AssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_recovery_tokens(&[SyntaxKind::Eq], parse_pat);
+        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::Eq]);
 
         parser.set_newline_as_trivia(false);
-        if bump_aug_assign_op_opt(parser) {
-            self.set_kind(SyntaxKind::AugAssignStmt);
-        }
+        parser.with_next_expected_tokens(
+            |parser| {
+                if bump_aug_assign_op_opt(parser) {
+                    self.set_kind(SyntaxKind::AugAssignStmt);
+                }
+            },
+            &[SyntaxKind::Eq],
+        );
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=`", None);

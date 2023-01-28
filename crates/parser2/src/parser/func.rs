@@ -42,20 +42,27 @@ impl super::Parse for FnScope {
 }
 
 fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
-    parser.with_next_expected_tokens(&[SyntaxKind::Lt, SyntaxKind::LParen], |parser| {
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the function name", None)
-        }
-    });
-
-    parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericParamListScope::default(), None);
-        }
-    });
+    parser.with_next_expected_tokens(
+        |parser| {
+            parser.bump_or_recover(
+                SyntaxKind::Ident,
+                "expected ident for the function name",
+                None,
+            )
+        },
+        &[SyntaxKind::Lt, SyntaxKind::LParen],
+    );
 
     parser.with_next_expected_tokens(
-        &[SyntaxKind::LBrace, SyntaxKind::Arrow, SyntaxKind::WhereKw],
+        |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        },
+        &[SyntaxKind::LParen],
+    );
+
+    parser.with_next_expected_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
                 parser.parse(FnArgListScope::default(), None);
@@ -63,14 +70,18 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
         },
+        &[SyntaxKind::LBrace, SyntaxKind::Arrow, SyntaxKind::WhereKw],
     );
 
-    parser.with_next_expected_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-        if parser.bump_if(SyntaxKind::Arrow) {
-            parse_type(parser, None, false);
-        }
-    });
-    parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+    parser.with_next_expected_tokens(
+        |parser| {
+            if parser.bump_if(SyntaxKind::Arrow) {
+                parse_type(parser, None, false);
+            }
+        },
+        &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+    );
+    parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
     if parser.current_kind() == Some(SyntaxKind::LBrace) {
         parser.parse(BlockExprScope::default(), None);
@@ -80,20 +91,27 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
 }
 
 fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
-    parser.with_next_expected_tokens(&[SyntaxKind::Lt, SyntaxKind::LParen], |parser| {
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the function name", None)
-        }
-    });
+    parser.with_next_expected_tokens(
+        |parser| {
+            parser.bump_or_recover(
+                SyntaxKind::Ident,
+                "expected ident for the function name",
+                None,
+            )
+        },
+        &[SyntaxKind::Lt, SyntaxKind::LParen],
+    );
 
-    parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericParamListScope::default(), None);
-        }
-    });
+    parser.with_next_expected_tokens(
+        |parser| {
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericParamListScope::default(), None);
+            }
+        },
+        &[SyntaxKind::LParen],
+    );
 
     parser.with_recovery_tokens(
-        &[SyntaxKind::LBrace, SyntaxKind::Arrow, SyntaxKind::WhereKw],
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
                 parser.parse(FnArgListScope::default(), None);
@@ -101,14 +119,18 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
         },
+        &[SyntaxKind::LBrace, SyntaxKind::Arrow, SyntaxKind::WhereKw],
     );
 
-    parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-        if parser.bump_if(SyntaxKind::Arrow) {
-            parse_type(parser, None, false);
-        }
-    });
-    parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+    parser.with_recovery_tokens(
+        |parser| {
+            if parser.bump_if(SyntaxKind::Arrow) {
+                parse_type(parser, None, false);
+            }
+        },
+        &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+    );
+    parser.with_recovery_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
     if parser.current_kind() == Some(SyntaxKind::LBrace) {
         parser.parse(BlockExprScope::default(), None);
@@ -116,19 +138,27 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
 }
 
 fn parse_extern_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
-    parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the function name", None)
-        }
-    });
+    parser.with_next_expected_tokens(
+        |parser| {
+            parser.bump_or_recover(
+                SyntaxKind::Ident,
+                "expected identifier for the function name",
+                None,
+            )
+        },
+        &[SyntaxKind::LParen],
+    );
 
-    parser.with_recovery_tokens(&[SyntaxKind::Arrow], |parser| {
-        if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(FnArgListScope::default(), None);
-        } else {
-            parser.error_and_recover("expected `(` for the function arguments", None);
-        }
-    });
+    parser.with_recovery_tokens(
+        |parser| {
+            if parser.current_kind() == Some(SyntaxKind::LParen) {
+                parser.parse(FnArgListScope::default(), None);
+            } else {
+                parser.error_and_recover("expected `(` for the function arguments", None);
+            }
+        },
+        &[SyntaxKind::Arrow],
+    );
 
     if parser.bump_if(SyntaxKind::Arrow) {
         parse_type(parser, None, false);
