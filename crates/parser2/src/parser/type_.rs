@@ -23,8 +23,8 @@ pub(super) fn parse_type<S: TokenStream>(
 define_scope!(PtrTypeScope { allow_bounds: bool }, PtrType, Inheritance);
 impl super::Parse for PtrTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::Star);
         parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::Star);
         parse_type(parser, None, self.allow_bounds);
     }
 }
@@ -32,11 +32,11 @@ impl super::Parse for PtrTypeScope {
 define_scope!(PathTypeScope { allow_bounds: bool }, PathType, Inheritance);
 impl super::Parse for PathTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         if !parser.parse(PathScope::default(), None).0 {
             return;
         }
 
-        parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
             parser.parse(GenericArgListScope::new(self.allow_bounds), None);
         }
@@ -46,6 +46,7 @@ impl super::Parse for PathTypeScope {
 define_scope!(SelfTypeScope, SelfType, Inheritance);
 impl super::Parse for SelfTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::SelfTypeKw);
     }
 }
@@ -59,10 +60,12 @@ define_scope! {
 }
 impl super::Parse for TupleTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
         }
+        parser.set_newline_as_trivia(true);
 
         parse_type(parser, None, self.allow_bounds);
         while parser.bump_if(SyntaxKind::Comma) {
@@ -83,11 +86,13 @@ define_scope! {
 }
 impl super::Parse for ArrayTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
 
-        parser.with_recovery_tokens(&[SyntaxKind::SemiColon], |parser| {
-            parse_type(parser, None, self.allow_bounds)
-        });
+        parser.with_next_expected_tokens(
+            |parser| parse_type(parser, None, self.allow_bounds),
+            &[SyntaxKind::SemiColon],
+        );
 
         if !parser.bump_if(SyntaxKind::SemiColon) {
             parser.error_and_recover("expected `;`", None);

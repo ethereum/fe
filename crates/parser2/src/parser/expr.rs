@@ -199,11 +199,10 @@ impl super::Parse for BinExprScope {
 define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }
 impl super::Parse for IndexExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
-        parse_expr(parser);
-        if !parser.bump_if(SyntaxKind::RBracket) {
-            parser.error_and_recover("expected `]`", None);
-        }
+        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
+        parser.bump_or_recover(SyntaxKind::RBracket, "expected `]`", None);
     }
 }
 
@@ -212,9 +211,12 @@ impl super::Parse for CallExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
-                parser.parse(GenericArgListScope::default(), None);
-            });
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(GenericArgListScope::default(), None);
+                },
+                &[SyntaxKind::LParen],
+            );
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
@@ -231,15 +233,16 @@ impl super::Parse for MethodExprScope {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot);
 
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected identifier", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LParen], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericArgListScope::default(), None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    parser.parse(GenericArgListScope::default(), None);
+                }
+            },
+            &[SyntaxKind::LParen],
+        );
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             parser.error_and_recover("expected `(`", None);
@@ -278,48 +281,32 @@ impl super::Parse for FieldExprScope {
 define_scope! { pub(super) LShiftScope, LShift, Inheritance }
 impl super::Parse for LShiftScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Lt) {
-            parser.error_and_recover("expected `<<`", None);
-        }
-        if !parser.bump_if(SyntaxKind::Lt) {
-            parser.error_and_recover("expected `<<`", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Lt, "expected `<<`", None);
+        parser.bump_or_recover(SyntaxKind::Lt, "expected `<<`", None);
     }
 }
 
 define_scope! { pub(super) RShiftScope, RShift, Inheritance }
 impl super::Parse for RShiftScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_recover("expected `>>`", None);
-        }
-        if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_recover("expected `>>`", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Gt, "expected `>>`", None);
+        parser.bump_or_recover(SyntaxKind::Gt, "expected `>>`", None);
     }
 }
 
 define_scope! { pub(super) LtEqScope, LtEq, Inheritance }
 impl super::Parse for LtEqScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Lt) {
-            parser.error_and_recover("expected `<=`", None);
-        }
-        if !parser.bump_if(SyntaxKind::Eq) {
-            parser.error_and_recover("expected `<=`", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Lt, "expected `<=`", None);
+        parser.bump_or_recover(SyntaxKind::Eq, "expected `<=`", None);
     }
 }
 
 define_scope! { pub(super) GtEqScope, GtEq, Inheritance }
 impl super::Parse for GtEqScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Gt) {
-            parser.error_and_recover("expected `>=`", None);
-        }
-        if !parser.bump_if(SyntaxKind::Eq) {
-            parser.error_and_recover("expected `>=`", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Gt, "expected `>=`", None);
+        parser.bump_or_recover(SyntaxKind::Eq, "expected `>=`", None);
     }
 }
 

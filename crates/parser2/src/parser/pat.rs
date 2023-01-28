@@ -66,17 +66,14 @@ impl super::Parse for TuplePatElemListScope {
             parser.parse(TuplePatElemScope::default(), None);
         }
 
-        if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_recover("expected `)`", None);
-            parser.bump_if(SyntaxKind::RParen);
-        }
+        parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
     }
 }
 
 define_scope! { TuplePatElemScope, TuplePatElem, Inheritance }
 impl super::Parse for TuplePatElemScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_pat(parser);
+        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
     }
 }
 
@@ -111,10 +108,7 @@ impl super::Parse for RecordPatFieldListScope {
             parser.parse(RecordPatFieldScope::default(), None);
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover("expected `}`", None);
-            parser.bump_if(SyntaxKind::RBrace);
-        }
+        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
     }
 }
 
@@ -128,7 +122,7 @@ impl super::Parse for RecordPatFieldScope {
             parser.bump_expected(SyntaxKind::Ident);
             parser.bump_expected(SyntaxKind::Colon);
         }
-        parse_pat(parser);
+        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::Comma, SyntaxKind::RBrace]);
     }
 }
 

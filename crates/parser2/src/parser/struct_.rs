@@ -18,22 +18,25 @@ impl super::Parse for StructScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::StructKw);
 
-        parser.with_recovery_tokens(
-            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
+        parser.with_next_expected_tokens(
             |parser| {
                 if !parser.bump_if(SyntaxKind::Ident) {
                     parser.error_and_recover("expected ident for the struct name", None)
                 }
             },
+            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    parser.parse(GenericParamListScope::default(), None);
+                }
+            },
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             parser.parse(RecordFieldDefListScope::default(), None);
@@ -91,11 +94,19 @@ impl super::Parse for RecordFieldDefScope {
         parse_attr_list(parser);
 
         parser.bump_if(SyntaxKind::PubKw);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the field name", None);
-        }
+        parser.with_next_expected_tokens(
+            |parser| {
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.error_and_recover("expected ident for the field name", None);
+                }
+            },
+            &[SyntaxKind::Colon],
+        );
         if parser.bump_if(SyntaxKind::Colon) {
-            parse_type(parser, None, false);
+            parser.with_next_expected_tokens(
+                |parser| parse_type(parser, None, false),
+                &[SyntaxKind::Newline, SyntaxKind::RBrace],
+            );
         } else {
             parser.error_and_recover("expected `name: type` for the field definition", None);
         }

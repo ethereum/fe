@@ -99,7 +99,11 @@ impl super::Parse for ItemListScope {
 
             parser.set_newline_as_trivia(false);
             if parser.current_kind().is_some() && !parser.bump_if(SyntaxKind::Newline) {
-                parser.error_and_recover("expected newline after item definition", checkpoint)
+                parser.bump_or_recover(
+                    SyntaxKind::Newline,
+                    "expected newline after item definition",
+                    checkpoint,
+                )
             }
         }
     }
@@ -153,9 +157,16 @@ impl super::Parse for ContractScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ContractKw);
 
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the struct name", None)
-        }
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expected identifier for the struct name",
+                    None,
+                )
+            },
+            &[SyntaxKind::LBrace],
+        );
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) {
             parser.parse(RecordFieldDefListScope::default(), None);
@@ -170,22 +181,27 @@ impl super::Parse for EnumScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::EnumKw);
 
-        parser.with_recovery_tokens(
-            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
+        parser.with_next_expected_tokens(
             |parser| {
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.error_and_recover("expected ident for the enum name", None)
-                }
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expected identifier for the enum name",
+                    None,
+                );
             },
+            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    parser.parse(GenericParamListScope::default(), None);
+                }
+            },
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+        );
 
-        parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected enum body", None);
@@ -209,30 +225,27 @@ impl super::Parse for VariantDefListScope {
             }
             parser.parse(VariantDefScope::default(), None);
             parser.set_newline_as_trivia(false);
-            if !parser.bump_if(SyntaxKind::Newline)
-                && parser.current_kind() != Some(SyntaxKind::RBrace)
-            {
-                parser.error_and_recover("expected newline after variant definition", None);
+            if parser.current_kind() != Some(SyntaxKind::RBrace) {
+                parser.bump_or_recover(
+                    SyntaxKind::Newline,
+                    "expected newline after variant definition",
+                    None,
+                );
             }
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover(
-                "expected the closing brace of the enum variants definition",
-                None,
-            );
-            parser.bump_if(SyntaxKind::RBrace);
-        }
+        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
     }
 }
 
 define_scope! { VariantDefScope, VariantDef, Inheritance }
 impl super::Parse for VariantDefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the variant name", None);
-            return;
-        }
+        parser.bump_or_recover(
+            SyntaxKind::Ident,
+            "expected ident for the variant name",
+            None,
+        );
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
             parser.parse(TupleTypeScope::default(), None);
@@ -245,17 +258,22 @@ impl super::Parse for TraitScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::TraitKw);
 
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected ident for the trait name", None)
-        }
+        parser.bump_or_recover(
+            SyntaxKind::Ident,
+            "expected identifier for the trait name",
+            None,
+        );
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace, SyntaxKind::WhereKw], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    parser.parse(GenericParamListScope::default(), None);
+                }
+            },
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+        );
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected trait body", None);
@@ -279,14 +297,13 @@ impl super::Parse for ImplScope {
         parser.bump_expected(SyntaxKind::ImplKw);
 
         parser.with_next_expected_tokens(
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
             |parser| {
                 parse_type(parser, None, true);
             },
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
         );
 
         let is_impl_trait = parser.with_next_expected_tokens(
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
             |parser| {
                 if parser.bump_if(SyntaxKind::ForKw) {
                     self.set_kind(SyntaxKind::ImplTrait);
@@ -296,9 +313,10 @@ impl super::Parse for ImplScope {
                     false
                 }
             },
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_where_clause_opt);
+        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected impl body", None);
@@ -342,18 +360,22 @@ impl super::Parse for ConstScope {
 
         parser.set_newline_as_trivia(false);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::Colon, SyntaxKind::Eq], |parser| {
-            if !parser.bump_if(SyntaxKind::Ident) {
-                parser.error_and_recover("expected identifier", None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None),
+            &[SyntaxKind::Colon, SyntaxKind::Eq],
+        );
 
-        parser.with_next_expected_tokens(&[SyntaxKind::Eq], |parser| {
-            if !parser.bump_if(SyntaxKind::Colon) {
-                parser.error_and_recover("expected type annotation for `const`", None);
-            }
-            parse_type(parser, None, false);
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Colon,
+                    "expected type annotation for `const`",
+                    None,
+                );
+                parse_type(parser, None, false);
+            },
+            &[SyntaxKind::Eq],
+        );
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` for const value definition", None);
@@ -390,17 +412,25 @@ impl super::Parse for TypeAliasScope {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::TypeKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::Lt, SyntaxKind::Eq], |parser| {
-            if !parser.bump_if(SyntaxKind::Ident) {
-                parser.error_and_recover("expected identifier for type alias name", None)
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expected identifier for type alias name",
+                    None,
+                );
+            },
+            &[SyntaxKind::Lt, SyntaxKind::Eq],
+        );
 
-        parser.with_next_expected_tokens(&[SyntaxKind::Eq], |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        });
+        parser.with_next_expected_tokens(
+            |parser| {
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    parser.parse(GenericParamListScope::default(), None);
+                }
+            },
+            &[SyntaxKind::Eq],
+        );
 
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=` for type alias definition", None);
@@ -460,10 +490,7 @@ fn parse_fn_item_block<S: TokenStream>(
         }
     }
 
-    if !parser.bump_if(SyntaxKind::RBrace) {
-        parser.error_and_recover("expected `}` to close the block", None);
-        parser.bump_if(SyntaxKind::RBrace);
-    }
+    parser.bump_or_recover(SyntaxKind::RBrace, "expected `}` to close the block", None);
 }
 
 fn is_modifier_head(kind: SyntaxKind) -> bool {
