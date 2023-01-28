@@ -91,7 +91,7 @@ impl super::Parse for IfExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::IfKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct);
+        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -100,9 +100,12 @@ impl super::Parse for IfExprScope {
         parser.parse(BlockExprScope::default(), None);
 
         if parser.current_kind() == Some(SyntaxKind::ElseKw) {
-            parser.with_next_expected_tokens(&[SyntaxKind::LBrace, SyntaxKind::IfKw], |parser| {
-                parser.bump_expected(SyntaxKind::ElseKw);
-            });
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.bump_expected(SyntaxKind::ElseKw);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::IfKw],
+            );
 
             if !matches!(
                 parser.current_kind(),
@@ -121,9 +124,7 @@ impl super::Parse for MatchExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::MatchKw);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::LBrace], |parser| {
-            parser.with_recovery_tokens(&[SyntaxKind::LBrace], parse_expr_no_struct)
-        });
+        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected `{`", None);
@@ -148,16 +149,16 @@ impl super::Parse for MatchArmListScope {
             parser.parse(MatchArmScope::default(), None);
 
             parser.set_newline_as_trivia(false);
-            if !parser.bump_if(SyntaxKind::Newline)
-                && parser.current_kind() != Some(SyntaxKind::RBrace)
-            {
-                parser.error_and_recover("expected newline after match arm", None);
+            if parser.current_kind() != Some(SyntaxKind::RBrace) {
+                parser.bump_or_recover(
+                    SyntaxKind::Newline,
+                    "expected newline after match arm",
+                    None,
+                );
             }
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_bump_until("expected }", None, SyntaxKind::RBrace)
-        }
+        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
     }
 }
 
@@ -166,14 +167,10 @@ impl super::Parse for MatchArmScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
 
-        parser.with_next_expected_tokens(&[SyntaxKind::FatArrow], parse_pat);
+        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::FatArrow]);
+        parser.bump_or_recover(SyntaxKind::FatArrow, "expected `=>`", None);
 
-        if !parser.bump_if(SyntaxKind::FatArrow) {
-            parser.error_and_recover("expected `=>`", None);
-            return;
-        }
-
-        parse_expr(parser);
+        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBrace, SyntaxKind::Newline]);
     }
 }
 
@@ -201,23 +198,25 @@ impl super::Parse for RecordFieldListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
 
-        if parser.bump_if(SyntaxKind::LBrace) {
+        if parser.bump_if(SyntaxKind::RBrace) {
             return;
         }
 
-        parser.with_next_expected_tokens(&[SyntaxKind::RBrace, SyntaxKind::Comma], |parser| {
-            parser.parse(RecordFieldScope::default(), None)
-        });
+        parser.with_next_expected_tokens(
+            |parser| parser.parse(RecordFieldScope::default(), None),
+            &[SyntaxKind::RBrace, SyntaxKind::Comma],
+        );
 
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.with_next_expected_tokens(&[SyntaxKind::RBrace, SyntaxKind::Comma], |parser| {
-                parser.parse(RecordFieldScope::default(), None);
-            })
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(RecordFieldScope::default(), None);
+                },
+                &[SyntaxKind::RBrace, SyntaxKind::Comma],
+            )
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_bump_until("expected `}`", None, SyntaxKind::RBrace);
-        }
+        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
     }
 }
 
@@ -225,9 +224,7 @@ define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        if !parser.bump_if(SyntaxKind::Ident) {
-            parser.error_and_recover("expected identifier", None);
-        }
+        parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None);
 
         if parser.bump_if(SyntaxKind::Colon) {
             parse_expr(parser);
@@ -241,22 +238,17 @@ impl super::Parse for ParenScope {
         parser.bump_expected(SyntaxKind::LParen);
 
         if parser.bump_if(SyntaxKind::RParen) {
-            self.set_kind(SyntaxKind::TupleExpr);
+            self.set_kind(SyntaxKind::ParenExpr);
             return;
         }
 
-        parse_expr(parser);
+        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         while parser.bump_if(SyntaxKind::Comma) {
             self.set_kind(SyntaxKind::TupleExpr);
-            if parser.current_kind() == Some(SyntaxKind::RParen) {
-                break;
-            }
-            parse_expr(parser);
+            parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         }
 
-        if !parser.bump_if(SyntaxKind::RParen) {
-            parser.error_and_bump_until("expected `)`", None, SyntaxKind::RParen);
-        }
+        parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
     }
 }
 
@@ -274,28 +266,26 @@ impl super::Parse for ArrayScope {
         }
 
         parser.with_next_expected_tokens(
+            parse_expr,
             &[
                 SyntaxKind::SemiColon,
                 SyntaxKind::Comma,
                 SyntaxKind::RBracket,
             ],
-            parse_expr,
         );
 
         if parser.bump_if(SyntaxKind::SemiColon) {
             self.set_kind(SyntaxKind::ArrayRepExpr);
-            parser.with_next_expected_tokens(&[SyntaxKind::RBracket], parse_expr);
+            parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
         } else {
             while parser.bump_if(SyntaxKind::Comma) {
                 parser.with_next_expected_tokens(
-                    &[SyntaxKind::Comma, SyntaxKind::RBracket],
                     parse_expr,
+                    &[SyntaxKind::Comma, SyntaxKind::RBracket],
                 );
             }
         }
 
-        if !parser.bump_if(SyntaxKind::RBracket) {
-            parser.error_and_bump_until("expected `]`", None, SyntaxKind::RBracket);
-        }
+        parser.bump_or_recover(SyntaxKind::RBracket, "expected `]`", None);
     }
 }

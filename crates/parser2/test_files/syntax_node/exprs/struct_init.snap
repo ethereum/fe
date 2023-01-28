@@ -2,7 +2,7 @@
 source: crates/parser2/tests/syntax_node.rs
 expression: snapshot
 ---
-Root@0..31
+Root@0..40
   RecordInitExpr@0..13
     Path@0..6
       PathSegment@0..6
@@ -38,4 +38,13 @@ Root@0..31
           LitExpr@29..30
             Int@29..30 "2"
       RBrace@30..31 "}"
+  Newline@31..32 "\n"
+  RecordInitExpr@32..40
+    Path@32..37
+      PathSegment@32..37
+        Ident@32..37 "Empty"
+    WhiteSpace@37..38 " "
+    RecordFieldList@38..40
+      LBrace@38..39 "{"
+      RBrace@39..40 "}"
 

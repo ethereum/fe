@@ -53,15 +53,23 @@ define_scope! {
 impl super::Parse for UseTreeListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
-        parser.parse(UseTreeScope::default(), None);
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.parse(UseTreeScope::default(), None);
+            },
+            &[SyntaxKind::RBrace, SyntaxKind::Comma],
+        );
 
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(UseTreeScope::default(), None);
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(UseTreeScope::default(), None);
+                },
+                &[SyntaxKind::RBrace, SyntaxKind::Comma],
+            );
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover("expected `}`", None);
-        }
+        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
     }
 }
 

@@ -101,7 +101,7 @@ impl<S: TokenStream> Parser<S> {
     ///
     /// This is useful when you want to specify auxiliary recovery tokens which
     /// are valid only in a limited part of the scope.
-    pub fn with_recovery_tokens<F, R>(&mut self, recovery_tokens: &[SyntaxKind], f: F) -> R
+    pub fn with_recovery_tokens<F, R>(&mut self, f: F, recovery_tokens: &[SyntaxKind]) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
@@ -126,7 +126,7 @@ impl<S: TokenStream> Parser<S> {
     /// If `current_token()` is not in `expected_tokens` after `f` returns, an
     /// error is reported and try to recover with `expected_tokens` and scope's
     /// recovery token set.
-    pub fn with_next_expected_tokens<F, R>(&mut self, expected_tokens: &[SyntaxKind], f: F) -> R
+    pub fn with_next_expected_tokens<F, R>(&mut self, f: F, expected_tokens: &[SyntaxKind]) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
@@ -358,6 +358,20 @@ impl<S: TokenStream> Parser<S> {
         }
 
         self.set_newline_as_trivia(is_newline_trivia);
+    }
+
+    /// Bumps the current token if the current token is the `expected` kind.
+    /// Otherwise, reports an error and proceeds the parser to the recovery
+    /// tokens.
+    pub fn bump_or_recover(
+        &mut self,
+        expected: SyntaxKind,
+        msg: &str,
+        checkpoint: Option<Checkpoint>,
+    ) {
+        if !self.bump_if(expected) {
+            self.error_and_recover(msg, checkpoint);
+        }
     }
 
     fn checkpoint(&mut self) -> Checkpoint {
