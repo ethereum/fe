@@ -58,9 +58,8 @@ jobs:
         uses: Swatinem/rust-cache@v1
       - name: install mdbook & mdbook-linkcheck
         run: |
-          cargo install cargo-quickinstall
-          cargo quickinstall mdbook
-          cargo quickinstall mdbook-linkcheck
+          cargo install mdbook
+          cargo install mdbook-linkcheck
       - name: Validate links in book
         run: |
           mdbook build docs/
@@ -80,7 +79,8 @@ jobs:
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
-          brew install boost
+          brew tap Y-Nak/boost
+          brew install Y-nak/boost/boost
       - name: Install Linux dependencies
         if: startsWith(matrix.os,'ubuntu')
         run: |
@@ -144,8 +144,8 @@ jobs:
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
-          brew update
-          brew install boost
+          brew tap Y-Nak/boost
+          brew install Y-nak/boost/boost
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
