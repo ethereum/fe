@@ -72,7 +72,7 @@ pub fn try_cast_type(
         (Type::Base(Base::Address), Type::Base(Base::Numeric(into))) => {
             if into != Integer::U256 {
                 context.error(
-                    &format!("can't cast `address` to `{}`", into),
+                    &format!("can't cast `address` to `{into}`"),
                     into_span,
                     "try `u256` here",
                 );

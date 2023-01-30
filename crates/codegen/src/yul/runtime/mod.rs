@@ -412,9 +412,9 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         let symbol_name = db.codegen_constant_string_symbol_name(data.to_string());
 
         let name = if is_dst_storage {
-            format!("$string_copy_{}_storage", symbol_name)
+            format!("$string_copy_{symbol_name}_storage")
         } else {
-            format!("$string_copy_{}_memory", symbol_name)
+            format!("$string_copy_{symbol_name}_memory")
         };
 
         self.create_then_call(&name, vec![dst], |provider| {
@@ -432,7 +432,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         debug_assert!(string_len >= data.len());
         let symbol_name = db.codegen_constant_string_symbol_name(data.to_string());
 
-        let name = format!("$string_construct_{}", symbol_name);
+        let name = format!("$string_construct_{symbol_name}");
         let arg = literal_expression!((32 + string_len));
         self.create_then_call(&name, vec![arg], |provider| {
             data::make_string_construct(provider, db, &name, data)
@@ -612,13 +612,13 @@ impl RuntimeProvider for DefaultRuntimeProvider {
                     TypeKind::Array(ArrayDef { len, .. }) => *len,
                     _ => unreachable!(),
                 };
-                let name = format! {"$abi_encode_bytes{}_type_to_{}", len, func_name_postfix};
+                let name = format! {"$abi_encode_bytes{len}_type_to_{func_name_postfix}"};
                 self.create_then_call(&name, args, |provider| {
                     abi::make_abi_encode_bytes_type(provider, db, &name, len, is_dst_storage)
                 })
             }
             AbiType::String => {
-                let name = format! {"$abi_encode_string_type_to_{}", func_name_postfix};
+                let name = format! {"$abi_encode_string_type_to_{func_name_postfix}"};
                 self.create_then_call(&name, args, |provider| {
                     abi::make_abi_encode_string_type(provider, db, &name, is_dst_storage)
                 })

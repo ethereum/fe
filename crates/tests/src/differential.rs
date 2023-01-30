@@ -134,13 +134,13 @@ impl<'a> DualHarness {
     ) -> DualHarness {
         let fe_harness = test_utils::deploy_contract(
             executor,
-            &format!("differential/{}.fe", fixture),
+            &format!("differential/{fixture}.fe"),
             contract_name,
             init_params,
         );
         let solidity_harness = test_utils::deploy_solidity_contract(
             executor,
-            &format!("differential/{}.sol", fixture),
+            &format!("differential/{fixture}.sol"),
             contract_name,
             init_params,
             true,

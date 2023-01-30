@@ -130,7 +130,7 @@ pub fn validate_named_args(
                         "argument label mismatch",
                         vec![Label::primary(
                             actual_label.span,
-                            format!("expected `{}`", expected_label),
+                            format!("expected `{expected_label}`"),
                         )],
                         notes,
                     );
@@ -143,11 +143,10 @@ pub fn validate_named_args(
                             "missing argument label",
                             vec![Label::primary(
                                 Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
-                                format!("add `{}:` here", expected_label),
+                                format!("add `{expected_label}:` here"),
                             )],
                             vec![format!(
-                                "Note: this label is optional if the argument is a variable named `{}`.",
-                                expected_label
+                                "Note: this label is optional if the argument is a variable named `{expected_label}`."
                             )],
                         );
                 }
@@ -195,12 +194,9 @@ pub fn validate_named_args(
             ) {
                 Err(TypeCoercionError::Incompatible) => {
                     let msg = if let Some(label) = param.label() {
-                        format!("incorrect type for `{}` argument `{}`", name, label)
+                        format!("incorrect type for `{name}` argument `{label}`")
                     } else {
-                        format!(
-                            "incorrect type for `{}` argument at position {}",
-                            name, index
-                        )
+                        format!("incorrect type for `{name}` argument at position {index}")
                     };
                     context.type_error(&msg, arg.kind.value.span, param_type, arg_attr.typ);
                 }
@@ -220,9 +216,9 @@ pub fn validate_named_args(
 
         if param_type.is_mut(context.db()) && !arg_type.is_mut(context.db()) {
             let msg = if let Some(label) = param.label() {
-                format!("`{}` argument `{}` must be mutable", name, label)
+                format!("`{name}` argument `{label}` must be mutable")
             } else {
-                format!("`{}` argument at position {} must be mutable", name, index)
+                format!("`{name}` argument at position {index} must be mutable")
             };
             context.error(&msg, arg.kind.value.span, "is not `mut`");
         }

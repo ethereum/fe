@@ -113,11 +113,11 @@ impl ir::FunctionId {
                     id.receiver(db.upcast()).display(db.upcast()),
                     id.trait_id(db.upcast()).name(db.upcast())
                 );
-                format!("{}::{}", class_name, func_name).into()
+                format!("{class_name}::{func_name}").into()
             }
             Some(class) => {
                 let class_name = class.name(db.upcast());
-                format!("{}::{}", class_name, func_name).into()
+                format!("{class_name}::{func_name}").into()
             }
             _ => func_name.into(),
         }

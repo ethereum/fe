@@ -16,8 +16,8 @@ pub enum AbiType {
 impl AbiType {
     pub fn selector_type_name(&self) -> String {
         match self {
-            Self::UInt(bits) => format!("uint{}", bits),
-            Self::Int(bits) => format!("int{}", bits),
+            Self::UInt(bits) => format!("uint{bits}"),
+            Self::Int(bits) => format!("int{bits}"),
             Self::Address => "address".to_string(),
             Self::Bool => "bool".to_string(),
             Self::Function => "function".to_string(),

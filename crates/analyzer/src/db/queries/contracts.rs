@@ -232,7 +232,7 @@ pub fn contract_call_function(
                 diagnostics.push(errors::fancy_error(
                     "`pub` not allowed if `__call__` is defined",
                     vec![
-                        Label::primary(func.name_span(db), format!("`{}` can't be public", name)),
+                        Label::primary(func.name_span(db), format!("`{name}` can't be public")),
                         Label::secondary(init_span, "`__call__` defined here"),
                     ],
                     vec![
@@ -281,7 +281,7 @@ pub fn contract_field_map(
         match map.entry(node.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
-                    &format!("duplicate field names in `contract {}`", contract_name,),
+                    &format!("duplicate field names in `contract {contract_name}`",),
                     entry.key(),
                     entry.get().data(db).ast.span,
                     node.span,

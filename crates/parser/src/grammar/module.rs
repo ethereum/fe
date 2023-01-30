@@ -262,7 +262,7 @@ pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<Pragma>> {
         )),
         Err(err) => {
             par.fancy_error(
-                format!("failed to parse pragma statement: {}", err),
+                format!("failed to parse pragma statement: {err}"),
                 vec![Label::primary(
                     version_requirement_span,
                     "Invalid version requirement",

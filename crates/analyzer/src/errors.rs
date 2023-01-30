@@ -204,13 +204,13 @@ pub fn type_error(
     error(
         message,
         span,
-        format!("this has type `{}`; expected type `{}`", actual, expected),
+        format!("this has type `{actual}`; expected type `{expected}`"),
     )
 }
 
 pub fn not_yet_implemented(feature: impl Display, span: Span) -> Diagnostic {
     error(
-        format!("feature not yet implemented: {}", feature),
+        format!("feature not yet implemented: {feature}"),
         span,
         "not yet implemented",
     )
@@ -225,8 +225,8 @@ pub fn duplicate_name_error(
     fancy_error(
         message,
         vec![
-            Label::primary(original, format!("`{}` first defined here", name)),
-            Label::secondary(duplicate, format!("`{}` redefined here", name)),
+            Label::primary(original, format!("`{name}` first defined here")),
+            Label::secondary(duplicate, format!("`{name}` redefined here")),
         ],
         vec![],
     )
@@ -248,8 +248,8 @@ pub fn name_conflict_error(
                 original.item_kind_display_name()
             ),
             vec![
-                Label::primary(original_span, format!("`{}` first defined here", name)),
-                Label::secondary(duplicate_span, format!("`{}` redefined here", name)),
+                Label::primary(original_span, format!("`{name}` first defined here")),
+                Label::secondary(duplicate_span, format!("`{name}` redefined here")),
             ],
             vec![],
         )
@@ -287,15 +287,11 @@ pub fn to_mem_error(span: Span) -> Diagnostic {
 }
 pub fn self_contract_type_error(span: Span, typ: &dyn Display) -> Diagnostic {
     fancy_error(
-        format!(
-            "`self` can't be used where a contract of type `{}` is expected",
-            typ,
-        ),
+        format!("`self` can't be used where a contract of type `{typ}` is expected",),
         vec![Label::primary(span, "cannot use `self` here")],
         vec![format!(
-            "Hint: Values of type `{t}` represent external contracts.\n\
-             To treat `self` as an external contract, use `{t}(ctx.self_address())`.",
-            t = typ
+            "Hint: Values of type `{typ}` represent external contracts.\n\
+             To treat `self` as an external contract, use `{typ}(ctx.self_address())`."
         )],
     )
 }

@@ -294,7 +294,7 @@ impl Constant {
     fn extract_numeric(&self) -> &BigInt {
         match self {
             Constant::Int(val) => val,
-            _ => panic!("can't extract numeric value from {:?}", self),
+            _ => panic!("can't extract numeric value from {self:?}"),
         }
     }
 
@@ -305,7 +305,7 @@ impl Constant {
     fn extract_bool(&self) -> bool {
         match self {
             Constant::Bool(val) => *val,
-            _ => panic!("can't extract bool value from {:?}", self),
+            _ => panic!("can't extract bool value from {self:?}"),
         }
     }
 }

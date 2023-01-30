@@ -20,8 +20,8 @@ use super::function::BodyLowerHelper;
 pub mod decision_tree;
 mod tree_vis;
 
-pub(super) fn lower_match<'db, 'a, 'b>(
-    helper: &'b mut BodyLowerHelper<'db, 'a>,
+pub(super) fn lower_match<'b>(
+    helper: &'b mut BodyLowerHelper<'_, '_>,
     mat: &PatternMatrix,
     scrutinee: &Node<Expr>,
     arms: &'b [Node<MatchArm>],

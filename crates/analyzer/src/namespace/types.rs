@@ -742,7 +742,7 @@ impl fmt::Display for Base {
             Base::Address => "address",
             Base::Unit => "()",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 
@@ -762,7 +762,7 @@ impl fmt::Display for Integer {
             Integer::I16 => "i16",
             Integer::I8 => "i8",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 

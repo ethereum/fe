@@ -305,7 +305,7 @@ pub(super) fn make_abi_encode_seq(
     let enc_size = YulVariable::new("enc_size");
     let data_ptr = YulVariable::new("data_ptr");
     let values: Vec<_> = (0..value_num)
-        .map(|idx| YulVariable::new(format!("value{}", idx)))
+        .map(|idx| YulVariable::new(format!("value{idx}")))
         .collect();
 
     let total_header_size =
@@ -369,7 +369,7 @@ pub(super) fn make_abi_decode(
     let data_offset = YulVariable::new("data_offset");
     let tmp_offset = YulVariable::new("tmp_offset");
     let returns: Vec<_> = (0..types.len())
-        .map(|i| YulVariable::new(format!("$ret{}", i)))
+        .map(|i| YulVariable::new(format!("$ret{i}")))
         .collect();
 
     let abi_enc_size = abi_enc_size(db, types);
@@ -502,7 +502,7 @@ impl DefaultRuntimeProvider {
                     _ => unreachable!(),
                 };
                 args.push(literal_expression! {(len)});
-                let name = format! {"$abi_decode_string_from_{}", func_name_postfix};
+                let name = format! {"$abi_decode_string_from_{func_name_postfix}"};
                 self.create_then_call(&name, args, |provider| {
                     make_abi_decode_string_type(provider, db, &name, abi_loc)
                 })
@@ -514,7 +514,7 @@ impl DefaultRuntimeProvider {
                     _ => unreachable!(),
                 };
                 args.push(literal_expression! {(len)});
-                let name = format! {"$abi_decode_bytes_from_{}", func_name_postfix};
+                let name = format! {"$abi_decode_bytes_from_{func_name_postfix}"};
                 self.create_then_call(&name, args, |provider| {
                     make_abi_decode_bytes_type(provider, db, &name, abi_loc)
                 })

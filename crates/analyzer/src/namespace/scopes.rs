@@ -627,7 +627,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
                 } else {
                     // It's (currently) an error to shadow a variable in a nested scope
                     let err = self.duplicate_name_error(
-                        &format!("duplicate definition of variable `{}`", name),
+                        &format!("duplicate definition of variable `{name}`"),
                         name,
                         named_item
                             .name_span(self.db())
@@ -672,16 +672,15 @@ pub fn check_visibility(context: &dyn AnalyzerContext, named_thing: &NamedThing,
             let item_span = item.name_span(context.db()).unwrap_or(span);
             let item_kind_name = item.item_kind_display_name();
             context.fancy_error(
-                &format!("the {} `{}` is private", item_kind_name, item_name,),
+                &format!("the {item_kind_name} `{item_name}` is private",),
                 vec![
-                    Label::primary(span, format!("this {} is not `pub`", item_kind_name)),
-                    Label::secondary(item_span, format!("`{}` is defined here", item_name)),
+                    Label::primary(span, format!("this {item_kind_name} is not `pub`")),
+                    Label::secondary(item_span, format!("`{item_name}` is defined here")),
                 ],
                 vec![
-                    format!("`{}` can only be used within `{}`", item_name, module_name),
+                    format!("`{item_name}` can only be used within `{module_name}`"),
                     format!(
-                        "Hint: use `pub` to make `{}` visible from outside of `{}`",
-                        item_name, module_name,
+                        "Hint: use `pub` to make `{item_name}` visible from outside of `{module_name}`",
                     ),
                 ],
             );

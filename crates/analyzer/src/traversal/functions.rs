@@ -91,12 +91,9 @@ fn loop_flow_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) {
             _ => unreachable!(),
         };
         scope.error(
-            &format!("`{}` outside of a loop", stmt_name),
+            &format!("`{stmt_name}` outside of a loop"),
             stmt.span,
-            &format!(
-                "`{}` can only be used inside of a `for` or `while` loop",
-                stmt_name
-            ),
+            &format!("`{stmt_name}` can only be used inside of a `for` or `while` loop"),
         );
     }
 }
@@ -379,10 +376,10 @@ fn match_pattern(
                 for (subpat, binds) in subpat_binds.iter() {
                     if !binds.contains_key(var) {
                         err = Some(scope.fancy_error(
-                            &format!("variable `{}` is not bound in all sub patterns", var),
+                            &format!("variable `{var}` is not bound in all sub patterns"),
                             vec![Label::primary(
                                 subpat.span,
-                                format!("variable `{}` is not bound here", var),
+                                format!("variable `{var}` is not bound here"),
                             )],
                             vec![],
                         ));
@@ -403,7 +400,7 @@ fn match_pattern(
                     if bind.ty != ty {
                         bind.spans.iter().for_each(|span| {
                             err = Some(scope.type_error(
-                                &format! {"mismatched type for `{}` between sub patterns", var},
+                                &format! {"mismatched type for `{var}` between sub patterns"},
                                 *span,
                                 ty,
                                 bind.ty,
@@ -478,9 +475,9 @@ fn struct_pattern(
         let pat = match pat_fields.remove(f_name) {
             Some((_, span)) if !field.is_public(scope.db()) => {
                 let err = scope.fancy_error(
-                    &format!("field `{}` is not public field", f_name),
+                    &format!("field `{f_name}` is not public field"),
                     vec![
-                        Label::primary(span, format!("`{}` is not public", f_name)),
+                        Label::primary(span, format!("`{f_name}` is not public")),
                         Label::secondary(field.span(scope.db()), "field is defined here"),
                     ],
                     vec![],
@@ -495,7 +492,7 @@ fn struct_pattern(
                     Node::new(Pattern::WildCard, dummy_span)
                 } else {
                     let err = scope.fancy_error(
-                        &format!("missing field `{}` in the pattern", f_name),
+                        &format!("missing field `{f_name}` in the pattern"),
                         vec![Label::primary(pat_span, "missing field")],
                         vec![],
                     );

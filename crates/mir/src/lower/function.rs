@@ -830,7 +830,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         let lhs = self.lower_expr_to_value(lhs);
         let tmp = self
             .builder
-            .declare(Local::tmp_local(format!("${}_tmp", op).into(), ty));
+            .declare(Local::tmp_local(format!("${op}_tmp").into(), ty));
 
         match op {
             ast::BoolOperator::And => {
