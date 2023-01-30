@@ -226,7 +226,12 @@ pub fn function_signature(
                 }
                 Ok(TypeId::unit(scope.db()))
             } else {
-                match type_desc(&mut scope, type_node)? {
+                let self_ty = match function.parent(db) {
+                    Item::Trait(id) => Some(id.as_trait_or_type()),
+                    _ => function.self_type(db).map(|ty| ty.as_trait_or_type()),
+                };
+
+                match type_desc(&mut scope, type_node, self_ty)? {
                     typ if typ.has_fixed_size(scope.db()) => Ok(typ),
                     _ => Err(TypeError::new(scope.error(
                         "function return type must have a fixed size",
@@ -273,7 +278,14 @@ fn resolve_function_param_type(
             })));
         }
     }
-    type_desc(context, desc)
+
+    let self_ty = if let Item::Trait(id) = function.parent(db) {
+        Some(id.as_trait_or_type())
+    } else {
+        function.self_type(db).map(|ty| ty.as_trait_or_type())
+    };
+
+    type_desc(context, desc, self_ty)
 }
 
 /// Gather context information for a function body and check for type errors.

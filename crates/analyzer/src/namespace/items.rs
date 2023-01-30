@@ -20,6 +20,8 @@ use std::rc::Rc;
 use std::{fmt, ops::Deref};
 use strum::IntoEnumIterator;
 
+use super::types::TraitOrType;
+
 /// A named item. This does not include things inside of
 /// a function body.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
@@ -503,7 +505,7 @@ impl ModuleId {
 
     /// Includes duplicate names
     pub fn all_impls(&self, db: &dyn AnalyzerDb) -> Rc<[ImplId]> {
-        db.module_all_impls(*self)
+        db.module_all_impls(*self).value
     }
 
     pub fn impls(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<(TraitId, TypeId), ImplId>> {
@@ -944,6 +946,9 @@ pub struct Contract {
 pub struct ContractId(pub(crate) u32);
 impl_intern_key!(ContractId);
 impl ContractId {
+    pub fn as_type(&self, db: &dyn AnalyzerDb) -> TypeId {
+        db.intern_type(Type::Contract(*self))
+    }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Contract> {
         db.lookup_intern_contract(*self)
     }
@@ -1654,6 +1659,28 @@ impl ImplId {
         self.data(db).receiver
     }
 
+    /// Returns `true` if `other` either is `Self` or the type of the receiver
+    pub fn is_receiver_type(&self, other: TypeId, db: &dyn AnalyzerDb) -> bool {
+        other == self.receiver(db)
+            || other == Type::SelfType(TraitOrType::TypeId(self.receiver(db))).id(db)
+    }
+
+    /// Returns `true` if the `type_in_impl` can stand in for the `type_in_trait` as a type used
+    /// for a parameter or as a return type
+    pub fn can_stand_in_for(
+        &self,
+        db: &dyn AnalyzerDb,
+        type_in_impl: TypeId,
+        type_in_trait: TypeId,
+    ) -> bool {
+        if type_in_impl == type_in_trait {
+            true
+        } else {
+            self.is_receiver_type(type_in_impl, db)
+                && (type_in_trait.is_self_ty(db) || type_in_trait == self.receiver(db))
+        }
+    }
+
     pub fn ast(&self, db: &dyn AnalyzerDb) -> Node<ast::Impl> {
         self.data(db).ast.clone()
     }
@@ -1706,18 +1733,21 @@ impl ImplId {
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match &self.data(db).receiver.typ(db) {
-            Type::Contract(_) | Type::Map(_) | Type::SelfContract(_) | Type::Generic(_) => sink
-                .push(&errors::fancy_error(
-                    format!(
-                        "`impl` blocks aren't allowed for {}",
-                        self.data(db).receiver.display(db)
-                    ),
-                    vec![Label::primary(
-                        self.data(db).ast.span,
-                        "illegal `impl` block",
-                    )],
-                    vec![],
-                )),
+            Type::Contract(_)
+            | Type::Map(_)
+            | Type::SelfContract(_)
+            | Type::Generic(_)
+            | Type::SelfType(_) => sink.push(&errors::fancy_error(
+                format!(
+                    "`impl` blocks aren't allowed for {}",
+                    self.data(db).receiver.display(db)
+                ),
+                vec![Label::primary(
+                    self.data(db).ast.span,
+                    "illegal `impl` block",
+                )],
+                vec![],
+            )),
             Type::Struct(id) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
             }
@@ -1751,33 +1781,47 @@ impl ImplId {
             impl_fn.sink_diagnostics(db, sink);
 
             if let Some(trait_fn) = self.trait_id(db).function(db, &impl_fn.name(db)) {
-                if impl_fn.signature(db).params != trait_fn.signature(db).params {
-                    // TODO: This could be a nicer, more detailed report
-                    sink.push(&errors::fancy_error(
-                        format!(
-                            "method `{}` has incompatible parameters for `{}` of trait `{}`",
-                            impl_fn.name(db),
-                            trait_fn.name(db),
-                            self.trait_id(db).name(db)
-                        ),
-                        vec![
-                            Label::primary(
-                                impl_fn.data(db).ast.kind.sig.span,
-                                "signature of method in `impl` block",
+                for (impl_param, trait_param) in impl_fn
+                    .signature(db)
+                    .params
+                    .iter()
+                    .zip(trait_fn.signature(db).params.iter())
+                {
+                    let impl_param_ty = impl_param.typ.clone().unwrap();
+                    let trait_param_ty = trait_param.typ.clone().unwrap();
+                    if self.can_stand_in_for(db, impl_param_ty, trait_param_ty) {
+                        continue;
+                    } else {
+                        sink.push(&errors::fancy_error(
+                            format!(
+                                "method `{}` has incompatible parameters for `{}` of trait `{}`",
+                                impl_fn.name(db),
+                                trait_fn.name(db),
+                                self.trait_id(db).name(db)
                             ),
-                            Label::primary(
-                                trait_fn.data(db).ast.span,
-                                format!(
-                                    "signature of method in trait `{}`",
-                                    self.trait_id(db).name(db)
+                            vec![
+                                Label::primary(
+                                    impl_fn.data(db).ast.kind.sig.span,
+                                    "signature of method in `impl` block",
                                 ),
-                            ),
-                        ],
-                        vec![],
-                    ));
+                                Label::primary(
+                                    trait_fn.data(db).ast.span,
+                                    format!(
+                                        "signature of method in trait `{}`",
+                                        self.trait_id(db).name(db)
+                                    ),
+                                ),
+                            ],
+                            vec![],
+                        ));
+                        break;
+                    }
                 }
 
-                if impl_fn.signature(db).return_type != trait_fn.signature(db).return_type {
+                let impl_fn_return_ty = impl_fn.signature(db).return_type.clone().unwrap();
+                let trait_fn_return_ty = trait_fn.signature(db).return_type.clone().unwrap();
+
+                if !self.can_stand_in_for(db, impl_fn_return_ty, trait_fn_return_ty) {
                     // TODO: This could be a nicer, more detailed report
                     sink.push(&errors::fancy_error(
                         format!(
@@ -1901,7 +1945,9 @@ impl TraitId {
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
     }
-
+    pub fn as_trait_or_type(&self) -> TraitOrType {
+        TraitOrType::TraitId(*self)
+    }
     pub fn is_implemented_for(&self, db: &dyn AnalyzerDb, ty: TypeId) -> bool {
         // All encodable structs automagically implement the Emittable trait
         // TODO: Remove this when we have the `Encode / Decode` trait.

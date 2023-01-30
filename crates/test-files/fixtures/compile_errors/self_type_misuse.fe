@@ -1,0 +1,17 @@
+
+
+trait Foo {
+    fn yay();
+}
+
+impl Foo for Self {
+    fn yay() {}
+}
+
+
+struct Bar {
+    foo: Self
+}
+
+// TODO: There exist valid use cases for `Self` as a tuple field which also aren't supported yet
+type InvalidTuple = (u8, Self)

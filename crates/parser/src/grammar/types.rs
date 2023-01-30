@@ -524,6 +524,10 @@ pub fn parse_path_tail<'a>(
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
     let mut typ = match par.peek_or_err()? {
+        SelfType => {
+            let _self = par.next()?;
+            Node::new(TypeDesc::SelfType, _self.span)
+        }
         Name => {
             let name = par.next()?;
             match par.peek() {

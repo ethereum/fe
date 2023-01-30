@@ -7,7 +7,8 @@ use crate::display::Displayable;
 use crate::errors::{TypeCoercionError, TypeError};
 use crate::namespace::items::{Item, TraitId};
 use crate::namespace::types::{
-    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, Tuple, Type, TypeId,
+    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple, Type,
+    TypeId,
 };
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
@@ -36,6 +37,9 @@ pub fn try_cast_type(
         }
 
         (Type::Mut(inner), _) => try_cast_type(context, inner, from_expr, into, into_span),
+        (Type::SelfType(TraitOrType::TypeId(inner)), _) => {
+            try_cast_type(context, inner, from_expr, into, into_span)
+        }
 
         (Type::String(from_str), Type::String(into_str)) => {
             if from_str.max_size > into_str.max_size {
@@ -116,6 +120,7 @@ pub fn deref_type(context: &mut dyn AnalyzerContext, expr: &Node<ast::Expr>, ty:
     match ty.typ(context.db()) {
         Type::SPtr(inner) => adjust_type(context, expr, inner, AdjustmentKind::Load),
         Type::Mut(inner) => deref_type(context, expr, inner),
+        Type::SelfType(TraitOrType::TypeId(inner)) => deref_type(context, expr, inner),
         _ => ty,
     }
 }
@@ -188,6 +193,14 @@ fn coerce(
             coerce(context, from_expr, from, into, false, chain)
         }
         (_, Type::Mut(into)) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (Type::SelfType(TraitOrType::TypeId(from)), _) => {
+            let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
+            coerce(context, from_expr, from, into, false, chain)
+        }
+        (_, Type::SelfType(TraitOrType::TypeId(into))) => {
             let chain = add_adjustment_if(should_copy, chain, from, AdjustmentKind::Copy);
             coerce(context, from_expr, from, into, false, chain)
         }
@@ -387,7 +400,7 @@ pub fn apply_generic_type_args(
             }
 
             (GenericParamKind::PrimitiveType, ast::GenericArg::TypeDesc(type_node)) => {
-                let typ = type_desc(context, type_node)?;
+                let typ = type_desc(context, type_node, None)?;
                 if typ.is_primitive(context.db()) {
                     Ok(GenericArg::Type(typ))
                 } else {
@@ -407,7 +420,7 @@ pub fn apply_generic_type_args(
             }
 
             (GenericParamKind::AnyType, ast::GenericArg::TypeDesc(type_node)) => {
-                Ok(GenericArg::Type(type_desc(context, type_node)?))
+                Ok(GenericArg::Type(type_desc(context, type_node, None)?))
             }
 
             (
@@ -523,6 +536,7 @@ pub fn resolve_concrete_type_named_thing<T: std::fmt::Display>(
 pub fn type_desc(
     context: &mut dyn AnalyzerContext,
     desc: &Node<ast::TypeDesc>,
+    self_type: Option<TraitOrType>,
 ) -> Result<TypeId, TypeError> {
     match &desc.kind {
         ast::TypeDesc::Base { base } => resolve_concrete_type_name(context, base, desc, None),
@@ -534,7 +548,7 @@ pub fn type_desc(
         ast::TypeDesc::Tuple { items } => {
             let types = items
                 .iter()
-                .map(|typ| match type_desc(context, typ) {
+                .map(|typ| match type_desc(context, typ, self_type.clone()) {
                     Ok(typ) if typ.has_fixed_size(context.db()) => Ok(typ),
                     Err(e) => Err(e),
                     _ => Err(TypeError::new(context.error(
@@ -549,6 +563,18 @@ pub fn type_desc(
             })))
         }
         ast::TypeDesc::Unit => Ok(TypeId::unit(context.db())),
+        ast::TypeDesc::SelfType => {
+            if let Some(val) = self_type {
+                Ok(Type::SelfType(val).id(context.db()))
+            } else {
+                dbg!("Reporting error");
+                Err(TypeError::new(context.error(
+                    "`Self` can not be used here",
+                    desc.span,
+                    "",
+                )))
+            }
+        }
     }
 }
 

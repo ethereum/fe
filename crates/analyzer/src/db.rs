@@ -83,7 +83,7 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<[Item]>;
     #[salsa::invoke(queries::module::module_all_impls)]
-    fn module_all_impls(&self, module: ModuleId) -> Rc<[ImplId]>;
+    fn module_all_impls(&self, module: ModuleId) -> Analysis<Rc<[ImplId]>>;
     #[salsa::invoke(queries::module::module_item_map)]
     fn module_item_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<SmolStr, Item>>>;
     #[salsa::invoke(queries::module::module_impl_map)]

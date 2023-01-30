@@ -1,6 +1,6 @@
 use crate::context::AnalyzerContext;
 use crate::errors::{BinaryOperationError, IndexingError};
-use crate::namespace::types::{Array, Integer, Map, Type, TypeDowncast, TypeId};
+use crate::namespace::types::{Array, Integer, Map, TraitOrType, Type, TypeDowncast, TypeId};
 
 use crate::traversal::types::{deref_type, try_coerce_type};
 use fe_parser::{ast as fe, node::Node};
@@ -23,6 +23,10 @@ pub fn index(
         Type::Mut(inner) => {
             Ok(Type::Mut(index(context, inner, indext, index_expr)?).id(context.db()))
         }
+        Type::SelfType(id) => match id {
+            TraitOrType::TypeId(inner) => index(context, inner, indext, index_expr),
+            TraitOrType::TraitId(_) => Err(IndexingError::NotSubscriptable),
+        },
         Type::Base(_)
         | Type::Tuple(_)
         | Type::String(_)
@@ -39,6 +43,10 @@ pub fn expected_index_type(context: &mut dyn AnalyzerContext, obj: TypeId) -> Op
         Type::Array(_) => Some(Type::u256().id(context.db())),
         Type::Map(Map { key, .. }) => Some(key),
         Type::SPtr(inner) | Type::Mut(inner) => expected_index_type(context, inner),
+        Type::SelfType(inner) => match inner {
+            TraitOrType::TraitId(_) => None,
+            TraitOrType::TypeId(id) => expected_index_type(context, id),
+        },
         Type::Base(_)
         | Type::Tuple(_)
         | Type::String(_)

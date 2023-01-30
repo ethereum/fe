@@ -106,9 +106,11 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
         .collect()
 }
 
-pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ImplId]> {
+pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Analysis<Rc<[ImplId]>> {
     let body = &module.ast(db).body;
-    body.iter()
+    let mut scope = ItemScope::new(db, module);
+    let impls = body
+        .iter()
         .filter_map(|stmt| match stmt {
             ast::ModuleStmt::Impl(impl_node) => {
                 let treit = module
@@ -116,23 +118,28 @@ pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ImplId]> {
                     .get(&impl_node.kind.impl_trait.kind)
                     .cloned();
 
-                let mut scope = ItemScope::new(db, module);
-                let receiver_type = type_desc(&mut scope, &impl_node.kind.receiver).unwrap();
-
-                if let Some(Item::Trait(val)) = treit {
-                    Some(db.intern_impl(Rc::new(Impl {
-                        trait_id: val,
-                        receiver: receiver_type,
-                        ast: impl_node.clone(),
-                        module,
-                    })))
+                if let Ok(receiver_type) = type_desc(&mut scope, &impl_node.kind.receiver, None) {
+                    if let Some(Item::Trait(val)) = treit {
+                        Some(db.intern_impl(Rc::new(Impl {
+                            trait_id: val,
+                            receiver: receiver_type,
+                            ast: impl_node.clone(),
+                            module,
+                        })))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             }
             _ => None,
         })
-        .collect()
+        .collect();
+    Analysis {
+        value: impls,
+        diagnostics: scope.diagnostics.take().into(),
+    }
 }
 
 pub fn module_item_map(
@@ -237,7 +244,8 @@ pub fn module_impl_map(
     let scope = ItemScope::new(db, module);
     let mut map = IndexMap::<(TraitId, TypeId), ImplId>::new();
 
-    for impl_ in db.module_all_impls(module).iter() {
+    let module_all_impls = db.module_all_impls(module);
+    for impl_ in module_all_impls.value.iter() {
         let key = &(impl_.trait_id(db), impl_.receiver(db));
 
         match map.entry(*key) {
@@ -258,7 +266,16 @@ pub fn module_impl_map(
             }
         }
     }
-    Analysis::new(Rc::new(map), scope.diagnostics.take().into())
+
+    Analysis::new(
+        Rc::new(map),
+        [
+            module_all_impls.diagnostics,
+            scope.diagnostics.take().into(),
+        ]
+        .concat()
+        .into(),
+    )
 }
 
 pub fn module_contracts(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[ContractId]> {
@@ -309,7 +326,7 @@ pub fn module_constant_type(
 ) -> Analysis<Result<types::TypeId, TypeError>> {
     let constant_data = constant.data(db);
     let mut scope = ItemScope::new(db, constant.data(db).module);
-    let typ = type_desc(&mut scope, &constant_data.ast.kind.typ);
+    let typ = type_desc(&mut scope, &constant_data.ast.kind.typ, None);
 
     match &typ {
         Ok(typ) if !typ.is_primitive(db) => {
@@ -371,7 +388,7 @@ pub fn module_constant_value(
     // analysis is already done in `module_constant_type`) or cache expression
     // types in salsa.
     let mut scope = ItemScope::new(db, constant.data(db).module);
-    let typ = match type_desc(&mut scope, &constant_data.ast.kind.typ) {
+    let typ = match type_desc(&mut scope, &constant_data.ast.kind.typ, None) {
         Ok(typ) => typ,
         // No need to emit diagnostics, it's already emitted in `module_constant_type`.
         Err(err) => {

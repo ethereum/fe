@@ -89,6 +89,8 @@ pub enum TokenKind {
     Return,
     #[token("revert")]
     Revert,
+    #[token("Self")]
+    SelfType,
     #[token("self")]
     SelfValue,
     #[token("struct")]
@@ -248,6 +250,7 @@ impl TokenKind {
             Pub => "keyword `pub`",
             Return => "keyword `return`",
             Revert => "keyword `revert`",
+            SelfType => "keyword `Self`",
             SelfValue => "keyword `self`",
             Struct => "keyword `struct`",
             Enum => "keyword `enum`",
