@@ -136,6 +136,7 @@ pub enum TypeDesc {
         base: Node<SmolStr>,
         args: Node<Vec<GenericArg>>,
     },
+    SelfType,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -817,6 +818,7 @@ impl fmt::Display for TypeDesc {
             TypeDesc::Generic { base, args } => {
                 write!(f, "{}<{}>", base.kind, comma_joined(args.kind.iter()))
             }
+            TypeDesc::SelfType => write!(f, "Self"),
         }
     }
 }

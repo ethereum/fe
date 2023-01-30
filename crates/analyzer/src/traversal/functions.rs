@@ -714,7 +714,7 @@ fn revert(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fatal
 
 fn func_return(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
-        let expected_type = scope.root.function_return_type()?;
+        let expected_type = scope.root.function_return_type()?.deref(scope.db());
 
         let value_attr = match value {
             Some(val) => expressions::expr(scope, val, Some(expected_type))?,

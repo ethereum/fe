@@ -111,7 +111,6 @@ pub fn struct_field_type(
     field: StructFieldId,
 ) -> Analysis<Result<TypeId, TypeError>> {
     let field_data = field.data(db);
-
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
 
     let ast::Field {
@@ -129,7 +128,7 @@ pub fn struct_field_type(
     if let Some(_node) = value {
         scope.not_yet_implemented("struct field initial value assignment", field_data.ast.span);
     }
-    let typ = match type_desc(&mut scope, typ) {
+    let typ = match type_desc(&mut scope, typ, None) {
         Ok(typ) => match typ.typ(db) {
             Type::Contract(_) => {
                 scope.not_yet_implemented(

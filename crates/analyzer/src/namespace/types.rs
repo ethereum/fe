@@ -51,11 +51,19 @@ pub enum Type {
     /// The type of a contract while it's being executed. Ie. the type
     /// of `self` within a contract function.
     SelfContract(ContractId),
+    // The type when `Self` is used within a trait or struct
+    SelfType(TraitOrType),
     Struct(StructId),
     Enum(EnumId),
     Generic(Generic),
     SPtr(TypeId),
     Mut(TypeId),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TraitOrType {
+    TraitId(TraitId),
+    TypeId(TypeId),
 }
 
 type TraitFunctionLookup = (Vec<(FunctionId, ImplId)>, Vec<(FunctionId, ImplId)>);
@@ -92,6 +100,7 @@ impl TypeId {
         match self.typ(db) {
             Type::SPtr(inner) => inner,
             Type::Mut(inner) => inner.deref(db),
+            Type::SelfType(TraitOrType::TypeId(inner)) => inner,
             _ => self,
         }
     }
@@ -122,12 +131,18 @@ impl TypeId {
     pub fn is_string(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::String(_))
     }
+    pub fn is_self_ty(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Type::SelfType(_))
+    }
     pub fn as_struct(&self, db: &dyn AnalyzerDb) -> Option<StructId> {
         if let Type::Struct(id) = self.typ(db) {
             Some(id)
         } else {
             None
         }
+    }
+    pub fn as_trait_or_type(&self) -> TraitOrType {
+        TraitOrType::TypeId(*self)
     }
     pub fn is_struct(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(self.typ(db), Type::Struct(_))
@@ -270,6 +285,10 @@ impl TypeId {
                 Ok(res)
             }
             Type::Mut(inner) => inner.is_encodable(db),
+            Type::SelfType(id) => match id {
+                TraitOrType::TraitId(_) => Ok(false),
+                TraitOrType::TypeId(id) => id.is_encodable(db),
+            },
             Type::Map(_)
             | Type::SelfContract(_)
             | Type::Generic(_)
@@ -645,6 +664,10 @@ impl Type {
             | Type::Generic(_)
             | Type::Contract(_) => true,
             Type::Map(_) | Type::SelfContract(_) => false,
+            Type::SelfType(inner) => match inner {
+                TraitOrType::TraitId(_) => true,
+                TraitOrType::TypeId(id) => id.has_fixed_size(db),
+            },
             Type::SPtr(inner) | Type::Mut(inner) => inner.has_fixed_size(db),
         }
     }
@@ -725,6 +748,7 @@ impl DisplayWithDb for Type {
             Type::Generic(inner) => inner.fmt(f),
             Type::SPtr(inner) => write!(f, "SPtr<{}>", inner.display(db)),
             Type::Mut(inner) => write!(f, "mut {}", inner.display(db)),
+            Type::SelfType(_) => write!(f, "Self"),
         }
     }
 }

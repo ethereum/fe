@@ -179,6 +179,7 @@ test_stmt! { shadow_builtin_fn_with_var, "let keccak256: u8 = 10" }
 test_file! { shadow_builtin_type }
 test_file! { shadow_builtin_function }
 test_file! { self_misuse }
+test_file! { self_type_misuse }
 test_stmt! { string_capacity_mismatch, "String<3>(\"too long\")" }
 test_stmt! { string_non_int_type_arg, "let x: String<u8>" }
 test_stmt! { string_no_type_arg_list, "let x: String" }

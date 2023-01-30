@@ -20,7 +20,12 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
         _ => unreachable!(),
     };
 
-    let declared_type = types::type_desc(scope, typ)?;
+    let self_ty = scope
+        .parent_function()
+        .clone()
+        .self_type(scope.db())
+        .map(|val| val.as_trait_or_type());
+    let declared_type = types::type_desc(scope, typ, self_ty)?;
     if let Type::Map(_) = declared_type.typ(scope.db()) {
         return Err(FatalError::new(scope.error(
             "invalid variable type",
@@ -76,7 +81,13 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
 
 pub fn const_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::ConstantDecl { name, typ, value } = &stmt.kind {
-        let declared_type = match types::type_desc(scope, typ) {
+        let self_ty = scope
+            .parent_function()
+            .clone()
+            .self_type(scope.db())
+            .map(|val| val.as_trait_or_type());
+
+        let declared_type = match types::type_desc(scope, typ, self_ty) {
             Ok(typ) if typ.has_fixed_size(scope.db()) => typ,
             _ => {
                 // If this conversion fails, the type must be a map (for now at least)

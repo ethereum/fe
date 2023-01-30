@@ -52,7 +52,7 @@ pub fn type_alias_type(
     alias: TypeAliasId,
 ) -> Analysis<Result<types::TypeId, TypeError>> {
     let mut scope = ItemScope::new(db, alias.data(db).module);
-    let typ = type_desc(&mut scope, &alias.data(db).ast.kind.typ);
+    let typ = type_desc(&mut scope, &alias.data(db).ast.kind.typ, None);
 
     Analysis::new(typ, scope.diagnostics.take().into())
 }
