@@ -14,19 +14,18 @@ fe-common = {path = "../common", version = "^0.20.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.20.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.20.0-alpha", optional = true, features = ["solc-backend"]}
 fe-analyzer = {path = "../analyzer", version = "^0.20.0-alpha"}
-fe-test-utils-macros = { path = "macros", version = "0.20.0-alpha" }
 test-files = {path = "../test-files", package = "fe-test-files" }
+fe-test-utils-macros = {path = "macros", version = "^0.20.0-alpha"}
 hex = "0.4"
 primitive-types = {version = "0.11.1", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
-solc = { git = "https://github.com/Y-Nak/solc-rust", rev = "f18b1ce", optional = true}
+solc = { git = "https://github.com/Y-Nak/solc-rust", rev = "20aeb7b", optional = true}
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 indexmap = "1.6.2"
-insta = { default-features = false, version = "1.26.0" }
+insta = { default-features = false, version = "1.7.1" }
 
 # used by ethabi, we need to force the js feature for wasm support
 getrandom = { version = "0.2.3", features = ["js"] }
-
 
 [features]
 solc-backend = ["fe-yulc", "solc", "fe-driver/solc-backend"]
