@@ -593,14 +593,14 @@ impl fmt::Display for Module {
             .iter()
             .partition(|&stmt| matches!(stmt, ModuleStmt::Use(_) | ModuleStmt::Pragma(_)));
         for stmt in &uses {
-            writeln!(f, "{}", stmt)?;
+            writeln!(f, "{stmt}")?;
         }
         if !uses.is_empty() && !rest.is_empty() {
             writeln!(f)?;
         }
         let mut delim = "";
         for stmt in rest {
-            writeln!(f, "{}{}", delim, stmt)?;
+            writeln!(f, "{delim}{stmt}")?;
             delim = "\n";
         }
         Ok(())
@@ -643,12 +643,12 @@ impl fmt::Display for Use {
 impl fmt::Display for UseTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            UseTree::Glob { prefix } => write!(f, "{}::*", prefix),
+            UseTree::Glob { prefix } => write!(f, "{prefix}::*"),
             UseTree::Simple { path, rename } => {
                 if let Some(rename) = rename {
                     write!(f, "{} as {}", path, rename.kind)
                 } else {
-                    write!(f, "{}", path)
+                    write!(f, "{path}")
                 }
             }
             UseTree::Nested { prefix, children } => {
@@ -666,7 +666,7 @@ impl fmt::Display for Path {
             .map(|name| name.kind.as_ref())
             .collect::<Vec<_>>()
             .join("::");
-        write!(f, "{}", joined_names)?;
+        write!(f, "{joined_names}")?;
 
         Ok(())
     }
@@ -805,8 +805,8 @@ impl fmt::Display for TypeDesc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             TypeDesc::Unit => write!(f, "()"),
-            TypeDesc::Base { base } => write!(f, "{}", base),
-            TypeDesc::Path(path) => write!(f, "{}", path),
+            TypeDesc::Base { base } => write!(f, "{base}"),
+            TypeDesc::Path(path) => write!(f, "{path}"),
             TypeDesc::Tuple { items } => {
                 if items.len() == 1 {
                     write!(f, "({},)", items[0].kind)
@@ -1047,7 +1047,7 @@ impl fmt::Display for FuncStmt {
 impl fmt::Display for VarDeclTarget {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            VarDeclTarget::Name(name) => write!(f, "{}", name),
+            VarDeclTarget::Name(name) => write!(f, "{name}"),
             VarDeclTarget::Tuple(elts) => {
                 if elts.len() == 1 {
                     write!(f, "({},)", elts[0].kind)
@@ -1116,11 +1116,11 @@ impl fmt::Display for Expr {
                     write!(f, "({})", node_comma_joined(elts))
                 }
             }
-            Expr::Bool(bool) => write!(f, "{}", bool),
-            Expr::Name(name) => write!(f, "{}", name),
-            Expr::Path(path) => write!(f, "{}", path),
-            Expr::Num(num) => write!(f, "{}", num),
-            Expr::Str(str) => write!(f, "\"{}\"", str),
+            Expr::Bool(bool) => write!(f, "{bool}"),
+            Expr::Name(name) => write!(f, "{name}"),
+            Expr::Path(path) => write!(f, "{path}"),
+            Expr::Num(num) => write!(f, "{num}"),
+            Expr::Str(str) => write!(f, "\"{str}\""),
             Expr::Unit => write!(f, "()"),
         }
     }
@@ -1131,7 +1131,7 @@ impl fmt::Display for CallArg {
         if let Some(label) = &self.label {
             if let Expr::Name(var_name) = &self.value.kind {
                 if var_name == &label.kind {
-                    return write!(f, "{}", var_name);
+                    return write!(f, "{var_name}");
                 }
             }
             write!(f, "{}: {}", label.kind, self.value.kind)
@@ -1228,9 +1228,9 @@ impl fmt::Display for Pattern {
                     .map(|(name, pat)| format!("{}: {}", name.kind, pat.kind));
                 let fields = comma_joined(fields);
                 if *is_rest {
-                    write!(f, "{{{}, ..}}", fields)
+                    write!(f, "{{{fields}, ..}}")
                 } else {
-                    write!(f, "{{{}}}", fields)
+                    write!(f, "{{{fields}}}")
                 }
             }
             Self::Or(pats) => {
@@ -1268,7 +1268,7 @@ where
     T: fmt::Display,
 {
     items
-        .map(|item| format!("{}", item))
+        .map(|item| format!("{item}"))
         .collect::<Vec<_>>()
         .join(delim)
 }
@@ -1286,7 +1286,7 @@ fn write_nodes_line_wrapped(f: &mut impl Write, nodes: &[Node<impl fmt::Display>
 fn double_line_joined(items: &[impl fmt::Display]) -> String {
     items
         .iter()
-        .map(|item| format!("{}", item))
+        .map(|item| format!("{item}"))
         .collect::<Vec<_>>()
         .join("\n\n")
 }
@@ -1345,25 +1345,25 @@ impl PrefixBindingPower for UnaryOperator {
 
 fn maybe_fmt_left_with_parens(op: &impl InfixBindingPower, expr: &Expr) -> String {
     if expr_right_binding_power(expr) < op.infix_binding_power().0 {
-        format!("({})", expr)
+        format!("({expr})")
     } else {
-        format!("{}", expr)
+        format!("{expr}")
     }
 }
 
 fn maybe_fmt_right_with_parens(op: &impl InfixBindingPower, expr: &Expr) -> String {
     if op.infix_binding_power().1 > expr_left_binding_power(expr) {
-        format!("({})", expr)
+        format!("({expr})")
     } else {
-        format!("{}", expr)
+        format!("{expr}")
     }
 }
 
 fn maybe_fmt_operand_with_parens(op: &impl PrefixBindingPower, expr: &Expr) -> String {
     if op.prefix_binding_power() > expr_left_binding_power(expr) {
-        format!("({})", expr)
+        format!("({expr})")
     } else {
-        format!("{}", expr)
+        format!("{expr}")
     }
 }
 

@@ -392,11 +392,11 @@ impl TypeId {
             TypeKind::Bool => write!(w, "bool"),
             TypeKind::Address => write!(w, "address"),
             TypeKind::Unit => write!(w, "()"),
-            TypeKind::String(size) => write!(w, "Str<{}>", size),
+            TypeKind::String(size) => write!(w, "Str<{size}>"),
             TypeKind::Array(ArrayDef { elem_ty, len }) => {
                 write!(w, "[")?;
                 elem_ty.print(db, w)?;
-                write!(w, "; {}]", len)
+                write!(w, "; {len}]")
             }
             TypeKind::Tuple(TupleDef { items }) => {
                 write!(w, "(")?;

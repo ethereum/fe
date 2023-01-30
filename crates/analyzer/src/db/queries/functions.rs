@@ -216,11 +216,11 @@ pub fn function_signature(
                 // `__init__` and `__call__` must not return any type other than `()`.
                 if type_node.kind != ast::TypeDesc::Unit {
                     scope.fancy_error(
-                        &format!("`{}` function has incorrect return type", fn_name),
+                        &format!("`{fn_name}` function has incorrect return type"),
                         vec![Label::primary(type_node.span, "return type should be `()`")],
                         vec![
                             "Hint: Remove the return type specification.".to_string(),
-                            format!("Example: `pub fn {}():`", fn_name),
+                            format!("Example: `pub fn {fn_name}():`"),
                         ],
                     );
                 }

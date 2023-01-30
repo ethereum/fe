@@ -43,16 +43,16 @@ pub fn symbol_name(db: &dyn CodegenDb, function: FunctionId) -> Rc<String> {
                 id.trait_id(db.upcast()).name(db.upcast()),
                 safe_name(db, id.receiver(db.upcast()))
             );
-            format!("{}${}", class_name, func_name)
+            format!("{class_name}${func_name}")
         }
         Some(class) => {
             let class_name = class.name(db.upcast());
-            format!("{}${}", class_name, func_name)
+            format!("{class_name}${func_name}")
         }
         _ => func_name,
     };
 
-    format!("{}${}", module_name, func_name).into()
+    format!("{module_name}${func_name}").into()
 }
 
 fn type_suffix(function: FunctionId, db: &dyn CodegenDb) -> SmolStr {

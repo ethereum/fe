@@ -16,7 +16,7 @@ fn parse_and_print(path: &str, src: &str) -> String {
         print_diagnostics(&db, &diags);
         panic!("parse error");
     }
-    format!("{}", module)
+    format!("{module}")
 }
 
 macro_rules! test_print {

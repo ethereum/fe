@@ -208,7 +208,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
                 .enumerate()
                 .map(|(i, item)| {
                     let field_ty = db.codegen_abi_type(*item);
-                    AbiTupleField::new(format!("{}", i), field_ty)
+                    AbiTupleField::new(format!("{i}"), field_ty)
                 })
                 .collect();
 

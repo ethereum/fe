@@ -28,18 +28,18 @@ fn check_single_file(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
 
 fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
     if !Path::new(input_path).exists() {
-        eprintln!("Input directory does not exist: `{}`.", input_path);
+        eprintln!("Input directory does not exist: `{input_path}`.");
         std::process::exit(1)
     }
 
     let files = match load_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{}`", input_path);
+            eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)
         }
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {}", err);
+            eprintln!("Failed to load project files. Error: {err}");
             std::process::exit(1)
         }
     };

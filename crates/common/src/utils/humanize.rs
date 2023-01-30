@@ -10,7 +10,7 @@ impl Pluralizable for &str {
         if self.ends_with('s') {
             self.to_string()
         } else {
-            format!("{}s", self)
+            format!("{self}s")
         }
     }
 

@@ -33,7 +33,7 @@ pub fn create_new_project(args: NewProjectArgs) {
     match fs::create_dir_all(source_path.as_path()) {
         Ok(_) => create_project(source_path.as_path()),
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             std::process::exit(1);
         }
     }

@@ -138,7 +138,7 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
                         vec![Label::primary(eq.span, "unexpected `=`".to_string())],
                         vec![
                             "Argument labels should be followed by `:`.".to_string(),
-                            format!("Hint: try `{}:`", name),
+                            format!("Hint: try `{name}:`"),
                             "If this is a variable assignment, it must be a standalone statement."
                                 .to_string(),
                         ],
@@ -249,7 +249,7 @@ fn prefix_binding_power(op: TokenKind) -> u8 {
     match op {
         Not => 65,
         Plus | Minus | Tilde => 135,
-        _ => panic!("Unexpected unary op token: {:?}", op),
+        _ => panic!("Unexpected unary op token: {op:?}"),
     }
 }
 
@@ -442,7 +442,7 @@ fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
                 Expr::Str(tok.text.into())
             }
         }
-        _ => panic!("Unexpected atom token: {:?}", tok),
+        _ => panic!("Unexpected atom token: {tok:?}"),
     };
     Node::new(expr, tok.span)
 }
@@ -565,7 +565,7 @@ fn infix_op(
                 }
             }
         }
-        _ => panic!("Unexpected infix op token: {:?}", op),
+        _ => panic!("Unexpected infix op token: {op:?}"),
     };
     Ok(expr)
 }

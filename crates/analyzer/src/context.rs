@@ -468,7 +468,7 @@ impl crate::display::DisplayWithDb for ExpressionAttributes {
         } = self;
         write!(f, "{}", typ.display(db))?;
         if let Some(val) = &const_value {
-            write!(f, " = {:?}", val)?;
+            write!(f, " = {val:?}")?;
         }
         for adj in type_adjustments {
             write!(f, " -{:?}-> {}", adj.kind, adj.into.display(db))?;
@@ -581,7 +581,7 @@ impl CallType {
 
 impl fmt::Display for CallType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

@@ -64,7 +64,7 @@ pub fn struct_field_map(
         match fields.entry(node.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
-                    &format!("duplicate field names in `struct {}`", struct_name,),
+                    &format!("duplicate field names in `struct {struct_name}`",),
                     entry.key(),
                     entry.get().data(db).ast.span,
                     node.span,
@@ -87,7 +87,7 @@ pub fn struct_field_map(
                     .then(|| Label::primary(field.span(db), String::new()))
             })
             .collect::<Vec<Label>>();
-        labels.last_mut().unwrap().message = format!("{} indexed fields", indexed_count);
+        labels.last_mut().unwrap().message = format!("{indexed_count} indexed fields");
 
         scope.fancy_error(
             &format!(
@@ -196,12 +196,9 @@ pub fn struct_function_map(
 
         if builtins::ValueMethod::from_str(def_name).is_ok() {
             scope.error(
-                &format!(
-                    "function name `{}` conflicts with built-in function",
-                    def_name
-                ),
+                &format!("function name `{def_name}` conflicts with built-in function"),
                 func.name_span(db),
-                &format!("`{}` is a built-in function", def_name),
+                &format!("`{def_name}` is a built-in function"),
             );
             continue;
         }

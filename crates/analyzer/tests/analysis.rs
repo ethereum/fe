@@ -476,7 +476,7 @@ fn lookup_spans<T: Clone>(
 }
 
 fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnostic {
-    let label = Label::primary(span, format!("{}", attributes));
+    let label = Label::primary(span, format!("{attributes}"));
     Diagnostic {
         severity: Severity::Note,
         message: String::new(),

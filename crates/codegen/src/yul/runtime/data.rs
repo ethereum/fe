@@ -241,7 +241,7 @@ pub(super) fn make_aggregate_init(
     let iter_field_args = || {
         (0..field_num)
             .into_iter()
-            .map(|i| YulVariable::new(format! {"arg{}", i}))
+            .map(|i| YulVariable::new(format! {"arg{i}"}))
     };
 
     let mut body = vec![];
@@ -306,7 +306,7 @@ pub(super) fn make_enum_init(
     let enum_data = || {
         (0..arg_tys.len() - 1)
             .into_iter()
-            .map(|i| YulVariable::new(format! {"arg{}", i}))
+            .map(|i| YulVariable::new(format! {"arg{i}"}))
     };
 
     let tuple_def = TupleDef {

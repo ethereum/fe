@@ -27,15 +27,12 @@ pub fn add_bin_operations_errors(
 
     match error {
         BinaryOperationError::NotEqualAndUnsigned => context.fancy_error(
-            &format!("`{}` operand types must be equal and unsigned", op),
+            &format!("`{op}` operand types must be equal and unsigned"),
             vec![type_label(db, lspan, ltype), type_label(db, rspan, rtype)],
             vec![],
         ),
         BinaryOperationError::RightIsSigned => context.fancy_error(
-            &format!(
-                "The right hand side of the `{}` operation must be unsigned",
-                op
-            ),
+            &format!("The right hand side of the `{op}` operation must be unsigned"),
             vec![Label::primary(
                 rspan,
                 format!("this has signed type `{}`", rtype.display(db)),
@@ -43,7 +40,7 @@ pub fn add_bin_operations_errors(
             vec![],
         ),
         BinaryOperationError::RightTooLarge => context.fancy_error(
-            &format!("incompatible `{}` operand types", op),
+            &format!("incompatible `{op}` operand types"),
             vec![type_label(db, lspan, ltype), type_label(db, rspan, rtype)],
             vec![format!(
                 "The type of the right hand side cannot be larger than the left (`{}`)",
@@ -51,12 +48,12 @@ pub fn add_bin_operations_errors(
             )],
         ),
         BinaryOperationError::TypesNotCompatible => context.fancy_error(
-            &format!("`{}` operand types are not compatible", op),
+            &format!("`{op}` operand types are not compatible"),
             vec![type_label(db, lspan, ltype), type_label(db, rspan, rtype)],
             vec![],
         ),
         BinaryOperationError::TypesNotNumeric => context.fancy_error(
-            &format!("`{}` operands must be numeric", op),
+            &format!("`{op}` operands must be numeric"),
             vec![type_label(db, lspan, ltype), type_label(db, rspan, rtype)],
             vec![],
         ),

@@ -140,12 +140,9 @@ pub fn enum_function_map(
 
         if builtins::ValueMethod::from_str(def_name).is_ok() {
             scope.error(
-                &format!(
-                    "function name `{}` conflicts with built-in function",
-                    def_name
-                ),
+                &format!("function name `{def_name}` conflicts with built-in function"),
                 func.name_span(db),
-                &format!("`{}` is a built-in function", def_name),
+                &format!("`{def_name}` is a built-in function"),
             );
             continue;
         }
@@ -163,7 +160,7 @@ pub fn enum_function_map(
             Entry::Vacant(entry) => {
                 if let Some(variant) = variant_map.get(def_name) {
                     scope.duplicate_name_error(
-                        &format!("function name `{}` conflicts with enum variant", def_name),
+                        &format!("function name `{def_name}` conflicts with enum variant"),
                         def_name,
                         variant.span(db),
                         func.name_span(db),
@@ -230,12 +227,9 @@ pub fn enum_cycle(
     let enum_name = enum_.name(db);
     let enum_span = enum_.span(db);
     scope.error(
-        &format!("recursive enum `{}`", enum_name),
+        &format!("recursive enum `{enum_name}`"),
         enum_span,
-        &format!(
-            "enum `{}` has infinite size due to recursive definition",
-            enum_name,
-        ),
+        &format!("enum `{enum_name}` has infinite size due to recursive definition",),
     );
 
     Analysis::new(

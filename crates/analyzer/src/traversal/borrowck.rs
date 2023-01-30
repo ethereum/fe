@@ -69,10 +69,10 @@ pub fn check_fn_call_arg_borrows(
                 if let Some((_, other_span)) = other_vars.iter().find(|(nt, _)| nt == var) {
                     let name = var.name(context.db());
                     context.fancy_error(
-                        &format!("borrow conflict in call to fn `{}`", fn_name),
+                        &format!("borrow conflict in call to fn `{fn_name}`"),
                         vec![
-                            Label::primary(*var_span, format!("`{}` is used mutably here", name)),
-                            Label::secondary(*other_span, format!("`{}` is used again here", name)),
+                            Label::primary(*var_span, format!("`{name}` is used mutably here")),
+                            Label::secondary(*other_span, format!("`{name}` is used again here")),
                         ],
                         vec![],
                     );

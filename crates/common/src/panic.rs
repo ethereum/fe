@@ -20,5 +20,5 @@ fn report_ice(info: &panic::PanicInfo) {
     eprintln!("Fe is still under heavy development, and isn't yet ready for production use.");
     eprintln!();
     eprintln!("If you would, please report this bug at the following URL:");
-    eprintln!("  {}", BUG_REPORT_URL);
+    eprintln!("  {BUG_REPORT_URL}");
 }

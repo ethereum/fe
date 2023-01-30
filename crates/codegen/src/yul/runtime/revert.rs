@@ -86,5 +86,5 @@ fn type_signature_for_revert(db: &dyn CodegenDb, name: &str, ty: TypeId) -> yul:
     )
     .selector();
     let type_sig = selector.hex();
-    literal_expression! {(format!{"0x{}", type_sig })}
+    literal_expression! {(format!{"0x{type_sig}" })}
 }

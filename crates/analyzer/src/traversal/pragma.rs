@@ -17,16 +17,14 @@ pub fn check_pragma_version(stmt: &Node<ast::Pragma>) -> Option<Diagnostic> {
     } else {
         Some(errors::fancy_error(
             format!(
-                "The current compiler version {} doesn't match the specified requirement",
-                actual_version
+                "The current compiler version {actual_version} doesn't match the specified requirement"
             ),
             vec![Label::primary(
                 version_requirement.span,
                 "The specified version requirement",
             )],
             vec![format!(
-                "Note: Use `pragma {}` to make the code compile",
-                actual_version
+                "Note: Use `pragma {actual_version}` to make the code compile"
             )],
         ))
     }

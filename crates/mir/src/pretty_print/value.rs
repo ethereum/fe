@@ -18,14 +18,14 @@ impl PrettyPrint for ValueId {
     ) -> fmt::Result {
         match store.value_data(*self) {
             Value::Temporary { .. } | Value::Local(_) => write!(w, "_{}", self.index()),
-            Value::Immediate { imm, .. } => write!(w, "{}", imm),
+            Value::Immediate { imm, .. } => write!(w, "{imm}"),
             Value::Constant { constant, .. } => {
                 let const_value = constant.data(db);
                 write!(w, "const ")?;
                 match &const_value.value {
-                    ConstantValue::Immediate(num) => write!(w, "{}", num),
-                    ConstantValue::Str(s) => write!(w, r#""{}""#, s),
-                    ConstantValue::Bool(b) => write!(w, "{}", b),
+                    ConstantValue::Immediate(num) => write!(w, "{num}"),
+                    ConstantValue::Str(s) => write!(w, r#""{s}""#),
+                    ConstantValue::Bool(b) => write!(w, "{b}"),
                 }
             }
             Value::Unit { .. } => write!(w, "()"),

@@ -53,7 +53,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let mut db = fe_driver::Db::default();
     let content = match std::fs::read_to_string(input_path) {
         Err(err) => {
-            eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
+            eprintln!("Failed to load file: `{input_path}`. Error: {err}");
             std::process::exit(1)
         }
         Ok(content) => content,
@@ -68,7 +68,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     ) {
         Ok(module) => module,
         Err(error) => {
-            eprintln!("Unable to compile {}.", input_path);
+            eprintln!("Unable to compile {input_path}.");
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }
@@ -83,18 +83,18 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let optimize = compile_arg.optimize.unwrap_or(true);
 
     if !Path::new(input_path).exists() {
-        eprintln!("Input directory does not exist: `{}`.", input_path);
+        eprintln!("Input directory does not exist: `{input_path}`.");
         std::process::exit(1)
     }
 
     let files = match load_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{}`", input_path);
+            eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)
         }
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {}", err);
+            eprintln!("Failed to load project files. Error: {err}");
             std::process::exit(1)
         }
     };
@@ -109,7 +109,7 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     ) {
         Ok(module) => module,
         Err(error) => {
-            eprintln!("Unable to compile {}.", input_path);
+            eprintln!("Unable to compile {input_path}.");
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }
@@ -143,12 +143,9 @@ pub fn build(compile_arg: BuildArgs) {
     let output_dir = &compile_arg.output_dir;
     let overwrite = compile_arg.overwrite;
     match write_compiled_module(compiled_module, &content, emit, output_dir, overwrite) {
-        Ok(_) => eprintln!("Compiled {}. Outputs in `{}`", input_path, output_dir),
+        Ok(_) => eprintln!("Compiled {input_path}. Outputs in `{output_dir}`"),
         Err(err) => {
-            eprintln!(
-                "Failed to write output to directory: `{}`. Error: {}",
-                output_dir, err
-            );
+            eprintln!("Failed to write output to directory: `{output_dir}`. Error: {err}");
             std::process::exit(1)
         }
     }
@@ -188,7 +185,7 @@ fn write_compiled_module(
             let lexer = fe_parser::lexer::Lexer::new(SourceFileId::dummy_file(), file_content);
             lexer.collect::<Vec<_>>()
         };
-        write_output(&output_dir.join("module.tokens"), &format!("{:#?}", tokens))?;
+        write_output(&output_dir.join("module.tokens"), &format!("{tokens:#?}"))?;
     }
 
     for (name, contract) in module.contracts.drain(0..) {
@@ -228,7 +225,7 @@ fn write_output(path: &Path, content: &str) -> Result<(), String> {
 }
 
 fn ioerr_to_string(error: Error) -> String {
-    format!("{}", error)
+    format!("{error}")
 }
 
 fn verify_nonexistent_or_empty(dir: &Path) -> Result<(), String> {
@@ -247,16 +244,16 @@ fn mir_dump(input_path: &str) {
     if Path::new(input_path).is_file() {
         let content = match std::fs::read_to_string(input_path) {
             Err(err) => {
-                eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
+                eprintln!("Failed to load file: `{input_path}`. Error: {err}");
                 std::process::exit(1)
             }
             Ok(content) => content,
         };
 
         match fe_driver::dump_mir_single_file(&mut db, input_path, &content) {
-            Ok(text) => println!("{}", text),
+            Ok(text) => println!("{text}"),
             Err(err) => {
-                eprintln!("Unable to dump mir `{}", input_path);
+                eprintln!("Unable to dump mir `{input_path}");
                 print_diagnostics(&db, &err.0);
                 std::process::exit(1)
             }

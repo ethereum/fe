@@ -431,7 +431,7 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
 
             InstKind::YulIntrinsic { op, args } => {
                 let args: Vec<_> = args.iter().map(|arg| self.value_expr(*arg)).collect();
-                let op_name = identifier! { (format!("{}", op).strip_prefix("__").unwrap()) };
+                let op_name = identifier! { (format!("{op}").strip_prefix("__").unwrap()) };
                 let result = expression! { [op_name]([args...]) };
                 // Intrinsic operation never returns ptr type, so we can use u256_ty as a dummy
                 // type for the result.
