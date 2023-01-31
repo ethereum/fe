@@ -1,3 +1,5 @@
+use std::traits::{Min, Max}
+
 const I8_MIN: i8 = -128
 const I8_MAX: i8 = 127
 const U8_MIN: u8 = 0
@@ -30,6 +32,36 @@ const U256_MAX: u256 = 115792089237316195423570985008687907853269984665640564039
 
 
 contract Foo {
+    pub fn assert_min_max() {
+        assert u8::min() == U8_MIN
+        assert u16::min() == U16_MIN
+        assert u32::min() == U32_MIN
+        assert u64::min() == U64_MIN
+        assert u128::min() == U128_MIN
+        assert u256::min() == U256_MIN
+        // TODO: Investigate why these can't be compared against their const values
+        assert i8::min() == get_i8_const_min()
+        assert i16::min() == get_i16_const_min()
+        assert i32::min() == get_i32_const_min()
+        assert i64::min() == get_i64_const_min()
+        assert i128::min() == get_i128_const_min()
+        assert i256::min() == get_i256_const_min()
+
+        assert u8::max() == U8_MAX
+        assert u16::max() == U16_MAX
+        assert u32::max() == U32_MAX
+        assert u64::max() == U64_MAX
+        assert u128::max() == U128_MAX
+        assert u256::max() == U256_MAX
+
+        assert i8::max() == I8_MAX
+        assert i16::max() == I16_MAX
+        assert i32::max() == I32_MAX
+        assert i64::max() == I64_MAX
+        assert i128::max() == I128_MAX
+        assert i256::max() == I256_MAX
+    }
+
     pub fn get_u8_min() -> u8 {
         return u8(0)
     }
