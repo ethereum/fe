@@ -1012,7 +1012,7 @@ fn strings() {
 fn test_numeric_sizes() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", &[]);
-
+        harness.test_function(&mut executor, "assert_min_max", &[], None);
         for config in NumericAbiTokenBounds::get_all().iter() {
             harness.test_function(
                 &mut executor,
