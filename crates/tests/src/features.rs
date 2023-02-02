@@ -607,7 +607,7 @@ fn return_builtin_attributes() {
         harness.test_function(&mut executor, "coinbase", &[], Some(&block_coinbase));
         harness.test_function(
             &mut executor,
-            "difficulty",
+            "prevrandao",
             &[],
             Some(&uint_token(block_difficulty)),
         );

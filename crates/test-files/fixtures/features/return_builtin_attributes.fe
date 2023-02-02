@@ -7,8 +7,8 @@ contract Foo {
         return ctx.block_coinbase()
     }
 
-    pub fn difficulty(ctx: Context) -> u256 {
-        return ctx.block_difficulty()
+    pub fn prevrandao(ctx: Context) -> u256 {
+        return ctx.prevrandao()
     }
 
     pub fn number(ctx: Context) -> u256 {
