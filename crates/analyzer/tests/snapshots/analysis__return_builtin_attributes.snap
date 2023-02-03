@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ return_builtin_attributes.fe:2:5
@@ -46,22 +45,22 @@ note:
 note: 
    ┌─ return_builtin_attributes.fe:10:5
    │  
-10 │ ╭     pub fn difficulty(ctx: Context) -> u256 {
-11 │ │         return ctx.block_difficulty()
+10 │ ╭     pub fn prevrandao(ctx: Context) -> u256 {
+11 │ │         return ctx.prevrandao()
 12 │ │     }
    │ ╰─────^ params: [{ label: None, name: ctx, typ: Context }] -> u256
 
 note: 
    ┌─ return_builtin_attributes.fe:11:16
    │
-11 │         return ctx.block_difficulty()
+11 │         return ctx.prevrandao()
    │                ^^^ Context
 
 note: 
    ┌─ return_builtin_attributes.fe:11:16
    │
-11 │         return ctx.block_difficulty()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ u256
+11 │         return ctx.prevrandao()
+   │                ^^^^^^^^^^^^^^^^ u256
 
 note: 
    ┌─ return_builtin_attributes.fe:14:5

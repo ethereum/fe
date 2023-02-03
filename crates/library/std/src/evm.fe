@@ -39,8 +39,8 @@ pub unsafe fn block_number() -> u256 {
   return __number()
 }
 
-pub unsafe fn difficulty() -> u256 {
-  return __difficulty()
+pub unsafe fn prevrandao() -> u256 {
+  return __prevrandao()
 }
 
 pub unsafe fn self_address() -> address {

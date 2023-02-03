@@ -31,8 +31,7 @@ jobs:
         uses: Swatinem/rust-cache@v1
       - name: install cargo-tarpaulin
         run: |
-          cargo install cargo-quickinstall
-          cargo quickinstall cargo-tarpaulin
+          cargo install cargo-tarpaulin
       - name: coverage with tarpaulin
         run: |
           make coverage

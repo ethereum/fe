@@ -128,7 +128,7 @@ contract Intrinsics {
 
     pub fn difficulty() -> u256 {
         unsafe {
-            return __difficulty()
+            return __prevrandao()
         }
     }
 

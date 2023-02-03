@@ -23,8 +23,8 @@ pub struct Context {
         unsafe { return evm::coinbase() }
     }
 
-    pub fn block_difficulty(self) -> u256 {
-        unsafe { return evm::difficulty() }
+    pub fn prevrandao(self) -> u256 {
+        unsafe { return evm::prevrandao() }
     }
 
     pub fn block_number(self) -> u256 {

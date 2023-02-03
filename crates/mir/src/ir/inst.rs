@@ -479,7 +479,7 @@ pub enum YulIntrinsicOp {
     Coinbase,
     Timestamp,
     Number,
-    Difficulty,
+    Prevrandao,
     Gaslimit,
 }
 impl YulIntrinsicOp {
@@ -568,7 +568,7 @@ impl fmt::Display for YulIntrinsicOp {
             Self::Coinbase => "__coinbase",
             Self::Timestamp => "__timestamp",
             Self::Number => "__number",
-            Self::Difficulty => "__difficulty",
+            Self::Prevrandao => "__prevrandao",
             Self::Gaslimit => "__gaslimit",
         };
 
@@ -654,7 +654,7 @@ impl From<fe_analyzer::builtins::Intrinsic> for YulIntrinsicOp {
             Intrinsic::__coinbase => Self::Coinbase,
             Intrinsic::__timestamp => Self::Timestamp,
             Intrinsic::__number => Self::Number,
-            Intrinsic::__difficulty => Self::Difficulty,
+            Intrinsic::__prevrandao => Self::Prevrandao,
             Intrinsic::__gaslimit => Self::Gaslimit,
         }
     }

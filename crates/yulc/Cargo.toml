@@ -8,7 +8,7 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 # This fork supports concurrent compilation, which is required for Rust tests.
-solc = { git = "https://github.com/Y-Nak/solc-rust", rev = "20aeb7b", optional = true}
+solc = { git = "https://github.com/Y-Nak/solc-rust", rev = "a647450", optional = true}
 serde_json = "1.0"
 indexmap = "1.6.2"
 

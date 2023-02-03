@@ -79,8 +79,7 @@ jobs:
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
-          brew tap Y-Nak/boost
-          brew install Y-nak/boost/boost
+          brew install boost
       - name: Install Linux dependencies
         if: startsWith(matrix.os,'ubuntu')
         run: |
@@ -144,8 +143,7 @@ jobs:
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
-          brew tap Y-Nak/boost
-          brew install Y-nak/boost/boost
+          brew install boost
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:

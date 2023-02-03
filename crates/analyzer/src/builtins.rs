@@ -112,7 +112,7 @@ pub enum Intrinsic {
     __coinbase,       // ()
     __timestamp,      // ()
     __number,         // ()
-    __difficulty,     // ()
+    __prevrandao,     // ()
     __gaslimit,       // ()
 }
 
@@ -121,7 +121,7 @@ impl Intrinsic {
         use Intrinsic::*;
         match self {
             __stop | __basefee | __origin | __gasprice | __coinbase | __timestamp | __number
-            | __difficulty | __gaslimit | __pc | __msize | __gas | __address | __selfbalance
+            | __prevrandao | __gaslimit | __pc | __msize | __gas | __address | __selfbalance
             | __caller | __callvalue | __calldatasize | __codesize | __returndatasize
             | __invalid | __chainid => 0,
 

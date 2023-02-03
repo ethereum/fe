@@ -1793,7 +1793,7 @@ dependencies = [
 [[package]]
 name = "solc"
 version = "0.1.0"
-source = "git+https://github.com/Y-Nak/solc-rust?rev=20aeb7b#20aeb7b944be55b43c3fe5c5ea7f5677692b543f"
+source = "git+https://github.com/Y-Nak/solc-rust?rev=a647450#a647450aba4950a32d48fdd81d797a83894f731e"
 dependencies = [
  "cmake",
  "lazy_static",
