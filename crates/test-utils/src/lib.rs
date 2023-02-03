@@ -1,9 +1,6 @@
 #[doc(hidden)]
 pub mod _macro_support;
 
-#[doc(hidden)]
-pub use fe_test_utils_macros::build_snap_tests as _build_snap_tests;
-
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;

@@ -422,6 +422,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dir-test"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "035f15b4ae5cc91ca448fe9668799e3d9b09fd7381a7004e232769ff0efabb79"
+dependencies = [
+ "dir-test-macros",
+]
+
+[[package]]
+name = "dir-test-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15699f408d3f58a1259b624d3c127721a442555136933d33cf387b81f5c9c89c"
+dependencies = [
+ "glob",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "dot2"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -643,7 +664,6 @@ dependencies = [
  "fe-common",
  "fe-driver",
  "fe-test-files",
- "fe-test-utils-macros",
  "fe-yulc",
  "getrandom 0.2.3",
  "hex",
@@ -750,11 +770,14 @@ dependencies = [
 name = "fe-parser2"
 version = "0.20.0-alpha"
 dependencies = [
+ "dir-test",
  "fe-compiler-test-utils",
  "fxhash",
  "lazy_static",
  "logos",
  "rowan",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
@@ -763,15 +786,6 @@ version = "0.20.0-alpha"
 dependencies = [
  "fe-library",
  "include_dir",
-]
-
-[[package]]
-name = "fe-test-utils-macros"
-version = "0.20.0-alpha"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -861,6 +875,12 @@ dependencies = [
  "wasi 0.10.2+wasi-snapshot-preview1",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "half"

@@ -1,64 +1,78 @@
-use fe_parser2::{
-    parser::{expr::parse_expr, item::ItemListScope, stmt::parse_stmt},
-    syntax_node::SyntaxNode,
-};
+use dir_test::{dir_test, Fixture};
+
+use fe_compiler_test_utils::snap_test;
+
 mod test_runner;
 use test_runner::*;
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/error_recovery/items",
-    "parser2/test_files/error_recovery/items",
-    test_item_list
-}
-fn test_item_list(input: &str) -> SyntaxNode {
-    let runner = TestRunner::new(
-        |parser| {
-            parser.parse(ItemListScope::default(), None);
-        },
-        false,
-    );
-    runner.run(input)
+
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/items",
+    glob: "*.fe"
+)]
+fn test_item_list(fixture: Fixture<&str>) {
+    let runner = TestRunner::item_list(false);
+    let node = format! {"{:#?}", runner.run(fixture.content())};
+    snap_test!(node, fixture.path());
 }
 
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/error_recovery/exprs",
-    "parser2/test_files/error_recovery/exprs",
-    test_expr
-}
-fn test_expr(input: &str) -> SyntaxNode {
-    let runner = TestRunner::new(
-        |parser| {
-            parser.set_newline_as_trivia(false);
-
-            bump_newlines(parser);
-            while parser.current_kind().is_some() {
-                bump_newlines(parser);
-                parse_expr(parser);
-                bump_newlines(parser);
-            }
-        },
-        false,
-    );
-    runner.run(input)
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/stmts",
+    glob: "*.fe"
+)]
+fn test_stmt(fixture: Fixture<&str>) {
+    let runner = TestRunner::stmt_list(false);
+    let node = format! {"{:#?}", runner.run(fixture.content())};
+    snap_test!(node, fixture.path());
 }
 
-fe_compiler_test_utils::build_debug_snap_tests! {
-    "parser2/test_files/error_recovery/stmts",
-    "parser2/test_files/error_recovery/stmts",
-    test_stmt
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/exprs",
+    glob: "*.fe"
+)]
+fn test_expr(fixture: Fixture<&str>) {
+    let runner = TestRunner::expr_list(false);
+    let node = format! {"{:#?}", runner.run(fixture.content())};
+    snap_test!(node, fixture.path());
 }
-fn test_stmt(input: &str) -> SyntaxNode {
-    let runner = TestRunner::new(
-        |parser| {
-            parser.set_newline_as_trivia(false);
 
-            bump_newlines(parser);
-            while parser.current_kind().is_some() {
-                bump_newlines(parser);
-                parse_stmt(parser, None);
-                bump_newlines(parser);
-            }
-        },
-        false,
-    );
-    runner.run(input)
+#[cfg(target_family = "wasm")]
+mod wasm {
+    use super::*;
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/items",
+        glob: "*.fe"
+        postfix: "wasm"
+    )]
+    #[dir_test_attr(
+        #[wasm_bindgen_test]
+    )]
+    fn test_item_list(fixture: Fixture<&str>) {
+        TestRunner::item_list(false).run(fixture.content());
+    }
+
+    #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/stmts",
+        glob: "*.fe"
+        postfix: "wasm"
+    )]
+    #[dir_test_attr(
+        #[wasm_bindgen_test]
+    )]
+    fn test_stmt(fixture: Fixture<&str>) {
+        TestRunner::stmt_list(false).run(fixture.content());
+    }
+
+    #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/test_files/error_recovery/exprs",
+        glob: "*.fe"
+        postfix: "wasm"
+    )]
+    #[dir_test_attr(
+        #[wasm_bindgen_test]
+    )]
+    fn test_expr(fixture: Fixture<&str>) {
+        TestRunner::expr_list(false).run(fixture.content());
+    }
 }

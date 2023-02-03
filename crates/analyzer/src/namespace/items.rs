@@ -1665,8 +1665,8 @@ impl ImplId {
             || other == Type::SelfType(TraitOrType::TypeId(self.receiver(db))).id(db)
     }
 
-    /// Returns `true` if the `type_in_impl` can stand in for the `type_in_trait` as a type used
-    /// for a parameter or as a return type
+    /// Returns `true` if the `type_in_impl` can stand in for the
+    /// `type_in_trait` as a type used for a parameter or as a return type
     pub fn can_stand_in_for(
         &self,
         db: &dyn AnalyzerDb,

@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/match.fe
 ---
 Root@0..516
   MatchExpr@0..10
