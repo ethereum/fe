@@ -33,7 +33,7 @@ wasm-bindgen-test = "0.3.24"
 solc-backend = ["fe-yulc/solc-backend", "fe-compiler-test-utils/solc-backend"]
 
 [dev-dependencies.proptest]
-version = "1.0.0"
+version = "=1.0.0"
 # The default feature set includes things like process forking which are not
 # supported in Web Assembly.
 default-features = false
