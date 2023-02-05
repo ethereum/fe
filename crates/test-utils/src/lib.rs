@@ -11,9 +11,16 @@ use yultsur::*;
 
 #[macro_export]
 macro_rules! assert_harness_gas_report {
-    ($harness:ident) => {
+    ($harness: expr) => {
         assert_snapshot!(format!("{}", $harness.gas_reporter));
     };
+
+    ($harness: expr, $($expr:expr),*) => {
+        let mut settings = insta::Settings::clone_current();
+        settings.set_snapshot_suffix(format!("{:?}", $($expr,)*));
+        let _guard = settings.bind_to_scope();
+        assert_snapshot!(format!("{}", $harness.gas_reporter));
+    }
 }
 
 #[derive(Default, Debug)]
@@ -802,8 +809,7 @@ pub fn to_2s_complement(val: i64) -> U256 {
 /// get_2s_complement_for_negative(128)
 #[allow(dead_code)]
 pub fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
-    let (negated, _) = assume_negative.overflowing_neg();
-    negated + 1
+    assume_negative.overflowing_neg().0
 }
 
 #[allow(dead_code)]
