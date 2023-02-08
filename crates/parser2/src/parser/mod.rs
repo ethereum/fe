@@ -6,7 +6,7 @@ use fxhash::{FxHashMap, FxHashSet};
 
 use crate::{syntax_node::SyntaxNode, ParseError, SyntaxKind, TextRange};
 
-use self::token_stream::{BackTrackableTokenStream, SyntaxToken, TokenStream};
+use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
 
 pub mod token_stream;
 
@@ -523,7 +523,7 @@ trait TextSize {
 
 impl<T> TextSize for T
 where
-    T: SyntaxToken,
+    T: LexicalToken,
 {
     fn text_size(&self) -> rowan::TextSize {
         rowan::TextSize::of(self.text())

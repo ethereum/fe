@@ -1,5 +1,5 @@
 use crate::{
-    parser::token_stream::{SyntaxToken, TokenStream},
+    parser::token_stream::{LexicalToken, TokenStream},
     SyntaxKind,
 };
 
@@ -46,7 +46,7 @@ pub struct Token<'s> {
     text: &'s str,
 }
 
-impl<'s> SyntaxToken for Token<'s> {
+impl<'s> LexicalToken for Token<'s> {
     fn syntax_kind(&self) -> SyntaxKind {
         self.syntax_kind
     }
