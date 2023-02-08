@@ -1,8 +1,10 @@
+pub mod expr;
 pub mod item;
 pub mod param;
 pub mod path;
 pub mod type_;
 
+pub use expr::*;
 pub use item::*;
 pub use param::*;
 pub use path::*;
