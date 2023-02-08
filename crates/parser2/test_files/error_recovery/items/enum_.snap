@@ -1,6 +1,7 @@
 ---
-source: crates/parser2/tests/errro_recovery.rs
-expression: snapshot
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/items/enum_.fe
 ---
 Root@0..63
   ItemList@0..63
@@ -13,7 +14,7 @@ Root@0..63
       Ident@9..15 "MyEnum"
       GenericParamList@15..18
         Lt@15..16 "<"
-        GenericParam@16..17
+        TypeGenericParam@16..17
           Ident@16..17 "T"
         Gt@17..18 ">"
       WhiteSpace@18..19 " "

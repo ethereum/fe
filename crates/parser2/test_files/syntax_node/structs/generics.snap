@@ -14,15 +14,15 @@ Root@0..480
       Ident@11..33 "StructWithGenericParam"
       GenericParamList@33..42
         Lt@33..34 "<"
-        GenericParam@34..35
+        TypeGenericParam@34..35
           Ident@34..35 "S"
         Comma@35..36 ","
         WhiteSpace@36..37 " "
-        GenericParam@37..38
+        TypeGenericParam@37..38
           Ident@37..38 "T"
         Comma@38..39 ","
         WhiteSpace@39..40 " "
-        GenericParam@40..41
+        TypeGenericParam@40..41
           Ident@40..41 "U"
         Gt@41..42 ">"
       WhiteSpace@42..43 " "
@@ -75,12 +75,12 @@ Root@0..480
         Lt@111..112 "<"
         Newline@112..113 "\n"
         WhiteSpace@113..117 "    "
-        GenericParam@117..118
+        TypeGenericParam@117..118
           Ident@117..118 "S"
         Comma@118..119 ","
         Newline@119..120 "\n"
         WhiteSpace@120..124 "    "
-        GenericParam@124..137
+        TypeGenericParam@124..137
           Ident@124..125 "T"
           TypeBoundList@125..137
             Colon@125..126 ":"
@@ -95,7 +95,7 @@ Root@0..480
         Comma@137..138 ","
         Newline@138..139 "\n"
         WhiteSpace@139..143 "    "
-        GenericParam@143..144
+        TypeGenericParam@143..144
           Ident@143..144 "U"
         Newline@144..145 "\n"
         Gt@145..146 ">"
@@ -159,7 +159,7 @@ Root@0..480
         Lt@222..223 "<"
         Newline@223..224 "\n"
         WhiteSpace@224..228 "    "
-        GenericParam@228..254
+        TypeGenericParam@228..254
           Ident@228..229 "S"
           TypeBoundList@229..254
             Colon@229..230 ":"
@@ -184,12 +184,12 @@ Root@0..480
         Comma@254..255 ","
         Newline@255..256 "\n"
         WhiteSpace@256..260 "    "
-        GenericParam@260..261
+        TypeGenericParam@260..261
           Ident@260..261 "T"
         Comma@261..262 ","
         Newline@262..263 "\n"
         WhiteSpace@263..267 "    "
-        GenericParam@267..280
+        TypeGenericParam@267..280
           Ident@267..268 "U"
           TypeBoundList@268..280
             Colon@268..269 ":"
@@ -234,7 +234,7 @@ Root@0..480
               Ident@316..322 "Option"
           GenericArgList@322..325
             Lt@322..323 "<"
-            GenericArg@323..324
+            TypeGenericArg@323..324
               PathType@323..324
                 Path@323..324
                   PathSegment@323..324
@@ -262,7 +262,7 @@ Root@0..480
               Ident@347..353 "Result"
           GenericArgList@353..356
             Lt@353..354 "<"
-            GenericArg@354..355
+            TypeGenericArg@354..355
               PathType@354..355
                 Path@354..355
                   PathSegment@354..355
@@ -327,7 +327,7 @@ Root@0..480
       Ident@417..422 "MyArr"
       GenericParamList@422..456
         Lt@422..423 "<"
-        GenericParam@423..439
+        TypeGenericParam@423..439
           Ident@423..424 "T"
           TypeBoundList@424..439
             Colon@424..425 ":"

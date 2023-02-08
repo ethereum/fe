@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/call.fe
 ---
 Root@0..270
   CallExpr@0..5
@@ -126,14 +127,14 @@ Root@0..270
         Ident@88..91 "foo"
     GenericArgList@91..109
       Lt@91..92 "<"
-      GenericArg@92..95
+      TypeGenericArg@92..95
         PathType@92..95
           Path@92..95
             PathSegment@92..95
               Ident@92..95 "i32"
       Comma@95..96 ","
       WhiteSpace@96..97 " "
-      GenericArg@97..108
+      TypeGenericArg@97..108
         PathType@97..108
           Path@97..108
             PathSegment@97..100
@@ -166,7 +167,7 @@ Root@0..270
         Ident@135..138 "foo"
     GenericArgList@138..157
       Lt@138..139 "<"
-      GenericArg@139..147
+      TypeGenericArg@139..147
         ArrayType@139..147
           LBracket@139..140 "["
           PathType@140..143
@@ -180,7 +181,7 @@ Root@0..270
           RBracket@146..147 "]"
       Comma@147..148 ","
       WhiteSpace@148..149 " "
-      GenericArg@149..156
+      ConstGenericArg@149..156
         BlockExpr@149..156
           LBrace@149..150 "{"
           ExprStmt@150..155
@@ -224,14 +225,14 @@ Root@0..270
       GenericArgList@251..265
         Lt@251..252 "<"
         WhiteSpace@252..253 " "
-        GenericArg@253..256
+        TypeGenericArg@253..256
           PathType@253..256
             Path@253..256
               PathSegment@253..256
                 Ident@253..256 "i32"
         Comma@256..257 ","
         WhiteSpace@257..258 " "
-        GenericArg@258..263
+        TypeGenericArg@258..263
           TupleType@258..263
             LParen@258..259 "("
             PathType@259..262

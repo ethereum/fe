@@ -103,7 +103,7 @@ impl super::Parse for GenericParamListScope {
 
 define_scope! {
     GenericParamScope,
-    GenericParam,
+    TypeGenericParam,
     Inheritance(Comma)
 }
 impl super::Parse for GenericParamScope {
@@ -206,7 +206,7 @@ impl super::Parse for GenericArgListScope {
 
 define_scope! {
     GenericArgScope{ allow_bounds: bool },
-    GenericArg,
+    TypeGenericArg,
     Inheritance
 }
 impl super::Parse for GenericArgScope {
@@ -216,10 +216,12 @@ impl super::Parse for GenericArgScope {
             |parser| {
                 match parser.current_kind() {
                     Some(SyntaxKind::LBrace) => {
+                        self.set_kind(SyntaxKind::ConstGenericArg);
                         parser.parse(BlockExprScope::default(), None);
                     }
 
                     Some(kind) if kind.is_literal_leaf() => {
+                        self.set_kind(SyntaxKind::ConstGenericArg);
                         parser.parse(LitExprScope::default(), None);
                     }
 

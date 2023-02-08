@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/items/trait_.fe
 ---
 Root@0..133
   ItemList@0..133
@@ -10,14 +11,14 @@ Root@0..133
       Ident@6..9 "Foo"
       GenericParamList@9..16
         Lt@9..10 "<"
-        GenericParam@10..11
+        TypeGenericParam@10..11
           Ident@10..11 "T"
         Comma@11..12 ","
         WhiteSpace@12..13 " "
-        GenericParam@13..14
+        TypeGenericParam@13..14
           Ident@13..14 "Y"
         Comma@14..15 ","
-        GenericParam@15..15
+        TypeGenericParam@15..15
           Error@15..15
         Gt@15..16 ">"
       TraitItemList@16..18
@@ -30,11 +31,11 @@ Root@0..133
       Ident@26..29 "Bar"
       GenericParamList@29..33
         Lt@29..30 "<"
-        GenericParam@30..31
+        TypeGenericParam@30..31
           Ident@30..31 "Y"
         Comma@31..32 ","
         WhiteSpace@32..33 " "
-        GenericParam@33..33
+        TypeGenericParam@33..33
           Error@33..33
           Error@33..33
         Error@33..33
@@ -48,11 +49,11 @@ Root@0..133
       Ident@43..46 "Bar"
       GenericParamList@46..51
         Lt@46..47 "<"
-        GenericParam@47..48
+        TypeGenericParam@47..48
           Ident@47..48 "T"
         Comma@48..49 ","
         WhiteSpace@49..50 " "
-        GenericParam@50..50
+        TypeGenericParam@50..50
           Error@50..50
         Gt@50..51 ">"
       Newline@51..53 "\n\n"
@@ -66,14 +67,14 @@ Root@0..133
       Ident@59..62 "Bar"
       GenericParamList@62..69
         Lt@62..63 "<"
-        GenericParam@63..64
+        TypeGenericParam@63..64
           Ident@63..64 "Y"
         Comma@64..65 ","
         WhiteSpace@65..66 " "
-        GenericParam@66..67
+        TypeGenericParam@66..67
           Ident@66..67 "T"
         Comma@67..68 ","
-        GenericParam@68..68
+        TypeGenericParam@68..68
           Error@68..68
         Gt@68..69 ">"
       WhiteSpace@69..70 " "
@@ -103,13 +104,13 @@ Root@0..133
       Ident@93..96 "Bar"
       GenericParamList@96..108
         Lt@96..97 "<"
-        GenericParam@97..99
+        TypeGenericParam@97..99
           Error@97..99
             Lt@97..98 "<"
             Ident@98..99 "Y"
         Comma@99..100 ","
         WhiteSpace@100..101 " "
-        GenericParam@101..107
+        TypeGenericParam@101..107
           Ident@101..102 "K"
           TypeBoundList@102..107
             Colon@102..103 ":"

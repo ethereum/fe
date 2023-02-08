@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/items/impl_trait.fe
 ---
 Root@0..90
   ItemList@0..90
@@ -13,14 +14,14 @@ Root@0..90
             Ident@5..6 "X"
         GenericArgList@6..14
           Lt@6..7 "<"
-          GenericArg@7..8
+          TypeGenericArg@7..8
             PathType@7..8
               Path@7..8
                 PathSegment@7..8
                   Ident@7..8 "T"
           Comma@8..9 ","
           WhiteSpace@9..10 " "
-          GenericArg@10..13
+          TypeGenericArg@10..13
             PathType@10..11
               Path@10..11
                 PathSegment@10..11
@@ -38,7 +39,7 @@ Root@0..90
             Ident@19..20 "Y"
         GenericArgList@20..23
           Lt@20..21 "<"
-          GenericArg@21..23
+          TypeGenericArg@21..23
             PathType@21..22
               Path@21..22
                 PathSegment@21..22
@@ -75,14 +76,14 @@ Root@0..90
             Ident@43..44 "X"
         GenericArgList@44..50
           Lt@44..45 "<"
-          GenericArg@45..46
+          TypeGenericArg@45..46
             PathType@45..46
               Path@45..46
                 PathSegment@45..46
                   Ident@45..46 "T"
           Comma@46..47 ","
           WhiteSpace@47..48 " "
-          GenericArg@48..50
+          TypeGenericArg@48..50
             PathType@48..49
               Path@48..49
                 PathSegment@48..49
@@ -98,7 +99,7 @@ Root@0..90
             Ident@54..55 "Y"
         GenericArgList@55..58
           Lt@55..56 "<"
-          GenericArg@56..58
+          TypeGenericArg@56..58
             PathType@56..57
               Path@56..57
                 PathSegment@56..57

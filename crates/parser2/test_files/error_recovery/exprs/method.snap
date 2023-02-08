@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/method.fe
 ---
 Root@0..78
   MethodCallExpr@0..31
@@ -14,14 +15,14 @@ Root@0..78
     Ident@9..12 "baz"
     GenericArgList@12..25
       Lt@12..13 "<"
-      GenericArg@13..16
+      TypeGenericArg@13..16
         PathType@13..16
           Path@13..16
             PathSegment@13..16
               Ident@13..16 "i32"
       Comma@16..17 ","
       WhiteSpace@17..18 " "
-      GenericArg@18..23
+      TypeGenericArg@18..23
         PathType@18..21
           Path@18..21
             PathSegment@18..21
@@ -30,7 +31,7 @@ Root@0..78
         Error@22..23
           Ident@22..23 "T"
       Comma@23..24 ","
-      GenericArg@24..24
+      TypeGenericArg@24..24
         PathType@24..24
           Path@24..24
             PathSegment@24..24
@@ -86,14 +87,14 @@ Root@0..78
     Ident@63..66 "baz"
     GenericArgList@66..76
       Lt@66..67 "<"
-      GenericArg@67..70
+      TypeGenericArg@67..70
         PathType@67..70
           Path@67..70
             PathSegment@67..70
               Ident@67..70 "i32"
       Comma@70..71 ","
       WhiteSpace@71..72 " "
-      GenericArg@72..75
+      TypeGenericArg@72..75
         PathType@72..75
           Path@72..75
             PathSegment@72..75

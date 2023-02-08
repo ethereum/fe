@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/enums.fe
 ---
 Root@0..220
   ItemList@0..220
@@ -50,7 +51,7 @@ Root@0..220
       Ident@63..69 "Option"
       GenericParamList@69..72
         Lt@69..70 "<"
-        GenericParam@70..71
+        TypeGenericParam@70..71
           Ident@70..71 "T"
         Gt@71..72 ">"
       WhiteSpace@72..73 " "
@@ -97,7 +98,7 @@ Root@0..220
       Ident@124..133 "BoundEnum"
       GenericParamList@133..162
         Lt@133..134 "<"
-        GenericParam@134..146
+        TypeGenericParam@134..146
           Ident@134..135 "T"
           TypeBoundList@135..146
             Colon@135..136 ":"
@@ -116,7 +117,7 @@ Root@0..220
         WhiteSpace@146..147 " "
         Comma@147..148 ","
         WhiteSpace@148..149 " "
-        GenericParam@149..161
+        TypeGenericParam@149..161
           Ident@149..150 "U"
           TypeBoundList@150..161
             Colon@150..151 ":"
@@ -147,7 +148,7 @@ Root@0..220
               Ident@175..178 "Bar"
           GenericArgList@178..181
             Lt@178..179 "<"
-            GenericArg@179..180
+            TypeGenericArg@179..180
               PathType@179..180
                 Path@179..180
                   PathSegment@179..180

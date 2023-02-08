@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/type.fe
 ---
 Root@0..98
   ItemList@0..98
@@ -26,7 +27,7 @@ Root@0..98
       Ident@26..32 "Result"
       GenericParamList@32..35
         Lt@32..33 "<"
-        GenericParam@33..34
+        TypeGenericParam@33..34
           Ident@33..34 "T"
         Gt@34..35 ">"
       WhiteSpace@35..36 " "
@@ -38,14 +39,14 @@ Root@0..98
             Ident@38..44 "Result"
         GenericArgList@44..54
           Lt@44..45 "<"
-          GenericArg@45..46
+          TypeGenericArg@45..46
             PathType@45..46
               Path@45..46
                 PathSegment@45..46
                   Ident@45..46 "T"
           Comma@46..47 ","
           WhiteSpace@47..48 " "
-          GenericArg@48..53
+          TypeGenericArg@48..53
             PathType@48..53
               Path@48..53
                 PathSegment@48..53
@@ -58,7 +59,7 @@ Root@0..98
       Ident@61..70 "WithBound"
       GenericParamList@70..85
         Lt@70..71 "<"
-        GenericParam@71..84
+        TypeGenericParam@71..84
           Ident@71..72 "T"
           TypeBoundList@72..84
             Colon@72..73 ":"
@@ -77,7 +78,7 @@ Root@0..98
             Ident@88..95 "NoBound"
         GenericArgList@95..98
           Lt@95..96 "<"
-          GenericArg@96..97
+          TypeGenericArg@96..97
             PathType@96..97
               Path@96..97
                 PathSegment@96..97
