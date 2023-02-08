@@ -418,7 +418,9 @@ pub enum SyntaxKind {
     /// `T`
     /// `T: Trait`
     GenericParam,
-    /// `<T: Trait, U>`
+    /// `const N: usize`
+    ConstGenericParam,
+    /// `<T: Trait, U, const N: usize>`
     GenericParamList,
 
     /// `(x: i32, _ y: mut i32)`

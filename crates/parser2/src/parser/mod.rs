@@ -544,7 +544,7 @@ define_scope! {
 
 macro_rules! define_scope {
     (
-        $(#[$attrs: expr])*
+        $(#[$attrs: meta])*
         $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
         $kind: path,
         Inheritance $(($($recoveries: path), *))?
@@ -570,7 +570,7 @@ macro_rules! define_scope {
     };
 
     (
-        $(#[$attrs: expr])*
+        $(#[$attrs: meta])*
         $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
         $kind: path,
         Override($($recoveries: path), *)
@@ -599,7 +599,7 @@ macro_rules! define_scope {
 
 macro_rules! define_scope_struct {
     (
-        $(#[$attrs: expr])*
+        $(#[$attrs: meta])*
         $visibility: vis $scope_name: ident { $($field: ident: $ty: ty),* },
         $kind: path
     ) => {

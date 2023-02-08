@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/trait.fe
 ---
 Root@0..588
   ItemList@0..588
@@ -42,17 +43,16 @@ Root@0..588
                       Ident@47..52 "Trait"
             Comma@52..53 ","
             WhiteSpace@53..54 " "
-            GenericParam@54..66
+            ConstGenericParam@54..66
               ConstKw@54..59 "const"
               WhiteSpace@59..60 " "
               Ident@60..61 "U"
-              TypeBoundList@61..66
-                Colon@61..62 ":"
-                WhiteSpace@62..63 " "
-                TypeBound@63..66
-                  Path@63..66
-                    PathSegment@63..66
-                      Ident@63..66 "i32"
+              Colon@61..62 ":"
+              WhiteSpace@62..63 " "
+              PathType@63..66
+                Path@63..66
+                  PathSegment@63..66
+                    Ident@63..66 "i32"
             Gt@66..67 ">"
           FnArgList@67..79
             LParen@67..68 "("
