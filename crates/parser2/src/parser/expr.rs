@@ -3,7 +3,7 @@ use crate::SyntaxKind;
 use super::{
     define_scope, expr_atom,
     param::{CallArgListScope, GenericArgListScope},
-    token_stream::{SyntaxToken, TokenStream},
+    token_stream::{LexicalToken, TokenStream},
     Checkpoint, Parser,
 };
 

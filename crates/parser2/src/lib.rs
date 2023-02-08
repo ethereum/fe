@@ -1,12 +1,13 @@
+pub mod ast;
 pub mod lexer;
 pub mod parser;
 pub mod syntax_kind;
 pub mod syntax_node;
 
 pub use syntax_kind::SyntaxKind;
+pub use syntax_node::{FeLang, SyntaxNode, SyntaxToken};
 
 use parser::RootScope;
-use syntax_node::SyntaxNode;
 
 pub type TextRange = rowan::TextRange;
 

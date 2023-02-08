@@ -7,7 +7,7 @@ use crate::SyntaxKind;
 /// 1. text in source file
 /// 2. tokens stream produced by procedural macros.
 pub trait TokenStream {
-    type Token: SyntaxToken;
+    type Token: LexicalToken;
 
     /// Returns the next token in the stream.
     fn next(&mut self) -> Option<Self::Token>;
@@ -17,7 +17,7 @@ pub trait TokenStream {
 }
 
 /// This trait represents a single token in the token stream.
-pub trait SyntaxToken: Clone {
+pub trait LexicalToken: Clone {
     /// Returns `SyntaxKind` of the token.
     fn syntax_kind(&self) -> SyntaxKind;
 
