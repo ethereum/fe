@@ -1,9 +1,10 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/structs/generics.fe
 ---
-Root@0..404
-  ItemList@0..404
+Root@0..480
+  ItemList@0..480
     Struct@0..74
       ItemModifier@0..3
         PubKw@0..3 "pub"
@@ -316,4 +317,65 @@ Root@0..404
                 Ident@401..402 "U"
         Newline@402..403 "\n"
         RBrace@403..404 "}"
+    Newline@404..406 "\n\n"
+    Struct@406..480
+      ItemModifier@406..409
+        PubKw@406..409 "pub"
+      WhiteSpace@409..410 " "
+      StructKw@410..416 "struct"
+      WhiteSpace@416..417 " "
+      Ident@417..422 "MyArr"
+      GenericParamList@422..456
+        Lt@422..423 "<"
+        GenericParam@423..439
+          Ident@423..424 "T"
+          TypeBoundList@424..439
+            Colon@424..425 ":"
+            WhiteSpace@425..426 " "
+            TypeBound@426..439
+              Path@426..439
+                PathSegment@426..429
+                  Ident@426..429 "std"
+                Colon2@429..431 "::"
+                PathSegment@431..434
+                  Ident@431..434 "ops"
+                Colon2@434..436 "::"
+                PathSegment@436..439
+                  Ident@436..439 "Add"
+        Comma@439..440 ","
+        WhiteSpace@440..441 " "
+        ConstGenericParam@441..455
+          ConstKw@441..446 "const"
+          WhiteSpace@446..447 " "
+          Ident@447..448 "N"
+          Colon@448..449 ":"
+          WhiteSpace@449..450 " "
+          PathType@450..455
+            Path@450..455
+              PathSegment@450..455
+                Ident@450..455 "usize"
+        Gt@455..456 ">"
+      WhiteSpace@456..457 " "
+      RecordFieldDefList@457..480
+        LBrace@457..458 "{"
+        Newline@458..459 "\n"
+        WhiteSpace@459..463 "    "
+        RecordFieldDef@463..478
+          Ident@463..470 "__inner"
+          Colon@470..471 ":"
+          WhiteSpace@471..472 " "
+          ArrayType@472..478
+            LBracket@472..473 "["
+            PathType@473..474
+              Path@473..474
+                PathSegment@473..474
+                  Ident@473..474 "T"
+            SemiColon@474..475 ";"
+            WhiteSpace@475..476 " "
+            Path@476..477
+              PathSegment@476..477
+                Ident@476..477 "N"
+            RBracket@477..478 "]"
+        Newline@478..479 "\n"
+        RBrace@479..480 "}"
 

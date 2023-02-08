@@ -28,3 +28,7 @@ pub struct StructWithGenericParam3<
     y: T
     z: U
 }
+
+pub struct MyArr<T: std::ops::Add, const N: usize> {
+    __inner: [T; N]
+}

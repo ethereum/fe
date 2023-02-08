@@ -109,19 +109,42 @@ define_scope! {
 impl super::Parse for GenericParamScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        parser.bump_if(SyntaxKind::ConstKw);
-
+        let is_const = parser.bump_if(SyntaxKind::ConstKw);
+        if is_const {
+            self.set_kind(SyntaxKind::ConstGenericParam);
+        }
         parser.with_next_expected_tokens(
             |parser| {
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.error_and_recover("expected type parameter", None);
-                }
+                if is_const {
+                    parser.with_next_expected_tokens(
+                        |parser| {
+                            if !parser.bump_if(SyntaxKind::Ident) {
+                                parser.error_and_recover("expected const parameter", None);
+                            }
+                        },
+                        &[SyntaxKind::Colon],
+                    );
 
-                if parser.current_kind() == Some(SyntaxKind::Colon) {
-                    parser.parse(TypeBoundListScope::default(), None);
-                }
+                    if !parser.bump_if(SyntaxKind::Colon) {
+                        parser.error_and_recover("expected `:` after const parameter", None);
+                        return;
+                    }
+                    parse_type(parser, None, false);
 
-                parser.set_newline_as_trivia(true);
+                    parser.set_newline_as_trivia(true);
+                } else {
+                    if !parser.bump_if(SyntaxKind::Ident) {
+                        parser.error_and_recover("expected type parameter", None);
+                    }
+
+                    if parser.current_kind() == Some(SyntaxKind::Colon) {
+                        {
+                            parser.parse(TypeBoundListScope::default(), None);
+                        }
+                    }
+
+                    parser.set_newline_as_trivia(true);
+                }
             },
             &[SyntaxKind::Comma, SyntaxKind::Gt],
         );
