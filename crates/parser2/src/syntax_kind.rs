@@ -248,7 +248,9 @@ pub enum SyntaxKind {
     /// `<i32, u256, N + 2>`
     GenericArgList,
     /// `T`
-    GenericArg,
+    TypeGenericArg,
+    /// `1`
+    ConstGenericArg,
     /// `FOO::Bar`
     PathExpr,
     /// `Foo { x: 1, y: "String"` }`
@@ -417,7 +419,7 @@ pub enum SyntaxKind {
 
     /// `T`
     /// `T: Trait`
-    GenericParam,
+    TypeGenericParam,
     /// `const N: usize`
     ConstGenericParam,
     /// `<T: Trait, U, const N: usize>`

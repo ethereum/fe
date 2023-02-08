@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/impl.fe
 ---
 Root@0..266
   ItemList@0..266
@@ -16,7 +17,7 @@ Root@0..266
             Ident@10..13 "Bar"
         GenericArgList@13..21
           Lt@13..14 "<"
-          GenericArg@14..20
+          TypeGenericArg@14..20
             PathType@14..15
               Path@14..15
                 PathSegment@14..15
@@ -112,7 +113,7 @@ Root@0..266
             Ident@141..144 "Foo"
         GenericArgList@144..147
           Lt@144..145 "<"
-          GenericArg@145..146
+          TypeGenericArg@145..146
             PathType@145..146
               Path@145..146
                 PathSegment@145..146
@@ -129,7 +130,7 @@ Root@0..266
               Ident@155..158 "Foo"
           GenericArgList@158..161
             Lt@158..159 "<"
-            GenericArg@159..160
+            TypeGenericArg@159..160
               PathType@159..160
                 Path@159..160
                   PathSegment@159..160
@@ -153,7 +154,7 @@ Root@0..266
           Ident@178..181 "add"
           GenericParamList@181..192
             Lt@181..182 "<"
-            GenericParam@182..191
+            TypeGenericParam@182..191
               Ident@182..183 "U"
               TypeBoundList@183..191
                 Colon@183..184 ":"
@@ -164,7 +165,7 @@ Root@0..266
                       Ident@185..188 "Add"
                   GenericArgList@188..191
                     Lt@188..189 "<"
-                    GenericArg@189..190
+                    TypeGenericArg@189..190
                       PathType@189..190
                         Path@189..190
                           PathSegment@189..190

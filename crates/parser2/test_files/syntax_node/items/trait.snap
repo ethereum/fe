@@ -32,7 +32,7 @@ Root@0..588
           Ident@40..43 "foo"
           GenericParamList@43..67
             Lt@43..44 "<"
-            GenericParam@44..52
+            TypeGenericParam@44..52
               Ident@44..45 "T"
               TypeBoundList@45..52
                 Colon@45..46 ":"
@@ -83,7 +83,7 @@ Root@0..588
           Ident@88..102 "default_method"
           GenericParamList@102..116
             Lt@102..103 "<"
-            GenericParam@103..115
+            TypeGenericParam@103..115
               Ident@103..104 "T"
               TypeBoundList@104..115
                 Colon@104..105 ":"
@@ -176,7 +176,7 @@ Root@0..588
       Ident@194..197 "Add"
       GenericParamList@197..207
         Lt@197..198 "<"
-        GenericParam@198..206
+        TypeGenericParam@198..206
           Ident@198..201 "RHS"
           TypeBoundList@201..206
             Colon@201..202 ":"
@@ -254,7 +254,7 @@ Root@0..588
           Ident@299..304 "parse"
           GenericParamList@304..320
             Lt@304..305 "<"
-            GenericParam@305..319
+            TypeGenericParam@305..319
               Ident@305..306 "S"
               TypeBoundList@306..319
                 Colon@306..307 ":"
@@ -284,7 +284,7 @@ Root@0..588
                     Ident@343..349 "Parser"
                 GenericArgList@349..352
                   Lt@349..350 "<"
-                  GenericArg@350..351
+                  TypeGenericArg@350..351
                     PathType@350..351
                       Path@350..351
                         PathSegment@350..351
@@ -303,7 +303,7 @@ Root@0..588
             Ident@362..368 "Parser"
         GenericArgList@368..384
           Lt@368..369 "<"
-          GenericArg@369..383
+          TypeGenericArg@369..383
             PathType@369..370
               Path@369..370
                 PathSegment@369..370
@@ -347,7 +347,7 @@ Root@0..588
           Ident@418..423 "parse"
           GenericParamList@423..433
             Lt@423..424 "<"
-            GenericParam@424..432
+            TypeGenericParam@424..432
               Ident@424..425 "T"
               TypeBoundList@425..432
                 Colon@425..426 ":"
@@ -387,7 +387,7 @@ Root@0..588
                     Ident@470..476 "Option"
                 GenericArgList@476..488
                   Lt@476..477 "<"
-                  GenericArg@477..487
+                  TypeGenericArg@477..487
                     PathType@477..487
                       Path@477..487
                         PathSegment@477..487

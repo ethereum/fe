@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/impl_trait.fe
 ---
 Root@0..317
   ItemList@0..317
@@ -13,7 +14,7 @@ Root@0..317
             Ident@5..10 "Trait"
         GenericArgList@10..13
           Lt@10..11 "<"
-          GenericArg@11..12
+          TypeGenericArg@11..12
             PathType@11..12
               Path@11..12
                 PathSegment@11..12
@@ -28,7 +29,7 @@ Root@0..317
             Ident@18..19 "F"
         GenericArgList@19..22
           Lt@19..20 "<"
-          GenericArg@20..21
+          TypeGenericArg@20..21
             PathType@20..21
               Path@20..21
                 PathSegment@20..21
@@ -71,14 +72,14 @@ Root@0..317
             Ident@71..76 "Trait"
         GenericArgList@76..82
           Lt@76..77 "<"
-          GenericArg@77..78
+          TypeGenericArg@77..78
             PathType@77..78
               Path@77..78
                 PathSegment@77..78
                   Ident@77..78 "T"
           Comma@78..79 ","
           WhiteSpace@79..80 " "
-          GenericArg@80..81
+          TypeGenericArg@80..81
             PathType@80..81
               Path@80..81
                 PathSegment@80..81
@@ -93,7 +94,7 @@ Root@0..317
             Ident@87..88 "F"
         GenericArgList@88..91
           Lt@88..89 "<"
-          GenericArg@89..90
+          TypeGenericArg@89..90
             PathType@89..90
               Path@89..90
                 PathSegment@89..90
@@ -139,7 +140,7 @@ Root@0..317
           Ident@130..133 "foo"
           GenericParamList@133..151
             Lt@133..134 "<"
-            GenericParam@134..150
+            TypeGenericParam@134..150
               Ident@134..135 "T"
               TypeBoundList@135..150
                 Colon@135..136 ":"
@@ -150,7 +151,7 @@ Root@0..317
                       Ident@137..147 "OtherTrait"
                   GenericArgList@147..150
                     Lt@147..148 "<"
-                    GenericArg@148..149
+                    TypeGenericArg@148..149
                       PathType@148..149
                         Path@148..149
                           PathSegment@148..149
@@ -180,7 +181,7 @@ Root@0..317
                     Ident@168..180 "do_something"
                 GenericArgList@180..185
                   Lt@180..181 "<"
-                  GenericArg@181..184
+                  TypeGenericArg@181..184
                     PathType@181..184
                       Path@181..184
                         PathSegment@181..184
@@ -208,7 +209,7 @@ Root@0..317
             Ident@203..208 "Trait"
         GenericArgList@208..226
           Lt@208..209 "<"
-          GenericArg@209..217
+          TypeGenericArg@209..217
             PathType@209..210
               Path@209..210
                 PathSegment@209..210
@@ -222,7 +223,7 @@ Root@0..317
                     Ident@212..217 "Clone"
           Comma@217..218 ","
           WhiteSpace@218..219 " "
-          GenericArg@219..225
+          TypeGenericArg@219..225
             PathType@219..220
               Path@219..220
                 PathSegment@219..220
@@ -244,7 +245,7 @@ Root@0..317
             Ident@231..232 "F"
         GenericArgList@232..240
           Lt@232..233 "<"
-          GenericArg@233..239
+          TypeGenericArg@233..239
             PathType@233..234
               Path@233..234
                 PathSegment@233..234
@@ -269,7 +270,7 @@ Root@0..317
           Ident@251..254 "foo"
           GenericParamList@254..272
             Lt@254..255 "<"
-            GenericParam@255..271
+            TypeGenericParam@255..271
               Ident@255..256 "T"
               TypeBoundList@256..271
                 Colon@256..257 ":"
@@ -280,7 +281,7 @@ Root@0..317
                       Ident@258..268 "OtherTrait"
                   GenericArgList@268..271
                     Lt@268..269 "<"
-                    GenericArg@269..270
+                    TypeGenericArg@269..270
                       PathType@269..270
                         Path@269..270
                           PathSegment@269..270
@@ -310,7 +311,7 @@ Root@0..317
                     Ident@289..301 "do_something"
                 GenericArgList@301..306
                   Lt@301..302 "<"
-                  GenericArg@302..305
+                  TypeGenericArg@302..305
                     PathType@302..305
                       Path@302..305
                         PathSegment@302..305

@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/func.fe
 ---
 Root@0..361
   ItemList@0..361
@@ -158,7 +159,7 @@ Root@0..361
       Ident@183..192 "generics1"
       GenericParamList@192..205
         Lt@192..193 "<"
-        GenericParam@193..201
+        TypeGenericParam@193..201
           Ident@193..194 "T"
           TypeBoundList@194..201
             Colon@194..195 ":"
@@ -169,7 +170,7 @@ Root@0..361
                   Ident@196..201 "Trait"
         Comma@201..202 ","
         WhiteSpace@202..203 " "
-        GenericParam@203..204
+        TypeGenericParam@203..204
           Ident@203..204 "U"
         Gt@204..205 ">"
       FnArgList@205..225
@@ -194,7 +195,7 @@ Root@0..361
                 Ident@215..221 "Option"
             GenericArgList@221..224
               Lt@221..222 "<"
-              GenericArg@222..223
+              TypeGenericArg@222..223
                 PathType@222..223
                   Path@222..223
                     PathSegment@222..223
@@ -219,7 +220,7 @@ Root@0..361
               Ident@241..247 "Result"
           GenericArgList@247..250
             Lt@247..248 "<"
-            GenericArg@248..249
+            TypeGenericArg@248..249
               PathType@248..249
                 Path@248..249
                   PathSegment@248..249
@@ -241,7 +242,7 @@ Root@0..361
               Ident@269..275 "Option"
           GenericArgList@275..278
             Lt@275..276 "<"
-            GenericArg@276..277
+            TypeGenericArg@276..277
               PathType@276..277
                 Path@276..277
                   PathSegment@276..277
@@ -274,11 +275,11 @@ Root@0..361
       Ident@311..315 "decl"
       GenericParamList@315..321
         Lt@315..316 "<"
-        GenericParam@316..317
+        TypeGenericParam@316..317
           Ident@316..317 "T"
         Comma@317..318 ","
         WhiteSpace@318..319 " "
-        GenericParam@319..320
+        TypeGenericParam@319..320
           Ident@319..320 "U"
         Gt@320..321 ">"
       FnArgList@321..340
@@ -293,14 +294,14 @@ Root@0..361
                 Ident@325..333 "MyStruct"
             GenericArgList@333..339
               Lt@333..334 "<"
-              GenericArg@334..335
+              TypeGenericArg@334..335
                 PathType@334..335
                   Path@334..335
                     PathSegment@334..335
                       Ident@334..335 "T"
               Comma@335..336 ","
               WhiteSpace@336..337 " "
-              GenericArg@337..338
+              TypeGenericArg@337..338
                 PathType@337..338
                   Path@337..338
                     PathSegment@337..338
@@ -316,14 +317,14 @@ Root@0..361
             Ident@344..350 "Result"
         GenericArgList@350..358
           Lt@350..351 "<"
-          GenericArg@351..352
+          TypeGenericArg@351..352
             PathType@351..352
               Path@351..352
                 PathSegment@351..352
                   Ident@351..352 "T"
           Comma@352..353 ","
           WhiteSpace@353..354 " "
-          GenericArg@354..357
+          TypeGenericArg@354..357
             PathType@354..357
               Path@354..357
                 PathSegment@354..357

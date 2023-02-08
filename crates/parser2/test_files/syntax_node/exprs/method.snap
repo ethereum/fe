@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/method.fe
 ---
 Root@0..75
   MethodCallExpr@0..5
@@ -87,14 +88,14 @@ Root@0..75
     Ident@51..52 "y"
     GenericArgList@52..66
       Lt@52..53 "<"
-      GenericArg@53..56
+      TypeGenericArg@53..56
         PathType@53..56
           Path@53..56
             PathSegment@53..56
               Ident@53..56 "i32"
       Comma@56..57 ","
       WhiteSpace@57..58 " "
-      GenericArg@58..65
+      ConstGenericArg@58..65
         BlockExpr@58..65
           LBrace@58..59 "{"
           ExprStmt@59..64
