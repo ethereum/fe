@@ -82,7 +82,7 @@ macro_rules! ast_node {
             type IntoIter = crate::ast::AstChildren<$item_ty>;
 
             fn into_iter(self) -> Self::IntoIter {
-                support::children(self.syntax())
+                rowan::ast::support::children(rowan::ast::AstNode::syntax(&self))
             }
         }
         impl IntoIterator for &$name {
@@ -90,7 +90,7 @@ macro_rules! ast_node {
             type IntoIter = crate::ast::AstChildren<$item_ty>;
 
             fn into_iter(self) -> Self::IntoIter {
-                support::children(self.syntax())
+                rowan::ast::support::children(rowan::ast::AstNode::syntax(self))
             }
         }
 
