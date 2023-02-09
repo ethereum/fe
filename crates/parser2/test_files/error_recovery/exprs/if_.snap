@@ -1,6 +1,7 @@
 ---
-source: crates/parser2/tests/errro_recovery.rs
-expression: snapshot
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/if_.fe
 ---
 Root@0..101
   IfExpr@0..10
@@ -88,7 +89,8 @@ Root@0..101
       WhiteSpace@75..79 "    "
       ExprStmt@79..81
         LitExpr@79..81
-          Int@79..81 "10"
+          Lit@79..81
+            Int@79..81 "10"
       WhiteSpace@81..85 "    "
       Newline@85..86 "\n"
       ExprStmt@86..92
@@ -100,7 +102,8 @@ Root@0..101
       WhiteSpace@93..97 "    "
       ExprStmt@97..98
         LitExpr@97..98
-          Int@97..98 "1"
+          Lit@97..98
+            Int@97..98 "1"
       Newline@98..99 "\n"
       RBrace@99..100 "}"
   Newline@100..101 "\n"

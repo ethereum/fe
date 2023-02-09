@@ -1,6 +1,7 @@
 ---
-source: crates/parser2/tests/errro_recovery.rs
-expression: snapshot
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/block.fe
 ---
 Root@0..43
   BlockExpr@0..43
@@ -40,7 +41,8 @@ Root@0..43
       Eq@36..37 "="
       WhiteSpace@37..38 " "
       LitExpr@38..40
-        Int@38..40 "10"
+        Lit@38..40
+          Int@38..40 "10"
     Newline@40..42 "\n\n"
     RBrace@42..43 "}"
 

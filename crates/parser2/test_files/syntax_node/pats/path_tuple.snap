@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/pats/path_tuple.fe
 ---
 Root@0..203
   PathTuplePat@0..7
@@ -53,12 +54,14 @@ Root@0..203
             LParen@52..53 "("
             TuplePatElem@53..54
               LitPat@53..54
-                Int@53..54 "1"
+                Lit@53..54
+                  Int@53..54 "1"
             Comma@54..55 ","
             WhiteSpace@55..56 " "
             TuplePatElem@56..57
               LitPat@56..57
-                Int@56..57 "2"
+                Lit@56..57
+                  Int@56..57 "2"
             RParen@57..58 ")"
       Comma@58..59 ","
       WhiteSpace@59..61 "  "
@@ -107,12 +110,14 @@ Root@0..203
             LParen@106..107 "("
             TuplePatElem@107..108
               LitPat@107..108
-                Int@107..108 "1"
+                Lit@107..108
+                  Int@107..108 "1"
             Comma@108..109 ","
             WhiteSpace@109..110 " "
             TuplePatElem@110..111
               LitPat@110..111
-                Int@110..111 "2"
+                Lit@110..111
+                  Int@110..111 "2"
             RParen@111..112 ")"
       Comma@112..113 ","
       WhiteSpace@113..114 " "
@@ -190,7 +195,8 @@ Root@0..203
                 LParen@198..199 "("
                 TuplePatElem@199..201
                   LitPat@199..201
-                    Int@199..201 "10"
+                    Lit@199..201
+                      Int@199..201 "10"
                 RParen@201..202 ")"
       RParen@202..203 ")"
 

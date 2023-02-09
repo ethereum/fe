@@ -120,7 +120,8 @@ Root@0..516
             Colon@94..95 ":"
             WhiteSpace@95..96 " "
             LitExpr@96..97
-              Int@96..97 "1"
+              Lit@96..97
+                Int@96..97 "1"
           Comma@97..98 ","
           WhiteSpace@98..99 " "
           RecordField@99..103
@@ -128,7 +129,8 @@ Root@0..516
             Colon@100..101 ":"
             WhiteSpace@101..102 " "
             LitExpr@102..103
-              Int@102..103 "2"
+              Lit@102..103
+                Int@102..103 "2"
           RBrace@103..104 "}"
       RParen@104..105 ")"
     WhiteSpace@105..106 " "
@@ -143,7 +145,8 @@ Root@0..516
         FatArrow@114..116 "=>"
         WhiteSpace@116..117 " "
         LitExpr@117..118
-          Int@117..118 "1"
+          Lit@117..118
+            Int@117..118 "1"
       Newline@118..119 "\n"
       RBrace@119..120 "}"
   Newline@120..122 "\n\n"
@@ -430,7 +433,8 @@ Root@0..516
         Eq@368..369 "="
         WhiteSpace@369..370 " "
         LitExpr@370..371
-          Int@370..371 "1"
+          Lit@370..371
+            Int@370..371 "1"
       Newline@371..372 "\n"
       WhiteSpace@372..380 "        "
       ExprStmt@380..392
@@ -521,7 +525,8 @@ Root@0..516
             Colon@458..459 ":"
             WhiteSpace@459..460 " "
             LitExpr@460..461
-              Int@460..461 "2"
+              Lit@460..461
+                Int@460..461 "2"
           RBrace@461..462 "}"
       RParen@462..463 ")"
     WhiteSpace@463..464 " "
@@ -568,7 +573,8 @@ Root@0..516
         FatArrow@492..494 "=>"
         WhiteSpace@494..495 " "
         LitExpr@495..499
-          TrueKw@495..499 "true"
+          Lit@495..499
+            TrueKw@495..499 "true"
       Newline@499..500 "\n"
       WhiteSpace@500..504 "    "
       MatchArm@504..514
@@ -578,7 +584,8 @@ Root@0..516
         FatArrow@506..508 "=>"
         WhiteSpace@508..509 " "
         LitExpr@509..514
-          FalseKw@509..514 "false"
+          Lit@509..514
+            FalseKw@509..514 "false"
       Newline@514..515 "\n"
       RBrace@515..516 "}"
 

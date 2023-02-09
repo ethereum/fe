@@ -31,7 +31,8 @@ Root@0..361
           Eq@25..26 "="
           WhiteSpace@26..27 " "
           LitExpr@27..28
-            Int@27..28 "1"
+            Lit@27..28
+              Int@27..28 "1"
         Newline@28..29 "\n"
         RBrace@29..30 "}"
     Newline@30..32 "\n\n"
@@ -76,7 +77,8 @@ Root@0..361
         WhiteSpace@73..77 "    "
         ExprStmt@77..78
           LitExpr@77..78
-            Int@77..78 "1"
+            Lit@77..78
+              Int@77..78 "1"
         Newline@78..79 "\n"
         RBrace@79..80 "}"
     Newline@80..82 "\n\n"
@@ -149,7 +151,8 @@ Root@0..361
         WhiteSpace@171..175 "    "
         ExprStmt@175..176
           LitExpr@175..176
-            Int@175..176 "1"
+            Lit@175..176
+              Int@175..176 "1"
         Newline@176..177 "\n"
         RBrace@177..178 "}"
     Newline@178..180 "\n\n"

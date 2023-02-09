@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/pats/or.fe
 ---
 Root@0..117
   OrPat@0..19
@@ -35,12 +36,14 @@ Root@0..117
         TuplePatElem@30..35
           OrPat@30..35
             LitPat@30..31
-              Int@30..31 "1"
+              Lit@30..31
+                Int@30..31 "1"
             WhiteSpace@31..32 " "
             Pipe@32..33 "|"
             WhiteSpace@33..34 " "
             LitPat@34..35
-              Int@34..35 "2"
+              Lit@34..35
+                Int@34..35 "2"
         RParen@35..36 ")"
     WhiteSpace@36..37 " "
     Pipe@37..38 "|"
@@ -72,12 +75,14 @@ Root@0..117
         TuplePatElem@62..67
           OrPat@62..67
             LitPat@62..63
-              Int@62..63 "1"
+              Lit@62..63
+                Int@62..63 "1"
             WhiteSpace@63..64 " "
             Pipe@64..65 "|"
             WhiteSpace@65..66 " "
             LitPat@66..67
-              Int@66..67 "2"
+              Lit@66..67
+                Int@66..67 "2"
         RParen@67..68 ")"
     WhiteSpace@68..69 " "
     Pipe@69..70 "|"
@@ -105,12 +110,14 @@ Root@0..117
                 TuplePatElem@89..94
                   OrPat@89..94
                     LitPat@89..90
-                      Int@89..90 "1"
+                      Lit@89..90
+                        Int@89..90 "1"
                     WhiteSpace@90..91 " "
                     Pipe@91..92 "|"
                     WhiteSpace@92..93 " "
                     LitPat@93..94
-                      Int@93..94 "2"
+                      Lit@93..94
+                        Int@93..94 "2"
                 RParen@94..95 ")"
             WhiteSpace@95..96 " "
             Pipe@96..97 "|"
@@ -126,7 +133,8 @@ Root@0..117
                 LParen@106..107 "("
                 TuplePatElem@107..115
                   LitPat@107..115
-                    String@107..115 "\"STRING\""
+                    Lit@107..115
+                      String@107..115 "\"STRING\""
                 RParen@115..116 ")"
         RParen@116..117 ")"
 
