@@ -36,18 +36,16 @@ Root@0..516
               Ident@32..35 "Add"
           TuplePatElemList@35..41
             LParen@35..36 "("
-            TuplePatElem@36..37
-              PathPat@36..37
-                Path@36..37
-                  PathSegment@36..37
-                    Ident@36..37 "x"
+            PathPat@36..37
+              Path@36..37
+                PathSegment@36..37
+                  Ident@36..37 "x"
             Comma@37..38 ","
             WhiteSpace@38..39 " "
-            TuplePatElem@39..40
-              PathPat@39..40
-                Path@39..40
-                  PathSegment@39..40
-                    Ident@39..40 "y"
+            PathPat@39..40
+              Path@39..40
+                PathSegment@39..40
+                  Ident@39..40 "y"
             RParen@40..41 ")"
         WhiteSpace@41..42 " "
         FatArrow@42..44 "=>"
@@ -74,18 +72,16 @@ Root@0..516
               Ident@61..64 "Sub"
           TuplePatElemList@64..70
             LParen@64..65 "("
-            TuplePatElem@65..66
-              PathPat@65..66
-                Path@65..66
-                  PathSegment@65..66
-                    Ident@65..66 "x"
+            PathPat@65..66
+              Path@65..66
+                PathSegment@65..66
+                  Ident@65..66 "x"
             Comma@66..67 ","
             WhiteSpace@67..68 " "
-            TuplePatElem@68..69
-              PathPat@68..69
-                Path@68..69
-                  PathSegment@68..69
-                    Ident@68..69 "y"
+            PathPat@68..69
+              Path@68..69
+                PathSegment@68..69
+                  Ident@68..69 "y"
             RParen@69..70 ")"
         WhiteSpace@70..71 " "
         FatArrow@71..73 "=>"
@@ -171,18 +167,16 @@ Root@0..516
               Ident@142..145 "Add"
           TuplePatElemList@145..151
             LParen@145..146 "("
-            TuplePatElem@146..147
-              PathPat@146..147
-                Path@146..147
-                  PathSegment@146..147
-                    Ident@146..147 "x"
+            PathPat@146..147
+              Path@146..147
+                PathSegment@146..147
+                  Ident@146..147 "x"
             Comma@147..148 ","
             WhiteSpace@148..149 " "
-            TuplePatElem@149..150
-              PathPat@149..150
-                Path@149..150
-                  PathSegment@149..150
-                    Ident@149..150 "y"
+            PathPat@149..150
+              Path@149..150
+                PathSegment@149..150
+                  Ident@149..150 "y"
             RParen@150..151 ")"
         WhiteSpace@151..152 " "
         FatArrow@152..154 "=>"
@@ -209,18 +203,16 @@ Root@0..516
               Ident@171..174 "Sub"
           TuplePatElemList@174..180
             LParen@174..175 "("
-            TuplePatElem@175..176
-              PathPat@175..176
-                Path@175..176
-                  PathSegment@175..176
-                    Ident@175..176 "x"
+            PathPat@175..176
+              Path@175..176
+                PathSegment@175..176
+                  Ident@175..176 "x"
             Comma@176..177 ","
             WhiteSpace@177..178 " "
-            TuplePatElem@178..179
-              PathPat@178..179
-                Path@178..179
-                  PathSegment@178..179
-                    Ident@178..179 "y"
+            PathPat@178..179
+              Path@178..179
+                PathSegment@178..179
+                  Ident@178..179 "y"
             RParen@179..180 ")"
         WhiteSpace@180..181 " "
         FatArrow@181..183 "=>"
@@ -259,18 +251,16 @@ Root@0..516
               Ident@213..216 "Add"
           TuplePatElemList@216..222
             LParen@216..217 "("
-            TuplePatElem@217..218
-              PathPat@217..218
-                Path@217..218
-                  PathSegment@217..218
-                    Ident@217..218 "x"
+            PathPat@217..218
+              Path@217..218
+                PathSegment@217..218
+                  Ident@217..218 "x"
             Comma@218..219 ","
             WhiteSpace@219..220 " "
-            TuplePatElem@220..221
-              PathPat@220..221
-                Path@220..221
-                  PathSegment@220..221
-                    Ident@220..221 "y"
+            PathPat@220..221
+              Path@220..221
+                PathSegment@220..221
+                  Ident@220..221 "y"
             RParen@221..222 ")"
         WhiteSpace@222..223 " "
         FatArrow@223..225 "=>"
@@ -307,18 +297,16 @@ Root@0..516
               Ident@260..263 "Sub"
           TuplePatElemList@263..269
             LParen@263..264 "("
-            TuplePatElem@264..265
-              PathPat@264..265
-                Path@264..265
-                  PathSegment@264..265
-                    Ident@264..265 "x"
+            PathPat@264..265
+              Path@264..265
+                PathSegment@264..265
+                  Ident@264..265 "x"
             Comma@265..266 ","
             WhiteSpace@266..267 " "
-            TuplePatElem@267..268
-              PathPat@267..268
-                Path@267..268
-                  PathSegment@267..268
-                    Ident@267..268 "y"
+            PathPat@267..268
+              Path@267..268
+                PathSegment@267..268
+                  Ident@267..268 "y"
             RParen@268..269 ")"
         WhiteSpace@269..270 " "
         FatArrow@270..272 "=>"
@@ -345,18 +333,16 @@ Root@0..516
               Ident@289..292 "Mul"
           TuplePatElemList@292..298
             LParen@292..293 "("
-            TuplePatElem@293..294
-              PathPat@293..294
-                Path@293..294
-                  PathSegment@293..294
-                    Ident@293..294 "x"
+            PathPat@293..294
+              Path@293..294
+                PathSegment@293..294
+                  Ident@293..294 "x"
             Comma@294..295 ","
             WhiteSpace@295..296 " "
-            TuplePatElem@296..297
-              PathPat@296..297
-                Path@296..297
-                  PathSegment@296..297
-                    Ident@296..297 "y"
+            PathPat@296..297
+              Path@296..297
+                PathSegment@296..297
+                  Ident@296..297 "y"
             RParen@297..298 ")"
         WhiteSpace@298..299 " "
         FatArrow@299..301 "=>"
@@ -400,11 +386,10 @@ Root@0..516
               Ident@331..334 "Var"
           TuplePatElemList@334..337
             LParen@334..335 "("
-            TuplePatElem@335..336
-              PathPat@335..336
-                Path@335..336
-                  PathSegment@335..336
-                    Ident@335..336 "s"
+            PathPat@335..336
+              Path@335..336
+                PathSegment@335..336
+                  Ident@335..336 "s"
             RParen@336..337 ")"
         WhiteSpace@337..338 " "
         FatArrow@338..340 "=>"
@@ -472,11 +457,10 @@ Root@0..516
               Ident@415..418 "Var"
           TuplePatElemList@418..421
             LParen@418..419 "("
-            TuplePatElem@419..420
-              PathPat@419..420
-                Path@419..420
-                  PathSegment@419..420
-                    Ident@419..420 "s"
+            PathPat@419..420
+              Path@419..420
+                PathSegment@419..420
+                  Ident@419..420 "s"
             RParen@420..421 ")"
         WhiteSpace@421..422 " "
         FatArrow@422..424 "=>"
@@ -555,11 +539,10 @@ Root@0..516
                     Ident@481..484 "Bar"
                 TuplePatElemList@484..487
                   LParen@484..485 "("
-                  TuplePatElem@485..486
-                    PathPat@485..486
-                      Path@485..486
-                        PathSegment@485..486
-                          Ident@485..486 "x"
+                  PathPat@485..486
+                    Path@485..486
+                      PathSegment@485..486
+                        Ident@485..486 "x"
                   RParen@486..487 ")"
             Comma@487..488 ","
             WhiteSpace@488..489 " "

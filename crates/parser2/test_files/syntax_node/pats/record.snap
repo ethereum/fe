@@ -92,17 +92,15 @@ Root@0..96
         TuplePat@76..82
           TuplePatElemList@76..82
             LParen@76..77 "("
-            TuplePatElem@77..78
-              LitPat@77..78
-                Lit@77..78
-                  Int@77..78 "1"
+            LitPat@77..78
+              Lit@77..78
+                Int@77..78 "1"
             Comma@78..79 ","
             WhiteSpace@79..80 " "
-            TuplePatElem@80..81
-              PathPat@80..81
-                Path@80..81
-                  PathSegment@80..81
-                    Ident@80..81 "a"
+            PathPat@80..81
+              Path@80..81
+                PathSegment@80..81
+                  Ident@80..81 "a"
             RParen@81..82 ")"
       Comma@82..83 ","
       WhiteSpace@83..84 " "
