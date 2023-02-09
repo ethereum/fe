@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/stmts/let.fe
 ---
 Root@0..231
   LetStmt@0..5
@@ -22,7 +23,8 @@ Root@0..231
     Eq@13..14 "="
     WhiteSpace@14..15 " "
     LitExpr@15..16
-      Int@15..16 "1"
+      Lit@15..16
+        Int@15..16 "1"
   Newline@16..17 "\n"
   LetStmt@17..31
     LetKw@17..20 "let"
@@ -41,7 +43,8 @@ Root@0..231
     Eq@28..29 "="
     WhiteSpace@29..30 " "
     LitExpr@30..31
-      Int@30..31 "1"
+      Lit@30..31
+        Int@30..31 "1"
   Newline@31..32 "\n"
   LetStmt@32..50
     LetKw@32..35 "let"
@@ -62,7 +65,8 @@ Root@0..231
     Eq@47..48 "="
     WhiteSpace@48..49 " "
     LitExpr@49..50
-      Int@49..50 "1"
+      Lit@49..50
+        Int@49..50 "1"
   Newline@50..52 "\n\n"
   AugAssignStmt@52..62
     PathPat@52..53
@@ -75,12 +79,14 @@ Root@0..231
     WhiteSpace@56..57 " "
     BinExpr@57..62
       LitExpr@57..58
-        Int@57..58 "1"
+        Lit@57..58
+          Int@57..58 "1"
       WhiteSpace@58..59 " "
       Plus@59..60 "+"
       WhiteSpace@60..61 " "
       LitExpr@61..62
-        Int@61..62 "1"
+        Lit@61..62
+          Int@61..62 "1"
   Newline@62..63 "\n"
   AugAssignStmt@63..75
     PathPat@63..64
@@ -95,14 +101,16 @@ Root@0..231
     WhiteSpace@68..69 " "
     BinExpr@69..75
       LitExpr@69..70
-        Int@69..70 "1"
+        Lit@69..70
+          Int@69..70 "1"
       WhiteSpace@70..71 " "
       RShift@71..73
         Gt@71..72 ">"
         Gt@72..73 ">"
       WhiteSpace@73..74 " "
       LitExpr@74..75
-        Int@74..75 "2"
+        Lit@74..75
+          Int@74..75 "2"
   Newline@75..77 "\n\n"
   LetStmt@77..102
     LetKw@77..80 "let"
@@ -281,7 +289,8 @@ Root@0..231
           FatArrow@225..227 "=>"
           WhiteSpace@227..228 " "
           LitExpr@228..229
-            Int@228..229 "0"
+            Lit@228..229
+              Int@228..229 "0"
         Newline@229..230 "\n"
         RBrace@230..231 "}"
 

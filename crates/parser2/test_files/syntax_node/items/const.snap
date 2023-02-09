@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/const.fe
 ---
 Root@0..160
   ItemList@0..160
@@ -21,7 +22,8 @@ Root@0..160
       Eq@19..20 "="
       WhiteSpace@20..21 " "
       LitExpr@21..22
-        Int@21..22 "1"
+        Lit@21..22
+          Int@21..22 "1"
     Newline@22..24 "\n\n"
     Const@24..159
       ConstKw@24..29 "const"
@@ -51,7 +53,8 @@ Root@0..160
           Eq@54..55 "="
           WhiteSpace@55..56 " "
           LitExpr@56..60
-            TrueKw@56..60 "true"
+            Lit@56..60
+              TrueKw@56..60 "true"
         Newline@60..61 "\n"
         WhiteSpace@61..65 "    "
         LetStmt@65..74
@@ -65,7 +68,8 @@ Root@0..160
           Eq@71..72 "="
           WhiteSpace@72..73 " "
           LitExpr@73..74
-            Int@73..74 "1"
+            Lit@73..74
+              Int@73..74 "1"
         Newline@74..75 "\n"
         WhiteSpace@75..79 "    "
         ExprStmt@79..157
@@ -82,7 +86,8 @@ Root@0..160
               WhiteSpace@86..94 "        "
               ExprStmt@94..95
                 LitExpr@94..95
-                  Int@94..95 "1"
+                  Lit@94..95
+                    Int@94..95 "1"
               Newline@95..96 "\n"
               WhiteSpace@96..100 "    "
               RBrace@100..101 "}"
@@ -100,7 +105,8 @@ Root@0..160
                 Eq2@112..114 "=="
                 WhiteSpace@114..115 " "
                 LitExpr@115..116
-                  Int@115..116 "1"
+                  Lit@115..116
+                    Int@115..116 "1"
               WhiteSpace@116..117 " "
               BlockExpr@117..134
                 LBrace@117..118 "{"
@@ -108,7 +114,8 @@ Root@0..160
                 WhiteSpace@119..127 "        "
                 ExprStmt@127..128
                   LitExpr@127..128
-                    Int@127..128 "2"
+                    Lit@127..128
+                      Int@127..128 "2"
                 Newline@128..129 "\n"
                 WhiteSpace@129..133 "    "
                 RBrace@133..134 "}"
@@ -121,7 +128,8 @@ Root@0..160
                 WhiteSpace@142..150 "        "
                 ExprStmt@150..151
                   LitExpr@150..151
-                    Int@150..151 "3"
+                    Lit@150..151
+                      Int@150..151 "3"
                 Newline@151..152 "\n"
                 WhiteSpace@152..156 "    "
                 RBrace@156..157 "}"

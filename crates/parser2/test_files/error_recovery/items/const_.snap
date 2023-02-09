@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/items/const_.fe
 ---
 Root@0..44
   ItemList@0..44
@@ -17,7 +18,8 @@ Root@0..44
       Eq@8..9 "="
       WhiteSpace@9..10 " "
       LitExpr@10..12
-        Int@10..12 "10"
+        Lit@10..12
+          Int@10..12 "10"
     Newline@12..14 "\n\n"
     Const@14..27
       ConstKw@14..19 "const"
@@ -49,5 +51,6 @@ Root@0..44
       Eq@41..42 "="
       WhiteSpace@42..43 " "
       LitExpr@43..44
-        Int@43..44 "1"
+        Lit@43..44
+          Int@43..44 "1"
 

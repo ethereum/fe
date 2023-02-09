@@ -56,7 +56,8 @@ Root@0..317
               ReturnKw@48..54 "return"
               WhiteSpace@54..55 " "
               LitExpr@55..56
-                Int@55..56 "1"
+                Lit@55..56
+                  Int@55..56 "1"
             Newline@56..57 "\n"
             WhiteSpace@57..61 "    "
             RBrace@61..62 "}"

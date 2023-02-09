@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/stmts/while.fe
 ---
 Root@0..46
   WhileStmt@0..46
@@ -14,7 +15,8 @@ Root@0..46
       Lt@8..9 "<"
       WhiteSpace@9..10 " "
       LitExpr@10..12
-        Int@10..12 "10"
+        Lit@10..12
+          Int@10..12 "10"
     WhiteSpace@12..13 " "
     BlockExpr@13..46
       LBrace@13..14 "{"
@@ -30,12 +32,14 @@ Root@0..46
         WhiteSpace@24..25 " "
         BinExpr@25..30
           LitExpr@25..26
-            Int@25..26 "1"
+            Lit@25..26
+              Int@25..26 "1"
           WhiteSpace@26..27 " "
           Plus@27..28 "+"
           WhiteSpace@28..29 " "
           LitExpr@29..30
-            Int@29..30 "2"
+            Lit@29..30
+              Int@29..30 "2"
       Newline@30..31 "\n"
       WhiteSpace@31..35 "    "
       AssignStmt@35..44
@@ -54,7 +58,8 @@ Root@0..46
           Plus@41..42 "+"
           WhiteSpace@42..43 " "
           LitExpr@43..44
-            Int@43..44 "1"
+            Lit@43..44
+              Int@43..44 "1"
       Newline@44..45 "\n"
       RBrace@45..46 "}"
 

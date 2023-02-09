@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/match_.fe
 ---
 Root@0..94
   MatchExpr@0..40
@@ -30,7 +31,8 @@ Root@0..94
         FatArrow@24..26 "=>"
         WhiteSpace@26..27 " "
         LitExpr@27..31
-          TrueKw@27..31 "true"
+          Lit@27..31
+            TrueKw@27..31 "true"
       Newline@31..32 "\n"
       WhiteSpace@32..35 "   "
       MatchArm@35..38
@@ -88,7 +90,8 @@ Root@0..94
         FatArrow@70..72 "=>"
         WhiteSpace@72..73 " "
         LitExpr@73..77
-          TrueKw@73..77 "true"
+          Lit@73..77
+            TrueKw@73..77 "true"
         WhiteSpace@77..78 " "
         Error@78..79
           Ident@78..79 "x"

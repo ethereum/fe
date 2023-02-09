@@ -41,12 +41,14 @@ Root@0..78
       LParen@25..26 "("
       CallArg@26..27
         LitExpr@26..27
-          Int@26..27 "1"
+          Lit@26..27
+            Int@26..27 "1"
       Comma@27..28 ","
       WhiteSpace@28..29 " "
       CallArg@29..30
         LitExpr@29..30
-          Int@29..30 "2"
+          Lit@29..30
+            Int@29..30 "2"
       RParen@30..31 ")"
   Newline@31..33 "\n\n"
   MethodCallExpr@33..52
@@ -62,12 +64,14 @@ Root@0..78
       LParen@43..44 "("
       CallArg@44..45
         LitExpr@44..45
-          Int@44..45 "1"
+          Lit@44..45
+            Int@44..45 "1"
       Comma@45..46 ","
       WhiteSpace@46..47 " "
       CallArg@47..50
         LitExpr@47..48
-          Int@47..48 "2"
+          Lit@47..48
+            Int@47..48 "2"
         WhiteSpace@48..49 " "
         Error@49..50
           Ident@49..50 "E"

@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/stmts/while_.fe
 ---
 Root@0..56
   WhileStmt@0..10
@@ -17,7 +18,8 @@ Root@0..56
     WhileKw@12..17 "while"
     WhiteSpace@17..18 " "
     LitExpr@18..22
-      TrueKw@18..22 "true"
+      Lit@18..22
+        TrueKw@18..22 "true"
     WhiteSpace@22..23 " "
     BlockExpr@23..36
       LBrace@23..24 "{"
@@ -32,7 +34,8 @@ Root@0..56
           Plus@31..32 "+"
           WhiteSpace@32..33 " "
           LitExpr@33..34
-            Int@33..34 "1"
+            Lit@33..34
+              Int@33..34 "1"
       Newline@34..35 "\n"
       RBrace@35..36 "}"
   ExprStmt@36..37
@@ -45,7 +48,8 @@ Root@0..56
     WhileKw@43..48 "while"
     WhiteSpace@48..49 " "
     LitExpr@49..53
-      TrueKw@49..53 "true"
+      Lit@49..53
+        TrueKw@49..53 "true"
     WhiteSpace@53..54 " "
     BlockExpr@54..56
       LBrace@54..55 "{"

@@ -16,6 +16,7 @@ pub mod attr;
 pub mod expr;
 pub mod func;
 pub mod item;
+pub mod lit;
 pub mod param;
 pub mod pat;
 pub mod path;

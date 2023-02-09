@@ -1,4 +1,7 @@
-use crate::SyntaxKind;
+use crate::{
+    parser::lit::{is_lit, LitScope},
+    SyntaxKind,
+};
 
 use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
 
@@ -8,7 +11,7 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         Some(Underscore) => parser.parse(WildCardPatScope::default(), None),
         Some(Dot2) => parser.parse(RestPatScope::default(), None),
         Some(LParen) => parser.parse(TuplePatScope::default(), None),
-        Some(Int | String) => parser.parse(LitPatScope::default(), None),
+        Some(kind) if is_lit(kind) => parser.parse(LitPatScope::default(), None),
         _ => parser.parse(PathPatScope::default(), None),
     };
 
@@ -39,10 +42,7 @@ define_scope! { LitPatScope, LitPat, Inheritance(SyntaxKind::Pipe) }
 impl super::Parse for LitPatScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        match parser.current_kind() {
-            Some(SyntaxKind::Int | SyntaxKind::String) => parser.bump(),
-            _ => unreachable!(),
-        }
+        parser.parse(LitScope::default(), None);
     }
 }
 

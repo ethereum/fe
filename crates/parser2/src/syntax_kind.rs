@@ -1,4 +1,4 @@
-//! This module contains the definition of the `SyntaxKind`.
+//! This module contains the definition of the [`SyntaxKind`].
 
 use logos::Logos;
 
@@ -229,6 +229,9 @@ pub enum SyntaxKind {
     LtEq,
     /// `>=`
     GtEq,
+
+    /// `1', `false`, `"String"
+    Lit,
 
     // Expressions. These are non-leaf nodes.
     /// { statement-list }

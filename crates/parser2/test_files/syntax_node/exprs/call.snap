@@ -34,7 +34,8 @@ Root@0..270
         Colon@22..23 ":"
         WhiteSpace@23..24 " "
         LitExpr@24..25
-          Int@24..25 "1"
+          Lit@24..25
+            Int@24..25 "1"
       Comma@25..26 ","
       WhiteSpace@26..27 " "
       CallArg@27..31
@@ -42,7 +43,8 @@ Root@0..270
         Colon@28..29 ":"
         WhiteSpace@29..30 " "
         LitExpr@30..31
-          Int@30..31 "3"
+          Lit@30..31
+            Int@30..31 "3"
       RParen@31..32 ")"
   Newline@32..33 "\n"
   CallExpr@33..48
@@ -56,7 +58,8 @@ Root@0..270
         Colon@38..39 ":"
         WhiteSpace@39..40 " "
         LitExpr@40..41
-          Int@40..41 "1"
+          Lit@40..41
+            Int@40..41 "1"
       Comma@41..42 ","
       WhiteSpace@42..43 " "
       CallArg@43..47
@@ -64,7 +67,8 @@ Root@0..270
         Colon@44..45 ":"
         WhiteSpace@45..46 " "
         LitExpr@46..47
-          Int@46..47 "3"
+          Lit@46..47
+            Int@46..47 "3"
       RParen@47..48 ")"
   Newline@48..49 "\n"
   CallExpr@49..67
@@ -78,12 +82,14 @@ Root@0..270
         Colon@54..55 ":"
         WhiteSpace@55..56 " "
         LitExpr@56..57
-          Int@56..57 "1"
+          Lit@56..57
+            Int@56..57 "1"
       Comma@57..58 ","
       WhiteSpace@58..59 " "
       CallArg@59..60
         LitExpr@59..60
-          Int@59..60 "2"
+          Lit@59..60
+            Int@59..60 "2"
       Comma@60..61 ","
       WhiteSpace@61..62 " "
       CallArg@62..66
@@ -91,7 +97,8 @@ Root@0..270
         Colon@63..64 ":"
         WhiteSpace@64..65 " "
         LitExpr@65..66
-          Int@65..66 "3"
+          Lit@65..66
+            Int@65..66 "3"
       RParen@66..67 ")"
   Newline@67..68 "\n"
   CallExpr@68..86
@@ -102,7 +109,8 @@ Root@0..270
       LParen@71..72 "("
       CallArg@72..73
         LitExpr@72..73
-          Int@72..73 "1"
+          Lit@72..73
+            Int@72..73 "1"
       Comma@73..74 ","
       WhiteSpace@74..75 " "
       CallArg@75..79
@@ -110,7 +118,8 @@ Root@0..270
         Colon@76..77 ":"
         WhiteSpace@77..78 " "
         LitExpr@78..79
-          Int@78..79 "2"
+          Lit@78..79
+            Int@78..79 "2"
       Comma@79..80 ","
       WhiteSpace@80..81 " "
       CallArg@81..85
@@ -118,7 +127,8 @@ Root@0..270
         Colon@82..83 ":"
         WhiteSpace@83..84 " "
         LitExpr@84..85
-          Int@84..85 "3"
+          Lit@84..85
+            Int@84..85 "3"
       RParen@85..86 ")"
   Newline@86..88 "\n\n"
   CallExpr@88..134
@@ -150,7 +160,8 @@ Root@0..270
         Colon@114..115 ":"
         WhiteSpace@115..116 " "
         LitExpr@116..117
-          Int@116..117 "2"
+          Lit@116..117
+            Int@116..117 "2"
       Comma@117..118 ","
       WhiteSpace@118..119 " "
       CallArg@119..133
@@ -158,7 +169,8 @@ Root@0..270
         Colon@123..124 ":"
         WhiteSpace@124..125 " "
         LitExpr@125..133
-          String@125..133 "\"String\""
+          Lit@125..133
+            String@125..133 "\"String\""
       RParen@133..134 ")"
   Newline@134..135 "\n"
   CallExpr@135..169
@@ -177,7 +189,8 @@ Root@0..270
           SemiColon@143..144 ";"
           WhiteSpace@144..145 " "
           LitExpr@145..146
-            Int@145..146 "1"
+            Lit@145..146
+              Int@145..146 "1"
           RBracket@146..147 "]"
       Comma@147..148 ","
       WhiteSpace@148..149 " "
@@ -187,12 +200,14 @@ Root@0..270
           ExprStmt@150..155
             BinExpr@150..155
               LitExpr@150..151
-                Int@150..151 "3"
+                Lit@150..151
+                  Int@150..151 "3"
               WhiteSpace@151..152 " "
               Plus@152..153 "+"
               WhiteSpace@153..154 " "
               LitExpr@154..155
-                Int@154..155 "4"
+                Lit@154..155
+                  Int@154..155 "4"
           RBrace@155..156 "}"
       Gt@156..157 ">"
     CallArgList@157..169
@@ -202,7 +217,8 @@ Root@0..270
         Colon@159..160 ":"
         WhiteSpace@160..161 " "
         LitExpr@161..162
-          Int@161..162 "1"
+          Lit@161..162
+            Int@161..162 "1"
       Comma@162..163 ","
       WhiteSpace@163..164 " "
       CallArg@164..168
@@ -210,7 +226,8 @@ Root@0..270
         Colon@165..166 ":"
         WhiteSpace@166..167 " "
         LitExpr@167..168
-          Int@167..168 "2"
+          Lit@167..168
+            Int@167..168 "2"
       RParen@168..169 ")"
   Newline@169..171 "\n\n"
   Comment@171..245 "// Ths should be pars ..."
@@ -247,7 +264,8 @@ Root@0..270
         LParen@266..267 "("
         CallArg@267..268
           LitExpr@267..268
-            Int@267..268 "1"
+            Lit@267..268
+              Int@267..268 "1"
         RParen@268..269 ")"
     RParen@269..270 ")"
 

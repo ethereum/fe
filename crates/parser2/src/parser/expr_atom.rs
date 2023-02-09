@@ -1,6 +1,9 @@
 use rowan::Checkpoint;
 
-use crate::{parser::path, SyntaxKind};
+use crate::{
+    parser::{lit, path},
+    SyntaxKind,
+};
 
 use super::{
     attr::parse_attr_list,
@@ -18,12 +21,12 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
 ) -> (bool, Checkpoint) {
     use SyntaxKind::*;
     match parser.current_kind() {
-        Some(Int | String | TrueKw | FalseKw) => parser.parse(LitExprScope::default(), None),
         Some(IfKw) => parser.parse(IfExprScope::default(), None),
         Some(MatchKw) => parser.parse(MatchExprScope::default(), None),
         Some(LBrace) => parser.parse(BlockExprScope::default(), None),
         Some(LParen) => parser.parse(ParenScope::default(), None),
         Some(LBracket) => parser.parse(ArrayScope::default(), None),
+        Some(kind) if lit::is_lit(kind) => parser.parse(LitExprScope::default(), None),
         Some(kind) if path::is_path_segment(kind) => {
             let (success, checkpoint) = parser.parse(path::PathScope::default(), None);
             if success && parser.current_kind() == Some(LBrace) && allow_struct_init {
@@ -177,12 +180,7 @@ impl super::Parse for MatchArmScope {
 define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
 impl super::Parse for LitExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        match parser.current_kind() {
-            Some(
-                SyntaxKind::Int | SyntaxKind::String | SyntaxKind::TrueKw | SyntaxKind::FalseKw,
-            ) => parser.bump(),
-            _ => unreachable!(),
-        }
+        parser.parse(lit::LitScope::default(), None);
     }
 }
 

@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/struct_init.fe
 ---
 Root@0..40
   RecordInitExpr@0..13
@@ -31,12 +32,14 @@ Root@0..40
         WhiteSpace@24..25 " "
         BinExpr@25..30
           LitExpr@25..26
-            Int@25..26 "1"
+            Lit@25..26
+              Int@25..26 "1"
           WhiteSpace@26..27 " "
           Plus@27..28 "+"
           WhiteSpace@28..29 " "
           LitExpr@29..30
-            Int@29..30 "2"
+            Lit@29..30
+              Int@29..30 "2"
       RBrace@30..31 "}"
   Newline@31..32 "\n"
   RecordInitExpr@32..40
