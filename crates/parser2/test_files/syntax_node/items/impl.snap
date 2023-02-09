@@ -67,9 +67,10 @@ Root@0..266
             WhiteSpace@66..74 "        "
             ExprStmt@74..126
               RecordInitExpr@74..126
-                Path@74..78
-                  PathSegment@74..78
-                    SelfTypeKw@74..78 "Self"
+                PathExpr@74..78
+                  Path@74..78
+                    PathSegment@74..78
+                      SelfTypeKw@74..78 "Self"
                 WhiteSpace@78..79 " "
                 RecordFieldList@79..126
                   LBrace@79..80 "{"
@@ -81,18 +82,20 @@ Root@0..266
                     WhiteSpace@97..98 " "
                     BinExpr@98..116
                       FieldExpr@98..106
-                        Path@98..102
-                          PathSegment@98..102
-                            SelfKw@98..102 "self"
+                        PathExpr@98..102
+                          Path@98..102
+                            PathSegment@98..102
+                              SelfKw@98..102 "self"
                         Dot@102..103 "."
                         Ident@103..106 "val"
                       WhiteSpace@106..107 " "
                       Plus@107..108 "+"
                       WhiteSpace@108..109 " "
                       FieldExpr@109..116
-                        Path@109..112
-                          PathSegment@109..112
-                            Ident@109..112 "rhs"
+                        PathExpr@109..112
+                          Path@109..112
+                            PathSegment@109..112
+                              Ident@109..112 "rhs"
                         Dot@112..113 "."
                         Ident@113..116 "val"
                   Newline@116..117 "\n"
@@ -214,16 +217,18 @@ Root@0..266
               ParenExpr@244..258
                 LParen@244..245 "("
                 BinExpr@245..257
-                  Path@245..248
-                    PathSegment@245..248
-                      Ident@245..248 "rhs"
+                  PathExpr@245..248
+                    Path@245..248
+                      PathSegment@245..248
+                        Ident@245..248 "rhs"
                   WhiteSpace@248..249 " "
                   Minus@249..250 "-"
                   WhiteSpace@250..251 " "
                   FieldExpr@251..257
-                    Path@251..255
-                      PathSegment@251..255
-                        SelfKw@251..255 "self"
+                    PathExpr@251..255
+                      Path@251..255
+                        PathSegment@251..255
+                          SelfKw@251..255 "self"
                     Dot@255..256 "."
                     Ident@256..257 "t"
                 RParen@257..258 ")"

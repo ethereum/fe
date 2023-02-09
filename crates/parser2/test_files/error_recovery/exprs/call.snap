@@ -5,39 +5,44 @@ input_file: crates/parser2/test_files/error_recovery/exprs/call.fe
 ---
 Root@0..40
   CallExpr@0..16
-    Path@0..3
-      PathSegment@0..3
-        Ident@0..3 "foo"
+    PathExpr@0..3
+      Path@0..3
+        PathSegment@0..3
+          Ident@0..3 "foo"
     CallArgList@3..16
       LParen@3..4 "("
       CallArg@4..5
-        Path@4..5
-          PathSegment@4..5
-            Ident@4..5 "x"
+        PathExpr@4..5
+          Path@4..5
+            PathSegment@4..5
+              Ident@4..5 "x"
       Comma@5..6 ","
       WhiteSpace@6..7 " "
       CallArg@7..10
-        Path@7..8
-          PathSegment@7..8
-            Ident@7..8 "y"
+        PathExpr@7..8
+          Path@7..8
+            PathSegment@7..8
+              Ident@7..8 "y"
         WhiteSpace@8..9 " "
         Error@9..10
           Ident@9..10 "a"
       Comma@10..11 ","
       WhiteSpace@11..12 " "
       CallArg@12..15
-        Path@12..13
-          PathSegment@12..13
-            Ident@12..13 "z"
+        PathExpr@12..13
+          Path@12..13
+            PathSegment@12..13
+              Ident@12..13 "z"
         WhiteSpace@13..14 " "
         Error@14..15
           SemiColon@14..15 ";"
       RParen@15..16 ")"
   Newline@16..18 "\n\n"
   CallExpr@18..39
-    Path@18..21
-      PathSegment@18..21
-        Ident@18..21 "foo"
+    PathExpr@18..21
+      Path@18..21
+        PathSegment@18..21
+          Ident@18..21 "foo"
     GenericArgList@21..33
       Lt@21..22 "<"
       TypeGenericArg@22..25
@@ -66,15 +71,17 @@ Root@0..40
     CallArgList@33..39
       LParen@33..34 "("
       CallArg@34..35
-        Path@34..35
-          PathSegment@34..35
-            Ident@34..35 "x"
+        PathExpr@34..35
+          Path@34..35
+            PathSegment@34..35
+              Ident@34..35 "x"
       Comma@35..36 ","
       WhiteSpace@36..37 " "
       CallArg@37..38
-        Path@37..38
-          PathSegment@37..38
-            Ident@37..38 "y"
+        PathExpr@37..38
+          Path@37..38
+            PathSegment@37..38
+              Ident@37..38 "y"
       RParen@38..39 ")"
   Newline@39..40 "\n"
 

@@ -372,9 +372,10 @@ Root@0..480
                   Ident@473..474 "T"
             SemiColon@474..475 ";"
             WhiteSpace@475..476 " "
-            Path@476..477
-              PathSegment@476..477
-                Ident@476..477 "N"
+            PathExpr@476..477
+              Path@476..477
+                PathSegment@476..477
+                  Ident@476..477 "N"
             RBracket@477..478 "]"
         Newline@478..479 "\n"
         RBrace@479..480 "}"

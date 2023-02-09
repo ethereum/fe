@@ -7,9 +7,10 @@ Root@0..516
   MatchExpr@0..10
     MatchKw@0..5 "match"
     WhiteSpace@5..6 " "
-    Path@6..7
-      PathSegment@6..7
-        Ident@6..7 "e"
+    PathExpr@6..7
+      Path@6..7
+        PathSegment@6..7
+          Ident@6..7 "e"
     WhiteSpace@7..8 " "
     MatchArmList@8..10
       LBrace@8..9 "{"
@@ -18,9 +19,10 @@ Root@0..516
   MatchExpr@12..81
     MatchKw@12..17 "match"
     WhiteSpace@17..18 " "
-    Path@18..19
-      PathSegment@18..19
-        Ident@18..19 "e"
+    PathExpr@18..19
+      Path@18..19
+        PathSegment@18..19
+          Ident@18..19 "e"
     WhiteSpace@19..20 " "
     MatchArmList@20..81
       LBrace@20..21 "{"
@@ -51,15 +53,17 @@ Root@0..516
         FatArrow@42..44 "=>"
         WhiteSpace@44..45 " "
         BinExpr@45..50
-          Path@45..46
-            PathSegment@45..46
-              Ident@45..46 "x"
+          PathExpr@45..46
+            Path@45..46
+              PathSegment@45..46
+                Ident@45..46 "x"
           WhiteSpace@46..47 " "
           Plus@47..48 "+"
           WhiteSpace@48..49 " "
-          Path@49..50
-            PathSegment@49..50
-              Ident@49..50 "y"
+          PathExpr@49..50
+            Path@49..50
+              PathSegment@49..50
+                Ident@49..50 "y"
       Newline@50..51 "\n"
       WhiteSpace@51..55 "    "
       MatchArm@55..79
@@ -87,15 +91,17 @@ Root@0..516
         FatArrow@71..73 "=>"
         WhiteSpace@73..74 " "
         BinExpr@74..79
-          Path@74..75
-            PathSegment@74..75
-              Ident@74..75 "x"
+          PathExpr@74..75
+            Path@74..75
+              PathSegment@74..75
+                Ident@74..75 "x"
           WhiteSpace@75..76 " "
           Minus@76..77 "-"
           WhiteSpace@77..78 " "
-          Path@78..79
-            PathSegment@78..79
-              Ident@78..79 "y"
+          PathExpr@78..79
+            Path@78..79
+              PathSegment@78..79
+                Ident@78..79 "y"
       Newline@79..80 "\n"
       RBrace@80..81 "}"
   Newline@81..83 "\n\n"
@@ -105,9 +111,10 @@ Root@0..516
     ParenExpr@89..105
       LParen@89..90 "("
       RecordInitExpr@90..104
-        Path@90..91
-          PathSegment@90..91
-            Ident@90..91 "S"
+        PathExpr@90..91
+          Path@90..91
+            PathSegment@90..91
+              Ident@90..91 "S"
         WhiteSpace@91..92 " "
         RecordFieldList@92..104
           LBrace@92..93 "{"
@@ -149,9 +156,10 @@ Root@0..516
   MatchExpr@122..191
     MatchKw@122..127 "match"
     WhiteSpace@127..128 " "
-    Path@128..129
-      PathSegment@128..129
-        Ident@128..129 "e"
+    PathExpr@128..129
+      Path@128..129
+        PathSegment@128..129
+          Ident@128..129 "e"
     WhiteSpace@129..130 " "
     MatchArmList@130..191
       LBrace@130..131 "{"
@@ -182,15 +190,17 @@ Root@0..516
         FatArrow@152..154 "=>"
         WhiteSpace@154..155 " "
         BinExpr@155..160
-          Path@155..156
-            PathSegment@155..156
-              Ident@155..156 "x"
+          PathExpr@155..156
+            Path@155..156
+              PathSegment@155..156
+                Ident@155..156 "x"
           WhiteSpace@156..157 " "
           Plus@157..158 "+"
           WhiteSpace@158..159 " "
-          Path@159..160
-            PathSegment@159..160
-              Ident@159..160 "y"
+          PathExpr@159..160
+            Path@159..160
+              PathSegment@159..160
+                Ident@159..160 "y"
       Newline@160..161 "\n"
       WhiteSpace@161..165 "    "
       MatchArm@165..189
@@ -218,24 +228,27 @@ Root@0..516
         FatArrow@181..183 "=>"
         WhiteSpace@183..184 " "
         BinExpr@184..189
-          Path@184..185
-            PathSegment@184..185
-              Ident@184..185 "x"
+          PathExpr@184..185
+            Path@184..185
+              PathSegment@184..185
+                Ident@184..185 "x"
           WhiteSpace@185..186 " "
           Minus@186..187 "-"
           WhiteSpace@187..188 " "
-          Path@188..189
-            PathSegment@188..189
-              Ident@188..189 "y"
+          PathExpr@188..189
+            Path@188..189
+              PathSegment@188..189
+                Ident@188..189 "y"
       Newline@189..190 "\n"
       RBrace@190..191 "}"
   Newline@191..193 "\n\n"
   MatchExpr@193..313
     MatchKw@193..198 "match"
     WhiteSpace@198..199 " "
-    Path@199..200
-      PathSegment@199..200
-        Ident@199..200 "e"
+    PathExpr@199..200
+      Path@199..200
+        PathSegment@199..200
+          Ident@199..200 "e"
     WhiteSpace@200..201 " "
     MatchArmList@201..313
       LBrace@201..202 "{"
@@ -272,15 +285,17 @@ Root@0..516
           WhiteSpace@229..237 "        "
           ExprStmt@237..242
             BinExpr@237..242
-              Path@237..238
-                PathSegment@237..238
-                  Ident@237..238 "x"
+              PathExpr@237..238
+                Path@237..238
+                  PathSegment@237..238
+                    Ident@237..238 "x"
               WhiteSpace@238..239 " "
               Plus@239..240 "+"
               WhiteSpace@240..241 " "
-              Path@241..242
-                PathSegment@241..242
-                  Ident@241..242 "y"
+              PathExpr@241..242
+                Path@241..242
+                  PathSegment@241..242
+                    Ident@241..242 "y"
           WhiteSpace@242..243 " "
           Newline@243..244 "\n"
           WhiteSpace@244..248 "    "
@@ -312,15 +327,17 @@ Root@0..516
         FatArrow@270..272 "=>"
         WhiteSpace@272..273 " "
         BinExpr@273..278
-          Path@273..274
-            PathSegment@273..274
-              Ident@273..274 "x"
+          PathExpr@273..274
+            Path@273..274
+              PathSegment@273..274
+                Ident@273..274 "x"
           WhiteSpace@274..275 " "
           Minus@275..276 "-"
           WhiteSpace@276..277 " "
-          Path@277..278
-            PathSegment@277..278
-              Ident@277..278 "y"
+          PathExpr@277..278
+            Path@277..278
+              PathSegment@277..278
+                Ident@277..278 "y"
       Newline@278..279 "\n"
       WhiteSpace@279..283 "    "
       MatchArm@283..311
@@ -352,15 +369,17 @@ Root@0..516
           WhiteSpace@303..304 " "
           ExprStmt@304..309
             BinExpr@304..309
-              Path@304..305
-                PathSegment@304..305
-                  Ident@304..305 "x"
+              PathExpr@304..305
+                Path@304..305
+                  PathSegment@304..305
+                    Ident@304..305 "x"
               WhiteSpace@305..306 " "
               Star@306..307 "*"
               WhiteSpace@307..308 " "
-              Path@308..309
-                PathSegment@308..309
-                  Ident@308..309 "y"
+              PathExpr@308..309
+                Path@308..309
+                  PathSegment@308..309
+                    Ident@308..309 "y"
           WhiteSpace@309..310 " "
           RBrace@310..311 "}"
       Newline@311..312 "\n"
@@ -369,9 +388,10 @@ Root@0..516
   MatchExpr@315..344
     MatchKw@315..320 "match"
     WhiteSpace@320..321 " "
-    Path@321..322
-      PathSegment@321..322
-        Ident@321..322 "e"
+    PathExpr@321..322
+      Path@321..322
+        PathSegment@321..322
+          Ident@321..322 "e"
     WhiteSpace@322..323 " "
     MatchArmList@323..344
       LBrace@323..324 "{"
@@ -394,9 +414,10 @@ Root@0..516
         WhiteSpace@337..338 " "
         FatArrow@338..340 "=>"
         WhiteSpace@340..341 " "
-        Path@341..342
-          PathSegment@341..342
-            Ident@341..342 "s"
+        PathExpr@341..342
+          Path@341..342
+            PathSegment@341..342
+              Ident@341..342 "s"
       WhiteSpace@342..343 " "
       RBrace@343..344 "}"
   Newline@344..346 "\n\n"
@@ -424,18 +445,20 @@ Root@0..516
       WhiteSpace@372..380 "        "
       ExprStmt@380..392
         CallExpr@380..392
-          Path@380..389
-            PathSegment@380..384
-              Ident@380..384 "Enum"
-            Colon2@384..386 "::"
-            PathSegment@386..389
-              Ident@386..389 "Var"
+          PathExpr@380..389
+            Path@380..389
+              PathSegment@380..384
+                Ident@380..384 "Enum"
+              Colon2@384..386 "::"
+              PathSegment@386..389
+                Ident@386..389 "Var"
           CallArgList@389..392
             LParen@389..390 "("
             CallArg@390..391
-              Path@390..391
-                PathSegment@390..391
-                  Ident@390..391 "x"
+              PathExpr@390..391
+                Path@390..391
+                  PathSegment@390..391
+                    Ident@390..391 "x"
             RParen@391..392 ")"
       Newline@392..393 "\n"
       WhiteSpace@393..399 "      "
@@ -465,9 +488,10 @@ Root@0..516
         WhiteSpace@421..422 " "
         FatArrow@422..424 "=>"
         WhiteSpace@424..425 " "
-        Path@425..426
-          PathSegment@425..426
-            Ident@425..426 "s"
+        PathExpr@425..426
+          Path@425..426
+            PathSegment@425..426
+              Ident@425..426 "s"
       WhiteSpace@426..427 " "
       Newline@427..428 "\n"
       RBrace@428..429 "}"
@@ -478,9 +502,10 @@ Root@0..516
     ParenExpr@437..463
       LParen@437..438 "("
       RecordInitExpr@438..462
-        Path@438..439
-          PathSegment@438..439
-            Ident@438..439 "S"
+        PathExpr@438..439
+          Path@438..439
+            PathSegment@438..439
+              Ident@438..439 "S"
         WhiteSpace@439..440 " "
         RecordFieldList@440..462
           LBrace@440..441 "{"
@@ -489,18 +514,20 @@ Root@0..516
             Colon@442..443 ":"
             WhiteSpace@443..444 " "
             CallExpr@444..455
-              Path@444..452
-                PathSegment@444..447
-                  Ident@444..447 "Foo"
-                Colon2@447..449 "::"
-                PathSegment@449..452
-                  Ident@449..452 "Bar"
+              PathExpr@444..452
+                Path@444..452
+                  PathSegment@444..447
+                    Ident@444..447 "Foo"
+                  Colon2@447..449 "::"
+                  PathSegment@449..452
+                    Ident@449..452 "Bar"
               CallArgList@452..455
                 LParen@452..453 "("
                 CallArg@453..454
-                  Path@453..454
-                    PathSegment@453..454
-                      Ident@453..454 "x"
+                  PathExpr@453..454
+                    Path@453..454
+                      PathSegment@453..454
+                        Ident@453..454 "x"
                 RParen@454..455 ")"
           Comma@455..456 ","
           WhiteSpace@456..457 " "

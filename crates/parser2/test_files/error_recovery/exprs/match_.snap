@@ -7,9 +7,10 @@ Root@0..94
   MatchExpr@0..40
     MatchKw@0..5 "match"
     WhiteSpace@5..6 " "
-    Path@6..7
-      PathSegment@6..7
-        Ident@6..7 "X"
+    PathExpr@6..7
+      Path@6..7
+        PathSegment@6..7
+          Ident@6..7 "X"
     WhiteSpace@7..9 "  "
     Error@9..11
       FatArrow@9..11 "=>"
@@ -50,9 +51,10 @@ Root@0..94
   MatchExpr@43..93
     MatchKw@43..48 "match"
     WhiteSpace@48..49 " "
-    Path@49..50
-      PathSegment@49..50
-        Ident@49..50 "X"
+    PathExpr@49..50
+      Path@49..50
+        PathSegment@49..50
+          Ident@49..50 "X"
     WhiteSpace@50..52 "  "
     MatchArmList@52..93
       LBrace@52..53 "{"
@@ -102,9 +104,10 @@ Root@0..94
         WhiteSpace@86..87 " "
         FatArrow@87..89 "=>"
         WhiteSpace@89..90 " "
-        Path@90..91
-          PathSegment@90..91
-            Ident@90..91 "x"
+        PathExpr@90..91
+          Path@90..91
+            PathSegment@90..91
+              Ident@90..91 "x"
       Newline@91..92 "\n"
       RBrace@92..93 "}"
   WhiteSpace@93..94 " "

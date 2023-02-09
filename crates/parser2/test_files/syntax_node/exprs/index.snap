@@ -5,9 +5,10 @@ input_file: crates/parser2/test_files/syntax_node/exprs/index.fe
 ---
 Root@0..23
   IndexExpr@0..8
-    Path@0..1
-      PathSegment@0..1
-        Ident@0..1 "x"
+    PathExpr@0..1
+      Path@0..1
+        PathSegment@0..1
+          Ident@0..1 "x"
     LBracket@1..2 "["
     BinExpr@2..7
       LitExpr@2..3
@@ -22,14 +23,16 @@ Root@0..23
     RBracket@7..8 "]"
   Newline@8..9 "\n"
   IndexExpr@9..23
-    Path@9..10
-      PathSegment@9..10
-        Ident@9..10 "x"
+    PathExpr@9..10
+      Path@9..10
+        PathSegment@9..10
+          Ident@9..10 "x"
     LBracket@10..11 "["
     MethodCallExpr@11..22
-      Path@11..14
-        PathSegment@11..14
-          Ident@11..14 "foo"
+      PathExpr@11..14
+        Path@11..14
+          PathSegment@11..14
+            Ident@11..14 "foo"
       Dot@14..15 "."
       Ident@15..16 "y"
       CallArgList@16..22

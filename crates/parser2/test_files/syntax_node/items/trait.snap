@@ -136,30 +136,34 @@ Root@0..588
             ExprStmt@151..174
               BinExpr@151..174
                 BinExpr@151..160
-                  Path@151..154
-                    PathSegment@151..154
-                      Ident@151..154 "lhs"
+                  PathExpr@151..154
+                    Path@151..154
+                      PathSegment@151..154
+                        Ident@151..154 "lhs"
                   WhiteSpace@154..155 " "
                   Plus@155..156 "+"
                   WhiteSpace@156..157 " "
-                  Path@157..160
-                    PathSegment@157..160
-                      Ident@157..160 "lhs"
+                  PathExpr@157..160
+                    Path@157..160
+                      PathSegment@157..160
+                        Ident@157..160 "lhs"
                 WhiteSpace@160..161 " "
                 Minus@161..162 "-"
                 WhiteSpace@162..163 " "
                 ParenExpr@163..174
                   LParen@163..164 "("
                   BinExpr@164..173
-                    Path@164..167
-                      PathSegment@164..167
-                        Ident@164..167 "rhs"
+                    PathExpr@164..167
+                      Path@164..167
+                        PathSegment@164..167
+                          Ident@164..167 "rhs"
                     WhiteSpace@167..168 " "
                     Plus@168..169 "+"
                     WhiteSpace@169..170 " "
-                    Path@170..173
-                      PathSegment@170..173
-                        Ident@170..173 "rhs"
+                    PathExpr@170..173
+                      Path@170..173
+                        PathSegment@170..173
+                          Ident@170..173 "rhs"
                   RParen@173..174 ")"
             Newline@174..175 "\n"
             WhiteSpace@175..179 "    "
@@ -419,20 +423,22 @@ Root@0..588
               TupleExpr@522..580
                 LParen@522..523 "("
                 CallExpr@523..566
-                  Path@523..543
-                    PathSegment@523..533
-                      Ident@523..533 "SyntaxNode"
-                    Colon2@533..535 "::"
-                    PathSegment@535..543
-                      Ident@535..543 "new_root"
+                  PathExpr@523..543
+                    Path@523..543
+                      PathSegment@523..533
+                        Ident@523..533 "SyntaxNode"
+                      Colon2@533..535 "::"
+                      PathSegment@535..543
+                        Ident@535..543 "new_root"
                   CallArgList@543..566
                     LParen@543..544 "("
                     CallArg@544..565
                       MethodCallExpr@544..565
                         FieldExpr@544..556
-                          Path@544..548
-                            PathSegment@544..548
-                              SelfKw@544..548 "self"
+                          PathExpr@544..548
+                            Path@544..548
+                              PathSegment@544..548
+                                SelfKw@544..548 "self"
                           Dot@548..549 "."
                           Ident@549..556 "builder"
                         Dot@556..557 "."
@@ -444,9 +450,10 @@ Root@0..588
                 Comma@566..567 ","
                 WhiteSpace@567..568 " "
                 FieldExpr@568..579
-                  Path@568..572
-                    PathSegment@568..572
-                      SelfKw@568..572 "self"
+                  PathExpr@568..572
+                    Path@568..572
+                      PathSegment@568..572
+                        SelfKw@568..572 "self"
                   Dot@572..573 "."
                   Ident@573..579 "errors"
                 RParen@579..580 ")"

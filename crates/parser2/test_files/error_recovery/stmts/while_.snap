@@ -27,9 +27,10 @@ Root@0..56
       WhiteSpace@25..29 "    "
       ExprStmt@29..34
         BinExpr@29..34
-          Path@29..30
-            PathSegment@29..30
-              Ident@29..30 "x"
+          PathExpr@29..30
+            Path@29..30
+              PathSegment@29..30
+                Ident@29..30 "x"
           WhiteSpace@30..31 " "
           Plus@31..32 "+"
           WhiteSpace@32..33 " "

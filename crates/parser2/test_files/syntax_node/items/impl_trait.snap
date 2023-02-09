@@ -177,9 +177,10 @@ Root@0..317
             WhiteSpace@160..168 "        "
             ExprStmt@168..188
               CallExpr@168..188
-                Path@168..180
-                  PathSegment@168..180
-                    Ident@168..180 "do_something"
+                PathExpr@168..180
+                  Path@168..180
+                    PathSegment@168..180
+                      Ident@168..180 "do_something"
                 GenericArgList@180..185
                   Lt@180..181 "<"
                   TypeGenericArg@181..184
@@ -191,9 +192,10 @@ Root@0..317
                 CallArgList@185..188
                   LParen@185..186 "("
                   CallArg@186..187
-                    Path@186..187
-                      PathSegment@186..187
-                        Ident@186..187 "t"
+                    PathExpr@186..187
+                      Path@186..187
+                        PathSegment@186..187
+                          Ident@186..187 "t"
                   RParen@187..188 ")"
             Newline@188..189 "\n"
             WhiteSpace@189..193 "    "
@@ -307,9 +309,10 @@ Root@0..317
             WhiteSpace@281..289 "        "
             ExprStmt@289..309
               CallExpr@289..309
-                Path@289..301
-                  PathSegment@289..301
-                    Ident@289..301 "do_something"
+                PathExpr@289..301
+                  Path@289..301
+                    PathSegment@289..301
+                      Ident@289..301 "do_something"
                 GenericArgList@301..306
                   Lt@301..302 "<"
                   TypeGenericArg@302..305
@@ -321,9 +324,10 @@ Root@0..317
                 CallArgList@306..309
                   LParen@306..307 "("
                   CallArg@307..308
-                    Path@307..308
-                      PathSegment@307..308
-                        Ident@307..308 "t"
+                    PathExpr@307..308
+                      Path@307..308
+                        PathSegment@307..308
+                          Ident@307..308 "t"
                   RParen@308..309 ")"
             Newline@309..310 "\n"
             WhiteSpace@310..314 "    "

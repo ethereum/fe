@@ -5,9 +5,10 @@ input_file: crates/parser2/test_files/syntax_node/exprs/struct_init.fe
 ---
 Root@0..40
   RecordInitExpr@0..13
-    Path@0..6
-      PathSegment@0..6
-        Ident@0..6 "Struct"
+    PathExpr@0..6
+      Path@0..6
+        PathSegment@0..6
+          Ident@0..6 "Struct"
     WhiteSpace@6..7 " "
     RecordFieldList@7..13
       LBrace@7..8 "{"
@@ -20,9 +21,10 @@ Root@0..40
       RBrace@12..13 "}"
   Newline@13..14 "\n"
   RecordInitExpr@14..31
-    Path@14..20
-      PathSegment@14..20
-        Ident@14..20 "Struct"
+    PathExpr@14..20
+      Path@14..20
+        PathSegment@14..20
+          Ident@14..20 "Struct"
     WhiteSpace@20..21 " "
     RecordFieldList@21..31
       LBrace@21..22 "{"
@@ -43,9 +45,10 @@ Root@0..40
       RBrace@30..31 "}"
   Newline@31..32 "\n"
   RecordInitExpr@32..40
-    Path@32..37
-      PathSegment@32..37
-        Ident@32..37 "Empty"
+    PathExpr@32..37
+      Path@32..37
+        PathSegment@32..37
+          Ident@32..37 "Empty"
     WhiteSpace@37..38 " "
     RecordFieldList@38..40
       LBrace@38..39 "{"

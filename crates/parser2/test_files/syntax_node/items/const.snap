@@ -76,9 +76,10 @@ Root@0..160
           IfExpr@79..157
             IfKw@79..81 "if"
             WhiteSpace@81..82 " "
-            Path@82..83
-              PathSegment@82..83
-                Ident@82..83 "b"
+            PathExpr@82..83
+              Path@82..83
+                PathSegment@82..83
+                  Ident@82..83 "b"
             WhiteSpace@83..84 " "
             BlockExpr@84..101
               LBrace@84..85 "{"
@@ -98,9 +99,10 @@ Root@0..160
               IfKw@107..109 "if"
               WhiteSpace@109..110 " "
               BinExpr@110..116
-                Path@110..111
-                  PathSegment@110..111
-                    Ident@110..111 "x"
+                PathExpr@110..111
+                  Path@110..111
+                    PathSegment@110..111
+                      Ident@110..111 "x"
                 WhiteSpace@111..112 " "
                 Eq2@112..114 "=="
                 WhiteSpace@114..115 " "

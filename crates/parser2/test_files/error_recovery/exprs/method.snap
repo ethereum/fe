@@ -5,12 +5,13 @@ input_file: crates/parser2/test_files/error_recovery/exprs/method.fe
 ---
 Root@0..78
   MethodCallExpr@0..31
-    Path@0..8
-      PathSegment@0..3
-        Ident@0..3 "foo"
-      Colon2@3..5 "::"
-      PathSegment@5..8
-        Ident@5..8 "bar"
+    PathExpr@0..8
+      Path@0..8
+        PathSegment@0..3
+          Ident@0..3 "foo"
+        Colon2@3..5 "::"
+        PathSegment@5..8
+          Ident@5..8 "bar"
     Dot@8..9 "."
     Ident@9..12 "baz"
     GenericArgList@12..25
@@ -52,12 +53,13 @@ Root@0..78
       RParen@30..31 ")"
   Newline@31..33 "\n\n"
   MethodCallExpr@33..52
-    Path@33..41
-      PathSegment@33..36
-        Ident@33..36 "foo"
-      Colon2@36..38 "::"
-      PathSegment@38..41
-        Ident@38..41 "bar"
+    PathExpr@33..41
+      Path@33..41
+        PathSegment@33..36
+          Ident@33..36 "foo"
+        Colon2@36..38 "::"
+        PathSegment@38..41
+          Ident@38..41 "bar"
     Dot@41..42 "."
     Ident@42..43 "x"
     CallArgList@43..52
@@ -81,12 +83,13 @@ Root@0..78
       RParen@51..52 ")"
   Newline@52..54 "\n\n"
   MethodCallExpr@54..78
-    Path@54..62
-      PathSegment@54..57
-        Ident@54..57 "foo"
-      Colon2@57..59 "::"
-      PathSegment@59..62
-        Ident@59..62 "bar"
+    PathExpr@54..62
+      Path@54..62
+        PathSegment@54..57
+          Ident@54..57 "foo"
+        Colon2@57..59 "::"
+        PathSegment@59..62
+          Ident@59..62 "bar"
     Dot@62..63 "."
     Ident@63..66 "baz"
     GenericArgList@66..76

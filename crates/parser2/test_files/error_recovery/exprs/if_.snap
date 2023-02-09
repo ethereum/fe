@@ -7,9 +7,10 @@ Root@0..101
   IfExpr@0..10
     IfKw@0..2 "if"
     WhiteSpace@2..3 " "
-    Path@3..4
-      PathSegment@3..4
-        Ident@3..4 "x"
+    PathExpr@3..4
+      Path@3..4
+        PathSegment@3..4
+          Ident@3..4 "x"
     WhiteSpace@4..5 " "
     Error@5..6
       Ident@5..6 "y"
@@ -22,9 +23,10 @@ Root@0..101
   IfExpr@12..31
     IfKw@12..14 "if"
     WhiteSpace@14..15 " "
-    Path@15..16
-      PathSegment@15..16
-        Ident@15..16 "x"
+    PathExpr@15..16
+      Path@15..16
+        PathSegment@15..16
+          Ident@15..16 "x"
     WhiteSpace@16..17 " "
     BlockExpr@17..21
       LBrace@17..18 "{"
@@ -43,9 +45,10 @@ Root@0..101
   IfExpr@33..66
     IfKw@33..35 "if"
     WhiteSpace@35..36 " "
-    Path@36..37
-      PathSegment@36..37
-        Ident@36..37 "x"
+    PathExpr@36..37
+      Path@36..37
+        PathSegment@36..37
+          Ident@36..37 "x"
     WhiteSpace@37..38 " "
     BlockExpr@38..41
       LBrace@38..39 "{"
@@ -60,9 +63,10 @@ Root@0..101
     IfExpr@49..66
       IfKw@49..51 "if"
       WhiteSpace@51..52 " "
-      Path@52..53
-        PathSegment@52..53
-          Ident@52..53 "x"
+      PathExpr@52..53
+        Path@52..53
+          PathSegment@52..53
+            Ident@52..53 "x"
       WhiteSpace@53..54 " "
       BlockExpr@54..57
         LBrace@54..55 "{"
@@ -79,9 +83,10 @@ Root@0..101
   IfExpr@68..100
     IfKw@68..70 "if"
     WhiteSpace@70..71 " "
-    Path@71..72
-      PathSegment@71..72
-        Ident@71..72 "x"
+    PathExpr@71..72
+      Path@71..72
+        PathSegment@71..72
+          Ident@71..72 "x"
     WhiteSpace@72..73 " "
     BlockExpr@73..100
       LBrace@73..74 "{"

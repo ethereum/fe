@@ -138,9 +138,10 @@ Root@0..231
     WhiteSpace@98..99 " "
     Eq@99..100 "="
     WhiteSpace@100..101 " "
-    Path@101..102
-      PathSegment@101..102
-        Ident@101..102 "e"
+    PathExpr@101..102
+      Path@101..102
+        PathSegment@101..102
+          Ident@101..102 "e"
   Newline@102..104 "\n\n"
   LetStmt@104..123
     LetKw@104..107 "let"
@@ -171,9 +172,10 @@ Root@0..231
     WhiteSpace@119..120 " "
     Eq@120..121 "="
     WhiteSpace@121..122 " "
-    Path@122..123
-      PathSegment@122..123
-        Ident@122..123 "s"
+    PathExpr@122..123
+      Path@122..123
+        PathSegment@122..123
+          Ident@122..123 "s"
   Newline@123..125 "\n\n"
   LetStmt@125..162
     LetKw@125..128 "let"
@@ -188,18 +190,20 @@ Root@0..231
     IfExpr@133..162
       IfKw@133..135 "if"
       WhiteSpace@135..136 " "
-      Path@136..137
-        PathSegment@136..137
-          Ident@136..137 "b"
+      PathExpr@136..137
+        Path@136..137
+          PathSegment@136..137
+            Ident@136..137 "b"
       WhiteSpace@137..138 " "
       BlockExpr@138..147
         LBrace@138..139 "{"
         Newline@139..140 "\n"
         WhiteSpace@140..144 "    "
         ExprStmt@144..145
-          Path@144..145
-            PathSegment@144..145
-              Ident@144..145 "y"
+          PathExpr@144..145
+            Path@144..145
+              PathSegment@144..145
+                Ident@144..145 "y"
         Newline@145..146 "\n"
         RBrace@146..147 "}"
       WhiteSpace@147..148 " "
@@ -210,9 +214,10 @@ Root@0..231
         Newline@154..155 "\n"
         WhiteSpace@155..159 "    "
         ExprStmt@159..160
-          Path@159..160
-            PathSegment@159..160
-              Ident@159..160 "z"
+          PathExpr@159..160
+            Path@159..160
+              PathSegment@159..160
+                Ident@159..160 "z"
         Newline@160..161 "\n"
         RBrace@161..162 "}"
   Newline@162..164 "\n\n"
@@ -229,9 +234,10 @@ Root@0..231
     MatchExpr@172..231
       MatchKw@172..177 "match"
       WhiteSpace@177..178 " "
-      Path@178..179
-        PathSegment@178..179
-          Ident@178..179 "b"
+      PathExpr@178..179
+        Path@178..179
+          PathSegment@178..179
+            Ident@178..179 "b"
       WhiteSpace@179..180 " "
       MatchArmList@180..231
         LBrace@180..181 "{"
@@ -273,9 +279,10 @@ Root@0..231
           WhiteSpace@213..214 " "
           FatArrow@214..216 "=>"
           WhiteSpace@216..217 " "
-          Path@217..218
-            PathSegment@217..218
-              Ident@217..218 "x"
+          PathExpr@217..218
+            Path@217..218
+              PathSegment@217..218
+                Ident@217..218 "x"
         Newline@218..219 "\n"
         WhiteSpace@219..223 "    "
         MatchArm@223..229

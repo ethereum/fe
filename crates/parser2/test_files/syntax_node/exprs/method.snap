@@ -5,9 +5,10 @@ input_file: crates/parser2/test_files/syntax_node/exprs/method.fe
 ---
 Root@0..75
   MethodCallExpr@0..5
-    Path@0..1
-      PathSegment@0..1
-        Ident@0..1 "x"
+    PathExpr@0..1
+      Path@0..1
+        PathSegment@0..1
+          Ident@0..1 "x"
     Dot@1..2 "."
     Ident@2..3 "y"
     CallArgList@3..5
@@ -15,9 +16,10 @@ Root@0..75
       RParen@4..5 ")"
   Newline@5..6 "\n"
   MethodCallExpr@6..15
-    Path@6..7
-      PathSegment@6..7
-        Ident@6..7 "x"
+    PathExpr@6..7
+      Path@6..7
+        PathSegment@6..7
+          Ident@6..7 "x"
     Dot@7..8 "."
     Ident@8..9 "y"
     CallArgList@9..15
@@ -36,9 +38,10 @@ Root@0..75
   Newline@15..17 "\n\n"
   MethodCallExpr@17..34
     FieldExpr@17..20
-      Path@17..18
-        PathSegment@17..18
-          Ident@17..18 "x"
+      PathExpr@17..18
+        Path@17..18
+          PathSegment@17..18
+            Ident@17..18 "x"
       Dot@18..19 "."
       Ident@19..20 "y"
     Dot@20..21 "."
@@ -65,9 +68,10 @@ Root@0..75
   Newline@34..35 "\n"
   MethodCallExpr@35..47
     IndexExpr@35..39
-      Path@35..36
-        PathSegment@35..36
-          Ident@35..36 "x"
+      PathExpr@35..36
+        Path@35..36
+          PathSegment@35..36
+            Ident@35..36 "x"
       LBracket@36..37 "["
       LitExpr@37..38
         Lit@37..38
@@ -87,9 +91,10 @@ Root@0..75
       RParen@46..47 ")"
   Newline@47..49 "\n\n"
   MethodCallExpr@49..75
-    Path@49..50
-      PathSegment@49..50
-        Ident@49..50 "x"
+    PathExpr@49..50
+      Path@49..50
+        PathSegment@49..50
+          Ident@49..50 "x"
     Dot@50..51 "."
     Ident@51..52 "y"
     GenericArgList@52..66
@@ -106,15 +111,17 @@ Root@0..75
           LBrace@58..59 "{"
           ExprStmt@59..64
             BinExpr@59..64
-              Path@59..60
-                PathSegment@59..60
-                  Ident@59..60 "x"
+              PathExpr@59..60
+                Path@59..60
+                  PathSegment@59..60
+                    Ident@59..60 "x"
               WhiteSpace@60..61 " "
               Plus@61..62 "+"
               WhiteSpace@62..63 " "
-              Path@63..64
-                PathSegment@63..64
-                  Ident@63..64 "y"
+              PathExpr@63..64
+                Path@63..64
+                  PathSegment@63..64
+                    Ident@63..64 "y"
           RBrace@64..65 "}"
       Gt@65..66 ">"
     CallArgList@66..75
@@ -129,8 +136,9 @@ Root@0..75
       Comma@71..72 ","
       WhiteSpace@72..73 " "
       CallArg@73..74
-        Path@73..74
-          PathSegment@73..74
-            Ident@73..74 "y"
+        PathExpr@73..74
+          Path@73..74
+            PathSegment@73..74
+              Ident@73..74 "y"
       RParen@74..75 ")"
 
