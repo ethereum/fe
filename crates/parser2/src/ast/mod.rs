@@ -1,15 +1,21 @@
 pub mod attr;
 pub mod expr;
 pub mod item;
+pub mod lit;
 pub mod param;
+pub mod pat;
 pub mod path;
+pub mod stmt;
 pub mod type_;
 
 pub use attr::*;
 pub use expr::*;
 pub use item::*;
+pub use lit::*;
 pub use param::*;
+pub use pat::*;
 pub use path::*;
+pub use stmt::*;
 pub use type_::*;
 
 pub type AstChildren<T> = rowan::ast::AstChildren<T>;
