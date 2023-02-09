@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/error_recovery.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/error_recovery/stmts/for_.fe
 ---
 Root@0..67
   ForStmt@0..29
@@ -42,9 +43,10 @@ Root@0..67
     WhiteSpace@36..37 " "
     InKw@37..39 "in"
     WhiteSpace@39..40 " "
-    Path@40..43
-      PathSegment@40..43
-        Ident@40..43 "arr"
+    PathExpr@40..43
+      Path@40..43
+        PathSegment@40..43
+          Ident@40..43 "arr"
     WhiteSpace@43..44 " "
     BlockExpr@44..46
       LBrace@44..45 "{"
@@ -61,9 +63,10 @@ Root@0..67
     WhiteSpace@53..54 " "
     InKw@54..56 "in"
     WhiteSpace@56..57 " "
-    Path@57..60
-      PathSegment@57..60
-        Ident@57..60 "arr"
+    PathExpr@57..60
+      Path@57..60
+        PathSegment@57..60
+          Ident@57..60 "arr"
     WhiteSpace@60..61 " "
     Error@61..64
       Ident@61..62 "x"

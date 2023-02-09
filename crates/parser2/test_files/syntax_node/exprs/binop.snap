@@ -80,15 +80,17 @@ Root@0..164
     Lt@40..41 "<"
     WhiteSpace@41..42 " "
     CallExpr@42..48
-      Path@42..43
-        PathSegment@42..43
-          Ident@42..43 "a"
+      PathExpr@42..43
+        Path@42..43
+          PathSegment@42..43
+            Ident@42..43 "a"
       CallArgList@43..48
         LParen@43..44 "("
         CallArg@44..47
-          Path@44..47
-            PathSegment@44..47
-              Ident@44..47 "foo"
+          PathExpr@44..47
+            Path@44..47
+              PathSegment@44..47
+                Ident@44..47 "foo"
         RParen@47..48 ")"
   Newline@48..49 "\n"
   BinExpr@49..55
@@ -185,9 +187,10 @@ Root@0..164
               Int@117..118 "2"
   Newline@118..119 "\n"
   BinExpr@119..130
-    Path@119..120
-      PathSegment@119..120
-        Ident@119..120 "a"
+    PathExpr@119..120
+      Path@119..120
+        PathSegment@119..120
+          Ident@119..120 "a"
     WhiteSpace@120..121 " "
     Star2@121..123 "**"
     WhiteSpace@123..124 " "
@@ -244,9 +247,10 @@ Root@0..164
   Newline@152..153 "\n"
   FieldExpr@153..158
     FieldExpr@153..156
-      Path@153..154
-        PathSegment@153..154
-          Ident@153..154 "a"
+      PathExpr@153..154
+        Path@153..154
+          PathSegment@153..154
+            Ident@153..154 "a"
       Dot@154..155 "."
       Ident@155..156 "b"
     Dot@156..157 "."
@@ -254,9 +258,10 @@ Root@0..164
   Newline@158..159 "\n"
   FieldExpr@159..164
     FieldExpr@159..162
-      Path@159..160
-        PathSegment@159..160
-          Ident@159..160 "a"
+      PathExpr@159..160
+        Path@159..160
+          PathSegment@159..160
+            Ident@159..160 "a"
       Dot@160..161 "."
       Int@161..162 "0"
     Dot@162..163 "."

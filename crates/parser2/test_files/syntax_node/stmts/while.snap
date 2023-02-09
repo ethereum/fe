@@ -8,9 +8,10 @@ Root@0..46
     WhileKw@0..5 "while"
     WhiteSpace@5..6 " "
     BinExpr@6..12
-      Path@6..7
-        PathSegment@6..7
-          Ident@6..7 "i"
+      PathExpr@6..7
+        Path@6..7
+          PathSegment@6..7
+            Ident@6..7 "i"
       WhiteSpace@7..8 " "
       Lt@8..9 "<"
       WhiteSpace@9..10 " "
@@ -51,9 +52,10 @@ Root@0..46
         Eq@37..38 "="
         WhiteSpace@38..39 " "
         BinExpr@39..44
-          Path@39..40
-            PathSegment@39..40
-              Ident@39..40 "i"
+          PathExpr@39..40
+            Path@39..40
+              PathSegment@39..40
+                Ident@39..40 "i"
           WhiteSpace@40..41 " "
           Plus@41..42 "+"
           WhiteSpace@42..43 " "

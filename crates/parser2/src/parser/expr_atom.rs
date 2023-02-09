@@ -6,7 +6,6 @@ use crate::{
 };
 
 use super::{
-    attr::parse_attr_list,
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
     parse_pat,
@@ -28,7 +27,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
         Some(LBracket) => parser.parse(ArrayScope::default(), None),
         Some(kind) if lit::is_lit(kind) => parser.parse(LitExprScope::default(), None),
         Some(kind) if path::is_path_segment(kind) => {
-            let (success, checkpoint) = parser.parse(path::PathScope::default(), None);
+            let (success, checkpoint) = parser.parse(PathExprScope::default(), None);
             if success && parser.current_kind() == Some(LBrace) && allow_struct_init {
                 let (success, _) = parser.parse(RecordInitExprScope::default(), Some(checkpoint));
                 (success, checkpoint)
@@ -180,6 +179,13 @@ define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
 impl super::Parse for LitExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(lit::LitScope::default(), None);
+    }
+}
+
+define_scope! { PathExprScope, PathExpr, Inheritance }
+impl super::Parse for PathExprScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.parse(path::PathScope::default(), None);
     }
 }
 

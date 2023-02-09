@@ -266,9 +266,10 @@ Root@0..361
         Newline@298..299 "\n"
         WhiteSpace@299..303 "    "
         ExprStmt@303..304
-          Path@303..304
-            PathSegment@303..304
-              Ident@303..304 "t"
+          PathExpr@303..304
+            Path@303..304
+              PathSegment@303..304
+                Ident@303..304 "t"
         Newline@304..305 "\n"
         RBrace@305..306 "}"
     Newline@306..308 "\n\n"

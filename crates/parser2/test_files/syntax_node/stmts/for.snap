@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/stmts/for.fe
 ---
 Root@0..96
   ForStmt@0..34
@@ -13,9 +14,10 @@ Root@0..96
     WhiteSpace@5..6 " "
     InKw@6..8 "in"
     WhiteSpace@8..9 " "
-    Path@9..12
-      PathSegment@9..12
-        Ident@9..12 "arr"
+    PathExpr@9..12
+      Path@9..12
+        PathSegment@9..12
+          Ident@9..12 "arr"
     WhiteSpace@12..13 " "
     BlockExpr@13..34
       LBrace@13..14 "{"
@@ -30,15 +32,17 @@ Root@0..96
         Eq@23..24 "="
         WhiteSpace@24..25 " "
         BinExpr@25..32
-          Path@25..28
-            PathSegment@25..28
-              Ident@25..28 "sum"
+          PathExpr@25..28
+            Path@25..28
+              PathSegment@25..28
+                Ident@25..28 "sum"
           WhiteSpace@28..29 " "
           Plus@29..30 "+"
           WhiteSpace@30..31 " "
-          Path@31..32
-            PathSegment@31..32
-              Ident@31..32 "i"
+          PathExpr@31..32
+            Path@31..32
+              PathSegment@31..32
+                Ident@31..32 "i"
       Newline@32..33 "\n"
       RBrace@33..34 "}"
   Newline@34..36 "\n\n"
@@ -69,9 +73,10 @@ Root@0..96
     InKw@54..56 "in"
     WhiteSpace@56..57 " "
     MethodCallExpr@57..70
-      Path@57..63
-        PathSegment@57..63
-          Ident@57..63 "s_list"
+      PathExpr@57..63
+        Path@57..63
+          PathSegment@57..63
+            Ident@57..63 "s_list"
       Dot@63..64 "."
       Ident@64..68 "iter"
       CallArgList@68..70
@@ -92,21 +97,24 @@ Root@0..96
         WhiteSpace@82..83 " "
         BinExpr@83..94
           BinExpr@83..90
-            Path@83..86
-              PathSegment@83..86
-                Ident@83..86 "sum"
+            PathExpr@83..86
+              Path@83..86
+                PathSegment@83..86
+                  Ident@83..86 "sum"
             WhiteSpace@86..87 " "
             Plus@87..88 "+"
             WhiteSpace@88..89 " "
-            Path@89..90
-              PathSegment@89..90
-                Ident@89..90 "x"
+            PathExpr@89..90
+              Path@89..90
+                PathSegment@89..90
+                  Ident@89..90 "x"
           WhiteSpace@90..91 " "
           Plus@91..92 "+"
           WhiteSpace@92..93 " "
-          Path@93..94
-            PathSegment@93..94
-              Ident@93..94 "y"
+          PathExpr@93..94
+            Path@93..94
+              PathSegment@93..94
+                Ident@93..94 "y"
       Newline@94..95 "\n"
       RBrace@95..96 "}"
 

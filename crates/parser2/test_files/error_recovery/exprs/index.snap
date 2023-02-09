@@ -5,9 +5,10 @@ input_file: crates/parser2/test_files/error_recovery/exprs/index.fe
 ---
 Root@0..20
   IndexExpr@0..6
-    Path@0..1
-      PathSegment@0..1
-        Ident@0..1 "x"
+    PathExpr@0..1
+      Path@0..1
+        PathSegment@0..1
+          Ident@0..1 "x"
     LBracket@1..2 "["
     LitExpr@2..3
       Lit@2..3
@@ -18,9 +19,10 @@ Root@0..20
     RBracket@5..6 "]"
   Newline@6..7 "\n"
   IndexExpr@7..14
-    Path@7..8
-      PathSegment@7..8
-        Ident@7..8 "x"
+    PathExpr@7..8
+      Path@7..8
+        PathSegment@7..8
+          Ident@7..8 "x"
     LBracket@8..9 "["
     BinExpr@9..14
       LitExpr@9..10
@@ -36,9 +38,10 @@ Root@0..20
     Error@14..14
   Newline@14..15 "\n"
   IndexExpr@15..20
-    Path@15..16
-      PathSegment@15..16
-        Ident@15..16 "x"
+    PathExpr@15..16
+      Path@15..16
+        PathSegment@15..16
+          Ident@15..16 "x"
     LBracket@16..17 "["
     LitExpr@17..19
       Lit@17..19

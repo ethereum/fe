@@ -1,0 +1,46 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/stmts/assign.fe
+---
+Root@0..21
+  AssignStmt@0..5
+    PathPat@0..1
+      Path@0..1
+        PathSegment@0..1
+          Ident@0..1 "x"
+    WhiteSpace@1..2 " "
+    Eq@2..3 "="
+    WhiteSpace@3..4 " "
+    LitExpr@4..5
+      Lit@4..5
+        Int@4..5 "1"
+  Newline@5..6 "\n"
+  AssignStmt@6..21
+    RecordPat@6..15
+      Path@6..9
+        PathSegment@6..9
+          Ident@6..9 "Foo"
+      RecordPatFieldList@9..15
+        LBrace@9..10 "{"
+        RecordPatField@10..11
+          PathPat@10..11
+            Path@10..11
+              PathSegment@10..11
+                Ident@10..11 "x"
+        Comma@11..12 ","
+        WhiteSpace@12..13 " "
+        RecordPatField@13..14
+          PathPat@13..14
+            Path@13..14
+              PathSegment@13..14
+                Ident@13..14 "y"
+        RBrace@14..15 "}"
+    WhiteSpace@15..16 " "
+    Eq@16..17 "="
+    WhiteSpace@17..18 " "
+    PathExpr@18..21
+      Path@18..21
+        PathSegment@18..21
+          Ident@18..21 "foo"
+
