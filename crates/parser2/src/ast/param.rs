@@ -1,26 +1,24 @@
 use rowan::ast::{support, AstNode};
 
 use super::{ast_node, AstChildren};
-use crate::{SyntaxKind as SK, SyntaxToken};
+use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
     /// A list of generic parameters.
     /// `<T: Trait, U>`
     pub struct GenericParamList,
-    SK::GenericParamList
+    SK::GenericParamList,
+    IntoIterator<Item=GenericParam>,
+
 }
-impl GenericParamList {
-    pub fn params(&self) -> AstChildren<GenericParam> {
-        support::children(self.syntax())
-    }
-}
+
 ast_node! {
     /// A generic parameter.
     /// `T`
     /// `T: Trait`
     /// `const N: usize`
     pub struct GenericParam,
-    SK::TypeGenericParam | SK::ConstGenericParam
+    SK::TypeGenericParam | SK::ConstGenericParam,
 }
 impl GenericParam {
     /// Returns the specific kind of the generic parameter.
@@ -50,7 +48,7 @@ ast_node! {
     /// `T`
     /// `T: Trait`
     pub struct TypeGenericParam,
-    SK::TypeGenericParam
+    SK::TypeGenericParam,
 }
 impl TypeGenericParam {
     pub fn name(&self) -> Option<SyntaxToken> {
@@ -66,7 +64,7 @@ ast_node! {
     /// A const generic parameter.
     /// `const N: usize`.
     pub struct ConstGenericParam,
-    SK::ConstGenericParam
+    SK::ConstGenericParam,
 }
 impl ConstGenericParam {
     /// Returns the name of the const generic parameter.
@@ -84,12 +82,9 @@ ast_node! {
     /// A list of generic arguments.
     /// `<T,
     pub struct GenericArgList,
-    SK::GenericArgList
-}
-impl GenericArgList {
-    pub fn args(&self) -> AstChildren<GenericArg> {
-        support::children(self.syntax())
-    }
+    SK::GenericArgList,
+    IntoIterator<Item=GenericArg>,
+
 }
 
 ast_node! {
@@ -99,7 +94,7 @@ ast_node! {
     /// `{expr}`
     /// `lit`
     pub struct GenericArg,
-    SK::TypeGenericArg | SK::ConstGenericArg
+    SK::TypeGenericArg | SK::ConstGenericArg,
 }
 impl GenericArg {
     pub fn kind(&self) -> GenericArgKind {
@@ -117,7 +112,7 @@ impl GenericArg {
 
 ast_node! {
     pub struct TypeGenericArg,
-    SK::TypeGenericArg
+    SK::TypeGenericArg,
 }
 impl TypeGenericArg {
     pub fn type_(&self) -> Option<super::Type> {
@@ -131,7 +126,7 @@ impl TypeGenericArg {
 
 ast_node! {
     pub struct ConstGenericArg,
-    SK::ConstGenericArg
+    SK::ConstGenericArg,
 }
 impl ConstGenericArg {
     pub fn expr(&self) -> Option<super::Expr> {
@@ -151,12 +146,8 @@ ast_node! {
     /// A type bound list.
     /// `: Trait + Trait2`
     pub struct TypeBoundList,
-    SK::TypeBoundList
-}
-impl TypeBoundList {
-    pub fn bounds(&self) -> AstChildren<TypeBound> {
-        support::children(self.syntax())
-    }
+    SK::TypeBoundList,
+    IntoIterator<Item=TypeBound>,
 }
 
 ast_node! {
@@ -164,7 +155,7 @@ ast_node! {
     /// `Trait`
     /// `Trait<T, U>`
     pub struct TypeBound,
-    SK::TypeBound
+    SK::TypeBound,
 }
 impl TypeBound {
     /// A path of the type bound.
@@ -174,6 +165,22 @@ impl TypeBound {
 
     /// A generic argument list of the type bound.
     pub fn generic_args(&self) -> Option<GenericArgList> {
+        support::child(self.syntax())
+    }
+}
+
+/// A trait for AST nodes that can have generic parameters.
+pub trait GenericParamsOwner: AstNode<Language = FeLang> {
+    /// Returns the generic parameter list of the node.
+    fn generic_params(&self) -> Option<GenericParamList> {
+        support::child(self.syntax())
+    }
+}
+
+/// A trait for AST nodes that can have generic arguments.
+pub trait GenericArgsOwner: AstNode<Language = FeLang> {
+    /// Returns the generic argument list of the node.
+    fn generic_args(&self) -> Option<GenericArgList> {
         support::child(self.syntax())
     }
 }
@@ -206,14 +213,14 @@ mod tests {
     fn generic_param() {
         let source = r#"<T: Trait + Trait2<X, Y>, U, const N: usize>"#;
         let gp = parse_generic_params(source);
-        let mut params = gp.params();
+        let mut params = gp.into_iter();
 
         let GenericParamKind::Type(p1) = params.next().unwrap().kind() else {
             panic!("expected type param");
         };
         assert_eq!(p1.name().unwrap().text(), "T");
         let p1_bounds = p1.bounds().unwrap();
-        let mut p1_bounds = p1_bounds.bounds();
+        let mut p1_bounds = p1_bounds.iter();
 
         assert_eq!(
             p1_bounds
@@ -260,7 +267,7 @@ mod tests {
     fn generic_arg() {
         let source = r#"<T: T1, "foo">"#;
         let ga = parse_generic_arg(source);
-        let mut args = ga.args();
+        let mut args = ga.iter();
 
         let GenericArgKind::Type(a1) = args.next().unwrap().kind() else {
             panic!("expected type arg");
