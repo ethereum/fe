@@ -325,6 +325,9 @@ impl<S: TokenStream> Parser<S> {
             {
                 Some(RecoveryMethod::Inheritance(set)) => {
                     recovery_set.extend(set.iter());
+                    if scope_index == 0 {
+                        break;
+                    }
                     scope_index -= 1;
                 }
                 Some(RecoveryMethod::Override(set)) => {
