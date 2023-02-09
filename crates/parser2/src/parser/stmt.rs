@@ -3,6 +3,7 @@ use crate::{parser::expr, SyntaxKind};
 use super::{
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
+    expr_atom::BlockExprScope,
     pat::parse_pat,
     token_stream::TokenStream,
     type_::parse_type,
@@ -69,7 +70,7 @@ impl super::Parse for ForStmtScope {
             parser.error_and_recover("expected block", None);
             return;
         }
-        parse_expr(parser);
+        parser.parse(BlockExprScope::default(), None);
     }
 }
 
@@ -84,7 +85,7 @@ impl super::Parse for WhileStmtScope {
             parser.error_and_recover("expected block", None);
             return;
         }
-        parse_expr(parser);
+        parser.parse(BlockExprScope::default(), None);
     }
 }
 
@@ -108,6 +109,9 @@ impl super::Parse for AssertStmtScope {
         parser.bump_expected(SyntaxKind::AssertKw);
         parser.set_newline_as_trivia(false);
         parse_expr(parser);
+        if parser.bump_if(SyntaxKind::Comma) {
+            parse_expr(parser);
+        }
     }
 }
 
