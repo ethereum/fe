@@ -30,7 +30,7 @@ ast_node! {
     /// A pointer type.
     /// `*i32`
     pub struct PtrType,
-    SK::PtrType
+    SK::PtrType,
 }
 impl PtrType {
     /// Returns the `*` token.
@@ -60,12 +60,13 @@ impl PathType {
         support::child(self.syntax())
     }
 }
+impl super::GenericArgsOwner for PathType {}
 
 ast_node! {
     /// A self type.
     /// `Self`
     pub struct SelfType,
-    SK::SelfType
+    SK::SelfType,
 }
 impl SelfType {
     /// Returns the `Self` keyword.
@@ -78,7 +79,8 @@ ast_node! {
     /// A tuple type.
     /// `(i32, foo::Bar)`
     pub struct TupleType,
-    SK::TupleType
+    SK::TupleType,
+    IntoIterator<Item=Type>,
 }
 impl TupleType {
     /// Returns the types in the tuple.
@@ -91,7 +93,7 @@ ast_node! {
     /// An array type.
     /// `[i32; 4]`
     pub struct ArrayType,
-    SK::ArrayType
+    SK::ArrayType,
 }
 impl ArrayType {
     /// Returns the type of the array elements.

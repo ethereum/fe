@@ -7,7 +7,8 @@ ast_node! {
     /// A path.
     /// `foo::bar::baz`
     pub struct Path,
-    SK::Path
+    SK::Path,
+    IntoIterator<Item=PathSegment>,
 }
 impl Path {
     /// Returns the segments of the path.

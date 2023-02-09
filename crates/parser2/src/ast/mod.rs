@@ -1,9 +1,11 @@
+pub mod attr;
 pub mod expr;
 pub mod item;
 pub mod param;
 pub mod path;
 pub mod type_;
 
+pub use attr::*;
 pub use expr::*;
 pub use item::*;
 pub use param::*;
@@ -13,13 +15,17 @@ pub use type_::*;
 pub type AstChildren<T> = rowan::ast::AstChildren<T>;
 pub type SyntaxText = rowan::SyntaxText;
 
+pub mod prelude {
+    pub use super::{GenericArgsOwner, GenericParamsOwner};
+}
+
 macro_rules! ast_node {
     (
         $(#[$attrs: meta])*
         $visibility: vis struct $name: ident $({
              $($field_vis: vis $field: ident: $ty: ty),*
         })?,
-        $kind: pat
+        $kind: pat $(,)?
     ) => {
         $(#[$attrs])*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -47,6 +53,45 @@ macro_rules! ast_node {
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 std::fmt::Display::fmt(rowan::ast::AstNode::syntax(self), f)
+            }
+        }
+    };
+    (
+        $(#[$attrs: meta])*
+        $visibility: vis struct $name: ident $({
+             $($field_vis: vis $field: ident: $ty: ty),*
+        })?,
+        $kind: pat,
+        IntoIterator<Item=$item_ty:ty> $(,)?
+    ) => {
+        ast_node!{
+            $(#[$attrs])*
+            $visibility struct $name $({
+                $($field_vis $field: $ty),*
+            })?,
+            $kind
+        }
+        impl IntoIterator for $name {
+            type Item = $item_ty;
+            type IntoIter = AstChildren<$item_ty>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                support::children(self.syntax())
+            }
+        }
+        impl IntoIterator for &$name {
+            type Item = $item_ty;
+            type IntoIter = AstChildren<$item_ty>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                support::children(self.syntax())
+            }
+        }
+
+        impl $name {
+            /// Returns an iterator over the children of this node.
+            pub fn iter(&self) -> AstChildren<$item_ty> {
+                self.into_iter()
             }
         }
     };
