@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/structs/attr.fe
 ---
 Root@0..170
   ItemList@0..170
@@ -56,9 +57,9 @@ Root@0..170
             Attr@140..157
               Pound@140..141 "#"
               Ident@141..144 "cfg"
-              AttrParamList@144..157
+              AttrArgList@144..157
                 LParen@144..145 "("
-                AttrParam@145..156
+                AttrArg@145..156
                   Ident@145..151 "target"
                   Colon@151..152 ":"
                   WhiteSpace@152..153 " "

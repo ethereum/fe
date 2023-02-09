@@ -11,7 +11,7 @@ pub(super) fn parse_attr_list<S: TokenStream>(parser: &mut Parser<S>) -> Option<
 }
 
 define_scope! {
-    AttrListScope,
+    pub(crate) AttrListScope,
     AttrList,
     Override(
         Newline
@@ -53,19 +53,19 @@ impl super::Parse for AttrScope {
         );
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(AttrParamListScope::default(), None);
+            parser.parse(AttrArgListScope::default(), None);
         }
     }
 }
 
 define_scope! {
-    AttrParamListScope,
-    AttrParamList,
+    AttrArgListScope,
+    AttrArgList,
     Override(
         RParen
     )
 }
-impl super::Parse for AttrParamListScope {
+impl super::Parse for AttrArgListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
@@ -73,12 +73,12 @@ impl super::Parse for AttrParamListScope {
         }
 
         parser.with_next_expected_tokens(
-            |parser| parser.parse(AttrParam::default(), None),
+            |parser| parser.parse(AttrArgScope::default(), None),
             &[SyntaxKind::Comma, SyntaxKind::RParen],
         );
         while parser.bump_if(SyntaxKind::Comma) {
             parser.with_next_expected_tokens(
-                |parser| parser.parse(AttrParam::default(), None),
+                |parser| parser.parse(AttrArgScope::default(), None),
                 &[SyntaxKind::Comma, SyntaxKind::RParen],
             );
         }
@@ -88,14 +88,14 @@ impl super::Parse for AttrParamListScope {
 }
 
 define_scope! {
-    AttrParam,
-    AttrParam,
+    AttrArgScope,
+    AttrArg,
     Override(
         Comma,
         RParen
     )
 }
-impl super::Parse for AttrParam {
+impl super::Parse for AttrArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.with_next_expected_tokens(
             |parser| parser.bump_or_recover(SyntaxKind::Ident, "Expected `key: value`", None),

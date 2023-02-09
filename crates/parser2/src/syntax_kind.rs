@@ -399,9 +399,9 @@ pub enum SyntaxKind {
     /// `#attr`
     Attr,
     /// `(key1: value1, key2: value2)`
-    AttrParamList,
+    AttrArgList,
     /// `key: value`
-    AttrParam,
+    AttrArg,
     /// `/// Comment`
     DocCommentAttr,
     AttrList,
