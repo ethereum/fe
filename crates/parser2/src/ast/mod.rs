@@ -79,7 +79,7 @@ macro_rules! ast_node {
         }
         impl IntoIterator for $name {
             type Item = $item_ty;
-            type IntoIter = AstChildren<$item_ty>;
+            type IntoIter = crate::ast::AstChildren<$item_ty>;
 
             fn into_iter(self) -> Self::IntoIter {
                 support::children(self.syntax())
@@ -87,7 +87,7 @@ macro_rules! ast_node {
         }
         impl IntoIterator for &$name {
             type Item = $item_ty;
-            type IntoIter = AstChildren<$item_ty>;
+            type IntoIter = crate::ast::AstChildren<$item_ty>;
 
             fn into_iter(self) -> Self::IntoIter {
                 support::children(self.syntax())
@@ -96,7 +96,7 @@ macro_rules! ast_node {
 
         impl $name {
             /// Returns an iterator over the children of this node.
-            pub fn iter(&self) -> AstChildren<$item_ty> {
+            pub fn iter(&self) -> crate::ast::AstChildren<$item_ty> {
                 self.into_iter()
             }
         }

@@ -61,19 +61,12 @@ impl super::Parse for TuplePatElemListScope {
             return;
         }
 
-        parser.parse(TuplePatElemScope::default(), None);
+        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(TuplePatElemScope::default(), None);
+            parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         }
 
         parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
-    }
-}
-
-define_scope! { TuplePatElemScope, TuplePatElem, Inheritance }
-impl super::Parse for TuplePatElemScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
     }
 }
 

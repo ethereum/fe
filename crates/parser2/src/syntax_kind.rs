@@ -315,8 +315,6 @@ pub enum SyntaxKind {
     TuplePat,
     /// `(x, y)`
     TuplePatElemList,
-    /// `x`
-    TuplePatElem,
     /// `Enum::Variant`
     PathPat,
     /// `Enum::Variant(x, y)`

@@ -66,26 +66,23 @@ Root@0..94
               Ident@58..61 "Foo"
           TuplePatElemList@61..70
             LParen@61..62 "("
-            TuplePatElem@62..63
-              PathPat@62..63
-                Path@62..63
-                  PathSegment@62..63
-                    Ident@62..63 "i"
+            PathPat@62..63
+              Path@62..63
+                PathSegment@62..63
+                  Ident@62..63 "i"
             Comma@63..64 ","
             WhiteSpace@64..65 " "
-            TuplePatElem@65..66
-              PathPat@65..66
-                Path@65..66
-                  PathSegment@65..66
-                    Ident@65..66 "j"
+            PathPat@65..66
+              Path@65..66
+                PathSegment@65..66
+                  Ident@65..66 "j"
             Comma@66..67 ","
             WhiteSpace@67..70 "   "
-            TuplePatElem@70..70
-              PathPat@70..70
-                Path@70..70
-                  PathSegment@70..70
-                    Error@70..70
-              Error@70..70
+            PathPat@70..70
+              Path@70..70
+                PathSegment@70..70
+                  Error@70..70
+            Error@70..70
             Error@70..70
         FatArrow@70..72 "=>"
         WhiteSpace@72..73 " "
