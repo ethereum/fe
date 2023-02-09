@@ -68,8 +68,7 @@ impl super::Parse for BlockExprScope {
             {
                 break;
             }
-            let checkpoint = parse_attr_list(parser);
-            if !parse_stmt(parser, checkpoint) {
+            if !parse_stmt(parser, None) {
                 continue;
             }
 
