@@ -22,7 +22,8 @@ pub type AstChildren<T> = rowan::ast::AstChildren<T>;
 pub type SyntaxText = rowan::SyntaxText;
 
 pub mod prelude {
-    pub use super::{GenericArgsOwner, GenericParamsOwner};
+    pub use super::AttrListOwner;
+    pub use super::{GenericArgsOwner, GenericParamsOwner, WhereClauseOwner};
 }
 
 macro_rules! ast_node {

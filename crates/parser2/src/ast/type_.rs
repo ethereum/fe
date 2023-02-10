@@ -104,7 +104,7 @@ impl ArrayType {
 }
 
 /// A specific kind of type.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum TypeKind {
     Ptr(PtrType),
     Path(PathType),
@@ -119,20 +119,23 @@ mod tests {
     use crate::ast::prelude::*;
     use crate::{lexer::Lexer, parser};
 
-    fn parse_type(source: &str) -> Type {
+    fn parse_type<T>(source: &str) -> T
+    where
+        T: TryFrom<TypeKind, Error = &'static str>,
+    {
         let lexer = Lexer::new(source);
         let mut parser = parser::Parser::new(lexer);
         parser::type_::parse_type(&mut parser, None, true);
-        Type::cast(parser.finish().0).unwrap()
+        Type::cast(parser.finish().0)
+            .unwrap()
+            .kind()
+            .try_into()
+            .unwrap()
     }
 
     #[test]
     fn ptr_type() {
-        let ty = parse_type("*i32");
-        let ptr_ty = match ty.kind() {
-            TypeKind::Ptr(ptr_ty) => ptr_ty,
-            _ => panic!(),
-        };
+        let ptr_ty: PtrType = parse_type("*i32");
 
         assert_eq!(ptr_ty.star().unwrap().text(), "*");
         assert!(matches!(ptr_ty.inner().unwrap().kind(), TypeKind::Path(_)));
@@ -140,13 +143,9 @@ mod tests {
 
     #[test]
     fn path_type() {
-        let ty = parse_type("Foo::Bar<T, {U + 2}>");
-        let path_type = match ty.kind() {
-            TypeKind::Path(ptr_ty) => ptr_ty,
-            _ => panic!(),
-        };
+        let path_ty: PathType = parse_type("Foo::Bar<T, {U + 2}>");
 
-        for (i, segment) in path_type.path().unwrap().segments().enumerate() {
+        for (i, segment) in path_ty.path().unwrap().segments().enumerate() {
             match i {
                 0 => assert_eq!(segment.ident().unwrap().text(), "Foo"),
                 1 => assert_eq!(segment.ident().unwrap().text(), "Bar"),
@@ -154,7 +153,7 @@ mod tests {
             }
         }
 
-        let generic_args = path_type.generic_args().unwrap();
+        let generic_args = path_ty.generic_args().unwrap();
         for (i, arg) in generic_args.iter().enumerate() {
             match i {
                 0 => assert!(matches!(arg.kind(), crate::ast::GenericArgKind::Type(_))),
@@ -166,19 +165,14 @@ mod tests {
 
     #[test]
     fn self_type() {
-        let ty = parse_type("Self");
-        assert!(matches!(ty.kind(), TypeKind::SelfType(_)));
+        let _: SelfType = parse_type("Self");
     }
 
     #[test]
     fn tuple_type() {
-        let ty = parse_type("((i32, u32), foo::Bar, *usize");
-        let tuple_type = match ty.kind() {
-            TypeKind::Tuple(tuple_type) => tuple_type,
-            _ => panic!(),
-        };
+        let tuple_ty: TupleType = parse_type("((i32, u32), foo::Bar, *usize");
 
-        for (i, ty) in tuple_type.elem_tys().enumerate() {
+        for (i, ty) in tuple_ty.elem_tys().enumerate() {
             match i {
                 0 => assert!(matches!(ty.kind(), TypeKind::Tuple(_))),
                 1 => assert!(matches!(ty.kind(), TypeKind::Path(_))),
@@ -190,16 +184,12 @@ mod tests {
 
     #[test]
     fn array_type() {
-        let ty = parse_type("[(i32, u32); 1]");
-        let array_type = match ty.kind() {
-            TypeKind::Array(array_type) => array_type,
-            _ => panic!(),
-        };
+        let array_ty: ArrayType = parse_type("[(i32, u32); 1]");
 
         assert!(matches!(
-            array_type.elem_ty().unwrap().kind(),
+            array_ty.elem_ty().unwrap().kind(),
             TypeKind::Tuple(_)
         ));
-        assert!(array_type.len().is_some());
+        assert!(array_ty.len().is_some());
     }
 }
