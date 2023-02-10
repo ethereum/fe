@@ -5,7 +5,7 @@ use super::{
     token_stream::TokenStream, Checkpoint, Parser,
 };
 
-pub(super) fn parse_type<S: TokenStream>(
+pub fn parse_type<S: TokenStream>(
     parser: &mut Parser<S>,
     checkpoint: Option<Checkpoint>,
     allow_bounds: bool,
