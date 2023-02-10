@@ -217,48 +217,50 @@ Root@0..361
       WhereClause@235..286
         WhereKw@235..240 "where"
         WhiteSpace@240..241 " "
-        PathType@241..250
-          Path@241..247
-            PathSegment@241..247
-              Ident@241..247 "Result"
-          GenericArgList@247..250
-            Lt@247..248 "<"
-            TypeGenericArg@248..249
-              PathType@248..249
-                Path@248..249
-                  PathSegment@248..249
-                    Ident@248..249 "T"
-            Gt@249..250 ">"
-        TypeBoundList@250..257
-          Colon@250..251 ":"
-          WhiteSpace@251..252 " "
-          TypeBound@252..257
-            Path@252..257
-              PathSegment@252..257
-                Ident@252..257 "Trait"
-        WhiteSpace@257..258 " "
-        Newline@258..259 "\n"
+        WherePredicate@241..259
+          PathType@241..250
+            Path@241..247
+              PathSegment@241..247
+                Ident@241..247 "Result"
+            GenericArgList@247..250
+              Lt@247..248 "<"
+              TypeGenericArg@248..249
+                PathType@248..249
+                  Path@248..249
+                    PathSegment@248..249
+                      Ident@248..249 "T"
+              Gt@249..250 ">"
+          TypeBoundList@250..257
+            Colon@250..251 ":"
+            WhiteSpace@251..252 " "
+            TypeBound@252..257
+              Path@252..257
+                PathSegment@252..257
+                  Ident@252..257 "Trait"
+          WhiteSpace@257..258 " "
+          Newline@258..259 "\n"
         WhiteSpace@259..269 "          "
-        PathType@269..278
-          Path@269..275
-            PathSegment@269..275
-              Ident@269..275 "Option"
-          GenericArgList@275..278
-            Lt@275..276 "<"
-            TypeGenericArg@276..277
-              PathType@276..277
-                Path@276..277
-                  PathSegment@276..277
-                    Ident@276..277 "U"
-            Gt@277..278 ">"
-        TypeBoundList@278..285
-          Colon@278..279 ":"
-          WhiteSpace@279..280 " "
-          TypeBound@280..285
-            Path@280..285
-              PathSegment@280..285
-                Ident@280..285 "Clone"
-        Newline@285..286 "\n"
+        WherePredicate@269..286
+          PathType@269..278
+            Path@269..275
+              PathSegment@269..275
+                Ident@269..275 "Option"
+            GenericArgList@275..278
+              Lt@275..276 "<"
+              TypeGenericArg@276..277
+                PathType@276..277
+                  Path@276..277
+                    PathSegment@276..277
+                      Ident@276..277 "U"
+              Gt@277..278 ">"
+          TypeBoundList@278..285
+            Colon@278..279 ":"
+            WhiteSpace@279..280 " "
+            TypeBound@280..285
+              Path@280..285
+                PathSegment@280..285
+                  Ident@280..285 "Clone"
+          Newline@285..286 "\n"
       WhiteSpace@286..296 "          "
       Newline@296..297 "\n"
       BlockExpr@297..306

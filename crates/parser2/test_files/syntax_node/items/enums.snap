@@ -60,18 +60,19 @@ Root@0..220
       WhereClause@78..93
         WhereKw@78..83 "where"
         WhiteSpace@83..84 " "
-        PathType@84..85
-          Path@84..85
-            PathSegment@84..85
-              Ident@84..85 "T"
-        TypeBoundList@85..92
-          Colon@85..86 ":"
-          WhiteSpace@86..87 " "
-          TypeBound@87..92
-            Path@87..92
-              PathSegment@87..92
-                Ident@87..92 "Clone"
-        Newline@92..93 "\n"
+        WherePredicate@84..93
+          PathType@84..85
+            Path@84..85
+              PathSegment@84..85
+                Ident@84..85 "T"
+          TypeBoundList@85..92
+            Colon@85..86 ":"
+            WhiteSpace@86..87 " "
+            TypeBound@87..92
+              Path@87..92
+                PathSegment@87..92
+                  Ident@87..92 "Clone"
+          Newline@92..93 "\n"
       VariantDefList@93..117
         LBrace@93..94 "{"
         Newline@94..95 "\n"
@@ -139,29 +140,30 @@ Root@0..220
       WhereClause@164..189
         WhereKw@164..169 "where"
         WhiteSpace@169..170 " "
-        PathType@170..181
-          Path@170..178
-            PathSegment@170..173
-              Ident@170..173 "Foo"
-            Colon2@173..175 "::"
-            PathSegment@175..178
-              Ident@175..178 "Bar"
-          GenericArgList@178..181
-            Lt@178..179 "<"
-            TypeGenericArg@179..180
-              PathType@179..180
-                Path@179..180
-                  PathSegment@179..180
-                    Ident@179..180 "T"
-            Gt@180..181 ">"
-        TypeBoundList@181..188
-          Colon@181..182 ":"
-          WhiteSpace@182..183 " "
-          TypeBound@183..188
-            Path@183..188
-              PathSegment@183..188
-                Ident@183..188 "Trait"
-        Newline@188..189 "\n"
+        WherePredicate@170..189
+          PathType@170..181
+            Path@170..178
+              PathSegment@170..173
+                Ident@170..173 "Foo"
+              Colon2@173..175 "::"
+              PathSegment@175..178
+                Ident@175..178 "Bar"
+            GenericArgList@178..181
+              Lt@178..179 "<"
+              TypeGenericArg@179..180
+                PathType@179..180
+                  Path@179..180
+                    PathSegment@179..180
+                      Ident@179..180 "T"
+              Gt@180..181 ">"
+          TypeBoundList@181..188
+            Colon@181..182 ":"
+            WhiteSpace@182..183 " "
+            TypeBound@183..188
+              Path@183..188
+                PathSegment@183..188
+                  Ident@183..188 "Trait"
+          Newline@188..189 "\n"
       VariantDefList@189..220
         LBrace@189..190 "{"
         Newline@190..191 "\n"

@@ -226,18 +226,19 @@ Root@0..588
           WhereClause@255..270
             WhereKw@255..260 "where"
             WhiteSpace@260..261 " "
-            PathType@261..264
-              Path@261..264
-                PathSegment@261..264
-                  Ident@261..264 "RHS"
-            TypeBoundList@264..269
-              Colon@264..265 ":"
-              WhiteSpace@265..266 " "
-              TypeBound@266..269
-                Path@266..269
-                  PathSegment@266..269
-                    Ident@266..269 "Sub"
-            Newline@269..270 "\n"
+            WherePredicate@261..270
+              PathType@261..264
+                Path@261..264
+                  PathSegment@261..264
+                    Ident@261..264 "RHS"
+              TypeBoundList@264..269
+                Colon@264..265 ":"
+                WhiteSpace@265..266 " "
+                TypeBound@266..269
+                  Path@266..269
+                    PathSegment@266..269
+                      Ident@266..269 "Sub"
+              Newline@269..270 "\n"
         RBrace@270..271 "}"
     Newline@271..274 "\n\n\n"
     Trait@274..355
@@ -326,18 +327,19 @@ Root@0..588
       WhereClause@390..405
         WhereKw@390..395 "where"
         WhiteSpace@395..396 " "
-        PathType@396..397
-          Path@396..397
-            PathSegment@396..397
-              Ident@396..397 "S"
-        TypeBoundList@397..404
-          Colon@397..398 ":"
-          WhiteSpace@398..399 " "
-          TypeBound@399..404
-            Path@399..404
-              PathSegment@399..404
-                Ident@399..404 "Clone"
-        Newline@404..405 "\n"
+        WherePredicate@396..405
+          PathType@396..397
+            Path@396..397
+              PathSegment@396..397
+                Ident@396..397 "S"
+          TypeBoundList@397..404
+            Colon@397..398 ":"
+            WhiteSpace@398..399 " "
+            TypeBound@399..404
+              Path@399..404
+                PathSegment@399..404
+                  Ident@399..404 "Clone"
+          Newline@404..405 "\n"
       ImplItemList@405..588
         LBrace@405..406 "{"
         Newline@406..407 "\n"

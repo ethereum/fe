@@ -33,18 +33,19 @@ Root@0..56
       WhereClause@17..34
         WhereKw@17..22 "where"
         WhiteSpace@22..23 " "
-        PathType@23..24
-          Path@23..24
-            PathSegment@23..24
-              Ident@23..24 "T"
-        TypeBoundList@24..33
-          Colon@24..25 ":"
-          WhiteSpace@25..26 " "
-          TypeBound@26..33
-            Path@26..33
-              PathSegment@26..33
-                Ident@26..33 "Integer"
-        Newline@33..34 "\n"
+        WherePredicate@23..34
+          PathType@23..24
+            Path@23..24
+              PathSegment@23..24
+                Ident@23..24 "T"
+          TypeBoundList@24..33
+            Colon@24..25 ":"
+            WhiteSpace@25..26 " "
+            TypeBound@26..33
+              Path@26..33
+                PathSegment@26..33
+                  Ident@26..33 "Integer"
+          Newline@33..34 "\n"
       ImplItemList@34..37
         LBrace@34..35 "{"
         WhiteSpace@35..36 " "

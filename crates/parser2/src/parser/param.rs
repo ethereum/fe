@@ -4,9 +4,9 @@ use super::{
     define_scope,
     expr::parse_expr,
     expr_atom::{BlockExprScope, LitExprScope},
-    path::{is_path_segment, PathScope},
+    path::PathScope,
     token_stream::TokenStream,
-    type_::parse_type,
+    type_::{is_type_start, parse_type},
     Parser,
 };
 
@@ -283,7 +283,7 @@ impl super::Parse for CallArgScope {
     }
 }
 
-define_scope! { WhereClauseScope, WhereClause, Inheritance(Newline) }
+define_scope! { pub(crate) WhereClauseScope, WhereClause, Inheritance(Newline) }
 impl super::Parse for WhereClauseScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::WhereKw);
@@ -291,20 +291,27 @@ impl super::Parse for WhereClauseScope {
         loop {
             parser.set_newline_as_trivia(true);
             match parser.current_kind() {
-                Some(kind) if is_path_segment(kind) => {
-                    parse_type(parser, None, false);
-                    parser.set_newline_as_trivia(false);
-                    if parser.current_kind() == Some(SyntaxKind::Colon) {
-                        parser.parse(TypeBoundListScope::default(), None);
-                        if !parser.bump_if(SyntaxKind::Newline) {
-                            parser.error_and_recover("expected newline after type bounds", None);
-                        }
-                    } else {
-                        parser.error_and_recover("expected `:` for type bounds", None);
-                    }
+                Some(kind) if is_type_start(kind) => {
+                    parser.parse(WherePredicateScope::default(), None);
                 }
                 _ => break,
             }
+        }
+    }
+}
+
+define_scope! { pub(crate) WherePredicateScope, WherePredicate, Inheritance }
+impl super::Parse for WherePredicateScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parse_type(parser, None, false);
+        parser.set_newline_as_trivia(false);
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
+            parser.parse(TypeBoundListScope::default(), None);
+            if !parser.bump_if(SyntaxKind::Newline) {
+                parser.error_and_recover("expected newline after type bounds", None);
+            }
+        } else {
+            parser.error_and_recover("expected `:` for type bounds", None);
         }
     }
 }
