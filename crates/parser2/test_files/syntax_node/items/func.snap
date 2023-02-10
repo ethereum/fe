@@ -12,7 +12,7 @@ Root@0..361
       FnKw@4..6 "fn"
       WhiteSpace@6..7 " "
       Ident@7..10 "foo"
-      FnArgList@10..12
+      FnParamList@10..12
         LParen@10..11 "("
         RParen@11..12 ")"
       WhiteSpace@12..13 " "
@@ -40,9 +40,9 @@ Root@0..361
       FnKw@32..34 "fn"
       WhiteSpace@34..35 " "
       Ident@35..38 "bar"
-      FnArgList@38..63
+      FnParamList@38..63
         LParen@38..39 "("
-        FnArg@39..47
+        FnParam@39..47
           Ident@39..42 "bar"
           Colon@42..43 ":"
           WhiteSpace@43..44 " "
@@ -52,7 +52,7 @@ Root@0..361
                 Ident@44..47 "i32"
         Comma@47..48 ","
         WhiteSpace@48..49 " "
-        FnArg@49..62
+        FnParam@49..62
           MutKw@49..52 "mut"
           WhiteSpace@52..53 " "
           Ident@53..56 "baz"
@@ -86,9 +86,9 @@ Root@0..361
       FnKw@82..84 "fn"
       WhiteSpace@84..85 " "
       Ident@85..88 "baz"
-      FnArgList@88..161
+      FnParamList@88..161
         LParen@88..89 "("
-        FnArg@89..109
+        FnParam@89..109
           Ident@89..93 "from"
           WhiteSpace@93..94 " "
           Ident@94..100 "sender"
@@ -100,7 +100,7 @@ Root@0..361
                 Ident@102..109 "address"
         Comma@109..110 ","
         WhiteSpace@110..111 " "
-        FnArg@111..136
+        FnParam@111..136
           MutKw@111..114 "mut"
           WhiteSpace@114..115 " "
           Ident@115..117 "to"
@@ -114,7 +114,7 @@ Root@0..361
                 Ident@129..136 "address"
         Comma@136..137 ","
         WhiteSpace@137..138 " "
-        FnArg@138..149
+        FnParam@138..149
           Underscore@138..139 "_"
           WhiteSpace@139..140 " "
           Ident@140..143 "val"
@@ -126,7 +126,7 @@ Root@0..361
                 Ident@145..149 "u256"
         Comma@149..150 ","
         WhiteSpace@150..151 " "
-        FnArg@151..160
+        FnParam@151..160
           Underscore@151..152 "_"
           WhiteSpace@152..153 " "
           Underscore@153..154 "_"
@@ -176,9 +176,9 @@ Root@0..361
         TypeGenericParam@203..204
           Ident@203..204 "U"
         Gt@204..205 ">"
-      FnArgList@205..225
+      FnParamList@205..225
         LParen@205..206 "("
-        FnArg@206..210
+        FnParam@206..210
           Ident@206..207 "t"
           Colon@207..208 ":"
           WhiteSpace@208..209 " "
@@ -188,7 +188,7 @@ Root@0..361
                 Ident@209..210 "T"
         Comma@210..211 ","
         WhiteSpace@211..212 " "
-        FnArg@212..224
+        FnParam@212..224
           Ident@212..213 "u"
           Colon@213..214 ":"
           WhiteSpace@214..215 " "
@@ -288,9 +288,9 @@ Root@0..361
         TypeGenericParam@319..320
           Ident@319..320 "U"
         Gt@320..321 ">"
-      FnArgList@321..340
+      FnParamList@321..340
         LParen@321..322 "("
-        FnArg@322..339
+        FnParam@322..339
           Ident@322..323 "t"
           Colon@323..324 ":"
           WhiteSpace@324..325 " "

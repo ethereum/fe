@@ -427,10 +427,10 @@ pub enum SyntaxKind {
     GenericParamList,
 
     /// `(x: i32, _ y: mut i32)`
-    FnArgList,
+    FnParamList,
 
     /// `_ x: mut i32`
-    FnArg,
+    FnParam,
 
     /// `foo::Trait1 + Trait2`
     TypeBoundList,

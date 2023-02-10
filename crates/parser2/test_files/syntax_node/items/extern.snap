@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/extern.fe
 ---
 Root@0..146
   ItemList@0..146
@@ -28,9 +29,9 @@ Root@0..146
           FnKw@37..39 "fn"
           WhiteSpace@39..40 " "
           Ident@40..45 "write"
-          FnArgList@45..68
+          FnParamList@45..68
             LParen@45..46 "("
-            FnArg@46..55
+            FnParam@46..55
               Ident@46..49 "loc"
               Colon@49..50 ":"
               WhiteSpace@50..51 " "
@@ -42,7 +43,7 @@ Root@0..146
                       Ident@52..55 "u32"
             Comma@55..56 ","
             WhiteSpace@56..57 " "
-            FnArg@57..67
+            FnParam@57..67
               Ident@57..62 "value"
               Colon@62..63 ":"
               WhiteSpace@63..64 " "
@@ -69,9 +70,9 @@ Root@0..146
           FnKw@92..94 "fn"
           WhiteSpace@94..95 " "
           Ident@95..99 "read"
-          FnArgList@99..122
+          FnParamList@99..122
             LParen@99..100 "("
-            FnArg@100..109
+            FnParam@100..109
               Ident@100..103 "loc"
               Colon@103..104 ":"
               WhiteSpace@104..105 " "
@@ -83,7 +84,7 @@ Root@0..146
                       Ident@106..109 "u32"
             Comma@109..110 ","
             WhiteSpace@110..111 " "
-            FnArg@111..121
+            FnParam@111..121
               Ident@111..114 "len"
               Colon@114..115 ":"
               WhiteSpace@115..116 " "
@@ -105,7 +106,7 @@ Root@0..146
           FnKw@136..138 "fn"
           WhiteSpace@138..139 " "
           Ident@139..142 "foo"
-          FnArgList@142..144
+          FnParamList@142..144
             LParen@142..143 "("
             RParen@143..144 ")"
         Newline@144..145 "\n"

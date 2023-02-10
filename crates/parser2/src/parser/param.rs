@@ -11,11 +11,11 @@ use super::{
 };
 
 define_scope! {
-    pub(crate) FnArgListScope,
-    FnArgList,
+    pub(crate) FnParamListScope,
+    FnParamList,
     Override(RParen, Comma)
 }
-impl super::Parse for FnArgListScope {
+impl super::Parse for FnParamListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
@@ -23,12 +23,12 @@ impl super::Parse for FnArgListScope {
         }
 
         parser.with_next_expected_tokens(
-            |parser| parser.parse(FnArgScope::default(), None),
+            |parser| parser.parse(FnParamScope::default(), None),
             &[SyntaxKind::Comma, SyntaxKind::RParen],
         );
         while parser.bump_if(SyntaxKind::Comma) {
             parser.with_next_expected_tokens(
-                |parser| parser.parse(FnArgScope::default(), None),
+                |parser| parser.parse(FnParamScope::default(), None),
                 &[SyntaxKind::Comma, SyntaxKind::RParen],
             );
         }
@@ -38,11 +38,11 @@ impl super::Parse for FnArgListScope {
 }
 
 define_scope! {
-    FnArgScope,
-    FnArg,
+    FnParamScope,
+    FnParam,
     Inheritance
 }
-impl super::Parse for FnArgScope {
+impl super::Parse for FnParamScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_if(SyntaxKind::MutKw);
 

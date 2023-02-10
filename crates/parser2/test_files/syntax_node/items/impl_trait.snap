@@ -44,7 +44,7 @@ Root@0..317
           FnKw@29..31 "fn"
           WhiteSpace@31..32 " "
           Ident@32..35 "foo"
-          FnArgList@35..37
+          FnParamList@35..37
             LParen@35..36 "("
             RParen@36..37 ")"
           WhiteSpace@37..38 " "
@@ -161,9 +161,9 @@ Root@0..317
                             Ident@148..149 "U"
                     Gt@149..150 ">"
             Gt@150..151 ">"
-          FnArgList@151..157
+          FnParamList@151..157
             LParen@151..152 "("
-            FnArg@152..156
+            FnParam@152..156
               Ident@152..153 "t"
               Colon@153..154 ":"
               WhiteSpace@154..155 " "
@@ -293,9 +293,9 @@ Root@0..317
                             Ident@269..270 "U"
                     Gt@270..271 ">"
             Gt@271..272 ">"
-          FnArgList@272..278
+          FnParamList@272..278
             LParen@272..273 "("
-            FnArg@273..277
+            FnParam@273..277
               Ident@273..274 "t"
               Colon@274..275 ":"
               WhiteSpace@275..276 " "

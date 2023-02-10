@@ -54,9 +54,9 @@ Root@0..588
                   PathSegment@63..66
                     Ident@63..66 "i32"
             Gt@66..67 ">"
-          FnArgList@67..79
+          FnParamList@67..79
             LParen@67..68 "("
-            FnArg@68..72
+            FnParam@68..72
               Ident@68..69 "t"
               Colon@69..70 ":"
               WhiteSpace@70..71 " "
@@ -66,7 +66,7 @@ Root@0..588
                     Ident@71..72 "T"
             Comma@72..73 ","
             WhiteSpace@73..74 " "
-            FnArg@74..78
+            FnParam@74..78
               Ident@74..75 "u"
               Colon@75..76 ":"
               WhiteSpace@76..77 " "
@@ -100,9 +100,9 @@ Root@0..588
                     PathSegment@112..115
                       Ident@112..115 "Sub"
             Gt@115..116 ">"
-          FnArgList@116..132
+          FnParamList@116..132
             LParen@116..117 "("
-            FnArg@117..123
+            FnParam@117..123
               Ident@117..120 "lhs"
               Colon@120..121 ":"
               WhiteSpace@121..122 " "
@@ -112,7 +112,7 @@ Root@0..588
                     Ident@122..123 "T"
             Comma@123..124 ","
             WhiteSpace@124..125 " "
-            FnArg@125..131
+            FnParam@125..131
               Ident@125..128 "rhs"
               Colon@128..129 ":"
               WhiteSpace@129..130 " "
@@ -200,13 +200,13 @@ Root@0..588
           FnKw@215..217 "fn"
           WhiteSpace@217..218 " "
           Ident@218..221 "add"
-          FnArgList@221..237
+          FnParamList@221..237
             LParen@221..222 "("
-            FnArg@222..226
+            FnParam@222..226
               SelfKw@222..226 "self"
             Comma@226..227 ","
             WhiteSpace@227..228 " "
-            FnArg@228..236
+            FnParam@228..236
               Ident@228..231 "rhs"
               Colon@231..232 ":"
               WhiteSpace@232..233 " "
@@ -269,15 +269,15 @@ Root@0..588
                     PathSegment@308..319
                       Ident@308..319 "TokenStream"
             Gt@319..320 ">"
-          FnArgList@320..353
+          FnParamList@320..353
             LParen@320..321 "("
-            FnArg@321..329
+            FnParam@321..329
               MutKw@321..324 "mut"
               WhiteSpace@324..325 " "
               SelfKw@325..329 "self"
             Comma@329..330 ","
             WhiteSpace@330..331 " "
-            FnArg@331..352
+            FnParam@331..352
               MutKw@331..334 "mut"
               WhiteSpace@334..335 " "
               Ident@335..341 "parser"
@@ -363,15 +363,15 @@ Root@0..588
                     PathSegment@427..432
                       Ident@427..432 "Parse"
             Gt@432..433 ">"
-          FnArgList@433..489
+          FnParamList@433..489
             LParen@433..434 "("
-            FnArg@434..442
+            FnParam@434..442
               MutKw@434..437 "mut"
               WhiteSpace@437..438 " "
               SelfKw@438..442 "self"
             Comma@442..443 ","
             WhiteSpace@443..444 " "
-            FnArg@444..456
+            FnParam@444..456
               MutKw@444..447 "mut"
               WhiteSpace@447..448 " "
               Ident@448..453 "scope"
@@ -383,7 +383,7 @@ Root@0..588
                     Ident@455..456 "T"
             Comma@456..457 ","
             WhiteSpace@457..458 " "
-            FnArg@458..488
+            FnParam@458..488
               Ident@458..468 "checkpoint"
               Colon@468..469 ":"
               WhiteSpace@469..470 " "
