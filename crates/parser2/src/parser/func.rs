@@ -3,7 +3,7 @@ use crate::SyntaxKind;
 use super::{
     define_scope,
     expr_atom::BlockExprScope,
-    param::{parse_where_clause_opt, FnArgListScope, GenericParamListScope},
+    param::{parse_where_clause_opt, FnParamListScope, GenericParamListScope},
     token_stream::TokenStream,
     type_::parse_type,
     Parser,
@@ -65,7 +65,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     parser.with_next_expected_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FnArgListScope::default(), None);
+                parser.parse(FnParamListScope::default(), None);
             } else {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
@@ -114,7 +114,7 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     parser.with_recovery_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FnArgListScope::default(), None);
+                parser.parse(FnParamListScope::default(), None);
             } else {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
@@ -152,7 +152,7 @@ fn parse_extern_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     parser.with_recovery_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FnArgListScope::default(), None);
+                parser.parse(FnParamListScope::default(), None);
             } else {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }

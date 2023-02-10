@@ -23,9 +23,9 @@ Root@0..133
         Gt@15..16 ">"
       Error@16..17
         Gt@16..17 ">"
-      FnArgList@17..47
+      FnParamList@17..47
         LParen@17..18 "("
-        FnArg@18..24
+        FnParam@18..24
           Ident@18..19 "x"
           Colon@19..20 ":"
           WhiteSpace@20..21 " "
@@ -35,7 +35,7 @@ Root@0..133
                 Ident@21..24 "i32"
         Comma@24..25 ","
         WhiteSpace@25..26 " "
-        FnArg@26..38
+        FnParam@26..38
           Underscore@26..27 "_"
           WhiteSpace@27..28 " "
           Error@28..33
@@ -50,7 +50,7 @@ Root@0..133
                 Ident@35..38 "u32"
         Comma@38..39 ","
         WhiteSpace@39..40 " "
-        FnArg@40..46
+        FnParam@40..46
           Ident@40..41 "z"
           Colon@41..42 ":"
           WhiteSpace@42..43 " "
@@ -110,9 +110,9 @@ Root@0..133
             Gt@97..98 ">"
           Error@98..98
         Error@98..98
-      FnArgList@98..106
+      FnParamList@98..106
         LParen@98..99 "("
-        FnArg@99..105
+        FnParam@99..105
           Ident@99..100 "x"
           Colon@100..101 ":"
           WhiteSpace@101..102 " "
