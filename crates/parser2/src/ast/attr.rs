@@ -88,8 +88,8 @@ impl AttrArg {
     pub fn value(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
-            .filter_map(|it| match it.into_token() {
-                Some(it) if it.kind() == SK::Ident => Some(it),
+            .filter_map(|c| match c.into_token() {
+                Some(c) if c.kind() == SK::Ident => Some(c),
                 _ => None,
             })
             .nth(1)

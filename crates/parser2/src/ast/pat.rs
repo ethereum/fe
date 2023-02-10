@@ -156,6 +156,7 @@ impl OrPat {
 }
 
 /// A specific pattern kind.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PatKind {
     WildCard(WildCardPat),
     Rest(RestPat),

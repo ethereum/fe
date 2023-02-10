@@ -20,6 +20,7 @@ impl Lit {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LitInt {
     token: SyntaxToken,
 }
@@ -29,6 +30,7 @@ impl LitInt {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LitBool {
     token: SyntaxToken,
 }
@@ -38,6 +40,7 @@ impl LitBool {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LitString {
     token: SyntaxToken,
 }
@@ -47,6 +50,7 @@ impl LitString {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LitKind {
     Int(LitInt),
     Bool(LitBool),

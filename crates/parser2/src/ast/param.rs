@@ -38,9 +38,36 @@ impl GenericParam {
 /// A generic parameter kind.
 /// `Type` is either `T` or `T: Trait`.
 /// `Const` is `const N: usize`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParamKind {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
+}
+
+ast_node! {
+    /// `(label1: arg1, arg2, ..)`
+    pub struct CallArgList,
+    SK::CallArgList,
+    IntoIterator<Item=CallArg>,
+}
+
+ast_node! {
+    /// `label1: arg1`
+    pub struct CallArg,
+    SK::CallArg,
+}
+impl CallArg {
+    /// Returns the label of the argument.
+    /// `label1` in `label1: arg1`.
+    pub fn label(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    /// Returns the expression of the argument.
+    /// `arg1` in `label1: arg1`.
+    pub fn expr(&self) -> Option<super::Expr> {
+        support::child(self.syntax())
+    }
 }
 
 ast_node! {
@@ -137,6 +164,7 @@ impl ConstGenericArg {
 /// A generic argument kind.
 /// `Type` is either `Type` or `T: Trait`.
 /// `Const` is either `{expr}` or `lit`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArgKind {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
