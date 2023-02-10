@@ -156,7 +156,7 @@ impl OrPat {
 }
 
 /// A specific pattern kind.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum PatKind {
     WildCard(WildCardPat),
     Rest(RestPat),
@@ -174,43 +174,41 @@ mod tests {
 
     use super::*;
 
-    fn parse_pat(source: &str) -> Pat {
+    fn parse_pat<T>(source: &str) -> T
+    where
+        T: TryFrom<PatKind, Error = &'static str>,
+    {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::pat::parse_pat(&mut parser);
-        Pat::cast(parser.finish().0).unwrap()
+        Pat::cast(parser.finish().0)
+            .unwrap()
+            .kind()
+            .try_into()
+            .unwrap()
     }
 
     #[test]
     fn wildcard() {
-        let pat = parse_pat("_");
-        assert!(matches!(pat.kind(), PatKind::WildCard(_)))
+        let _: WildCardPat = parse_pat("_");
     }
 
     #[test]
     fn rest() {
-        let pat = parse_pat("..");
-        assert!(matches!(pat.kind(), PatKind::Rest(_)));
+        let _: RestPat = parse_pat("..");
     }
 
     #[test]
     fn lit() {
-        let lit_int = parse_pat("0x1");
-        let lit_bool = parse_pat("true");
-        let lit_str = parse_pat(r#""foo""#);
-        assert!(matches!(lit_int.kind(), PatKind::Lit(_)));
-        assert!(matches!(lit_bool.kind(), PatKind::Lit(_)));
-        assert!(matches!(lit_str.kind(), PatKind::Lit(_)));
+        let _: LitPat = parse_pat("0x1");
+        let _: LitPat = parse_pat("true");
+        let _: LitPat = parse_pat(r#""foo""#);
     }
 
     #[test]
     fn tuple() {
         let source = r#"(Foo::Bar, true, ..)"#;
-        let pat = parse_pat(source);
-        let tuple_pat = match pat.kind() {
-            PatKind::Tuple(tuple_pat) => tuple_pat,
-            _ => panic!("expected tuple pat"),
-        };
+        let tuple_pat: TuplePat = parse_pat(source);
 
         for (i, pat) in tuple_pat.elems().unwrap().iter().enumerate() {
             match i {
@@ -221,23 +219,14 @@ mod tests {
             }
         }
 
-        let pat = parse_pat("()");
-        let tuple_pat = match pat.kind() {
-            PatKind::Tuple(tuple_pat) => tuple_pat,
-            _ => panic!("expected tuple pat"),
-        };
-
+        let tuple_pat: TuplePat = parse_pat("()");
         assert!(tuple_pat.elems().unwrap().iter().next().is_none());
     }
 
     #[test]
     fn path_tuple() {
         let source = r#"Self::Bar(1, Foo::Bar)"#;
-        let pat = parse_pat(source);
-        let path_tuple_pat = match pat.kind() {
-            PatKind::PathTuple(path_tuple_pat) => path_tuple_pat,
-            _ => panic!("expected path tuple pat"),
-        };
+        let path_tuple_pat: PathTuplePat = parse_pat(source);
 
         for (i, seg) in path_tuple_pat.path().unwrap().segments().enumerate() {
             match i {
@@ -259,11 +248,7 @@ mod tests {
     #[test]
     fn record() {
         let source = r#"Foo::Bar{a: 1, b: Foo::baz, c}"#;
-        let pat = parse_pat(source);
-        let record_pat = match pat.kind() {
-            PatKind::Record(record_pat) => record_pat,
-            _ => panic!("expected record pat"),
-        };
+        let record_pat: RecordPat = parse_pat(source);
 
         for (i, seg) in record_pat.path().unwrap().segments().enumerate() {
             match i {
@@ -295,11 +280,7 @@ mod tests {
     #[test]
     fn or() {
         let source = r#"Foo::Int | Foo::Float | Foo::Str "#;
-        let pat = parse_pat(source);
-        let or_pat = match pat.kind() {
-            PatKind::Or(or_pat) => or_pat,
-            _ => panic!("expected or pat"),
-        };
+        let or_pat: OrPat = parse_pat(source);
 
         assert!(matches!(or_pat.lhs().unwrap().kind(), PatKind::Path(_)));
         assert!(matches!(or_pat.rhs().unwrap().kind(), PatKind::Or(_)));

@@ -334,7 +334,7 @@ impl ParenExpr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ExprKind {
     Block(BlockExpr),
     Bin(BinExpr),
@@ -567,20 +567,23 @@ mod tests {
     use super::*;
     use crate::{ast::*, lexer::Lexer, parser::Parser};
 
-    fn parse_expr(source: &str) -> Expr {
+    fn parse_expr<T>(source: &str) -> T
+    where
+        T: TryFrom<ExprKind, Error = &'static str>,
+    {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::expr::parse_expr(&mut parser);
-        Expr::cast(parser.finish().0).unwrap()
+        Expr::cast(parser.finish().0)
+            .unwrap()
+            .kind()
+            .try_into()
+            .unwrap()
     }
 
     #[test]
     fn bin_expr() {
-        let expr = parse_expr("1 + 2");
-        let bin_expr = match expr.kind() {
-            ExprKind::Bin(bin_expr) => bin_expr,
-            _ => panic!("expected BinExpr"),
-        };
+        let bin_expr: BinExpr = parse_expr("1 + 2");
         assert!(matches!(bin_expr.lhs().unwrap().kind(), ExprKind::Lit(_)));
         assert!(matches!(
             bin_expr.op().unwrap(),
@@ -588,11 +591,7 @@ mod tests {
         ));
         assert!(matches!(bin_expr.rhs().unwrap().kind(), ExprKind::Lit(_)));
 
-        let expr = parse_expr("1 <= 2");
-        let bin_expr = match expr.kind() {
-            ExprKind::Bin(bin_expr) => bin_expr,
-            _ => panic!("expected BinExpr"),
-        };
+        let bin_expr: BinExpr = parse_expr("1 <= 2");
         assert!(matches!(
             bin_expr.op().unwrap(),
             BinOp::Comp(CompBinOp::LtEq(_))
@@ -601,22 +600,14 @@ mod tests {
 
     #[test]
     fn un_expr() {
-        let expr = parse_expr("-1");
-        let un_expr = match expr.kind() {
-            ExprKind::Un(un_expr) => un_expr,
-            _ => panic!("expected UnExpr"),
-        };
+        let un_expr: UnExpr = parse_expr("-1");
         assert!(matches!(un_expr.op().unwrap(), UnOp::Minus(_)));
         assert!(matches!(un_expr.expr().unwrap().kind(), ExprKind::Lit(_)));
     }
 
     #[test]
     fn call_expr() {
-        let expr = parse_expr("foo<i32, T>(1, label: 2, 3 + 4)");
-        let call_expr = match expr.kind() {
-            ExprKind::Call(call_expr) => call_expr,
-            _ => panic!("expected CallExpr"),
-        };
+        let call_expr: CallExpr = parse_expr("foo<i32, T>(1, label: 2, 3 + 4)");
 
         assert!(matches!(
             call_expr.callee().unwrap().kind(),
@@ -653,12 +644,7 @@ mod tests {
 
     #[test]
     fn method_call_expr() {
-        let expr = parse_expr("foo.bar<i32>(1, label: 2, 3 + 4)");
-
-        let method_call_expr = match expr.kind() {
-            ExprKind::MethodCall(method_call_expr) => method_call_expr,
-            _ => panic!("expected MethodCallExpr"),
-        };
+        let method_call_expr: MethodCallExpr = parse_expr("foo.bar<i32>(1, label: 2, 3 + 4)");
 
         assert!(matches!(
             method_call_expr.receiver().unwrap().kind(),
@@ -698,11 +684,7 @@ mod tests {
 
     #[test]
     fn record_init_expr() {
-        let expr = parse_expr("Foo { a: 1, b: 2, c: 3 }");
-        let record_init_expr = match expr.kind() {
-            ExprKind::RecordInit(record_init_expr) => record_init_expr,
-            _ => panic!("expected RecordInitExpr"),
-        };
+        let record_init_expr: RecordInitExpr = parse_expr("Foo { a: 1, b: 2, c: 3 }");
 
         assert!(record_init_expr.path().is_some());
         for (i, field) in record_init_expr.fields().unwrap().into_iter().enumerate() {
@@ -726,11 +708,7 @@ mod tests {
 
     #[test]
     fn field_expr() {
-        let expr = parse_expr("foo(1, 2).bar");
-        let field_expr = match expr.kind() {
-            ExprKind::Field(field_expr) => field_expr,
-            _ => panic!("expected FieldExpr"),
-        };
+        let field_expr: FieldExpr = parse_expr("foo(1, 2).bar");
 
         assert!(matches!(
             field_expr.receiver().unwrap().kind(),
@@ -738,11 +716,7 @@ mod tests {
         ));
         assert_eq!(field_expr.field_name().unwrap().text(), "bar");
 
-        let expr = parse_expr("(1, 2).1");
-        let field_expr = match expr.kind() {
-            ExprKind::Field(field_expr) => field_expr,
-            _ => panic!("expected FieldExpr"),
-        };
+        let field_expr: FieldExpr = parse_expr("(1, 2).1");
 
         assert!(matches!(
             field_expr.receiver().unwrap().kind(),
@@ -753,11 +727,7 @@ mod tests {
 
     #[test]
     fn tuple_expr() {
-        let expr = parse_expr("(1, 2, 3)");
-        let tuple_expr = match expr.kind() {
-            ExprKind::Tuple(tuple_expr) => tuple_expr,
-            _ => panic!("expected TupleExpr"),
-        };
+        let tuple_expr: TupleExpr = parse_expr("(1, 2, 3)");
 
         for (i, expr) in tuple_expr.elems().into_iter().enumerate() {
             match i {
@@ -771,11 +741,7 @@ mod tests {
 
     #[test]
     fn array_expr() {
-        let expr = parse_expr("[1, 2, 3]");
-        let array_expr = match expr.kind() {
-            ExprKind::Array(array_expr) => array_expr,
-            _ => panic!("expected ArrayExpr"),
-        };
+        let array_expr: ArrayExpr = parse_expr("[1, 2, 3]");
 
         for (i, expr) in array_expr.elems().into_iter().enumerate() {
             match i {
@@ -789,11 +755,7 @@ mod tests {
 
     #[test]
     fn index_expr() {
-        let expr = parse_expr("foo[1]");
-        let index_expr = match expr.kind() {
-            ExprKind::Index(index_expr) => index_expr,
-            _ => panic!("expected IndexExpr"),
-        };
+        let index_expr: IndexExpr = parse_expr("foo[1]");
 
         assert!(matches!(
             index_expr.expr().unwrap().kind(),
@@ -807,11 +769,7 @@ mod tests {
 
     #[test]
     fn array_rep_expr() {
-        let expr = parse_expr("[1; 2]");
-        let array_rep_expr = match expr.kind() {
-            ExprKind::ArrayRep(array_rep_expr) => array_rep_expr,
-            _ => panic!("expected ArrayRepExpr"),
-        };
+        let array_rep_expr: ArrayRepExpr = parse_expr("[1; 2]");
 
         assert!(matches!(
             array_rep_expr.expr().unwrap().kind(),
@@ -825,21 +783,13 @@ mod tests {
 
     #[test]
     fn if_expr() {
-        let expr = parse_expr("if true { 1 } else { 2 }");
-        let if_expr = match expr.kind() {
-            ExprKind::If(if_expr) => if_expr,
-            _ => panic!("expected IfExpr"),
-        };
+        let if_expr: IfExpr = parse_expr("if true { 1 } else { 2 }");
         assert!(matches!(if_expr.cond().unwrap().kind(), ExprKind::Lit(_)));
         assert!(if_expr.then().is_some());
         assert_ne!(if_expr.then().unwrap(), if_expr.else_().unwrap(),);
         assert!(if_expr.else_if().is_none());
 
-        let expr = parse_expr("if { true } { return } else { continue }");
-        let if_expr = match expr.kind() {
-            ExprKind::If(if_expr) => if_expr,
-            _ => panic!("expected IfExpr"),
-        };
+        let if_expr: IfExpr = parse_expr("if { true } { return } else { continue }");
         if let ExprKind::Block(stmts) = if_expr.cond().unwrap().kind() {
             assert!(matches!(
                 stmts.into_iter().next().unwrap().kind(),
@@ -858,11 +808,7 @@ mod tests {
         );
         assert!(if_expr.else_if().is_none());
 
-        let expr = parse_expr("if false { return } else if true { continue }");
-        let if_expr = match expr.kind() {
-            ExprKind::If(if_expr) => if_expr,
-            _ => panic!("expected IfExpr"),
-        };
+        let if_expr: IfExpr = parse_expr("if false { return } else if true { continue }");
         assert!(if_expr.else_().is_none());
         assert!(if_expr.else_if().is_some());
     }
@@ -877,11 +823,8 @@ mod tests {
             }
         }"#;
 
-        let expr = parse_expr(source);
-        let match_expr = match expr.kind() {
-            ExprKind::Match(match_expr) => match_expr,
-            _ => panic!("expected MatchExpr"),
-        };
+        let match_expr: MatchExpr = parse_expr(source);
+
         assert!(matches!(
             match_expr.scrutinee().unwrap().kind(),
             ExprKind::Path(_)

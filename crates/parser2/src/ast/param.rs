@@ -38,7 +38,7 @@ impl GenericParam {
 /// A generic parameter kind.
 /// `Type` is either `T` or `T: Trait`.
 /// `Const` is `const N: usize`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum GenericParamKind {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
@@ -161,10 +161,34 @@ impl ConstGenericArg {
     }
 }
 
+ast_node! {
+    /// `where T: Trait`
+    pub struct WhereClause,
+    SK::WhereClause,
+    IntoIterator<Item=WherePredicate>,
+}
+
+ast_node! {
+    /// `T: Trait`
+    pub struct WherePredicate,
+    SK::WherePredicate,
+}
+impl WherePredicate {
+    /// Returns `T` in `T: Trait`.
+    pub fn ty(&self) -> Option<super::Type> {
+        support::child(self.syntax())
+    }
+
+    /// Returns `Trait` in `T: Trait`.
+    pub fn bounds(&self) -> Option<TypeBoundList> {
+        support::child(self.syntax())
+    }
+}
+
 /// A generic argument kind.
 /// `Type` is either `Type` or `T: Trait`.
 /// `Const` is either `{expr}` or `lit`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum GenericArgKind {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
@@ -213,13 +237,22 @@ pub trait GenericArgsOwner: AstNode<Language = FeLang> {
     }
 }
 
+/// A trait for AST nodes that can have a where clause.
+pub trait WhereClauseOwner: AstNode<Language = FeLang> {
+    /// Returns the where clause of the node.
+    fn where_clause(&self) -> Option<WhereClause> {
+        support::child(self.syntax())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
+        ast::TypeKind,
         lexer::Lexer,
         parser::{
-            param::{GenericArgListScope, GenericParamListScope},
+            param::{GenericArgListScope, GenericParamListScope, WhereClauseScope},
             Parser,
         },
     };
@@ -235,6 +268,13 @@ mod tests {
         let mut parser = Parser::new(lexer);
         parser.parse(GenericArgListScope::new(true), None);
         GenericArgList::cast(parser.finish().0).unwrap()
+    }
+
+    fn parse_where_clause(source: &str) -> WhereClause {
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        parser.parse(WhereClauseScope::default(), None);
+        WhereClause::cast(parser.finish().0).unwrap()
     }
 
     #[test]
@@ -306,5 +346,35 @@ mod tests {
             panic!("expected const arg");
         };
         assert!(a2.expr().is_some());
+    }
+
+    #[test]
+    fn where_clause() {
+        let source = r#"where 
+            T: Trait + Trait2<X, Y>
+            *U: Trait3
+            (T, U): Trait4 + Trait5
+        "#;
+        let wc = parse_where_clause(source);
+        let mut count = 0;
+        for pred in wc {
+            match count {
+                0 => {
+                    assert!(matches!(pred.ty().unwrap().kind(), TypeKind::Path(_)));
+                    assert_eq!(pred.bounds().unwrap().iter().count(), 2);
+                }
+                1 => {
+                    assert!(matches!(pred.ty().unwrap().kind(), TypeKind::Ptr(_)));
+                    assert_eq!(pred.bounds().unwrap().iter().count(), 1);
+                }
+                2 => {
+                    assert!(matches!(pred.ty().unwrap().kind(), TypeKind::Tuple(_)));
+                    assert_eq!(pred.bounds().unwrap().iter().count(), 2);
+                }
+                _ => panic!("unexpected predicate"),
+            }
+            count += 1;
+        }
+        assert!(count == 3);
     }
 }

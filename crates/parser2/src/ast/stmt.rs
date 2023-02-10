@@ -205,7 +205,7 @@ impl ExprStmt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum StmtKind {
     Let(LetStmt),
     Assign(AssignStmt),
@@ -229,20 +229,24 @@ mod tests {
 
     use super::*;
 
-    fn parse_stmt(source: &str) -> Stmt {
+    fn parse_stmt<T>(source: &str) -> T
+    where
+        T: TryFrom<StmtKind, Error = &'static str>,
+    {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::stmt::parse_stmt(&mut parser, None);
-        Stmt::cast(parser.finish().0).unwrap()
+        Stmt::cast(parser.finish().0)
+            .unwrap()
+            .kind()
+            .try_into()
+            .unwrap()
     }
 
     #[test]
     fn let_() {
-        let stmt = parse_stmt("let x: i32 = 1");
-        let let_stmt = match stmt.kind() {
-            StmtKind::Let(n) => n,
-            _ => panic!("expected let statement"),
-        };
+        let let_stmt: LetStmt = parse_stmt("let x: i32 = 1");
+
         assert!(matches!(let_stmt.pat().unwrap().kind(), PatKind::Path(_)));
         assert!(matches!(
             let_stmt.type_annotation().unwrap().kind(),
@@ -250,11 +254,7 @@ mod tests {
         ));
         assert!(let_stmt.initializer().is_some());
 
-        let stmt = parse_stmt("let x");
-        let let_stmt = match stmt.kind() {
-            StmtKind::Let(n) => n,
-            _ => panic!("expected let statement"),
-        };
+        let let_stmt: LetStmt = parse_stmt("let x");
         assert!(matches!(let_stmt.pat().unwrap().kind(), PatKind::Path(_)));
         assert!(let_stmt.type_annotation().is_none());
         assert!(let_stmt.initializer().is_none());
@@ -262,11 +262,7 @@ mod tests {
 
     #[test]
     fn assign() {
-        let stmt = parse_stmt(r#"Foo{x, y} = foo"#);
-        let assign_stmt = match stmt.kind() {
-            StmtKind::Assign(it) => it,
-            _ => panic!("expected assign statement"),
-        };
+        let assign_stmt: AssignStmt = parse_stmt(r#"Foo{x, y} = foo"#);
         assert!(matches!(
             assign_stmt.pat().unwrap().kind(),
             PatKind::Record(_)
@@ -276,12 +272,7 @@ mod tests {
 
     #[test]
     fn aug_assign() {
-        let stmt = parse_stmt("x += 1");
-        let aug_assign_stmt = match stmt.kind() {
-            StmtKind::AugAssign(n) => n,
-            _ => panic!("expected aug assign statement"),
-        };
-
+        let aug_assign_stmt: AugAssignStmt = parse_stmt("x += 1");
         assert!(matches!(
             aug_assign_stmt.pat().unwrap().kind(),
             PatKind::Path(_)
@@ -291,11 +282,7 @@ mod tests {
             crate::ast::ArithBinOp::Add(_)
         ));
 
-        let stmt = parse_stmt("x <<= 1");
-        let aug_assign_stmt = match stmt.kind() {
-            StmtKind::AugAssign(n) => n,
-            _ => panic!("expected aug assign statement"),
-        };
+        let aug_assign_stmt: AugAssignStmt = parse_stmt("x <<= 1");
 
         assert!(matches!(
             aug_assign_stmt.pat().unwrap().kind(),
@@ -315,11 +302,7 @@ mod tests {
             }
         "#;
 
-        let stmt = parse_stmt(source);
-        let for_stmt = match stmt.kind() {
-            StmtKind::For(n) => n,
-            _ => panic!("expected for statement"),
-        };
+        let for_stmt: ForStmt = parse_stmt(source);
         assert!(matches!(for_stmt.pat().unwrap().kind(), PatKind::Path(_)));
         assert!(for_stmt.iterable().is_some());
         assert!(for_stmt.body().is_some());
@@ -333,11 +316,7 @@ mod tests {
             } 
         "#;
 
-        let stmt = parse_stmt(source);
-        let while_stmt = match stmt.kind() {
-            StmtKind::While(n) => n,
-            _ => panic!("expected for statement"),
-        };
+        let while_stmt: WhileStmt = parse_stmt(source);
         assert!(while_stmt.cond().is_some());
         assert!(while_stmt.body().is_some());
         assert_ne!(while_stmt.cond(), while_stmt.body());
@@ -345,18 +324,10 @@ mod tests {
 
     #[test]
     fn r#return() {
-        let stmt = parse_stmt("return x");
-        let return_stmt = match stmt.kind() {
-            StmtKind::Return(n) => n,
-            _ => panic!("expected return statement"),
-        };
-        assert!(return_stmt.expr().is_some());
+        let ret_stmt: ReturnStmt = parse_stmt("return x");
+        assert!(ret_stmt.expr().is_some());
 
-        let stmt = parse_stmt("return");
-        let return_stmt = match stmt.kind() {
-            StmtKind::Return(n) => n,
-            _ => panic!("expected return statement"),
-        };
-        assert!(return_stmt.expr().is_none());
+        let ret_stmt: ReturnStmt = parse_stmt("return");
+        assert!(ret_stmt.expr().is_none());
     }
 }

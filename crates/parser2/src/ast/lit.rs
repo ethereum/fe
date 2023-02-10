@@ -50,7 +50,7 @@ impl LitString {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum LitKind {
     Int(LitInt),
     Bool(LitBool),

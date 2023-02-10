@@ -107,6 +107,7 @@ impl DocCommentAttr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum AttrKind {
     /// A normal attribute.
     Normal(NormalAttr),
