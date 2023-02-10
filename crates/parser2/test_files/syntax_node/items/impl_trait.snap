@@ -106,31 +106,33 @@ Root@0..317
       WhereClause@93..121
         WhereKw@93..98 "where"
         WhiteSpace@98..99 " "
-        PathType@99..100
-          Path@99..100
-            PathSegment@99..100
-              Ident@99..100 "T"
-        TypeBoundList@100..107
-          Colon@100..101 ":"
-          WhiteSpace@101..102 " "
-          TypeBound@102..107
-            Path@102..107
-              PathSegment@102..107
-                Ident@102..107 "Clone"
-        Newline@107..108 "\n"
+        WherePredicate@99..108
+          PathType@99..100
+            Path@99..100
+              PathSegment@99..100
+                Ident@99..100 "T"
+          TypeBoundList@100..107
+            Colon@100..101 ":"
+            WhiteSpace@101..102 " "
+            TypeBound@102..107
+              Path@102..107
+                PathSegment@102..107
+                  Ident@102..107 "Clone"
+          Newline@107..108 "\n"
         WhiteSpace@108..114 "      "
-        PathType@114..115
-          Path@114..115
-            PathSegment@114..115
-              Ident@114..115 "U"
-        TypeBoundList@115..120
-          Colon@115..116 ":"
-          WhiteSpace@116..117 " "
-          TypeBound@117..120
-            Path@117..120
-              PathSegment@117..120
-                Ident@117..120 "Bar"
-        Newline@120..121 "\n"
+        WherePredicate@114..121
+          PathType@114..115
+            Path@114..115
+              PathSegment@114..115
+                Ident@114..115 "U"
+          TypeBoundList@115..120
+            Colon@115..116 ":"
+            WhiteSpace@116..117 " "
+            TypeBound@117..120
+              Path@117..120
+                PathSegment@117..120
+                  Ident@117..120 "Bar"
+          Newline@120..121 "\n"
       ImplTraitItemList@121..196
         LBrace@121..122 "{"
         Newline@122..123 "\n"

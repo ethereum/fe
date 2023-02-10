@@ -438,6 +438,8 @@ pub enum SyntaxKind {
     TypeBound,
     /// `where Option<T>: Trait1 + Trait2`
     WhereClause,
+    /// `Option<T>: Trait1 + Trait2`
+    WherePredicate,
 
     /// Root node of the input source.
     Root,

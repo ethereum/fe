@@ -29,6 +29,10 @@ pub struct StructWithGenericParam3<
     z: U
 }
 
-pub struct MyArr<T: std::ops::Add, const N: usize> {
+pub struct MyArr<T: std::ops::Add, U, const N: usize> 
+    where
+        (T, U): Trait + Trait<i32, Y>
+{
     __inner: [T; N]
+    __inner2: (T, U)
 }

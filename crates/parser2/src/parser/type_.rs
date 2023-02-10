@@ -1,8 +1,12 @@
 use crate::SyntaxKind;
 
 use super::{
-    define_scope, expr::parse_expr, param::GenericArgListScope, path::PathScope,
-    token_stream::TokenStream, Checkpoint, Parser,
+    define_scope,
+    expr::parse_expr,
+    param::GenericArgListScope,
+    path::{is_path_segment, PathScope},
+    token_stream::TokenStream,
+    Checkpoint, Parser,
 };
 
 pub fn parse_type<S: TokenStream>(
@@ -18,6 +22,16 @@ pub fn parse_type<S: TokenStream>(
         _ => parser.parse(PathTypeScope::new(allow_bounds), checkpoint),
     }
     .0
+}
+
+pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
+    match kind {
+        SyntaxKind::Star | SyntaxKind::SelfTypeKw | SyntaxKind::LParen | SyntaxKind::LBracket => {
+            true
+        }
+        kind if is_path_segment(kind) => true,
+        _ => false,
+    }
 }
 
 define_scope!(PtrTypeScope { allow_bounds: bool }, PtrType, Inheritance);

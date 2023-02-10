@@ -25,26 +25,28 @@ Root@0..74
       WhereClause@16..40
         WhereKw@16..21 "where"
         WhiteSpace@21..22 " "
-        PathType@22..23
-          Path@22..23
-            PathSegment@22..23
-              Ident@22..23 "T"
-        WhiteSpace@23..24 " "
-        Error@24..24
+        WherePredicate@22..24
+          PathType@22..23
+            Path@22..23
+              PathSegment@22..23
+                Ident@22..23 "T"
+          WhiteSpace@23..24 " "
+          Error@24..24
         Newline@24..25 "\n"
         WhiteSpace@25..31 "      "
-        PathType@31..32
-          Path@31..32
-            PathSegment@31..32
-              Ident@31..32 "U"
-        TypeBoundList@32..39
-          Colon@32..33 ":"
-          WhiteSpace@33..34 " "
-          TypeBound@34..39
-            Path@34..39
-              PathSegment@34..39
-                Ident@34..39 "Trait"
-        Newline@39..40 "\n"
+        WherePredicate@31..40
+          PathType@31..32
+            Path@31..32
+              PathSegment@31..32
+                Ident@31..32 "U"
+          TypeBoundList@32..39
+            Colon@32..33 ":"
+            WhiteSpace@33..34 " "
+            TypeBound@34..39
+              Path@34..39
+                PathSegment@34..39
+                  Ident@34..39 "Trait"
+          Newline@39..40 "\n"
       WhiteSpace@40..44 "    "
       Newline@44..45 "\n"
       RecordFieldDefList@45..74

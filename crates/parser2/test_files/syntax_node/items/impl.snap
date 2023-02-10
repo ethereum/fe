@@ -127,26 +127,27 @@ Root@0..266
       WhereClause@149..169
         WhereKw@149..154 "where"
         WhiteSpace@154..155 " "
-        PathType@155..161
-          Path@155..158
-            PathSegment@155..158
-              Ident@155..158 "Foo"
-          GenericArgList@158..161
-            Lt@158..159 "<"
-            TypeGenericArg@159..160
-              PathType@159..160
-                Path@159..160
-                  PathSegment@159..160
-                    Ident@159..160 "T"
-            Gt@160..161 ">"
-        TypeBoundList@161..168
-          Colon@161..162 ":"
-          WhiteSpace@162..163 " "
-          TypeBound@163..168
-            Path@163..168
-              PathSegment@163..168
-                Ident@163..168 "Clone"
-        Newline@168..169 "\n"
+        WherePredicate@155..169
+          PathType@155..161
+            Path@155..158
+              PathSegment@155..158
+                Ident@155..158 "Foo"
+            GenericArgList@158..161
+              Lt@158..159 "<"
+              TypeGenericArg@159..160
+                PathType@159..160
+                  Path@159..160
+                    PathSegment@159..160
+                      Ident@159..160 "T"
+              Gt@160..161 ">"
+          TypeBoundList@161..168
+            Colon@161..162 ":"
+            WhiteSpace@162..163 " "
+            TypeBound@163..168
+              Path@163..168
+                PathSegment@163..168
+                  Ident@163..168 "Clone"
+          Newline@168..169 "\n"
       ImplItemList@169..266
         LBrace@169..170 "{"
         Newline@170..171 "\n"
@@ -196,18 +197,19 @@ Root@0..266
           WhereClause@216..230
             WhereKw@216..221 "where"
             WhiteSpace@221..222 " "
-            PathType@222..223
-              Path@222..223
-                PathSegment@222..223
-                  Ident@222..223 "T"
-            TypeBoundList@223..229
-              Colon@223..224 ":"
-              WhiteSpace@224..225 " "
-              TypeBound@225..229
-                Path@225..229
-                  PathSegment@225..229
-                    Ident@225..229 "Copy"
-            Newline@229..230 "\n"
+            WherePredicate@222..230
+              PathType@222..223
+                Path@222..223
+                  PathSegment@222..223
+                    Ident@222..223 "T"
+              TypeBoundList@223..229
+                Colon@223..224 ":"
+                WhiteSpace@224..225 " "
+                TypeBound@225..229
+                  Path@225..229
+                    PathSegment@225..229
+                      Ident@225..229 "Copy"
+              Newline@229..230 "\n"
           WhiteSpace@230..234 "    "
           BlockExpr@234..264
             LBrace@234..235 "{"

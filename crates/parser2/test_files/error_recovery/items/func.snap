@@ -74,19 +74,20 @@ Root@0..133
       WhereClause@57..74
         WhereKw@57..62 "where"
         WhiteSpace@62..63 " "
-        PathType@63..64
-          Path@63..64
-            PathSegment@63..64
-              Ident@63..64 "T"
-        TypeBoundList@64..72
-          Colon@64..65 ":"
-          WhiteSpace@65..66 " "
-          TypeBound@66..72
-            Path@66..72
-              PathSegment@66..72
-                Ident@66..72 "Trait2"
-        WhiteSpace@72..73 " "
-        Newline@73..74 "\n"
+        WherePredicate@63..74
+          PathType@63..64
+            Path@63..64
+              PathSegment@63..64
+                Ident@63..64 "T"
+          TypeBoundList@64..72
+            Colon@64..65 ":"
+            WhiteSpace@65..66 " "
+            TypeBound@66..72
+              Path@66..72
+                PathSegment@66..72
+                  Ident@66..72 "Trait2"
+          WhiteSpace@72..73 " "
+          Newline@73..74 "\n"
       BlockExpr@74..78
         LBrace@74..75 "{"
         Newline@75..77 "\n\n"
@@ -125,19 +126,20 @@ Root@0..133
       WhereClause@111..128
         WhereKw@111..116 "where"
         WhiteSpace@116..117 " "
-        PathType@117..118
-          Path@117..118
-            PathSegment@117..118
-              Ident@117..118 "T"
-        TypeBoundList@118..126
-          Colon@118..119 ":"
-          WhiteSpace@119..120 " "
-          TypeBound@120..126
-            Path@120..126
-              PathSegment@120..126
-                Ident@120..126 "Trait2"
-        WhiteSpace@126..127 " "
-        Newline@127..128 "\n"
+        WherePredicate@117..128
+          PathType@117..118
+            Path@117..118
+              PathSegment@117..118
+                Ident@117..118 "T"
+          TypeBoundList@118..126
+            Colon@118..119 ":"
+            WhiteSpace@119..120 " "
+            TypeBound@120..126
+              Path@120..126
+                PathSegment@120..126
+                  Ident@120..126 "Trait2"
+          WhiteSpace@126..127 " "
+          Newline@127..128 "\n"
       BlockExpr@128..132
         LBrace@128..129 "{"
         Newline@129..131 "\n\n"
