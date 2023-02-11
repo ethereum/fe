@@ -83,7 +83,7 @@ The most advanced example that we can provide at this point is an implementation
 ## Community
 
 - Twitter: [@official_fe](https://twitter.com/official_fe)
-- Chat: [Discord](https://discord.gg/ywpkAXFjZH)
+- Chat: [Discord](https://discord.gg/hPePGYSw)
 
 
 ## License
