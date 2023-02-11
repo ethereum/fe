@@ -116,8 +116,7 @@ pub enum TypeKind {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::prelude::*;
-    use crate::{lexer::Lexer, parser};
+    use crate::{ast::prelude::*, lexer::Lexer, parser};
 
     fn parse_type<T>(source: &str) -> T
     where

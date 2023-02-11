@@ -102,7 +102,7 @@ ast_node! {
 }
 impl DocCommentAttr {
     /// Returns the underlying token of the doc comment, which includes `///`.
-    pub fn text(&self) -> Option<SyntaxToken> {
+    pub fn doc(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::DocComment)
     }
 }
@@ -150,8 +150,8 @@ mod tests {
         let attr_list = parse_attr_list(source);
         for (i, attr) in attr_list.doc_attrs().enumerate() {
             match i {
-                0 => assert_eq!(attr.text().unwrap().text(), "/// Doc1"),
-                1 => assert_eq!(attr.text().unwrap().text(), "/// Doc2"),
+                0 => assert_eq!(attr.doc().unwrap().text(), "/// Doc1"),
+                1 => assert_eq!(attr.doc().unwrap().text(), "/// Doc2"),
                 _ => unreachable!(),
             }
         }

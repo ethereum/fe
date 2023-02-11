@@ -7,6 +7,7 @@ pub mod pat;
 pub mod path;
 pub mod stmt;
 pub mod type_;
+pub mod use_tree;
 
 pub use attr::*;
 pub use expr::*;
@@ -17,13 +18,15 @@ pub use pat::*;
 pub use path::*;
 pub use stmt::*;
 pub use type_::*;
+pub use use_tree::*;
 
 pub type AstChildren<T> = rowan::ast::AstChildren<T>;
 pub type SyntaxText = rowan::SyntaxText;
 
 pub mod prelude {
-    pub use super::AttrListOwner;
-    pub use super::{GenericArgsOwner, GenericParamsOwner, WhereClauseOwner};
+    pub use super::{
+        AttrListOwner, GenericArgsOwner, GenericParamsOwner, ItemModifierOwner, WhereClauseOwner,
+    };
 }
 
 macro_rules! ast_node {

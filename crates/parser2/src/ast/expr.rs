@@ -582,6 +582,17 @@ mod tests {
     }
 
     #[test]
+    fn block_expr() {
+        let source = r#"{
+            let a = 1
+            let b = a + 2
+            return b
+        }"#;
+        let block_expr: BlockExpr = parse_expr(source);
+        assert_eq!(block_expr.stmts().count(), 3);
+    }
+
+    #[test]
     fn bin_expr() {
         let bin_expr: BinExpr = parse_expr("1 + 2");
         assert!(matches!(bin_expr.lhs().unwrap().kind(), ExprKind::Lit(_)));

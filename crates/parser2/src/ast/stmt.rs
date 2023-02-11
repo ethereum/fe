@@ -90,7 +90,7 @@ impl AugAssignStmt {
     pub fn op(&self) -> Option<super::ArithBinOp> {
         self.syntax()
             .children_with_tokens()
-            .find_map(|n| super::ArithBinOp::from_node_or_token(n))
+            .find_map(super::ArithBinOp::from_node_or_token)
     }
 
     /// Returns the expression of the rhs of the assignment.
