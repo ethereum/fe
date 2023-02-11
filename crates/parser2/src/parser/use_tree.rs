@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use crate::SyntaxKind;
 
 use super::{define_scope, token_stream::TokenStream, Parser};
@@ -10,36 +12,38 @@ define_scope! {
 impl super::Parse for UseTreeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        match parser.current_kind() {
-            Some(SyntaxKind::LBrace) => {
-                parser.parse(UseTreeListScope::default(), None);
-                return;
-            }
-            Some(SyntaxKind::Star) => {
-                parser.bump();
-                return;
-            }
-            _ => {}
+        if let Some(SyntaxKind::LBrace) = parser.current_kind() {
+            parser.parse(UseTreeListScope::default(), None);
+            return;
         }
 
-        parser.parse(UsePathScope::default(), None);
+        let use_path_scope = UsePathScope::default();
+        parser.parse(use_path_scope.clone(), None);
+        let has_wildcard = use_path_scope.has_wildcard.get();
 
-        if !parser.bump_if(SyntaxKind::Colon2) {
+        if parser.current_kind() == Some(SyntaxKind::AsKw) {
+            if has_wildcard {
+                parser.error_and_recover("cant use `as` with wildcard", None);
+            }
             if parser.current_kind() == Some(SyntaxKind::AsKw) {
                 parser.parse(UseTreeRenameScope::default(), None);
             }
             return;
         }
 
+        if !parser.bump_if(SyntaxKind::Colon2) {
+            return;
+        }
         match parser.current_kind() {
-            Some(SyntaxKind::LBrace) => {
-                parser.parse(UseTreeListScope::default(), None);
-            }
-            Some(SyntaxKind::Star) => {
-                parser.bump();
+            Some(SyntaxKind::LBrace) if !has_wildcard => {
+                if has_wildcard {
+                    parser.error_and_recover("can't use `*` with `{}`", None);
+                } else {
+                    parser.parse(UseTreeListScope::default(), None);
+                }
             }
             _ => {
-                parser.error_and_recover("expected identifier or `self`", None);
+                parser.error_and_recover("expected identifier, `*` or `self`", None);
             }
         };
     }
@@ -74,7 +78,7 @@ impl super::Parse for UseTreeListScope {
 }
 
 define_scope! {
-    UsePathScope,
+    UsePathScope{ has_wildcard: Rc<Cell<bool>>},
     UsePath,
     Inheritance(Colon2)
 }
@@ -90,7 +94,12 @@ impl super::Parse for UsePathScope {
             });
             if is_path_segment {
                 parser.bump_expected(SyntaxKind::Colon2);
+                self.has_wildcard
+                    .set(parser.current_kind() == Some(SyntaxKind::Star));
                 parser.parse(UsePathSegmentScope::default(), None);
+                if self.has_wildcard.get() {
+                    break;
+                }
             } else {
                 break;
             }
@@ -136,5 +145,5 @@ impl super::Parse for UseTreeRenameScope {
 
 fn is_use_path_segment(kind: SyntaxKind) -> bool {
     use SyntaxKind::*;
-    matches!(kind, Ident | SelfKw)
+    matches!(kind, Ident | SelfKw | Star)
 }
