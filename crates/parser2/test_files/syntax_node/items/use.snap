@@ -1,6 +1,7 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/items/use.fe
 ---
 Root@0..278
   ItemList@0..278
@@ -33,11 +34,12 @@ Root@0..278
       UseKw@30..33 "use"
       WhiteSpace@33..34 " "
       UseTree@34..40
-        UsePath@34..37
+        UsePath@34..40
           UsePathSegment@34..37
             Ident@34..37 "Foo"
-        Colon2@37..39 "::"
-        Star@39..40 "*"
+          Colon2@37..39 "::"
+          UsePathSegment@39..40
+            Star@39..40 "*"
     Newline@40..41 "\n"
     Use@41..61
       UseKw@41..44 "use"
@@ -189,7 +191,9 @@ Root@0..278
           Comma@198..199 ","
           WhiteSpace@199..200 " "
           UseTree@200..201
-            Star@200..201 "*"
+            UsePath@200..201
+              UsePathSegment@200..201
+                Star@200..201 "*"
           RBrace@201..202 "}"
     Newline@202..204 "\n\n"
     Use@204..272
@@ -253,5 +257,7 @@ Root@0..278
       UseKw@273..276 "use"
       WhiteSpace@276..277 " "
       UseTree@277..278
-        Star@277..278 "*"
+        UsePath@277..278
+          UsePathSegment@277..278
+            Star@277..278 "*"
 
