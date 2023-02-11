@@ -4,6 +4,63 @@ use super::ast_node;
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
+    /// A list of parameters.
+    /// `(self, a: u256, b: u256)`
+    pub struct FnParamList,
+    SK::FnParamList,
+    IntoIterator<Item=FnParam>,
+}
+
+ast_node! {
+    /// A single parameter.
+    /// `self`
+    /// `label a: u256`
+    pub struct FnParam,
+    SK::FnParam,
+}
+impl FnParam {
+    /// Returns the `mut` keyword if the parameter is mutable.
+    pub fn mut_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MutKw)
+    }
+
+    /// Returns the `label` if the parameter is labeled.
+    /// `label` in `label a: u256`.
+    pub fn label(&self) -> Option<FnParamLabel> {
+        self.syntax()
+            .children_with_tokens()
+            .find_map(|child| match child {
+                rowan::NodeOrToken::Token(token) => FnParamLabel::from_token(token),
+                _ => None,
+            })
+    }
+
+    /// Returns the name of the parameter.
+    /// `a` in `label a: u256`.
+    pub fn name(&self) -> Option<FnParamName> {
+        let mut param_names = self.syntax().children_with_tokens().filter_map(|child| {
+            if let rowan::NodeOrToken::Token(token) = child {
+                FnParamName::from_token(token)
+            } else {
+                None
+            }
+        });
+
+        let first = param_names.next();
+        match param_names.next() {
+            Some(second) => Some(second),
+            None => first,
+        }
+    }
+
+    /// Returns the type of the parameter.
+    /// `u256` in `a: u256`.
+    pub fn ty(&self) -> Option<super::Type> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
     /// A list of generic parameters.
     /// `<T: Trait, U>`
     pub struct GenericParamList,
@@ -242,6 +299,41 @@ pub trait WhereClauseOwner: AstNode<Language = FeLang> {
     /// Returns the where clause of the node.
     fn where_clause(&self) -> Option<WhereClause> {
         support::child(self.syntax())
+    }
+}
+
+pub enum FnParamLabel {
+    /// `label` in `label a: u256`
+    Ident(SyntaxToken),
+    /// `_` in `_ a: u256`.
+    Underscore(SyntaxToken),
+}
+impl FnParamLabel {
+    fn from_token(token: SyntaxToken) -> Option<Self> {
+        match token.kind() {
+            SK::Ident => Some(FnParamLabel::Ident(token)),
+            SK::Underscore => Some(FnParamLabel::Underscore(token)),
+            _ => None,
+        }
+    }
+}
+
+pub enum FnParamName {
+    /// `a` in `label a: u256`
+    Ident(SyntaxToken),
+    /// `self` parameter.
+    SelfParam(SyntaxToken),
+    /// `_` parameter.
+    Underscore(SyntaxToken),
+}
+impl FnParamName {
+    fn from_token(token: SyntaxToken) -> Option<Self> {
+        match token.kind() {
+            SK::Ident => Some(FnParamName::Ident(token)),
+            SK::SelfKw => Some(FnParamName::SelfParam(token)),
+            SK::Underscore => Some(FnParamName::Underscore(token)),
+            _ => None,
+        }
     }
 }
 
