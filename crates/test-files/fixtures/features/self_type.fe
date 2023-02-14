@@ -1,8 +1,11 @@
+trait Add {
+  fn add(self, other: Self) -> Self;
+}
+
 trait Various {
   fn min() -> Self;
   fn max() -> Self;
   fn double(self) -> Self;
-  fn add(self, other: Self) -> Self;
 }
 
 impl Various for u8 {
@@ -19,9 +22,25 @@ impl Various for u8 {
   fn double(self) -> Self {
     return self * 2
   }
+}
 
+impl Add for u8 {
   fn add(self, _ other: Self) -> u8 {
     return u8(self) + u8(other)
+  }
+}
+
+struct Point {
+  pub x: u256 
+  pub y: u256
+}
+
+impl Add for Point {
+  fn add(self, _ other: Self) -> Point {
+    return Point (
+      x: self.x + other.x,
+      y: self.y + other.y
+    )
   }
 }
 
@@ -31,6 +50,11 @@ contract Example {
     assert u8::max() == 255
     assert u8(1).double() == 2
     assert u8(1).add(2) == 3
+
+    let p1: Point = Point(x:1, y:2)
+    let p2: Point = p1.add(p1)
+    assert p2.x == 2
+    assert p2.y == 4
   }
 
 }
