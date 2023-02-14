@@ -7,7 +7,9 @@ use crate::namespace::items::{
     EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef,
 };
 use crate::namespace::scopes::{check_visibility, BlockScopeType};
-use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
+use crate::namespace::types::{
+    Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
+};
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
 use crate::traversal::const_expr::eval_expr;
@@ -642,7 +644,10 @@ fn field_type(
         Type::SPtr(inner) => {
             Ok(Type::SPtr(field_type(context, inner, field_name, field_span)?).id(context.db()))
         }
-
+        Type::SelfType(TraitOrType::TypeId(inner)) => Ok(Type::SelfType(TraitOrType::TypeId(
+            field_type(context, inner, field_name, field_span)?,
+        ))
+        .id(context.db())),
         Type::SelfContract(id) => match id.field_type(context.db(), field_name) {
             Some(typ) => Ok(typ?.make_sptr(context.db())),
             None => Err(FatalError::new(context.fancy_error(
