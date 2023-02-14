@@ -44,6 +44,14 @@ impl Add for Point {
   }
 }
 
+
+impl Add for Array<u256, 1> {
+  fn add(self, _ other: Self) -> Array<u256, 1> {
+    return [self[0] + other[0]]
+  }
+}
+
+
 contract Example {
   pub fn run_test(self) {
     assert u8::min() == 0
@@ -55,6 +63,9 @@ contract Example {
     let p2: Point = p1.add(p1)
     assert p2.x == 2
     assert p2.y == 4
+
+    let a1: Array<u256, 1> = [1].add([2])
+    assert a1[0] == 3
   }
 
 }
