@@ -567,6 +567,8 @@ mod tests {
     use super::*;
     use crate::{ast::*, lexer::Lexer, parser::Parser};
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_expr<T>(source: &str) -> T
     where
         T: TryFrom<ExprKind, Error = &'static str>,
@@ -582,6 +584,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn block_expr() {
         let source = r#"{
             let a = 1
@@ -593,6 +596,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn bin_expr() {
         let bin_expr: BinExpr = parse_expr("1 + 2");
         assert!(matches!(bin_expr.lhs().unwrap().kind(), ExprKind::Lit(_)));
@@ -610,6 +614,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn un_expr() {
         let un_expr: UnExpr = parse_expr("-1");
         assert!(matches!(un_expr.op().unwrap(), UnOp::Minus(_)));
@@ -617,6 +622,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn call_expr() {
         let call_expr: CallExpr = parse_expr("foo<i32, T>(1, label: 2, 3 + 4)");
 
@@ -654,6 +660,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn method_call_expr() {
         let method_call_expr: MethodCallExpr = parse_expr("foo.bar<i32>(1, label: 2, 3 + 4)");
 
@@ -694,6 +701,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn record_init_expr() {
         let record_init_expr: RecordInitExpr = parse_expr("Foo { a: 1, b: 2, c: 3 }");
 
@@ -718,6 +726,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn field_expr() {
         let field_expr: FieldExpr = parse_expr("foo(1, 2).bar");
 
@@ -737,6 +746,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn tuple_expr() {
         let tuple_expr: TupleExpr = parse_expr("(1, 2, 3)");
 
@@ -751,6 +761,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn array_expr() {
         let array_expr: ArrayExpr = parse_expr("[1, 2, 3]");
 
@@ -765,6 +776,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn index_expr() {
         let index_expr: IndexExpr = parse_expr("foo[1]");
 
@@ -779,6 +791,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn array_rep_expr() {
         let array_rep_expr: ArrayRepExpr = parse_expr("[1; 2]");
 
@@ -793,6 +806,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn if_expr() {
         let if_expr: IfExpr = parse_expr("if true { 1 } else { 2 }");
         assert!(matches!(if_expr.cond().unwrap().kind(), ExprKind::Lit(_)));
@@ -825,6 +839,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn match_expr() {
         let source = r#"
             match foo {

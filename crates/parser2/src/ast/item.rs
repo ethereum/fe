@@ -423,6 +423,8 @@ mod tests {
 
     use super::*;
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_item<T>(source: &str) -> T
     where
         T: TryFrom<ItemKind, Error = &'static str>,
@@ -438,6 +440,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn func() {
         let source = r#" 
                 /// This is doc comment
@@ -458,7 +461,8 @@ mod tests {
     }
 
     #[test]
-    fn r#struct() {
+    #[wasm_bindgen_test]
+    fn struct_() {
         let source = r#"
                 pub struct Foo<T, U: Trait> where T: Trait2 {
                     pub x: T,
@@ -488,6 +492,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn contract() {
         let source = r#"
                 pub contract Foo {
@@ -518,7 +523,8 @@ mod tests {
     }
 
     #[test]
-    fn r#enum() {
+    #[wasm_bindgen_test]
+    fn enum_() {
         let source = r#"
                 pub enum Foo<T, U: Trait> where T: Trait2 {
                     Bar
@@ -547,7 +553,8 @@ mod tests {
     }
 
     #[test]
-    fn r#type() {
+    #[wasm_bindgen_test]
+    fn type_() {
         let source = r#"
                 type MyError<T> where T: Debug = Error<T, String>
             "#;
@@ -557,7 +564,8 @@ mod tests {
     }
 
     #[test]
-    fn r#impl() {
+    #[wasm_bindgen_test]
+    fn impl_() {
         let source = r#"
                 impl Foo {
                     pub fn foo<T>(self, t: T) -> T { return t }
@@ -571,7 +579,8 @@ mod tests {
     }
 
     #[test]
-    fn r#trait() {
+    #[wasm_bindgen_test]
+    fn trait_() {
         let source = r#"
                 pub trait Foo {
                     pub fn foo<T>(self, t: T) -> T
@@ -598,6 +607,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn impl_trait() {
         let source = r#"
             impl Trait::Foo for (i32)  {
@@ -610,7 +620,8 @@ mod tests {
     }
 
     #[test]
-    fn r#const() {
+    #[wasm_bindgen_test]
+    fn const_() {
         let source = r#"
             pub const FOO: u32 = 1 + 1
         "#;
@@ -621,7 +632,8 @@ mod tests {
     }
 
     #[test]
-    fn r#use() {
+    #[wasm_bindgen_test]
+    fn use_() {
         let source = r#"
             use foo::bar::{bar::*, baz::{Baz, Baz2}}
         "#;
@@ -688,7 +700,8 @@ mod tests {
     }
 
     #[test]
-    fn r#extern() {
+    #[wasm_bindgen_test]
+    fn extern_() {
         let source = r#"
             extern {
                 pub unsafe fn foo()

@@ -348,6 +348,9 @@ mod tests {
             Parser,
         },
     };
+
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_generic_params(source: &str) -> GenericParamList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
@@ -370,6 +373,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn generic_param() {
         let source = r#"<T: Trait + Trait2<X, Y>, U, const N: usize>"#;
         let gp = parse_generic_params(source);
@@ -424,6 +428,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn generic_arg() {
         let source = r#"<T: T1, "foo">"#;
         let ga = parse_generic_arg(source);
@@ -441,6 +446,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn where_clause() {
         let source = r#"where 
             T: Trait + Trait2<X, Y>
