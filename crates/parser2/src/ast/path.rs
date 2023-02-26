@@ -47,6 +47,8 @@ mod tests {
         parser::{path::PathScope, Parser},
     };
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_path(source: &str) -> Path {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
@@ -55,6 +57,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn path_ast() {
         let source = r#"self::Foo"#;
         let path = parse_path(source);
@@ -66,6 +69,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn path_ast2() {
         let source = r#"Self::Dep"#;
         let path = parse_path(source);

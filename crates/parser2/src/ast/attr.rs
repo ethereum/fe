@@ -130,6 +130,8 @@ mod tests {
         parser::{attr::AttrListScope, Parser},
     };
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     use super::*;
 
     fn parse_attr_list(source: &str) -> AttrList {
@@ -140,6 +142,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn attr_list() {
         let source = r#"
             #foo

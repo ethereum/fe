@@ -172,6 +172,8 @@ pub enum PatKind {
 mod tests {
     use crate::{lexer::Lexer, parser::Parser};
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     use super::*;
 
     fn parse_pat<T>(source: &str) -> T
@@ -189,16 +191,19 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn wildcard() {
         let _: WildCardPat = parse_pat("_");
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn rest() {
         let _: RestPat = parse_pat("..");
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn lit() {
         let _: LitPat = parse_pat("0x1");
         let _: LitPat = parse_pat("true");
@@ -206,6 +211,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn tuple() {
         let source = r#"(Foo::Bar, true, ..)"#;
         let tuple_pat: TuplePat = parse_pat(source);
@@ -224,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn path_tuple() {
         let source = r#"Self::Bar(1, Foo::Bar)"#;
         let path_tuple_pat: PathTuplePat = parse_pat(source);
@@ -246,6 +253,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn record() {
         let source = r#"Foo::Bar{a: 1, b: Foo::baz, c}"#;
         let record_pat: RecordPat = parse_pat(source);
@@ -278,6 +286,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn or() {
         let source = r#"Foo::Int | Foo::Float | Foo::Str "#;
         let or_pat: OrPat = parse_pat(source);

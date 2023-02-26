@@ -229,6 +229,8 @@ mod tests {
 
     use super::*;
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_stmt<T>(source: &str) -> T
     where
         T: TryFrom<StmtKind, Error = &'static str>,
@@ -244,6 +246,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn let_() {
         let let_stmt: LetStmt = parse_stmt("let x: i32 = 1");
 
@@ -261,6 +264,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn assign() {
         let assign_stmt: AssignStmt = parse_stmt(r#"Foo{x, y} = foo"#);
         assert!(matches!(
@@ -271,6 +275,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn aug_assign() {
         let aug_assign_stmt: AugAssignStmt = parse_stmt("x += 1");
         assert!(matches!(
@@ -295,7 +300,8 @@ mod tests {
     }
 
     #[test]
-    fn r#for() {
+    #[wasm_bindgen_test]
+    fn for_() {
         let source = r#"
             for x in foo {
                 bar
@@ -309,7 +315,8 @@ mod tests {
     }
 
     #[test]
-    fn r#while() {
+    #[wasm_bindgen_test]
+    fn while_() {
         let source = r#"
             while { x } {
                 bar
@@ -323,7 +330,8 @@ mod tests {
     }
 
     #[test]
-    fn r#return() {
+    #[wasm_bindgen_test]
+    fn return_() {
         let ret_stmt: ReturnStmt = parse_stmt("return x");
         assert!(ret_stmt.expr().is_some());
 

@@ -118,6 +118,8 @@ mod tests {
     use super::*;
     use crate::{ast::prelude::*, lexer::Lexer, parser};
 
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     fn parse_type<T>(source: &str) -> T
     where
         T: TryFrom<TypeKind, Error = &'static str>,
@@ -133,6 +135,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn ptr_type() {
         let ptr_ty: PtrType = parse_type("*i32");
 
@@ -141,6 +144,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn path_type() {
         let path_ty: PathType = parse_type("Foo::Bar<T, {U + 2}>");
 
@@ -163,11 +167,13 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn self_type() {
         let _: SelfType = parse_type("Self");
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn tuple_type() {
         let tuple_ty: TupleType = parse_type("((i32, u32), foo::Bar, *usize");
 
@@ -182,6 +188,7 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
     fn array_type() {
         let array_ty: ArrayType = parse_type("[(i32, u32); 1]");
 
