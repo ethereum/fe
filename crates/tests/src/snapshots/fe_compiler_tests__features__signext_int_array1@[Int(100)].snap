@@ -1,5 +1,6 @@
 ---
 source: crates/tests/src/features.rs
+assertion_line: 2160
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
 bar([Int(100)]) used 22633 gas
