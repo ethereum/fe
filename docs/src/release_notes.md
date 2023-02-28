@@ -10,6 +10,50 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.21.0-alpha (2023-02-28)
+
+
+### Features
+
+
+- Support for `Self` type
+
+  With this change `Self` (with capital `S`) can be used to refer
+  to the enclosing type in contracts, structs, impls and traits.
+
+  E.g.
+
+  ```
+  trait Min {
+    fn min() -> Self;
+  }
+
+  impl Min for u8 {
+    fn min() -> u8 { // Both `u8` or `Self` are valid here
+      return 0
+    }
+  }
+  ```
+
+  Usage: `u8::min()` ([#803](https://github.com/ethereum/fe/issues/803))
+- Added `Min` and `Max` traits to the std library.
+  The std library implements the traits for all numeric types.
+
+  Example
+
+  ```
+  use std::traits::{Min, Max}
+  ...
+
+  assert u8::min() < u8::max()
+  ``` ([#836](https://github.com/ethereum/fe/issues/836))
+
+- Upgraded underlying solc compiler to version `0.8.18`
+
+### Bugfixes
+
+- the release contains minor bugfixes
+
 ## 0.20.0-alpha (2022-12-05)
 
 
