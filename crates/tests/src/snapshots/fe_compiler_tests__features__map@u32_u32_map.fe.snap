@@ -1,5 +1,6 @@
 ---
 source: crates/tests/src/features.rs
+assertion_line: 538
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
 write_bar([Uint(4), Uint(42)]) used 22474 gas
