@@ -2,7 +2,7 @@
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 name = "fe-compiler-test-utils"
-version = "0.20.0-alpha"
+version = "0.21.0-alpha"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
@@ -10,10 +10,10 @@ repository = "https://github.com/ethereum/fe"
 ethabi = { default-features = false, features = ["full-serde"], version = "18.0" }
 evm = { default-features = false, version = "0.37" }
 evm-runtime = { default-features = false, version = "0.37" }
-fe-common = {path = "../common", version = "^0.20.0-alpha"}
-fe-driver = {path = "../driver", version = "^0.20.0-alpha"}
-fe-yulc = {path = "../yulc", version = "^0.20.0-alpha", optional = true, features = ["solc-backend"]}
-fe-analyzer = {path = "../analyzer", version = "^0.20.0-alpha"}
+fe-common = {path = "../common", version = "^0.21.0-alpha"}
+fe-driver = {path = "../driver", version = "^0.21.0-alpha"}
+fe-yulc = {path = "../yulc", version = "^0.21.0-alpha", optional = true, features = ["solc-backend"]}
+fe-analyzer = {path = "../analyzer", version = "^0.21.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.12", default-features = false, features = ["rlp"]}
