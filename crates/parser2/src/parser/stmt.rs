@@ -39,7 +39,6 @@ impl super::Parse for LetStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.set_newline_as_trivia(false);
-        parser.bump_if(SyntaxKind::MutKw);
         if !parse_pat(parser) {
             parser.error_and_recover("expected pattern", None);
             return;
