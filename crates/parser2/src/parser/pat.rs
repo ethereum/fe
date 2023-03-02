@@ -7,13 +7,18 @@ use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
 
 pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
-    let (success, checkpoint) = match parser.current_kind() {
-        Some(Underscore) => parser.parse(WildCardPatScope::default(), None),
-        Some(Dot2) => parser.parse(RestPatScope::default(), None),
-        Some(LParen) => parser.parse(TuplePatScope::default(), None),
-        Some(kind) if is_lit(kind) => parser.parse(LitPatScope::default(), None),
-        _ => parser.parse(PathPatScope::default(), None),
-    };
+    parser.bump_trivias();
+    let checkpoint = parser.checkpoint();
+    parser.bump_if(SyntaxKind::MutKw);
+
+    let success = match parser.current_kind() {
+        Some(Underscore) => parser.parse(WildCardPatScope::default(), Some(checkpoint)),
+        Some(Dot2) => parser.parse(RestPatScope::default(), Some(checkpoint)),
+        Some(LParen) => parser.parse(TuplePatScope::default(), Some(checkpoint)),
+        Some(kind) if is_lit(kind) => parser.parse(LitPatScope::default(), Some(checkpoint)),
+        _ => parser.parse(PathPatScope::default(), Some(checkpoint)),
+    }
+    .0;
 
     if parser.current_kind() == Some(SyntaxKind::Pipe) {
         parser.parse(OrPatScope::default(), Some(checkpoint)).0 && success
