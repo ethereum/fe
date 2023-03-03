@@ -4,31 +4,24 @@ Since we have written our first contract now, how about we bring it alive and us
 
 Deploying such a demo contract to the Ethereum mainnet would be a waste of money but fortunately we have a few other options to choose from. For instance, we can use our very own local blockchain instance which is great for local development. Alternatively we can use a test network that provides developers shared infrastructure to deploy code without spending actual money on it.
 
-In this guide we will learn how to deploy and interact with our guest book on the popular [Görli testnet](https://goerli.net/).
+In this guide we will learn how to deploy and interact with our guest book on the [Sepolia testnet](https://sepolia.dev/). Sepolia is the recommended testnet for application development as the previously popular [Görli network is deprecated](https://ethereum.org/en/developers/docs/networks/#goerli) and planned to shut down soon.
 
-### Setting the stage with dapp.tools
+### Setting the stage with foundry
 
-The Ethereum ecosystem provides a rich set of tools to assist smart contract developers in various ways when it comes to developing, testing, deploying and upgrading smart contracts. Fe is still a very young language and there are no tools yet that are tailored for the language. Having said that, most tooling should be flexible enough to work with Fe in some way that might feel slightly less integrated. For this guide we choose to use DappTools which is a very lightweight set of command line tools for managing smart contract development.
+The Ethereum ecosystem provides a rich set of tools to assist smart contract developers in various ways when it comes to developing, testing, deploying and upgrading smart contracts. Fe is still a very young language and there are no tools yet that are tailored to the Fe language. Having said that, most tooling should be flexible enough to work with Fe in some way but it might feel slightly less integrated. For this guide we choose to use foundry which is a very lightweight set of command line tools for managing smart contract development.
 
-To follow this guide, you will first need to head over to [dapp.tools](https://dapp.tools) and follow the installation steps.
+To follow this guide, you will first need to head over to [getfoundry.sh](https://getfoundry.sh) and follow the installation steps.
 
 > Note: If you are a seasoned smart contract developer who uses different tools, feel free to follow the tutorial using your own toolchain.
 
 
-### Setting up a Görli user account
+### Setting up a Sepolia user account
 
-To deploy our contract to the Görli testnet we will need to have an Ethereum account that has some GöETH. GöETH has no real value but it is still a resource that is needed as a basic line of defense against spamming the testnet. If you don't have any GöETH yet, you can request some from these faucets:  [faucet1](https://goerlifaucet.com/), and [faucet2](https://faucet.paradigm.xyz/).
-You can also check a list of faucets [here](https://forum.openzeppelin.com/t/goerli-testnet-faucets/26710).
+To deploy our contract to the Sepolia testnet we will need to have an Ethereum account that has some SepoliaETH. SepoliaETH has no real value but it is still a resource that is needed as a basic line of defense against spamming the testnet. If you don't have any SepoliaETH yet, you can [request some SepoliaETH](https://ethereum.org/en/developers/docs/networks/#sepolia) from one of the faucets that are listed on the ethereum.org website.
 
-The next thing we need is to create a keystore file for our account so that dapp tools can sign messages via [`ethsign`](https://github.com/dapphub/dapptools/tree/master/src/ethsign).
 
 > **IMPORTANT**: It is good practice to **never** use an Ethereum account for a testnet that is also used for the actual Ethereum mainnet.
 
-To create the keystore file for your testnet account, you can use `ethsign` to import your private key. Run the following command and follow the instructions.
-
-```
-ethsign import -key-store ~/.ethereum/keystore/
-```
 
 ### Making the deployment transaction
 
@@ -50,68 +43,91 @@ contract GuestBook {
 
 If you haven't already, run `./fe build guest_book.fe --overwrite` to obtain the bytecode that we want to deploy.
 
-To make the deployment, we will need to send a transaction to a node that participates in the Görli network. We can run our own node, sign up at [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/) to use one of their nodes or find an open public node such as `https://goerli-light.eth.linkpool.io` which we will use to keep this tutorial as accessible as possible.
+To make the deployment, we will need to send a transaction to a node that participates in the Sepolia network. We can run our own node, sign up at [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/) to use one of their nodes or use an open public node such as `https://rpc.sepolia.org` which we will use to keep this tutorial as accessible as possible.
 
-Use the following command to deploy the contract. Please note that `<rpc-url>` needs to be replaced with the URL of the node that we connect to and `<our-eth-address>` needs to be replaced with the Ethereum address that we imported in the previous step. Adding `ETH_GAS=8000000` to provide enough gas to prevent the transaction from failing.
 
-```
-$ ETH_RPC_URL=<rpc-url> ETH_GAS=8000000 ETH_FROM=<our-eth-address> seth send --create output/GuestBook/GuestBook.bin
-```
+> **IMPORTANT**: foundry provides various options to sign transactions including accessing hardware wallets. Run `cast send --help` and check out the different *wallet options* and choose what fits best.
 
-What follows is the actual command and the response that was used when writing the tutorial.
+The following command deploys the Guestbook contract to the Sepolia network.
 
 ```
-$ ETH_RPC_URL=https://goerli-light.eth.linkpool.io ETH_GAS=8000000 ETH_FROM=0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293 seth send --create output/GuestBook/GuestBook.bin
-Ethereum account passphrase (not echoed): seth-send: Published transaction with 681 bytes of calldata.
-seth-send: 0x241ac045170d0612b67b2319fa08ed8be8b79568e00090c4f84146897b83760b
-seth-send: Waiting for transaction receipt...............................
-seth-send: Transaction included in block 4858224.
-0xcecd2be6d4d01ed7906f502be6321c3721f38bc6
+cast send --rpc-url https://rpc.sepolia.org --private-key <your-private-key> --create $(cat output/GuestBook/GuestBook.bin)
 ```
 
-As we can see in the output, our transaction [`0x241ac045170d0612b67b2319fa08ed8be8b79568e00090c4f84146897b83760b`](https://goerli.etherscan.io/tx/0x241ac045170d0612b67b2319fa08ed8be8b79568e00090c4f84146897b83760b) to deploy the contract is now included in the Görli blockchain. At the very end of the response we find [`0xcecd2be6d4d01ed7906f502be6321c3721f38bc6`](https://goerli.etherscan.io/address/0xcecd2be6d4d01ed7906f502be6321c3721f38bc6) which is the address where our contract is now deployed.
+Here's what the response was at the time of writing this tutorial.
+
+```
+blockHash               0x80e7a41dcf846519d18613fb225f85107b6832adeb08bc50e880bd6364e2e4bc
+blockNumber             3033409
+contractAddress         0x810cbd4365396165874C054d01B1Ede4cc249265
+cumulativeGasUsed       1485326
+effectiveGasPrice       3000000007
+gasUsed                 237781
+logs                    []
+logsBloom
+0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+root
+status                  1
+transactionHash         0x31b41a4177d7eb66f5ea814959b2c147366b6323f17b6f7060ecff424b58df76
+transactionIndex        3
+type                    2
+```
+
+> Note: Don't assume responses to be identical when following the tutorial. Due to the nature of the blockchain environment the content of the responses will always differ slightly.
+
+
+As we can see in the output, our transaction [`0x31b41a4177d7eb66f5ea814959b2c147366b6323f17b6f7060ecff424b58df76`](https://sepolia.etherscan.io/tx/0x31b41a4177d7eb66f5ea814959b2c147366b6323f17b6f7060ecff424b58df76) to deploy the contract is now included in the Sepolia blockchain. Under `contractAddress` we find [`0x810cbd4365396165874C054d01B1Ede4cc249265`](https://sepolia.etherscan.io/address/0x810cbd4365396165874c054d01b1ede4cc249265) which is the address where our contract is now deployed.
 
 ### Signing the guest book
 
-Now that the guest book is live on the Görli network, everyone can send a transaction to sign it. We will sign it from the same address that was used to deploy the contract but there is nothing preventing anyone to sign it from any other address.
+Now that the guest book is live on the Sepolia network, everyone can send a transaction to sign it. We will sign it from the same address that was used to deploy the contract but there is nothing preventing anyone to sign it from any other address.
 
-The following command will send a transaction to call `sign(string)` with the message *"We <3 Fe"*.
-
-```
-ETH_RPC_URL=<rpc-url> ETH_GAS=8000000 ETH_FROM=<our-eth-address> seth send <contract-address> "sign(string)" '"We <3 Fe"'
-```
-
-What follows is again the actual command and the response that was used when writing the tutorial.
+The following command will send a transaction to call `sign(string)` on our freshly deployed Guestbook contract sitting at address `0x810cbd4365396165874c054d01b1ede4cc249265` with the message *"We <3 Fe"*.
 
 ```
-$ ETH_RPC_URL=https://goerli-light.eth.linkpool.io ETH_GAS=8000000 ETH_FROM=0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293 seth send 0xcecd2be6d4d01ed7906f502be6321c3721f38bc6 "sign(string)" '"We <3 Fe"'
-Ethereum account passphrase (not echoed): seth-send: Published transaction with 100 bytes of calldata.
-seth-send: 0xf61c042064a501939769b802d1455124b0f8665eb1b070c75c2815ca52bd8706
-seth-send: Waiting for transaction receipt.............
-seth-send: Transaction included in block 4858368.
+cast send --rpc-url https://rpc.sepolia.org --private-key <your-private-key> 0x810cbd4365396165874C054d01B1Ede4cc249265 "sign(string)" '"We <3 Fe"'
 ```
 
-Just as before, the response tells us the transaction hash [`0xf61c042064a501939769b802d1455124b0f8665eb1b070c75c2815ca52bd8706`](https://goerli.etherscan.io/tx/0xf61c042064a501939769b802d1455124b0f8665eb1b070c75c2815ca52bd8706) which we can inspect on Etherscan.
+Here's what the response looked like:
+
+```
+blockHash               0x1d2be32e353aafc74aee417a472d3045087fea15ff6c547947e097d3a8806f3b
+blockNumber             3033436
+contractAddress         
+cumulativeGasUsed       197854
+effectiveGasPrice       3000000008
+gasUsed                 76485
+logs                    [{"address":"0x810cbd4365396165874c054d01b1ede4cc249265","topics":["0xcd5d879305a2503cad08d3e2d007778eec8dc5def7bc74dd20875842b2ff7765"],"data":"0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000a225765203c332046652200000000000000000000000000000000000000000000","blockHash":"0x1d2be32e353aafc74aee417a472d3045087fea15ff6c547947e097d3a8806f3b","blockNumber":"0x2e495c","transactionHash":"0x85f1fa63ddb551627353b7542541e279dd6be64e183c444ab6a42b9d5e481b59","transactionIndex":"0x1","logIndex":"0x3","removed":false}]
+logsBloom               0x00000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000004000000000000000000000000020000000000000000400000000000000000000000
+root                    
+status                  1
+transactionHash         0x85f1fa63ddb551627353b7542541e279dd6be64e183c444ab6a42b9d5e481b59
+transactionIndex        1
+type                    2
+```
+
+Just as before, the response tells us the transaction hash [`0x85f1fa63ddb551627353b7542541e279dd6be64e183c444ab6a42b9d5e481b59`](https://sepolia.etherscan.io/tx/0x85f1fa63ddb551627353b7542541e279dd6be64e183c444ab6a42b9d5e481b59) which we can inspect on Etherscan.
 
 ### Reading the signatures
 
-The `get_msg(address)` API let's us read any signature for any address but it will give us an response of 100 zero bytes for any address that simply hasn't signed the guestbook.
+The `get_msg(address)` API lets us read any signature for any address but it will give us an response of 100 zero bytes for any address that simply hasn't signed the guestbook.
 
-Since reading the messages doesn't change any state within the blochchain, we don't have to send an actual transaction. Instead we just perform a *call* against the local state of the node that we are querying.
+Since reading the messages doesn't change any state within the blockchain, we don't have to send an actual transaction. Instead we just perform a *call* against the local state of the node that we are querying.
 
 To do that run:
 
 ```
-$ ETH_RPC_URL=<rpc-url> seth call <contract-address> "get_msg(address)" <address-to-check> | seth --to-ascii
+$ cast call --rpc-url https://rpc.sepolia.org 0x810cbd4365396165874C054d01B1Ede4cc249265 "get_msg(address)" <your-account-address-that-signed-the-guestbook> | cast --to-ascii
 ```
 
-Notice that the command doesn't need to provide `ETH_FROM` simply because we are not sending an actual transaction.
+Notice that the command doesn't need to provide a private key simply because we are not sending an actual transaction.
+
+
+And the guestbook entry for address `0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293` is in fact:
+
 
 ```
-$ ETH_RPC_URL=https://goerli-light.eth.linkpool.io seth call 0xcecd2be6d4d01ed7906f502be6321c3721f38bc6 "get_msg(address)" 0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293 | seth --to-ascii
-We <3 Fe
+"We <3 Fe"
 ```
-
-As we can see in the last line of the output the signature for address `0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293` is in fact *We <3 Fe*.
 
 Congratulations! You've deployed real Fe code to a live network 🤖
