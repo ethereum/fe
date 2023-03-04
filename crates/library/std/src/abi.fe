@@ -1,0 +1,121 @@
+use ingot::evm
+use ingot::context::CalldataReader
+use ingot::traits::Max
+use ingot::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+
+pub trait AbiDecode {
+    fn decode(mut reader: CalldataReader) -> Self;
+}
+
+pub trait AbiEncode {
+    fn encode(self, mut writer: MemoryBufferWriter);
+}
+
+impl AbiDecode for u256 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        return reader.read_u256()
+    }
+}
+
+impl AbiEncode for u256 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: self)
+    }
+}
+
+impl AbiDecode for u128 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+        if value > u128::max() {
+            revert
+        } else {
+            return u128(value)
+        }
+    }
+}
+
+impl AbiEncode for u128 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: u256(self))
+    }
+}
+
+impl AbiDecode for u64 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+        if value > u64::max() {
+            revert
+        } else {
+            return u64(value)
+        }
+    }
+}
+
+impl AbiEncode for u64 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: u256(self))
+    }
+}
+
+// // generic impl of array encoding
+// impl AbiEncode for Array<T, N>
+//     where 
+//         T: AbiEncode
+// {
+//     fn encode(self, mut writer: MemoryBufferWriter) {
+//         let i: usize = 0  
+
+//         while i < N {
+//             self[i].encode(buf)
+//             i += 1
+//         }
+//     }
+// }
+
+// // generic impl of array decoding
+// impl AbiDecode for Array<T, N>
+//     where 
+//         T: AbiDecode
+// {
+//     fn decode(mut reader: CalldataReader) -> Self {
+//         let decoded_array: Self
+//         let i: usize = 0  
+
+//         while i < N {
+//             decoded_array[i] = T::decode(buf)
+//             i += 1
+//         }
+
+//         return decoded_array
+//     }
+// }
+
+// // tuple encode derivation 
+// impl AbiEncode for (T1, T2, ...)
+//     where 
+//         T1: AbiEncode
+//         T2: AbiEncode
+//         ...
+// {
+//     fn encode(self, mut writer: MemoryBufferWriter) {
+//         self.item0.encode(writer)
+//         self.item1.encode(writer)
+//         ...
+//     }
+// }
+
+// // tuple decode derivation
+// impl AbiDecode for (T1, T2, ...)
+//     where 
+//        T1: AbiDecode 
+//        T1: AbiDecode 
+//        ...
+// {
+//     fn decode(mut reader: CalldataReader) -> Self {
+//         return (
+//             u256::decode(reader), 
+//             u256::decode(reader)
+//             ...
+//         )
+//     }
+// }

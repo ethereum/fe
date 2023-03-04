@@ -1,0 +1,50 @@
+use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+use std::abi::{AbiEncode, AbiDecode}
+use std::context::CalldataReader
+use std::evm
+
+struct UnknownSelector {
+    pub selector: u256
+}
+
+contract MyContractInterface {
+    pub fn set_foo(mut self, foo: u256) {
+        revert UnknownSelector(selector: 0)
+    }
+
+    pub fn get_foo(self) -> u256 {
+        revert UnknownSelector(selector: 0)
+    }
+}
+
+contract MyContract {
+    foo: u256
+
+    pub unsafe fn __call__(mut self, ctx: Context) {
+        let mut reader: CalldataReader = ctx.calldata_reader()
+
+        let selector: u32 = reader.read_u32()
+        
+        if selector == 0xe5d5dfbc {
+            self.foo = u256::decode(reader)
+        } else if selector == 0x62e2d0de {
+            let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+            let mut writer: MemoryBufferWriter = buf.writer() 
+            // self.foo.encode(writer)
+            let value: u256 = self.foo
+            value.encode(writer)
+            evm::return_mem(offset: buf.offset(), len: buf.len())
+        } else {
+            revert UnknownSelector(selector)
+        }
+    }
+}
+
+#test
+unsafe fn contract_call() {
+    let mut ctx: Context = Context()
+    let mut my_contract: MyContractInterface = MyContractInterface(address(MyContract.create(ctx, 0)))
+    assert my_contract.get_foo() == 0
+    my_contract.set_foo(foo: 42)
+    assert my_contract.get_foo() == 42 
+}
