@@ -1,5 +1,5 @@
 //! Tests that check for differences between Solidity and Fe implementations of similar contracts
-#![cfg(feature = "solc-backend")]
+#![cfg(all(feature = "solc-backend", not(target_arch = "wasm32")))]
 use proptest::prelude::*;
 
 use fe_compiler_test_utils::*;

@@ -1,7 +1,5 @@
-#[cfg(not(target_arch = "wasm32"))]
 use bytes::Bytes;
 use colored::Colorize;
-#[cfg(not(target_arch = "wasm32"))]
 use revm::{
     interpreter::{instruction_result::SuccessOrHalt, Contract, DummyHost, Interpreter},
     primitives::{Bytecode, Env, LatestSpec, B160, U256},
@@ -70,7 +68,6 @@ impl Display for TestSink {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
     let input = Bytes::new();
     let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
@@ -92,9 +89,4 @@ pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
     };
 
     reverted
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn execute(_name: &str, _bytecode: &str, _sink: &mut TestSink) -> bool {
-    panic!("test execution not supported on wasm")
 }

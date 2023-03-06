@@ -24,7 +24,7 @@ indexmap = "1.6.2"
 insta = { default-features = false, version = "1.26" }
 
 # used by ethabi, we need to force the js feature for wasm support
-getrandom = { version = "0.2.3", features = ["js"] }
+getrandom = { version = "0.2.8", features = ["js"] }
 
 [features]
 solc-backend = ["fe-yulc", "solc", "fe-driver/solc-backend"]

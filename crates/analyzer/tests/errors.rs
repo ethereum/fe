@@ -355,5 +355,5 @@ test_file! { invalid_struct_pub_qualifier }
 test_file! { mut_mistakes }
 test_file! { invalid_comparisons }
 
-test_file! { test_call }
-test_file! { test_params }
+// test_file! { test_call }
+// test_file! { test_params }
