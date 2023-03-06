@@ -11,25 +11,21 @@ NOTE: **The larger part of the `master` branch will be replaced with the brand-n
 
 ## Overview
 
-Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Python and Rust which makes it easy to learn -- especially for new developers entering the Ethereum ecosystem.
+Fe is a statically typed language for writing Smart Contracts. It is implemented in Rust and generates EVM bytecode.
 
-## Features & Goals
+## Language Features & Goals
 
-* Bounds and overflow checking
-* Decidability by limitation of dynamic program behavior
-* More precise gas estimation (as a consequence of decidability)
-* Static typing
-* Pure function support
-* Restrictions on reentrancy
-* Static looping
-* Module imports
-* Standard library
-* Usage of [YUL](https://docs.soliditylang.org/en/latest/yul.html) IR to target both EVM and eWASM
-* WASM compiler binaries for enhanced portability and in-browser compilation of
-  Fe contracts
-* Implementation in a powerful, systems-oriented language (Rust) with strong safety guarantees to reduce risk of compiler bugs
+* Heavily static
+* Safe by default 
+* Ergonomic
+* Powerful
 
-Additional information about design goals and background can be found in the [official announcement](https://snakecharmers.ethereum.org/fe-a-new-language-for-the-ethereum-ecosystem/).
+## Compiler/Tooling Features & Goals
+
+* Wasm support
+* Efficient and correct code generation
+* Compiler interactiveness and IDE support
+* Testing that enables thorough validation of Contracts and libraries
 
 ## Language Specification
 
@@ -37,9 +33,7 @@ We aim to provide a full language specification that should eventually be used t
 
 ## Progress
 
-Fe development is still in its early stages. We have a basic [Roadmap for 2021](https://notes.ethereum.org/LVhaTF30SJOpkbG1iVw1jg) that we want to follow. We generally try to drive the development by working through real world use cases. Our next goal is to provide a working Uniswap implementation in Fe which will help us to advance and form the language.
-
-Fe had its first alpha release January 2021 and is now following a monthly release cycle.
+TODO: update this
 
 ## Getting started
 
