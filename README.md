@@ -19,13 +19,14 @@ Fe is a statically typed language for writing Smart Contracts. It is implemented
 * Safe by default 
 * Ergonomic
 * Powerful
+* Designed for blockchains
 
 ## Compiler/Tooling Features & Goals
 
-* Wasm support
 * Efficient and correct code generation
 * Compiler interactiveness and IDE support
 * Testing that enables thorough validation of Contracts and libraries
+* Wasm support
 
 ## Language Specification
 
