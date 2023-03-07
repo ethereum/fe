@@ -1,7 +1,7 @@
 
 <img src="https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg" width="150px">
 
-Fe is an emerging smart contract language for the Ethereum blockchain.
+Fe is a high-level smart contract language for the Ethereum blockchain.
 
 [![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
 [![Coverage](https://codecov.io/gh/ethereum/fe/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/fe)
@@ -11,7 +11,7 @@ NOTE: **The larger part of the `master` branch will be replaced with the brand-n
 
 ## Overview
 
-Fe is a statically typed language for writing Smart Contracts. It is implemented in Rust and generates EVM bytecode.
+Fe is statically typed and designed for writing smart contracts. It is implemented in Rust and generates EVM bytecode.
 
 ## Language Features & Goals
 
@@ -19,22 +19,29 @@ Fe is a statically typed language for writing Smart Contracts. It is implemented
 * Safe by default 
 * Ergonomic
 * Powerful
-* Designed for blockchains
+* Designed for Ethereum 
 
 ## Compiler/Tooling Features & Goals
 
 * Efficient and correct code generation
 * Compiler interactiveness and IDE support
-* Testing that enables thorough validation of Contracts and libraries
+* Testing that enables thorough validation of contracts and libraries
 * Wasm support
 
 ## Language Specification
 
 We aim to provide a full language specification that should eventually be used to formally verify the correctness of the compiler. A work in progress draft of the specification can be found [here](http://fe-lang.org/docs/spec/index.html).
 
-## Progress
+## Progress (as of March 2023)
 
-TODO: update this
+**Supported language features**
+- Enums and match statements
+- Module system
+- Traits and generics 
+
+**Bountiful**
+
+We have launched a non-traditional bug bounty platform to help validate the Fe compiler. You can read more [here](https://blog.fe-lang.org/posts/bountiful-break-things-and-get-paid/). 
 
 ## Getting started
 
