@@ -12,7 +12,6 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;  _ContractField_\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Function_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Struct_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; | [_Event_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Enum_]\
 > &nbsp;&nbsp; )
 >
@@ -70,5 +69,4 @@ It is **not possible** to call `__init__` at runtime.
 [contract type]: ../type_system/types/contract.md
 [_Function_]: ../type_system/types/function.md
 [_Struct_]: ./structs.md
-[_Event_]: ./events.md
 [_Enum_]: ./enums.md
