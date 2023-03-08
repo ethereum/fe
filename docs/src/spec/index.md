@@ -14,6 +14,7 @@
     * [Visibility and Privacy](items/visibility_and_privacy.md)
     * [Functions](items/functions.md)
     * [Structs](items/structs.md)
+    * [Traits](items/traits.md)
     * [Enums](items/enums.md)
     * [Type Aliases](items/type_aliases.md)
     * [Contracts](items/contracts.md)
