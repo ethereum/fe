@@ -55,7 +55,6 @@
         * [Address Type](type_system/types/address.md)
         * [Map Type](type_system/types/map.md)
         * [String Type](type_system/types/string.md)
-        * [Event Types](type_system/types/event.md)
 * [Data Layout](data_layout/index.md)
     * [Stack](data_layout/stack.md)
     * [Storage](data_layout/storage/index.md)
