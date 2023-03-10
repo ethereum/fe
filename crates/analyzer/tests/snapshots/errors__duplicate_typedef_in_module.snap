@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: a type named "bar" has already been defined
   ┌─ compile_errors/duplicate_typedef_in_module.fe:1:6

@@ -98,13 +98,11 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Build WASM tests
-        run: wasm-pack test --node crates/fe -- --workspace --no-run
       - name: Run WASM tests
         # wasm-pack needs a Cargo.toml with a 'package' field.
         # (see https://github.com/rustwasm/wasm-pack/issues/642)
         # This will still run all tests in the workspace.
-        run: wasm-pack test --node crates/fe -- --workspace
+        run: wasm-pack test --node crates/fe --workspace
 
   release:
     # Only run this when we push a tag

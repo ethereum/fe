@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: duplicate definition of variable `sum`
   ┌─ compile_errors/duplicate_var_in_child_scope.fe:4:17

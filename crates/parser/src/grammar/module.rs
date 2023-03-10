@@ -74,6 +74,12 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             }
         }
         TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, None)?),
+        TokenKind::Hash => {
+            let attr = par.expect(TokenKind::Hash, "expected `#`")?;
+            let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
+                vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
+            ModuleStmt::Attribute(Node::new(attr_name.text.into(), attr.span + attr_name.span))
+        }
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(

@@ -1,0 +1,14 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+create_house([]) used 69429 gas
+bar([]) used 1276 gas
+set_house([Tuple([Uint(1000000), Uint(250), Uint(6), Bool(true)])]) used 1173 gas
+get_house([]) used 1078 gas
+encode_house([]) used 1729 gas
+hashed_house([]) used 846 gas
+create_mixed([]) used 350 gas
+complex_struct_in_memory([]) used 4236 gas
+complex_struct_in_storage([]) used 183921 gas
+

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: value must be copied to memory
   ┌─ compile_errors/needs_mem_copy.fe:5:20

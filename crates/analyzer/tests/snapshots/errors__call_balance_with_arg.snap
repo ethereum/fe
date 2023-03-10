@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `balance` expects 0 arguments, but 1 was provided
    ┌─ src/evm.fe:54:15

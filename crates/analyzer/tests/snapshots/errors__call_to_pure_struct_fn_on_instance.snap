@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `foo` must be called without `self`
   ┌─ compile_errors/call_to_pure_struct_fn_on_instance.fe:9:15

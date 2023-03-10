@@ -1,0 +1,9 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+write_bar([Uint(4), Uint(42)]) used 22471 gas
+write_bar([Uint(26), Uint(12)]) used 22471 gas
+read_bar([Uint(4)]) used 440 gas
+read_bar([Uint(26)]) used 440 gas
+

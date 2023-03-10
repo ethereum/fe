@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: duplicate parameter names in function `bar`
   ┌─ compile_errors/duplicate_arg_in_contract_method.fe:2:16

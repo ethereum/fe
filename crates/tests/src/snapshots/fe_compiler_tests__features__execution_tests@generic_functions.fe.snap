@@ -1,7 +1,0 @@
----
-source: crates/tests/src/features.rs
-assertion_line: 2254
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-run_test([]) used 32 gas
-

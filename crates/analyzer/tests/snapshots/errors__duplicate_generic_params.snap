@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: duplicate generic parameter
    ┌─ compile_errors/duplicate_generic_params.fe:10:10

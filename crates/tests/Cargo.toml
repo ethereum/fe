@@ -7,35 +7,9 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-
-[dev-dependencies]
-ethabi = { default-features = false, version = "18.0" }
-evm = { default-features = false, version = "0.37" }
-evm-runtime = { default-features = false, version = "0.37" }
-fe-analyzer = {path = "../analyzer", version = "^0.21.0-alpha"}
-fe-common = {path = "../common", version = "^0.21.0-alpha"}
-fe-compiler-test-utils = {path = "../test-utils" }
-fe-parser = {path = "../parser", version = "^0.21.0-alpha"}
-fe-yulc = {path = "../yulc", version = "^0.21.0-alpha"}
+fe-test-runner = {path = "../test-runner", version = "^0.21.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.21.0-alpha"}
-test-files = {path = "../test-files", package = "fe-test-files" }
-hex = "0.4"
-primitive-types = {version = "0.12", default-features = false, features = ["rlp"]}
-rand = "0.7.3"
-rstest = "0.6.4"
-# This fork contains the shorthand macros and some other necessary updates.
-yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
-insta = { default-features = false, version = "1.26" } 
-pretty_assertions = "1.0.0"
-wasm-bindgen-test = "0.3.24"
+dir-test = "^0.1"
 
 [features]
-solc-backend = ["fe-yulc/solc-backend", "fe-compiler-test-utils/solc-backend"]
-
-[dev-dependencies.proptest]
-version = "1.0.0"
-# The default feature set includes things like process forking which are not
-# supported in Web Assembly.
-default-features = false
-# Enable using the `std` crate.
-features = ["std"]
+solc-backend = ["fe-driver/solc-backend"]

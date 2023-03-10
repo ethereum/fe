@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `fn __call__()` is defined multiple times in `contract Foo`
    ┌─ compile_errors/call_duplicate_def.fe:2:5

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: uninitialized variable
   ┌─ compile_errors/uninit_values.fe:7:13

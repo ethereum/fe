@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `self` can't be used as a variable name
   ┌─ compile_errors/self_misuse.fe:2:9

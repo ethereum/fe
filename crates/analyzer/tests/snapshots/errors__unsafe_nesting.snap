@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: unnecessary `unsafe` block
   ┌─ compile_errors/unsafe_nesting.fe:2:5

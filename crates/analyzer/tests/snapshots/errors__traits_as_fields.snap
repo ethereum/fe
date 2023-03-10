@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `Foo` is not a type name
   ┌─ compile_errors/traits_as_fields.fe:1:7

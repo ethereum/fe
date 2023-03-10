@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: duplicate function names in `contract o`
   ┌─ compile_errors/issue_451.fe:2:5

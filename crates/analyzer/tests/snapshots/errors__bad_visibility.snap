@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: type MyInt is private
   ┌─ compile_errors/bad_visibility/src/main.fe:1:11

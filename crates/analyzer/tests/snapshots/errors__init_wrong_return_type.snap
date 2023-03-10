@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `__init__` function has incorrect return type
   ┌─ compile_errors/init_wrong_return_type.fe:2:26

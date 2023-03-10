@@ -1,0 +1,9 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+bar([String("string 4"), String("string 5")]) used 1631 gas
+return_static_string([]) used 1137 gas
+return_casted_static_string([]) used 981 gas
+return_special_chars([]) used 1016 gas
+

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: snapshot
-
 ---
 note: 
    ┌─ ingots/basic_ingot/src/main.fe:9:5
@@ -221,53 +220,53 @@ note:
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:4:5
+  ┌─ ingots/basic_ingot/src/bing.fe:5:5
   │
-4 │     pub my_address: address
+5 │     pub my_address: address
   │     ^^^^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:7:1
-  │  
-7 │ ╭ pub fn get_42_backend() -> u256 {
-8 │ │     return std::evm::add(21, 21)
-9 │ │ }
-  │ ╰─^ params: [] -> u256
+   ┌─ ingots/basic_ingot/src/bing.fe:8:1
+   │  
+ 8 │ ╭ pub fn get_42_backend() -> u256 {
+ 9 │ │     return std::evm::add(21, 21)
+10 │ │ }
+   │ ╰─^ params: [] -> u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:8:26
+  ┌─ ingots/basic_ingot/src/bing.fe:9:26
   │
-8 │     return std::evm::add(21, 21)
+9 │     return std::evm::add(21, 21)
   │                          ^^  ^^ u256
   │                          │    
   │                          u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:8:12
+  ┌─ ingots/basic_ingot/src/bing.fe:9:12
   │
-8 │     return std::evm::add(21, 21)
+9 │     return std::evm::add(21, 21)
   │            ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:12:5
+   ┌─ ingots/basic_ingot/src/bing.fe:13:5
    │  
-12 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
-13 │ │         return x + y
-14 │ │     }
+13 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
+14 │ │         return x + y
+15 │ │     }
    │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:13:16
+   ┌─ ingots/basic_ingot/src/bing.fe:14:16
    │
-13 │         return x + y
+14 │         return x + y
    │                ^   ^ u256
    │                │    
    │                u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:13:16
+   ┌─ ingots/basic_ingot/src/bing.fe:14:16
    │
-13 │         return x + y
+14 │         return x + y
    │                ^^^^^ u256
 
 

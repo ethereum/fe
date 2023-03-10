@@ -1,21 +1,16 @@
 #![allow(unused_imports, dead_code)]
 
 pub use fe_codegen::db::{CodegenDb, Db};
-//use fe_codegen::yul::runtime::RuntimeProvider;
 
-use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
-use fe_analyzer::AnalyzerDb;
-use fe_analyzer::{context::Analysis, namespace::items::ContractId};
+use fe_analyzer::namespace::items::{ContractId, FunctionId, IngotId, IngotMode, ModuleId};
 use fe_common::db::Upcast;
-use fe_common::diagnostics::{print_diagnostics, Diagnostic};
-use fe_common::files::{FileKind, SourceFileId};
-use fe_mir::db::MirDb;
+use fe_common::diagnostics::Diagnostic;
+use fe_common::files::FileKind;
 use fe_parser::ast::SmolStr;
+use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};
-#[cfg(feature = "solc-backend")]
 use serde_json::Value;
-use std::ops::Deref;
-use std::path::Path;
+use std::fmt::Display;
 
 /// The artifacts of a compiled module.
 pub struct CompiledModule {
@@ -30,6 +25,23 @@ pub struct CompiledContract {
     pub yul: String,
     #[cfg(feature = "solc-backend")]
     pub bytecode: String,
+}
+
+#[cfg(feature = "solc-backend")]
+pub struct CompiledTest {
+    pub name: SmolStr,
+    bytecode: String,
+}
+
+#[cfg(feature = "solc-backend")]
+impl CompiledTest {
+    pub fn new(name: SmolStr, bytecode: String) -> Self {
+        Self { name, bytecode }
+    }
+
+    pub fn execute(&self, sink: &mut TestSink) -> bool {
+        fe_test_runner::execute(&self.name, &self.bytecode, sink)
+    }
 }
 
 #[derive(Debug)]
@@ -51,7 +63,24 @@ pub fn compile_single_file(
     let diags = module.diagnostics(db);
 
     if diags.is_empty() {
-        compile_module_id(db, module, with_bytecode, optimize)
+        compile_module(db, module, with_bytecode, optimize)
+    } else {
+        Err(CompileError(diags))
+    }
+}
+
+#[cfg(feature = "solc-backend")]
+pub fn compile_single_file_tests(
+    db: &mut Db,
+    path: &str,
+    src: &str,
+    optimize: bool,
+) -> Result<(SmolStr, Vec<CompiledTest>), CompileError> {
+    let module = ModuleId::new_standalone(db, path, src);
+    let diags = module.diagnostics(db);
+
+    if diags.is_empty() {
+        Ok((module.name(db), compile_module_tests(db, module, optimize)))
     } else {
         Err(CompileError(diags))
     }
@@ -108,7 +137,43 @@ pub fn compile_ingot(
     let main_module = ingot
         .root_module(db)
         .expect("missing root module, with no diagnostic");
-    compile_module_id(db, main_module, with_bytecode, optimize)
+    compile_module(db, main_module, with_bytecode, optimize)
+}
+
+#[cfg(feature = "solc-backend")]
+pub fn compile_ingot_tests(
+    db: &mut Db,
+    name: &str,
+    files: &[(impl AsRef<str>, impl AsRef<str>)],
+    optimize: bool,
+) -> Result<Vec<(SmolStr, Vec<CompiledTest>)>, CompileError> {
+    let std = IngotId::std_lib(db);
+    let ingot = IngotId::from_files(
+        db,
+        name,
+        IngotMode::Main,
+        FileKind::Local,
+        files,
+        indexmap! { "std".into() => std },
+    );
+
+    let mut diags = ingot.diagnostics(db);
+    ingot.sink_external_ingot_diagnostics(db, &mut diags);
+    if !diags.is_empty() {
+        return Err(CompileError(diags));
+    }
+
+    if diags.is_empty() {
+        Ok(ingot
+            .all_modules(db)
+            .iter()
+            .fold(vec![], |mut accum, module| {
+                accum.push((module.name(db), compile_module_tests(db, *module, optimize)));
+                accum
+            }))
+    } else {
+        Err(CompileError(diags))
+    }
 }
 
 /// Returns graphviz string.
@@ -127,13 +192,32 @@ pub fn dump_mir_single_file(db: &mut Db, path: &str, src: &str) -> Result<String
 }
 
 #[cfg(feature = "solc-backend")]
-fn compile_module_id(
+fn compile_test(db: &mut Db, test: FunctionId, optimize: bool) -> CompiledTest {
+    let yul_test = fe_codegen::yul::isel::lower_test(db, test)
+        .to_string()
+        .replace('"', "\\\"");
+    let bytecode = compile_to_evm("test", &yul_test, optimize);
+    CompiledTest::new(test.name(db), bytecode)
+}
+
+#[cfg(feature = "solc-backend")]
+fn compile_module_tests(db: &mut Db, module_id: ModuleId, optimize: bool) -> Vec<CompiledTest> {
+    module_id
+        .tests(db)
+        .iter()
+        .map(|test| compile_test(db, *test, optimize))
+        .collect()
+}
+
+#[cfg(feature = "solc-backend")]
+fn compile_module(
     db: &mut Db,
     module_id: ModuleId,
     with_bytecode: bool,
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
+
     for contract in module_id.all_contracts(db.upcast()) {
         let name = &contract.data(db.upcast()).name;
         let abi = db.codegen_abi_contract(contract);
@@ -164,7 +248,7 @@ fn compile_module_id(
 }
 
 #[cfg(not(feature = "solc-backend"))]
-fn compile_module_id(
+fn compile_module(
     db: &mut Db,
     module_id: ModuleId,
     _with_bytecode: bool,
@@ -219,9 +303,4 @@ fn compile_to_evm(name: &str, yul_object: &str, optimize: bool) -> String {
             panic!("Yul compilation failed with the above errors")
         }
     }
-}
-
-#[cfg(not(feature = "solc-backend"))]
-fn compile_to_evm(_: &str, _: &str, _: bool) -> String {
-    unreachable!()
 }
