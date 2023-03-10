@@ -1075,7 +1075,7 @@ fn sized_vals_in_sto() {
         let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", &[]);
 
         let num = uint_token(68);
-        let nums = uint_array_token(&(0..42).into_iter().collect::<Vec<_>>());
+        let nums = uint_array_token(&(0..42).collect::<Vec<_>>());
         let string = string_token("there are 26 protons in fe");
 
         harness.test_function(&mut executor, "write_num", &[num.clone()], None);

@@ -330,13 +330,7 @@ pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[StructId]> {
     module
         .all_items(db)
         .iter()
-        .chain(
-            module
-                .used_items(db)
-                .values()
-                .into_iter()
-                .map(|(_, item)| item),
-        )
+        .chain(module.used_items(db).values().map(|(_, item)| item))
         .filter_map(|item| match item {
             Item::Type(TypeDef::Struct(id)) => Some(*id),
             _ => None,
