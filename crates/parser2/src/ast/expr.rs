@@ -403,6 +403,7 @@ pub enum BinOp {
     Comp(CompBinOp),
     Logical(LogicalBinOp),
 }
+
 impl BinOp {
     pub(super) fn from_node_or_token(
         node_or_token: rowan::NodeOrToken<SyntaxNode, SyntaxToken>,

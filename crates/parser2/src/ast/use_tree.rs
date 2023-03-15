@@ -71,7 +71,7 @@ impl UsePathSegment {
         support::token(self.syntax(), SK::SelfKw)
     }
 
-    pub fn wildcard(&self) -> Option<SyntaxToken> {
+    pub fn glob(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Star)
     }
 }

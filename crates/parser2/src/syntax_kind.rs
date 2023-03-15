@@ -176,9 +176,6 @@ pub enum SyntaxKind {
     /// `while`
     #[token("while")]
     WhileKw,
-    /// `assert`
-    #[token("assert")]
-    AssertKw,
     /// `pub`
     #[token("pub")]
     PubKw,
@@ -297,8 +294,6 @@ pub enum SyntaxKind {
     /// `break`
     BreakStmt,
 
-    /// `assert x == 2`
-    AssertStmt,
     /// `return 1`
     ReturnStmt,
     /// `1`
