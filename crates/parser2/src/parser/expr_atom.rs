@@ -53,7 +53,6 @@ define_scope! {
         WhileKw,
         ContinueKw,
         BreakKw,
-        AssertKw,
         ReturnKw
     )
 }

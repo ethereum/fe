@@ -19,12 +19,14 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Che
         Some(WhileKw) => parser.parse(WhileStmtScope::default(), checkpoint),
         Some(ContinueKw) => parser.parse(ContinueStmtScope::default(), checkpoint),
         Some(BreakKw) => parser.parse(BreakStmtScope::default(), checkpoint),
-        Some(AssertKw) => parser.parse(AssertStmtScope::default(), checkpoint),
         Some(ReturnKw) => parser.parse(ReturnStmtScope::default(), checkpoint),
         _ => {
-            let is_assign_stmt =
-                parser.dry_run(|parser| parser.parse(AssignStmtScope::default(), None).0);
-            if is_assign_stmt {
+            // 1. Try to parse the statement as an augmented assignment statement.
+            // 2. If 1. fails, try to parse the statement as an assignment statement.
+            // 3. If 2. fails, try to parse the statement as an expression statement.
+            if parser.dry_run(|parser| parser.parse(AugAssignStmtScope::default(), None).0) {
+                parser.parse(AugAssignStmtScope::default(), checkpoint)
+            } else if parser.dry_run(|parser| parser.parse(AssignStmtScope::default(), None).0) {
                 parser.parse(AssignStmtScope::default(), checkpoint)
             } else {
                 parser.parse(ExprStmtScope::default(), checkpoint)
@@ -102,18 +104,6 @@ impl super::Parse for BreakStmtScope {
     }
 }
 
-define_scope! { AssertStmtScope, AssertStmt, Inheritance }
-impl super::Parse for AssertStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::AssertKw);
-        parser.set_newline_as_trivia(false);
-        parse_expr(parser);
-        if parser.bump_if(SyntaxKind::Comma) {
-            parse_expr(parser);
-        }
-    }
-}
-
 define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
 impl super::Parse for ReturnStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
@@ -127,21 +117,46 @@ impl super::Parse for ReturnStmtScope {
     }
 }
 
-define_scope! { AssignStmtScope, AssignStmt, Inheritance }
-impl super::Parse for AssignStmtScope {
+define_scope! { AugAssignStmtScope, AugAssignStmt, Inheritance }
+impl super::Parse for AugAssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::Eq]);
-
         parser.set_newline_as_trivia(false);
+
+        parser.with_recovery_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expeced identifier for the assignment",
+                    None,
+                )
+            },
+            &[SyntaxKind::Eq],
+        );
+
         parser.with_next_expected_tokens(
             |parser| {
-                if bump_aug_assign_op_opt(parser) {
-                    self.set_kind(SyntaxKind::AugAssignStmt);
+                if !bump_aug_assign_op(parser) {
+                    parser.error_and_recover("expected augmented assignment operator", None);
                 }
             },
             &[SyntaxKind::Eq],
         );
 
+        if !parser.bump_if(SyntaxKind::Eq) {
+            parser.error_and_recover("expected `=`", None);
+            return;
+        }
+
+        parse_expr(parser);
+    }
+}
+
+define_scope! { AssignStmtScope, AssignStmt, Inheritance }
+impl super::Parse for AssignStmtScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
+
+        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::Eq]);
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=`", None);
             return;
@@ -158,7 +173,7 @@ impl super::Parse for ExprStmtScope {
     }
 }
 
-fn bump_aug_assign_op_opt<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+fn bump_aug_assign_op<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
     match parser.current_kind() {
         Some(Pipe | Hat | Amp | Plus | Minus | Star | Slash | Percent | Star2) => {

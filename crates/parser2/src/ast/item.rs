@@ -200,7 +200,6 @@ ast_node! {
 impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
-impl super::ItemModifierOwner for Impl {}
 impl Impl {
     /// Returns the type of the impl.
     /// `Foo::Bar<T>` in `impl Foo::Bar<T> where .. { .. }`
@@ -224,7 +223,6 @@ ast_node! {
 impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
-impl super::ItemModifierOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
@@ -660,7 +658,7 @@ mod tests {
                 0 => {
                     let mut segments = child.path().unwrap().iter();
                     assert_eq!(segments.next().unwrap().ident().unwrap().text(), "bar");
-                    assert!(segments.next().unwrap().wildcard().is_some());
+                    assert!(segments.next().unwrap().glob().is_some());
                     assert!(segments.next().is_none());
                     assert!(child.children().is_none());
                 }

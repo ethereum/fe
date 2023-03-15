@@ -8,7 +8,7 @@ use super::{
     func::FnDefScope,
     param::{parse_where_clause_opt, GenericParamListScope},
     struct_::RecordFieldDefListScope,
-    token_stream::TokenStream,
+    token_stream::{LexicalToken, TokenStream},
     type_::{parse_type, TupleTypeScope},
     use_tree::UseTreeScope,
     Parser,
@@ -58,8 +58,13 @@ impl super::Parse for ItemListScope {
 
             if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
                 parser.error("expected `fn` after `unsafe` keyword");
-            } else if modifier.is_pub() && parser.current_kind() == Some(ExternKw) {
-                parser.error("`pub` can't be used for `extern` block");
+            } else if modifier.is_pub() && matches!(parser.current_kind(), Some(ImplKw | ExternKw))
+            {
+                let error_msg = format!(
+                    "`pub` can't be used for `{}`",
+                    parser.current_token().unwrap().text()
+                );
+                parser.error(&error_msg);
             }
 
             match parser.current_kind() {
