@@ -13,3 +13,6 @@ tracing = "0.1"
 # but I want to keep up with the latest version until the new Fe implemeentation is merged into the master.
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 fe-parser2 = { path = "../parser2" }
+derive_more = "0.99"
+cranelift-entity = "0.91"
+num-bigint = "0.4.3"

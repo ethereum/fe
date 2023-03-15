@@ -281,6 +281,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cranelift-entity"
+version = "0.91.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a59bcbca89c3f1b70b93ab3cbba5e5e0cbf3e63dadb23c7525cb142e21a9d4c"
+
+[[package]]
 name = "criterion"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -789,7 +795,10 @@ dependencies = [
 name = "fe-hir"
 version = "0.20.0-alpha"
 dependencies = [
+ "cranelift-entity",
+ "derive_more",
  "fe-parser2",
+ "num-bigint",
  "salsa-2022",
  "tracing",
 ]
