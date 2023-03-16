@@ -199,7 +199,7 @@ ast_node! {
     SK::TypeGenericArg,
 }
 impl TypeGenericArg {
-    pub fn type_(&self) -> Option<super::Type> {
+    pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
 
