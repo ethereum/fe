@@ -6,7 +6,12 @@ use crate::{
 };
 
 impl PathId {
-    pub fn from_ast(db: &dyn HirDb, ast: ast::Path) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, ast: Option<ast::Path>) -> Self {
+        // If the path is None, we return a path with a single invalid segment.
+        let Some(ast) = ast else {
+            return Self::new(db, vec![PathSegment::Invalid])
+        };
+
         let mut segments = Vec::new();
         for seg in ast.into_iter() {
             let segment = if seg.is_self() {
