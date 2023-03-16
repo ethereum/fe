@@ -1,6 +1,6 @@
 use crate::hir_def::TypeId;
 
-use super::{Expr, IdentId, PathId};
+use super::{Body, IdentId, PathId};
 
 #[salsa::interned]
 pub struct GenericArgListId {
@@ -9,9 +9,9 @@ pub struct GenericArgListId {
 }
 
 #[salsa::interned]
-pub struct WhereClauseId {
+pub struct GenericParamListId {
     #[return_ref]
-    pub predicates: Vec<WherePredicate>,
+    pub params: Vec<GenericParam>,
 }
 
 #[salsa::interned]
@@ -21,25 +21,12 @@ pub struct FnParamListId {
 }
 
 #[salsa::interned]
-pub struct GenericParamListId {
+pub struct WhereClauseId {
     #[return_ref]
-    pub params: Vec<GenericParam>,
+    pub predicates: Vec<WherePredicate>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FnParam {
-    pub name: IdentId,
-    pub label: Option<IdentId>,
-    pub ty: TypeId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct WherePredicateId {
-    pub ty: TypeId,
-    pub bound: Vec<TypeBound>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum GenericParam {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
@@ -54,10 +41,10 @@ pub struct TypeGenericParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericParam {
     pub name: IdentId,
-    pub expr: Expr,
+    pub ty: TypeId,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum GenericArg {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
@@ -65,23 +52,48 @@ pub enum GenericArg {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericArg {
-    pub path: PathId,
+    pub ty: TypeId,
     pub bounds: Vec<TypeBound>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg {
-    pub expr: Expr,
+    pub body: Body,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBound {
-    pub path: PathId,
-    pub generic_args: Vec<GenericArg>,
+pub struct FnParam {
+    pub is_mut: bool,
+    pub label: Option<FnParamLabel>,
+    pub name: FnParamName,
+    pub ty: TypeId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePredicate {
     pub ty: TypeId,
-    pub bound: Vec<TypeBound>,
+    pub bounds: Vec<TypeBound>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FnParamLabel {
+    Ident(IdentId),
+    Underscore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FnParamName {
+    /// `self` parameter.
+    Self_,
+    Ident(IdentId),
+    Underscore,
+    Invalid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeBound {
+    /// The path to the trait.
+    pub path: PathId,
+    /// The type arguments of the trait.
+    pub generic_args: Option<GenericArgListId>,
 }

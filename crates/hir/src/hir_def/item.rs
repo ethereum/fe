@@ -1,17 +1,19 @@
+// This is necessary because `salsa::tracked` structs generates a constructor
+// that may take many arguments depending on the number of fields in the struct.
+#![allow(clippy::too_many_arguments)]
+
 use fe_parser2::ast;
 
 use crate::span::HirOrigin;
 
-use super::{
-    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TypeId, WherePredicateId,
-};
+use super::{AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TypeId, WhereClauseId};
 
 #[salsa::tracked]
 pub struct Fn {
     #[id]
     pub name: super::IdentId,
     pub generic_params: GenericParamListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub params: FnParamListId,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
@@ -28,7 +30,7 @@ pub struct Struct {
 
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub attributes: AttrListId,
     pub fields: RecordFieldListId,
 
@@ -55,7 +57,7 @@ pub struct Enum {
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub attributes: AttrListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub variants: EnumVariantListId,
 
     pub(crate) origin: HirOrigin<ast::AstPtr<ast::Enum>>,
@@ -69,7 +71,7 @@ pub struct TypeAlias {
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub attributes: AttrListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub ty: TypeId,
 
     pub(crate) origin: HirOrigin<ast::AstPtr<ast::TypeAlias>>,
@@ -82,7 +84,7 @@ pub struct Impl {
 
     pub generic_params: GenericParamListId,
     pub attributes: AttrListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub items: ImplItemListId,
 
     pub(crate) origin: HirOrigin<ast::AstPtr<ast::Impl>>,
@@ -95,7 +97,7 @@ pub struct Trait {
 
     pub generic_params: GenericParamListId,
     pub attributes: AttrListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub items: TraitItemListId,
 
     pub(crate) origin: HirOrigin<ast::AstPtr<ast::Trait>>,
@@ -110,7 +112,7 @@ pub struct ImplTrait {
 
     pub generic_params: GenericParamListId,
     pub attributes: AttrListId,
-    pub where_predicate: WherePredicateId,
+    pub where_clause: WhereClauseId,
     pub items: ImplTraitItemListId,
 
     pub(crate) origin: HirOrigin<ast::AstPtr<ast::ImplTrait>>,
