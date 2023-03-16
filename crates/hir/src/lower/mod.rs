@@ -2,6 +2,7 @@ use fe_parser2::SyntaxToken;
 
 use crate::{hir_def::IdentId, HirDb};
 
+mod attr;
 mod body;
 mod params;
 mod path;

@@ -1,4 +1,4 @@
-use super::IdentId;
+use super::{IdentId, StringId};
 
 #[salsa::interned]
 pub struct AttrListId {
@@ -6,7 +6,7 @@ pub struct AttrListId {
     attrs: Vec<Attr>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum Attr {
     Normal(NormalAttr),
     DocComment(DocCommentAttr),
@@ -21,11 +21,11 @@ pub struct NormalAttr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DocCommentAttr {
     /// This is the text of the doc comment, excluding the `///` prefix.
-    pub text: String,
+    pub text: StringId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AttrArg {
-    key: IdentId,
-    value: IdentId,
+    pub key: IdentId,
+    pub value: IdentId,
 }
