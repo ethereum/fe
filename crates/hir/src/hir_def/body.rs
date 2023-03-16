@@ -26,4 +26,8 @@ pub enum BodyKind {
     DefBlock(super::ItemKind),
     /// This is a body appearing in array types or
     NamelessConst,
+
+    /// The body is invalid.
+    /// This is used to represent bodies that failed to parse.
+    Invalid,
 }
