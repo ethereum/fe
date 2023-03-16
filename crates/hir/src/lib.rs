@@ -1,7 +1,8 @@
 pub mod hir_def;
+pub mod lower;
 pub mod span;
 
-#[salsa::jar(db = Db)]
+#[salsa::jar(db = HirDefDb)]
 pub struct Jar(
     // Tracked Hir items.
     hir_def::Fn,
@@ -33,5 +34,5 @@ pub struct Jar(
     hir_def::UseTreeId,
 );
 
-pub trait Db: salsa::DbWithJar<Jar> {}
-impl<DB> Db for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
+pub trait HirDefDb: salsa::DbWithJar<Jar> {}
+impl<DB> HirDefDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
