@@ -2,7 +2,7 @@ pub mod hir_def;
 pub mod lower;
 pub mod span;
 
-#[salsa::jar(db = HirDefDb)]
+#[salsa::jar(db = HirDb)]
 pub struct Jar(
     // Tracked Hir items.
     hir_def::Fn,
@@ -17,7 +17,6 @@ pub struct Jar(
     hir_def::Use,
     hir_def::Extern,
     hir_def::Body,
-    // Interned structs.
     hir_def::IdentId,
     hir_def::IntegerId,
     hir_def::StringId,
@@ -32,7 +31,10 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::UseTreeId,
+    // Interned structs.
+    span::IngotId,
+    span::FileId,
 );
 
-pub trait HirDefDb: salsa::DbWithJar<Jar> {}
-impl<DB> HirDefDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
+pub trait HirDb: salsa::DbWithJar<Jar> {}
+impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
