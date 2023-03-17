@@ -197,7 +197,6 @@ ast_node! {
     pub struct Impl,
     SK::Impl,
 }
-impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
 impl Impl {
@@ -220,13 +219,13 @@ ast_node! {
     pub struct ImplTrait,
     SK::ImplTrait,
 }
-impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
-    pub fn trait_(&self) -> Option<super::Type> {
+    // TODO: TraitRef.
+    pub fn trait_ref(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
 
@@ -391,7 +390,7 @@ impl ItemModifier {
 }
 
 pub trait ItemModifierOwner: AstNode<Language = FeLang> {
-    fn item_modifier(&self) -> Option<ItemModifier> {
+    fn modifier(&self) -> Option<ItemModifier> {
         support::child(self.syntax())
     }
 }
@@ -453,7 +452,7 @@ mod tests {
         assert!(func.where_clause().is_some());
         assert!(func.body().is_some());
         assert!(matches!(func.ret_ty().unwrap().kind(), TypeKind::Tuple(_)));
-        let modifier = func.item_modifier().unwrap();
+        let modifier = func.modifier().unwrap();
         assert!(modifier.pub_kw().is_some());
         assert!(modifier.unsafe_kw().is_some());
     }
@@ -612,7 +611,7 @@ mod tests {
                 fn foo<T>(self, _t: T) -> u32 { return 1 };
             }"#;
         let i: ImplTrait = parse_item(source);
-        assert!(matches!(i.trait_().unwrap().kind(), TypeKind::Path(_)));
+        assert!(matches!(i.trait_ref().unwrap().kind(), TypeKind::Path(_)));
         assert!(matches!(i.ty().unwrap().kind(), TypeKind::Tuple(_)));
         assert!(i.item_list().unwrap().iter().count() == 1);
     }

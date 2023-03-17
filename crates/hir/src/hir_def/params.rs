@@ -58,7 +58,7 @@ pub struct TypeGenericArg {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg {
-    pub body: Body,
+    pub body: MaybeInvalid<Body>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

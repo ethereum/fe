@@ -7,6 +7,7 @@ use crate::{
 
 mod attr;
 mod body;
+mod item;
 mod params;
 mod path;
 mod types;
