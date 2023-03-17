@@ -6,10 +6,10 @@ use super::{
     attr, define_scope,
     expr::parse_expr,
     func::FnDefScope,
-    param::{parse_where_clause_opt, GenericParamListScope},
+    param::{parse_generic_params_opt, parse_where_clause_opt},
     struct_::RecordFieldDefListScope,
     token_stream::{LexicalToken, TokenStream},
-    type_::{parse_type, TupleTypeScope},
+    type_::{parse_type, PathTypeScope, TupleTypeScope},
     use_tree::UseTreeScope,
     Parser,
 };
@@ -198,11 +198,7 @@ impl super::Parse for EnumScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
-            },
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -270,11 +266,7 @@ impl super::Parse for TraitScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
-            },
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -300,29 +292,44 @@ define_scope! { ImplScope, Impl, Inheritance }
 impl super::Parse for ImplScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ImplKw);
-
-        parser.with_next_expected_tokens(
-            |parser| {
-                parse_type(parser, None, true);
-            },
+        parser.with_recovery_tokens(
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
         );
 
-        let is_impl_trait = parser.with_next_expected_tokens(
-            |parser| {
-                if parser.bump_if(SyntaxKind::ForKw) {
-                    self.set_kind(SyntaxKind::ImplTrait);
-                    parse_type(parser, None, true);
-                    true
-                } else {
-                    false
-                }
-            },
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
+        let is_impl_trait = parser.dry_run(|parser| {
+            parser.with_next_expected_tokens(
+                |parser| parse_type(parser, None),
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
+            );
+            parser.bump_if(SyntaxKind::ForKw)
+        });
+
+        if is_impl_trait {
+            self.set_kind(SyntaxKind::ImplTrait);
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(PathTypeScope::default(), None);
+                },
+                &[SyntaxKind::ForKw],
+            );
+            parser.bump_expected(SyntaxKind::ForKw);
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parse_type(parser, None);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            );
+        } else {
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parse_type(parser, None);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            )
+        }
 
         parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
-
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected impl body", None);
             return;
@@ -377,7 +384,7 @@ impl super::Parse for ConstScope {
                     "expected type annotation for `const`",
                     None,
                 );
-                parse_type(parser, None, false);
+                parse_type(parser, None);
             },
             &[SyntaxKind::Eq],
         );
@@ -430,9 +437,7 @@ impl super::Parse for TypeAliasScope {
 
         parser.with_next_expected_tokens(
             |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
+                parse_generic_params_opt(parser);
             },
             &[SyntaxKind::Eq],
         );
@@ -442,7 +447,7 @@ impl super::Parse for TypeAliasScope {
             return;
         }
 
-        parse_type(parser, None, false);
+        parse_type(parser, None);
     }
 }
 

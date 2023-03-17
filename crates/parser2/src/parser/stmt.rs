@@ -47,7 +47,7 @@ impl super::Parse for LetStmtScope {
         }
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
-            parse_type(parser, None, false);
+            parse_type(parser, None);
         }
 
         if parser.bump_if(SyntaxKind::Eq) {

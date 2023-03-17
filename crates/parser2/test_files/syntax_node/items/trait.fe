@@ -19,8 +19,8 @@ pub trait Parse {
     fn parse<S: TokenStream>(mut self, mut parser: Parser<S>)
 }
 
-impl Parser<S: TokenStream> 
-    where S: Clone
+impl<S> Parser<S> 
+    where S: TokenStream + Clone
 {
     pub fn parse<T: Parse>(mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> (bool, Checkpoint) {
         (SyntaxNode::new_root(self.builder.finish()), self.errors)

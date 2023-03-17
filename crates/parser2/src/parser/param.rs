@@ -76,7 +76,7 @@ impl super::Parse for FnParamScope {
 
         parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
 
-        parse_type(parser, None, false);
+        parse_type(parser, None);
     }
 }
 
@@ -129,7 +129,7 @@ impl super::Parse for GenericParamScope {
                         parser.error_and_recover("expected `:` after const parameter", None);
                         return;
                     }
-                    parse_type(parser, None, false);
+                    parse_type(parser, None);
 
                     parser.set_newline_as_trivia(true);
                 } else {
@@ -177,13 +177,13 @@ impl super::Parse for TypeBoundScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(PathScope::default(), None);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::new(false), None);
+            parser.parse(GenericArgListScope::default(), None);
         }
     }
 }
 
 define_scope! {
-    pub(crate) GenericArgListScope{ allow_bounds: bool },
+    pub(crate) GenericArgListScope,
     GenericArgList,
     Override(Gt, Comma)
 }
@@ -195,9 +195,9 @@ impl super::Parse for GenericArgListScope {
             return;
         }
 
-        parser.parse(GenericArgScope::new(self.allow_bounds), None);
+        parser.parse(GenericArgScope::default(), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericArgScope::new(self.allow_bounds), None);
+            parser.parse(GenericArgScope::default(), None);
         }
 
         parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
@@ -205,7 +205,7 @@ impl super::Parse for GenericArgListScope {
 }
 
 define_scope! {
-    GenericArgScope{ allow_bounds: bool },
+    GenericArgScope,
     TypeGenericArg,
     Inheritance
 }
@@ -226,13 +226,9 @@ impl super::Parse for GenericArgScope {
                     }
 
                     _ => {
-                        parse_type(parser, None, self.allow_bounds);
+                        parse_type(parser, None);
                         if parser.current_kind() == Some(SyntaxKind::Colon) {
-                            if !self.allow_bounds {
-                                parser.error_and_recover("type bounds are not allowed here", None);
-                            } else {
-                                parser.parse(TypeBoundListScope::default(), None);
-                            }
+                            parser.error_and_recover("type bounds are not allowed here", None);
                         }
                     }
                 }
@@ -303,7 +299,7 @@ impl super::Parse for WhereClauseScope {
 define_scope! { pub(crate) WherePredicateScope, WherePredicate, Inheritance }
 impl super::Parse for WherePredicateScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_type(parser, None, false);
+        parse_type(parser, None);
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.parse(TypeBoundListScope::default(), None);
@@ -322,4 +318,10 @@ pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
         parser.parse(WhereClauseScope::default(), None);
     }
     parser.set_newline_as_trivia(newline_as_trivia);
+}
+
+pub(crate) fn parse_generic_params_opt<S: TokenStream>(parser: &mut Parser<S>) {
+    if parser.current_kind() == Some(SyntaxKind::Lt) {
+        parser.parse(GenericParamListScope::default(), None);
+    }
 }

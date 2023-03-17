@@ -53,7 +53,6 @@ pub enum GenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericArg {
     pub ty: MaybeInvalid<TypeId>,
-    pub bounds: Vec<TypeBound>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

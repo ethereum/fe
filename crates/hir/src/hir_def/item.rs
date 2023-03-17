@@ -4,11 +4,10 @@
 
 use fe_parser2::ast;
 
-use crate::span::HirOrigin;
+use crate::{hir_def::TraitRef, span::HirOrigin};
 
 use super::{
-    AttrListId, FnParamListId, GenericArgListId, GenericParamListId, IdentId, MaybeInvalid, TypeId,
-    WhereClauseId,
+    AttrListId, FnParamListId, GenericParamListId, IdentId, MaybeInvalid, TypeId, WhereClauseId,
 };
 
 #[salsa::tracked]
@@ -86,6 +85,7 @@ pub struct Impl {
     pub ty: super::MaybeInvalid<TypeId>,
 
     pub attributes: AttrListId,
+    pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
 
     pub(crate) origin: HirOrigin<ast::Impl>,
@@ -106,13 +106,13 @@ pub struct Trait {
 
 #[salsa::tracked]
 pub struct ImplTrait {
-    // TraitRef here.
     #[id]
-    pub trait_ref: MaybeInvalid<TypeId>,
+    pub trait_ref: MaybeInvalid<TraitRef>,
     #[id]
     pub ty: MaybeInvalid<TypeId>,
 
     pub attributes: AttrListId,
+    pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
 
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
@@ -128,7 +128,8 @@ pub struct Const {
 
 #[salsa::tracked]
 pub struct Use {
-    pub name: super::UseTreeId,
+    #[id]
+    pub tree: MaybeInvalid<super::UseTreeId>,
 
     pub(crate) origin: HirOrigin<ast::Use>,
 }

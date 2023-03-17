@@ -202,10 +202,6 @@ impl TypeGenericArg {
     pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
-
-    pub fn bounds(&self) -> Option<TypeBoundList> {
-        support::child(self.syntax())
-    }
 }
 
 ast_node! {
@@ -361,7 +357,7 @@ mod tests {
     fn parse_generic_arg(source: &str) -> GenericArgList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(GenericArgListScope::new(true), None);
+        parser.parse(GenericArgListScope::default(), None);
         GenericArgList::cast(parser.finish().0).unwrap()
     }
 
@@ -430,15 +426,13 @@ mod tests {
     #[test]
     #[wasm_bindgen_test]
     fn generic_arg() {
-        let source = r#"<T: T1, "foo">"#;
+        let source = r#"<T, "foo">"#;
         let ga = parse_generic_arg(source);
         let mut args = ga.iter();
 
-        let GenericArgKind::Type(a1) = args.next().unwrap().kind() else {
+        let GenericArgKind::Type(_) = args.next().unwrap().kind() else {
             panic!("expected type arg");
         };
-        assert!(a1.bounds().is_some());
-
         let GenericArgKind::Const(a2) = args.next().unwrap().kind() else {
             panic!("expected const arg");
         };
