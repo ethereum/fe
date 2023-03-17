@@ -12,8 +12,6 @@ pub enum Pat {
     PathTuple(PathId, Vec<PatId>),
     Record(PathId, Vec<RecordPatField>),
     Or(PatId, PatId),
-
-    Invalid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

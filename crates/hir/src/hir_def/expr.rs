@@ -37,10 +37,6 @@ pub enum Expr {
 
     /// The first `ExprId` is the scrutinee, the second is the arms.
     Match(ExprId, Vec<MatchArm>),
-
-    /// Represents an invalid expressions.
-    /// These expressions are used to represent errors in the AST.
-    Invalid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

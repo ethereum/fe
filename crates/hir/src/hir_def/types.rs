@@ -1,4 +1,4 @@
-use super::{Body, GenericArgListId, PathId};
+use super::{Body, GenericArgListId, MaybeInvalid, PathId};
 
 #[salsa::interned]
 pub struct TypeId {
@@ -7,14 +7,13 @@ pub struct TypeId {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeKind {
-    Ptr(TypeId),
+    Ptr(MaybeInvalid<TypeId>),
     /// The `PathId` is the path to the type, the `Option` is the generic
     /// arguments.
-    Path(PathId, Option<GenericArgListId>),
+    Path(MaybeInvalid<PathId>, Option<GenericArgListId>),
     SelfType,
     /// The `Vec` contains the types of the tuple elements.
-    Tuple(Vec<TypeId>),
+    Tuple(Vec<MaybeInvalid<TypeId>>),
     /// The first `TypeId` is the element type, the second `Body` is the length.
-    Array(TypeId, Body),
-    Invalid,
+    Array(MaybeInvalid<TypeId>, MaybeInvalid<Body>),
 }

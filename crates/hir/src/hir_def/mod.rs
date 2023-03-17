@@ -28,10 +28,6 @@ pub struct IdentId {
     data: String,
 }
 impl IdentId {
-    pub fn is_invalid(self, db: &dyn HirDb) -> bool {
-        self.data(db).is_empty()
-    }
-
     pub fn is_self(&self, db: &dyn HirDb) -> bool {
         self.data(db) == "self"
     }
@@ -51,4 +47,12 @@ pub struct StringId {
 pub enum LitKind {
     Int(IntegerId),
     String(StringId),
+}
+
+/// This enum is used to represent a type that may be invalid in terms of the
+/// syntax.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MaybeInvalid<T> {
+    Valid(T),
+    Invalid,
 }

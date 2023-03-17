@@ -1,8 +1,10 @@
+use crate::hir_def::MaybeInvalid;
+
 use super::IdentId;
 
 #[salsa::interned]
 pub struct PathId {
-    segments: Vec<PathSegment>,
+    segments: Vec<MaybeInvalid<PathSegment>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -13,5 +15,4 @@ pub enum PathSegment {
     SelfTy,
     /// `self` segment.
     Self_,
-    Invalid,
 }

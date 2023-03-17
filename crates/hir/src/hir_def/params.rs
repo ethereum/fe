@@ -1,6 +1,6 @@
 use crate::hir_def::TypeId;
 
-use super::{Body, IdentId, PathId};
+use super::{Body, IdentId, MaybeInvalid, PathId};
 
 #[salsa::interned]
 pub struct GenericArgListId {
@@ -34,14 +34,14 @@ pub enum GenericParam {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericParam {
-    pub name: IdentId,
+    pub name: MaybeInvalid<IdentId>,
     pub bounds: Vec<TypeBound>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericParam {
-    pub name: IdentId,
-    pub ty: TypeId,
+    pub name: MaybeInvalid<IdentId>,
+    pub ty: MaybeInvalid<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -52,7 +52,7 @@ pub enum GenericArg {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericArg {
-    pub ty: TypeId,
+    pub ty: MaybeInvalid<TypeId>,
     pub bounds: Vec<TypeBound>,
 }
 
@@ -65,13 +65,13 @@ pub struct ConstGenericArg {
 pub struct FnParam {
     pub is_mut: bool,
     pub label: Option<FnParamLabel>,
-    pub name: FnParamName,
-    pub ty: TypeId,
+    pub name: MaybeInvalid<FnParamName>,
+    pub ty: MaybeInvalid<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePredicate {
-    pub ty: TypeId,
+    pub ty: MaybeInvalid<TypeId>,
     pub bounds: Vec<TypeBound>,
 }
 
@@ -87,13 +87,12 @@ pub enum FnParamName {
     Self_,
     Ident(IdentId),
     Underscore,
-    Invalid,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     /// The path to the trait.
-    pub path: PathId,
+    pub path: MaybeInvalid<PathId>,
     /// The type arguments of the trait.
     pub generic_args: Option<GenericArgListId>,
 }

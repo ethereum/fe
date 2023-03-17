@@ -24,7 +24,7 @@ impl Attr {
 
 impl NormalAttr {
     pub(crate) fn from_ast(db: &dyn HirDb, ast: ast::NormalAttr) -> Self {
-        let name = IdentId::from_token(db, ast.name());
+        let name = IdentId::maybe_from_token(db, ast.name());
         let args = ast
             .args()
             .map(|args| {
@@ -52,8 +52,8 @@ impl DocCommentAttr {
 
 impl AttrArg {
     pub(crate) fn from_ast(db: &dyn HirDb, ast: ast::AttrArg) -> Self {
-        let key = IdentId::from_token(db, ast.key());
-        let value = IdentId::from_token(db, ast.value());
+        let key = IdentId::maybe_from_token(db, ast.key());
+        let value = IdentId::maybe_from_token(db, ast.value());
         Self { key, value }
     }
 }

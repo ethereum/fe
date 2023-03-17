@@ -1,4 +1,4 @@
-use super::{IdentId, StringId};
+use super::{IdentId, MaybeInvalid, StringId};
 
 #[salsa::interned]
 pub struct AttrListId {
@@ -14,7 +14,7 @@ pub enum Attr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NormalAttr {
-    pub name: IdentId,
+    pub name: MaybeInvalid<IdentId>,
     pub args: Vec<AttrArg>,
 }
 
@@ -26,6 +26,6 @@ pub struct DocCommentAttr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AttrArg {
-    pub key: IdentId,
-    pub value: IdentId,
+    pub key: MaybeInvalid<IdentId>,
+    pub value: MaybeInvalid<IdentId>,
 }
