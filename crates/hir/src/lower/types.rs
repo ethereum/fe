@@ -1,59 +1,54 @@
 use fe_parser2::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{Body, GenericArgListId, PathId, TypeId, TypeKind},
+    hir_def::{Body, GenericArgListId, MaybeInvalid, PathId, TypeId, TypeKind},
     span::FileId,
     HirDb,
 };
 
 impl TypeId {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: Option<ast::Type>) -> Self {
-        let Some(ty) = ast else {
-            return TypeId::new(db, TypeKind::Invalid);
-        };
-
-        let kind = match ty.kind() {
-            ast::TypeKind::Ptr(ptr_type) => {
-                let inner = ptr_type.inner();
-                let inner_id = TypeId::from_ast(db, fid, inner);
-                TypeKind::Ptr(inner_id)
+    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Type) -> Self {
+        let kind = match ast.kind() {
+            ast::TypeKind::Ptr(ty) => {
+                let inner = Self::maybe_from_ast(db, fid, ty.inner());
+                TypeKind::Ptr(inner)
             }
 
-            ast::TypeKind::Path(path_type) => {
-                let path = path_type.path();
-                let path_id = PathId::from_ast(db, path);
-                if let Some(generic_args) = path_type.generic_args() {
+            ast::TypeKind::Path(ty) => {
+                let path = PathId::maybe_from_ast(db, ty.path()).into();
+                if let Some(generic_args) = ty.generic_args() {
                     let generic_args = GenericArgListId::from_ast(db, fid, generic_args);
-                    TypeKind::Path(path_id, generic_args.into())
+                    TypeKind::Path(path, generic_args.into())
                 } else {
-                    TypeKind::Path(path_id, None)
+                    TypeKind::Path(path, None)
                 }
             }
 
             ast::TypeKind::SelfType(_) => TypeKind::SelfType,
 
-            ast::TypeKind::Tuple(tuple_type) => {
+            ast::TypeKind::Tuple(ty) => {
                 let mut elem_tys = Vec::new();
-                for elem in tuple_type {
-                    elem_tys.push(TypeId::from_ast(db, fid, elem.into()));
+                for elem in ty {
+                    elem_tys.push(Some(TypeId::from_ast(db, fid, elem)).into());
                 }
                 TypeKind::Tuple(elem_tys)
             }
 
-            ast::TypeKind::Array(array_type) => {
-                let elem = array_type.elem_ty();
-                let elem_ty_id = TypeId::from_ast(db, fid, elem);
-
-                let body = if let Some(body) = array_type.len() {
-                    Body::from_ast(db, fid, body)
-                } else {
-                    Body::invalid(db, fid)
-                };
-
-                TypeKind::Array(elem_ty_id, body)
+            ast::TypeKind::Array(ty) => {
+                let elem_ty = Self::maybe_from_ast(db, fid, ty.elem_ty());
+                let body = ty.len().map(|ast| Body::from_ast(db, fid, ast)).into();
+                TypeKind::Array(elem_ty, body)
             }
         };
 
         TypeId::new(db, kind)
+    }
+
+    pub(crate) fn maybe_from_ast(
+        db: &dyn HirDb,
+        fid: FileId,
+        ast: Option<ast::Type>,
+    ) -> MaybeInvalid<Self> {
+        ast.map(|ast| Self::from_ast(db, fid, ast)).into()
     }
 }
