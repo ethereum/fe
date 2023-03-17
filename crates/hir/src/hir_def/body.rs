@@ -14,10 +14,10 @@ pub struct Body {
     pub exprs: PrimaryMap<ExprId, MaybeInvalid<Expr>>,
     pub pats: PrimaryMap<PatId, MaybeInvalid<Pat>>,
 
-    pub(crate) stmt_source_map: SecondaryMap<StmtId, HirOrigin<ast::AstPtr<ast::Stmt>>>,
-    pub(crate) expr_source_map: SecondaryMap<ExprId, HirOrigin<ast::AstPtr<ast::Expr>>>,
-    pub(crate) pat_source_map: SecondaryMap<ExprId, HirOrigin<ast::AstPtr<ast::Expr>>>,
-    pub(crate) ast: HirOrigin<ast::AstPtr<ast::Expr>>,
+    pub(crate) stmt_source_map: SecondaryMap<StmtId, HirOrigin<ast::Stmt>>,
+    pub(crate) expr_source_map: SecondaryMap<ExprId, HirOrigin<ast::Expr>>,
+    pub(crate) pat_source_map: SecondaryMap<ExprId, HirOrigin<ast::Expr>>,
+    pub(crate) ast: HirOrigin<ast::Expr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

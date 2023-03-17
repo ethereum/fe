@@ -1,14 +1,29 @@
 use std::path::PathBuf;
 
-use fe_parser2::{ast::AstPtr, SyntaxNode};
+use fe_parser2::{
+    ast::{prelude::*, AstPtr},
+    SyntaxNode,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
 where
-    T: Send + Clone + PartialEq + Eq + std::fmt::Debug + std::hash::Hash,
+    T: AstNode,
 {
-    pub file_id: FileId,
+    pub fid: FileId,
     pub kind: HirOriginKind<T>,
+}
+
+impl<T> HirOrigin<T>
+where
+    T: AstNode,
+{
+    pub fn raw(fid: FileId, ast: &T) -> Self {
+        HirOrigin {
+            fid,
+            kind: HirOriginKind::Raw(AstPtr::new(ast)),
+        }
+    }
 }
 
 /// This enum represents the origin of the HIR node.
@@ -20,10 +35,10 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum HirOriginKind<T>
 where
-    T: Send + Clone + PartialEq + Eq + std::fmt::Debug + std::hash::Hash,
+    T: AstNode,
 {
     /// The HIR node is created by direct lowering from the corresponding AST.
-    Raw(T),
+    Raw(AstPtr<T>),
     /// The HIR node is created by expanding attributes.
     /// The `SyntaxNode` points to the callsite of the attribute.
     Expanded(SyntaxNode),

@@ -11,6 +11,11 @@ impl AttrListId {
             .collect();
         Self::new(db, attrs)
     }
+
+    pub fn from_ast_opt(db: &dyn HirDb, ast: Option<ast::AttrList>) -> Self {
+        ast.map(|ast| Self::from_ast(db, ast))
+            .unwrap_or_else(|| Self::new(db, vec![]))
+    }
 }
 
 impl Attr {

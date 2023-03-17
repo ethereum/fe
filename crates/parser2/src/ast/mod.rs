@@ -23,6 +23,7 @@ pub use use_tree::*;
 pub type AstChildren<T> = rowan::ast::AstChildren<T>;
 pub type SyntaxText = rowan::SyntaxText;
 pub type AstPtr<T> = rowan::ast::AstPtr<T>;
+pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<FeLang>;
 
 pub mod prelude {
     pub use super::{
@@ -110,3 +111,5 @@ macro_rules! ast_node {
 }
 
 use ast_node;
+
+use crate::FeLang;

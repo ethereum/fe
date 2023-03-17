@@ -14,6 +14,15 @@ impl GenericArgListId {
             .collect();
         Self::new(db, args)
     }
+
+    pub(crate) fn from_ast_opt(
+        db: &dyn HirDb,
+        fid: FileId,
+        ast: Option<ast::GenericArgList>,
+    ) -> Self {
+        ast.map(|ast| Self::from_ast(db, fid, ast))
+            .unwrap_or_else(|| Self::new(db, Vec::new()))
+    }
 }
 
 impl GenericParamListId {
@@ -23,6 +32,15 @@ impl GenericParamListId {
             .map(|param| GenericParam::from_ast(db, fid, param))
             .collect();
         Self::new(db, params)
+    }
+
+    pub(crate) fn from_ast_opt(
+        db: &dyn HirDb,
+        fid: FileId,
+        ast: Option<ast::GenericParamList>,
+    ) -> Self {
+        ast.map(|ast| Self::from_ast(db, fid, ast))
+            .unwrap_or_else(|| Self::new(db, Vec::new()))
     }
 }
 
@@ -45,8 +63,9 @@ impl WhereClauseId {
         Self::new(db, predicates)
     }
 
-    pub(crate) fn empty(db: &dyn HirDb, fic: FileId) -> Self {
-        Self::new(db, Vec::new())
+    pub(crate) fn from_ast_opt(db: &dyn HirDb, fid: FileId, ast: Option<ast::WhereClause>) -> Self {
+        ast.map(|ast| Self::from_ast(db, fid, ast))
+            .unwrap_or_else(|| Self::new(db, Vec::new()))
     }
 }
 
@@ -107,10 +126,11 @@ impl TypeGenericArg {
 impl ConstGenericArg {
     fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::ConstGenericArg) -> Self {
         let body = if let Some(expr) = ast.expr() {
-            Body::from_ast(db, fid, expr)
+            Some(Body::from_ast_expr(db, fid, expr))
         } else {
-            Body::invalid(db, fid)
-        };
+            None
+        }
+        .into();
 
         Self { body }
     }
