@@ -16,6 +16,7 @@ pub struct Jar(
     hir_def::Const,
     hir_def::Use,
     hir_def::Extern,
+    // Interned structs.
     hir_def::Body,
     hir_def::IdentId,
     hir_def::IntegerId,
@@ -31,7 +32,6 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::UseTreeId,
-    // Interned structs.
     span::IngotId,
     span::FileId,
 );

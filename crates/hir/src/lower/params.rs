@@ -110,16 +110,7 @@ impl GenericArg {
 impl TypeGenericArg {
     fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::TypeGenericArg) -> Self {
         let ty = TypeId::maybe_from_ast(db, fid, ast.ty());
-        let bounds = ast
-            .bounds()
-            .map(|bounds| {
-                bounds
-                    .into_iter()
-                    .map(|bound| TypeBound::from_ast(db, fid, bound))
-                    .collect()
-            })
-            .unwrap_or_default();
-        Self { ty, bounds }
+        Self { ty }
     }
 }
 

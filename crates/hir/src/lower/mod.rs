@@ -11,6 +11,7 @@ mod item;
 mod params;
 mod path;
 mod types;
+mod use_tree;
 
 impl IdentId {
     fn from_token(db: &dyn HirDb, token: SyntaxToken) -> Self {

@@ -126,7 +126,7 @@ mod tests {
     {
         let lexer = Lexer::new(source);
         let mut parser = parser::Parser::new(lexer);
-        parser::type_::parse_type(&mut parser, None, true);
+        parser::type_::parse_type(&mut parser, None);
         Type::cast(parser.finish().0)
             .unwrap()
             .kind()

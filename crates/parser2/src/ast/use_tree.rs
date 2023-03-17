@@ -56,7 +56,7 @@ impl UsePathSegment {
             Some(node) => match node.kind() {
                 SK::SelfKw => Some(UsePathSegmentKind::SelfPath(node.into_token().unwrap())),
                 SK::Ident => Some(UsePathSegmentKind::Ident(node.into_token().unwrap())),
-                SK::Star => Some(UsePathSegmentKind::Wildcard(node.into_token().unwrap())),
+                SK::Star => Some(UsePathSegmentKind::Glob(node.into_token().unwrap())),
                 _ => None,
             },
             _ => None,
@@ -100,5 +100,5 @@ pub enum UsePathSegmentKind {
     Ident(SyntaxToken),
     /// `*`
     /// This is only allowed in the last segment of a path.
-    Wildcard(SyntaxToken),
+    Glob(SyntaxToken),
 }

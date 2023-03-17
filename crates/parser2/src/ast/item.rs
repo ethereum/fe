@@ -197,6 +197,7 @@ ast_node! {
     pub struct Impl,
     SK::Impl,
 }
+impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
 impl Impl {
@@ -219,13 +220,13 @@ ast_node! {
     pub struct ImplTrait,
     SK::ImplTrait,
 }
+impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
-    // TODO: TraitRef.
-    pub fn trait_ref(&self) -> Option<super::Type> {
+    pub fn trait_ref(&self) -> Option<super::PathType> {
         support::child(self.syntax())
     }
 
@@ -611,7 +612,8 @@ mod tests {
                 fn foo<T>(self, _t: T) -> u32 { return 1 };
             }"#;
         let i: ImplTrait = parse_item(source);
-        assert!(matches!(i.trait_ref().unwrap().kind(), TypeKind::Path(_)));
+        assert!(i.generic_params().is_none());
+        assert!(i.trait_ref().is_some());
         assert!(matches!(i.ty().unwrap().kind(), TypeKind::Tuple(_)));
         assert!(i.item_list().unwrap().iter().count() == 1);
     }

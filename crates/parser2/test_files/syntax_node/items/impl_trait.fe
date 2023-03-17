@@ -1,10 +1,10 @@
-impl Trait<T> for F<T> {
+impl<T> Trait<T> for F<T> {
     fn foo() {
         return 1
     }
 }
 
-impl Trait<T, U> for F<T> 
+impl<T, U> Trait<T, U> for F<T> 
 where T: Clone
       U: Bar
 {
@@ -13,7 +13,8 @@ where T: Clone
     }
 }
 
-impl Trait<T: Clone, U: Bar> for F<U: Bar> 
+impl<T: Clone, U> Trait<T, U> for F<U> 
+where U: Bar
 {
     fn foo<T: OtherTrait<U>>(t: T) {
         do_something<i32>(t)

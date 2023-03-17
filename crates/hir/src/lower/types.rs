@@ -1,7 +1,7 @@
 use fe_parser2::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{Body, GenericArgListId, MaybeInvalid, PathId, TypeId, TypeKind},
+    hir_def::{Body, GenericArgListId, MaybeInvalid, PathId, TraitRef, TypeId, TypeKind},
     span::FileId,
     HirDb,
 };
@@ -16,12 +16,8 @@ impl TypeId {
 
             ast::TypeKind::Path(ty) => {
                 let path = PathId::maybe_from_ast(db, ty.path()).into();
-                if let Some(generic_args) = ty.generic_args() {
-                    let generic_args = GenericArgListId::from_ast(db, fid, generic_args);
-                    TypeKind::Path(path, generic_args.into())
-                } else {
-                    TypeKind::Path(path, None)
-                }
+                let generic_args = GenericArgListId::from_ast_opt(db, fid, ty.generic_args());
+                TypeKind::Path(path, generic_args.into())
             }
 
             ast::TypeKind::SelfType(_) => TypeKind::SelfType,
@@ -48,6 +44,22 @@ impl TypeId {
         db: &dyn HirDb,
         fid: FileId,
         ast: Option<ast::Type>,
+    ) -> MaybeInvalid<Self> {
+        ast.map(|ast| Self::from_ast(db, fid, ast)).into()
+    }
+}
+
+impl TraitRef {
+    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::PathType) -> Self {
+        let path = PathId::maybe_from_ast(db, ast.path()).into();
+        let generic_args = GenericArgListId::from_ast_opt(db, fid, ast.generic_args());
+        Self { path, generic_args }
+    }
+
+    pub(crate) fn maybe_from_ast(
+        db: &dyn HirDb,
+        fid: FileId,
+        ast: Option<ast::PathType>,
     ) -> MaybeInvalid<Self> {
         ast.map(|ast| Self::from_ast(db, fid, ast)).into()
     }
