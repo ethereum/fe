@@ -3,27 +3,46 @@ use fe_parser2::ast::{self, Stmt};
 
 use crate::span::HirOrigin;
 
-use super::{Expr, ExprId, MaybeInvalid, Pat, PatId, StmtId};
+use super::{Expr, ExprId, ItemKind, MaybeInvalid, Pat, PatId, StmtId};
 
 #[salsa::tracked]
 pub struct Body {
     #[id]
     pub kind: BodyKind,
 
-    pub stmts: PrimaryMap<StmtId, MaybeInvalid<Stmt>>,
-    pub exprs: PrimaryMap<ExprId, MaybeInvalid<Expr>>,
-    pub pats: PrimaryMap<PatId, MaybeInvalid<Pat>>,
+    #[return_ref]
+    pub stmts: BodyNodeMap<StmtId, MaybeInvalid<Stmt>>,
+    #[return_ref]
+    pub exprs: BodyNodeMap<ExprId, MaybeInvalid<Expr>>,
+    #[return_ref]
+    pub pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
 
-    pub(crate) stmt_source_map: SecondaryMap<StmtId, HirOrigin<ast::Stmt>>,
-    pub(crate) expr_source_map: SecondaryMap<ExprId, HirOrigin<ast::Expr>>,
-    pub(crate) pat_source_map: SecondaryMap<ExprId, HirOrigin<ast::Expr>>,
+    #[return_ref]
+    pub(crate) stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
+    #[return_ref]
+    pub(crate) expr_source_map: BodySourceMap<ExprId, ast::Expr>,
+    #[return_ref]
+    pub(crate) pat_source_map: BodySourceMap<ExprId, ast::Pat>,
+
     pub(crate) ast: HirOrigin<ast::Expr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BodyKind {
     /// This is a body appearing in a item, e.g., a function or const item.
-    DefBlock(super::ItemKind),
+    ItemBody(ItemKind),
     /// This is a body appearing in array types or
     NamelessConst,
 }
+
+impl From<Option<ItemKind>> for BodyKind {
+    fn from(item: Option<ItemKind>) -> Self {
+        match item {
+            Some(item) => Self::ItemBody(item),
+            None => Self::NamelessConst,
+        }
+    }
+}
+
+pub type BodyNodeMap<K, V> = PrimaryMap<K, V>;
+pub type BodySourceMap<K, V> = SecondaryMap<K, HirOrigin<V>>;

@@ -32,7 +32,10 @@ impl TypeId {
 
             ast::TypeKind::Array(ty) => {
                 let elem_ty = Self::maybe_from_ast(db, fid, ty.elem_ty());
-                let body = ty.len().map(|ast| Body::from_ast_expr(db, fid, ast)).into();
+                let body = ty
+                    .len()
+                    .map(|ast| Body::from_ast(db, fid, None, ast))
+                    .into();
                 TypeKind::Array(elem_ty, body)
             }
         };
