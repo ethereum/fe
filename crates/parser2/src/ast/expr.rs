@@ -301,7 +301,7 @@ impl IfExpr {
 
     /// Returns the else if expression of the if expression.
     pub fn else_if(&self) -> Option<IfExpr> {
-        support::child(self.syntax())
+        self.syntax().children().skip(1).find_map(IfExpr::cast)
     }
 }
 

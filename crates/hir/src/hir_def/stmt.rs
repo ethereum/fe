@@ -14,10 +14,14 @@ pub enum Stmt {
     /// The first `PatId` is the pattern for binding which can be used in the
     /// for-loop body.
     ///
-    /// The second `ExprId` is the iterator expression.
+    /// The second `ExprId` is the iterable expression.
     ///
     /// The third `ExprId` is the for-loop body.
     For(PatId, ExprId, ExprId),
+
+    /// The first `ExprId` is the condition of the while-loop.
+    /// The second `ExprId` is the body of the while-loop.
+    While(ExprId, ExprId),
     Continue,
     Break,
     Return(Option<ExprId>),

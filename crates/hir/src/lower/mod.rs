@@ -9,10 +9,12 @@ use crate::{
 
 mod attr;
 mod body;
+mod expr;
 mod item;
 mod params;
 mod pat;
 mod path;
+mod stmt;
 mod types;
 mod use_tree;
 

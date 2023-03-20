@@ -1,11 +1,14 @@
 use fe_parser2::ast;
 
-use crate::hir_def::{pat::*, IdentId, LitKind, PathId};
+use crate::{
+    hir_def::{pat::*, IdentId, LitKind, PathId},
+    span::HirOriginKind,
+};
 
 use super::body::BodyCtxt;
 
 impl Pat {
-    pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_>, ast: &ast::Pat) -> PatId {
+    pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_>, ast: ast::Pat) -> PatId {
         let pat = match &ast.kind() {
             ast::PatKind::WildCard(_) => Pat::WildCard,
 
@@ -23,7 +26,7 @@ impl Pat {
                 let elems = match tup.elems() {
                     Some(elems) => elems
                         .iter()
-                        .map(|pat| Pat::push_to_body(ctxt, &pat))
+                        .map(|pat| Pat::push_to_body(ctxt, pat))
                         .collect(),
                     None => vec![],
                 };
@@ -40,7 +43,7 @@ impl Pat {
                 let elems = match path_tup.elems() {
                     Some(elems) => elems
                         .iter()
-                        .map(|pat| Pat::push_to_body(ctxt, &pat))
+                        .map(|pat| Pat::push_to_body(ctxt, pat))
                         .collect(),
                     None => vec![],
                 };
@@ -60,19 +63,21 @@ impl Pat {
             }
 
             ast::PatKind::Or(or) => {
-                let lhs = or
-                    .lhs()
-                    .map(|pat| Pat::push_to_body(ctxt, &pat))
-                    .unwrap_or_else(|| ctxt.push_missing_pat());
-                let rhs = or
-                    .rhs()
-                    .map(|pat| Pat::push_to_body(ctxt, &pat))
-                    .unwrap_or_else(|| ctxt.push_missing_pat());
+                let lhs = Self::push_to_body_opt(ctxt, or.lhs());
+                let rhs = Self::push_to_body_opt(ctxt, or.rhs());
                 Pat::Or(lhs, rhs)
             }
         };
 
-        ctxt.push_pat(pat.into(), ast)
+        ctxt.push_pat(pat, HirOriginKind::raw(&ast))
+    }
+
+    pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_>, ast: Option<ast::Pat>) -> PatId {
+        if let Some(ast) = ast {
+            Pat::push_to_body(ctxt, ast)
+        } else {
+            ctxt.push_missing_pat()
+        }
     }
 }
 
@@ -81,7 +86,7 @@ impl RecordPatField {
         let label = IdentId::maybe_from_token(ctxt.db, ast.name());
         let pat = ast
             .pat()
-            .map(|pat| Pat::push_to_body(ctxt, &pat))
+            .map(|pat| Pat::push_to_body(ctxt, pat))
             .unwrap_or_else(|| ctxt.push_missing_pat());
         RecordPatField { label, pat }
     }
