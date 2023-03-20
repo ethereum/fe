@@ -799,6 +799,7 @@ dependencies = [
  "derive_more",
  "fe-parser2",
  "num-bigint",
+ "num-traits",
  "salsa-2022",
  "tracing",
 ]

@@ -24,6 +24,13 @@ where
             kind: HirOriginKind::Raw(AstPtr::new(ast)),
         }
     }
+
+    pub fn none(file: FileId) -> Self {
+        HirOrigin {
+            fid: file,
+            kind: HirOriginKind::None,
+        }
+    }
 }
 
 /// This enum represents the origin of the HIR node.
@@ -45,6 +52,13 @@ where
     /// The HIR node is the result of desugaring in the lower phase from AST to
     /// HIR. e.g., `a += b` is desugared into `a = a + b`.
     Desugared(DesugaredOrigin),
+
+    /// The HIR node is created by the compiler and not directly from the AST.
+    /// This is only used with `Invalid` nodes that don't have a corresponding
+    /// AST node.
+    /// e.g., the RHS of `a + ` is represented as `Invalid` node but there is no
+    /// corresponding origin.
+    None,
 }
 
 /// This enum represents the origin of the HIR node which is desugared into

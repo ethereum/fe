@@ -35,18 +35,22 @@ impl IdentId {
 
 #[salsa::interned]
 pub struct IntegerId {
-    data: BigUint,
+    #[return_ref]
+    pub data: BigUint,
 }
 
 #[salsa::interned]
 pub struct StringId {
-    data: String,
+    /// The text of the string literal, without the quotes.
+    #[return_ref]
+    pub data: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LitKind {
     Int(IntegerId),
     String(StringId),
+    Bool(bool),
 }
 
 /// This enum is used to represent a type that may be invalid in terms of the
@@ -55,4 +59,24 @@ pub enum LitKind {
 pub enum MaybeInvalid<T> {
     Valid(T),
     Invalid,
+}
+
+impl<T> MaybeInvalid<T> {
+    pub(crate) fn valid(t: T) -> Self {
+        Self::Valid(t)
+    }
+
+    pub(crate) fn invalid() -> Self {
+        Self::Invalid
+    }
+}
+
+impl<T> From<Option<T>> for MaybeInvalid<T> {
+    fn from(value: Option<T>) -> Self {
+        if let Some(value) = value {
+            Self::Valid(value)
+        } else {
+            Self::Invalid
+        }
+    }
 }

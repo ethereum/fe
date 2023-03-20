@@ -16,3 +16,4 @@ fe-parser2 = { path = "../parser2" }
 derive_more = "0.99"
 cranelift-entity = "0.91"
 num-bigint = "0.4.3"
+num-traits = "0.2.15"
