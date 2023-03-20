@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use fe_parser2::{
-    ast::{prelude::*, AstPtr},
-    SyntaxNode,
+    ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
+    TextRange,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,14 +18,18 @@ impl<T> HirOrigin<T>
 where
     T: AstNode,
 {
-    pub fn raw(fid: FileId, ast: &T) -> Self {
+    pub(crate) fn new(fid: FileId, origin: HirOriginKind<T>) -> Self {
+        HirOrigin { fid, kind: origin }
+    }
+
+    pub(crate) fn raw(fid: FileId, ast: &T) -> Self {
         HirOrigin {
             fid,
-            kind: HirOriginKind::Raw(AstPtr::new(ast)),
+            kind: HirOriginKind::raw(ast),
         }
     }
 
-    pub fn none(file: FileId) -> Self {
+    pub(crate) fn none(file: FileId) -> Self {
         HirOrigin {
             fid: file,
             kind: HirOriginKind::None,
@@ -48,7 +52,7 @@ where
     Raw(AstPtr<T>),
     /// The HIR node is created by expanding attributes.
     /// The `SyntaxNode` points to the callsite of the attribute.
-    Expanded(SyntaxNode),
+    Expanded(SyntaxNodePtr),
     /// The HIR node is the result of desugaring in the lower phase from AST to
     /// HIR. e.g., `a += b` is desugared into `a = a + b`.
     Desugared(DesugaredOrigin),
@@ -61,14 +65,48 @@ where
     None,
 }
 
+impl<T> HirOriginKind<T>
+where
+    T: AstNode,
+{
+    pub(crate) fn raw(ast: &T) -> Self {
+        Self::Raw(AstPtr::new(ast))
+    }
+
+    pub(crate) fn desugared(origin: impl Into<DesugaredOrigin>) -> Self {
+        Self::Desugared(origin.into())
+    }
+}
+
 /// This enum represents the origin of the HIR node which is desugared into
 /// other HIR node kinds.
 // TODO: Change the visibility to `pub(crate)` when https://github.com/salsa-rs/salsa/issues/437 is resolved.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum DesugaredOrigin {
     /// The HIR node is the result of desugaring an augmented assignment
     /// statement.
-    AugAssign(AstPtr<fe_parser2::ast::AugAssignStmt>),
+    AugAssign(AugAssignDesugared),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
+pub enum AugAssignDesugared {
+    /// The HIR node is the result of desugaring an augmented assignment
+    /// statement.
+    Stmt(AstPtr<ast::AugAssignStmt>),
+    /// The `TextRange` points to the LHS of the augmented assignment statement.
+    Lhs(TextRange),
+    /// The HIR node points to the RHS of the RHS of augmented assignment.
+    Rhs(AstPtr<ast::Expr>),
+}
+
+impl AugAssignDesugared {
+    pub(crate) fn stmt(ast: &ast::AugAssignStmt) -> Self {
+        Self::Stmt(AstPtr::new(ast))
+    }
+
+    pub(crate) fn rhs(ast: &ast::Expr) -> Self {
+        Self::Rhs(AstPtr::new(ast))
+    }
 }
 
 /// This enum represents the file

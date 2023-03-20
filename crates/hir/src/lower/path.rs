@@ -1,4 +1,4 @@
-use fe_parser2::ast;
+use fe_parser2::{ast, SyntaxToken};
 
 use crate::{
     hir_def::{IdentId, MaybeInvalid, PathId, PathSegment},
@@ -10,17 +10,18 @@ impl PathId {
         let mut segments = Vec::new();
         for seg in ast.into_iter() {
             let segment = if seg.is_self() {
-                MaybeInvalid::Valid(PathSegment::Self_)
+                Some(PathSegment::Self_)
             } else if seg.is_self_ty() {
-                MaybeInvalid::Valid(PathSegment::SelfTy)
+                Some(PathSegment::SelfTy)
             } else if let Some(ident) = seg.ident() {
-                MaybeInvalid::Valid(PathSegment::Ident(IdentId::new(
+                Some(PathSegment::Ident(IdentId::new(
                     db,
                     ident.text().to_string(),
                 )))
             } else {
-                MaybeInvalid::invalid()
-            };
+                None
+            }
+            .into();
             segments.push(segment);
         }
 
@@ -29,5 +30,11 @@ impl PathId {
 
     pub(crate) fn maybe_from_ast(db: &dyn HirDb, ast: Option<ast::Path>) -> MaybeInvalid<Self> {
         ast.map(|ast| Self::from_ast(db, ast)).into()
+    }
+
+    pub(super) fn from_ident(db: &dyn HirDb, ast: SyntaxToken) -> Self {
+        let ident_id = IdentId::new(db, ast.text().to_string());
+        let seg = vec![MaybeInvalid::Valid(PathSegment::Ident(ident_id))];
+        Self::new(db, seg)
     }
 }

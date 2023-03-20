@@ -1,6 +1,6 @@
 use cranelift_entity::entity_impl;
 
-use super::{Body, IdentId, IntegerId, LitKind, PatId, PathId, StmtId};
+use super::{Body, IdentId, IntegerId, LitKind, MaybeInvalid, PatId, PathId, StmtId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -10,14 +10,14 @@ pub enum Expr {
     ///
     /// **NOTE:** The `AugAssign` statement is desugared to a `Assign` statement
     /// and a `BinOp`.
-    Bin(ExprId, ExprId, BinOp),
+    Bin(ExprId, ExprId, MaybeInvalid<BinOp>),
     Un(ExprId, UnOp),
     /// The first `ExprId` is the callee, the second is the arguments.
     Call(ExprId, Vec<ExprId>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
     MethodCall(ExprId, IdentId, Vec<ExprId>),
-    Path(PathId),
+    Path(MaybeInvalid<PathId>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
     Record(PathId, Vec<(IdentId, ExprId)>),
@@ -60,7 +60,7 @@ pub enum MatchArm {
     MatchArm(PatId, ExprId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
 pub enum BinOp {
     Arith(ArithBinOp),
     Comp(CompBinOp),

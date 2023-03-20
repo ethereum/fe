@@ -167,6 +167,12 @@ impl ReturnStmt {
     pub fn expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
     }
+
+    /// Returns `true` if there is an expression or `Error` node after `return`
+    /// keyword.
+    pub fn has_value(&self) -> bool {
+        self.syntax().children().count() > 1
+    }
 }
 
 ast_node! {
