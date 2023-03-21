@@ -1,9 +1,9 @@
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use fe_parser2::ast::{self, Stmt};
+use fe_parser2::ast::{self};
 
 use crate::span::HirOrigin;
 
-use super::{Expr, ExprId, ItemKind, MaybeInvalid, Pat, PatId, StmtId};
+use super::{Expr, ExprId, ItemKind, MaybeInvalid, Pat, PatId, Stmt, StmtId};
 
 #[salsa::tracked]
 pub struct Body {
@@ -22,8 +22,9 @@ pub struct Body {
     #[return_ref]
     pub(crate) expr_source_map: BodySourceMap<ExprId, ast::Expr>,
     #[return_ref]
-    pub(crate) pat_source_map: BodySourceMap<ExprId, ast::Pat>,
+    pub(crate) pat_source_map: BodySourceMap<PatId, ast::Pat>,
 
+    #[return_fer]
     pub(crate) ast: HirOrigin<ast::Expr>,
 }
 

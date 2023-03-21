@@ -37,6 +37,18 @@ where
     }
 }
 
+impl<T> Default for HirOrigin<T>
+where
+    T: AstNode,
+{
+    fn default() -> Self {
+        HirOrigin {
+            fid: FileId::invalid(),
+            kind: HirOriginKind::None,
+        }
+    }
+}
+
 /// This enum represents the origin of the HIR node.
 /// The origin has three possible kinds.
 /// 1. `Raw` is used for nodes that are created by the parser and not
@@ -116,6 +128,17 @@ pub struct FileId {
     ingot: IngotId,
     /// A relative path from the ingot root.
     path: PathBuf,
+}
+
+impl FileId {
+    pub(crate) fn invalid() -> Self {
+        use salsa::Id;
+        Self(Id::from_u32(Id::MAX_U32 - 1))
+    }
+
+    pub(crate) fn is_invalid(self) -> bool {
+        self.0 == Self::invalid().0
+    }
 }
 
 #[salsa::interned]

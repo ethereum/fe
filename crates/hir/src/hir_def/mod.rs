@@ -61,12 +61,8 @@ pub enum MaybeInvalid<T> {
     Invalid,
 }
 
-impl<T> MaybeInvalid<T> {
-    pub(crate) fn valid(t: T) -> Self {
-        Self::Valid(t)
-    }
-
-    pub(crate) fn invalid() -> Self {
+impl<T> Default for MaybeInvalid<T> {
+    fn default() -> Self {
         Self::Invalid
     }
 }
