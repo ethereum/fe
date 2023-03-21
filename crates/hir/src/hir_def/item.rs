@@ -13,6 +13,8 @@ use super::{
 #[salsa::tracked]
 pub struct Fn {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -28,6 +30,8 @@ pub struct Fn {
 #[salsa::tracked]
 pub struct Struct {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -42,6 +46,8 @@ pub struct Struct {
 #[salsa::tracked]
 pub struct Contract {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -54,6 +60,8 @@ pub struct Contract {
 #[salsa::tracked]
 pub struct Enum {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -68,6 +76,8 @@ pub struct Enum {
 #[salsa::tracked]
 pub struct TypeAlias {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -82,6 +92,8 @@ pub struct TypeAlias {
 #[salsa::tracked]
 pub struct Impl {
     #[id]
+    id: TrackedItemId,
+
     pub ty: super::MaybeInvalid<TypeId>,
 
     pub attributes: AttrListId,
@@ -94,6 +106,8 @@ pub struct Impl {
 #[salsa::tracked]
 pub struct Trait {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub attributes: AttrListId,
@@ -107,8 +121,9 @@ pub struct Trait {
 #[salsa::tracked]
 pub struct ImplTrait {
     #[id]
+    id: TrackedItemId,
+
     pub trait_ref: MaybeInvalid<TraitRef>,
-    #[id]
     pub ty: MaybeInvalid<TypeId>,
 
     pub attributes: AttrListId,
@@ -121,6 +136,8 @@ pub struct ImplTrait {
 #[salsa::tracked]
 pub struct Const {
     #[id]
+    id: TrackedItemId,
+
     pub name: MaybeInvalid<IdentId>,
 
     pub(crate) origin: HirOrigin<ast::Const>,
@@ -129,6 +146,8 @@ pub struct Const {
 #[salsa::tracked]
 pub struct Use {
     #[id]
+    id: TrackedItemId,
+
     pub tree: MaybeInvalid<super::UseTreeId>,
 
     pub(crate) origin: HirOrigin<ast::Use>,
@@ -136,6 +155,9 @@ pub struct Use {
 
 #[salsa::tracked]
 pub struct Extern {
+    #[id]
+    id: TrackedItemId,
+
     pub(crate) origin: HirOrigin<ast::Extern>,
 }
 
@@ -202,3 +224,33 @@ pub struct ImplItemListId {
 pub type TraitItemListId = ImplItemListId;
 pub type ImplTraitItemListId = ImplItemListId;
 pub type ExternItemListId = ImplItemListId;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TrackedItemId {
+    Fn(MaybeInvalid<IdentId>),
+    Struct(MaybeInvalid<IdentId>),
+    Contract(MaybeInvalid<IdentId>),
+    Enum(MaybeInvalid<IdentId>),
+    TypeAlias(MaybeInvalid<IdentId>),
+    Impl(MaybeInvalid<TypeId>),
+    Trait(MaybeInvalid<IdentId>),
+    ImplTrait(MaybeInvalid<TraitRef>, MaybeInvalid<TypeId>),
+    Const(MaybeInvalid<IdentId>),
+    Use(MaybeInvalid<super::UseTreeId>),
+    Extern,
+    Joined(Box<Self>, Box<Self>),
+}
+
+impl TrackedItemId {
+    pub(crate) fn join(self, rhs: Self) -> Self {
+        Self::Joined(self.into(), rhs.into())
+    }
+
+    pub(crate) fn join_opt(self, rhs: Option<Self>) -> Self {
+        if let Some(rhs) = rhs {
+            self.join(rhs)
+        } else {
+            self
+        }
+    }
+}

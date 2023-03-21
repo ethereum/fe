@@ -3,12 +3,12 @@ use fe_parser2::ast::{self};
 
 use crate::span::HirOrigin;
 
-use super::{Expr, ExprId, ItemKind, MaybeInvalid, Pat, PatId, Stmt, StmtId};
+use super::{Expr, ExprId, MaybeInvalid, Pat, PatId, Stmt, StmtId, TrackedItemId};
 
 #[salsa::tracked]
 pub struct Body {
     #[id]
-    pub kind: BodyKind,
+    id: TrackedBodyId,
 
     #[return_ref]
     pub stmts: BodyNodeMap<StmtId, MaybeInvalid<Stmt>>,
@@ -28,21 +28,11 @@ pub struct Body {
     pub(crate) ast: HirOrigin<ast::Expr>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BodyKind {
-    /// This is a body appearing in a item, e.g., a function or const item.
-    ItemBody(ItemKind),
-    /// This is a body appearing in array types or
-    NamelessConst,
-}
-
-impl From<Option<ItemKind>> for BodyKind {
-    fn from(item: Option<ItemKind>) -> Self {
-        match item {
-            Some(item) => Self::ItemBody(item),
-            None => Self::NamelessConst,
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TrackedBodyId {
+    ItemBody(Box<TrackedItemId>),
+    NestedBody(Box<Self>),
+    NamelessBody,
 }
 
 pub type BodyNodeMap<K, V> = PrimaryMap<K, V>;

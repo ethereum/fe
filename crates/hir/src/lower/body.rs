@@ -2,8 +2,8 @@ use fe_parser2::ast;
 
 use crate::{
     hir_def::{
-        Body, BodyKind, BodyNodeMap, BodySourceMap, Expr, ExprId, ItemKind, MaybeInvalid, Pat,
-        PatId, Stmt, StmtId,
+        Body, BodyNodeMap, BodySourceMap, Expr, ExprId, MaybeInvalid, Pat, PatId, Stmt, StmtId,
+        TrackedBodyId, TrackedItemId,
     },
     input::File,
     span::{HirOrigin, HirOriginKind},
@@ -14,18 +14,32 @@ impl Body {
     pub(crate) fn item_body_from_ast(
         db: &dyn HirDb,
         file: File,
-        parent_item: ItemKind,
+        parent_id: TrackedItemId,
         ast: ast::Expr,
     ) -> Self {
-        let mut ctxt = BodyCtxt::new(db, file);
+        let bid = TrackedBodyId::ItemBody(parent_id.into());
+        let mut ctxt = BodyCtxt::new(db, file, bid);
         Expr::push_to_body(&mut ctxt, ast.clone());
-        ctxt.build(BodyKind::ItemBody(parent_item), HirOrigin::raw(file, &ast))
+        ctxt.build(HirOrigin::raw(file, &ast))
     }
 
-    pub(crate) fn nameless_from_ast(db: &dyn HirDb, file: File, ast: ast::Expr) -> Self {
-        let mut ctxt = BodyCtxt::new(db, file);
+    pub(crate) fn nested_body_from_ast(
+        db: &dyn HirDb,
+        file: File,
+        bid: TrackedBodyId,
+        ast: ast::Expr,
+    ) -> Self {
+        let bid = TrackedBodyId::NestedBody(bid.into());
+        let mut ctxt = BodyCtxt::new(db, file, bid);
         Expr::push_to_body(&mut ctxt, ast.clone());
-        ctxt.build(BodyKind::NamelessConst, HirOrigin::raw(file, &ast))
+        ctxt.build(HirOrigin::raw(file, &ast))
+    }
+
+    pub(crate) fn nameless_body_from_ast(db: &dyn HirDb, file: File, ast: ast::Expr) -> Self {
+        let bid = TrackedBodyId::NamelessBody;
+        let mut ctxt = BodyCtxt::new(db, file, bid);
+        Expr::push_to_body(&mut ctxt, ast.clone());
+        ctxt.build(HirOrigin::raw(file, &ast))
     }
 }
 
@@ -35,6 +49,7 @@ pub(super) struct BodyCtxt<'db> {
     pub(super) pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
     pub(super) db: &'db dyn HirDb,
     pub(super) file: File,
+    pub(super) bid: TrackedBodyId,
 
     stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
     expr_source_map: BodySourceMap<ExprId, ast::Expr>,
@@ -77,23 +92,24 @@ impl<'db> BodyCtxt<'db> {
         pat_id
     }
 
-    fn new(db: &'db dyn HirDb, file: File) -> Self {
+    fn new(db: &'db dyn HirDb, file: File, bid: TrackedBodyId) -> Self {
         Self {
             stmts: BodyNodeMap::new(),
             exprs: BodyNodeMap::new(),
             pats: BodyNodeMap::new(),
             db,
             file,
+            bid,
             stmt_source_map: BodySourceMap::new(),
             expr_source_map: BodySourceMap::new(),
             pat_source_map: BodySourceMap::new(),
         }
     }
 
-    fn build(self, kind: BodyKind, origin: HirOrigin<ast::Expr>) -> Body {
+    fn build(self, origin: HirOrigin<ast::Expr>) -> Body {
         Body::new(
             self.db,
-            kind,
+            self.bid,
             self.stmts,
             self.exprs,
             self.pats,
