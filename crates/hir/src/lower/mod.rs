@@ -29,9 +29,9 @@ impl IdentId {
 }
 
 impl LitKind {
-    pub(super) fn from_ast(db: &dyn HirDb, ast: &ast::Lit) -> Self {
+    pub(super) fn from_ast(db: &dyn HirDb, ast: ast::Lit) -> Self {
         match ast.kind() {
-            ast::LitKind::Int(int) => Self::Int(IntegerId::from_ast(db, &int)),
+            ast::LitKind::Int(int) => Self::Int(IntegerId::from_ast(db, int)),
             ast::LitKind::String(string) => {
                 let text = string.token().text();
                 Self::String(StringId::new(db, text[1..text.len() - 1].to_string()))
@@ -46,7 +46,7 @@ impl LitKind {
 }
 
 impl IntegerId {
-    fn from_ast(db: &dyn HirDb, ast: &ast::LitInt) -> Self {
+    pub(super) fn from_ast(db: &dyn HirDb, ast: ast::LitInt) -> Self {
         let text = ast.token().text();
         // Parser ensures that the text is valid pair with a radix and a number.
         if text.len() < 2 {

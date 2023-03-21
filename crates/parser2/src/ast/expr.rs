@@ -1,6 +1,6 @@
 use rowan::ast::{support, AstNode};
 
-use super::{ast_node, GenericArgsOwner};
+use super::{ast_node, GenericArgsOwner, LitInt};
 use crate::{SyntaxKind as SK, SyntaxNode, SyntaxToken};
 
 ast_node! {
@@ -171,7 +171,7 @@ ast_node! {
 }
 impl RecordInitExpr {
     /// Returns the path of the record init expression.
-    pub fn path(&self) -> Option<super::PathExpr> {
+    pub fn path(&self) -> Option<super::Path> {
         support::child(self.syntax())
     }
 
@@ -198,8 +198,8 @@ impl FieldExpr {
     }
 
     /// Returns the index number of the field.
-    pub fn field_index(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Int)
+    pub fn field_index(&self) -> Option<LitInt> {
+        support::token(self.syntax(), SK::Int).map(|it| LitInt { token: it })
     }
 }
 
@@ -224,12 +224,11 @@ ast_node! {
     /// `(expr1, expr2, ..)`
     pub struct TupleExpr,
     SK::TupleExpr,
-    IntoIterator<Item=Expr>,
 }
 impl TupleExpr {
     /// Returns the expressions in the tuple.
-    pub fn elems(&self) -> impl Iterator<Item = Expr> {
-        self.iter()
+    pub fn elems(&self) -> impl Iterator<Item = Option<Expr>> {
+        self.syntax().children().map(|node| Expr::cast(node))
     }
 }
 
@@ -237,12 +236,12 @@ ast_node! {
     /// `[expr1, expr2, ..]`
     pub struct ArrayExpr,
     SK::ArrayExpr,
-    IntoIterator<Item=Expr>,
 }
 impl ArrayExpr {
     /// Returns the expressions in the array.
-    pub fn elems(&self) -> impl Iterator<Item = Expr> {
-        self.iter()
+    /// Returns the expressions in the tuple.
+    pub fn elems(&self) -> impl Iterator<Item = Option<Expr>> {
+        self.syntax().children().map(|node| Expr::cast(node))
     }
 }
 
@@ -253,12 +252,12 @@ ast_node! {
 }
 impl ArrayRepExpr {
     /// Returns the expression being repeated.
-    pub fn expr(&self) -> Option<Expr> {
+    pub fn val(&self) -> Option<Expr> {
         support::child(self.syntax())
     }
 
     /// Returns the size of the array.
-    pub fn size(&self) -> Option<Expr> {
+    pub fn len(&self) -> Option<Expr> {
         support::children(self.syntax()).nth(1)
     }
 }
@@ -291,17 +290,8 @@ impl IfExpr {
     }
 
     /// Returns the else block of the if expression.
-    pub fn else_(&self) -> Option<BlockExpr> {
-        self.syntax()
-            .children()
-            .skip(1)
-            .filter_map(BlockExpr::cast)
-            .nth(1)
-    }
-
-    /// Returns the else if expression of the if expression.
-    pub fn else_if(&self) -> Option<IfExpr> {
-        self.syntax().children().skip(1).find_map(IfExpr::cast)
+    pub fn else_(&self) -> Option<Expr> {
+        self.syntax().children().filter_map(Expr::cast).nth(2)
     }
 }
 
@@ -336,6 +326,7 @@ impl ParenExpr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ExprKind {
+    Lit(LitExpr),
     Block(BlockExpr),
     Bin(BinExpr),
     Un(UnExpr),
@@ -348,7 +339,6 @@ pub enum ExprKind {
     Tuple(TupleExpr),
     Array(ArrayExpr),
     ArrayRep(ArrayRepExpr),
-    Lit(LitExpr),
     If(IfExpr),
     Match(MatchExpr),
     Paren(ParenExpr),
@@ -366,7 +356,7 @@ ast_node! {
 }
 impl RecordField {
     /// Returns the name of the field.
-    pub fn name(&self) -> Option<SyntaxToken> {
+    pub fn label(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
     }
 
@@ -710,15 +700,15 @@ mod tests {
         for (i, field) in record_init_expr.fields().unwrap().into_iter().enumerate() {
             match i {
                 0 => {
-                    assert_eq!(field.name().unwrap().text(), "a");
+                    assert_eq!(field.label().unwrap().text(), "a");
                     assert!(matches!(field.expr().unwrap().kind(), ExprKind::Lit(_)))
                 }
                 1 => {
-                    assert_eq!(field.name().unwrap().text(), "b");
+                    assert_eq!(field.label().unwrap().text(), "b");
                     assert!(matches!(field.expr().unwrap().kind(), ExprKind::Lit(_)))
                 }
                 2 => {
-                    assert_eq!(field.name().unwrap().text(), "c");
+                    assert_eq!(field.label().unwrap().text(), "c");
                     assert!(matches!(field.expr().unwrap().kind(), ExprKind::Lit(_)))
                 }
                 _ => panic!("unexpected field"),
@@ -743,7 +733,7 @@ mod tests {
             field_expr.receiver().unwrap().kind(),
             ExprKind::Tuple(_)
         ));
-        assert_eq!(field_expr.field_index().unwrap().text(), "1");
+        assert_eq!(field_expr.field_index().unwrap().token().text(), "1");
     }
 
     #[test]
@@ -751,7 +741,7 @@ mod tests {
     fn tuple_expr() {
         let tuple_expr: TupleExpr = parse_expr("(1, 2, 3)");
 
-        for (i, expr) in tuple_expr.elems().into_iter().enumerate() {
+        for (i, expr) in tuple_expr.elems().into_iter().flatten().enumerate() {
             match i {
                 0 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
                 1 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
@@ -766,7 +756,7 @@ mod tests {
     fn array_expr() {
         let array_expr: ArrayExpr = parse_expr("[1, 2, 3]");
 
-        for (i, expr) in array_expr.elems().into_iter().enumerate() {
+        for (i, expr) in array_expr.elems().into_iter().flatten().enumerate() {
             match i {
                 0 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
                 1 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
@@ -797,11 +787,11 @@ mod tests {
         let array_rep_expr: ArrayRepExpr = parse_expr("[1; 2]");
 
         assert!(matches!(
-            array_rep_expr.expr().unwrap().kind(),
+            array_rep_expr.val().unwrap().kind(),
             ExprKind::Lit(_)
         ));
         assert!(matches!(
-            array_rep_expr.size().unwrap().kind(),
+            array_rep_expr.len().unwrap().kind(),
             ExprKind::Lit(_)
         ));
     }
@@ -812,8 +802,6 @@ mod tests {
         let if_expr: IfExpr = parse_expr("if true { 1 } else { 2 }");
         assert!(matches!(if_expr.cond().unwrap().kind(), ExprKind::Lit(_)));
         assert!(if_expr.then().is_some());
-        assert_ne!(if_expr.then().unwrap(), if_expr.else_().unwrap(),);
-        assert!(if_expr.else_if().is_none());
 
         let if_expr: IfExpr = parse_expr("if { true } { return } else { continue }");
         if let ExprKind::Block(stmts) = if_expr.cond().unwrap().kind() {
@@ -828,15 +816,16 @@ mod tests {
             if_expr.then().unwrap().into_iter().next().unwrap().kind(),
             crate::ast::StmtKind::Return(_)
         );
+        let ExprKind::Block(else_) = if_expr.else_().unwrap().kind() else {
+            panic!("expected block statement");
+        };
         matches!(
-            if_expr.else_().unwrap().into_iter().next().unwrap().kind(),
+            else_.into_iter().next().unwrap().kind(),
             crate::ast::StmtKind::Return(_)
         );
-        assert!(if_expr.else_if().is_none());
 
         let if_expr: IfExpr = parse_expr("if false { return } else if true { continue }");
-        assert!(if_expr.else_().is_none());
-        assert!(if_expr.else_if().is_some());
+        assert!(matches!(if_expr.else_().unwrap().kind(), ExprKind::If(_)));
     }
 
     #[test]

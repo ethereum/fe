@@ -17,7 +17,7 @@ impl Pat {
             ast::PatKind::Lit(lit_pat) => {
                 let lit_kind = lit_pat
                     .lit()
-                    .map(|lit| LitKind::from_ast(ctxt.db, &lit))
+                    .map(|lit| LitKind::from_ast(ctxt.db, lit))
                     .into();
                 Pat::Lit(lit_kind)
             }
