@@ -14,7 +14,7 @@ impl Stmt {
                 let pat = Pat::push_to_body_opt(ctxt, let_.pat());
                 let ty = let_
                     .type_annotation()
-                    .map(|ty| TypeId::from_ast(ctxt.db, ctxt.fid, ty));
+                    .map(|ty| TypeId::from_ast(ctxt.db, ctxt.file, ty));
                 let init = let_
                     .initializer()
                     .map(|init| Expr::push_to_body(ctxt, init));

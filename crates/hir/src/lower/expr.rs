@@ -126,7 +126,7 @@ impl Expr {
                 let val = Self::push_to_body_opt(ctxt, array_rep.val());
                 let len = array_rep
                     .len()
-                    .map(|ast| Body::nameless_from_ast(ctxt.db, ctxt.fid, ast))
+                    .map(|ast| Body::nameless_from_ast(ctxt.db, ctxt.file, ast))
                     .into();
                 Self::ArrayRep(val, len)
             }
