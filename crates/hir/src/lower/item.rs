@@ -11,8 +11,14 @@ use crate::{
 };
 
 impl Fn {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Fn) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Fn,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Fn(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let generic_paramas = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
@@ -27,6 +33,7 @@ impl Fn {
 
         Self::new(
             db,
+            id,
             name,
             attributes,
             generic_paramas,
@@ -40,22 +47,29 @@ impl Fn {
 }
 
 impl Struct {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Struct) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Struct,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Struct(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let generic_paramas = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
         let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
         let fields = RecordFieldListId::from_ast_opt(db, file, ast.fields());
         let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
+            id,
             name,
             attributes,
             is_pub,
-            generic_paramas,
+            generic_params,
             where_clause,
             fields,
             origin,
@@ -64,21 +78,33 @@ impl Struct {
 }
 
 impl Contract {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Contract) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Contract,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Contract(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
         let fields = RecordFieldListId::from_ast_opt(db, file, ast.fields());
         let origin = HirOrigin::raw(file, &ast);
 
-        Self::new(db, name, attributes, is_pub, fields, origin)
+        Self::new(db, id, name, attributes, is_pub, fields, origin)
     }
 }
 
 impl Enum {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Enum) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Enum,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Enum(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
@@ -89,6 +115,7 @@ impl Enum {
 
         Self::new(
             db,
+            id,
             name,
             attributes,
             is_pub,
@@ -101,8 +128,14 @@ impl Enum {
 }
 
 impl TypeAlias {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::TypeAlias) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::TypeAlias,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.alias());
+        let id = TrackedItemId::TypeAlias(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
@@ -113,6 +146,7 @@ impl TypeAlias {
 
         Self::new(
             db,
+            id,
             name,
             attributes,
             is_pub,
@@ -125,21 +159,33 @@ impl TypeAlias {
 }
 
 impl Impl {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Impl) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Impl,
+    ) -> Self {
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
+        let id = TrackedItemId::Impl(ty).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
         let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
         let origin = HirOrigin::raw(file, &ast);
 
-        Self::new(db, ty, attributes, generic_params, where_clause, origin)
+        Self::new(db, id, ty, attributes, generic_params, where_clause, origin)
     }
 }
 
 impl Trait {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Trait) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Trait,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Trait(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
@@ -149,6 +195,7 @@ impl Trait {
 
         Self::new(
             db,
+            id,
             name,
             attributes,
             is_pub,
@@ -160,9 +207,15 @@ impl Trait {
 }
 
 impl ImplTrait {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::ImplTrait) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::ImplTrait,
+    ) -> Self {
         let trait_ref = TraitRef::maybe_from_ast(db, file, ast.trait_ref());
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
+        let id = TrackedItemId::ImplTrait(trait_ref, ty).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
@@ -171,6 +224,7 @@ impl ImplTrait {
 
         Self::new(
             db,
+            id,
             trait_ref,
             ty,
             attributes,
@@ -182,27 +236,46 @@ impl ImplTrait {
 }
 
 impl Const {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Const) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Const,
+    ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
+        let id = TrackedItemId::Const(name).join_opt(parent_id);
 
         let origin = HirOrigin::raw(file, &ast);
-        Self::new(db, name, origin)
+        Self::new(db, id, name, origin)
     }
 }
 
 impl Use {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Use) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent_id: Option<TrackedItemId>,
+        ast: ast::Use,
+    ) -> Self {
         let tree = UseTreeId::maybe_from_ast(db, ast.use_tree());
+        let id = TrackedItemId::Use(tree).join_opt(parent_id);
+
         let origin = HirOrigin::raw(file, &ast);
-        Self::new(db, tree, origin)
+        Self::new(db, id, tree, origin)
     }
 }
 
 impl Extern {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Extern) -> Self {
+    pub(crate) fn from_ast(
+        db: &dyn HirDb,
+        file: File,
+        parent: Option<TrackedItemId>,
+        ast: ast::Extern,
+    ) -> Self {
         let origin = HirOrigin::raw(file, &ast);
+        let id = TrackedItemId::Extern.join_opt(parent);
 
-        Self::new(db, origin)
+        Self::new(db, id, origin)
     }
 }
 

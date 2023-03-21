@@ -117,7 +117,7 @@ impl TypeGenericArg {
 impl ConstGenericArg {
     fn from_ast(db: &dyn HirDb, file: File, ast: ast::ConstGenericArg) -> Self {
         let body = if let Some(expr) = ast.expr() {
-            Some(Body::nameless_from_ast(db, file, expr))
+            Some(Body::nameless_body_from_ast(db, file, expr))
         } else {
             None
         }

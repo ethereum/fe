@@ -126,7 +126,9 @@ impl Expr {
                 let val = Self::push_to_body_opt(ctxt, array_rep.val());
                 let len = array_rep
                     .len()
-                    .map(|ast| Body::nameless_from_ast(ctxt.db, ctxt.file, ast))
+                    .map(|ast| {
+                        Body::nested_body_from_ast(ctxt.db, ctxt.file, ctxt.bid.clone(), ast)
+                    })
                     .into();
                 Self::ArrayRep(val, len)
             }
