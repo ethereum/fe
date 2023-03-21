@@ -16,7 +16,7 @@ use super::{
 
 pub(super) fn parse_expr_atom<S: TokenStream>(
     parser: &mut Parser<S>,
-    allow_struct_init: bool,
+    allow_record_init: bool,
 ) -> (bool, Checkpoint) {
     use SyntaxKind::*;
     match parser.current_kind() {
@@ -27,13 +27,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
         Some(LBracket) => parser.parse(ArrayScope::default(), None),
         Some(kind) if lit::is_lit(kind) => parser.parse(LitExprScope::default(), None),
         Some(kind) if path::is_path_segment(kind) => {
-            let (success, checkpoint) = parser.parse(PathExprScope::default(), None);
-            if success && parser.current_kind() == Some(LBrace) && allow_struct_init {
-                let (success, _) = parser.parse(RecordInitExprScope::default(), Some(checkpoint));
-                (success, checkpoint)
-            } else {
-                (success, checkpoint)
-            }
+            parser.parse(PathExprScope::new(allow_record_init), None)
         }
         _ => {
             parser.error_and_recover("expected expression", None);
@@ -181,17 +175,17 @@ impl super::Parse for LitExprScope {
     }
 }
 
-define_scope! { PathExprScope, PathExpr, Inheritance }
+define_scope! { PathExprScope{ allow_record_init: bool }, PathExpr, Inheritance }
 impl super::Parse for PathExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(path::PathScope::default(), None);
-    }
-}
-
-define_scope! { RecordInitExprScope, RecordInitExpr, Inheritance }
-impl super::Parse for RecordInitExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(RecordFieldListScope::default(), None);
+        parser.with_recovery_tokens(
+            |parser| parser.parse(path::PathScope::default(), None),
+            &[SyntaxKind::LBrace],
+        );
+        if parser.current_kind() == Some(SyntaxKind::LBrace) && self.allow_record_init {
+            self.set_kind(SyntaxKind::RecordInitExpr);
+            parser.parse(RecordFieldListScope::default(), None);
+        }
     }
 }
 
@@ -226,7 +220,7 @@ define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None);
+        parser.bump_if(SyntaxKind::Ident);
 
         if parser.bump_if(SyntaxKind::Colon) {
             parse_expr(parser);

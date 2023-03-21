@@ -8,12 +8,16 @@ use crate::{
 };
 
 impl Body {
-    pub(crate) fn from_ast(
+    pub(crate) fn item_body_from_ast(
         db: &dyn HirDb,
         fid: FileId,
-        parent_item: Option<ItemKind>,
+        parent_item: ItemKind,
         ast: ast::Expr,
     ) -> Self {
+        todo!()
+    }
+
+    pub(crate) fn nameless_from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Expr) -> Self {
         todo!()
     }
 }
@@ -36,6 +40,12 @@ impl<'db> BodyCtxt<'db> {
         expr_id
     }
 
+    pub(super) fn push_invalid_expr(&mut self, origin: HirOriginKind<ast::Expr>) -> ExprId {
+        let expr_id = self.exprs.push(None.into());
+        self.expr_source_map[expr_id] = HirOrigin::new(self.fid, origin);
+        expr_id
+    }
+
     pub(super) fn push_missing_expr(&mut self) -> ExprId {
         let expr_id = self.exprs.push(None.into());
         self.expr_source_map[expr_id] = HirOrigin::none(self.fid);
@@ -49,12 +59,6 @@ impl<'db> BodyCtxt<'db> {
     }
 
     pub(super) fn push_pat(&mut self, pat: Pat, origin: HirOriginKind<ast::Pat>) -> PatId {
-        let pat_id = self.pats.push(Some(pat).into());
-        self.pat_source_map[pat_id] = HirOrigin::new(self.fid, origin);
-        pat_id
-    }
-
-    pub(super) fn push_pat_opt(&mut self, pat: Pat, origin: HirOriginKind<ast::Pat>) -> PatId {
         let pat_id = self.pats.push(Some(pat).into());
         self.pat_source_map[pat_id] = HirOrigin::new(self.fid, origin);
         pat_id

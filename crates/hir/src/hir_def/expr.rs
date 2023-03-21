@@ -5,38 +5,39 @@ use super::{Body, IdentId, IntegerId, LitKind, MaybeInvalid, PatId, PathId, Stmt
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Lit(LitKind),
-    BlockExpr(Vec<StmtId>),
+    Block(Vec<StmtId>),
     /// The first `ExprId` is the lhs, the second is the rhs.
     ///
     /// **NOTE:** The `AugAssign` statement is desugared to a `Assign` statement
     /// and a `BinOp`.
     Bin(ExprId, ExprId, MaybeInvalid<BinOp>),
-    Un(ExprId, UnOp),
+    Un(ExprId, MaybeInvalid<UnOp>),
     /// The first `ExprId` is the callee, the second is the arguments.
-    Call(ExprId, Vec<ExprId>),
+    Call(ExprId, Vec<CallArg>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
-    MethodCall(ExprId, IdentId, Vec<ExprId>),
+    MethodCall(ExprId, MaybeInvalid<IdentId>, Vec<CallArg>),
     Path(MaybeInvalid<PathId>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
-    Record(PathId, Vec<(IdentId, ExprId)>),
-    Field(ExprId, FieldIndex),
+    RecordInit(MaybeInvalid<PathId>, Vec<RecordField>),
+    Field(ExprId, MaybeInvalid<FieldIndex>),
     Tuple(Vec<ExprId>),
     /// The first `ExprId` is the indexed expression, the second is the index.
     Index(ExprId, ExprId),
-    ArrayExpr(Vec<ExprId>),
+    Array(Vec<ExprId>),
 
     /// The size of the rep should be the body instead of expression, becuase it
     /// should be resolved as a contatnt expressison.
-    ArrayRepExpr(ExprId, Body),
+    ArrayRep(ExprId, MaybeInvalid<Body>),
 
     /// The first `ExprId` is the condition, the second is the then branch, the
     /// third is the else branch.
+    /// In case `else if`, the third is the lowered into `If` expression.
     If(ExprId, ExprId, Option<ExprId>),
 
     /// The first `ExprId` is the scrutinee, the second is the arms.
-    Match(ExprId, Vec<MatchArm>),
+    Match(ExprId, MaybeInvalid<Vec<MatchArm>>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -54,10 +55,9 @@ pub enum FieldIndex {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MatchArm {
-    /// The first `Part` is the pattern, the second is
-    /// the arm body.
-    MatchArm(PatId, ExprId),
+pub struct MatchArm {
+    pub pat: PatId,
+    pub body: ExprId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
@@ -127,4 +127,16 @@ pub enum UnOp {
     Not,
     /// `~`
     BitNot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CallArg {
+    pub label: Option<IdentId>,
+    pub expr: ExprId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RecordField {
+    pub label: Option<IdentId>,
+    pub expr: ExprId,
 }

@@ -72,10 +72,9 @@ Root@0..272
             WhiteSpace@69..77 "        "
             ExprStmt@77..129
               RecordInitExpr@77..129
-                PathExpr@77..81
-                  Path@77..81
-                    PathSegment@77..81
-                      SelfTypeKw@77..81 "Self"
+                Path@77..81
+                  PathSegment@77..81
+                    SelfTypeKw@77..81 "Self"
                 WhiteSpace@81..82 " "
                 RecordFieldList@82..129
                   LBrace@82..83 "{"

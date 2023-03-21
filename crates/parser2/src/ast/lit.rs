@@ -22,7 +22,7 @@ impl Lit {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LitInt {
-    token: SyntaxToken,
+    pub(super) token: SyntaxToken,
 }
 impl LitInt {
     pub fn token(&self) -> &SyntaxToken {
