@@ -5,26 +5,27 @@ use crate::{
         Body, BodyKind, BodyNodeMap, BodySourceMap, Expr, ExprId, ItemKind, MaybeInvalid, Pat,
         PatId, Stmt, StmtId,
     },
-    span::{FileId, HirOrigin, HirOriginKind},
+    input::File,
+    span::{HirOrigin, HirOriginKind},
     HirDb,
 };
 
 impl Body {
     pub(crate) fn item_body_from_ast(
         db: &dyn HirDb,
-        fid: FileId,
+        file: File,
         parent_item: ItemKind,
         ast: ast::Expr,
     ) -> Self {
-        let mut ctxt = BodyCtxt::new(db, fid);
+        let mut ctxt = BodyCtxt::new(db, file);
         Expr::push_to_body(&mut ctxt, ast.clone());
-        ctxt.build(BodyKind::ItemBody(parent_item), HirOrigin::raw(fid, &ast))
+        ctxt.build(BodyKind::ItemBody(parent_item), HirOrigin::raw(file, &ast))
     }
 
-    pub(crate) fn nameless_from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Expr) -> Self {
-        let mut ctxt = BodyCtxt::new(db, fid);
+    pub(crate) fn nameless_from_ast(db: &dyn HirDb, file: File, ast: ast::Expr) -> Self {
+        let mut ctxt = BodyCtxt::new(db, file);
         Expr::push_to_body(&mut ctxt, ast.clone());
-        ctxt.build(BodyKind::NamelessConst, HirOrigin::raw(fid, &ast))
+        ctxt.build(BodyKind::NamelessConst, HirOrigin::raw(file, &ast))
     }
 }
 
@@ -33,7 +34,7 @@ pub(super) struct BodyCtxt<'db> {
     pub(super) exprs: BodyNodeMap<ExprId, MaybeInvalid<Expr>>,
     pub(super) pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
     pub(super) db: &'db dyn HirDb,
-    pub(super) fid: FileId,
+    pub(super) file: File,
 
     stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
     expr_source_map: BodySourceMap<ExprId, ast::Expr>,
@@ -42,47 +43,47 @@ pub(super) struct BodyCtxt<'db> {
 impl<'db> BodyCtxt<'db> {
     pub(super) fn push_expr(&mut self, expr: Expr, origin: HirOriginKind<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Some(expr).into());
-        self.expr_source_map[expr_id] = HirOrigin::new(self.fid, origin);
+        self.expr_source_map[expr_id] = HirOrigin::new(self.file, origin);
         expr_id
     }
 
     pub(super) fn push_invalid_expr(&mut self, origin: HirOriginKind<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(None.into());
-        self.expr_source_map[expr_id] = HirOrigin::new(self.fid, origin);
+        self.expr_source_map[expr_id] = HirOrigin::new(self.file, origin);
         expr_id
     }
 
     pub(super) fn push_missing_expr(&mut self) -> ExprId {
         let expr_id = self.exprs.push(None.into());
-        self.expr_source_map[expr_id] = HirOrigin::none(self.fid);
+        self.expr_source_map[expr_id] = HirOrigin::none(self.file);
         expr_id
     }
 
     pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: HirOriginKind<ast::Stmt>) -> StmtId {
         let stmt_id = self.stmts.push(Some(stmt).into());
-        self.stmt_source_map[stmt_id] = HirOrigin::new(self.fid, origin);
+        self.stmt_source_map[stmt_id] = HirOrigin::new(self.file, origin);
         stmt_id
     }
 
     pub(super) fn push_pat(&mut self, pat: Pat, origin: HirOriginKind<ast::Pat>) -> PatId {
         let pat_id = self.pats.push(Some(pat).into());
-        self.pat_source_map[pat_id] = HirOrigin::new(self.fid, origin);
+        self.pat_source_map[pat_id] = HirOrigin::new(self.file, origin);
         pat_id
     }
 
     pub(super) fn push_missing_pat(&mut self) -> PatId {
         let pat_id = self.pats.push(None.into());
-        self.pat_source_map[pat_id] = HirOrigin::none(self.fid);
+        self.pat_source_map[pat_id] = HirOrigin::none(self.file);
         pat_id
     }
 
-    fn new(db: &'db dyn HirDb, fid: FileId) -> Self {
+    fn new(db: &'db dyn HirDb, file: File) -> Self {
         Self {
             stmts: BodyNodeMap::new(),
             exprs: BodyNodeMap::new(),
             pats: BodyNodeMap::new(),
             db,
-            fid,
+            file,
             stmt_source_map: BodySourceMap::new(),
             expr_source_map: BodySourceMap::new(),
             pat_source_map: BodySourceMap::new(),

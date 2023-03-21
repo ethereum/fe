@@ -5,24 +5,25 @@ use crate::{
         item::*, AttrListId, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
         UseTreeId, WhereClauseId,
     },
-    span::{FileId, HirOrigin},
+    input::File,
+    span::HirOrigin,
     HirDb,
 };
 
 impl Fn {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Fn) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Fn) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
-        let generic_paramas = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
+        let generic_paramas = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
         let params = ast
             .params()
-            .map(|params| FnParamListId::from_ast(db, fid, params))
+            .map(|params| FnParamListId::from_ast(db, file, params))
             .into();
-        let ret_ty = ast.ret_ty().map(|ty| TypeId::from_ast(db, fid, ty));
+        let ret_ty = ast.ret_ty().map(|ty| TypeId::from_ast(db, file, ty));
         let modifier = ItemModifier::from_ast(db, ast.modifier());
-        let origin = HirOrigin::raw(fid, &ast);
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -39,15 +40,15 @@ impl Fn {
 }
 
 impl Struct {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Struct) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Struct) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let generic_paramas = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let fields = RecordFieldListId::from_ast_opt(db, fid, ast.fields());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_paramas = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let fields = RecordFieldListId::from_ast_opt(db, file, ast.fields());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -63,28 +64,28 @@ impl Struct {
 }
 
 impl Contract {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Contract) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Contract) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let fields = RecordFieldListId::from_ast_opt(db, fid, ast.fields());
-        let origin = HirOrigin::raw(fid, &ast);
+        let fields = RecordFieldListId::from_ast_opt(db, file, ast.fields());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(db, name, attributes, is_pub, fields, origin)
     }
 }
 
 impl Enum {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Enum) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Enum) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let generic_params = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let variants = EnumVariantListId::from_ast_opt(db, fid, ast.variants());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let variants = EnumVariantListId::from_ast_opt(db, file, ast.variants());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -100,15 +101,15 @@ impl Enum {
 }
 
 impl TypeAlias {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::TypeAlias) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::TypeAlias) -> Self {
         let name = IdentId::maybe_from_token(db, ast.alias());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let generic_params = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let ty = TypeId::maybe_from_ast(db, fid, ast.ty());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let ty = TypeId::maybe_from_ast(db, file, ast.ty());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -124,27 +125,27 @@ impl TypeAlias {
 }
 
 impl Impl {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Impl) -> Self {
-        let ty = TypeId::maybe_from_ast(db, fid, ast.ty());
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Impl) -> Self {
+        let ty = TypeId::maybe_from_ast(db, file, ast.ty());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
-        let generic_params = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(db, ty, attributes, generic_params, where_clause, origin)
     }
 }
 
 impl Trait {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Trait) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Trait) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
         let is_pub = ItemModifier::from_ast(db, ast.modifier()).is_pub();
-        let generic_params = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -159,14 +160,14 @@ impl Trait {
 }
 
 impl ImplTrait {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::ImplTrait) -> Self {
-        let trait_ref = TraitRef::maybe_from_ast(db, fid, ast.trait_ref());
-        let ty = TypeId::maybe_from_ast(db, fid, ast.ty());
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::ImplTrait) -> Self {
+        let trait_ref = TraitRef::maybe_from_ast(db, file, ast.trait_ref());
+        let ty = TypeId::maybe_from_ast(db, file, ast.ty());
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
-        let generic_params = GenericParamListId::from_ast_opt(db, fid, ast.generic_params());
-        let where_clause = WhereClauseId::from_ast_opt(db, fid, ast.where_clause());
-        let origin = HirOrigin::raw(fid, &ast);
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
             db,
@@ -181,25 +182,25 @@ impl ImplTrait {
 }
 
 impl Const {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Const) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Const) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
 
-        let origin = HirOrigin::raw(fid, &ast);
+        let origin = HirOrigin::raw(file, &ast);
         Self::new(db, name, origin)
     }
 }
 
 impl Use {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Use) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Use) -> Self {
         let tree = UseTreeId::maybe_from_ast(db, ast.use_tree());
-        let origin = HirOrigin::raw(fid, &ast);
+        let origin = HirOrigin::raw(file, &ast);
         Self::new(db, tree, origin)
     }
 }
 
 impl Extern {
-    pub(crate) fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::Extern) -> Self {
-        let origin = HirOrigin::raw(fid, &ast);
+    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::Extern) -> Self {
+        let origin = HirOrigin::raw(file, &ast);
 
         Self::new(db, origin)
     }
@@ -221,24 +222,24 @@ impl ItemModifier {
 }
 
 impl RecordFieldListId {
-    fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::RecordFieldDefList) -> Self {
+    fn from_ast(db: &dyn HirDb, file: File, ast: ast::RecordFieldDefList) -> Self {
         let fields = ast
             .into_iter()
-            .map(|field| RecordField::from_ast(db, fid, field))
+            .map(|field| RecordField::from_ast(db, file, field))
             .collect();
         Self::new(db, fields)
     }
 
-    fn from_ast_opt(db: &dyn HirDb, fid: FileId, ast: Option<ast::RecordFieldDefList>) -> Self {
-        ast.map(|ast| Self::from_ast(db, fid, ast))
+    fn from_ast_opt(db: &dyn HirDb, file: File, ast: Option<ast::RecordFieldDefList>) -> Self {
+        ast.map(|ast| Self::from_ast(db, file, ast))
             .unwrap_or(Self::new(db, Vec::new()))
     }
 }
 
 impl RecordField {
-    fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::RecordFieldDef) -> Self {
+    fn from_ast(db: &dyn HirDb, file: File, ast: ast::RecordFieldDef) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
-        let ty = TypeId::maybe_from_ast(db, fid, ast.ty());
+        let ty = TypeId::maybe_from_ast(db, file, ast.ty());
         let is_pub = ast.pub_kw().is_some();
 
         Self { name, ty, is_pub }
@@ -246,24 +247,24 @@ impl RecordField {
 }
 
 impl EnumVariantListId {
-    fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::EnumVariantDefList) -> Self {
+    fn from_ast(db: &dyn HirDb, file: File, ast: ast::EnumVariantDefList) -> Self {
         let variants = ast
             .into_iter()
-            .map(|variant| EnumVariant::from_ast(db, fid, variant))
+            .map(|variant| EnumVariant::from_ast(db, file, variant))
             .collect();
         Self::new(db, variants)
     }
 
-    fn from_ast_opt(db: &dyn HirDb, fid: FileId, ast: Option<ast::EnumVariantDefList>) -> Self {
-        ast.map(|ast| Self::from_ast(db, fid, ast))
+    fn from_ast_opt(db: &dyn HirDb, file: File, ast: Option<ast::EnumVariantDefList>) -> Self {
+        ast.map(|ast| Self::from_ast(db, file, ast))
             .unwrap_or(Self::new(db, Vec::new()))
     }
 }
 
 impl EnumVariant {
-    fn from_ast(db: &dyn HirDb, fid: FileId, ast: ast::EnumVariantDef) -> Self {
+    fn from_ast(db: &dyn HirDb, file: File, ast: ast::EnumVariantDef) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
-        let ty = ast.ty().map(|ty| TypeId::from_ast(db, fid, ty));
+        let ty = ast.ty().map(|ty| TypeId::from_ast(db, file, ty));
 
         Self { name, ty }
     }

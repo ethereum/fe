@@ -1,16 +1,16 @@
-use std::path::PathBuf;
-
 use fe_parser2::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
     TextRange,
 };
+
+use crate::input::File;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
 where
     T: AstNode,
 {
-    pub fid: FileId,
+    pub file: Option<File>,
     pub kind: HirOriginKind<T>,
 }
 
@@ -18,20 +18,23 @@ impl<T> HirOrigin<T>
 where
     T: AstNode,
 {
-    pub(crate) fn new(fid: FileId, origin: HirOriginKind<T>) -> Self {
-        HirOrigin { fid, kind: origin }
+    pub(crate) fn new(file: File, origin: HirOriginKind<T>) -> Self {
+        HirOrigin {
+            file: Some(file),
+            kind: origin,
+        }
     }
 
-    pub(crate) fn raw(fid: FileId, ast: &T) -> Self {
+    pub(crate) fn raw(file: File, ast: &T) -> Self {
         HirOrigin {
-            fid,
+            file: Some(file),
             kind: HirOriginKind::raw(ast),
         }
     }
 
-    pub(crate) fn none(file: FileId) -> Self {
+    pub(crate) fn none(file: File) -> Self {
         HirOrigin {
-            fid: file,
+            file: Some(file),
             kind: HirOriginKind::None,
         }
     }
@@ -41,9 +44,10 @@ impl<T> Default for HirOrigin<T>
 where
     T: AstNode,
 {
+    /// The `Default` implemntation is necessary for
     fn default() -> Self {
-        HirOrigin {
-            fid: FileId::invalid(),
+        Self {
+            file: None,
             kind: HirOriginKind::None,
         }
     }
@@ -119,47 +123,4 @@ impl AugAssignDesugared {
     pub(crate) fn rhs(ast: &ast::Expr) -> Self {
         Self::Rhs(AstPtr::new(ast))
     }
-}
-
-/// This enum represents the file
-#[salsa::interned]
-pub struct FileId {
-    /// A ingot id which the file belongs to.
-    ingot: IngotId,
-    /// A relative path from the ingot root.
-    path: PathBuf,
-}
-
-impl FileId {
-    pub(crate) fn invalid() -> Self {
-        use salsa::Id;
-        Self(Id::from_u32(Id::MAX_U32 - 1))
-    }
-
-    pub(crate) fn is_invalid(self) -> bool {
-        self.0 == Self::invalid().0
-    }
-}
-
-#[salsa::interned]
-pub struct IngotId {
-    /// A full path to the ingot root.
-    path: PathBuf,
-    kind: IngotKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum IngotKind {
-    /// A standalone ingot is a dummy ingot when the compiler is invoked
-    /// directly on a file.
-    StandAlone,
-
-    /// A local ingot which is the current ingot being compiled.
-    Local,
-
-    /// An external ingot which is depended on by the current ingot.
-    External,
-
-    /// A std ingot.
-    Std,
 }
