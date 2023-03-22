@@ -1,3 +1,5 @@
+use common::InputDb;
+
 pub mod hir_def;
 pub mod input;
 pub mod lower;
@@ -6,6 +8,7 @@ pub mod span;
 #[salsa::jar(db = HirDb)]
 pub struct Jar(
     // Tracked Hir items.
+    hir_def::Mod,
     hir_def::Fn,
     hir_def::ExternFn,
     hir_def::Struct,
@@ -33,7 +36,9 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::UseTreeId,
+    hir_def::ingot_module_tree,
+    hir_def::module_item_tree,
 );
 
-pub trait HirDb: salsa::DbWithJar<Jar> {}
-impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {}
+impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb {}

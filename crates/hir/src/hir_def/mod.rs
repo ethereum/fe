@@ -9,6 +9,9 @@ pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
+pub(crate) mod item_tree;
+pub(crate) mod module_tree;
+
 pub use attr::*;
 pub use body::*;
 pub use expr::*;
@@ -20,6 +23,9 @@ pub use path::*;
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
+
+pub use item_tree::*;
+pub use module_tree::*;
 
 use crate::HirDb;
 
