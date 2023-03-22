@@ -10,6 +10,7 @@ pub struct Jar(
     input::File,
     // Tracked Hir items.
     hir_def::Fn,
+    hir_def::ExternFn,
     hir_def::Struct,
     hir_def::Contract,
     hir_def::Enum,
@@ -19,7 +20,6 @@ pub struct Jar(
     hir_def::ImplTrait,
     hir_def::Const,
     hir_def::Use,
-    hir_def::Extern,
     // Interned structs.
     hir_def::Body,
     hir_def::IdentId,
