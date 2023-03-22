@@ -16,10 +16,23 @@ pub struct Fn {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+    pub params: MaybeInvalid<FnParamListId>,
+    pub ret_ty: Option<TypeId>,
+    pub modifier: ItemModifier,
+
+    pub(crate) origin: HirOrigin<ast::Fn>,
+}
+
+#[salsa::tracked]
+pub struct ExternFn {
+    #[id]
+    id: TrackedItemId,
+
+    pub name: MaybeInvalid<IdentId>,
+    pub attributes: AttrListId,
     pub params: MaybeInvalid<FnParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
@@ -33,7 +46,6 @@ pub struct Struct {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
@@ -49,7 +61,6 @@ pub struct Contract {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub fields: RecordFieldListId,
@@ -63,7 +74,6 @@ pub struct Enum {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
@@ -79,7 +89,6 @@ pub struct TypeAlias {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
@@ -95,11 +104,9 @@ pub struct Impl {
     id: TrackedItemId,
 
     pub ty: super::MaybeInvalid<TypeId>,
-
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-
     pub(crate) origin: HirOrigin<ast::Impl>,
 }
 
@@ -114,7 +121,6 @@ pub struct Trait {
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 
@@ -125,11 +131,9 @@ pub struct ImplTrait {
 
     pub trait_ref: MaybeInvalid<TraitRef>,
     pub ty: MaybeInvalid<TypeId>,
-
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
 
@@ -139,7 +143,6 @@ pub struct Const {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
-
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 
@@ -149,21 +152,13 @@ pub struct Use {
     id: TrackedItemId,
 
     pub tree: MaybeInvalid<super::UseTreeId>,
-
     pub(crate) origin: HirOrigin<ast::Use>,
-}
-
-#[salsa::tracked]
-pub struct Extern {
-    #[id]
-    id: TrackedItemId,
-
-    pub(crate) origin: HirOrigin<ast::Extern>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
 pub enum ItemKind {
     Fn(Fn),
+    ExternFn(ExternFn),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -173,7 +168,6 @@ pub enum ItemKind {
     ImplTrait(ImplTrait),
     Const(Const),
     Use(Use),
-    Extern(Extern),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

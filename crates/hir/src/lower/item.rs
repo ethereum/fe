@@ -21,7 +21,7 @@ impl Fn {
         let id = TrackedItemId::Fn(name).join_opt(parent_id);
 
         let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
-        let generic_paramas = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
+        let generic_params = GenericParamListId::from_ast_opt(db, file, ast.generic_params());
         let where_clause = WhereClauseId::from_ast_opt(db, file, ast.where_clause());
         let params = ast
             .params()
@@ -36,7 +36,7 @@ impl Fn {
             id,
             name,
             attributes,
-            generic_paramas,
+            generic_params,
             where_clause,
             params,
             ret_ty,
@@ -265,17 +265,26 @@ impl Use {
     }
 }
 
-impl Extern {
+impl ExternFn {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
         file: File,
         parent: Option<TrackedItemId>,
-        ast: ast::Extern,
+        ast: ast::Fn,
     ) -> Self {
-        let origin = HirOrigin::raw(file, &ast);
+        let name = IdentId::maybe_from_token(db, ast.name());
         let id = TrackedItemId::Extern.join_opt(parent);
 
-        Self::new(db, id, origin)
+        let attributes = AttrListId::from_ast_opt(db, ast.attr_list());
+        let params = ast
+            .params()
+            .map(|params| FnParamListId::from_ast(db, file, params))
+            .into();
+        let ret_ty = ast.ret_ty().map(|ty| TypeId::from_ast(db, file, ty));
+        let modifier = ItemModifier::from_ast(db, ast.modifier());
+        let origin = HirOrigin::raw(file, &ast);
+
+        Self::new(db, id, name, attributes, params, ret_ty, modifier, origin)
     }
 }
 
