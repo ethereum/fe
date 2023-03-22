@@ -16,9 +16,10 @@ use super::{
 
 define_scope! {
     #[doc(hidden)]
-    pub ItemListScope,
+    pub ItemListScope {inside_mod: bool},
     ItemList,
     Override(
+        ModKw,
         FnKw,
         StructKw,
         ContractKw,
@@ -39,9 +40,19 @@ impl super::Parse for ItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         use crate::SyntaxKind::*;
 
+        if self.inside_mod {
+            parser.bump_expected(LBrace);
+        }
+
         loop {
             parser.set_newline_as_trivia(true);
+            if self.inside_mod && parser.bump_if(RBrace) {
+                break;
+            }
             if parser.current_kind().is_none() {
+                if self.inside_mod {
+                    parser.error("expected `}` to close the module");
+                }
                 break;
             }
 
@@ -68,6 +79,9 @@ impl super::Parse for ItemListScope {
             }
 
             match parser.current_kind() {
+                Some(ModKw) => {
+                    parser.parse(ModScope::default(), checkpoint);
+                }
                 Some(FnKw) => {
                     parser.parse(FnScope::default(), checkpoint);
                 }
@@ -157,6 +171,28 @@ impl ModifierKind {
     }
 }
 
+define_scope! { ModScope, Mod, Inheritance }
+impl super::Parse for ModScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::ModKw);
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expected identifier for the module name",
+                    None,
+                )
+            },
+            &[SyntaxKind::LBrace],
+        );
+        if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            parser.parse(ItemListScope::new(true), None);
+        } else {
+            parser.error_and_recover("expected contract field definition", None);
+        }
+    }
+}
+
 define_scope! { ContractScope, Contract, Inheritance }
 impl super::Parse for ContractScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
@@ -166,7 +202,7 @@ impl super::Parse for ContractScope {
             |parser| {
                 parser.bump_or_recover(
                     SyntaxKind::Ident,
-                    "expected identifier for the struct name",
+                    "expected identifier for the contract name",
                     None,
                 )
             },
