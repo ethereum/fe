@@ -7,3 +7,7 @@ pub struct Jar(InputIngot, InputFile);
 
 pub trait InputDb: salsa::DbWithJar<Jar> {}
 impl<DB> InputDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> {}
+
+pub trait Upcast<T: ?Sized> {
+    fn upcast(&self) -> &T;
+}

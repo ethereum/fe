@@ -1,4 +1,4 @@
-use common::InputDb;
+use common::{InputDb, Upcast};
 
 pub mod hir_def;
 pub mod input;
@@ -40,5 +40,5 @@ pub struct Jar(
     hir_def::module_item_tree,
 );
 
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {}
-impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb {}
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
+impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}

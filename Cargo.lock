@@ -805,6 +805,7 @@ dependencies = [
 name = "fe-hir"
 version = "0.20.0-alpha"
 dependencies = [
+ "camino",
  "cranelift-entity",
  "derive_more",
  "fe-common2",
