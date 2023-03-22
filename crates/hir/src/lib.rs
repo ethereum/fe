@@ -5,9 +5,6 @@ pub mod span;
 
 #[salsa::jar(db = HirDb)]
 pub struct Jar(
-    /// Inputs
-    input::Ingot,
-    input::File,
     // Tracked Hir items.
     hir_def::Fn,
     hir_def::ExternFn,

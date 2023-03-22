@@ -1,13 +1,13 @@
-use fe_parser2::ast::{self};
+use common::InputFile;
+use parser::ast::{self};
 
 use crate::{
     hir_def::{params::*, Body, IdentId, PathId, TypeId},
-    input::File,
     HirDb,
 };
 
 impl GenericArgListId {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::GenericArgList) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::GenericArgList) -> Self {
         let args = ast
             .into_iter()
             .map(|arg| GenericArg::from_ast(db, file, arg))
@@ -17,7 +17,7 @@ impl GenericArgListId {
 
     pub(crate) fn from_ast_opt(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         ast: Option<ast::GenericArgList>,
     ) -> Self {
         ast.map(|ast| Self::from_ast(db, file, ast))
@@ -26,7 +26,7 @@ impl GenericArgListId {
 }
 
 impl GenericParamListId {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::GenericParamList) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::GenericParamList) -> Self {
         let params = ast
             .into_iter()
             .map(|param| GenericParam::from_ast(db, file, param))
@@ -36,7 +36,7 @@ impl GenericParamListId {
 
     pub(crate) fn from_ast_opt(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         ast: Option<ast::GenericParamList>,
     ) -> Self {
         ast.map(|ast| Self::from_ast(db, file, ast))
@@ -45,7 +45,7 @@ impl GenericParamListId {
 }
 
 impl FnParamListId {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::FnParamList) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::FnParamList) -> Self {
         let params = ast
             .into_iter()
             .map(|param| FnParam::from_ast(db, file, param))
@@ -55,7 +55,7 @@ impl FnParamListId {
 }
 
 impl WhereClauseId {
-    pub(crate) fn from_ast(db: &dyn HirDb, file: File, ast: ast::WhereClause) -> Self {
+    pub(crate) fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::WhereClause) -> Self {
         let predicates = ast
             .into_iter()
             .map(|pred| WherePredicate::from_ast(db, file, pred))
@@ -63,14 +63,18 @@ impl WhereClauseId {
         Self::new(db, predicates)
     }
 
-    pub(crate) fn from_ast_opt(db: &dyn HirDb, file: File, ast: Option<ast::WhereClause>) -> Self {
+    pub(crate) fn from_ast_opt(
+        db: &dyn HirDb,
+        file: InputFile,
+        ast: Option<ast::WhereClause>,
+    ) -> Self {
         ast.map(|ast| Self::from_ast(db, file, ast))
             .unwrap_or_else(|| Self::new(db, Vec::new()))
     }
 }
 
 impl TypeGenericParam {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::TypeGenericParam) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::TypeGenericParam) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
         let bounds = ast
             .bounds()
@@ -87,7 +91,7 @@ impl TypeGenericParam {
 }
 
 impl ConstGenericParam {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::ConstGenericParam) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::ConstGenericParam) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
         Self { name, ty }
@@ -95,7 +99,7 @@ impl ConstGenericParam {
 }
 
 impl GenericArg {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::GenericArg) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::GenericArg) -> Self {
         match ast.kind() {
             ast::GenericArgKind::Type(type_param) => {
                 TypeGenericArg::from_ast(db, file, type_param).into()
@@ -108,14 +112,14 @@ impl GenericArg {
 }
 
 impl TypeGenericArg {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::TypeGenericArg) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::TypeGenericArg) -> Self {
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
         Self { ty }
     }
 }
 
 impl ConstGenericArg {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::ConstGenericArg) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::ConstGenericArg) -> Self {
         let body = if let Some(expr) = ast.expr() {
             Some(Body::nameless_body_from_ast(db, file, expr))
         } else {
@@ -128,7 +132,7 @@ impl ConstGenericArg {
 }
 
 impl GenericParam {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::GenericParam) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::GenericParam) -> Self {
         match ast.kind() {
             ast::GenericParamKind::Type(type_param) => {
                 TypeGenericParam::from_ast(db, file, type_param).into()
@@ -141,7 +145,7 @@ impl GenericParam {
 }
 
 impl FnParam {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::FnParam) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::FnParam) -> Self {
         let is_mut = ast.mut_token().is_some();
         let label = ast.label().map(|ast| FnParamLabel::from_ast(db, ast));
         let name = ast.name().map(|ast| FnParamName::from_ast(db, ast)).into();
@@ -157,7 +161,7 @@ impl FnParam {
 }
 
 impl WherePredicate {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::WherePredicate) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::WherePredicate) -> Self {
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
         let bounds = ast
             .bounds()
@@ -173,7 +177,7 @@ impl WherePredicate {
 }
 
 impl TypeBound {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::TypeBound) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::TypeBound) -> Self {
         let path = ast.path().map(|ast| PathId::from_ast(db, ast)).into();
         let generic_args = ast
             .generic_args()

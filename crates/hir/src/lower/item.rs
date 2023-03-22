@@ -1,11 +1,11 @@
-use fe_parser2::ast::{self, prelude::*};
+use common::InputFile;
+use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
         item::*, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
         UseTreeId, WhereClauseId,
     },
-    input::File,
     span::HirOrigin,
     HirDb,
 };
@@ -13,7 +13,7 @@ use crate::{
 impl Fn {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Fn,
     ) -> Self {
@@ -58,7 +58,7 @@ impl Fn {
 impl Struct {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Struct,
     ) -> Self {
@@ -89,7 +89,7 @@ impl Struct {
 impl Contract {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Contract,
     ) -> Self {
@@ -108,7 +108,7 @@ impl Contract {
 impl Enum {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Enum,
     ) -> Self {
@@ -139,7 +139,7 @@ impl Enum {
 impl TypeAlias {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::TypeAlias,
     ) -> Self {
@@ -170,7 +170,7 @@ impl TypeAlias {
 impl Impl {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Impl,
     ) -> Self {
@@ -189,7 +189,7 @@ impl Impl {
 impl Trait {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Trait,
     ) -> Self {
@@ -218,7 +218,7 @@ impl Trait {
 impl ImplTrait {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::ImplTrait,
     ) -> Self {
@@ -247,7 +247,7 @@ impl ImplTrait {
 impl Const {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Const,
     ) -> Self {
@@ -266,7 +266,7 @@ impl Const {
 impl Use {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: Option<TrackedItemId>,
         ast: ast::Use,
     ) -> Self {
@@ -281,7 +281,7 @@ impl Use {
 impl ExternFn {
     pub(crate) fn from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent: Option<TrackedItemId>,
         ast: ast::Fn,
     ) -> Self {
@@ -317,7 +317,7 @@ impl ItemModifier {
 }
 
 impl RecordFieldListId {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::RecordFieldDefList) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::RecordFieldDefList) -> Self {
         let fields = ast
             .into_iter()
             .map(|field| RecordField::from_ast(db, file, field))
@@ -325,14 +325,14 @@ impl RecordFieldListId {
         Self::new(db, fields)
     }
 
-    fn from_ast_opt(db: &dyn HirDb, file: File, ast: Option<ast::RecordFieldDefList>) -> Self {
+    fn from_ast_opt(db: &dyn HirDb, file: InputFile, ast: Option<ast::RecordFieldDefList>) -> Self {
         ast.map(|ast| Self::from_ast(db, file, ast))
             .unwrap_or(Self::new(db, Vec::new()))
     }
 }
 
 impl RecordField {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::RecordFieldDef) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::RecordFieldDef) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
         let ty = TypeId::maybe_from_ast(db, file, ast.ty());
         let is_pub = ast.pub_kw().is_some();
@@ -342,7 +342,7 @@ impl RecordField {
 }
 
 impl EnumVariantListId {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::EnumVariantDefList) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::EnumVariantDefList) -> Self {
         let variants = ast
             .into_iter()
             .map(|variant| EnumVariant::from_ast(db, file, variant))
@@ -350,14 +350,14 @@ impl EnumVariantListId {
         Self::new(db, variants)
     }
 
-    fn from_ast_opt(db: &dyn HirDb, file: File, ast: Option<ast::EnumVariantDefList>) -> Self {
+    fn from_ast_opt(db: &dyn HirDb, file: InputFile, ast: Option<ast::EnumVariantDefList>) -> Self {
         ast.map(|ast| Self::from_ast(db, file, ast))
             .unwrap_or(Self::new(db, Vec::new()))
     }
 }
 
 impl EnumVariant {
-    fn from_ast(db: &dyn HirDb, file: File, ast: ast::EnumVariantDef) -> Self {
+    fn from_ast(db: &dyn HirDb, file: InputFile, ast: ast::EnumVariantDef) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
         let ty = ast.ty().map(|ty| TypeId::from_ast(db, file, ty));
 

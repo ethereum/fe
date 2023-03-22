@@ -1,6 +1,6 @@
-use fe_parser2::{ast, SyntaxToken};
 use num_bigint::BigUint;
 use num_traits::Num;
+use parser::{ast, SyntaxToken};
 
 use crate::{
     hir_def::{IdentId, IntegerId, LitKind, MaybeInvalid, StringId},

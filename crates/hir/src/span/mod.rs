@@ -1,16 +1,16 @@
-use fe_parser2::{
+use parser::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
     TextRange,
 };
 
-use crate::input::File;
+use common::InputFile;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
 where
     T: AstNode,
 {
-    pub file: Option<File>,
+    pub file: Option<InputFile>,
     pub kind: HirOriginKind<T>,
 }
 
@@ -18,21 +18,21 @@ impl<T> HirOrigin<T>
 where
     T: AstNode,
 {
-    pub(crate) fn new(file: File, origin: HirOriginKind<T>) -> Self {
+    pub(crate) fn new(file: InputFile, origin: HirOriginKind<T>) -> Self {
         HirOrigin {
             file: Some(file),
             kind: origin,
         }
     }
 
-    pub(crate) fn raw(file: File, ast: &T) -> Self {
+    pub(crate) fn raw(file: InputFile, ast: &T) -> Self {
         HirOrigin {
             file: Some(file),
             kind: HirOriginKind::raw(ast),
         }
     }
 
-    pub(crate) fn none(file: File) -> Self {
+    pub(crate) fn none(file: InputFile) -> Self {
         HirOrigin {
             file: Some(file),
             kind: HirOriginKind::None,

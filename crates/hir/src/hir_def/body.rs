@@ -1,5 +1,5 @@
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use fe_parser2::ast::{self};
+use parser::ast::{self};
 
 use crate::span::HirOrigin;
 

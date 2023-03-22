@@ -1,5 +1,5 @@
 use crate::hir_def::{attr::*, IdentId, StringId};
-use fe_parser2::ast;
+use parser::ast;
 
 use crate::HirDb;
 
