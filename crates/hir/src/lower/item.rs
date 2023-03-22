@@ -2,7 +2,7 @@ use fe_parser2::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        item::*, AttrListId, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
+        item::*, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
         UseTreeId, WhereClauseId,
     },
     input::File,
@@ -29,6 +29,14 @@ impl Fn {
             .into();
         let ret_ty = ast.ret_ty().map(|ty| TypeId::from_ast(db, file, ty));
         let modifier = ItemModifier::from_ast(db, ast.modifier());
+        let body = ast.body().map(|body| {
+            Body::item_body_from_ast(
+                db,
+                file,
+                id.clone(),
+                ast::Expr::cast(body.syntax().clone()).unwrap(),
+            )
+        });
         let origin = HirOrigin::raw(file, &ast);
 
         Self::new(
@@ -41,6 +49,7 @@ impl Fn {
             params,
             ret_ty,
             modifier,
+            body,
             origin,
         )
     }
@@ -244,9 +253,13 @@ impl Const {
     ) -> Self {
         let name = IdentId::maybe_from_token(db, ast.name());
         let id = TrackedItemId::Const(name).join_opt(parent_id);
+        let body = ast
+            .value()
+            .map(|ast| Body::item_body_from_ast(db, file, id.clone(), ast))
+            .into();
 
         let origin = HirOrigin::raw(file, &ast);
-        Self::new(db, id, name, origin)
+        Self::new(db, id, name, body, origin)
     }
 }
 

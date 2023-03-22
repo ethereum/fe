@@ -7,7 +7,8 @@ use fe_parser2::ast;
 use crate::{hir_def::TraitRef, span::HirOrigin};
 
 use super::{
-    AttrListId, FnParamListId, GenericParamListId, IdentId, MaybeInvalid, TypeId, WhereClauseId,
+    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, MaybeInvalid, TypeId,
+    WhereClauseId,
 };
 
 #[salsa::tracked]
@@ -22,6 +23,7 @@ pub struct Fn {
     pub params: MaybeInvalid<FnParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
+    pub body: Option<Body>,
 
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
@@ -143,6 +145,7 @@ pub struct Const {
     id: TrackedItemId,
 
     pub name: MaybeInvalid<IdentId>,
+    pub body: MaybeInvalid<Body>,
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 
