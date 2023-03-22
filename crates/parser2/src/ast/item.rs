@@ -25,7 +25,8 @@ ast_node! {
     /// A single item in a module.
     /// Use `[Item::kind]` to get the specific type of item.
     pub struct Item,
-    SK::Fn
+    SK::Mod
+    | SK::Fn
     | SK::Struct
     | SK::Contract
     | SK::Enum
@@ -40,6 +41,7 @@ ast_node! {
 impl Item {
     pub fn kind(&self) -> ItemKind {
         match self.syntax().kind() {
+            SK::Mod => ItemKind::Mod(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Fn => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Struct => ItemKind::Struct(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Contract => ItemKind::Contract(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -53,6 +55,24 @@ impl Item {
             SK::Extern => ItemKind::Extern(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
         }
+    }
+}
+
+ast_node! {
+    pub struct Mod,
+    SK::Mod,
+}
+impl super::AttrListOwner for Mod {}
+impl super::ItemModifierOwner for Mod {}
+impl Mod {
+    /// Returns the name of the function.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    /// Returns the function's parameter list.
+    pub fn items(&self) -> Option<ItemList> {
+        support::child(self.syntax())
     }
 }
 
@@ -398,6 +418,7 @@ pub trait ItemModifierOwner: AstNode<Language = FeLang> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ItemKind {
+    Mod(Mod),
     Fn(Fn),
     Struct(Struct),
     Contract(Contract),
@@ -435,6 +456,38 @@ mod tests {
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
         items.pop().unwrap().kind().try_into().unwrap()
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn mod_() {
+        let source = r"
+            pub mod foo {
+                pub fn bar() {}
+                pub struct Baz
+            }
+        ";
+        let mod_: Mod = parse_item(source);
+        assert_eq!(mod_.name().unwrap().text(), "foo");
+        let mut i = 0;
+        for item in mod_.items().unwrap().into_iter() {
+            match i {
+                0 => {
+                    assert!(matches!(item.kind(), ItemKind::Fn(_)));
+                    let func: Fn = item.kind().try_into().unwrap();
+                    assert_eq!(func.name().unwrap().text(), "bar");
+                }
+                1 => {
+                    assert!(matches!(item.kind(), ItemKind::Struct(_)));
+                    let struct_: Struct = item.kind().try_into().unwrap();
+                    assert_eq!(struct_.name().unwrap().text(), "Baz");
+                }
+                _ => panic!(),
+            }
+            i += 1;
+        }
+
+        assert_eq!(i, 2);
     }
 
     #[test]

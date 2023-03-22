@@ -152,6 +152,9 @@ pub enum SyntaxKind {
     /// `fn`
     #[token("fn")]
     FnKw,
+    /// `mod`
+    #[token("mod")]
+    ModKw,
     /// `const`
     #[token("const")]
     ConstKw,
@@ -329,6 +332,8 @@ pub enum SyntaxKind {
     MatchArmList,
 
     // Items. These are non-leaf nodes.
+    /// `mod s { .. }`
+    Mod,
     /// `fn foo(x: i32) -> i32 { .. }`
     Fn,
     /// `struct Foo { .. }`
