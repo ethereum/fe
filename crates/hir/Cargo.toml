@@ -16,6 +16,7 @@ derive_more = "0.99"
 cranelift-entity = "0.91"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
+camino = "1.1.4"
 
 parser = { path = "../parser2", package = "fe-parser2" }
 common = { path = "../common2", package = "fe-common2" }

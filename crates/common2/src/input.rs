@@ -1,11 +1,15 @@
+use std::collections::BTreeSet;
+
 use camino::Utf8PathBuf;
 use smol_str::SmolStr;
+
+use crate::InputDb;
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
 #[salsa::input]
 pub struct InputIngot {
-    /// A path to the ingot root directory.
+    /// An absolute path to the ingot root directory.
     #[return_ref]
     pub path: Utf8PathBuf,
 
@@ -16,16 +20,18 @@ pub struct InputIngot {
     #[return_ref]
     pub version: Version,
 
+    pub root_file: InputFile,
+
     /// A list of ingots which the current ingot depends on.
     #[return_ref]
-    pub dependency: Vec<IngotDependency>,
+    pub dependency: BTreeSet<IngotDependency>,
 
     /// A list of files which the current ingot contains.
     #[return_ref]
-    pub files: Vec<InputFile>,
+    pub files: BTreeSet<InputFile>,
 }
 
-#[salsa::input(constructor = __new_priv)]
+#[salsa::input]
 pub struct InputFile {
     /// A ingot id which the file belongs to.
     pub ingot: InputIngot,
@@ -36,6 +42,12 @@ pub struct InputFile {
 
     #[return_ref]
     pub text: String,
+}
+
+impl InputFile {
+    pub fn abs_path(&self, db: &dyn InputDb) -> Utf8PathBuf {
+        self.ingot(db).path(db).join(&self.path(db))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -50,7 +62,7 @@ pub enum IngotKind {
     /// An external ingot which is depended on by the current ingot.
     External,
 
-    /// A std ingot.
+    /// Standard library ingot.
     Std,
 }
 
@@ -60,6 +72,17 @@ pub struct IngotDependency {
     pub name: SmolStr,
     /// An ingot which the current ingot depends on.
     pub ingot: InputIngot,
+}
+
+impl PartialOrd for IngotDependency {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.ingot.cmp(&other.ingot))
+    }
+}
+impl Ord for IngotDependency {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.ingot.cmp(&other.ingot)
+    }
 }
 
 pub type Version = semver::Version;
