@@ -727,6 +727,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-common2"
+version = "0.20.0-alpha"
+dependencies = [
+ "camino",
+ "salsa-2022",
+ "semver 1.0.17",
+ "smol_str",
+]
+
+[[package]]
 name = "fe-compiler-test-utils"
 version = "0.20.0-alpha"
 dependencies = [
@@ -795,15 +805,13 @@ dependencies = [
 name = "fe-hir"
 version = "0.20.0-alpha"
 dependencies = [
- "camino",
  "cranelift-entity",
  "derive_more",
+ "fe-common2",
  "fe-parser2",
  "num-bigint",
  "num-traits",
  "salsa-2022",
- "semver 1.0.17",
- "smol_str",
  "tracing",
 ]
 

@@ -1,4 +1,4 @@
-use fe_parser2::ast;
+use parser::ast;
 
 use crate::{
     hir_def::{pat::*, IdentId, LitKind, PathId},

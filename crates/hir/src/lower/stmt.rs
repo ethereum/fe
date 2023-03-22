@@ -1,4 +1,4 @@
-use fe_parser2::ast::{self, prelude::*};
+use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{stmt::*, ArithBinOp, Expr, Pat, PathId, TypeId},

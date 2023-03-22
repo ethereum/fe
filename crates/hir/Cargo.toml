@@ -12,11 +12,10 @@ tracing = "0.1"
 # We may need to fix this to a specific version, 
 # but I want to keep up with the latest version until the new Fe implemeentation is merged into the master.
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
-fe-parser2 = { path = "../parser2" }
 derive_more = "0.99"
 cranelift-entity = "0.91"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
-semver = "1.0.17"
-camino = "1.1.4"
-smol_str = "0.1.24"
+
+parser = { path = "../parser2", package = "fe-parser2" }
+common = { path = "../common2", package = "fe-common2" }

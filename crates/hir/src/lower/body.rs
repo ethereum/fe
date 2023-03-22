@@ -1,11 +1,11 @@
-use fe_parser2::ast;
+use common::InputFile;
+use parser::ast;
 
 use crate::{
     hir_def::{
         Body, BodyNodeMap, BodySourceMap, Expr, ExprId, MaybeInvalid, Pat, PatId, Stmt, StmtId,
         TrackedBodyId, TrackedItemId,
     },
-    input::File,
     span::{HirOrigin, HirOriginKind},
     HirDb,
 };
@@ -13,7 +13,7 @@ use crate::{
 impl Body {
     pub(crate) fn item_body_from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         parent_id: TrackedItemId,
         ast: ast::Expr,
     ) -> Self {
@@ -25,7 +25,7 @@ impl Body {
 
     pub(crate) fn nested_body_from_ast(
         db: &dyn HirDb,
-        file: File,
+        file: InputFile,
         bid: TrackedBodyId,
         ast: ast::Expr,
     ) -> Self {
@@ -35,7 +35,7 @@ impl Body {
         ctxt.build(HirOrigin::raw(file, &ast))
     }
 
-    pub(crate) fn nameless_body_from_ast(db: &dyn HirDb, file: File, ast: ast::Expr) -> Self {
+    pub(crate) fn nameless_body_from_ast(db: &dyn HirDb, file: InputFile, ast: ast::Expr) -> Self {
         let bid = TrackedBodyId::NamelessBody;
         let mut ctxt = BodyCtxt::new(db, file, bid);
         Expr::push_to_body(&mut ctxt, ast.clone());
@@ -48,7 +48,7 @@ pub(super) struct BodyCtxt<'db> {
     pub(super) exprs: BodyNodeMap<ExprId, MaybeInvalid<Expr>>,
     pub(super) pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
     pub(super) db: &'db dyn HirDb,
-    pub(super) file: File,
+    pub(super) file: InputFile,
     pub(super) bid: TrackedBodyId,
 
     stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
@@ -92,7 +92,7 @@ impl<'db> BodyCtxt<'db> {
         pat_id
     }
 
-    fn new(db: &'db dyn HirDb, file: File, bid: TrackedBodyId) -> Self {
+    fn new(db: &'db dyn HirDb, file: InputFile, bid: TrackedBodyId) -> Self {
         Self {
             stmts: BodyNodeMap::new(),
             exprs: BodyNodeMap::new(),

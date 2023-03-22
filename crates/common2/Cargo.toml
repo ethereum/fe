@@ -1,0 +1,16 @@
+[package]
+name = "fe-common2"
+version = "0.20.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR definition and lowering for Fe lang."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+semver = "1.0.17"
+camino = "1.1.4"
+smol_str = "0.1.24"
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }

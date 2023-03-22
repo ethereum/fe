@@ -2,7 +2,7 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
-use fe_parser2::ast;
+use parser::ast;
 
 use crate::{hir_def::TraitRef, span::HirOrigin};
 

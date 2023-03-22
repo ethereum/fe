@@ -1,4 +1,4 @@
-use fe_parser2::{ast, SyntaxToken};
+use parser::{ast, SyntaxToken};
 
 use crate::{
     hir_def::{IdentId, MaybeInvalid, PathId, PathSegment},
