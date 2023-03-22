@@ -12,6 +12,18 @@ use super::{
 };
 
 #[salsa::tracked]
+pub struct Mod {
+    #[id]
+    id: TrackedItemId,
+
+    pub name: MaybeInvalid<IdentId>,
+    pub attributes: AttrListId,
+    pub is_pub: bool,
+
+    pub(crate) origin: HirOrigin<ast::Mod>,
+}
+
+#[salsa::tracked]
 pub struct Fn {
     #[id]
     id: TrackedItemId,
@@ -158,8 +170,9 @@ pub struct Use {
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, PartialOrd, Ord)]
 pub enum ItemKind {
+    Module(Mod),
     Fn(Fn),
     ExternFn(ExternFn),
     Struct(Struct),
@@ -224,6 +237,7 @@ pub type ExternItemListId = ImplItemListId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TrackedItemId {
+    Mod(MaybeInvalid<IdentId>),
     Fn(MaybeInvalid<IdentId>),
     Struct(MaybeInvalid<IdentId>),
     Contract(MaybeInvalid<IdentId>),
