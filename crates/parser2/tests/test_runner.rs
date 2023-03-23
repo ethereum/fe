@@ -87,7 +87,7 @@ impl TestRunner {
         (self.f)(&mut parser);
         parser.leave(checkpoint);
 
-        let (cst, errors) = parser.finish();
+        let (cst, errors) = parser.finish_to_node();
 
         for error in &errors {
             println!("{}@{:?}", error.msg, error.range);

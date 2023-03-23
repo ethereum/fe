@@ -4,7 +4,7 @@ pub(crate) use item::ItemListScope;
 
 use fxhash::{FxHashMap, FxHashSet};
 
-use crate::{syntax_node::SyntaxNode, ParseError, SyntaxKind, TextRange};
+use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
 
@@ -88,12 +88,19 @@ impl<S: TokenStream> Parser<S> {
         std::mem::replace(&mut self.is_newline_trivia, is_trivia)
     }
 
-    /// Finish the parsing and return the syntax tree.
-    pub fn finish(self) -> (SyntaxNode, Vec<ParseError>) {
+    /// Finish the parsing and return the GreeNode.
+    pub fn finish(self) -> (GreenNode, Vec<ParseError>) {
         debug_assert!(self.parents.is_empty());
         debug_assert!(!self.is_dry_run());
 
-        (SyntaxNode::new_root(self.builder.finish()), self.errors)
+        (self.builder.finish(), self.errors)
+    }
+
+    /// Finish the parsing and return the SyntaxNode.
+    /// **NOTE:** This method is mainly used for testing.
+    pub fn finish_to_node(self) -> (SyntaxNode, Vec<ParseError>) {
+        let (green_node, errors) = self.finish();
+        (SyntaxNode::new_root(green_node), errors)
     }
 
     /// Adds the `recovery_tokens` as a temporary recovery token set.

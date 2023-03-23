@@ -351,21 +351,21 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(GenericParamListScope::default(), None);
-        GenericParamList::cast(parser.finish().0).unwrap()
+        GenericParamList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_generic_arg(source: &str) -> GenericArgList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(GenericArgListScope::default(), None);
-        GenericArgList::cast(parser.finish().0).unwrap()
+        GenericArgList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_where_clause(source: &str) -> WhereClause {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(WhereClauseScope::default(), None);
-        WhereClause::cast(parser.finish().0).unwrap()
+        WhereClause::cast(parser.finish_to_node().0).unwrap()
     }
 
     #[test]

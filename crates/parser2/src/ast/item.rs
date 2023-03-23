@@ -452,7 +452,7 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         parser.parse(ItemListScope::default(), None);
-        let item_list = ItemList::cast(parser.finish().0).unwrap();
+        let item_list = ItemList::cast(parser.finish_to_node().0).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
         items.pop().unwrap().kind().try_into().unwrap()

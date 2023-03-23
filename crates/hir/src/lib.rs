@@ -1,7 +1,7 @@
-use common::{InputDb, Upcast};
+use common::{InputDb, InputFile, Upcast};
+use parser::GreenNode;
 
 pub mod hir_def;
-pub mod input;
 pub mod lower;
 pub mod span;
 
@@ -38,7 +38,16 @@ pub struct Jar(
     hir_def::UseTreeId,
     hir_def::ingot_module_tree,
     hir_def::module_item_tree,
+    parse_file,
 );
+
+#[salsa::tracked]
+pub(crate) fn parse_file(db: &dyn HirDb, file: InputFile) -> GreenNode {
+    let text = file.text(db.upcast());
+    // TODO: Register errors when we define the diagnostics API.
+    let (node, _errs) = parser::parse_source_file(text);
+    node
+}
 
 pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
