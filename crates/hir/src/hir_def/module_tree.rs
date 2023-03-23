@@ -1,9 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    path::{Path, PathBuf},
-};
+use std::collections::BTreeMap;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 use common::{InputFile, InputIngot};
 use cranelift_entity::{entity_impl, PrimaryMap};
 
@@ -64,6 +61,26 @@ pub struct IngotModuleTree {
     pub(crate) ingot: InputIngot,
 }
 
+impl IngotModuleTree {
+    #[inline]
+    pub fn module_name(&self, file: InputFile) -> IdentId {
+        self.module_data(file).name
+    }
+
+    fn module_data(&self, file: InputFile) -> &ToplevelModule {
+        let id = self.file_map[&file];
+        &self.module_tree[id]
+    }
+}
+
+/// Returns a module tree of the given ingot. The resulted tree only includes
+/// top level modules. This function only depends on an ingot structure and
+/// external ingot dependency, and not depends on file contents.
+#[salsa::tracked(return_ref)]
+pub fn ingot_module_tree(db: &dyn HirDb, ingot: InputIngot) -> IngotModuleTree {
+    IngotModuleTreeBuilder::new(db, ingot).build()
+}
+
 /// A top level module that is one-to-one mapped to a file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ToplevelModule {
@@ -93,14 +110,6 @@ impl ToplevelModule {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct ToplevelModuleId(u32);
 entity_impl!(ToplevelModuleId);
-
-/// Returns a module tree of the given ingot. The resulted tree only includes
-/// top level modules. This function only depends on an ingot structure and
-/// external ingot dependency, and not depends on file contents.
-#[salsa::tracked(return_ref)]
-pub fn ingot_module_tree(db: &dyn HirDb, ingot: InputIngot) -> IngotModuleTree {
-    IngotModuleTreeBuilder::new(db, ingot).build()
-}
 
 struct IngotModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,

@@ -1,15 +1,14 @@
 use parser::ast;
 
-use crate::{
-    hir_def::{use_tree::*, IdentId, MaybeInvalid},
-    HirDb,
-};
+use crate::hir_def::{use_tree::*, IdentId, MaybeInvalid};
+
+use super::FileLowerCtxt;
 
 impl UseTreeId {
-    pub(crate) fn from_ast(db: &dyn HirDb, ast: ast::UseTree) -> Self {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::UseTree) -> Self {
         let path = if let Some(path) = ast.path() {
             path.into_iter()
-                .map(|ast| UsePathSegment::maybe_from_ast(db, ast))
+                .map(|ast| UsePathSegment::maybe_lower_ast(ctxt, ast))
                 .collect()
         } else {
             vec![]
@@ -17,27 +16,35 @@ impl UseTreeId {
         let subtree = if let Some(children) = ast.children() {
             children
                 .into_iter()
-                .map(|ast| UseTreeId::from_ast(db, ast))
+                .map(|ast| UseTreeId::lower_ast(ctxt, ast))
                 .collect()
         } else {
             vec![]
         };
-        let alias = ast.alias().map(|ast| UseTreeAlias::maybe_from_ast(db, ast));
+        let alias = ast
+            .alias()
+            .map(|ast| UseTreeAlias::maybe_lower_ast(ctxt, ast));
 
-        Self::new(db, path, subtree, alias)
+        Self::new(ctxt.db, path, subtree, alias)
     }
 
-    pub(crate) fn maybe_from_ast(db: &dyn HirDb, ast: Option<ast::UseTree>) -> MaybeInvalid<Self> {
-        ast.map(|ast| Self::from_ast(db, ast)).into()
+    pub(super) fn maybe_lower_ast(
+        ctxt: &mut FileLowerCtxt<'_>,
+        ast: Option<ast::UseTree>,
+    ) -> MaybeInvalid<Self> {
+        ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
 }
 
 impl UsePathSegment {
-    pub(crate) fn maybe_from_ast(db: &dyn HirDb, ast: ast::UsePathSegment) -> MaybeInvalid<Self> {
+    pub(super) fn maybe_lower_ast(
+        ctxt: &mut FileLowerCtxt<'_>,
+        ast: ast::UsePathSegment,
+    ) -> MaybeInvalid<Self> {
         ast.kind()
             .map(|kind| match kind {
                 ast::UsePathSegmentKind::Ident(ident) => {
-                    Self::Ident(IdentId::from_token(db, ident))
+                    Self::Ident(IdentId::lower_token(ctxt, ident))
                 }
                 ast::UsePathSegmentKind::SelfPath(_) => Self::SelfPath,
                 ast::UsePathSegmentKind::Glob(_) => Self::Glob,
@@ -47,9 +54,12 @@ impl UsePathSegment {
 }
 
 impl UseTreeAlias {
-    pub(crate) fn maybe_from_ast(db: &dyn HirDb, ast: ast::UseTreeAlias) -> MaybeInvalid<Self> {
+    pub(super) fn maybe_lower_ast(
+        ctxt: &mut FileLowerCtxt<'_>,
+        ast: ast::UseTreeAlias,
+    ) -> MaybeInvalid<Self> {
         if let Some(ident) = ast.ident() {
-            Some(Self::Ident(IdentId::from_token(db, ident)))
+            Some(Self::Ident(IdentId::lower_token(ctxt, ident)))
         } else if ast.underscore().is_some() {
             Some(Self::Underscore)
         } else {
