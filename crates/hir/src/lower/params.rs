@@ -115,12 +115,10 @@ impl TypeGenericArg {
 
 impl ConstGenericArg {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ConstGenericArg) -> Self {
-        let body = if let Some(expr) = ast.expr() {
-            Some(Body::lower_ast_nameless(ctxt, expr))
-        } else {
-            None
-        }
-        .into();
+        let body = ast
+            .expr()
+            .map(|expr| Body::lower_ast_nameless(ctxt, expr))
+            .into();
 
         Self { body }
     }
@@ -187,9 +185,7 @@ impl TypeBound {
 impl FnParamName {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParamName) -> Self {
         match ast {
-            ast::FnParamName::Ident(name) => {
-                FnParamName::Ident(IdentId::lower_token(ctxt, name.into()))
-            }
+            ast::FnParamName::Ident(name) => FnParamName::Ident(IdentId::lower_token(ctxt, name)),
             ast::FnParamName::SelfParam(_) => FnParamName::Self_,
             ast::FnParamName::Underscore(_) => FnParamName::Underscore,
         }

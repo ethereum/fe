@@ -1,5 +1,10 @@
+// This is necessary because `salsa::tracked` structs generates a
+// constructor
+// that may take many arguments depending on the number of fields in the struct.
+#![allow(clippy::too_many_arguments)]
+
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use parser::ast::{self};
+use parser::ast;
 
 use crate::span::HirOrigin;
 

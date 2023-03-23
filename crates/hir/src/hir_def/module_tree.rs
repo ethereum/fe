@@ -18,7 +18,7 @@ use super::IdentId;
 ///  
 ///
 /// Example:
-/// ```
+/// ```text
 /// ingot/
 /// ├─ main.fe
 /// ├─ mod1.fe
@@ -30,8 +30,10 @@ use super::IdentId;
 /// ├─ mod3
 /// │  ├─ baz.fe
 /// ```
+///
 /// The resulting tree would be like below.
-/// ```
+///
+/// ```text
 ///           +------+
 ///     *---- | main |----*
 ///     |     +------+    |         +------+

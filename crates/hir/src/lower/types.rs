@@ -13,9 +13,9 @@ impl TypeId {
             }
 
             ast::TypeKind::Path(ty) => {
-                let path = PathId::maybe_lower_ast(ctxt, ty.path()).into();
+                let path = PathId::maybe_lower_ast(ctxt, ty.path());
                 let generic_args = GenericArgListId::lower_ast_opt(ctxt, ty.generic_args());
-                TypeKind::Path(path, generic_args.into())
+                TypeKind::Path(path, generic_args)
             }
 
             ast::TypeKind::SelfType(_) => TypeKind::SelfType,
@@ -51,7 +51,7 @@ impl TypeId {
 
 impl TraitRef {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::PathType) -> Self {
-        let path = PathId::maybe_lower_ast(ctxt, ast.path()).into();
+        let path = PathId::maybe_lower_ast(ctxt, ast.path());
         let generic_args = GenericArgListId::lower_ast_opt(ctxt, ast.generic_args());
         Self { path, generic_args }
     }
