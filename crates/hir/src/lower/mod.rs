@@ -75,7 +75,7 @@ impl<'db> FileLowerCtxt<'db> {
         let item_scope = self.scope_stack.pop().unwrap();
 
         for item in &item_scope {
-            self.item_tree.get_mut(&item).unwrap().parent = Some(item_kind);
+            self.item_tree.get_mut(item).unwrap().parent = Some(item_kind);
         }
 
         self.item_tree.insert(
@@ -126,14 +126,14 @@ impl IntegerId {
         let text = ast.token().text();
         // Parser ensures that the text is valid pair with a radix and a number.
         if text.len() < 2 {
-            return Self::new(ctxt.db, BigUint::from_str_radix(&text, 10).unwrap());
+            return Self::new(ctxt.db, BigUint::from_str_radix(text, 10).unwrap());
         }
 
         let int = match &text[0..2] {
             "0x" | "0X" => BigUint::from_str_radix(&text[2..], 16).unwrap(),
             "0o" | "0O" => BigUint::from_str_radix(&text[2..], 8).unwrap(),
             "0b" | "0B" => BigUint::from_str_radix(&text[2..], 2).unwrap(),
-            _ => BigUint::from_str_radix(&text, 10).unwrap(),
+            _ => BigUint::from_str_radix(text, 10).unwrap(),
         };
 
         Self::new(ctxt.db, int)

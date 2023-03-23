@@ -93,7 +93,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     fn new(f_ctxt: &'ctxt mut FileLowerCtxt<'db>, bid: TrackedBodyId) -> Self {
         f_ctxt.enter_scope();
         Self {
-            f_ctxt: f_ctxt,
+            f_ctxt,
             bid,
             stmts: BodyNodeMap::new(),
             exprs: BodyNodeMap::new(),

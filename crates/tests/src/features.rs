@@ -9,8 +9,9 @@ use rstest::rstest;
 use std::collections::BTreeMap;
 
 use fe_common::utils::keccak;
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
+use fe_compiler_test_utils::{
+    *, {self as test_utils},
+};
 
 const SOME_ADDRESS: &str = "2012301230123012301230123012301230123002";
 
@@ -1076,7 +1077,7 @@ fn sized_vals_in_sto() {
         let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", &[]);
 
         let num = uint_token(68);
-        let nums = uint_array_token(&(0..42).into_iter().collect::<Vec<_>>());
+        let nums = uint_array_token(&(0..42).collect::<Vec<_>>());
         let string = string_token("there are 26 protons in fe");
 
         harness.test_function(&mut executor, "write_num", &[num.clone()], None);

@@ -46,7 +46,7 @@ pub struct InputFile {
 
 impl InputFile {
     pub fn abs_path(&self, db: &dyn InputDb) -> Utf8PathBuf {
-        self.ingot(db).path(db).join(&self.path(db))
+        self.ingot(db).path(db).join(self.path(db))
     }
 }
 

@@ -238,11 +238,7 @@ pub(super) fn make_aggregate_init(
     let ptr = YulVariable::new("ptr");
     let field_num = inner_ty.aggregate_field_num(db.upcast());
 
-    let iter_field_args = || {
-        (0..field_num)
-            .into_iter()
-            .map(|i| YulVariable::new(format! {"arg{i}"}))
-    };
+    let iter_field_args = || (0..field_num).map(|i| YulVariable::new(format! {"arg{i}"}));
 
     let mut body = vec![];
     for (idx, field_arg) in iter_field_args().enumerate() {
@@ -303,11 +299,7 @@ pub(super) fn make_enum_init(
     let ptr = YulVariable::new("ptr");
     let disc = YulVariable::new("disc");
     let disc_ty = arg_tys[0];
-    let enum_data = || {
-        (0..arg_tys.len() - 1)
-            .into_iter()
-            .map(|i| YulVariable::new(format! {"arg{i}"}))
-    };
+    let enum_data = || (0..arg_tys.len() - 1).map(|i| YulVariable::new(format! {"arg{i}"}));
 
     let tuple_def = TupleDef {
         items: arg_tys

@@ -228,7 +228,7 @@ ast_node! {
 impl TupleExpr {
     /// Returns the expressions in the tuple.
     pub fn elems(&self) -> impl Iterator<Item = Option<Expr>> {
-        self.syntax().children().map(|node| Expr::cast(node))
+        self.syntax().children().map(Expr::cast)
     }
 }
 
@@ -241,7 +241,7 @@ impl ArrayExpr {
     /// Returns the expressions in the array.
     /// Returns the expressions in the tuple.
     pub fn elems(&self) -> impl Iterator<Item = Option<Expr>> {
-        self.syntax().children().map(|node| Expr::cast(node))
+        self.syntax().children().map(Expr::cast)
     }
 }
 
@@ -741,7 +741,7 @@ mod tests {
     fn tuple_expr() {
         let tuple_expr: TupleExpr = parse_expr("(1, 2, 3)");
 
-        for (i, expr) in tuple_expr.elems().into_iter().flatten().enumerate() {
+        for (i, expr) in tuple_expr.elems().flatten().enumerate() {
             match i {
                 0 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
                 1 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
@@ -756,7 +756,7 @@ mod tests {
     fn array_expr() {
         let array_expr: ArrayExpr = parse_expr("[1, 2, 3]");
 
-        for (i, expr) in array_expr.elems().into_iter().flatten().enumerate() {
+        for (i, expr) in array_expr.elems().flatten().enumerate() {
             match i {
                 0 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),
                 1 => assert!(matches!(expr.kind(), ExprKind::Lit(_))),

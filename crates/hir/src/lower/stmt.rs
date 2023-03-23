@@ -39,8 +39,7 @@ impl Stmt {
                 let body = Expr::push_to_body_opt(
                     ctxt,
                     for_.body()
-                        .map(|body| ast::Expr::cast(body.syntax().clone()))
-                        .flatten(),
+                        .and_then(|body| ast::Expr::cast(body.syntax().clone())),
                 );
 
                 (Stmt::For(bind, iter, body), HirOriginKind::raw(&ast))
@@ -52,8 +51,7 @@ impl Stmt {
                     ctxt,
                     while_
                         .body()
-                        .map(|body| ast::Expr::cast(body.syntax().clone()))
-                        .flatten(),
+                        .and_then(|body| ast::Expr::cast(body.syntax().clone())),
                 );
 
                 (Stmt::While(cond, body), HirOriginKind::raw(&ast))
@@ -89,7 +87,7 @@ fn desugar_aug_assign(
         .clone()
         .map(|ident| PathId::from_ident(ctxt.f_ctxt, ident));
 
-    let lhs_origin: AugAssignDesugared = lhs_ident.clone().unwrap().text_range().into();
+    let lhs_origin: AugAssignDesugared = lhs_ident.unwrap().text_range().into();
     let lhs_pat = if let Some(path) = path {
         ctxt.push_pat(
             Pat::Path(Some(path).into()),
@@ -102,7 +100,7 @@ fn desugar_aug_assign(
     let binop_lhs = if let Some(path) = path {
         ctxt.push_expr(
             Expr::Path(Some(path).into()),
-            HirOriginKind::desugared(lhs_origin.clone()),
+            HirOriginKind::desugared(lhs_origin),
         )
     } else {
         ctxt.push_missing_expr()

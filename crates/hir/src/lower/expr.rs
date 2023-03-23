@@ -31,13 +31,13 @@ impl Expr {
             ast::ExprKind::Bin(bin) => {
                 let lhs = Self::push_to_body_opt(ctxt, bin.lhs());
                 let rhs = Self::push_to_body_opt(ctxt, bin.rhs());
-                let op = bin.op().map(|op| BinOp::lower_ast(op)).into();
+                let op = bin.op().map(BinOp::lower_ast).into();
                 Self::Bin(lhs, rhs, op)
             }
 
             ast::ExprKind::Un(un) => {
                 let expr = Self::push_to_body_opt(ctxt, un.expr());
-                let op = un.op().map(|op| UnOp::lower_ast(op)).into();
+                let op = un.op().map(UnOp::lower_ast).into();
                 Self::Un(expr, op)
             }
 
@@ -137,8 +137,7 @@ impl Expr {
                 let then = Expr::push_to_body_opt(
                     ctxt,
                     if_.then()
-                        .map(|body| ast::Expr::cast(body.syntax().clone()))
-                        .flatten(),
+                        .and_then(|body| ast::Expr::cast(body.syntax().clone())),
                 );
                 let else_ = if_.else_().map(|ast| Self::lower_ast(ctxt, ast));
                 Self::If(cond, then, else_)
