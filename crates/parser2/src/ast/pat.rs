@@ -188,7 +188,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::pat::parse_pat(&mut parser);
-        Pat::cast(parser.finish().0)
+        Pat::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
             .try_into()

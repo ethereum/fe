@@ -53,7 +53,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(PathScope::default(), None);
-        Path::cast(parser.finish().0).unwrap()
+        Path::cast(parser.finish_to_node().0).unwrap()
     }
 
     #[test]

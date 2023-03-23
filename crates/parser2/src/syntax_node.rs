@@ -17,3 +17,4 @@ impl rowan::Language for FeLang {
 
 pub type SyntaxNode = rowan::SyntaxNode<FeLang>;
 pub type SyntaxToken = rowan::SyntaxToken<FeLang>;
+pub type GreenNode = rowan::GreenNode;
