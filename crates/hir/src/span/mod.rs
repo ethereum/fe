@@ -119,8 +119,4 @@ impl AugAssignDesugared {
     pub(crate) fn stmt(ast: &ast::AugAssignStmt) -> Self {
         Self::Stmt(AstPtr::new(ast))
     }
-
-    pub(crate) fn rhs(ast: &ast::Expr) -> Self {
-        Self::Rhs(AstPtr::new(ast))
-    }
 }

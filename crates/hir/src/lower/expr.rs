@@ -1,18 +1,18 @@
 use parser::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{expr::*, Body, IdentId, IntegerId, LitKind, MaybeInvalid, Pat, PathId, Stmt},
+    hir_def::{expr::*, Body, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
     span::HirOriginKind,
 };
 
 use super::body::BodyCtxt;
 
 impl Expr {
-    pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_>, ast: ast::Expr) -> ExprId {
+    pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Expr) -> ExprId {
         let expr = match ast.kind() {
             ast::ExprKind::Lit(lit) => {
                 if let Some(lit) = lit.lit() {
-                    let lit = LitKind::from_ast(ctxt.db, lit);
+                    let lit = LitKind::lower_ast(ctxt.f_ctxt, lit);
                     Self::Lit(lit)
                 } else {
                     return ctxt.push_invalid_expr(HirOriginKind::raw(&ast));
@@ -31,13 +31,13 @@ impl Expr {
             ast::ExprKind::Bin(bin) => {
                 let lhs = Self::push_to_body_opt(ctxt, bin.lhs());
                 let rhs = Self::push_to_body_opt(ctxt, bin.rhs());
-                let op = bin.op().map(|op| BinOp::from_ast(op)).into();
+                let op = bin.op().map(|op| BinOp::lower_ast(op)).into();
                 Self::Bin(lhs, rhs, op)
             }
 
             ast::ExprKind::Un(un) => {
                 let expr = Self::push_to_body_opt(ctxt, un.expr());
-                let op = un.op().map(|op| UnOp::from_ast(op)).into();
+                let op = un.op().map(|op| UnOp::lower_ast(op)).into();
                 Self::Un(expr, op)
             }
 
@@ -47,7 +47,7 @@ impl Expr {
                     .args()
                     .map(|args| {
                         args.into_iter()
-                            .map(|arg| CallArg::from_ast(ctxt, arg))
+                            .map(|arg| CallArg::lower_ast(ctxt, arg))
                             .collect()
                     })
                     .unwrap_or_default();
@@ -56,12 +56,13 @@ impl Expr {
 
             ast::ExprKind::MethodCall(method_call) => {
                 let receiver = Self::push_to_body_opt(ctxt, method_call.receiver());
-                let method_name = IdentId::maybe_from_token(ctxt.db, method_call.method_name());
+                let method_name =
+                    IdentId::maybe_lower_token(ctxt.f_ctxt, method_call.method_name());
                 let args = method_call
                     .args()
                     .map(|args| {
                         args.into_iter()
-                            .map(|arg| CallArg::from_ast(ctxt, arg))
+                            .map(|arg| CallArg::lower_ast(ctxt, arg))
                             .collect()
                     })
                     .unwrap_or_default();
@@ -69,18 +70,18 @@ impl Expr {
             }
 
             ast::ExprKind::Path(path) => {
-                let path = PathId::maybe_from_ast(ctxt.db, path.path());
+                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, path.path());
                 Self::Path(path)
             }
 
             ast::ExprKind::RecordInit(record_init) => {
-                let path = PathId::maybe_from_ast(ctxt.db, record_init.path());
+                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, record_init.path());
                 let fields = record_init
                     .fields()
                     .map(|fields| {
                         fields
                             .into_iter()
-                            .map(|field| RecordField::from_ast(ctxt, field))
+                            .map(|field| RecordField::lower_ast(ctxt, field))
                             .collect()
                     })
                     .unwrap_or_default();
@@ -90,9 +91,9 @@ impl Expr {
             ast::ExprKind::Field(field) => {
                 let receiver = Self::push_to_body_opt(ctxt, field.receiver());
                 let field = if let Some(name) = field.field_name() {
-                    Some(FieldIndex::Ident(IdentId::from_token(ctxt.db, name))).into()
+                    Some(FieldIndex::Ident(IdentId::lower_token(ctxt.f_ctxt, name))).into()
                 } else if let Some(num) = field.field_index() {
-                    Some(FieldIndex::Index(IntegerId::from_ast(ctxt.db, num))).into()
+                    Some(FieldIndex::Index(IntegerId::lower_ast(ctxt.f_ctxt, num))).into()
                 } else {
                     None.into()
                 };
@@ -126,9 +127,7 @@ impl Expr {
                 let val = Self::push_to_body_opt(ctxt, array_rep.val());
                 let len = array_rep
                     .len()
-                    .map(|ast| {
-                        Body::nested_body_from_ast(ctxt.db, ctxt.file, ctxt.bid.clone(), ast)
-                    })
+                    .map(|ast| Body::lower_ast_nested(ctxt.f_ctxt, ctxt.bid.clone(), ast))
                     .into();
                 Self::ArrayRep(val, len)
             }
@@ -141,7 +140,7 @@ impl Expr {
                         .map(|body| ast::Expr::cast(body.syntax().clone()))
                         .flatten(),
                 );
-                let else_ = if_.else_().map(|ast| Self::push_to_body(ctxt, ast));
+                let else_ = if_.else_().map(|ast| Self::lower_ast(ctxt, ast));
                 Self::If(cond, then, else_)
             }
 
@@ -151,7 +150,7 @@ impl Expr {
                     .arms()
                     .map(|arms| {
                         arms.into_iter()
-                            .map(|arm| MatchArm::from_ast(ctxt, arm))
+                            .map(|arm| MatchArm::lower_ast(ctxt, arm))
                             .collect()
                     })
                     .into();
@@ -167,9 +166,9 @@ impl Expr {
         ctxt.push_expr(expr, HirOriginKind::raw(&ast))
     }
 
-    pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_>, ast: Option<ast::Expr>) -> ExprId {
+    pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Expr>) -> ExprId {
         if let Some(ast) = ast {
-            Expr::push_to_body(ctxt, ast)
+            Expr::lower_ast(ctxt, ast)
         } else {
             ctxt.push_missing_expr()
         }
@@ -177,17 +176,17 @@ impl Expr {
 }
 
 impl BinOp {
-    pub(super) fn from_ast(ast: ast::BinOp) -> Self {
+    pub(super) fn lower_ast(ast: ast::BinOp) -> Self {
         match ast {
-            ast::BinOp::Arith(arith) => ArithBinOp::from_ast(arith).into(),
-            ast::BinOp::Comp(arith) => CompBinOp::from_ast(arith).into(),
-            ast::BinOp::Logical(arith) => LogicalBinOp::from_ast(arith).into(),
+            ast::BinOp::Arith(arith) => ArithBinOp::lower_ast(arith).into(),
+            ast::BinOp::Comp(arith) => CompBinOp::lower_ast(arith).into(),
+            ast::BinOp::Logical(arith) => LogicalBinOp::lower_ast(arith).into(),
         }
     }
 }
 
 impl ArithBinOp {
-    pub(super) fn from_ast(ast: ast::ArithBinOp) -> Self {
+    pub(super) fn lower_ast(ast: ast::ArithBinOp) -> Self {
         match ast {
             ast::ArithBinOp::Add(_) => Self::Add,
             ast::ArithBinOp::Sub(_) => Self::Sub,
@@ -205,7 +204,7 @@ impl ArithBinOp {
 }
 
 impl CompBinOp {
-    pub(super) fn from_ast(ast: ast::CompBinOp) -> Self {
+    pub(super) fn lower_ast(ast: ast::CompBinOp) -> Self {
         match ast {
             ast::CompBinOp::Eq(_) => Self::Eq,
             ast::CompBinOp::NotEq(_) => Self::NotEq,
@@ -218,7 +217,7 @@ impl CompBinOp {
 }
 
 impl LogicalBinOp {
-    pub(super) fn from_ast(ast: ast::LogicalBinOp) -> Self {
+    pub(super) fn lower_ast(ast: ast::LogicalBinOp) -> Self {
         match ast {
             ast::LogicalBinOp::And(_) => Self::And,
             ast::LogicalBinOp::Or(_) => Self::Or,
@@ -227,7 +226,7 @@ impl LogicalBinOp {
 }
 
 impl UnOp {
-    fn from_ast(ast: ast::UnOp) -> Self {
+    fn lower_ast(ast: ast::UnOp) -> Self {
         match ast {
             ast::UnOp::Plus(_) => Self::Plus,
             ast::UnOp::Minus(_) => Self::Minus,
@@ -238,28 +237,28 @@ impl UnOp {
 }
 
 impl MatchArm {
-    fn from_ast(ctxt: &mut BodyCtxt<'_>, ast: ast::MatchArm) -> Self {
-        let pat = Pat::push_to_body_opt(ctxt, ast.pat());
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::MatchArm) -> Self {
+        let pat = Pat::lower_ast_opt(ctxt, ast.pat());
         let body = Expr::push_to_body_opt(ctxt, ast.body());
         Self { pat, body }
     }
 }
 
 impl CallArg {
-    fn from_ast(ctxt: &mut BodyCtxt<'_>, ast: ast::CallArg) -> Self {
-        let label = ast.label().map(|label| IdentId::from_token(ctxt.db, label));
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::CallArg) -> Self {
+        let label = ast
+            .label()
+            .map(|label| IdentId::lower_token(ctxt.f_ctxt, label));
         let expr = Expr::push_to_body_opt(ctxt, ast.expr());
         Self { label, expr }
-    }
-
-    fn from_ast_opt(ctxt: &mut BodyCtxt<'_>, ast: Option<ast::CallArg>) -> MaybeInvalid<Self> {
-        ast.map(|ast| Self::from_ast(ctxt, ast)).into()
     }
 }
 
 impl RecordField {
-    fn from_ast(ctxt: &mut BodyCtxt<'_>, ast: ast::RecordField) -> Self {
-        let label = ast.label().map(|label| IdentId::from_token(ctxt.db, label));
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::RecordField) -> Self {
+        let label = ast
+            .label()
+            .map(|label| IdentId::lower_token(ctxt.f_ctxt, label));
         let expr = Expr::push_to_body_opt(ctxt, ast.expr());
         Self { label, expr }
     }

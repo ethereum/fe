@@ -1,4 +1,5 @@
-// This is necessary because `salsa::tracked` structs generates a constructor
+// This is necessary because `salsa::tracked` structs generates a
+// constructor
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
@@ -10,6 +11,33 @@ use super::{
     AttrListId, Body, FnParamListId, GenericParamListId, IdentId, MaybeInvalid, TypeId,
     WhereClauseId,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, PartialOrd, Ord)]
+pub enum ItemKind {
+    TopMod(TopLevelMod),
+    Mod(Mod),
+    Fn(Fn),
+    ExternFn(ExternFn),
+    Struct(Struct),
+    Contract(Contract),
+    Enum(Enum),
+    TypeAlias(TypeAlias),
+    Impl(Impl),
+    Trait(Trait),
+    ImplTrait(ImplTrait),
+    Const(Const),
+    Use(Use),
+    /// Body is not an `Item`, but this makes it easier to analyze items.
+    Body(Body),
+}
+
+#[salsa::tracked]
+pub struct TopLevelMod {
+    // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
+    // of `module_item_tree`.
+    pub name: IdentId,
+    pub(crate) origin: HirOrigin<ast::Root>,
+}
 
 #[salsa::tracked]
 pub struct Mod {
@@ -170,22 +198,6 @@ pub struct Use {
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, PartialOrd, Ord)]
-pub enum ItemKind {
-    Module(Mod),
-    Fn(Fn),
-    ExternFn(ExternFn),
-    Struct(Struct),
-    Contract(Contract),
-    Enum(Enum),
-    TypeAlias(TypeAlias),
-    Impl(Impl),
-    Trait(Trait),
-    ImplTrait(ImplTrait),
-    Const(Const),
-    Use(Use),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemModifier {
     Pub,
@@ -196,7 +208,10 @@ pub enum ItemModifier {
 
 impl ItemModifier {
     pub fn is_pub(self) -> bool {
-        matches!(self, ItemModifier::Pub | ItemModifier::PubAndUnsafe)
+        match self {
+            ItemModifier::Pub | ItemModifier::PubAndUnsafe => true,
+            ItemModifier::Unsafe | ItemModifier::None => false,
+        }
     }
 }
 
@@ -237,6 +252,7 @@ pub type ExternItemListId = ImplItemListId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TrackedItemId {
+    TopLevelMod(IdentId),
     Mod(MaybeInvalid<IdentId>),
     Fn(MaybeInvalid<IdentId>),
     Struct(MaybeInvalid<IdentId>),
@@ -255,13 +271,5 @@ pub enum TrackedItemId {
 impl TrackedItemId {
     pub(crate) fn join(self, rhs: Self) -> Self {
         Self::Joined(self.into(), rhs.into())
-    }
-
-    pub(crate) fn join_opt(self, rhs: Option<Self>) -> Self {
-        if let Some(rhs) = rhs {
-            self.join(rhs)
-        } else {
-            self
-        }
     }
 }
