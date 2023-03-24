@@ -1,6 +1,6 @@
 use crate::hir_def::TypeId;
 
-use super::{Body, IdentId, MaybeInvalid, PathId};
+use super::{Body, IdentId, Partial, PathId};
 
 #[salsa::interned]
 pub struct GenericArgListId {
@@ -34,14 +34,14 @@ pub enum GenericParam {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericParam {
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub bounds: Vec<TypeBound>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericParam {
-    pub name: MaybeInvalid<IdentId>,
-    pub ty: MaybeInvalid<TypeId>,
+    pub name: Partial<IdentId>,
+    pub ty: Partial<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -52,25 +52,25 @@ pub enum GenericArg {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeGenericArg {
-    pub ty: MaybeInvalid<TypeId>,
+    pub ty: Partial<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg {
-    pub body: MaybeInvalid<Body>,
+    pub body: Partial<Body>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnParam {
     pub is_mut: bool,
     pub label: Option<FnParamLabel>,
-    pub name: MaybeInvalid<FnParamName>,
-    pub ty: MaybeInvalid<TypeId>,
+    pub name: Partial<FnParamName>,
+    pub ty: Partial<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePredicate {
-    pub ty: MaybeInvalid<TypeId>,
+    pub ty: Partial<TypeId>,
     pub bounds: Vec<TypeBound>,
 }
 
@@ -91,7 +91,7 @@ pub enum FnParamName {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     /// The path to the trait.
-    pub path: MaybeInvalid<PathId>,
+    pub path: Partial<PathId>,
     /// The type arguments of the trait.
     pub generic_args: Option<GenericArgListId>,
 }

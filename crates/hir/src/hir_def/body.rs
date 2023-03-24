@@ -8,7 +8,7 @@ use parser::ast;
 
 use crate::span::HirOrigin;
 
-use super::{Expr, ExprId, MaybeInvalid, Pat, PatId, Stmt, StmtId, TrackedItemId};
+use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TrackedItemId};
 
 #[salsa::tracked]
 pub struct Body {
@@ -16,11 +16,11 @@ pub struct Body {
     id: TrackedBodyId,
 
     #[return_ref]
-    pub stmts: BodyNodeMap<StmtId, MaybeInvalid<Stmt>>,
+    pub stmts: BodyNodeMap<StmtId, Partial<Stmt>>,
     #[return_ref]
-    pub exprs: BodyNodeMap<ExprId, MaybeInvalid<Expr>>,
+    pub exprs: BodyNodeMap<ExprId, Partial<Expr>>,
     #[return_ref]
-    pub pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
+    pub pats: BodyNodeMap<PatId, Partial<Pat>>,
 
     #[return_ref]
     pub(crate) stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,

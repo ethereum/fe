@@ -1,6 +1,6 @@
 use parser::{ast, SyntaxToken};
 
-use crate::hir_def::{IdentId, MaybeInvalid, PathId, PathSegment};
+use crate::hir_def::{IdentId, Partial, PathId, PathSegment};
 
 use super::FileLowerCtxt;
 
@@ -27,16 +27,16 @@ impl PathId {
         Self::new(ctxt.db, segments)
     }
 
-    pub(super) fn maybe_lower_ast(
+    pub(super) fn lower_ast_partial(
         ctxt: &mut FileLowerCtxt<'_>,
         ast: Option<ast::Path>,
-    ) -> MaybeInvalid<Self> {
+    ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
 
     pub(super) fn from_ident(ctxt: &mut FileLowerCtxt<'_>, ast: SyntaxToken) -> Self {
         let ident_id = IdentId::new(ctxt.db, ast.text().to_string());
-        let seg = vec![MaybeInvalid::Valid(PathSegment::Ident(ident_id))];
+        let seg = vec![Partial::Present(PathSegment::Ident(ident_id))];
         Self::new(ctxt.db, seg)
     }
 }

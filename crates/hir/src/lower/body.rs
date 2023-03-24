@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{
-        Body, BodyNodeMap, BodySourceMap, Expr, ExprId, MaybeInvalid, Pat, PatId, Stmt, StmtId,
+        Body, BodyNodeMap, BodySourceMap, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId,
         TrackedBodyId, TrackedItemId,
     },
     span::{HirOrigin, HirOriginKind},
@@ -45,9 +45,9 @@ pub(super) struct BodyCtxt<'ctxt, 'db> {
     pub(super) f_ctxt: &'ctxt mut FileLowerCtxt<'db>,
     pub(super) bid: TrackedBodyId,
 
-    pub(super) stmts: BodyNodeMap<StmtId, MaybeInvalid<Stmt>>,
-    pub(super) exprs: BodyNodeMap<ExprId, MaybeInvalid<Expr>>,
-    pub(super) pats: BodyNodeMap<PatId, MaybeInvalid<Pat>>,
+    pub(super) stmts: BodyNodeMap<StmtId, Partial<Stmt>>,
+    pub(super) exprs: BodyNodeMap<ExprId, Partial<Expr>>,
+    pub(super) pats: BodyNodeMap<PatId, Partial<Pat>>,
 
     stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
     expr_source_map: BodySourceMap<ExprId, ast::Expr>,
@@ -55,37 +55,37 @@ pub(super) struct BodyCtxt<'ctxt, 'db> {
 }
 impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     pub(super) fn push_expr(&mut self, expr: Expr, origin: HirOriginKind<ast::Expr>) -> ExprId {
-        let expr_id = self.exprs.push(Some(expr).into());
+        let expr_id = self.exprs.push(Partial::Present(expr));
         self.expr_source_map[expr_id] = HirOrigin::new(self.f_ctxt.file, origin);
         expr_id
     }
 
     pub(super) fn push_invalid_expr(&mut self, origin: HirOriginKind<ast::Expr>) -> ExprId {
-        let expr_id = self.exprs.push(None.into());
+        let expr_id = self.exprs.push(Partial::Absent);
         self.expr_source_map[expr_id] = HirOrigin::new(self.f_ctxt.file, origin);
         expr_id
     }
 
     pub(super) fn push_missing_expr(&mut self) -> ExprId {
-        let expr_id = self.exprs.push(None.into());
+        let expr_id = self.exprs.push(Partial::Absent);
         self.expr_source_map[expr_id] = HirOrigin::none(self.f_ctxt.file);
         expr_id
     }
 
     pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: HirOriginKind<ast::Stmt>) -> StmtId {
-        let stmt_id = self.stmts.push(Some(stmt).into());
+        let stmt_id = self.stmts.push(Partial::Present(stmt));
         self.stmt_source_map[stmt_id] = HirOrigin::new(self.f_ctxt.file, origin);
         stmt_id
     }
 
     pub(super) fn push_pat(&mut self, pat: Pat, origin: HirOriginKind<ast::Pat>) -> PatId {
-        let pat_id = self.pats.push(Some(pat).into());
+        let pat_id = self.pats.push(Partial::Present(pat));
         self.pat_source_map[pat_id] = HirOrigin::new(self.f_ctxt.file, origin);
         pat_id
     }
 
     pub(super) fn push_missing_pat(&mut self) -> PatId {
-        let pat_id = self.pats.push(None.into());
+        let pat_id = self.pats.push(Partial::Absent);
         self.pat_source_map[pat_id] = HirOrigin::none(self.f_ctxt.file);
         pat_id
     }

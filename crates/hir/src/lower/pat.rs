@@ -31,12 +31,12 @@ impl Pat {
             }
 
             ast::PatKind::Path(path) => {
-                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, path.path());
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, path.path());
                 Pat::Path(path)
             }
 
             ast::PatKind::PathTuple(path_tup) => {
-                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, path_tup.path());
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, path_tup.path());
                 let elems = match path_tup.elems() {
                     Some(elems) => elems.iter().map(|pat| Pat::lower_ast(ctxt, pat)).collect(),
                     None => vec![],
@@ -45,7 +45,7 @@ impl Pat {
             }
 
             ast::PatKind::Record(record) => {
-                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, record.path());
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, record.path());
                 let fields = match record.fields() {
                     Some(fields) => fields
                         .iter()
@@ -77,7 +77,7 @@ impl Pat {
 
 impl RecordPatField {
     fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: &ast::RecordPatField) -> RecordPatField {
-        let label = IdentId::maybe_lower_token(ctxt.f_ctxt, ast.name());
+        let label = IdentId::lower_token_partial(ctxt.f_ctxt, ast.name());
         let pat = ast
             .pat()
             .map(|pat| Pat::lower_ast(ctxt, pat))
