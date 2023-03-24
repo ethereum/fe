@@ -57,7 +57,7 @@ impl Expr {
             ast::ExprKind::MethodCall(method_call) => {
                 let receiver = Self::push_to_body_opt(ctxt, method_call.receiver());
                 let method_name =
-                    IdentId::maybe_lower_token(ctxt.f_ctxt, method_call.method_name());
+                    IdentId::lower_token_partial(ctxt.f_ctxt, method_call.method_name());
                 let args = method_call
                     .args()
                     .map(|args| {
@@ -70,12 +70,12 @@ impl Expr {
             }
 
             ast::ExprKind::Path(path) => {
-                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, path.path());
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, path.path());
                 Self::Path(path)
             }
 
             ast::ExprKind::RecordInit(record_init) => {
-                let path = PathId::maybe_lower_ast(ctxt.f_ctxt, record_init.path());
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, record_init.path());
                 let fields = record_init
                     .fields()
                     .map(|fields| {

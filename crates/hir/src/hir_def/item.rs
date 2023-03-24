@@ -8,8 +8,7 @@ use parser::ast;
 use crate::{hir_def::TraitRef, span::HirOrigin};
 
 use super::{
-    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, MaybeInvalid, TypeId,
-    WhereClauseId,
+    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, Partial, TypeId, WhereClauseId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, PartialOrd, Ord)]
@@ -44,7 +43,7 @@ pub struct Mod {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
 
@@ -56,11 +55,11 @@ pub struct Fn {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-    pub params: MaybeInvalid<FnParamListId>,
+    pub params: Partial<FnParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
     pub body: Option<Body>,
@@ -73,9 +72,9 @@ pub struct ExternFn {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub params: MaybeInvalid<FnParamListId>,
+    pub params: Partial<FnParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
 
@@ -87,7 +86,7 @@ pub struct Struct {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
@@ -102,7 +101,7 @@ pub struct Contract {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub fields: RecordFieldListId,
@@ -115,7 +114,7 @@ pub struct Enum {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
@@ -130,12 +129,12 @@ pub struct TypeAlias {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-    pub ty: MaybeInvalid<TypeId>,
+    pub ty: Partial<TypeId>,
 
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
@@ -145,7 +144,7 @@ pub struct Impl {
     #[id]
     id: TrackedItemId,
 
-    pub ty: super::MaybeInvalid<TypeId>,
+    pub ty: super::Partial<TypeId>,
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
@@ -157,7 +156,7 @@ pub struct Trait {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
 
     pub attributes: AttrListId,
     pub is_pub: bool,
@@ -171,8 +170,8 @@ pub struct ImplTrait {
     #[id]
     id: TrackedItemId,
 
-    pub trait_ref: MaybeInvalid<TraitRef>,
-    pub ty: MaybeInvalid<TypeId>,
+    pub trait_ref: Partial<TraitRef>,
+    pub ty: Partial<TypeId>,
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
@@ -184,8 +183,8 @@ pub struct Const {
     #[id]
     id: TrackedItemId,
 
-    pub name: MaybeInvalid<IdentId>,
-    pub body: MaybeInvalid<Body>,
+    pub name: Partial<IdentId>,
+    pub body: Partial<Body>,
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 
@@ -194,7 +193,7 @@ pub struct Use {
     #[id]
     id: TrackedItemId,
 
-    pub tree: MaybeInvalid<super::UseTreeId>,
+    pub tree: Partial<super::UseTreeId>,
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 
@@ -223,8 +222,8 @@ pub struct RecordFieldListId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordField {
-    pub name: MaybeInvalid<IdentId>,
-    pub ty: MaybeInvalid<TypeId>,
+    pub name: Partial<IdentId>,
+    pub ty: Partial<TypeId>,
     pub is_pub: bool,
 }
 
@@ -236,7 +235,7 @@ pub struct EnumVariantListId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
-    pub name: MaybeInvalid<IdentId>,
+    pub name: Partial<IdentId>,
     pub ty: Option<TypeId>,
 }
 
@@ -253,17 +252,17 @@ pub type ExternItemListId = ImplItemListId;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TrackedItemId {
     TopLevelMod(IdentId),
-    Mod(MaybeInvalid<IdentId>),
-    Fn(MaybeInvalid<IdentId>),
-    Struct(MaybeInvalid<IdentId>),
-    Contract(MaybeInvalid<IdentId>),
-    Enum(MaybeInvalid<IdentId>),
-    TypeAlias(MaybeInvalid<IdentId>),
-    Impl(MaybeInvalid<TypeId>),
-    Trait(MaybeInvalid<IdentId>),
-    ImplTrait(MaybeInvalid<TraitRef>, MaybeInvalid<TypeId>),
-    Const(MaybeInvalid<IdentId>),
-    Use(MaybeInvalid<super::UseTreeId>),
+    Mod(Partial<IdentId>),
+    Fn(Partial<IdentId>),
+    Struct(Partial<IdentId>),
+    Contract(Partial<IdentId>),
+    Enum(Partial<IdentId>),
+    TypeAlias(Partial<IdentId>),
+    Impl(Partial<TypeId>),
+    Trait(Partial<IdentId>),
+    ImplTrait(Partial<TraitRef>, Partial<TypeId>),
+    Const(Partial<IdentId>),
+    Use(Partial<super::UseTreeId>),
     Extern,
     Joined(Box<Self>, Box<Self>),
 }

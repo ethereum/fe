@@ -70,7 +70,7 @@ impl WhereClauseId {
 
 impl TypeGenericParam {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeGenericParam) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let bounds = ast
             .bounds()
             .map(|bounds| {
@@ -87,8 +87,8 @@ impl TypeGenericParam {
 
 impl ConstGenericParam {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ConstGenericParam) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         Self { name, ty }
     }
 }
@@ -108,7 +108,7 @@ impl GenericArg {
 
 impl TypeGenericArg {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeGenericArg) -> Self {
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         Self { ty }
     }
 }
@@ -145,7 +145,7 @@ impl FnParam {
             .name()
             .map(|ast| FnParamName::lower_ast(ctxt, ast))
             .into();
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
 
         Self {
             is_mut,
@@ -158,7 +158,7 @@ impl FnParam {
 
 impl WherePredicate {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::WherePredicate) -> Self {
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let bounds = ast
             .bounds()
             .map(|bounds| {

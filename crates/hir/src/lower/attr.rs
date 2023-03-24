@@ -29,7 +29,7 @@ impl Attr {
 
 impl NormalAttr {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::NormalAttr) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let args = ast
             .args()
             .map(|args| {
@@ -57,8 +57,8 @@ impl DocCommentAttr {
 
 impl AttrArg {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::AttrArg) -> Self {
-        let key = IdentId::maybe_lower_token(ctxt, ast.key());
-        let value = IdentId::maybe_lower_token(ctxt, ast.value());
+        let key = IdentId::lower_token_partial(ctxt, ast.key());
+        let value = IdentId::lower_token_partial(ctxt, ast.value());
         Self { key, value }
     }
 }

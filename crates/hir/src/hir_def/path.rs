@@ -1,10 +1,10 @@
-use crate::hir_def::MaybeInvalid;
+use crate::hir_def::Partial;
 
 use super::IdentId;
 
 #[salsa::interned]
 pub struct PathId {
-    segments: Vec<MaybeInvalid<PathSegment>>,
+    segments: Vec<Partial<PathSegment>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

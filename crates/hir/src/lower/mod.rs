@@ -7,8 +7,8 @@ use parser::{ast, SyntaxToken};
 
 use crate::{
     hir_def::{
-        IdentId, IntegerId, ItemKind, ItemTreeNode, LitKind, MaybeInvalid, ModuleItemTree,
-        StringId, TopLevelMod,
+        IdentId, IntegerId, ItemKind, ItemTreeNode, LitKind, ModuleItemTree, Partial, StringId,
+        TopLevelMod,
     },
     HirDb,
 };
@@ -96,10 +96,10 @@ impl IdentId {
         Self::new(ctxt.db, token.text().to_string())
     }
 
-    fn maybe_lower_token(
+    fn lower_token_partial(
         ctxt: &mut FileLowerCtxt<'_>,
         token: Option<SyntaxToken>,
-    ) -> MaybeInvalid<Self> {
+    ) -> Partial<Self> {
         token.map(|token| Self::lower_token(ctxt, token)).into()
     }
 }

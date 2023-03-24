@@ -1,16 +1,16 @@
 use cranelift_entity::entity_impl;
 
-use super::{IdentId, LitKind, MaybeInvalid, PathId};
+use super::{IdentId, LitKind, Partial, PathId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     WildCard,
     Rest,
-    Lit(MaybeInvalid<LitKind>),
+    Lit(Partial<LitKind>),
     Tuple(Vec<PatId>),
-    Path(MaybeInvalid<PathId>),
-    PathTuple(MaybeInvalid<PathId>, Vec<PatId>),
-    Record(MaybeInvalid<PathId>, Vec<RecordPatField>),
+    Path(Partial<PathId>),
+    PathTuple(Partial<PathId>, Vec<PatId>),
+    Record(Partial<PathId>, Vec<RecordPatField>),
     Or(PatId, PatId),
 }
 
@@ -20,6 +20,6 @@ entity_impl!(PatId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPatField {
-    pub label: MaybeInvalid<IdentId>,
+    pub label: Partial<IdentId>,
     pub pat: PatId,
 }

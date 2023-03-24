@@ -33,7 +33,7 @@ impl Mod {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Mod(name).join(parent_id);
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
@@ -55,7 +55,7 @@ impl Fn {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Fn(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -101,7 +101,7 @@ impl Struct {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Struct(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -134,7 +134,7 @@ impl Contract {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Contract(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -155,7 +155,7 @@ impl Enum {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Enum(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -188,14 +188,14 @@ impl TypeAlias {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.alias());
+        let name = IdentId::lower_token_partial(ctxt, ast.alias());
         let id = TrackedItemId::TypeAlias(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(ctxt.file, &ast);
 
         let alias = Self::new(
@@ -221,7 +221,7 @@ impl Impl {
     ) -> Self {
         ctxt.enter_scope();
 
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = TrackedItemId::Impl(ty).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -256,7 +256,7 @@ impl Trait {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Trait(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -294,8 +294,8 @@ impl ImplTrait {
     ) -> Self {
         ctxt.enter_scope();
 
-        let trait_ref = TraitRef::maybe_lower_ast(ctxt, ast.trait_ref());
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let trait_ref = TraitRef::lower_ast_partial(ctxt, ast.trait_ref());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = TrackedItemId::ImplTrait(trait_ref, ty).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -331,7 +331,7 @@ impl Const {
     ) -> Self {
         ctxt.enter_scope();
 
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Const(name).join(parent_id);
         let body = ast
             .value()
@@ -352,7 +352,7 @@ impl Use {
     ) -> Self {
         ctxt.enter_scope();
 
-        let tree = UseTreeId::maybe_lower_ast(ctxt, ast.use_tree());
+        let tree = UseTreeId::lower_ast_partial(ctxt, ast.use_tree());
         let id = TrackedItemId::Use(tree).join(parent_id);
 
         let origin = HirOrigin::raw(ctxt.file, &ast);
@@ -366,7 +366,7 @@ impl ExternFn {
         parent: TrackedItemId,
         ast: ast::Fn,
     ) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Extern.join(parent);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
@@ -416,8 +416,8 @@ impl RecordFieldListId {
 
 impl RecordField {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDef) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
-        let ty = TypeId::maybe_lower_ast(ctxt, ast.ty());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let is_pub = ast.pub_kw().is_some();
 
         Self { name, ty, is_pub }
@@ -441,7 +441,7 @@ impl EnumVariantListId {
 
 impl EnumVariant {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::EnumVariantDef) -> Self {
-        let name = IdentId::maybe_lower_token(ctxt, ast.name());
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = ast.ty().map(|ty| TypeId::lower_ast(ctxt, ty));
 
         Self { name, ty }

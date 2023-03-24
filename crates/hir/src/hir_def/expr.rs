@@ -1,6 +1,6 @@
 use cranelift_entity::entity_impl;
 
-use super::{Body, IdentId, IntegerId, LitKind, MaybeInvalid, PatId, PathId, StmtId};
+use super::{Body, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -10,26 +10,26 @@ pub enum Expr {
     ///
     /// **NOTE:** The `AugAssign` statement is desugared to a `Assign` statement
     /// and a `BinOp`.
-    Bin(ExprId, ExprId, MaybeInvalid<BinOp>),
-    Un(ExprId, MaybeInvalid<UnOp>),
+    Bin(ExprId, ExprId, Partial<BinOp>),
+    Un(ExprId, Partial<UnOp>),
     /// The first `ExprId` is the callee, the second is the arguments.
     Call(ExprId, Vec<CallArg>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
-    MethodCall(ExprId, MaybeInvalid<IdentId>, Vec<CallArg>),
-    Path(MaybeInvalid<PathId>),
+    MethodCall(ExprId, Partial<IdentId>, Vec<CallArg>),
+    Path(Partial<PathId>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
-    RecordInit(MaybeInvalid<PathId>, Vec<RecordField>),
-    Field(ExprId, MaybeInvalid<FieldIndex>),
+    RecordInit(Partial<PathId>, Vec<RecordField>),
+    Field(ExprId, Partial<FieldIndex>),
     Tuple(Vec<ExprId>),
     /// The first `ExprId` is the indexed expression, the second is the index.
     Index(ExprId, ExprId),
     Array(Vec<ExprId>),
 
-    /// The size of the rep should be the body instead of expression, becuase it
-    /// should be resolved as a contatnt expressison.
-    ArrayRep(ExprId, MaybeInvalid<Body>),
+    /// The size of the rep should be the body instead of expression, because it
+    /// should be resolved as a constant expression.
+    ArrayRep(ExprId, Partial<Body>),
 
     /// The first `ExprId` is the condition, the second is the then branch, the
     /// third is the else branch.
@@ -37,7 +37,7 @@ pub enum Expr {
     If(ExprId, ExprId, Option<ExprId>),
 
     /// The first `ExprId` is the scrutinee, the second is the arms.
-    Match(ExprId, MaybeInvalid<Vec<MatchArm>>),
+    Match(ExprId, Partial<Vec<MatchArm>>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

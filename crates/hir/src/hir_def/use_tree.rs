@@ -1,4 +1,4 @@
-use crate::hir_def::MaybeInvalid;
+use crate::hir_def::Partial;
 
 use super::IdentId;
 
@@ -8,7 +8,7 @@ pub struct UseTreeId {
     /// `Foo::Foo2` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`
     ///
     /// NOTE: If the tree root is started with `{}`, then the `path` is `None`.
-    pub path: Vec<MaybeInvalid<UsePathSegment>>,
+    pub path: Vec<Partial<UsePathSegment>>,
     /// The subtree of the use tree.
     ///
     /// `Bar::*` and `Baz::{x, y}` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`.
@@ -16,7 +16,7 @@ pub struct UseTreeId {
 
     //// The alias of this use tree.
     /// `Bar` in `Foo as Bar;`
-    pub alias: Option<MaybeInvalid<UseTreeAlias>>,
+    pub alias: Option<Partial<UseTreeAlias>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

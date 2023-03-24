@@ -1,6 +1,6 @@
 use parser::ast::{self, prelude::*};
 
-use crate::hir_def::{Body, GenericArgListId, MaybeInvalid, PathId, TraitRef, TypeId, TypeKind};
+use crate::hir_def::{Body, GenericArgListId, Partial, PathId, TraitRef, TypeId, TypeKind};
 
 use super::FileLowerCtxt;
 
@@ -8,12 +8,12 @@ impl TypeId {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Type) -> Self {
         let kind = match ast.kind() {
             ast::TypeKind::Ptr(ty) => {
-                let inner = Self::maybe_lower_ast(ctxt, ty.inner());
+                let inner = Self::lower_ast_partial(ctxt, ty.inner());
                 TypeKind::Ptr(inner)
             }
 
             ast::TypeKind::Path(ty) => {
-                let path = PathId::maybe_lower_ast(ctxt, ty.path());
+                let path = PathId::lower_ast_partial(ctxt, ty.path());
                 let generic_args = GenericArgListId::lower_ast_opt(ctxt, ty.generic_args());
                 TypeKind::Path(path, generic_args)
             }
@@ -29,7 +29,7 @@ impl TypeId {
             }
 
             ast::TypeKind::Array(ty) => {
-                let elem_ty = Self::maybe_lower_ast(ctxt, ty.elem_ty());
+                let elem_ty = Self::lower_ast_partial(ctxt, ty.elem_ty());
                 let body = ty
                     .len()
                     .map(|ast| Body::lower_ast_nameless(ctxt, ast))
@@ -41,25 +41,25 @@ impl TypeId {
         TypeId::new(ctxt.db, kind)
     }
 
-    pub(super) fn maybe_lower_ast(
+    pub(super) fn lower_ast_partial(
         ctxt: &mut FileLowerCtxt<'_>,
         ast: Option<ast::Type>,
-    ) -> MaybeInvalid<Self> {
+    ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
 }
 
 impl TraitRef {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::PathType) -> Self {
-        let path = PathId::maybe_lower_ast(ctxt, ast.path());
+        let path = PathId::lower_ast_partial(ctxt, ast.path());
         let generic_args = GenericArgListId::lower_ast_opt(ctxt, ast.generic_args());
         Self { path, generic_args }
     }
 
-    pub(super) fn maybe_lower_ast(
+    pub(super) fn lower_ast_partial(
         ctxt: &mut FileLowerCtxt<'_>,
         ast: Option<ast::PathType>,
-    ) -> MaybeInvalid<Self> {
+    ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
 }
