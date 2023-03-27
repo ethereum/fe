@@ -10,7 +10,7 @@ use super::IdentId;
 
 /// This tree represents the structure of an ingot.
 /// Internal modules are not included in this tree, instead, they are included
-/// in [`crate::item_tree::ModuleItemTree`].
+/// in [ModuleItemTree](crate::hir_def::item_tree::ModuleItemTree).
 ///
 /// This is used in later name resolution phase.
 /// The tree is file contents agnostic, i.e., **only** depends on project

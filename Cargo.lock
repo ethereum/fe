@@ -731,6 +731,7 @@ name = "fe-common2"
 version = "0.20.0-alpha"
 dependencies = [
  "camino",
+ "fe-parser2",
  "salsa-2022",
  "semver 1.0.17",
  "smol_str",

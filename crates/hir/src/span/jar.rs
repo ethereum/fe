@@ -20,8 +20,10 @@ pub struct SpanJar();
 /// Therefore, implementations relying on `SpannedHirDb` are prohibited in all
 /// Analysis phases.
 ///
-/// SpanDb is mainly used to inject information about [`SyntaxNode`] to generate
-/// [`FullDiagnostic`] from [`DiagnosticVoucher`].
+/// SpanDb is mainly used to inject information about
+/// [HirOrigin] to generate
+/// [FullDiagnostic](crate::diagnostics::FullDiagnostic) from
+/// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 pub trait SpannedHirDb: HirDb + salsa::DbWithJar<SpanJar> + Upcast<dyn HirDb> {
     fn toplevel_ast(&self, item: TopLevelMod) -> &HirOrigin<ast::Root> {
         item.origin(self.upcast())

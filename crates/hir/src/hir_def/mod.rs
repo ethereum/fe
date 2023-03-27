@@ -59,7 +59,7 @@ pub enum LitKind {
     Bool(bool),
 }
 
-/// `Partial<T> is a type that explicitly indicates the possibility that an HIR
+/// `Partial<T>` is a type that explicitly indicates the possibility that an HIR
 /// node cannot be generated due to syntax errors in the source file.
 ///
 /// If a node is `Partial::Absent`, it means that the corresponding AST either
