@@ -36,6 +36,11 @@ struct Runner {
     return val.compute(val: 1000)
   }
 
+  pub fn run_static<T: Computable>(_ val: T) -> u256 {
+    return val.compute(val: 1000)
+  }
+
+
   pub fn dummy<T: Dummy>(self, _ val: T) {
 
   }
@@ -46,6 +51,8 @@ contract Example {
     let runner: Runner = Runner();
     assert runner.run(Mac()) == 1001
     assert runner.run(Linux(counter: 10)) == 1015
+
+    assert Runner::run_static(Mac()) == 1001
 
     // We are testing that we can satisfy a trait bound where the trait is defined in another module
     runner.dummy(Mac())
