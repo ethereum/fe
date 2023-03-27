@@ -2,10 +2,10 @@ use parser::ast;
 
 use crate::{
     hir_def::{
-        Body, BodyNodeMap, BodySourceMap, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId,
+        Body, BodySourceMap, Expr, ExprId, NodeStore, Partial, Pat, PatId, Stmt, StmtId,
         TrackedBodyId, TrackedItemId,
     },
-    span::{HirOrigin, HirOriginKind},
+    span::{HirOrigin, LocalOrigin},
 };
 
 use super::FileLowerCtxt;
@@ -45,48 +45,49 @@ pub(super) struct BodyCtxt<'ctxt, 'db> {
     pub(super) f_ctxt: &'ctxt mut FileLowerCtxt<'db>,
     pub(super) bid: TrackedBodyId,
 
-    pub(super) stmts: BodyNodeMap<StmtId, Partial<Stmt>>,
-    pub(super) exprs: BodyNodeMap<ExprId, Partial<Expr>>,
-    pub(super) pats: BodyNodeMap<PatId, Partial<Pat>>,
-
-    stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
-    expr_source_map: BodySourceMap<ExprId, ast::Expr>,
-    pat_source_map: BodySourceMap<PatId, ast::Pat>,
+    pub(super) stmts: NodeStore<StmtId, Partial<Stmt>>,
+    pub(super) exprs: NodeStore<ExprId, Partial<Expr>>,
+    pub(super) pats: NodeStore<PatId, Partial<Pat>>,
+    pub(super) source_map: BodySourceMap,
 }
+
 impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
-    pub(super) fn push_expr(&mut self, expr: Expr, origin: HirOriginKind<ast::Expr>) -> ExprId {
+    pub(super) fn push_expr(&mut self, expr: Expr, origin: LocalOrigin<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Partial::Present(expr));
-        self.expr_source_map[expr_id] = HirOrigin::new(self.f_ctxt.file, origin);
+        self.source_map.expr_map.insert(expr_id, origin);
+
         expr_id
     }
 
-    pub(super) fn push_invalid_expr(&mut self, origin: HirOriginKind<ast::Expr>) -> ExprId {
+    pub(super) fn push_invalid_expr(&mut self, origin: LocalOrigin<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Partial::Absent);
-        self.expr_source_map[expr_id] = HirOrigin::new(self.f_ctxt.file, origin);
+        self.source_map.expr_map.insert(expr_id, origin);
+
         expr_id
     }
 
     pub(super) fn push_missing_expr(&mut self) -> ExprId {
         let expr_id = self.exprs.push(Partial::Absent);
-        self.expr_source_map[expr_id] = HirOrigin::none(self.f_ctxt.file);
+        self.source_map.expr_map.insert(expr_id, LocalOrigin::None);
         expr_id
     }
 
-    pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: HirOriginKind<ast::Stmt>) -> StmtId {
+    pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: LocalOrigin<ast::Stmt>) -> StmtId {
         let stmt_id = self.stmts.push(Partial::Present(stmt));
-        self.stmt_source_map[stmt_id] = HirOrigin::new(self.f_ctxt.file, origin);
+        self.source_map.stmt_map.insert(stmt_id, origin);
+
         stmt_id
     }
 
-    pub(super) fn push_pat(&mut self, pat: Pat, origin: HirOriginKind<ast::Pat>) -> PatId {
+    pub(super) fn push_pat(&mut self, pat: Pat, origin: LocalOrigin<ast::Pat>) -> PatId {
         let pat_id = self.pats.push(Partial::Present(pat));
-        self.pat_source_map[pat_id] = HirOrigin::new(self.f_ctxt.file, origin);
+        self.source_map.pat_map.insert(pat_id, origin);
         pat_id
     }
 
     pub(super) fn push_missing_pat(&mut self) -> PatId {
         let pat_id = self.pats.push(Partial::Absent);
-        self.pat_source_map[pat_id] = HirOrigin::none(self.f_ctxt.file);
+        self.source_map.pat_map.insert(pat_id, LocalOrigin::None);
         pat_id
     }
 
@@ -95,12 +96,10 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         Self {
             f_ctxt,
             bid,
-            stmts: BodyNodeMap::new(),
-            exprs: BodyNodeMap::new(),
-            pats: BodyNodeMap::new(),
-            stmt_source_map: BodySourceMap::new(),
-            expr_source_map: BodySourceMap::new(),
-            pat_source_map: BodySourceMap::new(),
+            stmts: NodeStore::new(),
+            exprs: NodeStore::new(),
+            pats: NodeStore::new(),
+            source_map: BodySourceMap::default(),
         }
     }
 
@@ -112,9 +111,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
             self.stmts,
             self.exprs,
             self.pats,
-            self.stmt_source_map,
-            self.expr_source_map,
-            self.pat_source_map,
+            self.source_map,
             origin,
         );
 

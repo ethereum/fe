@@ -11,14 +11,14 @@ where
     T: AstNode,
 {
     pub file: Option<InputFile>,
-    pub kind: HirOriginKind<T>,
+    pub kind: LocalOrigin<T>,
 }
 
 impl<T> HirOrigin<T>
 where
     T: AstNode,
 {
-    pub(crate) fn new(file: InputFile, origin: HirOriginKind<T>) -> Self {
+    pub(crate) fn new(file: InputFile, origin: LocalOrigin<T>) -> Self {
         HirOrigin {
             file: Some(file),
             kind: origin,
@@ -26,41 +26,18 @@ where
     }
 
     pub(crate) fn raw(file: InputFile, ast: &T) -> Self {
-        HirOrigin {
-            file: Some(file),
-            kind: HirOriginKind::raw(ast),
-        }
-    }
-
-    pub(crate) fn none(file: InputFile) -> Self {
-        HirOrigin {
-            file: Some(file),
-            kind: HirOriginKind::None,
-        }
+        Self::new(file, LocalOrigin::raw(ast))
     }
 }
 
-impl<T> Default for HirOrigin<T>
-where
-    T: AstNode,
-{
-    /// The `Default` implemntation is necessary for
-    fn default() -> Self {
-        Self {
-            file: None,
-            kind: HirOriginKind::None,
-        }
-    }
-}
-
-/// This enum represents the origin of the HIR node.
+/// This enum represents the origin of the HIR node is a file.
 /// The origin has three possible kinds.
 /// 1. `Raw` is used for nodes that are created by the parser and not
 /// 2. `Expanded` is used for nodes that are created by the compiler and not
 /// 3. `Desugared` is used for nodes that are created by the compiler and not
 // TODO: Change the visibility to `pub(crate)` when https://github.com/salsa-rs/salsa/issues/437 is resolved.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum HirOriginKind<T>
+pub enum LocalOrigin<T>
 where
     T: AstNode,
 {
@@ -81,7 +58,7 @@ where
     None,
 }
 
-impl<T> HirOriginKind<T>
+impl<T> LocalOrigin<T>
 where
     T: AstNode,
 {
@@ -91,6 +68,15 @@ where
 
     pub(crate) fn desugared(origin: impl Into<DesugaredOrigin>) -> Self {
         Self::Desugared(origin.into())
+    }
+}
+
+impl<T> Default for LocalOrigin<T>
+where
+    T: AstNode,
+{
+    fn default() -> Self {
+        Self::None
     }
 }
 

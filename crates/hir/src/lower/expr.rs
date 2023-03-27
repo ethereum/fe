@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{expr::*, Body, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
-    span::HirOriginKind,
+    span::LocalOrigin,
 };
 
 use super::body::BodyCtxt;
@@ -15,7 +15,7 @@ impl Expr {
                     let lit = LitKind::lower_ast(ctxt.f_ctxt, lit);
                     Self::Lit(lit)
                 } else {
-                    return ctxt.push_invalid_expr(HirOriginKind::raw(&ast));
+                    return ctxt.push_invalid_expr(LocalOrigin::raw(&ast));
                 }
             }
 
@@ -162,7 +162,7 @@ impl Expr {
             }
         };
 
-        ctxt.push_expr(expr, HirOriginKind::raw(&ast))
+        ctxt.push_expr(expr, LocalOrigin::raw(&ast))
     }
 
     pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Expr>) -> ExprId {

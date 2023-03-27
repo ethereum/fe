@@ -812,6 +812,7 @@ dependencies = [
  "fe-parser2",
  "num-bigint",
  "num-traits",
+ "rustc-hash",
  "salsa-2022",
  "tracing",
 ]
