@@ -934,6 +934,20 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             .collect::<BTreeMap<_, _>>()
     }
 
+    fn lower_function_id(
+        &mut self,
+        function: &analyzer_items::FunctionId,
+        args: &[Id<Value>],
+    ) -> FunctionId {
+        let resolved_generics = self.resolve_generics_args(function, args);
+        if function.is_generic(self.db.upcast()) {
+            self.db
+                .mir_lowered_monomorphized_func_signature(*function, resolved_generics)
+        } else {
+            self.db.mir_lowered_func_signature(*function)
+        }
+    }
+
     fn lower_call(
         &mut self,
         func: &Node<ast::Expr>,
@@ -977,22 +991,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
             AnalyzerCallType::AssociatedFunction { function, .. }
             | AnalyzerCallType::Pure(function) => {
-                let func_id = self.db.mir_lowered_func_signature(*function);
+                let func_id = self.lower_function_id(function, &args);
                 self.builder.call(func_id, args, CallType::Internal, source)
             }
 
             AnalyzerCallType::ValueMethod { method, .. } => {
-                let resolved_generics = self.resolve_generics_args(method, &args);
-
                 let mut method_args = vec![self.lower_method_receiver(func)];
-                method_args.append(&mut args);
+                let func_id = self.lower_function_id(method, &args);
 
-                let func_id = if method.is_generic(self.db.upcast()) {
-                    self.db
-                        .mir_lowered_monomorphized_func_signature(*method, resolved_generics)
-                } else {
-                    self.db.mir_lowered_func_signature(*method)
-                };
+                method_args.append(&mut args);
 
                 self.builder
                     .call(func_id, method_args, CallType::Internal, source)
