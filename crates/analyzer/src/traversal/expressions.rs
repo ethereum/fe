@@ -1381,7 +1381,7 @@ fn expr_call_pure(
 
     if function.is_test(context.db()) {
         context.fancy_error(
-            &format!("`{}` is a test function", fn_name),
+            &format!("`{fn_name}` is a test function"),
             vec![Label::primary(call_span, "test functions are not callable")],
             vec![],
         );
