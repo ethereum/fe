@@ -35,6 +35,8 @@ pub struct TopLevelMod {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
     // of `module_item_tree`.
     pub name: IdentId,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Root>,
 }
 
@@ -47,6 +49,7 @@ pub struct Mod {
     pub attributes: AttrListId,
     pub is_pub: bool,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Mod>,
 }
 
@@ -64,6 +67,7 @@ pub struct Fn {
     pub modifier: ItemModifier,
     pub body: Option<Body>,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
 
@@ -78,6 +82,7 @@ pub struct ExternFn {
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
 
@@ -93,6 +98,7 @@ pub struct Struct {
     pub where_clause: WhereClauseId,
     pub fields: RecordFieldListId,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Struct>,
 }
 
@@ -106,6 +112,7 @@ pub struct Contract {
     pub is_pub: bool,
     pub fields: RecordFieldListId,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Contract>,
 }
 
@@ -121,6 +128,7 @@ pub struct Enum {
     pub where_clause: WhereClauseId,
     pub variants: EnumVariantListId,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Enum>,
 }
 
@@ -136,6 +144,7 @@ pub struct TypeAlias {
     pub where_clause: WhereClauseId,
     pub ty: Partial<TypeId>,
 
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
 
@@ -148,6 +157,8 @@ pub struct Impl {
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Impl>,
 }
 
@@ -162,6 +173,8 @@ pub struct Trait {
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 
@@ -175,6 +188,8 @@ pub struct ImplTrait {
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
 
@@ -185,6 +200,8 @@ pub struct Const {
 
     pub name: Partial<IdentId>,
     pub body: Partial<Body>,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 
@@ -194,6 +211,8 @@ pub struct Use {
     id: TrackedItemId,
 
     pub tree: Partial<super::UseTreeId>,
+
+    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 
