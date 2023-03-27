@@ -12,7 +12,7 @@ pub struct HirOrigin<T>
 where
     T: AstNode,
 {
-    pub file: Option<InputFile>,
+    pub file: InputFile,
     pub kind: LocalOrigin<T>,
 }
 
@@ -22,7 +22,7 @@ where
 {
     pub(crate) fn new(file: InputFile, origin: LocalOrigin<T>) -> Self {
         HirOrigin {
-            file: Some(file),
+            file: file,
             kind: origin,
         }
     }
@@ -37,7 +37,6 @@ where
 /// 1. `Raw` is used for nodes that are created by the parser and not
 /// 2. `Expanded` is used for nodes that are created by the compiler and not
 /// 3. `Desugared` is used for nodes that are created by the compiler and not
-// TODO: Change the visibility to `pub(crate)` when https://github.com/salsa-rs/salsa/issues/437 is resolved.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LocalOrigin<T>
 where
@@ -84,7 +83,6 @@ where
 
 /// This enum represents the origin of the HIR node which is desugared into
 /// other HIR node kinds.
-// TODO: Change the visibility to `pub(crate)` when https://github.com/salsa-rs/salsa/issues/437 is resolved.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum DesugaredOrigin {
     /// The HIR node is the result of desugaring an augmented assignment
