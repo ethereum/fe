@@ -5,6 +5,8 @@ use parser::{
 
 use common::InputFile;
 
+pub mod jar;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
 where
