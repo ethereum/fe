@@ -3,10 +3,13 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
-use cranelift_entity::{PrimaryMap, SecondaryMap};
-use parser::ast;
+use std::hash::Hash;
 
-use crate::span::HirOrigin;
+use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
+use parser::ast::{self, prelude::*};
+use rustc_hash::FxHashMap;
+
+use crate::span::{HirOrigin, LocalOrigin};
 
 use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TrackedItemId};
 
@@ -16,18 +19,14 @@ pub struct Body {
     id: TrackedBodyId,
 
     #[return_ref]
-    pub stmts: BodyNodeMap<StmtId, Partial<Stmt>>,
+    pub stmts: NodeStore<StmtId, Partial<Stmt>>,
     #[return_ref]
-    pub exprs: BodyNodeMap<ExprId, Partial<Expr>>,
+    pub exprs: NodeStore<ExprId, Partial<Expr>>,
     #[return_ref]
-    pub pats: BodyNodeMap<PatId, Partial<Pat>>,
+    pub pats: NodeStore<PatId, Partial<Pat>>,
 
     #[return_ref]
-    pub(crate) stmt_source_map: BodySourceMap<StmtId, ast::Stmt>,
-    #[return_ref]
-    pub(crate) expr_source_map: BodySourceMap<ExprId, ast::Expr>,
-    #[return_ref]
-    pub(crate) pat_source_map: BodySourceMap<PatId, ast::Pat>,
+    pub(crate) source_map: BodySourceMap,
 
     #[return_fer]
     pub(crate) ast: HirOrigin<ast::Expr>,
@@ -40,5 +39,65 @@ pub enum TrackedBodyId {
     NamelessBody,
 }
 
-pub type BodyNodeMap<K, V> = PrimaryMap<K, V>;
-pub type BodySourceMap<K, V> = SecondaryMap<K, HirOrigin<V>>;
+pub type NodeStore<K, V> = PrimaryMap<K, V>;
+
+pub trait SourceAst: AstNode + Clone + Hash + PartialEq + Eq {}
+impl<T> SourceAst for T where T: AstNode + Clone + Hash + PartialEq + Eq {}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BodySourceMap {
+    pub stmt_map: SourceNodeMap<ast::Stmt, StmtId>,
+    pub expr_map: SourceNodeMap<ast::Expr, ExprId>,
+    pub pat_map: SourceNodeMap<ast::Pat, PatId>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SourceNodeMap<Ast, Node>
+where
+    Ast: SourceAst,
+    Node: EntityRef,
+{
+    pub node_to_source: SecondaryMap<Node, LocalOrigin<Ast>>,
+    pub source_to_node: FxHashMap<LocalOrigin<Ast>, Node>,
+}
+
+impl<Ast, Node> SourceNodeMap<Ast, Node>
+where
+    Ast: SourceAst,
+    Node: EntityRef,
+{
+    pub(crate) fn insert(&mut self, node: Node, ast: LocalOrigin<Ast>) {
+        self.node_to_source[node] = ast.clone();
+        self.source_to_node.insert(ast, node);
+    }
+}
+
+impl<Ast, Node> PartialEq for SourceNodeMap<Ast, Node>
+where
+    Ast: SourceAst,
+    Node: EntityRef,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.node_to_source == other.node_to_source
+    }
+}
+
+impl<Ast, Node> Eq for SourceNodeMap<Ast, Node>
+where
+    Ast: SourceAst,
+    Node: EntityRef,
+{
+}
+
+impl<Ast, Node> Default for SourceNodeMap<Ast, Node>
+where
+    Ast: SourceAst,
+    Node: EntityRef,
+{
+    fn default() -> Self {
+        Self {
+            source_to_node: FxHashMap::default(),
+            node_to_source: SecondaryMap::new(),
+        }
+    }
+}

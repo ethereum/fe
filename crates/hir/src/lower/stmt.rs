@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{stmt::*, ArithBinOp, Expr, Pat, PathId, TypeId},
-    span::{AugAssignDesugared, HirOriginKind},
+    span::{AugAssignDesugared, LocalOrigin},
 };
 
 use super::body::BodyCtxt;
@@ -16,7 +16,7 @@ impl Stmt {
                     .type_annotation()
                     .map(|ty| TypeId::lower_ast(ctxt.f_ctxt, ty));
                 let init = let_.initializer().map(|init| Expr::lower_ast(ctxt, init));
-                (Stmt::Let(pat, ty, init), HirOriginKind::raw(&ast))
+                (Stmt::Let(pat, ty, init), LocalOrigin::raw(&ast))
             }
             ast::StmtKind::Assign(assign) => {
                 let lhs = assign
@@ -28,7 +28,7 @@ impl Stmt {
                     .expr()
                     .map(|expr| Expr::lower_ast(ctxt, expr))
                     .unwrap_or_else(|| ctxt.push_missing_expr());
-                (Stmt::Assign(lhs, rhs), HirOriginKind::raw(&ast))
+                (Stmt::Assign(lhs, rhs), LocalOrigin::raw(&ast))
             }
 
             ast::StmtKind::AugAssign(aug_assign) => desugar_aug_assign(ctxt, &aug_assign),
@@ -42,7 +42,7 @@ impl Stmt {
                         .and_then(|body| ast::Expr::cast(body.syntax().clone())),
                 );
 
-                (Stmt::For(bind, iter, body), HirOriginKind::raw(&ast))
+                (Stmt::For(bind, iter, body), LocalOrigin::raw(&ast))
             }
 
             ast::StmtKind::While(while_) => {
@@ -54,23 +54,23 @@ impl Stmt {
                         .and_then(|body| ast::Expr::cast(body.syntax().clone())),
                 );
 
-                (Stmt::While(cond, body), HirOriginKind::raw(&ast))
+                (Stmt::While(cond, body), LocalOrigin::raw(&ast))
             }
 
-            ast::StmtKind::Continue(_) => (Stmt::Continue, HirOriginKind::raw(&ast)),
+            ast::StmtKind::Continue(_) => (Stmt::Continue, LocalOrigin::raw(&ast)),
 
-            ast::StmtKind::Break(_) => (Stmt::Break, HirOriginKind::raw(&ast)),
+            ast::StmtKind::Break(_) => (Stmt::Break, LocalOrigin::raw(&ast)),
 
             ast::StmtKind::Return(ret) => {
                 let expr = ret
                     .has_value()
                     .then(|| Expr::push_to_body_opt(ctxt, ret.expr()));
-                (Stmt::Return(expr), HirOriginKind::raw(&ast))
+                (Stmt::Return(expr), LocalOrigin::raw(&ast))
             }
 
             ast::StmtKind::Expr(expr) => {
                 let expr = Expr::push_to_body_opt(ctxt, expr.expr());
-                (Stmt::Expr(expr), HirOriginKind::raw(&ast))
+                (Stmt::Expr(expr), LocalOrigin::raw(&ast))
             }
         };
 
@@ -81,7 +81,7 @@ impl Stmt {
 fn desugar_aug_assign(
     ctxt: &mut BodyCtxt<'_, '_>,
     ast: &ast::AugAssignStmt,
-) -> (Stmt, HirOriginKind<ast::Stmt>) {
+) -> (Stmt, LocalOrigin<ast::Stmt>) {
     let lhs_ident = ast.ident();
     let path = lhs_ident
         .clone()
@@ -91,7 +91,7 @@ fn desugar_aug_assign(
     let lhs_pat = if let Some(path) = path {
         ctxt.push_pat(
             Pat::Path(Some(path).into()),
-            HirOriginKind::desugared(lhs_origin.clone()),
+            LocalOrigin::desugared(lhs_origin.clone()),
         )
     } else {
         ctxt.push_missing_pat()
@@ -100,7 +100,7 @@ fn desugar_aug_assign(
     let binop_lhs = if let Some(path) = path {
         ctxt.push_expr(
             Expr::Path(Some(path).into()),
-            HirOriginKind::desugared(lhs_origin),
+            LocalOrigin::desugared(lhs_origin),
         )
     } else {
         ctxt.push_missing_expr()
@@ -114,11 +114,11 @@ fn desugar_aug_assign(
     let binop = ast.op().map(|op| ArithBinOp::lower_ast(op).into()).into();
     let expr = ctxt.push_expr(
         Expr::Bin(binop_lhs, binop_rhs, binop),
-        HirOriginKind::desugared(AugAssignDesugared::stmt(ast)),
+        LocalOrigin::desugared(AugAssignDesugared::stmt(ast)),
     );
 
     (
         Stmt::Assign(lhs_pat, expr),
-        HirOriginKind::desugared(AugAssignDesugared::stmt(ast)),
+        LocalOrigin::desugared(AugAssignDesugared::stmt(ast)),
     )
 }
