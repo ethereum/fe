@@ -26,7 +26,7 @@ pub fn test(args: TestArgs) {
         test_ingot(&args)
     };
 
-    println!("{}", test_sink);
+    println!("{test_sink}");
     if test_sink.failure_count() != 0 {
         std::process::exit(1)
     }
@@ -38,7 +38,7 @@ fn test_single_file(args: &TestArgs) -> TestSink {
     let mut db = fe_driver::Db::default();
     let content = match std::fs::read_to_string(input_path) {
         Err(err) => {
-            eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
+            eprintln!("Failed to load file: `{input_path}`. Error: {err}");
             std::process::exit(1)
         }
         Ok(content) => content,
@@ -51,7 +51,7 @@ fn test_single_file(args: &TestArgs) -> TestSink {
             sink
         }
         Err(error) => {
-            eprintln!("Unable to compile {}.", input_path);
+            eprintln!("Unable to compile {input_path}.");
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }
@@ -60,7 +60,7 @@ fn test_single_file(args: &TestArgs) -> TestSink {
 
 pub fn execute_tests(module_name: &str, tests: &[CompiledTest], sink: &mut TestSink) {
     if tests.len() == 1 {
-        println!("executing 1 test in {}:", module_name);
+        println!("executing 1 test in {module_name}:");
     } else {
         println!("executing {} tests in {}:", tests.len(), module_name);
     }
@@ -83,18 +83,18 @@ fn test_ingot(args: &TestArgs) -> TestSink {
     let optimize = args.optimize.unwrap_or(true);
 
     if !Path::new(input_path).exists() {
-        eprintln!("Input directory does not exist: `{}`.", input_path);
+        eprintln!("Input directory does not exist: `{input_path}`.");
         std::process::exit(1)
     }
 
     let content = match load_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{}`", input_path);
+            eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)
         }
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {}", err);
+            eprintln!("Failed to load project files. Error: {err}");
             std::process::exit(1)
         }
     };
@@ -110,7 +110,7 @@ fn test_ingot(args: &TestArgs) -> TestSink {
             sink
         }
         Err(error) => {
-            eprintln!("Unable to compile {}.", input_path);
+            eprintln!("Unable to compile {input_path}.");
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }

@@ -48,9 +48,9 @@ impl Display for TestSink {
 
         let test_description = |n: usize, status: &dyn Display| -> String {
             if n == 1 {
-                format!("1 test {}", status)
+                format!("1 test {status}")
             } else {
-                format!("{} tests {}", n, status)
+                format!("{n} tests {status}")
             }
         };
 
@@ -85,7 +85,7 @@ pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
     if reverted {
         sink.inc_success_count();
     } else {
-        sink.insert_failure(name, &format!("{:?}", result));
+        sink.insert_failure(name, &format!("{result:?}"));
     };
 
     reverted
