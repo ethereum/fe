@@ -905,13 +905,13 @@ fn expr_call(
         );
     }
 
-    if context.is_in_function() {
+    if context.is_in_function() || call_type.is_primitive_type_constructor(context.db()) {
         context.add_call(func, call_type);
     } else {
         context.error(
             "calling function outside function",
             func.span,
-            "function can only be called inside function",
+            "ffunction can only be called inside function",
         );
     }
 

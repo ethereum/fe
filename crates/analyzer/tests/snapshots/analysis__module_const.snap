@@ -1,5 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
+assertion_line: 215
 expression: "build_snapshot(&db, module)"
 ---
 note: 

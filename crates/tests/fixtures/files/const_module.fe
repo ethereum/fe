@@ -1,0 +1,11 @@
+contract ERC {}
+
+const DAI_ADDR: address = address(0x6b175474e89094c44da98b954eedeac495271d0f)
+const DAI_ERC: ERC = ERC(DAI_ADDR)
+
+#test
+fn test_bar() {
+    let actual: address = address(0x6b175474e89094c44da98b954eedeac495271d0f)
+    assert DAI_ADDR == actual
+    assert address(DAI_ERC) == actual
+}

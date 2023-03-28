@@ -577,6 +577,14 @@ impl CallType {
             self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
         }
     }
+
+    pub fn is_primitive_type_constructor(&self, db: &dyn AnalyzerDb) -> bool {
+        if let CallType::TypeConstructor(type_id) = self {
+            type_id.is_primitive(db)
+        } else {
+            false
+        }
+    }
 }
 
 impl fmt::Display for CallType {

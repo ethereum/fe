@@ -21,6 +21,7 @@ pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
     module: ModuleId,
     expressions: RefCell<IndexMap<NodeId, ExpressionAttributes>>,
+    calls: RefCell<IndexMap<NodeId, CallType>>,
     pub diagnostics: RefCell<Vec<Diagnostic>>,
 }
 impl<'a> ItemScope<'a> {
@@ -29,6 +30,7 @@ impl<'a> ItemScope<'a> {
             db,
             module,
             expressions: RefCell::new(IndexMap::default()),
+            calls: RefCell::new(IndexMap::default()),
             diagnostics: RefCell::new(vec![]),
         }
     }
@@ -95,11 +97,11 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         panic!("ItemContext has no parent function")
     }
 
-    fn add_call(&self, _node: &Node<ast::Expr>, _call_type: CallType) {
-        unreachable!("Can't call function outside of function")
+    fn add_call(&self, _node: &Node<ast::Expr>, call_type: CallType) {
+        self.calls.borrow_mut().insert(_node.id, call_type);
     }
     fn get_call(&self, _node: &Node<ast::Expr>) -> Option<CallType> {
-        unreachable!("Can't call function outside of function")
+        self.calls.borrow().get(&_node.id).cloned()
     }
 
     fn is_in_function(&self) -> bool {

@@ -12,7 +12,7 @@ use crate::{
 
 use fe_common::{numeric, Span};
 use fe_parser::{
-    ast::{self, BinOperator, BoolOperator, CompOperator, UnaryOperator},
+    ast::{self, BinOperator, BoolOperator, CallArg, CompOperator, UnaryOperator},
     node::Node,
 };
 
@@ -53,11 +53,16 @@ pub(crate) fn eval_expr(
 
         ast::Expr::Str(s) => Ok(Constant::Str(s.clone())),
 
-        // TODO: Need to evaluate attribute getter, constant constructor and const fn call.
+        ast::Expr::Call {
+            func,
+            generic_args,
+            args,
+        } => eval_call(context, func, generic_args, args),
+
+        // TODO: Need to evaluate attribute getter and const fn call.
         ast::Expr::Subscript { .. }
         | ast::Expr::Path(_)
         | ast::Expr::Attribute { .. }
-        | ast::Expr::Call { .. }
         | ast::Expr::List { .. }
         | ast::Expr::Repeat { .. }
         | ast::Expr::Tuple { .. }
@@ -86,6 +91,25 @@ fn eval_ternary(
             }
         }
         _ => panic!("ternary condition is not a bool type"),
+    }
+}
+
+/// Evaluates call expressions.
+fn eval_call(
+    context: &mut dyn AnalyzerContext,
+    func: &Node<ast::Expr>,
+    _generic_args: &Option<Node<Vec<ast::GenericArg>>>,
+    args: &Node<Vec<Node<ast::CallArg>>>,
+) -> Result<Constant, ConstEvalError> {
+    match context.get_call(func) {
+        Some(call_type) if call_type.is_primitive_type_constructor(context.db()) => {
+            if let Some(CallArg { ref value, .. }) = args.kind.first().map(|arg| &arg.kind) {
+                eval_expr(context, value)
+            } else {
+                Err(not_const_error(context, func.span))
+            }
+        }
+        _ => Err(not_const_error(context, func.span)),
     }
 }
 
