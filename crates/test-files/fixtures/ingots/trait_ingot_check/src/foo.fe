@@ -1,0 +1,9 @@
+pub struct MyS {
+    fn x() -> u256 {
+        return 10
+    }
+}
+
+pub trait Trait {
+    fn x() -> u256;
+}

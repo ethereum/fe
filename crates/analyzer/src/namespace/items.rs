@@ -1789,12 +1789,14 @@ impl ImplId {
         &self,
         db: &dyn AnalyzerDb,
         sink: &mut impl DiagnosticSink,
-        type_module: Option<ModuleId>,
+        type_ingot: Option<IngotId>,
     ) {
-        let impl_module = self.data(db).module;
-        let is_allowed = match type_module {
-            None => impl_module == self.data(db).trait_id.module(db),
-            Some(val) => val == impl_module || self.data(db).trait_id.module(db) == impl_module,
+        let impl_ingot = self.data(db).module.ingot(db);
+        let is_allowed = match type_ingot {
+            None => impl_ingot == self.data(db).trait_id.module(db).ingot(db),
+            Some(val) => {
+                val == impl_ingot || self.data(db).trait_id.module(db).ingot(db) == impl_ingot
+            }
         };
 
         if !is_allowed {
@@ -1831,10 +1833,10 @@ impl ImplId {
                 vec![],
             )),
             Type::Struct(id) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db).ingot(db)))
             }
             Type::Enum(id) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db).ingot(db)))
             }
             Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, None)
