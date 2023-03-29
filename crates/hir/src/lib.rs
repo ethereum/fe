@@ -1,6 +1,7 @@
 use common::{InputDb, InputFile, Upcast};
 use parser::GreenNode;
 
+pub mod diagnostics;
 pub mod hir_def;
 pub mod lower;
 pub mod span;
