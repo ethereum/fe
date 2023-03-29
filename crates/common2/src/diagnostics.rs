@@ -2,6 +2,7 @@ use parser::ast::SyntaxNodePtr;
 
 use crate::InputFile;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompleteDiagnostic {
     pub severity: Severity,
     pub message: String,
@@ -10,32 +11,34 @@ pub struct CompleteDiagnostic {
     pub error_code: GlobalErrorCode,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GlobalErrorCode {
     pub pass: AnalysisPass,
     pub local_code: u16,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubDiagnostic {
     pub severity: Severity,
     pub message: String,
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub file: InputFile,
     pub node: SyntaxNodePtr,
     pub origin: SpanOrigin,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Severity {
     Error,
     Warning,
     Note,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SpanOrigin {
     Raw,
     Expanded,

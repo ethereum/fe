@@ -21,10 +21,7 @@ where
     T: AstNode,
 {
     pub(crate) fn new(file: InputFile, origin: LocalOrigin<T>) -> Self {
-        HirOrigin {
-            file: file,
-            kind: origin,
-        }
+        HirOrigin { file, kind: origin }
     }
 
     pub(crate) fn raw(file: InputFile, ast: &T) -> Self {
