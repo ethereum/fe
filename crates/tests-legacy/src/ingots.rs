@@ -31,6 +31,13 @@ fn test_trait_no_ambiguity() {
 }
 
 #[test]
+fn test_trait_ingot_check() {
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "trait_ingot_check", "Foo", &[]);
+    })
+}
+
+#[test]
 fn test_ingot_pub_contract() {
     with_executor(&|mut executor| {
         let _harness = deploy_ingot(&mut executor, "visibility_ingot", "Foo", &[]);
