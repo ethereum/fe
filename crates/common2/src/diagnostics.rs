@@ -1,4 +1,4 @@
-use parser::ast::SyntaxNodePtr;
+use parser::SyntaxNode;
 
 use crate::InputFile;
 
@@ -27,8 +27,13 @@ pub struct SubDiagnostic {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub file: InputFile,
-    pub node: SyntaxNodePtr,
-    pub origin: SpanOrigin,
+    pub node: SyntaxNode,
+}
+
+impl Span {
+    pub fn new(file: InputFile, node: SyntaxNode) -> Self {
+        Self { file, node }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -36,13 +41,6 @@ pub enum Severity {
     Error,
     Warning,
     Note,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum SpanOrigin {
-    Raw,
-    Expanded,
-    Desugared,
 }
 
 #[repr(u16)]

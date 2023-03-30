@@ -28,8 +28,8 @@ pub struct Body {
     #[return_ref]
     pub(crate) source_map: BodySourceMap,
 
-    #[return_fer]
-    pub(crate) ast: HirOrigin<ast::Expr>,
+    #[return_ref]
+    pub(crate) origin: HirOrigin<ast::Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
