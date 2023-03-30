@@ -1,11 +1,16 @@
 use parser::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
-    TextRange,
+    SyntaxNode, TextRange,
 };
 
-use common::InputFile;
+use common::{diagnostics::Span, InputFile};
 
-pub mod jar;
+use crate::{hir_def::ItemKind, parse_file};
+
+use self::db::SpannedHirDb;
+
+pub mod db;
+pub mod item;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
@@ -14,6 +19,19 @@ where
 {
     pub file: InputFile,
     pub kind: LocalOrigin<T>,
+}
+
+impl<T> HirOrigin<T>
+where
+    T: AstNode<Language = parser::FeLang>,
+{
+    fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
+        match &self.kind {
+            LocalOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
+            LocalOrigin::Expanded(ptr) => Some(ptr.clone()),
+            _ => None,
+        }
+    }
 }
 
 impl<T> HirOrigin<T>
@@ -101,5 +119,106 @@ pub enum AugAssignDesugared {
 impl AugAssignDesugared {
     pub(crate) fn stmt(ast: &ast::AugAssignStmt) -> Self {
         Self::Stmt(AstPtr::new(ast))
+    }
+}
+
+/// The trait provides a way to extract [`Span`] from types which don't have a
+/// span information directly.
+pub trait SpanSeed {
+    fn span(self, db: &dyn SpannedHirDb) -> Span;
+}
+
+struct ItemSpanState {
+    root: ItemKind,
+    transition: Vec<Box<TransitionFn>>,
+}
+
+type TransitionFn = dyn FnOnce(&SyntaxNode, &dyn SpannedHirDb) -> Option<SyntaxNode> + 'static;
+
+impl SpanSeed for ItemSpanState {
+    fn span(self, db: &dyn SpannedHirDb) -> Span {
+        let (file, ptr) = match self.root {
+            ItemKind::TopMod(top_level_mod) => {
+                let ast = db.toplevel_ast(top_level_mod);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Mod(mod_) => {
+                let ast = db.mod_ast(mod_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Fn(fn_) => {
+                let ast = db.fn_ast(fn_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::ExternFn(extern_fn) => {
+                let ast = db.extern_fn_ast(extern_fn);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Struct(struct_) => {
+                let ast = db.struct_ast(struct_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Contract(contract) => {
+                let ast = db.contract_ast(contract);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Enum(enum_) => {
+                let ast = db.enum_ast(enum_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::TypeAlias(alias) => {
+                let ast = db.type_alias_ast(alias);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Impl(impl_) => {
+                let ast = db.impl_ast(impl_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Trait(trait_) => {
+                let ast = db.trait_ast(trait_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::ImplTrait(impl_trait) => {
+                let ast = db.impl_trait_ast(impl_trait);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Const(const_) => {
+                let ast = db.const_ast(const_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Use(use_) => {
+                let ast = db.use_ast(use_);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+
+            ItemKind::Body(body) => {
+                let ast = db.body_ast(body);
+                (ast.file, ast.syntax_ptr().unwrap())
+            }
+        };
+
+        let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
+        let mut node = ptr.to_node(&root_node);
+
+        for transition in self.transition {
+            node = match transition(&node, db) {
+                Some(next) => next,
+                None => break,
+            };
+        }
+
+        Span::new(file, node)
     }
 }

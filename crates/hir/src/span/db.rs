@@ -3,16 +3,13 @@ use parser::ast;
 
 use crate::{
     hir_def::{
-        Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
-        TypeAlias, Use,
+        Body, Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod,
+        Trait, TypeAlias, Use,
     },
     HirDb,
 };
 
 use super::HirOrigin;
-
-#[salsa::jar(db = SpannedHirDb)]
-pub struct SpanJar();
 
 /// `SpannedHirDb` is a feature gate for extracting span-dependent information
 /// from HIR Items. All code that requires [`SpannedHirDb`] is considered to
@@ -22,9 +19,9 @@ pub struct SpanJar();
 ///
 /// SpanDb is mainly used to inject information about
 /// [HirOrigin] to generate
-/// [FullDiagnostic](crate::diagnostics::FullDiagnostic) from
+/// [CompleteDiagnostic](common::diagnostics::CompleteDiagnostic) from
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
-pub trait SpannedHirDb: HirDb + salsa::DbWithJar<SpanJar> + Upcast<dyn HirDb> {
+pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {
     fn toplevel_ast(&self, item: TopLevelMod) -> &HirOrigin<ast::Root> {
         item.origin(self.upcast())
     }
@@ -74,6 +71,10 @@ pub trait SpannedHirDb: HirDb + salsa::DbWithJar<SpanJar> + Upcast<dyn HirDb> {
     }
 
     fn use_ast(&self, item: Use) -> &HirOrigin<ast::Use> {
+        item.origin(self.upcast())
+    }
+
+    fn body_ast(&self, item: Body) -> &HirOrigin<ast::Expr> {
         item.origin(self.upcast())
     }
 }
