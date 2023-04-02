@@ -1,4 +1,4 @@
-use parser::SyntaxNode;
+use parser::TextRange;
 
 use crate::InputFile;
 
@@ -27,12 +27,12 @@ pub struct SubDiagnostic {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub file: InputFile,
-    pub node: SyntaxNode,
+    pub range: TextRange,
 }
 
 impl Span {
-    pub fn new(file: InputFile, node: SyntaxNode) -> Self {
-        Self { file, node }
+    pub fn new(file: InputFile, range: TextRange) -> Self {
+        Self { file, range }
     }
 }
 

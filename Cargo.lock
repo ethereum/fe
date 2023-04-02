@@ -815,6 +815,7 @@ dependencies = [
  "num-traits",
  "rustc-hash",
  "salsa-2022",
+ "smallvec",
  "tracing",
 ]
 
