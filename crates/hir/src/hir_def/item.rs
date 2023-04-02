@@ -5,7 +5,17 @@
 
 use parser::ast;
 
-use crate::{hir_def::TraitRef, span::HirOrigin};
+use crate::{
+    hir_def::TraitRef,
+    span::{
+        item::{
+            LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyExternFnSpan, LazyFnSpan,
+            LazyImplSpan, LazyImplTraitSpan, LazyStructSpan, LazyTopLevelModSpan, LazyTraitSpan,
+            LazyTypeAliasSpan, LazyUseSpan,
+        },
+        HirOrigin,
+    },
+};
 
 use super::{
     AttrListId, Body, FnParamListId, GenericParamListId, IdentId, Partial, TypeId, WhereClauseId,
@@ -39,6 +49,11 @@ pub struct TopLevelMod {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Root>,
 }
+impl TopLevelMod {
+    pub fn lazy_span(self) -> LazyTopLevelModSpan {
+        LazyTopLevelModSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct Mod {
@@ -70,6 +85,11 @@ pub struct Fn {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
+impl Fn {
+    pub fn lazy_span(self) -> LazyFnSpan {
+        LazyFnSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct ExternFn {
@@ -84,6 +104,11 @@ pub struct ExternFn {
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
+}
+impl ExternFn {
+    pub fn lazy_span(self) -> LazyExternFnSpan {
+        LazyExternFnSpan::new(self)
+    }
 }
 
 #[salsa::tracked]
@@ -101,6 +126,11 @@ pub struct Struct {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Struct>,
 }
+impl Struct {
+    pub fn lazy_span(self) -> LazyStructSpan {
+        LazyStructSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct Contract {
@@ -114,6 +144,11 @@ pub struct Contract {
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Contract>,
+}
+impl Contract {
+    pub fn lazy_span(self) -> LazyContractSpan {
+        LazyContractSpan::new(self)
+    }
 }
 
 #[salsa::tracked]
@@ -131,6 +166,11 @@ pub struct Enum {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Enum>,
 }
+impl Enum {
+    pub fn lazy_span(self) -> LazyEnumSpan {
+        LazyEnumSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct TypeAlias {
@@ -147,6 +187,11 @@ pub struct TypeAlias {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
+impl TypeAlias {
+    pub fn lazy_span(self) -> LazyTypeAliasSpan {
+        LazyTypeAliasSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct Impl {
@@ -160,6 +205,11 @@ pub struct Impl {
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Impl>,
+}
+impl Impl {
+    pub fn lazy_span(self) -> LazyImplSpan {
+        LazyImplSpan::new(self)
+    }
 }
 
 #[salsa::tracked]
@@ -177,6 +227,11 @@ pub struct Trait {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
+impl Trait {
+    pub fn lazy_span(self) -> LazyTraitSpan {
+        LazyTraitSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct ImplTrait {
@@ -192,6 +247,11 @@ pub struct ImplTrait {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
+impl ImplTrait {
+    pub fn lazy_span(self) -> LazyImplTraitSpan {
+        LazyImplTraitSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct Const {
@@ -204,6 +264,11 @@ pub struct Const {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Const>,
 }
+impl Const {
+    pub fn lazy_span(self) -> LazyConstSpan {
+        LazyConstSpan::new(self)
+    }
+}
 
 #[salsa::tracked]
 pub struct Use {
@@ -214,6 +279,11 @@ pub struct Use {
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Use>,
+}
+impl Use {
+    pub fn lazy_span(self) -> LazyUseSpan {
+        LazyUseSpan::new(self)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
