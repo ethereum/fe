@@ -1,9 +1,11 @@
 use parser::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
+    syntax_node::NodeOrToken,
     SyntaxNode, TextRange,
 };
 
 use common::{diagnostics::Span, InputFile};
+use smallvec::SmallVec;
 
 use crate::{hir_def::ItemKind, parse_file};
 
@@ -128,14 +130,30 @@ pub trait SpanSeed {
     fn span(self, db: &dyn SpannedHirDb) -> Span;
 }
 
-struct ItemSpanState {
+type TransitionFn = fn(SyntaxNode) -> Option<NodeOrToken>;
+
+#[derive(Clone)]
+struct SpanTransitionChain {
     root: ItemKind,
-    transition: Vec<Box<TransitionFn>>,
+    chain: SmallVec<[TransitionFn; 4]>,
 }
 
-type TransitionFn = dyn FnOnce(&SyntaxNode, &dyn SpannedHirDb) -> Option<SyntaxNode> + 'static;
+impl SpanTransitionChain {
+    fn new(item: ItemKind) -> Self {
+        Self {
+            root: item,
+            chain: SmallVec::new(),
+        }
+    }
 
-impl SpanSeed for ItemSpanState {
+    fn push_state(&self, transition: TransitionFn) -> Self {
+        let mut new_state = self.clone();
+        new_state.chain.push(transition);
+        new_state
+    }
+}
+
+impl SpanSeed for SpanTransitionChain {
     fn span(self, db: &dyn SpannedHirDb) -> Span {
         let (file, ptr) = match self.root {
             ItemKind::TopMod(top_level_mod) => {
@@ -212,13 +230,30 @@ impl SpanSeed for ItemSpanState {
         let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
         let mut node = ptr.to_node(&root_node);
 
-        for transition in self.transition {
-            node = match transition(&node, db) {
-                Some(next) => next,
-                None => break,
+        for transition in self.chain {
+            node = match transition(node.clone()) {
+                Some(NodeOrToken::Node(node)) => node,
+                Some(NodeOrToken::Token(token)) => {
+                    return Span::new(file, token.text_range());
+                }
+                None => {
+                    return Span::new(file, node.text_range());
+                }
             };
         }
 
-        Span::new(file, node)
+        Span::new(file, node.text_range())
     }
 }
+
+macro_rules! impl_item_span_seed {
+    ($name:ident) => {
+        impl crate::span::SpanSeed for $name {
+            fn span(self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
+                self.0.span(db)
+            }
+        }
+    };
+}
+
+use impl_item_span_seed;
