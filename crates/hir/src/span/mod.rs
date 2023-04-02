@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use parser::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
     syntax_node::NodeOrToken,
@@ -11,8 +13,13 @@ use crate::{hir_def::ItemKind, parse_file};
 
 use self::db::SpannedHirDb;
 
+pub mod attr;
 pub mod db;
 pub mod item;
+pub mod params;
+pub mod path;
+pub mod types;
+pub mod use_tree;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
@@ -126,14 +133,14 @@ impl AugAssignDesugared {
 
 /// The trait provides a way to extract [`Span`] from types which don't have a
 /// span information directly.
-pub trait SpanSeed {
+pub trait LazySpan {
     fn span(self, db: &dyn SpannedHirDb) -> Span;
 }
 
-type TransitionFn = fn(SyntaxNode) -> Option<NodeOrToken>;
+type TransitionFn = Arc<dyn Fn(SyntaxNode) -> Option<NodeOrToken>>;
 
 #[derive(Clone)]
-struct SpanTransitionChain {
+pub(super) struct SpanTransitionChain {
     root: ItemKind,
     chain: SmallVec<[TransitionFn; 4]>,
 }
@@ -153,7 +160,7 @@ impl SpanTransitionChain {
     }
 }
 
-impl SpanSeed for SpanTransitionChain {
+impl LazySpan for SpanTransitionChain {
     fn span(self, db: &dyn SpannedHirDb) -> Span {
         let (file, ptr) = match self.root {
             ItemKind::TopMod(top_level_mod) => {
@@ -246,9 +253,11 @@ impl SpanSeed for SpanTransitionChain {
     }
 }
 
-macro_rules! impl_item_span_seed {
+macro_rules! define_lazy_span_item {
     ($name:ident) => {
-        impl crate::span::SpanSeed for $name {
+        #[derive(Clone)]
+        pub struct $name(pub(super) crate::span::SpanTransitionChain);
+        impl crate::span::LazySpan for $name {
             fn span(self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
                 self.0.span(db)
             }
@@ -256,4 +265,5 @@ macro_rules! impl_item_span_seed {
     };
 }
 
-use impl_item_span_seed;
+use define_lazy_span_item;
+define_lazy_span_item!(LazyTokenSpan);
