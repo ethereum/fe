@@ -262,10 +262,21 @@ impl Constant {
         typ: &Type,
         span: Span,
     ) -> Result<Self, ConstEvalError> {
-        debug_assert!(matches!(typ, Type::Base(Base::Numeric(_))));
-
         let literal = numeric::Literal::new(s);
-        Self::make_const_numeric_with_ty(context, literal.parse::<BigInt>().unwrap(), typ, span)
+        let num = literal.parse::<BigInt>().unwrap();
+        match typ {
+            Type::Base(Base::Numeric(_)) => {
+                Self::make_const_numeric_with_ty(context, num, typ, span)
+            }
+            Type::Base(Base::Address) => {
+                if num >= BigInt::zero() && num <= types::address_max() {
+                    Ok(Constant::Address(num))
+                } else {
+                    Err(overflow_error(context, span))
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// Returns constant from numeric literal that fits type bits.

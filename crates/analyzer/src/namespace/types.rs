@@ -33,6 +33,10 @@ pub fn i256_min() -> BigInt {
     BigInt::from(-2).pow(255)
 }
 
+pub fn address_max() -> BigInt {
+    BigInt::from(2).pow(160) - 1
+}
+
 /// Names that can be used to build identifiers without collision.
 pub trait SafeNames {
     /// Name in the lower snake format (e.g. lower_snake_case).

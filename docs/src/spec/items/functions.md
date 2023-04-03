@@ -82,8 +82,8 @@ contract CoolCoin {
         return true
     }
     pub fn demo(mut self) {
-        let ann: address = address(0xaa)
-        let bob: address = address(0xbb)
+        let ann: address = 0xaa
+        let bob: address = 0xbb
         self.balance[ann] = 100
 
         let bonus: u256 = 2

@@ -11,6 +11,7 @@ contract Foo {
         const C8: bool = false
         const C9: bool = C8 < C7 // true
         const C10: u256 = 42 if C9 else 0 // 42
+        const C11: address = 0xfefe
         let _arr: Array<bool, { C10 }> = [true; { C10 }]
         return C10
     }

@@ -1,5 +1,5 @@
 contract Foo {
     pub fn bar() -> address {
-        return 1
+        return u256(1)
     }
 }
