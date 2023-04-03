@@ -393,9 +393,12 @@ pub fn apply_generic_type_args(
                 // TODO: Fix me when `GenericArg` can represent literals not only `Int`.
                 match const_value {
                     Constant::Int(val) => Ok(GenericArg::Int(val.try_into().unwrap())),
-                    Constant::Bool(_) | Constant::Str(_) => Err(TypeError::new(
-                        context.not_yet_implemented("non numeric type const generics", expr.span),
-                    )),
+                    Constant::Address(_) | Constant::Bool(_) | Constant::Str(_) => {
+                        Err(TypeError::new(context.not_yet_implemented(
+                            "non numeric type const generics",
+                            expr.span,
+                        )))
+                    }
                 }
             }
 

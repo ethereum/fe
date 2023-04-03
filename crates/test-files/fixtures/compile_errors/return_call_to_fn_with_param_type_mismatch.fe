@@ -1,5 +1,5 @@
 contract Foo {
-    pub fn foo(_ val: address) -> u256 {
+    pub fn foo(_ val: bool) -> u256 {
         return 42
     }
 
