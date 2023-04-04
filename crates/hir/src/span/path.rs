@@ -9,7 +9,7 @@ define_lazy_span_item!(LazyPathSpan);
 impl LazyPathSpan {
     pub fn segment(&self, idx: usize) -> LazyPathSegmentSpan {
         let transition = move |node: SyntaxNode| {
-            ast::RecordFieldList::cast(node)
+            ast::Path::cast(node)
                 .and_then(|f| f.into_iter().nth(idx))
                 .map(|n| n.syntax().clone().into())
         };

@@ -9,6 +9,7 @@ use super::{
     attr::LazyAttrListSpan,
     define_lazy_span_item,
     params::{LazyFnParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
+    span_impl_nodes, span_impl_tokens,
     types::{LazyPathTypeSpan, LazyTypeSpan},
     use_tree::LazyUseTreeSpan,
     SpanTransitionChain,
@@ -249,38 +250,3 @@ define_lazy_span_item!(LazyItemModifierSpan);
 impl LazyItemModifierSpan {
     span_impl_tokens!(ast::ItemModifier, (pub_kw, pub_kw), (unsafe_kw, unsafe_kw));
 }
-
-macro_rules! span_impl_tokens {
-    ($parent: ty, $(($name:ident, $getter:ident)),* $(,)*) => {
-        $(
-            pub fn $name(&self) -> crate::span::LazyTokenSpan {
-                let transition = |node: SyntaxNode| {
-                    <$parent as AstNode>::cast(node)
-                        .and_then(|n| n.$getter())
-                        .map(|n| n.into())
-                };
-                crate::span::LazyTokenSpan(
-                    self.0.push_state(std::sync::Arc::new(transition))
-                )
-            }
-        )*
-    };
-}
-
-macro_rules! span_impl_nodes {
-    ($parent: ty, $(($name:ident, $getter:ident, $result:tt)),* $(,)*) => {
-        $(
-            pub fn $name(&self) -> $result {
-                let transition = |node: SyntaxNode| {
-                    <$parent as AstNode>::cast(node)
-                        .and_then(|f| f.$getter())
-                        .map(|n| n.syntax().clone().into())
-                };
-                $result(self.0.push_state(std::sync::Arc::new(transition)))
-            }
-        )*
-    };
-}
-
-use span_impl_nodes;
-use span_impl_tokens;

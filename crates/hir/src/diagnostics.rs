@@ -16,7 +16,7 @@ use crate::span::db::SpannedHirDb;
 ///
 /// The utility structs for conversion from HIR-spanless types to nodes are
 /// defined in [`crate::span`] module.
-pub trait DiagnosticVoucher {
+pub trait DiagnosticVoucher: Send {
     fn pass(&self) -> GlobalErrorCode;
     /// Consumes voucher and makes a [`CompleteDiagnostic`].
     fn consume(self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;

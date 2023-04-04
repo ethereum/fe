@@ -253,6 +253,8 @@ impl LazySpan for SpanTransitionChain {
     }
 }
 
+define_lazy_span_item!(LazyTokenSpan);
+
 macro_rules! define_lazy_span_item {
     ($name:ident) => {
         #[derive(Clone)]
@@ -265,5 +267,38 @@ macro_rules! define_lazy_span_item {
     };
 }
 
+macro_rules! span_impl_tokens {
+    ($parent: ty, $(($name:ident, $getter:ident)),* $(,)*) => {
+        $(
+            pub fn $name(&self) -> crate::span::LazyTokenSpan {
+                let transition = |node: SyntaxNode| {
+                    <$parent as AstNode>::cast(node)
+                        .and_then(|n| n.$getter())
+                        .map(|n| n.into())
+                };
+                crate::span::LazyTokenSpan(
+                    self.0.push_state(std::sync::Arc::new(transition))
+                )
+            }
+        )*
+    };
+}
+
+macro_rules! span_impl_nodes {
+    ($parent: ty, $(($name:ident, $getter:ident, $result:tt)),* $(,)*) => {
+        $(
+            pub fn $name(&self) -> $result {
+                let transition = |node: parser::SyntaxNode| {
+                    <$parent as AstNode>::cast(node)
+                        .and_then(|f| f.$getter())
+                        .map(|n| n.syntax().clone().into())
+                };
+                $result(self.0.push_state(std::sync::Arc::new(transition)))
+            }
+        )*
+    };
+}
+
 use define_lazy_span_item;
-define_lazy_span_item!(LazyTokenSpan);
+use span_impl_nodes;
+use span_impl_tokens;
