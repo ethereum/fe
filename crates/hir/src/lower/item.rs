@@ -47,7 +47,7 @@ impl Mod {
     }
 }
 
-impl Fn {
+impl Func {
     pub(super) fn lower_ast(
         ctxt: &mut FileLowerCtxt<'_>,
         parent_id: TrackedItemId,
@@ -231,7 +231,7 @@ impl Impl {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Fn::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item);
             }
         }
 
@@ -267,7 +267,7 @@ impl Trait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Fn::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item);
             }
         }
 
@@ -305,7 +305,7 @@ impl ImplTrait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Fn::lower_ast(ctxt, id.clone(), impl_item);
+                Func::lower_ast(ctxt, id.clone(), impl_item);
             }
         }
 
@@ -360,7 +360,7 @@ impl Use {
     }
 }
 
-impl ExternFn {
+impl ExternFunc {
     pub(super) fn lower_ast(
         ctxt: &mut FileLowerCtxt<'_>,
         parent: TrackedItemId,
@@ -455,7 +455,7 @@ fn lower_module_items(ctxt: &mut FileLowerCtxt<'_>, id: TrackedItemId, items: as
                 Mod::lower_ast(ctxt, id.clone(), mod_);
             }
             ast::ItemKind::Fn(fn_) => {
-                Fn::lower_ast(ctxt, id.clone(), fn_);
+                Func::lower_ast(ctxt, id.clone(), fn_);
             }
             ast::ItemKind::Struct(struct_) => {
                 Struct::lower_ast(ctxt, id.clone(), struct_);
@@ -487,7 +487,7 @@ fn lower_module_items(ctxt: &mut FileLowerCtxt<'_>, id: TrackedItemId, items: as
             ast::ItemKind::Extern(extern_) => {
                 if let Some(extern_block) = extern_.extern_block() {
                     for fn_ in extern_block {
-                        ExternFn::lower_ast(ctxt, id.clone(), fn_);
+                        ExternFunc::lower_ast(ctxt, id.clone(), fn_);
                     }
                 }
             }

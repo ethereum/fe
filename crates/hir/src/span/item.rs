@@ -1,8 +1,8 @@
 use parser::ast;
 
 use crate::hir_def::{
-    Body, Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
-    TypeAlias, Use,
+    Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
+    Trait, TypeAlias, Use,
 };
 
 use super::{
@@ -33,7 +33,7 @@ define_lazy_span_item!(
 define_lazy_span_item!(
     LazyFnSpan,
     ast::Fn,
-    new(Fn),
+    new(Func),
     @token {
         (name, name),
     }
@@ -50,7 +50,7 @@ define_lazy_span_item!(
 define_lazy_span_item!(
     LazyExternFnSpan,
     ast::Fn,
-    new(ExternFn),
+    new(ExternFunc),
     @token {
         (name, name),
     }

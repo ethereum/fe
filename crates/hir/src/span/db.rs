@@ -3,7 +3,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod,
+        Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
         Trait, TypeAlias, Use,
     },
     HirDb,
@@ -30,11 +30,11 @@ pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {
         item.origin(self.upcast())
     }
 
-    fn fn_ast(&self, item: Fn) -> &HirOrigin<ast::Fn> {
+    fn func_ast(&self, item: Func) -> &HirOrigin<ast::Fn> {
         item.origin(self.upcast())
     }
 
-    fn extern_fn_ast(&self, item: ExternFn) -> &HirOrigin<ast::Fn> {
+    fn extern_func_ast(&self, item: ExternFunc) -> &HirOrigin<ast::Fn> {
         item.origin(self.upcast())
     }
 

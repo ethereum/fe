@@ -25,8 +25,8 @@ use super::{
 pub enum ItemKind {
     TopMod(TopLevelMod),
     Mod(Mod),
-    Fn(Fn),
-    ExternFn(ExternFn),
+    Func(Func),
+    ExternFunc(ExternFunc),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -69,7 +69,7 @@ pub struct Mod {
 }
 
 #[salsa::tracked]
-pub struct Fn {
+pub struct Func {
     #[id]
     id: TrackedItemId,
 
@@ -85,14 +85,14 @@ pub struct Fn {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
-impl Fn {
+impl Func {
     pub fn lazy_span(self) -> LazyFnSpan {
         LazyFnSpan::new(self)
     }
 }
 
 #[salsa::tracked]
-pub struct ExternFn {
+pub struct ExternFunc {
     #[id]
     id: TrackedItemId,
 
@@ -105,7 +105,7 @@ pub struct ExternFn {
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
-impl ExternFn {
+impl ExternFunc {
     pub fn lazy_span(self) -> LazyExternFnSpan {
         LazyExternFnSpan::new(self)
     }
@@ -331,7 +331,7 @@ pub struct EnumVariant {
 #[salsa::interned]
 pub struct ImplItemListId {
     #[return_ref]
-    pub items: Vec<Fn>,
+    pub items: Vec<Func>,
 }
 
 pub type TraitItemListId = ImplItemListId;
