@@ -651,7 +651,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "clap 3.2.23",
  "colored",
@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "fe-abi"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "fe-common",
  "serde",
@@ -676,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "criterion",
  "fe-common",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "fe-codegen"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -719,7 +719,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "camino",
  "codespan-reporting",
@@ -739,7 +739,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-test-utils"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "ethabi",
  "evm",
@@ -761,7 +761,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "dir-test",
  "fe-driver",
@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests-legacy"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "dir-test",
  "ethabi",
@@ -796,7 +796,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -815,14 +815,14 @@ dependencies = [
 
 [[package]]
 name = "fe-library"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "include_dir",
 ]
 
 [[package]]
 name = "fe-mir"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "dot2",
  "fe-analyzer",
@@ -842,7 +842,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "criterion",
  "fe-common",
@@ -863,7 +863,7 @@ dependencies = [
 
 [[package]]
 name = "fe-test-files"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "fe-library",
  "include_dir",
@@ -871,7 +871,7 @@ dependencies = [
 
 [[package]]
 name = "fe-test-runner"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "bytes",
  "colored",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulc"
-version = "0.21.0-alpha"
+version = "0.22.0"
 dependencies = [
  "indexmap",
  "serde_json",
