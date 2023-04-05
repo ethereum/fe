@@ -39,10 +39,10 @@ impl SpanTransitionChain {
 }
 
 impl LazySpan for SpanTransitionChain {
-    fn span(self, db: &dyn SpannedHirDb) -> Span {
+    fn span(&self, db: &dyn SpannedHirDb) -> Span {
         let (file, mut node) = self.root.root(db);
 
-        for transition in self.chain {
+        for transition in &self.chain {
             node = match transition(node.clone()) {
                 Some(NodeOrToken::Node(node)) => node,
                 Some(NodeOrToken::Token(token)) => {
@@ -160,7 +160,7 @@ macro_rules! define_lazy_span_item {
 
 
         impl crate::span::LazySpan for $name {
-            fn span(self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
+            fn span(&self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
                 self.0.span(db)
             }
         }

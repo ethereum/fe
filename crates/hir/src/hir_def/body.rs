@@ -70,6 +70,10 @@ where
         self.node_to_source[node] = ast.clone();
         self.source_to_node.insert(ast, node);
     }
+
+    pub(crate) fn node_to_source(&self, node: Node) -> &LocalOrigin<Ast> {
+        &self.node_to_source[node]
+    }
 }
 
 impl<Ast, Node> PartialEq for SourceNodeMap<Ast, Node>
