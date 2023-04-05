@@ -77,4 +77,8 @@ pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {
     fn body_ast(&self, item: Body) -> &HirOrigin<ast::Expr> {
         item.origin(self.upcast())
     }
+
+    fn body_source_map(&self, item: Body) -> &crate::hir_def::BodySourceMap {
+        item.source_map(self.upcast())
+    }
 }

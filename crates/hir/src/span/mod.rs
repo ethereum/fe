@@ -11,10 +11,12 @@ pub mod attr;
 pub mod db;
 pub mod item;
 pub mod params;
+pub mod pat;
 pub mod path;
-pub mod transition;
 pub mod types;
 pub mod use_tree;
+
+mod transition;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HirOrigin<T>
@@ -30,17 +32,13 @@ where
     T: AstNode<Language = parser::FeLang>,
 {
     fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
-        match &self.kind {
-            LocalOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
-            LocalOrigin::Expanded(ptr) => Some(ptr.clone()),
-            _ => None,
-        }
+        self.kind.syntax_ptr()
     }
 }
 
 impl<T> HirOrigin<T>
 where
-    T: AstNode,
+    T: AstNode<Language = parser::FeLang>,
 {
     pub(crate) fn new(file: InputFile, origin: LocalOrigin<T>) -> Self {
         HirOrigin { file, kind: origin }
@@ -80,10 +78,18 @@ where
 
 impl<T> LocalOrigin<T>
 where
-    T: AstNode,
+    T: AstNode<Language = parser::FeLang>,
 {
     pub(crate) fn raw(ast: &T) -> Self {
         Self::Raw(AstPtr::new(ast))
+    }
+
+    fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
+        match self {
+            LocalOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
+            LocalOrigin::Expanded(ptr) => Some(ptr.clone()),
+            _ => None,
+        }
     }
 
     pub(crate) fn desugared(origin: impl Into<DesugaredOrigin>) -> Self {
@@ -129,7 +135,7 @@ impl AugAssignDesugared {
 /// The trait provides a way to extract [`Span`] from types which don't have a
 /// span information directly.
 pub trait LazySpan {
-    fn span(self, db: &dyn SpannedHirDb) -> Span;
+    fn span(&self, db: &dyn SpannedHirDb) -> Span;
 }
 
 use transition::define_lazy_span_item;
