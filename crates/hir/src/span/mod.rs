@@ -256,9 +256,67 @@ impl LazySpan for SpanTransitionChain {
 define_lazy_span_item!(LazyTokenSpan);
 
 macro_rules! define_lazy_span_item {
-    ($name:ident) => {
+    (
+        $name:ident
+        $(,
+            $sk_node: ty
+            $(,
+                $(new($hir_ty:ty),)?
+                $(@token {$(($name_token:ident, $getter_token:ident),)*})?
+                $(@node {$(($name_node:ident, $getter_node:ident, $result:tt),)*})?
+                $(@idx { $(($name_iter:ident, $result_iter:tt),)*})?
+                $(,)?
+            )?
+        )?
+    ) => {
         #[derive(Clone)]
         pub struct $name(pub(super) crate::span::SpanTransitionChain);
+        $(
+            $(
+            impl $name {
+
+            $(pub fn new(hir: $hir_ty) -> Self {
+                Self(crate::span::SpanTransitionChain::new(hir.into()))
+            })?
+
+            $($(
+                pub fn $name_token(&self) -> crate::span::LazyTokenSpan {
+                    let transition = |node: SyntaxNode| {
+                        <$sk_node as AstNode>::cast(node)
+                            .and_then(|n| n.$getter_token())
+                            .map(|n| n.into())
+                    };
+                    crate::span::LazyTokenSpan(
+                        self.0.push_state(std::sync::Arc::new(transition))
+                    )
+                }
+            )*)?
+
+            $($(
+                pub fn $name_node(&self) -> $result{
+                    let transition = |node: parser::SyntaxNode| {
+                        <$sk_node as AstNode>::cast(node)
+                            .and_then(|f| f.$getter_node())
+                            .map(|n| n.syntax().clone().into())
+                    };
+                    $result(self.0.push_state(std::sync::Arc::new(transition)))
+                }
+            )*)?
+
+            $($(
+
+                pub fn $name_iter(&self, idx: usize) -> $result_iter {
+                    let transition = move |node: parser::SyntaxNode| {
+                        <$sk_node as AstNode>::cast(node)
+                            .and_then(|f| f.into_iter().nth(idx))
+                            .map(|n| n.syntax().clone().into())
+                    };
+                    $result_iter(self.0.push_state(std::sync::Arc::new(transition)))
+                }
+            )*)?
+        })?)?
+
+
         impl crate::span::LazySpan for $name {
             fn span(self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
                 self.0.span(db)
@@ -267,38 +325,4 @@ macro_rules! define_lazy_span_item {
     };
 }
 
-macro_rules! span_impl_tokens {
-    ($parent: ty, $(($name:ident, $getter:ident)),* $(,)*) => {
-        $(
-            pub fn $name(&self) -> crate::span::LazyTokenSpan {
-                let transition = |node: SyntaxNode| {
-                    <$parent as AstNode>::cast(node)
-                        .and_then(|n| n.$getter())
-                        .map(|n| n.into())
-                };
-                crate::span::LazyTokenSpan(
-                    self.0.push_state(std::sync::Arc::new(transition))
-                )
-            }
-        )*
-    };
-}
-
-macro_rules! span_impl_nodes {
-    ($parent: ty, $(($name:ident, $getter:ident, $result:tt)),* $(,)*) => {
-        $(
-            pub fn $name(&self) -> $result {
-                let transition = |node: parser::SyntaxNode| {
-                    <$parent as AstNode>::cast(node)
-                        .and_then(|f| f.$getter())
-                        .map(|n| n.syntax().clone().into())
-                };
-                $result(self.0.push_state(std::sync::Arc::new(transition)))
-            }
-        )*
-    };
-}
-
 use define_lazy_span_item;
-use span_impl_nodes;
-use span_impl_tokens;
