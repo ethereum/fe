@@ -281,7 +281,8 @@ macro_rules! define_lazy_span_item {
 
             $($(
                 pub fn $name_token(&self) -> crate::span::LazyTokenSpan {
-                    let transition = |node: SyntaxNode| {
+                    use parser::ast::prelude::*;
+                    let transition = |node: parser::SyntaxNode| {
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|n| n.$getter_token())
                             .map(|n| n.into())
@@ -294,6 +295,7 @@ macro_rules! define_lazy_span_item {
 
             $($(
                 pub fn $name_node(&self) -> $result{
+                    use parser::ast::prelude::*;
                     let transition = |node: parser::SyntaxNode| {
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|f| f.$getter_node())
@@ -306,6 +308,7 @@ macro_rules! define_lazy_span_item {
             $($(
 
                 pub fn $name_iter(&self, idx: usize) -> $result_iter {
+                    use parser::ast::prelude::*;
                     let transition = move |node: parser::SyntaxNode| {
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|f| f.into_iter().nth(idx))
