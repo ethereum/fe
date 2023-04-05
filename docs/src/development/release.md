@@ -2,20 +2,18 @@
 
 ### Versioning
 
-Make sure that version follows [semver](https://semver.org/) rules e.g (`0.2.0-alpha`).
-
-**For the time being, ALWAYS specify the `-alpha` suffix.**
+Make sure that version follows [semver](https://semver.org/) rules e.g (`0.23.0`).
 
 ### Generate Release Notes
 
 **Prerequisite**: Release notes are generated with [towncrier](https://pypi.org/project/towncrier/).Ensure to have `towncrier` installed and the command is available.
 
-Run `make notes version=<version>` where `<version>` is the version we are generating the release notes for e.g. `0.2.0-alpha`.
+Run `make notes version=<version>` where `<version>` is the version we are generating the release notes for e.g. `0.23.0`.
 
 Example:
 
 ```
-make notes version=0.2.0-alpha
+make notes version=0.23.0
 ```
 
 Examine the generated release notes and if needed perform and commit any manual changes.
@@ -27,7 +25,7 @@ Run `make release version=<version>`.
 Example:
 
 ```
-make release version=0.2.0-alpha
+make release version=0.23.0
 ```
 
 This will also run the tests again as the last step because some of them may need to be adjusted because of the changed version number.
