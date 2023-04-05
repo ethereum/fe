@@ -1,3 +1,3 @@
-use super::SpanTransitionChain;
+use super::define_lazy_span_item;
 
-pub struct LazyAttrListSpan(pub(super) SpanTransitionChain);
+define_lazy_span_item!(LazyAttrListSpan);

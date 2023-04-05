@@ -1,11 +1,6 @@
-use super::SpanTransitionChain;
+use super::define_lazy_span_item;
 
-pub struct LazyGenericParamListSpan(pub(super) SpanTransitionChain);
-
-pub struct LazyGenericArgListSpan(pub(super) SpanTransitionChain);
-
-pub struct LazyWhereClauseSpan(pub(super) SpanTransitionChain);
-
-pub struct TypeGenericParamListSpan(pub(super) SpanTransitionChain);
-
-pub struct LazyFnParamListSpan(pub(super) SpanTransitionChain);
+define_lazy_span_item!(LazyFnParamListSpan);
+define_lazy_span_item!(LazyGenericParamListSpan);
+define_lazy_span_item!(LazyGenericArgListSpan);
+define_lazy_span_item!(LazyWhereClauseSpan);
