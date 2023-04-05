@@ -1,15 +1,9 @@
-use std::sync::Arc;
-
 use parser::{
     ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
-    syntax_node::NodeOrToken,
-    SyntaxNode, TextRange,
+    TextRange,
 };
 
 use common::{diagnostics::Span, InputFile};
-use smallvec::SmallVec;
-
-use crate::{hir_def::ItemKind, parse_file};
 
 use self::db::SpannedHirDb;
 
@@ -18,6 +12,7 @@ pub mod db;
 pub mod item;
 pub mod params;
 pub mod path;
+pub mod transition;
 pub mod types;
 pub mod use_tree;
 
@@ -137,195 +132,5 @@ pub trait LazySpan {
     fn span(self, db: &dyn SpannedHirDb) -> Span;
 }
 
-type TransitionFn = Arc<dyn Fn(SyntaxNode) -> Option<NodeOrToken>>;
-
-#[derive(Clone)]
-pub(super) struct SpanTransitionChain {
-    root: ItemKind,
-    chain: SmallVec<[TransitionFn; 4]>,
-}
-
-impl SpanTransitionChain {
-    fn new(item: ItemKind) -> Self {
-        Self {
-            root: item,
-            chain: SmallVec::new(),
-        }
-    }
-
-    fn push_state(&self, transition: TransitionFn) -> Self {
-        let mut new_state = self.clone();
-        new_state.chain.push(transition);
-        new_state
-    }
-}
-
-impl LazySpan for SpanTransitionChain {
-    fn span(self, db: &dyn SpannedHirDb) -> Span {
-        let (file, ptr) = match self.root {
-            ItemKind::TopMod(top_level_mod) => {
-                let ast = db.toplevel_ast(top_level_mod);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Mod(mod_) => {
-                let ast = db.mod_ast(mod_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Fn(fn_) => {
-                let ast = db.fn_ast(fn_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::ExternFn(extern_fn) => {
-                let ast = db.extern_fn_ast(extern_fn);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Struct(struct_) => {
-                let ast = db.struct_ast(struct_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Contract(contract) => {
-                let ast = db.contract_ast(contract);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Enum(enum_) => {
-                let ast = db.enum_ast(enum_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::TypeAlias(alias) => {
-                let ast = db.type_alias_ast(alias);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Impl(impl_) => {
-                let ast = db.impl_ast(impl_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Trait(trait_) => {
-                let ast = db.trait_ast(trait_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::ImplTrait(impl_trait) => {
-                let ast = db.impl_trait_ast(impl_trait);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Const(const_) => {
-                let ast = db.const_ast(const_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Use(use_) => {
-                let ast = db.use_ast(use_);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-
-            ItemKind::Body(body) => {
-                let ast = db.body_ast(body);
-                (ast.file, ast.syntax_ptr().unwrap())
-            }
-        };
-
-        let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
-        let mut node = ptr.to_node(&root_node);
-
-        for transition in self.chain {
-            node = match transition(node.clone()) {
-                Some(NodeOrToken::Node(node)) => node,
-                Some(NodeOrToken::Token(token)) => {
-                    return Span::new(file, token.text_range());
-                }
-                None => {
-                    return Span::new(file, node.text_range());
-                }
-            };
-        }
-
-        Span::new(file, node.text_range())
-    }
-}
-
+use transition::define_lazy_span_item;
 define_lazy_span_item!(LazyTokenSpan);
-
-macro_rules! define_lazy_span_item {
-    (
-        $name:ident
-        $(,
-            $sk_node: ty
-            $(,
-                $(new($hir_ty:ty),)?
-                $(@token {$(($name_token:ident, $getter_token:ident),)*})?
-                $(@node {$(($name_node:ident, $getter_node:ident, $result:tt),)*})?
-                $(@idx { $(($name_iter:ident, $result_iter:tt),)*})?
-                $(,)?
-            )?
-        )?
-    ) => {
-        #[derive(Clone)]
-        pub struct $name(pub(super) crate::span::SpanTransitionChain);
-        $(
-            $(
-            impl $name {
-
-            $(pub fn new(hir: $hir_ty) -> Self {
-                Self(crate::span::SpanTransitionChain::new(hir.into()))
-            })?
-
-            $($(
-                pub fn $name_token(&self) -> crate::span::LazyTokenSpan {
-                    use parser::ast::prelude::*;
-                    let transition = |node: parser::SyntaxNode| {
-                        <$sk_node as AstNode>::cast(node)
-                            .and_then(|n| n.$getter_token())
-                            .map(|n| n.into())
-                    };
-                    crate::span::LazyTokenSpan(
-                        self.0.push_state(std::sync::Arc::new(transition))
-                    )
-                }
-            )*)?
-
-            $($(
-                pub fn $name_node(&self) -> $result{
-                    use parser::ast::prelude::*;
-                    let transition = |node: parser::SyntaxNode| {
-                        <$sk_node as AstNode>::cast(node)
-                            .and_then(|f| f.$getter_node())
-                            .map(|n| n.syntax().clone().into())
-                    };
-                    $result(self.0.push_state(std::sync::Arc::new(transition)))
-                }
-            )*)?
-
-            $($(
-
-                pub fn $name_iter(&self, idx: usize) -> $result_iter {
-                    use parser::ast::prelude::*;
-                    let transition = move |node: parser::SyntaxNode| {
-                        <$sk_node as AstNode>::cast(node)
-                            .and_then(|f| f.into_iter().nth(idx))
-                            .map(|n| n.syntax().clone().into())
-                    };
-                    $result_iter(self.0.push_state(std::sync::Arc::new(transition)))
-                }
-            )*)?
-        })?)?
-
-
-        impl crate::span::LazySpan for $name {
-            fn span(self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
-                self.0.span(db)
-            }
-        }
-    };
-}
-
-use define_lazy_span_item;

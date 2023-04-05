@@ -16,7 +16,7 @@ impl LazyAttrListSpan {
                 .and_then(|f| f.normal_attrs().nth(idx))
                 .map(|n| n.syntax().clone().into())
         };
-        LazyNormalAttrSpan(self.0.push_state(std::sync::Arc::new(transition)))
+        LazyNormalAttrSpan(self.0.push_transition(std::sync::Arc::new(transition)))
     }
 }
 
