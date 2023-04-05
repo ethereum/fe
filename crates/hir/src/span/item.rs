@@ -1,7 +1,7 @@
 use parser::ast;
 
 use crate::hir_def::{
-    Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
+    Body, Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
     TypeAlias, Use,
 };
 
@@ -185,6 +185,8 @@ define_lazy_span_item!(
         (use_tree, use_tree, LazyUseTreeSpan),
     }
 );
+
+define_lazy_span_item!(LazyBodySpan, ast::Expr, new(Body),);
 
 define_lazy_span_item!(
     LazyRecordFieldListSpan,

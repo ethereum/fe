@@ -68,7 +68,7 @@ pub enum LitKind {
 /// can often be ignored.
 ///
 /// This type is clearly distinguished from `Option<T>`. The
-/// `Option<T>` type is used to hold syntactically optional nodes, while
+/// `Option<T>` type is used to hold syntactically valid optional nodes, while
 /// `Partial<T>` means that a syntactically required element may be missing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Partial<T> {
