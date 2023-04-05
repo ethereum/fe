@@ -1,4 +1,4 @@
-use parser::ast::{self, prelude::*};
+use parser::ast;
 
 use super::define_lazy_span_item;
 

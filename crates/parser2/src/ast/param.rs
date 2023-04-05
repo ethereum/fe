@@ -305,6 +305,14 @@ pub enum FnParamLabel {
     Underscore(SyntaxToken),
 }
 impl FnParamLabel {
+    pub fn syntax(&self) -> SyntaxToken {
+        match self {
+            FnParamLabel::Ident(token) => token,
+            FnParamLabel::Underscore(token) => token,
+        }
+        .clone()
+    }
+
     fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Ident => Some(FnParamLabel::Ident(token)),
@@ -323,6 +331,15 @@ pub enum FnParamName {
     Underscore(SyntaxToken),
 }
 impl FnParamName {
+    pub fn syntax(&self) -> SyntaxToken {
+        match self {
+            FnParamName::Ident(token) => token,
+            FnParamName::SelfParam(token) => token,
+            FnParamName::Underscore(token) => token,
+        }
+        .clone()
+    }
+
     fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Ident => Some(FnParamName::Ident(token)),

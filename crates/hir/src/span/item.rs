@@ -1,4 +1,4 @@
-use parser::{ast, ast::prelude::*, SyntaxNode};
+use parser::ast;
 
 use crate::hir_def::{
     Const, Contract, Enum, ExternFn, Fn, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
