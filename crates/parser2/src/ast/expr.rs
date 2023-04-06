@@ -201,6 +201,11 @@ impl FieldExpr {
     pub fn field_index(&self) -> Option<LitInt> {
         support::token(self.syntax(), SK::Int).map(|it| LitInt { token: it })
     }
+
+    pub fn name_or_index(&self) -> Option<SyntaxToken> {
+        self.field_name()
+            .or_else(|| self.field_index().map(|i| i.token().clone()))
+    }
 }
 
 ast_node! {
@@ -395,9 +400,15 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    pub(super) fn from_node_or_token(
-        node_or_token: rowan::NodeOrToken<SyntaxNode, SyntaxToken>,
-    ) -> Option<Self> {
+    pub fn syntax(&self) -> crate::NodeOrToken {
+        match self {
+            BinOp::Arith(op) => op.syntax(),
+            BinOp::Comp(op) => op.syntax(),
+            BinOp::Logical(op) => op.syntax(),
+        }
+    }
+
+    pub(super) fn from_node_or_token(node_or_token: crate::NodeOrToken) -> Option<Self> {
         match node_or_token {
             rowan::NodeOrToken::Token(token) => Self::from_token(token),
             rowan::NodeOrToken::Node(node) => Self::from_node(node),
@@ -429,6 +440,15 @@ pub enum UnOp {
     BitNot(SyntaxToken),
 }
 impl UnOp {
+    pub fn syntax(&self) -> SyntaxToken {
+        match self {
+            UnOp::Plus(token) => token.clone(),
+            UnOp::Minus(token) => token.clone(),
+            UnOp::Not(token) => token.clone(),
+            UnOp::BitNot(token) => token.clone(),
+        }
+    }
+
     fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Plus => Some(Self::Plus(token)),
@@ -466,6 +486,22 @@ pub enum ArithBinOp {
     BitXor(SyntaxToken),
 }
 impl ArithBinOp {
+    pub fn syntax(&self) -> crate::NodeOrToken {
+        match self {
+            ArithBinOp::Add(token) => token.clone().into(),
+            ArithBinOp::Sub(token) => token.clone().into(),
+            ArithBinOp::Mul(token) => token.clone().into(),
+            ArithBinOp::Div(token) => token.clone().into(),
+            ArithBinOp::Mod(token) => token.clone().into(),
+            ArithBinOp::Pow(token) => token.clone().into(),
+            ArithBinOp::LShift(node) => node.clone().into(),
+            ArithBinOp::RShift(node) => node.clone().into(),
+            ArithBinOp::BitAnd(token) => token.clone().into(),
+            ArithBinOp::BitOr(token) => token.clone().into(),
+            ArithBinOp::BitXor(token) => token.clone().into(),
+        }
+    }
+
     pub(super) fn from_node_or_token(
         node_or_token: rowan::NodeOrToken<SyntaxNode, SyntaxToken>,
     ) -> Option<Self> {
@@ -517,6 +553,17 @@ pub enum CompBinOp {
     GtEq(SyntaxNode),
 }
 impl CompBinOp {
+    pub fn syntax(&self) -> crate::NodeOrToken {
+        match self {
+            CompBinOp::Eq(token) => token.clone().into(),
+            CompBinOp::NotEq(token) => token.clone().into(),
+            CompBinOp::Lt(token) => token.clone().into(),
+            CompBinOp::LtEq(node) => node.clone().into(),
+            CompBinOp::Gt(token) => token.clone().into(),
+            CompBinOp::GtEq(node) => node.clone().into(),
+        }
+    }
+
     pub(super) fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Eq2 => Some(Self::Eq(token)),
@@ -544,6 +591,13 @@ pub enum LogicalBinOp {
     Or(SyntaxToken),
 }
 impl LogicalBinOp {
+    pub fn syntax(&self) -> crate::NodeOrToken {
+        match self {
+            LogicalBinOp::And(token) => token.clone().into(),
+            LogicalBinOp::Or(token) => token.clone().into(),
+        }
+    }
+
     pub(super) fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Amp2 => Some(Self::And(token)),

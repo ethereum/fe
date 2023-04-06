@@ -99,7 +99,7 @@ impl_chain_root! {
     (Body, body_ast),
 }
 
-macro_rules! define_lazy_span_item {
+macro_rules! define_lazy_span_node {
     (
         $name:ident
         $(,
@@ -124,21 +124,21 @@ macro_rules! define_lazy_span_item {
             })?
 
             $($(
-                pub fn $name_token(&self) -> crate::span::LazyTokenSpan {
+                pub fn $name_token(&self) -> crate::span::LazySpanAtom {
                     use parser::ast::prelude::*;
                     let transition = |node: parser::SyntaxNode| {
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|n| n.$getter_token())
                             .map(|n| n.into())
                     };
-                    crate::span::LazyTokenSpan(
+                    crate::span::LazySpanAtom(
                         self.0.push_transition(std::sync::Arc::new(transition))
                     )
                 }
             )*)?
 
             $($(
-                pub fn $name_node(&self) -> $result{
+                pub fn $name_node(&self) -> $result {
                     use parser::ast::prelude::*;
                     let transition = |node: parser::SyntaxNode| {
                         <$sk_node as AstNode>::cast(node)
@@ -172,4 +172,4 @@ macro_rules! define_lazy_span_item {
     };
 }
 
-pub(super) use define_lazy_span_item;
+pub(super) use define_lazy_span_node;

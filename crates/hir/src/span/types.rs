@@ -2,9 +2,9 @@ use parser::ast;
 
 use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::LazyPathSpan};
 
-use super::define_lazy_span_item;
+use super::define_lazy_span_node;
 
-define_lazy_span_item!(LazyTypeSpan);
+define_lazy_span_node!(LazyTypeSpan);
 impl LazyTypeSpan {
     /// Convert this [`LazyTypeSpan`] into a [`LazyPathTypeSpan`].
     ///
@@ -39,7 +39,7 @@ impl LazyTypeSpan {
     }
 }
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyPtrTypeSpan,
     ast::PtrType,
     @token {
@@ -50,7 +50,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!
+define_lazy_span_node!
 (
     LazyPathTypeSpan,
     ast::PathType,
@@ -60,7 +60,7 @@ define_lazy_span_item!
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyTupleTypeSpan,
     ast::TupleType,
     @token {
@@ -72,7 +72,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyArrayTypeSpan,
     ast::ArrayType,
     @token {

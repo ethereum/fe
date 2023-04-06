@@ -2,9 +2,9 @@ use parser::ast;
 
 use crate::span::path::LazyPathSpan;
 
-use super::{define_lazy_span_item, types::LazyTypeSpan};
+use super::{define_lazy_span_node, types::LazyTypeSpan};
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyFnParamListSpan,
     ast::FnParamList,
     @idx {
@@ -12,7 +12,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyGenericParamListSpan,
     ast::GenericParamList,
     @idx {
@@ -20,7 +20,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyGenericArgListSpan,
     ast::GenericArgList,
     @idx {
@@ -28,7 +28,7 @@ define_lazy_span_item!(
     }
 
 );
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyWhereClauseSpan,
     ast::WhereClause,
     @idx {
@@ -37,7 +37,7 @@ define_lazy_span_item!(
 
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyFnParamSpan,
     ast::FnParam,
     @token {
@@ -50,12 +50,12 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(LazyFnParamLabelSpan);
-define_lazy_span_item!(LazyFnParamNameSpan);
-define_lazy_span_item!(LazyGenericParamSpan);
-define_lazy_span_item!(LazyGenericArgParamSpan);
+define_lazy_span_node!(LazyFnParamLabelSpan);
+define_lazy_span_node!(LazyFnParamNameSpan);
+define_lazy_span_node!(LazyGenericParamSpan);
+define_lazy_span_node!(LazyGenericArgParamSpan);
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyWherePredicateSpan,
     ast::WherePredicate,
     @node {
@@ -64,7 +64,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item! {
+define_lazy_span_node! {
     LazyTypeBoundListSpan,
     ast::TypeBoundList,
     @idx {
@@ -72,7 +72,7 @@ define_lazy_span_item! {
     }
 }
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyTypeBoundSpan,
     ast::TypeBound,
     @node {

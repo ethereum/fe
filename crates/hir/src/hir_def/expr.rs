@@ -1,6 +1,6 @@
 use cranelift_entity::entity_impl;
 
-use super::{Body, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
+use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -13,10 +13,10 @@ pub enum Expr {
     Bin(ExprId, ExprId, Partial<BinOp>),
     Un(ExprId, Partial<UnOp>),
     /// The first `ExprId` is the callee, the second is the arguments.
-    Call(ExprId, Vec<CallArg>),
+    Call(ExprId, GenericArgListId, Vec<CallArg>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
-    MethodCall(ExprId, Partial<IdentId>, Vec<CallArg>),
+    MethodCall(ExprId, Partial<IdentId>, GenericArgListId, Vec<CallArg>),
     Path(Partial<PathId>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
