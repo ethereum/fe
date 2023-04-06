@@ -81,15 +81,17 @@ struct PatRoot {
 }
 
 impl ChainRoot for PatRoot {
-    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
+    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, Option<SyntaxNode>) {
         let body_ast = db.body_ast(self.body);
         let file = body_ast.file;
         let source_map = db.body_source_map(self.body);
         let pat_source = source_map.pat_map.node_to_source(self.pat);
-        let ptr = pat_source.syntax_ptr().unwrap();
+        let Some(ptr) = pat_source.syntax_ptr() else {
+            return (file, None);
+        };
 
         let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
         let node = ptr.to_node(&root_node);
-        (file, node)
+        (file, node.into())
     }
 }
