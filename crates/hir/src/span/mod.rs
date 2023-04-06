@@ -3,7 +3,7 @@ use parser::{
     TextRange,
 };
 
-use common::{diagnostics::Span, InputFile};
+use common::InputFile;
 
 use self::db::SpannedHirDb;
 
@@ -132,10 +132,27 @@ impl AugAssignDesugared {
     }
 }
 
-/// The trait provides a way to extract [`Span`] from types which don't have a
-/// span information directly.
+/// The trait provides a way to extract [`EvaluatedSpan`] from types which don't
+/// have a span information directly, but can be evaluated from the database
+/// lazily.
 pub trait LazySpan {
-    fn span(&self, db: &dyn SpannedHirDb) -> Span;
+    fn eval(&self, db: &dyn SpannedHirDb) -> EvaluatedSpan;
+}
+
+/// This struct represents a result of [`LazySpan::span`] method.
+/// It contains the file and the text range.
+///
+/// `range` is an optional field because some HIR nodes doesn't have a span when
+/// they are syntactically invalid.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EvaluatedSpan {
+    pub file: InputFile,
+    pub range: Option<TextRange>,
+}
+impl EvaluatedSpan {
+    pub fn new(file: InputFile, range: Option<TextRange>) -> Self {
+        Self { file, range }
+    }
 }
 
 use transition::define_lazy_span_item;
