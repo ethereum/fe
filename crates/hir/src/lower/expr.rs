@@ -1,7 +1,7 @@
 use parser::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{expr::*, Body, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
+    hir_def::{expr::*, Body, GenericArgListId, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
     span::LocalOrigin,
 };
 
@@ -43,6 +43,8 @@ impl Expr {
 
             ast::ExprKind::Call(call) => {
                 let callee = Self::push_to_body_opt(ctxt, call.callee());
+                let generic_args =
+                    GenericArgListId::lower_ast_opt(ctxt.f_ctxt, call.generic_args());
                 let args = call
                     .args()
                     .map(|args| {
@@ -51,13 +53,15 @@ impl Expr {
                             .collect()
                     })
                     .unwrap_or_default();
-                Self::Call(callee, args)
+                Self::Call(callee, generic_args, args)
             }
 
             ast::ExprKind::MethodCall(method_call) => {
                 let receiver = Self::push_to_body_opt(ctxt, method_call.receiver());
                 let method_name =
                     IdentId::lower_token_partial(ctxt.f_ctxt, method_call.method_name());
+                let generic_args =
+                    GenericArgListId::lower_ast_opt(ctxt.f_ctxt, method_call.generic_args());
                 let args = method_call
                     .args()
                     .map(|args| {
@@ -66,7 +70,7 @@ impl Expr {
                             .collect()
                     })
                     .unwrap_or_default();
-                Self::MethodCall(receiver, method_name, args)
+                Self::MethodCall(receiver, method_name, generic_args, args)
             }
 
             ast::ExprKind::Path(path) => {

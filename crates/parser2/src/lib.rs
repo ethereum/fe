@@ -5,7 +5,7 @@ pub mod syntax_kind;
 pub mod syntax_node;
 
 pub use syntax_kind::SyntaxKind;
-pub use syntax_node::{FeLang, GreenNode, SyntaxNode, SyntaxToken, TextRange};
+pub use syntax_node::{FeLang, GreenNode, NodeOrToken, SyntaxNode, SyntaxToken, TextRange};
 
 use parser::RootScope;
 

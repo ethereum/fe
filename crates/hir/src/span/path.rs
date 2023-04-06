@@ -1,8 +1,8 @@
 use parser::ast;
 
-use super::define_lazy_span_item;
+use super::define_lazy_span_node;
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyPathSpan,
     ast::Path,
     @idx {
@@ -10,4 +10,4 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(LazyPathSegmentSpan);
+define_lazy_span_node!(LazyPathSegmentSpan);

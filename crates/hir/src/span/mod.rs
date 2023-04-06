@@ -9,6 +9,7 @@ use self::db::SpannedHirDb;
 
 pub mod attr;
 pub mod db;
+pub mod expr;
 pub mod item;
 pub mod params;
 pub mod pat;
@@ -155,5 +156,5 @@ impl EvaluatedSpan {
     }
 }
 
-use transition::define_lazy_span_item;
-define_lazy_span_item!(LazyTokenSpan);
+use transition::define_lazy_span_node;
+define_lazy_span_node!(LazySpanAtom);

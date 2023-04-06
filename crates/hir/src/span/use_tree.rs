@@ -1,8 +1,8 @@
 use parser::ast;
 
-use super::define_lazy_span_item;
+use super::define_lazy_span_node;
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyUseTreeSpan,
     ast::UseTree,
     @node {
@@ -12,7 +12,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyUsePathSpan,
     ast::UsePath,
     @idx {
@@ -21,9 +21,9 @@ define_lazy_span_item!(
 
 );
 
-define_lazy_span_item!(LazyUsePathSegmentSpan);
+define_lazy_span_node!(LazyUsePathSegmentSpan);
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazySubUseTreeSpan,
     ast::UseTreeList,
     @idx {
@@ -31,4 +31,4 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(LazyUseTreeAliasSpan);
+define_lazy_span_node!(LazyUseTreeAliasSpan);

@@ -9,11 +9,11 @@ use crate::{
 
 use super::{
     db::SpannedHirDb,
-    define_lazy_span_item,
+    define_lazy_span_node,
     transition::{ChainRoot, SpanTransitionChain},
 };
 
-define_lazy_span_item!(LazyPatSpan, ast::Pat,);
+define_lazy_span_node!(LazyPatSpan, ast::Pat,);
 impl LazyPatSpan {
     pub fn new(pat: PatId, body: Body) -> Self {
         let root = PatRoot { pat, body };
@@ -33,7 +33,7 @@ impl LazyPatSpan {
     }
 }
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyPathPatSpan,
     ast::PathPat,
     @node {
@@ -41,7 +41,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyPathTuplePatSpan,
     ast::PathTuplePat,
     @node {
@@ -49,7 +49,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyRecordPatSpan,
     ast::RecordPat,
     @node {
@@ -58,7 +58,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyRecordPatFieldListSpan,
     ast::RecordPatFieldList,
     @idx {
@@ -66,7 +66,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyRecordPatFieldSpan,
     ast::RecordPatField,
     @token {

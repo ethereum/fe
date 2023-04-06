@@ -7,15 +7,15 @@ use crate::hir_def::{
 
 use super::{
     attr::LazyAttrListSpan,
-    define_lazy_span_item,
+    define_lazy_span_node,
     params::{LazyFnParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     types::{LazyPathTypeSpan, LazyTypeSpan},
     use_tree::LazyUseTreeSpan,
 };
 
-define_lazy_span_item!(LazyTopLevelModSpan, ast::Root, new(TopLevelMod),);
+define_lazy_span_node!(LazyTopLevelModSpan, ast::Root, new(TopLevelMod),);
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyModSpan,
     ast::Mod,
     new(Mod),
@@ -30,7 +30,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyFnSpan,
     ast::Fn,
     new(Func),
@@ -47,7 +47,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyExternFnSpan,
     ast::Fn,
     new(ExternFunc),
@@ -62,7 +62,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyStructSpan,
     ast::Struct,
     new(Struct),
@@ -74,11 +74,11 @@ define_lazy_span_item!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (fields, fields, LazyRecordFieldListSpan),
+        (fields, fields, LazyRecordFieldDefListSpan),
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyContractSpan,
     ast::Contract,
     new(Contract),
@@ -88,11 +88,11 @@ define_lazy_span_item!(
     @node {
         (attributes, attr_list, LazyAttrListSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (fields, fields, LazyRecordFieldListSpan),
+        (fields, fields, LazyRecordFieldDefListSpan),
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyEnumSpan,
     ast::Enum,
     new(Enum),
@@ -108,7 +108,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyTypeAliasSpan,
     ast::TypeAlias,
     new(TypeAlias),
@@ -124,7 +124,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyImplSpan,
     ast::Impl,
     new(Impl),
@@ -135,7 +135,7 @@ define_lazy_span_item!(
         (target_ty, ty, LazyTypeSpan),
     }
 );
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyTraitSpan,
     ast::Trait,
     new(Trait),
@@ -150,7 +150,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyImplTraitSpan,
     ast::ImplTrait,
     new(ImplTrait),
@@ -163,7 +163,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyConstSpan,
     ast::Const,
     new(Const),
@@ -176,7 +176,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyUseSpan,
     ast::Use,
     new(Use),
@@ -186,18 +186,18 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(LazyBodySpan, ast::Expr, new(Body),);
+define_lazy_span_node!(LazyBodySpan, ast::Expr, new(Body),);
 
-define_lazy_span_item!(
-    LazyRecordFieldListSpan,
-    ast::RecordFieldList,
+define_lazy_span_node!(
+    LazyRecordFieldDefListSpan,
+    ast::RecordFieldDefList,
     @idx {
-        (field, LazyRecordFieldListSpan),
+        (field, LazyRecordFieldDefSpan),
     }
 );
 
-define_lazy_span_item!(
-    LazyRecordFieldSpan,
+define_lazy_span_node!(
+    LazyRecordFieldDefSpan,
     ast::RecordFieldDef,
     @token {
         (pub_kw, pub_kw),
@@ -208,7 +208,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyEnumVariantListSpan,
     ast::EnumVariantDefList,
     @idx {
@@ -216,7 +216,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyEnumVariantSpan,
     ast::EnumVariantDef,
     @token {
@@ -227,7 +227,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyItemModifierSpan,
     ast::ItemModifier,
     @token {

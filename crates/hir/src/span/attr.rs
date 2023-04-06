@@ -1,8 +1,8 @@
 use parser::ast::{self, prelude::*};
 
-use super::define_lazy_span_item;
+use super::define_lazy_span_node;
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyAttrListSpan,
     ast::AttrList,
     @idx {
@@ -20,8 +20,8 @@ impl LazyAttrListSpan {
     }
 }
 
-define_lazy_span_item!(LazyAttrSpan);
-define_lazy_span_item!(
+define_lazy_span_node!(LazyAttrSpan);
+define_lazy_span_node!(
     LazyNormalAttrSpan,
     ast::NormalAttr,
     @token {
@@ -32,7 +32,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyAttrArgListSpan,
     ast::AttrArgList,
     @idx {
@@ -40,7 +40,7 @@ define_lazy_span_item!(
     }
 );
 
-define_lazy_span_item!(
+define_lazy_span_node!(
     LazyAttrArgSpan,
     ast::AttrArg,
     @token {
