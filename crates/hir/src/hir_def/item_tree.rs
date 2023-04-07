@@ -40,13 +40,8 @@ impl ItemTree {
     }
 
     /// Returns the children of the item.
-    pub fn children(&self, item: ItemKind) -> impl Iterator<Item = ItemKind> + '_ {
-        self.item_tree[&item].children.iter().copied()
-    }
-
-    /// Returns the number of items in the tree.
-    pub fn len(&self) -> usize {
-        self.item_tree.len()
+    pub fn children(&self, item: impl Into<ItemKind>) -> impl Iterator<Item = ItemKind> + '_ {
+        self.item_tree[&item.into()].children.iter().copied()
     }
 }
 
@@ -93,9 +88,9 @@ mod tests {
 
         let (_, item_tree) = db.parse_source(text);
         let top_mod = item_tree.top_mod;
-        assert_eq!(item_tree.len(), 8);
+        assert_eq!(item_tree.dfs().count(), 8);
 
-        let inner_items: Vec<_> = item_tree.children(top_mod.into()).collect();
+        let inner_items: Vec<_> = item_tree.children(top_mod).collect();
         assert!(matches!(inner_items[0], ItemKind::Mod(_)));
         assert!(matches!(inner_items[1], ItemKind::Mod(_)));
         assert!(matches!(inner_items[2], ItemKind::Enum(_)));

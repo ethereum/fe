@@ -27,8 +27,14 @@ define_lazy_span_node!(
     LazySubUseTreeSpan,
     ast::UseTreeList,
     @idx {
-        (segment, LazyUseTreeSpan),
+        (tree, LazyUseTreeSpan),
     }
 );
 
-define_lazy_span_node!(LazyUseTreeAliasSpan);
+define_lazy_span_node!(
+    LazyUseTreeAliasSpan,
+    ast::UseTreeAlias,
+    @token {
+        (alias_name, ident),
+    }
+);

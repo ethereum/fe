@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use common::InputFile;
+use common::{diagnostics::Span, InputFile};
 use parser::{syntax_node::NodeOrToken, SyntaxNode};
 use smallvec::SmallVec;
 
@@ -12,7 +12,7 @@ use crate::{
     parse_file,
 };
 
-use super::{db::SpannedHirDb, EvaluatedSpan, LazySpan};
+use super::{db::SpannedHirDb, LazySpan};
 
 type TransitionFn = Arc<dyn Fn(SyntaxNode) -> Option<NodeOrToken>>;
 
@@ -39,45 +39,40 @@ impl SpanTransitionChain {
 }
 
 impl LazySpan for SpanTransitionChain {
-    fn eval(&self, db: &dyn SpannedHirDb) -> EvaluatedSpan {
-        let (file, node) = self.root.root(db);
-        let Some(mut node) = node else {
-                return EvaluatedSpan::new(file, None);
-        };
+    fn resolve(&self, db: &dyn SpannedHirDb) -> Span {
+        let (file, mut node) = self.root.root(db);
 
         for transition in &self.chain {
             node = match transition(node.clone()) {
                 Some(NodeOrToken::Node(node)) => node,
                 Some(NodeOrToken::Token(token)) => {
-                    return EvaluatedSpan::new(file, token.text_range().into());
+                    return Span::new(file, token.text_range());
                 }
                 None => {
-                    return EvaluatedSpan::new(file, None);
+                    break;
                 }
             };
         }
 
-        EvaluatedSpan::new(file, node.text_range().into())
+        Span::new(file, node.text_range())
     }
 }
 
 pub(super) trait ChainRoot {
-    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, Option<SyntaxNode>);
+    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode);
 }
 
 macro_rules! impl_chain_root {
     ($(($ty:ty, $fn:ident),)*) => {
         $(
         impl ChainRoot for $ty {
-            fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, Option<SyntaxNode>) {
+            fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
                 let ast = db.$fn(*self);
                 let file = ast.file;
-                let Some(ptr) = ast.syntax_ptr() else {
-                    return (file, None);
-                };
+                let ptr = ast.syntax_ptr().unwrap();
                 let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
                 let node = ptr.to_node(&root_node);
-                (file, node.into())
+                (file, node)
             }
         })*
     };
@@ -165,8 +160,8 @@ macro_rules! define_lazy_span_node {
 
 
         impl crate::span::LazySpan for $name {
-            fn eval(&self, db: &dyn crate::span::SpannedHirDb) -> crate::span::EvaluatedSpan{
-                self.0.eval(db)
+            fn resolve(&self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
+                self.0.resolve(db)
             }
         }
     };

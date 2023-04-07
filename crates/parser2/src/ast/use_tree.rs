@@ -90,6 +90,10 @@ impl UseTreeAlias {
     pub fn underscore(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Underscore)
     }
+
+    pub fn alias_syntax(&self) -> Option<SyntaxToken> {
+        self.ident().or_else(|| self.underscore())
+    }
 }
 
 /// A path segment in a use tree.
