@@ -53,12 +53,12 @@ pub fn lower_monomorphized_func_signature(
     for param in analyzer_signature.params.iter() {
         let source = arg_source(db, func, &param.name);
 
-        let param_type = if let Type::Generic(generic) = param.typ.clone().unwrap().typ(db.upcast())
-        {
-            *resolved_generics.get(&generic.name).unwrap()
-        } else {
-            param.typ.clone().unwrap()
-        };
+        let param_type =
+            if let Type::Generic(generic) = param.typ.clone().unwrap().deref_typ(db.upcast()) {
+                *resolved_generics.get(&generic.name).unwrap()
+            } else {
+                param.typ.clone().unwrap()
+            };
 
         params.push(make_param(db, param.clone().name, param_type, source))
     }
@@ -588,7 +588,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn lower_analyzer_type(&self, analyzer_ty: analyzer_types::TypeId) -> TypeId {
         // If the analyzer type is generic we first need to resolve it to its concrete
         // type before lowering to a MIR type
-        if let analyzer_types::Type::Generic(generic) = analyzer_ty.typ(self.db.upcast()) {
+        if let analyzer_types::Type::Generic(generic) = analyzer_ty.deref_typ(self.db.upcast()) {
             let resolved_type = self
                 .func
                 .signature(self.db)
@@ -925,7 +925,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     .expect("invalid parameter")
             }))
             .filter_map(|(param, typ)| {
-                if let Type::Generic(generic) = param.typ.clone().unwrap().typ(self.db.upcast()) {
+                if let Type::Generic(generic) =
+                    param.typ.clone().unwrap().deref_typ(self.db.upcast())
+                {
                     Some((generic.name, typ))
                 } else {
                     None
