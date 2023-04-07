@@ -14,6 +14,7 @@ pub mod item;
 pub mod params;
 pub mod pat;
 pub mod path;
+pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
