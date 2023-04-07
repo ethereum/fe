@@ -356,7 +356,8 @@ impl Use {
         let id = TrackedItemId::Use(tree).join(parent_id);
 
         let origin = HirOrigin::raw(ctxt.file, &ast);
-        Self::new(ctxt.db, id, tree, origin)
+        let use_ = Self::new(ctxt.db, id, tree, origin);
+        ctxt.leave_scope(use_)
     }
 }
 
@@ -366,6 +367,8 @@ impl ExternFunc {
         parent: TrackedItemId,
         ast: ast::Fn,
     ) -> Self {
+        ctxt.enter_scope();
+
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Extern.join(parent);
 
@@ -378,9 +381,10 @@ impl ExternFunc {
         let modifier = ItemModifier::lower_ast(ast.modifier());
         let origin = HirOrigin::raw(ctxt.file, &ast);
 
-        Self::new(
+        let extern_func = Self::new(
             ctxt.db, id, name, attributes, params, ret_ty, modifier, origin,
-        )
+        );
+        ctxt.leave_scope(extern_func)
     }
 }
 
