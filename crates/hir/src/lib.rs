@@ -38,6 +38,7 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::UseTreeId,
+    /// Tracked functions
     hir_def::ingot_module_tree,
     hir_def::module_item_tree,
     parse_file,
@@ -53,3 +54,56 @@ pub(crate) fn parse_file(db: &dyn HirDb, file: InputFile) -> GreenNode {
 
 pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
+
+#[cfg(test)]
+mod test_db {
+    use std::collections::BTreeSet;
+
+    use common::{
+        input::{IngotKind, Version},
+        InputFile, InputIngot, Upcast,
+    };
+
+    use crate::{
+        hir_def::{module_item_tree, ItemTree},
+        span::db::SpannedHirDb,
+    };
+
+    #[derive(Default)]
+    #[salsa::db(common::Jar, crate::Jar)]
+    pub(crate) struct TestDb {
+        storage: salsa::Storage<Self>,
+    }
+    impl SpannedHirDb for TestDb {}
+    impl salsa::Database for TestDb {
+        fn salsa_event(&self, _: salsa::Event) {}
+    }
+    impl Upcast<dyn common::InputDb> for TestDb {
+        fn upcast(&self) -> &(dyn common::InputDb + 'static) {
+            self
+        }
+    }
+    impl Upcast<dyn crate::HirDb> for TestDb {
+        fn upcast(&self) -> &(dyn crate::HirDb + 'static) {
+            self
+        }
+    }
+
+    impl TestDb {
+        pub fn parse_source(&mut self, text: &str) -> &ItemTree {
+            let file = self.standalone_file(text);
+            module_item_tree(self, file)
+        }
+
+        fn standalone_file(&mut self, text: &str) -> InputFile {
+            let path = "hir_test";
+            let kind = IngotKind::StandAlone;
+            let version = Version::new(0, 0, 1);
+            let ingot = InputIngot::new(self, path, kind, version, BTreeSet::default());
+            let file = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
+            ingot.set_root_file(self, file);
+            ingot.set_files(self).to([file].into());
+            file
+        }
+    }
+}

@@ -7,9 +7,10 @@ use crate::InputDb;
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
-#[salsa::input]
+#[salsa::input(constructor = __new_impl)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
+    /// The all files in the ingot should be located under this directory.
     #[return_ref]
     pub path: Utf8PathBuf,
 
@@ -20,8 +21,6 @@ pub struct InputIngot {
     #[return_ref]
     pub version: Version,
 
-    pub root_file: InputFile,
-
     /// A list of ingots which the current ingot depends on.
     #[return_ref]
     pub dependency: BTreeSet<IngotDependency>,
@@ -29,6 +28,43 @@ pub struct InputIngot {
     /// A list of files which the current ingot contains.
     #[return_ref]
     pub files: BTreeSet<InputFile>,
+
+    #[set(__set_root_file_impl)]
+    #[get(__get_root_file_impl)]
+    root_file: Option<InputFile>,
+}
+impl InputIngot {
+    pub fn new(
+        db: &mut dyn InputDb,
+        path: &str,
+        kind: IngotKind,
+        version: Version,
+        dependency: BTreeSet<IngotDependency>,
+    ) -> InputIngot {
+        let path = Utf8PathBuf::from(path);
+        let root_file = None;
+        Self::__new_impl(
+            db,
+            path,
+            kind,
+            version,
+            dependency,
+            BTreeSet::default(),
+            root_file,
+        )
+    }
+
+    /// Set the root file of the ingot.
+    /// The root file must be set before the ingot is used.
+    pub fn set_root_file(self, db: &mut dyn InputDb, file: InputFile) {
+        self.__set_root_file_impl(db).to(Some(file));
+    }
+
+    /// Returns the root file of the ingot.
+    /// Panics if the root file is not set.
+    pub fn root_file(&self, db: &dyn InputDb) -> InputFile {
+        self.__get_root_file_impl(db).unwrap()
+    }
 }
 
 #[salsa::input]
