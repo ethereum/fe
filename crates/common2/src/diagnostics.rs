@@ -11,10 +11,34 @@ pub struct CompleteDiagnostic {
     pub error_code: GlobalErrorCode,
 }
 
+impl CompleteDiagnostic {
+    pub fn new(
+        severity: Severity,
+        message: String,
+        span: Span,
+        sub_diagnostics: Vec<SubDiagnostic>,
+        error_code: GlobalErrorCode,
+    ) -> Self {
+        Self {
+            severity,
+            message,
+            span,
+            sub_diagnostics,
+            error_code,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GlobalErrorCode {
     pub pass: AnalysisPass,
     pub local_code: u16,
+}
+
+impl GlobalErrorCode {
+    pub fn new(pass: AnalysisPass, local_code: u16) -> Self {
+        Self { pass, local_code }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
