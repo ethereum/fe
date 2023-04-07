@@ -65,7 +65,7 @@ mod test_db {
     };
 
     use crate::{
-        hir_def::{module_item_tree, ItemTree},
+        hir_def::{module_item_tree, ItemKind, ItemTree},
         span::{db::SpannedHirDb, LazySpan},
     };
 
@@ -74,10 +74,21 @@ mod test_db {
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
+
     impl SpannedHirDb for TestDb {}
+
     impl salsa::Database for TestDb {
         fn salsa_event(&self, _: salsa::Event) {}
     }
+
+    impl salsa::ParallelDatabase for TestDb {
+        fn snapshot(&self) -> salsa::Snapshot<Self> {
+            salsa::Snapshot::new(TestDb {
+                storage: salsa::Storage::default(),
+            })
+        }
+    }
+
     impl Upcast<dyn common::InputDb> for TestDb {
         fn upcast(&self) -> &(dyn common::InputDb + 'static) {
             self
@@ -95,10 +106,24 @@ mod test_db {
             (file, module_item_tree(self, file))
         }
 
-        pub fn text_at(&self, file: InputFile, span: impl LazySpan) -> &str {
-            let range = span.resolve(self).range.unwrap();
+        /// Parses the given source text and returns the first inner item in the
+        /// file.
+        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> (InputFile, T)
+        where
+            ItemKind: TryInto<T, Error = &'static str>,
+        {
+            let (file, tree) = self.parse_source(text);
+            let top_mod = tree.top_mod;
+            (
+                file,
+                tree.children(top_mod).next().unwrap().try_into().unwrap(),
+            )
+        }
+
+        pub fn text_at(&self, file: InputFile, span: &impl LazySpan) -> &str {
+            let range = span.resolve(self).range;
             let text = file.text(self.upcast());
-            std::str::from_utf8(&text.as_bytes()[range.start().into()..range.end().into()]).unwrap()
+            &text[range.start().into()..range.end().into()]
         }
 
         fn standalone_file(&mut self, text: &str) -> InputFile {

@@ -101,6 +101,15 @@ pub enum GenericParamKind {
     Const(ConstGenericParam),
 }
 
+impl GenericParamKind {
+    pub fn syntax(&self) -> &rowan::SyntaxNode<FeLang> {
+        match self {
+            GenericParamKind::Type(param) => param.syntax(),
+            GenericParamKind::Const(param) => param.syntax(),
+        }
+    }
+}
+
 ast_node! {
     /// `(label1: arg1, arg2, ..)`
     pub struct CallArgList,
@@ -154,6 +163,10 @@ impl ConstGenericParam {
     /// Returns the name of the const generic parameter.
     pub fn name(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
+    }
+
+    pub fn const_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::ConstKw)
     }
 
     /// Returns the type of the const generic parameter.
@@ -219,6 +232,11 @@ ast_node! {
     pub struct WhereClause,
     SK::WhereClause,
     IntoIterator<Item=WherePredicate>,
+}
+impl WhereClause {
+    pub fn where_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::WhereKw)
+    }
 }
 
 ast_node! {

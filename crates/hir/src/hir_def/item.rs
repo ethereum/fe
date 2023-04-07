@@ -10,8 +10,8 @@ use crate::{
     span::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyExternFnSpan, LazyFnSpan,
-            LazyImplSpan, LazyImplTraitSpan, LazyStructSpan, LazyTopLevelModSpan, LazyTraitSpan,
-            LazyTypeAliasSpan, LazyUseSpan,
+            LazyImplSpan, LazyImplTraitSpan, LazyModSpan, LazyStructSpan, LazyTopLevelModSpan,
+            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
         },
         HirOrigin,
     },
@@ -21,7 +21,18 @@ use super::{
     AttrListId, Body, FnParamListId, GenericParamListId, IdentId, Partial, TypeId, WhereClauseId,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, PartialOrd, Ord)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    derive_more::From,
+    derive_more::TryInto,
+)]
 pub enum ItemKind {
     TopMod(TopLevelMod),
     Mod(Mod),
@@ -66,6 +77,11 @@ pub struct Mod {
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Mod>,
+}
+impl Mod {
+    pub fn lazy_span(self) -> LazyModSpan {
+        LazyModSpan::new(self)
+    }
 }
 
 #[salsa::tracked]
