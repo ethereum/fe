@@ -66,7 +66,7 @@ mod test_db {
 
     use crate::{
         hir_def::{module_item_tree, ItemTree},
-        span::db::SpannedHirDb,
+        span::{db::SpannedHirDb, LazySpan},
     };
 
     #[derive(Default)]
@@ -90,9 +90,15 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&mut self, text: &str) -> &ItemTree {
+        pub fn parse_source(&mut self, text: &str) -> (InputFile, &ItemTree) {
             let file = self.standalone_file(text);
-            module_item_tree(self, file)
+            (file, module_item_tree(self, file))
+        }
+
+        pub fn text_at(&self, file: InputFile, span: impl LazySpan) -> &str {
+            let range = span.resolve(self).range.unwrap();
+            let text = file.text(self.upcast());
+            std::str::from_utf8(&text.as_bytes()[range.start().into()..range.end().into()]).unwrap()
         }
 
         fn standalone_file(&mut self, text: &str) -> InputFile {

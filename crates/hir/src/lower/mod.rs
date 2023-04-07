@@ -7,7 +7,7 @@ use parser::{ast, SyntaxToken};
 
 use crate::{
     hir_def::{
-        IdentId, IntegerId, ItemKind, ItemTreeNode, LitKind, ModuleItemTree, Partial, StringId,
+        IdentId, IntegerId, ItemKind, ItemTree, ItemTreeNode, LitKind, Partial, StringId,
         TopLevelMod,
     },
     HirDb,
@@ -29,7 +29,7 @@ pub(super) fn lower_file(
     file: InputFile,
     top_mod_name: IdentId,
     root_node: ast::Root,
-) -> ModuleItemTree {
+) -> ItemTree {
     let mut ctxt = FileLowerCtxt::new(db, file);
     let top_mod = TopLevelMod::lower_ast(&mut ctxt, top_mod_name, root_node);
     ctxt.build(top_mod)
@@ -52,8 +52,8 @@ impl<'db> FileLowerCtxt<'db> {
         }
     }
 
-    pub(super) fn build(self, top_mod: TopLevelMod) -> ModuleItemTree {
-        ModuleItemTree {
+    pub(super) fn build(self, top_mod: TopLevelMod) -> ItemTree {
+        ItemTree {
             file: self.file,
             top_mod,
             item_tree: self.item_tree,
@@ -86,7 +86,9 @@ impl<'db> FileLowerCtxt<'db> {
             },
         );
 
-        self.scope_stack.last_mut().unwrap().insert(item.into());
+        if !matches!(item_kind, ItemKind::TopMod(_)) {
+            self.scope_stack.last_mut().unwrap().insert(item.into());
+        }
         item
     }
 }
