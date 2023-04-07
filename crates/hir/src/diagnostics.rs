@@ -11,7 +11,7 @@ use crate::span::db::SpannedHirDb;
 /// [`DiagnosticVoucher`] which defines the conversion into
 /// [`CompleteDiagnostic`].
 ///
-/// All types that implements `DiagnosticVoucher` must NOT have a span
+/// All types that implement `DiagnosticVoucher` must NOT have a span
 /// information which invalidates cache in salsa-db. Instead of it, the all
 /// information is given by [`SpannedHirDB`] to allow evaluating span lazily.
 ///
@@ -19,9 +19,9 @@ use crate::span::db::SpannedHirDb;
 /// lazily to avoid invalidating cache in salsa-db.
 ///
 /// To obtain a span from HIR nodes in a lazy manner, it's recommended to use
-/// `[LazySpan]`(crate::span::LazySpan) and types that implements `LazySpan`.
+/// `[LazySpan]`(crate::span::LazySpan) and types that implement `LazySpan`.
 pub trait DiagnosticVoucher: Send {
-    fn pass(&self) -> GlobalErrorCode;
+    fn error_code(&self) -> GlobalErrorCode;
     /// Consumes voucher and makes a [`CompleteDiagnostic`].
     fn to_complete(self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;
 }

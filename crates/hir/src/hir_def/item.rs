@@ -47,7 +47,8 @@ pub enum ItemKind {
     ImplTrait(ImplTrait),
     Const(Const),
     Use(Use),
-    /// Body is not an `Item`, but this makes it easier to analyze items.
+    /// Body is not an `Item`, but this makes it easier for analyzers to handle
+    /// it.
     Body(Body),
 }
 

@@ -13,6 +13,8 @@ use crate::{
     HirDb,
 };
 
+pub(crate) mod parse;
+
 mod attr;
 mod body;
 mod expr;

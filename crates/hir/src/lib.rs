@@ -1,5 +1,7 @@
-use common::{InputDb, InputFile, Upcast};
-use parser::GreenNode;
+use common::{InputDb, Upcast};
+pub use lower::parse::ParseDiagnostic;
+
+use lower::parse::{parse_file, ParseDiagnosticAccumulator};
 
 pub mod diagnostics;
 pub mod hir_def;
@@ -38,21 +40,24 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::UseTreeId,
+    /// Accumulated diagnostics.
+    ParseDiagnosticAccumulator,
     /// Tracked functions
     hir_def::ingot_module_tree,
     hir_def::module_item_tree,
     parse_file,
 );
 
-#[salsa::tracked]
-pub(crate) fn parse_file(db: &dyn HirDb, file: InputFile) -> GreenNode {
-    let text = file.text(db.upcast());
-    // TODO: Register errors when we define the diagnostics API.
-    let (node, _errs) = parser::parse_source_file(text);
-    node
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {
+    /// Returns the diagnostics produced by parsing the given file.
+    fn diagnostics_for_parse(&self, file: common::InputFile) -> Vec<ParseDiagnostic>
+    where
+        Self: Sized,
+    {
+        parse_file(self, file);
+        parse_file::accumulated::<ParseDiagnosticAccumulator>(self, file)
+    }
 }
-
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 
 #[cfg(test)]
