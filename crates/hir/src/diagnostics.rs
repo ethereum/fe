@@ -5,7 +5,7 @@
 
 use common::diagnostics::{CompleteDiagnostic, GlobalErrorCode};
 
-use crate::span::db::SpannedHirDb;
+use crate::SpannedHirDb;
 
 /// All diagnostics accumulated in salsa-db should implement
 /// [`DiagnosticVoucher`] which defines the conversion into

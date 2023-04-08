@@ -5,7 +5,7 @@ use crate::{
         Body, BodySourceMap, Expr, ExprId, NodeStore, Partial, Pat, PatId, Stmt, StmtId,
         TrackedBodyId, TrackedItemId,
     },
-    span::{HirOrigin, LocalOrigin},
+    span::HirOrigin,
 };
 
 use super::FileLowerCtxt;
@@ -52,14 +52,14 @@ pub(super) struct BodyCtxt<'ctxt, 'db> {
 }
 
 impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
-    pub(super) fn push_expr(&mut self, expr: Expr, origin: LocalOrigin<ast::Expr>) -> ExprId {
+    pub(super) fn push_expr(&mut self, expr: Expr, origin: HirOrigin<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Partial::Present(expr));
         self.source_map.expr_map.insert(expr_id, origin);
 
         expr_id
     }
 
-    pub(super) fn push_invalid_expr(&mut self, origin: LocalOrigin<ast::Expr>) -> ExprId {
+    pub(super) fn push_invalid_expr(&mut self, origin: HirOrigin<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Partial::Absent);
         self.source_map.expr_map.insert(expr_id, origin);
 
@@ -68,18 +68,18 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
 
     pub(super) fn push_missing_expr(&mut self) -> ExprId {
         let expr_id = self.exprs.push(Partial::Absent);
-        self.source_map.expr_map.insert(expr_id, LocalOrigin::None);
+        self.source_map.expr_map.insert(expr_id, HirOrigin::None);
         expr_id
     }
 
-    pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: LocalOrigin<ast::Stmt>) -> StmtId {
+    pub(super) fn push_stmt(&mut self, stmt: Stmt, origin: HirOrigin<ast::Stmt>) -> StmtId {
         let stmt_id = self.stmts.push(Partial::Present(stmt));
         self.source_map.stmt_map.insert(stmt_id, origin);
 
         stmt_id
     }
 
-    pub(super) fn push_pat(&mut self, pat: Pat, origin: LocalOrigin<ast::Pat>) -> PatId {
+    pub(super) fn push_pat(&mut self, pat: Pat, origin: HirOrigin<ast::Pat>) -> PatId {
         let pat_id = self.pats.push(Partial::Present(pat));
         self.source_map.pat_map.insert(pat_id, origin);
         pat_id
@@ -87,7 +87,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
 
     pub(super) fn push_missing_pat(&mut self) -> PatId {
         let pat_id = self.pats.push(Partial::Absent);
-        self.source_map.pat_map.insert(pat_id, LocalOrigin::None);
+        self.source_map.pat_map.insert(pat_id, HirOrigin::None);
         pat_id
     }
 
@@ -104,13 +104,14 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     }
 
     fn build(self, ast: &ast::Expr) -> Body {
-        let origin = HirOrigin::raw(self.f_ctxt.file, ast);
+        let origin = HirOrigin::raw(ast);
         let body = Body::new(
             self.f_ctxt.db,
             self.bid,
             self.stmts,
             self.exprs,
             self.pats,
+            self.f_ctxt.top_mod,
             self.source_map,
             origin,
         );

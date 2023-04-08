@@ -3,14 +3,22 @@ use std::collections::{BTreeMap, BTreeSet};
 use common::InputFile;
 use num_bigint::BigUint;
 use num_traits::Num;
-use parser::{ast, SyntaxToken};
+use parser::{
+    ast::{self, prelude::*},
+    GreenNode, SyntaxNode, SyntaxToken,
+};
 
 use crate::{
     hir_def::{
         IdentId, IntegerId, ItemKind, ItemTree, ItemTreeNode, LitKind, Partial, StringId,
-        TopLevelMod,
+        TopLevelMod, TrackedItemId,
     },
-    HirDb,
+    HirDb, LowerHirDb, ParseDiagnostic,
+};
+
+use self::{
+    item::lower_module_items,
+    parse::{parse_file_impl, ParseDiagnosticAccumulator},
 };
 
 pub(crate) mod parse;
@@ -26,38 +34,87 @@ mod stmt;
 mod types;
 mod use_tree;
 
-pub(super) fn lower_file(
-    db: &dyn HirDb,
-    file: InputFile,
-    top_mod_name: IdentId,
-    root_node: ast::Root,
-) -> ItemTree {
-    let mut ctxt = FileLowerCtxt::new(db, file);
-    let top_mod = TopLevelMod::lower_ast(&mut ctxt, top_mod_name, root_node);
-    ctxt.build(top_mod)
+/// Maps the given file to a top-level module.
+/// This function just maps the file to a top-level module, and doesn't perform
+/// any parsing or lowering.
+/// To perform the actual lowering, use `module_item_tree` function.
+pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
+    map_file_to_mod_impl(db.upcast(), file)
+}
+
+/// Returns the item tree of the given top-level module.
+pub fn module_item_tree(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ItemTree {
+    module_item_tree_impl(db.upcast(), top_mod)
+}
+
+/// Returns the root node of the given top-level module.
+/// This function also returns the diagnostics produced by parsing the file.
+pub fn parse_file_with_diag(
+    db: &dyn LowerHirDb,
+    top_mod: TopLevelMod,
+) -> (GreenNode, Vec<ParseDiagnostic>) {
+    (
+        parse_file_impl(db.upcast(), top_mod),
+        parse_file_impl::accumulated::<ParseDiagnosticAccumulator>(db.upcast(), top_mod),
+    )
+}
+
+/// Returns the root node of the given top-level module.
+/// If diagnostics are needed, use [`parse_file_with_diag`] instead.
+pub fn parse_file(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> GreenNode {
+    parse_file_impl(db.upcast(), top_mod)
+}
+
+#[salsa::tracked]
+pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, file: InputFile) -> TopLevelMod {
+    let path = file.path(db.upcast());
+    let name = path.file_stem().unwrap();
+    let mod_name = IdentId::new(db, name.to_string());
+    let ingot = file.ingot(db.upcast());
+    TopLevelMod::new(db, mod_name, ingot, file)
+}
+
+#[salsa::tracked(return_ref)]
+pub(crate) fn module_item_tree_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ItemTree {
+    let ast = top_mod_ast(db, top_mod);
+    let mut ctxt = FileLowerCtxt::new(db, top_mod);
+
+    ctxt.enter_scope();
+    let id = TrackedItemId::TopLevelMod(top_mod.name(db));
+    if let Some(items) = ast.items() {
+        lower_module_items(&mut ctxt, id, items);
+    }
+    ctxt.leave_scope(top_mod);
+
+    ctxt.build()
+}
+
+pub(crate) fn top_mod_ast(db: &dyn HirDb, top_mod: TopLevelMod) -> ast::Root {
+    let node = SyntaxNode::new_root(parse_file_impl(db, top_mod));
+    // This cast never fails even if the file content is empty.
+    ast::Root::cast(node).unwrap()
 }
 
 pub struct FileLowerCtxt<'db> {
     db: &'db dyn HirDb,
-    file: InputFile,
     scope_stack: Vec<BTreeSet<ItemKind>>,
     item_tree: BTreeMap<ItemKind, ItemTreeNode>,
+    top_mod: TopLevelMod,
 }
 
 impl<'db> FileLowerCtxt<'db> {
-    pub(super) fn new(db: &'db dyn HirDb, file: InputFile) -> Self {
+    pub(super) fn new(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
         Self {
             db,
-            file,
             scope_stack: vec![],
             item_tree: BTreeMap::new(),
+            top_mod,
         }
     }
 
-    pub(super) fn build(self, top_mod: TopLevelMod) -> ItemTree {
+    pub(super) fn build(self) -> ItemTree {
         ItemTree {
-            file: self.file,
-            top_mod,
+            top_mod: self.top_mod,
             item_tree: self.item_tree,
         }
     }

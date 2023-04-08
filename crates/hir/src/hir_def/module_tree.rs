@@ -4,9 +4,9 @@ use camino::Utf8Path;
 use common::{InputFile, InputIngot};
 use cranelift_entity::{entity_impl, PrimaryMap};
 
-use crate::HirDb;
+use crate::{lower::map_file_to_mod_impl, HirDb};
 
-use super::IdentId;
+use super::{IdentId, TopLevelMod};
 
 /// This tree represents the structure of an ingot.
 /// Internal modules are not included in this tree, instead, they are included
@@ -56,22 +56,32 @@ use super::IdentId;
 /// In this case, the tree is actually a forest. But we don't need to care about it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngotModuleTree {
-    pub(crate) root: ToplevelModuleId,
-    pub(crate) module_tree: PrimaryMap<ToplevelModuleId, ToplevelModule>,
-    pub(crate) file_map: BTreeMap<InputFile, ToplevelModuleId>,
+    pub(crate) root: ModuleTreeNodeId,
+    pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
+    pub(crate) mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
 
     pub(crate) ingot: InputIngot,
 }
 
 impl IngotModuleTree {
-    #[inline]
-    pub fn module_name(&self, file: InputFile) -> IdentId {
-        self.module_data(file).name
+    /// Returns the tree node data of the given id.
+    pub fn tree_node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
+        &self.module_tree[id]
     }
 
-    fn module_data(&self, file: InputFile) -> &ToplevelModule {
-        let id = self.file_map[&file];
-        &self.module_tree[id]
+    /// Returns the tree node id of the given top level module.
+    pub fn tree_node(&self, top_mod: TopLevelMod) -> ModuleTreeNodeId {
+        self.mod_map[&top_mod]
+    }
+
+    /// Returns the root of the tree, which corresponds to the ingot root file.
+    pub fn root(&self) -> ModuleTreeNodeId {
+        self.root
+    }
+
+    /// Returns an iterator of all top level modules in this ingot.
+    pub fn all_modules(&self) -> impl Iterator<Item = TopLevelMod> + '_ {
+        self.mod_map.keys().copied()
     }
 }
 
@@ -79,46 +89,47 @@ impl IngotModuleTree {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
-pub fn ingot_module_tree(db: &dyn HirDb, ingot: InputIngot) -> IngotModuleTree {
+pub fn ingot_module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> IngotModuleTree {
     IngotModuleTreeBuilder::new(db, ingot).build()
 }
 
 /// A top level module that is one-to-one mapped to a file.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ToplevelModule {
-    /// A name of the module.
-    pub(crate) name: IdentId,
-    /// A file that this module is defined by.
-    pub(crate) file: InputFile,
-    /// A parent of top level module.
-    /// This is `None` if 1. the module is a root module or 2. the module is a
-    /// "floating" module.
-    pub(crate) parent: Option<ToplevelModuleId>,
+pub struct ModuleTreeNode {
+    pub top_mod: TopLevelMod,
+    /// A parent of the top level module.
+    /// This is `None` if
+    /// 1. the module is a root module or
+    /// 2. the module is a "floating" module.
+    pub parent: Option<ModuleTreeNodeId>,
     /// A list of child top level module.
-    pub(crate) children: BTreeMap<IdentId, Vec<ToplevelModuleId>>,
+    pub children: BTreeMap<IdentId, Vec<ModuleTreeNodeId>>,
 }
 
-impl ToplevelModule {
-    fn new(name: IdentId, file: InputFile) -> Self {
+impl ModuleTreeNode {
+    fn new(top_mod: TopLevelMod) -> Self {
         Self {
-            name,
-            file,
+            top_mod,
             parent: None,
             children: BTreeMap::new(),
         }
     }
+    fn name(&self, db: &dyn HirDb) -> IdentId {
+        self.top_mod.name(db)
+    }
 }
 
+/// An opaque identifier for a module tree node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct ToplevelModuleId(u32);
-entity_impl!(ToplevelModuleId);
+pub struct ModuleTreeNodeId(u32);
+entity_impl!(ModuleTreeNodeId);
 
 struct IngotModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,
     ingot: InputIngot,
-    module_tree: PrimaryMap<ToplevelModuleId, ToplevelModule>,
-    file_map: BTreeMap<InputFile, ToplevelModuleId>,
-    path_map: BTreeMap<&'db Utf8Path, ToplevelModuleId>,
+    module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
+    mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
+    path_map: BTreeMap<&'db Utf8Path, ModuleTreeNodeId>,
 }
 
 impl<'db> IngotModuleTreeBuilder<'db> {
@@ -127,7 +138,7 @@ impl<'db> IngotModuleTreeBuilder<'db> {
             db,
             ingot,
             module_tree: PrimaryMap::default(),
-            file_map: BTreeMap::default(),
+            mod_map: BTreeMap::default(),
             path_map: BTreeMap::default(),
         }
     }
@@ -136,66 +147,62 @@ impl<'db> IngotModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_file = self.ingot.root_file(self.db.upcast());
-        let root = self.file_map[&root_file];
+        let top_mod = map_file_to_mod_impl(self.db, self.ingot.root_file(self.db.upcast()));
+        let root = self.mod_map[&top_mod];
         IngotModuleTree {
             root,
             module_tree: self.module_tree,
-            file_map: self.file_map,
+            mod_map: self.mod_map,
             ingot: self.ingot,
         }
     }
 
     fn set_modules(&mut self) {
         for &file in self.ingot.files(self.db.upcast()) {
-            let name = self.module_name(file);
+            let top_mod = map_file_to_mod_impl(self.db, file);
 
-            let module_id = self.module_tree.push(ToplevelModule::new(name, file));
+            let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
             self.path_map.insert(file.path(self.db.upcast()), module_id);
-            self.file_map.insert(file, module_id);
+            self.mod_map.insert(top_mod, module_id);
         }
-    }
-
-    fn module_name(&self, file: InputFile) -> IdentId {
-        let path = file.path(self.db.upcast());
-        let name = path.file_stem().unwrap();
-        IdentId::new(self.db, name.to_string())
     }
 
     fn build_tree(&mut self) {
         let root = self.ingot.root_file(self.db.upcast());
 
-        for &file in self.ingot.files(self.db.upcast()) {
+        for &child in self.ingot.files(self.db.upcast()) {
             // Ignore the root file because it has no parent.
-            if file == root {
+            if child == root {
                 continue;
             }
 
-            let file_path = file.path(self.db.upcast());
             let root_path = root.path(self.db.upcast());
+            let root_mod = map_file_to_mod_impl(self.db, root);
+            let child_path = child.path(self.db.upcast());
+            let child_mod = map_file_to_mod_impl(self.db, child);
 
             // If the file is in the same directory as the root file, the file is a direct
             // child of the root.
-            if file_path.parent() == root_path.parent() {
-                let root_mod = self.file_map[&root];
-                let cur_mod = self.file_map[&file];
+            if child_path.parent() == root_path.parent() {
+                let root_mod = self.mod_map[&root_mod];
+                let cur_mod = self.mod_map[&child_mod];
                 self.add_branch(root_mod, cur_mod);
                 continue;
             }
 
-            assert!(file_path
+            assert!(child_path
                 .parent()
                 .unwrap()
                 .starts_with(root_path.parent().unwrap()));
 
-            if let Some(parent_mod) = self.parent_module(file) {
-                let cur_mod = self.file_map[&file];
+            if let Some(parent_mod) = self.parent_module(child) {
+                let cur_mod = self.mod_map[&child_mod];
                 self.add_branch(parent_mod, cur_mod);
             }
         }
     }
 
-    fn parent_module(&self, file: InputFile) -> Option<ToplevelModuleId> {
+    fn parent_module(&self, file: InputFile) -> Option<ModuleTreeNodeId> {
         let file_path = file.path(self.db.upcast());
         let file_dir = file_path.parent()?;
         let parent_dir = file_dir.parent()?;
@@ -205,8 +212,8 @@ impl<'db> IngotModuleTreeBuilder<'db> {
         self.path_map.get(parent_mod_path.as_path()).copied()
     }
 
-    fn add_branch(&mut self, parent: ToplevelModuleId, child: ToplevelModuleId) {
-        let child_name = self.module_tree[child].name;
+    fn add_branch(&mut self, parent: ModuleTreeNodeId, child: ModuleTreeNodeId) {
+        let child_name = self.module_tree[child].name(self.db);
         self.module_tree[parent]
             .children
             .entry(child_name)

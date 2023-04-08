@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use common::{diagnostics::Span, InputFile};
-use parser::{syntax_node::NodeOrToken, SyntaxNode};
+use parser::{ast::prelude::*, syntax_node::NodeOrToken, SyntaxNode};
 use smallvec::SmallVec;
 
 use crate::{
@@ -9,10 +9,13 @@ use crate::{
         Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
         Trait, TypeAlias, Use,
     },
-    parse_file,
+    lower::top_mod_ast,
 };
 
-use super::{db::SpannedHirDb, LazySpan};
+use super::{
+    body_ast, const_ast, contract_ast, enum_ast, extern_func_ast, func_ast, impl_ast,
+    impl_trait_ast, mod_ast, struct_ast, trait_ast, type_alias_ast, use_ast, LazySpan,
+};
 
 type TransitionFn = Arc<dyn Fn(SyntaxNode) -> Option<NodeOrToken>>;
 
@@ -39,7 +42,7 @@ impl SpanTransitionChain {
 }
 
 impl LazySpan for SpanTransitionChain {
-    fn resolve(&self, db: &dyn SpannedHirDb) -> Span {
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
         let (file, mut node) = self.root.root(db);
 
         for transition in &self.chain {
@@ -59,26 +62,33 @@ impl LazySpan for SpanTransitionChain {
 }
 
 pub(super) trait ChainRoot {
-    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode);
+    fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode);
+}
+
+impl ChainRoot for TopLevelMod {
+    fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
+        let file = self.file(db.upcast());
+        let ast = top_mod_ast(db.upcast(), *self);
+        (file, ast.syntax().clone())
+    }
 }
 
 macro_rules! impl_chain_root {
     ($(($ty:ty, $fn:ident),)*) => {
         $(
         impl ChainRoot for $ty {
-            fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
-                let ast = db.$fn(*self);
-                let file = ast.file;
+            fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
+                let ast = $fn(db, *self);
+                let (file, root) = self.top_mod(db.upcast()).root(db);
                 let ptr = ast.syntax_ptr().unwrap();
-                let root_node = SyntaxNode::new_root(parse_file(db.upcast(), file));
-                let node = ptr.to_node(&root_node);
+                let node = ptr.to_node(&root);
                 (file, node)
             }
         })*
     };
 }
+
 impl_chain_root! {
-    (TopLevelMod, toplevel_ast),
     (Mod, mod_ast),
     (Func, func_ast),
     (ExternFunc, extern_func_ast),
@@ -160,7 +170,7 @@ macro_rules! define_lazy_span_node {
 
 
         impl crate::span::LazySpan for $name {
-            fn resolve(&self, db: &dyn crate::span::SpannedHirDb) -> common::diagnostics::Span {
+            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> common::diagnostics::Span {
                 self.0.resolve(db)
             }
         }

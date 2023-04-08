@@ -1,7 +1,11 @@
 use common::{InputDb, Upcast};
+use hir_def::ingot_module_tree_impl;
 pub use lower::parse::ParseDiagnostic;
 
-use lower::parse::{parse_file, ParseDiagnosticAccumulator};
+use lower::{
+    map_file_to_mod_impl, module_item_tree_impl,
+    parse::{parse_file_impl, ParseDiagnosticAccumulator},
+};
 
 pub mod diagnostics;
 pub mod hir_def;
@@ -42,23 +46,37 @@ pub struct Jar(
     hir_def::UseTreeId,
     /// Accumulated diagnostics.
     ParseDiagnosticAccumulator,
-    /// Tracked functions
-    hir_def::ingot_module_tree,
-    hir_def::module_item_tree,
-    parse_file,
+    /// Private tracked functions. These are not part of the public API, and
+    /// thus, can't be accessed from outside of the crate without implementing
+    /// [`LowerHirDb`] marker trait.
+    ingot_module_tree_impl,
+    module_item_tree_impl,
+    map_file_to_mod_impl,
+    parse_file_impl,
 );
 
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {
-    /// Returns the diagnostics produced by parsing the given file.
-    fn diagnostics_for_parse(&self, file: common::InputFile) -> Vec<ParseDiagnostic>
-    where
-        Self: Sized,
-    {
-        parse_file(self, file);
-        parse_file::accumulated::<ParseDiagnosticAccumulator>(self, file)
-    }
-}
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
+
+/// `LowerHirDb` is a marker trait for lowering AST to HIR items.
+/// All code that requires [`LowerHirDb`] is considered have a possibility to
+/// invalidate the cache in salsa when a revision is updated. Therefore,
+/// implementations relying on `LowerHirDb` are prohibited in all
+/// Analysis phases.
+pub trait LowerHirDb: HirDb + Upcast<dyn HirDb> {}
+
+/// `SpannedHirDb` is a marker trait for extracting span-dependent information
+/// from HIR Items.
+/// All code that requires [`SpannedHirDb`] is considered have a possibility to
+/// invalidate the cache in salsa when a revision is updated. Therefore,
+/// implementations relying on `SpannedHirDb` are prohibited in all
+/// Analysis phases.
+///
+/// This marker is mainly used to inject [HirOrigin](crate::span::HirOrigin) to
+/// generate [CompleteDiagnostic](common::diagnostics::CompleteDiagnostic) from
+/// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
+/// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
+pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {}
 
 #[cfg(test)]
 mod test_db {
@@ -70,8 +88,10 @@ mod test_db {
     };
 
     use crate::{
-        hir_def::{module_item_tree, ItemKind, ItemTree},
-        span::{db::SpannedHirDb, LazySpan},
+        hir_def::{ItemKind, ItemTree, TopLevelMod},
+        lower::{map_file_to_mod, module_item_tree},
+        span::LazySpan,
+        LowerHirDb, SpannedHirDb,
     };
 
     #[derive(Default)]
@@ -79,13 +99,13 @@ mod test_db {
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
-
     impl SpannedHirDb for TestDb {}
-
+    impl LowerHirDb for TestDb {}
     impl salsa::Database for TestDb {
         fn salsa_event(&self, _: salsa::Event) {}
     }
-
+    /// Implements `ParallelDatabase` to check the all tracked
+    /// structs/functions are `Send`.
     impl salsa::ParallelDatabase for TestDb {
         fn snapshot(&self) -> salsa::Snapshot<Self> {
             salsa::Snapshot::new(TestDb {
@@ -93,7 +113,6 @@ mod test_db {
             })
         }
     }
-
     impl Upcast<dyn common::InputDb> for TestDb {
         fn upcast(&self) -> &(dyn common::InputDb + 'static) {
             self
@@ -106,27 +125,28 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&mut self, text: &str) -> (InputFile, &ItemTree) {
+        pub fn parse_source(&mut self, text: &str) -> (TopLevelMod, &ItemTree) {
             let file = self.standalone_file(text);
-            (file, module_item_tree(self, file))
+            let top_mod = map_file_to_mod(self, file);
+            (top_mod, module_item_tree(self, top_mod))
         }
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> (InputFile, T)
+        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> (TopLevelMod, T)
         where
             ItemKind: TryInto<T, Error = &'static str>,
         {
-            let (file, tree) = self.parse_source(text);
-            let top_mod = tree.top_mod;
+            let (top_mod, tree) = self.parse_source(text);
             (
-                file,
+                top_mod,
                 tree.children(top_mod).next().unwrap().try_into().unwrap(),
             )
         }
 
-        pub fn text_at(&self, file: InputFile, span: &impl LazySpan) -> &str {
+        pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
             let range = span.resolve(self).range;
+            let file = top_mod.file(self.upcast());
             let text = file.text(self.upcast());
             &text[range.start().into()..range.end().into()]
         }

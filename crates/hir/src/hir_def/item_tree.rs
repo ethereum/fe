@@ -1,15 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use common::InputFile;
-use parser::{
-    ast::{self, prelude::*},
-    SyntaxNode,
-};
-
-use crate::{
-    hir_def::{module_tree, TopLevelMod},
-    lower, HirDb,
-};
+use crate::hir_def::TopLevelMod;
 
 use super::ItemKind;
 
@@ -18,7 +9,6 @@ use super::ItemKind;
 /// `module_tree::TopLevelModule`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemTree {
-    pub file: InputFile,
     pub top_mod: TopLevelMod,
     pub(crate) item_tree: BTreeMap<ItemKind, ItemTreeNode>,
 }
@@ -49,17 +39,6 @@ impl ItemTree {
 pub(crate) struct ItemTreeNode {
     pub(crate) parent: Option<ItemKind>,
     pub(crate) children: BTreeSet<ItemKind>,
-}
-
-#[salsa::tracked(return_ref)]
-pub fn module_item_tree(db: &dyn HirDb, file: InputFile) -> ItemTree {
-    let node = SyntaxNode::new_root(crate::parse_file(db, file));
-    let module_tree = module_tree::ingot_module_tree(db, file.ingot(db.upcast()));
-
-    // This cast never fails even if the file content is empty.
-    let ast_root = ast::Root::cast(node).unwrap();
-    let top_mod_name = module_tree.module_name(file);
-    lower::lower_file(db, file, top_mod_name, ast_root)
 }
 
 #[cfg(test)]

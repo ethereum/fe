@@ -3,22 +3,26 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
+use common::{InputFile, InputIngot};
 use parser::ast;
 
 use crate::{
     hir_def::TraitRef,
+    lower,
     span::{
         item::{
-            LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyExternFnSpan, LazyFnSpan,
+            LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyExternFuncSpan, LazyFuncSpan,
             LazyImplSpan, LazyImplTraitSpan, LazyModSpan, LazyStructSpan, LazyTopLevelModSpan,
             LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
         },
         HirOrigin,
     },
+    HirDb,
 };
 
 use super::{
-    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, Partial, TypeId, WhereClauseId,
+    ingot_module_tree_impl, AttrListId, Body, FnParamListId, GenericParamListId, IdentId,
+    IngotModuleTree, ItemTree, Partial, TypeId, WhereClauseId,
 };
 
 #[derive(
@@ -58,12 +62,20 @@ pub struct TopLevelMod {
     // of `module_item_tree`.
     pub name: IdentId,
 
-    #[return_ref]
-    pub(crate) origin: HirOrigin<ast::Root>,
+    pub(crate) ingot: InputIngot,
+    pub(crate) file: InputFile,
 }
 impl TopLevelMod {
     pub fn lazy_span(self) -> LazyTopLevelModSpan {
         LazyTopLevelModSpan::new(self)
+    }
+
+    pub fn module_item_tree(self, db: &dyn HirDb) -> &ItemTree {
+        lower::module_item_tree_impl(db, self)
+    }
+
+    pub fn ingot_module_tree(self, db: &dyn HirDb) -> &IngotModuleTree {
+        ingot_module_tree_impl(db, self.ingot(db))
     }
 }
 
@@ -75,6 +87,8 @@ pub struct Mod {
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub is_pub: bool,
+
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Mod>,
@@ -98,13 +112,14 @@ pub struct Func {
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
     pub body: Option<Body>,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
 impl Func {
-    pub fn lazy_span(self) -> LazyFnSpan {
-        LazyFnSpan::new(self)
+    pub fn lazy_span(self) -> LazyFuncSpan {
+        LazyFuncSpan::new(self)
     }
 }
 
@@ -118,13 +133,14 @@ pub struct ExternFunc {
     pub params: Partial<FnParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Fn>,
 }
 impl ExternFunc {
-    pub fn lazy_span(self) -> LazyExternFnSpan {
-        LazyExternFnSpan::new(self)
+    pub fn lazy_span(self) -> LazyExternFuncSpan {
+        LazyExternFuncSpan::new(self)
     }
 }
 
@@ -139,6 +155,7 @@ pub struct Struct {
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub fields: RecordFieldListId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Struct>,
@@ -158,6 +175,7 @@ pub struct Contract {
     pub attributes: AttrListId,
     pub is_pub: bool,
     pub fields: RecordFieldListId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Contract>,
@@ -179,6 +197,7 @@ pub struct Enum {
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub variants: EnumVariantListId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Enum>,
@@ -200,6 +219,7 @@ pub struct TypeAlias {
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub ty: Partial<TypeId>,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
@@ -219,6 +239,7 @@ pub struct Impl {
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Impl>,
@@ -240,6 +261,7 @@ pub struct Trait {
     pub is_pub: bool,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Trait>,
@@ -260,6 +282,7 @@ pub struct ImplTrait {
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
@@ -277,6 +300,7 @@ pub struct Const {
 
     pub name: Partial<IdentId>,
     pub body: Partial<Body>,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Const>,
@@ -293,6 +317,7 @@ pub struct Use {
     id: TrackedItemId,
 
     pub tree: Partial<super::UseTreeId>,
+    pub top_mod: TopLevelMod,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Use>,

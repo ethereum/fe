@@ -31,7 +31,7 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyFnSpan,
+    LazyFuncSpan,
     ast::Fn,
     new(Func),
     @token {
@@ -48,7 +48,7 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyExternFnSpan,
+    LazyExternFuncSpan,
     ast::Fn,
     new(ExternFunc),
     @token {
