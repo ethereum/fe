@@ -36,10 +36,17 @@ struct Runner {
     return val.compute(val: 1000)
   }
 
+  pub fn run_mut<T: Computable>(self, mut _ val: T) -> u256 {
+    return val.compute(val: 1000)
+  }
+
   pub fn run_static<T: Computable>(_ val: T) -> u256 {
     return val.compute(val: 1000)
   }
 
+  pub fn run_mut_static<T: Computable>(mut _ val: T) -> u256 {
+    return val.compute(val: 1000)
+  }
 
   pub fn dummy<T: Dummy>(self, _ val: T) {
 
@@ -52,7 +59,15 @@ contract Example {
     assert runner.run(Mac()) == 1001
     assert runner.run(Linux(counter: 10)) == 1015
 
+    let mut linux: Linux = Linux(counter: 10);
+    let mut mac: Mac = Mac();
+
+    assert runner.run_mut(mac) == 1001
+    assert runner.run_mut(linux) == 1015
+
     assert Runner::run_static(Mac()) == 1001
+
+    assert Runner::run_mut_static(mac) == 1001
 
     // We are testing that we can satisfy a trait bound where the trait is defined in another module
     runner.dummy(Mac())

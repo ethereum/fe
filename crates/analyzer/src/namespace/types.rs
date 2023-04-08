@@ -100,6 +100,9 @@ impl TypeId {
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Type {
         db.lookup_intern_type(*self)
     }
+    pub fn deref_typ(&self, db: &dyn AnalyzerDb) -> Type {
+        self.deref(db).typ(db)
+    }
     pub fn deref(self, db: &dyn AnalyzerDb) -> TypeId {
         match self.typ(db) {
             Type::SPtr(inner) => inner,
