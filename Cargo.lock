@@ -2130,7 +2130,7 @@ dependencies = [
 [[package]]
 name = "solc"
 version = "0.1.0"
-source = "git+https://github.com/Y-Nak/solc-rust?rev=a647450#a647450aba4950a32d48fdd81d797a83894f731e"
+source = "git+https://github.com/fe-lang/solc-rust?rev=bde551e#bde551ef2ec13e7f88c93e42f76216d803b39bec"
 dependencies = [
  "cmake",
  "lazy_static",
@@ -2567,7 +2567,7 @@ checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 [[package]]
 name = "yultsur"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/yultsur?rev=ae85470#ae854702e90b2c70e5c19961167f2b6f2aff32d2"
+source = "git+https://github.com/fe-lang/yultsur?rev=ae85470#ae854702e90b2c70e5c19961167f2b6f2aff32d2"
 dependencies = [
  "indenter",
 ]
