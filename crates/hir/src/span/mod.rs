@@ -3,12 +3,18 @@ use parser::{
     TextRange,
 };
 
-use common::{diagnostics::Span, InputFile};
+use common::diagnostics::Span;
 
-use self::db::SpannedHirDb;
+use crate::{
+    hir_def::{
+        Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
+        Trait, TypeAlias, Use,
+    },
+    lower::top_mod_ast,
+    SpannedHirDb,
+};
 
 pub mod attr;
-pub mod db;
 pub mod expr;
 pub mod item;
 pub mod params;
@@ -20,44 +26,80 @@ pub mod use_tree;
 
 mod transition;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct HirOrigin<T>
-where
-    T: AstNode,
-{
-    pub file: InputFile,
-    pub kind: LocalOrigin<T>,
+/// The trait provides a way to extract [`Span`](common::diagnostics::Span) from
+/// types which don't have a span information directly, but can be resolved into
+/// a span lazily.
+pub trait LazySpan {
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span;
 }
 
-impl<T> HirOrigin<T>
-where
-    T: AstNode<Language = parser::FeLang>,
-{
-    fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
-        self.kind.syntax_ptr()
-    }
+pub fn toplevel_ast(db: &dyn SpannedHirDb, item: TopLevelMod) -> HirOrigin<ast::Root> {
+    HirOrigin::raw(&top_mod_ast(db.upcast(), item))
 }
 
-impl<T> HirOrigin<T>
-where
-    T: AstNode<Language = parser::FeLang>,
-{
-    pub(crate) fn new(file: InputFile, origin: LocalOrigin<T>) -> Self {
-        HirOrigin { file, kind: origin }
-    }
-
-    pub(crate) fn raw(file: InputFile, ast: &T) -> Self {
-        Self::new(file, LocalOrigin::raw(ast))
-    }
+pub fn mod_ast(db: &dyn SpannedHirDb, item: Mod) -> &HirOrigin<ast::Mod> {
+    item.origin(db.upcast())
 }
 
-/// This enum represents the origin of the HIR node is a file.
+pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Fn> {
+    item.origin(db.upcast())
+}
+
+pub fn extern_func_ast(db: &dyn SpannedHirDb, item: ExternFunc) -> &HirOrigin<ast::Fn> {
+    item.origin(db.upcast())
+}
+
+pub fn struct_ast(db: &dyn SpannedHirDb, item: Struct) -> &HirOrigin<ast::Struct> {
+    item.origin(db.upcast())
+}
+
+pub fn contract_ast(db: &dyn SpannedHirDb, item: Contract) -> &HirOrigin<ast::Contract> {
+    item.origin(db.upcast())
+}
+
+pub fn enum_ast(db: &dyn SpannedHirDb, item: Enum) -> &HirOrigin<ast::Enum> {
+    item.origin(db.upcast())
+}
+
+pub fn type_alias_ast(db: &dyn SpannedHirDb, item: TypeAlias) -> &HirOrigin<ast::TypeAlias> {
+    item.origin(db.upcast())
+}
+
+pub fn impl_ast(db: &dyn SpannedHirDb, item: Impl) -> &HirOrigin<ast::Impl> {
+    item.origin(db.upcast())
+}
+
+pub fn trait_ast(db: &dyn SpannedHirDb, item: Trait) -> &HirOrigin<ast::Trait> {
+    item.origin(db.upcast())
+}
+
+pub fn impl_trait_ast(db: &dyn SpannedHirDb, item: ImplTrait) -> &HirOrigin<ast::ImplTrait> {
+    item.origin(db.upcast())
+}
+
+pub fn const_ast(db: &dyn SpannedHirDb, item: Const) -> &HirOrigin<ast::Const> {
+    item.origin(db.upcast())
+}
+
+pub fn use_ast(db: &dyn SpannedHirDb, item: Use) -> &HirOrigin<ast::Use> {
+    item.origin(db.upcast())
+}
+
+pub fn body_ast(db: &dyn SpannedHirDb, item: Body) -> &HirOrigin<ast::Expr> {
+    item.origin(db.upcast())
+}
+
+pub fn body_source_map(db: &dyn SpannedHirDb, item: Body) -> &crate::hir_def::BodySourceMap {
+    item.source_map(db.upcast())
+}
+
+/// This enum represents the origin of the HIR node in a file.
 /// The origin has three possible kinds.
 /// 1. `Raw` is used for nodes that are created by the parser and not
 /// 2. `Expanded` is used for nodes that are created by the compiler and not
 /// 3. `Desugared` is used for nodes that are created by the compiler and not
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LocalOrigin<T>
+pub enum HirOrigin<T>
 where
     T: AstNode,
 {
@@ -78,7 +120,7 @@ where
     None,
 }
 
-impl<T> LocalOrigin<T>
+impl<T> HirOrigin<T>
 where
     T: AstNode<Language = parser::FeLang>,
 {
@@ -88,8 +130,8 @@ where
 
     fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
         match self {
-            LocalOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
-            LocalOrigin::Expanded(ptr) => Some(ptr.clone()),
+            HirOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
+            HirOrigin::Expanded(ptr) => Some(ptr.clone()),
             _ => None,
         }
     }
@@ -99,7 +141,7 @@ where
     }
 }
 
-impl<T> Default for LocalOrigin<T>
+impl<T> Default for HirOrigin<T>
 where
     T: AstNode,
 {
@@ -134,12 +176,6 @@ impl AugAssignDesugared {
     }
 }
 
-/// The trait provides a way to extract [`Span`](common::diagnostics::Span) from
-/// types which don't have a span information directly, but can be resolved into
-/// a span lazily.
-pub trait LazySpan {
-    fn resolve(&self, db: &dyn SpannedHirDb) -> Span;
-}
-
 use transition::define_lazy_span_node;
+
 define_lazy_span_node!(LazySpanAtom);

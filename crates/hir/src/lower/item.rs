@@ -10,18 +10,54 @@ use crate::{
 
 use super::FileLowerCtxt;
 
-impl TopLevelMod {
-    pub(crate) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, name: IdentId, ast: ast::Root) -> Self {
-        ctxt.enter_scope();
-
-        let id = TrackedItemId::TopLevelMod(name);
-        if let Some(items) = ast.items() {
-            lower_module_items(ctxt, id, items);
+pub(crate) fn lower_module_items(
+    ctxt: &mut FileLowerCtxt<'_>,
+    id: TrackedItemId,
+    items: ast::ItemList,
+) {
+    for item in items {
+        match item.kind() {
+            ast::ItemKind::Mod(mod_) => {
+                Mod::lower_ast(ctxt, id.clone(), mod_);
+            }
+            ast::ItemKind::Fn(fn_) => {
+                Func::lower_ast(ctxt, id.clone(), fn_);
+            }
+            ast::ItemKind::Struct(struct_) => {
+                Struct::lower_ast(ctxt, id.clone(), struct_);
+            }
+            ast::ItemKind::Contract(contract) => {
+                Contract::lower_ast(ctxt, id.clone(), contract);
+            }
+            ast::ItemKind::Enum(enum_) => {
+                Enum::lower_ast(ctxt, id.clone(), enum_);
+            }
+            ast::ItemKind::TypeAlias(alias) => {
+                TypeAlias::lower_ast(ctxt, id.clone(), alias);
+            }
+            ast::ItemKind::Impl(impl_) => {
+                Impl::lower_ast(ctxt, id.clone(), impl_);
+            }
+            ast::ItemKind::Trait(trait_) => {
+                Trait::lower_ast(ctxt, id.clone(), trait_);
+            }
+            ast::ItemKind::ImplTrait(impl_trait) => {
+                ImplTrait::lower_ast(ctxt, id.clone(), impl_trait);
+            }
+            ast::ItemKind::Const(const_) => {
+                Const::lower_ast(ctxt, id.clone(), const_);
+            }
+            ast::ItemKind::Use(use_) => {
+                Use::lower_ast(ctxt, id.clone(), use_);
+            }
+            ast::ItemKind::Extern(extern_) => {
+                if let Some(extern_block) = extern_.extern_block() {
+                    for fn_ in extern_block {
+                        ExternFunc::lower_ast(ctxt, id.clone(), fn_);
+                    }
+                }
+            }
         }
-
-        let origin = HirOrigin::raw(ctxt.file, &ast);
-        let top_mod = Self::new(ctxt.db, name, origin);
-        ctxt.leave_scope(top_mod)
     }
 }
 
@@ -41,8 +77,8 @@ impl Mod {
             lower_module_items(ctxt, id.clone(), items);
         }
 
-        let origin = HirOrigin::raw(ctxt.file, &ast);
-        let mod_ = Self::new(ctxt.db, id, name, attributes, is_pub, origin);
+        let origin = HirOrigin::raw(&ast);
+        let mod_ = Self::new(ctxt.db, id, name, attributes, is_pub, ctxt.top_mod, origin);
         ctxt.leave_scope(mod_)
     }
 }
@@ -74,7 +110,7 @@ impl Func {
                 ast::Expr::cast(body.syntax().clone()).unwrap(),
             )
         });
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         let fn_ = Self::new(
             ctxt.db,
@@ -87,6 +123,7 @@ impl Func {
             ret_ty,
             modifier,
             body,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(fn_)
@@ -109,7 +146,7 @@ impl Struct {
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         let struct_ = Self::new(
             ctxt.db,
@@ -120,6 +157,7 @@ impl Struct {
             generic_params,
             where_clause,
             fields,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(struct_)
@@ -140,9 +178,18 @@ impl Contract {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
         let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
-        let contract = Self::new(ctxt.db, id, name, attributes, is_pub, fields, origin);
+        let contract = Self::new(
+            ctxt.db,
+            id,
+            name,
+            attributes,
+            is_pub,
+            fields,
+            ctxt.top_mod,
+            origin,
+        );
         ctxt.leave_scope(contract)
     }
 }
@@ -163,7 +210,7 @@ impl Enum {
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let variants = EnumVariantListId::lower_ast_opt(ctxt, ast.variants());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         let enum_ = Self::new(
             ctxt.db,
@@ -174,6 +221,7 @@ impl Enum {
             generic_params,
             where_clause,
             variants,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(enum_)
@@ -196,7 +244,7 @@ impl TypeAlias {
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         let alias = Self::new(
             ctxt.db,
@@ -207,6 +255,7 @@ impl TypeAlias {
             generic_params,
             where_clause,
             ty,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(alias)
@@ -227,7 +276,7 @@ impl Impl {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -242,6 +291,7 @@ impl Impl {
             attributes,
             generic_params,
             where_clause,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(impl_)
@@ -263,7 +313,7 @@ impl Trait {
         let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -279,6 +329,7 @@ impl Trait {
             is_pub,
             generic_params,
             where_clause,
+            ctxt.top_mod,
             origin,
         );
 
@@ -301,7 +352,7 @@ impl ImplTrait {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -317,6 +368,7 @@ impl ImplTrait {
             attributes,
             generic_params,
             where_clause,
+            ctxt.top_mod,
             origin,
         );
         ctxt.leave_scope(impl_trait)
@@ -337,9 +389,9 @@ impl Const {
             .value()
             .map(|ast| Body::lower_ast(ctxt, id.clone(), ast))
             .into();
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
-        let const_ = Self::new(ctxt.db, id, name, body, origin);
+        let const_ = Self::new(ctxt.db, id, name, body, ctxt.top_mod, origin);
         ctxt.leave_scope(const_)
     }
 }
@@ -355,8 +407,8 @@ impl Use {
         let tree = UseTreeId::lower_ast_partial(ctxt, ast.use_tree());
         let id = TrackedItemId::Use(tree).join(parent_id);
 
-        let origin = HirOrigin::raw(ctxt.file, &ast);
-        let use_ = Self::new(ctxt.db, id, tree, origin);
+        let origin = HirOrigin::raw(&ast);
+        let use_ = Self::new(ctxt.db, id, tree, ctxt.top_mod, origin);
         ctxt.leave_scope(use_)
     }
 }
@@ -379,10 +431,18 @@ impl ExternFunc {
             .into();
         let ret_ty = ast.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
         let modifier = ItemModifier::lower_ast(ast.modifier());
-        let origin = HirOrigin::raw(ctxt.file, &ast);
+        let origin = HirOrigin::raw(&ast);
 
         let extern_func = Self::new(
-            ctxt.db, id, name, attributes, params, ret_ty, modifier, origin,
+            ctxt.db,
+            id,
+            name,
+            attributes,
+            params,
+            ret_ty,
+            modifier,
+            ctxt.top_mod,
+            origin,
         );
         ctxt.leave_scope(extern_func)
     }
@@ -449,52 +509,5 @@ impl EnumVariant {
         let ty = ast.ty().map(|ty| TypeId::lower_ast(ctxt, ty));
 
         Self { name, ty }
-    }
-}
-
-fn lower_module_items(ctxt: &mut FileLowerCtxt<'_>, id: TrackedItemId, items: ast::ItemList) {
-    for item in items {
-        match item.kind() {
-            ast::ItemKind::Mod(mod_) => {
-                Mod::lower_ast(ctxt, id.clone(), mod_);
-            }
-            ast::ItemKind::Fn(fn_) => {
-                Func::lower_ast(ctxt, id.clone(), fn_);
-            }
-            ast::ItemKind::Struct(struct_) => {
-                Struct::lower_ast(ctxt, id.clone(), struct_);
-            }
-            ast::ItemKind::Contract(contract) => {
-                Contract::lower_ast(ctxt, id.clone(), contract);
-            }
-            ast::ItemKind::Enum(enum_) => {
-                Enum::lower_ast(ctxt, id.clone(), enum_);
-            }
-            ast::ItemKind::TypeAlias(alias) => {
-                TypeAlias::lower_ast(ctxt, id.clone(), alias);
-            }
-            ast::ItemKind::Impl(impl_) => {
-                Impl::lower_ast(ctxt, id.clone(), impl_);
-            }
-            ast::ItemKind::Trait(trait_) => {
-                Trait::lower_ast(ctxt, id.clone(), trait_);
-            }
-            ast::ItemKind::ImplTrait(impl_trait) => {
-                ImplTrait::lower_ast(ctxt, id.clone(), impl_trait);
-            }
-            ast::ItemKind::Const(const_) => {
-                Const::lower_ast(ctxt, id.clone(), const_);
-            }
-            ast::ItemKind::Use(use_) => {
-                Use::lower_ast(ctxt, id.clone(), use_);
-            }
-            ast::ItemKind::Extern(extern_) => {
-                if let Some(extern_block) = extern_.extern_block() {
-                    for fn_ in extern_block {
-                        ExternFunc::lower_ast(ctxt, id.clone(), fn_);
-                    }
-                }
-            }
-        }
     }
 }

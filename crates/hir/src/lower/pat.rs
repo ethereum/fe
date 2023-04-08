@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{pat::*, IdentId, LitKind, PathId},
-    span::LocalOrigin,
+    span::HirOrigin,
 };
 
 use super::body::BodyCtxt;
@@ -63,7 +63,7 @@ impl Pat {
             }
         };
 
-        ctxt.push_pat(pat, LocalOrigin::raw(&ast))
+        ctxt.push_pat(pat, HirOrigin::raw(&ast))
     }
 
     pub(super) fn lower_ast_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Pat>) -> PatId {
