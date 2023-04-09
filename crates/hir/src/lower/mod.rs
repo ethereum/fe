@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use common::InputFile;
+use common::{InputFile, InputIngot};
 use num_bigint::BigUint;
 use num_traits::Num;
 use parser::{
@@ -10,8 +10,8 @@ use parser::{
 
 use crate::{
     hir_def::{
-        IdentId, IntegerId, ItemKind, ItemTree, ItemTreeNode, LitKind, Partial, StringId,
-        TopLevelMod, TrackedItemId,
+        module_tree_impl, IdentId, IntegerId, ItemKind, ItemTree, ItemTreeNode, LitKind,
+        ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
     },
     HirDb, LowerHirDb, ParseDiagnostic,
 };
@@ -43,8 +43,8 @@ pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
 }
 
 /// Returns the item tree of the given top-level module.
-pub fn module_item_tree(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ItemTree {
-    module_item_tree_impl(db.upcast(), top_mod)
+pub fn item_tree(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ItemTree {
+    item_tree_impl(db.upcast(), top_mod)
 }
 
 /// Returns the root node of the given top-level module.
@@ -65,6 +65,11 @@ pub fn parse_file(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> GreenNode {
     parse_file_impl(db.upcast(), top_mod)
 }
 
+/// Returns the ingot module tree of the given ingot.
+pub fn module_tree(db: &dyn LowerHirDb, ingot: InputIngot) -> &ModuleTree {
+    module_tree_impl(db.upcast(), ingot)
+}
+
 #[salsa::tracked]
 pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, file: InputFile) -> TopLevelMod {
     let path = file.path(db.upcast());
@@ -75,7 +80,7 @@ pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, file: InputFile) -> TopLevelM
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn module_item_tree_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ItemTree {
+pub(crate) fn item_tree_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ItemTree {
     let ast = top_mod_ast(db, top_mod);
     let mut ctxt = FileLowerCtxt::new(db, top_mod);
 

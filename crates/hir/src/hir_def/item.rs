@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::{
-    ingot_module_tree_impl, AttrListId, Body, FnParamListId, GenericParamListId, IdentId,
-    IngotModuleTree, ItemTree, Partial, TypeId, WhereClauseId,
+    module_tree_impl, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, ItemTree,
+    ModuleTree, Partial, TypeId, WhereClauseId,
 };
 
 #[derive(
@@ -71,11 +71,11 @@ impl TopLevelMod {
     }
 
     pub fn module_item_tree(self, db: &dyn HirDb) -> &ItemTree {
-        lower::module_item_tree_impl(db, self)
+        lower::item_tree_impl(db, self)
     }
 
-    pub fn ingot_module_tree(self, db: &dyn HirDb) -> &IngotModuleTree {
-        ingot_module_tree_impl(db, self.ingot(db))
+    pub fn ingot_module_tree(self, db: &dyn HirDb) -> &ModuleTree {
+        module_tree_impl(db, self.ingot(db))
     }
 }
 
