@@ -65,7 +65,7 @@ mod tests {
             }
         "#;
 
-        let (_, item_tree) = db.parse_source(text);
+        let item_tree = db.parse_source(text);
         let top_mod = item_tree.top_mod;
         assert_eq!(item_tree.dfs().count(), 8);
 

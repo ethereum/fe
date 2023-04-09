@@ -1,9 +1,9 @@
 use common::{InputDb, Upcast};
-use hir_def::ingot_module_tree_impl;
+use hir_def::module_tree_impl;
 pub use lower::parse::ParseDiagnostic;
 
 use lower::{
-    map_file_to_mod_impl, module_item_tree_impl,
+    item_tree_impl, map_file_to_mod_impl,
     parse::{parse_file_impl, ParseDiagnosticAccumulator},
 };
 
@@ -49,8 +49,8 @@ pub struct Jar(
     /// Private tracked functions. These are not part of the public API, and
     /// thus, can't be accessed from outside of the crate without implementing
     /// [`LowerHirDb`] marker trait.
-    ingot_module_tree_impl,
-    module_item_tree_impl,
+    module_tree_impl,
+    item_tree_impl,
     map_file_to_mod_impl,
     parse_file_impl,
 );
@@ -89,7 +89,7 @@ mod test_db {
 
     use crate::{
         hir_def::{ItemKind, ItemTree, TopLevelMod},
-        lower::{map_file_to_mod, module_item_tree},
+        lower::{item_tree, map_file_to_mod},
         span::LazySpan,
         LowerHirDb, SpannedHirDb,
     };
@@ -125,23 +125,24 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&mut self, text: &str) -> (TopLevelMod, &ItemTree) {
+        pub fn parse_source(&mut self, text: &str) -> &ItemTree {
             let file = self.standalone_file(text);
             let top_mod = map_file_to_mod(self, file);
-            (top_mod, module_item_tree(self, top_mod))
+            item_tree(self, top_mod)
         }
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> (TopLevelMod, T)
+        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> T
         where
             ItemKind: TryInto<T, Error = &'static str>,
         {
-            let (top_mod, tree) = self.parse_source(text);
-            (
-                top_mod,
-                tree.children(top_mod).next().unwrap().try_into().unwrap(),
-            )
+            let tree = self.parse_source(text);
+            tree.children(tree.top_mod)
+                .next()
+                .unwrap()
+                .try_into()
+                .unwrap()
         }
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
@@ -158,7 +159,7 @@ mod test_db {
             let ingot = InputIngot::new(self, path, kind, version, BTreeSet::default());
             let file = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
-            ingot.set_files(self).to([file].into());
+            ingot.set_files(self, [file].into());
             file
         }
     }

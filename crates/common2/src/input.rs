@@ -27,6 +27,7 @@ pub struct InputIngot {
 
     /// A list of files which the current ingot contains.
     #[return_ref]
+    #[set(__set_files_impl)]
     pub files: BTreeSet<InputFile>,
 
     #[set(__set_root_file_impl)]
@@ -35,7 +36,7 @@ pub struct InputIngot {
 }
 impl InputIngot {
     pub fn new(
-        db: &mut dyn InputDb,
+        db: &dyn InputDb,
         path: &str,
         kind: IngotKind,
         version: Version,
@@ -58,6 +59,12 @@ impl InputIngot {
     /// The root file must be set before the ingot is used.
     pub fn set_root_file(self, db: &mut dyn InputDb, file: InputFile) {
         self.__set_root_file_impl(db).to(Some(file));
+    }
+
+    /// Set the list of files which the ingot contains.
+    /// All files must bee set before the ingot is used.
+    pub fn set_files(self, db: &mut dyn InputDb, files: BTreeSet<InputFile>) {
+        self.__set_files_impl(db).to(files);
     }
 
     /// Returns the root file of the ingot.
@@ -108,6 +115,14 @@ pub struct IngotDependency {
     pub name: SmolStr,
     /// An ingot which the current ingot depends on.
     pub ingot: InputIngot,
+}
+impl IngotDependency {
+    pub fn new(name: &str, ingot: InputIngot) -> Self {
+        Self {
+            name: SmolStr::new(name),
+            ingot,
+        }
+    }
 }
 
 impl PartialOrd for IngotDependency {
