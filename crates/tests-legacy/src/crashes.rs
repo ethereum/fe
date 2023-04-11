@@ -18,3 +18,4 @@ test_file! { agroce550 }
 test_file! { agroce551 }
 test_file! { agroce623 }
 test_file! { revert_const }
+test_file! { mptr_field_abi }
