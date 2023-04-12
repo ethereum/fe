@@ -20,3 +20,10 @@ contract Foo {
         return Lib::square(x: self.my_struct.x)
     }
 }
+
+#test
+unsafe fn test_foo() {
+    let mut ctx: Context = Context()
+    let mut foo: Foo = Foo.create(ctx, 0)
+    assert foo.bar(val: 12) == 144
+}

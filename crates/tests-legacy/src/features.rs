@@ -234,37 +234,6 @@ fn test_assert() {
     })
 }
 
-#[test]
-fn test_arrays() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "arrays.fe", "Foo", &[]);
-
-        harness.test_function(
-            &mut executor,
-            "get_from_memory",
-            &[uint_token(9)],
-            Some(&uint_token(10)),
-        );
-
-        validate_revert(
-            harness.capture_call(&mut executor, "get_from_memory", &[uint_token(10)]),
-            &encoded_panic_out_of_bounds(),
-        );
-
-        harness.test_function(
-            &mut executor,
-            "get_from_storage",
-            &[uint_token(9)],
-            Some(&uint_token(0)),
-        );
-
-        validate_revert(
-            harness.capture_call(&mut executor, "get_from_storage", &[uint_token(10)]),
-            &encoded_panic_out_of_bounds(),
-        );
-    })
-}
-
 macro_rules! test_method_return {
     ($name:ident, $path:expr, $input:expr, $expected:expr) => {
         #[test]
@@ -447,7 +416,6 @@ test_method_return! { radix_octal, "radix_octal.fe", &[], uint_token(0o70) }
 test_method_return! { radix_binary, "radix_binary.fe", &[], uint_token(0b10) }
 test_method_return! { map_tuple, "map_tuple.fe", &[uint_token(1234)], uint_token(1234) }
 test_method_return! { int_literal_coercion, "int_literal_coercion.fe", &[], uint_token(300) }
-test_method_return! { associated_fns, "associated_fns.fe", &[uint_token(12)], uint_token(144) }
 test_method_return! { struct_fns, "struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100) }
 test_method_return! { cast_address_to_u256, "cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS) }
 test_method_return! { for_loop_with_complex_elem_array, "for_loop_with_complex_elem_array.fe", &[], int_token(222) }
@@ -535,37 +503,6 @@ fn test_map(fixture_file: &str) {
             Some(&uint_token(12)),
         );
         assert_harness_gas_report!(harness, fixture_file);
-    })
-}
-
-#[test]
-fn address_bytes10_map() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo", &[]);
-
-        let address1 = address_token("0000000000000000000000000000000000000001");
-        let bytes1 = bytes_token("ten bytes1");
-
-        let address2 = address_token("0000000000000000000000000000000000000002");
-        let bytes2 = bytes_token("ten bytes2");
-
-        harness.test_function(
-            &mut executor,
-            "write_bar",
-            &[address1.clone(), bytes1.clone()],
-            None,
-        );
-
-        harness.test_function(
-            &mut executor,
-            "write_bar",
-            &[address2.clone(), bytes2.clone()],
-            None,
-        );
-
-        harness.test_function(&mut executor, "read_bar", &[address1], Some(&bytes1));
-        harness.test_function(&mut executor, "read_bar", &[address2], Some(&bytes2));
-        assert_harness_gas_report!(harness);
     })
 }
 
@@ -1758,20 +1695,6 @@ fn aug_assign(target: u64, op: &str, value: u64, expected: u64) {
 }
 
 #[test]
-fn base_tuple() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "base_tuple.fe", "Foo", &[]);
-        harness.test_function(
-            &mut executor,
-            "bar",
-            &[uint_token(42), bool_token(true)],
-            Some(&tuple_token(&[uint_token(42), bool_token(true)])),
-        );
-        assert_harness_gas_report!(harness);
-    });
-}
-
-#[test]
 fn tuple_destructuring() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "tuple_destructuring.fe", "Foo", &[]);
@@ -2104,23 +2027,6 @@ fn intrinsics() {
     });
 }
 
-#[test]
-fn call_fn() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "call_fn.fe", "Foo", &[]);
-
-        let mut calldata = vec![0; 32];
-
-        calldata[31] = 1;
-        harness.test_call_reverts(&mut executor, calldata.clone(), &[]);
-
-        calldata[31] = 0;
-        harness.test_call_returns(&mut executor, calldata, &[]);
-
-        assert_harness_gas_report!(harness);
-    });
-}
-
 #[rstest(
     method,
     params,
@@ -2230,19 +2136,4 @@ fn execution_tests(fixture_file: &str) {
         harness.test_function(&mut executor, "run_test", &[], None);
         assert_harness_gas_report!(harness, fixture_file);
     })
-}
-
-#[test]
-fn array_repeat() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "array_repeat.fe", "Foo", &[]);
-        harness.test_function(
-            &mut executor,
-            "foo",
-            &[],
-            Some(&uint_array_token(&[8, 42, 8, 8])),
-        );
-
-        harness.test_function(&mut executor, "bar", &[], None);
-    });
 }

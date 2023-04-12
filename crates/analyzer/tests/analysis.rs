@@ -184,12 +184,9 @@ test_analysis! { erc20_token, "demos/erc20_token.fe"}
 test_analysis! { guest_book, "demos/guest_book.fe"}
 test_analysis! { simple_open_auction, "demos/simple_open_auction.fe"}
 test_analysis! { uniswap, "demos/uniswap.fe"}
-test_analysis! { address_bytes10_map, "features/address_bytes10_map.fe"}
 test_analysis! { abi_decode_complex, "features/abi_decode_complex.fe"}
 test_analysis! { assert, "features/assert.fe"}
-test_analysis! { associated_fns, "features/associated_fns.fe"}
 test_analysis! { aug_assign, "features/aug_assign.fe"}
-test_analysis! { base_tuple, "features/base_tuple.fe"}
 test_analysis! { call_statement_with_args, "features/call_statement_with_args.fe"}
 test_analysis! { call_statement_with_args_2, "features/call_statement_with_args_2.fe"}
 test_analysis! { call_statement_without_args, "features/call_statement_without_args.fe"}

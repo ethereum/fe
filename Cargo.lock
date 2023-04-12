@@ -764,6 +764,7 @@ name = "fe-compiler-tests"
 version = "0.22.0"
 dependencies = [
  "dir-test",
+ "fe-common",
  "fe-driver",
  "fe-test-runner",
 ]

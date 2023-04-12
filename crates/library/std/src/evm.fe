@@ -212,7 +212,6 @@ pub unsafe fn mload(offset p: u256) -> u256 {
 pub unsafe fn mstore(offset p: u256, value v: u256) {
     __mstore(p, v)
 }
-
 pub unsafe fn mstore8(offset p: u256, value v: u256) {
     __mstore8(p, v)
 }

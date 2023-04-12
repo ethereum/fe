@@ -1,9 +1,6 @@
 use bytes::Bytes;
 use colored::Colorize;
-use revm::{
-    interpreter::{instruction_result::SuccessOrHalt, Contract, DummyHost, Interpreter},
-    primitives::{Bytecode, Env, LatestSpec, B160, U256},
-};
+use revm::primitives::{AccountInfo, Bytecode, Env, TransactTo, B160, U256};
 use std::fmt::Display;
 
 #[derive(Debug, Default)]
@@ -69,24 +66,26 @@ impl Display for TestSink {
 }
 
 pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
-    let input = Bytes::new();
     let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
-    let address = B160::from(26);
-    let caller = B160::from(42);
-    let value = U256::ZERO;
-    let contract = Contract::new::<LatestSpec>(input, bytecode, address, caller, value);
 
-    let mut host = DummyHost::new(Env::default());
-    let mut interpreter = Interpreter::new(contract, u64::MAX, false);
+    let mut database = revm::InMemoryDB::default();
+    let test_address = B160::from(42);
+    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode);
+    database.insert_account_info(test_address, test_info);
 
-    let result = interpreter.run::<DummyHost, LatestSpec>(&mut host);
-    let reverted = matches!(SuccessOrHalt::from(result), SuccessOrHalt::Success(_));
+    let mut env = Env::default();
+    env.tx.transact_to = TransactTo::Call(test_address);
 
-    if reverted {
+    let mut evm = revm::new();
+    evm.env = env;
+    evm.database(&mut database);
+    let result = evm.transact_commit().expect("evm failure");
+
+    if result.is_success() {
         sink.inc_success_count();
     } else {
         sink.insert_failure(name, &format!("{result:?}"));
     };
 
-    reverted
+    result.is_success()
 }
