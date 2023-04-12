@@ -9,10 +9,13 @@ pub struct PathId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PathSegment {
-    /// `Normal Path` segment.
-    Ident(IdentId),
+    /// `ingot`.
+    Ingot,
+    /// `super`.
+    Super,
     /// `Self` segment.
     SelfTy,
     /// `self` segment.
     Self_,
+    Ident(IdentId),
 }

@@ -1,6 +1,6 @@
 use std::{cell::Cell, rc::Rc};
 
-use crate::SyntaxKind;
+use crate::{parser::path::is_path_segment, SyntaxKind};
 
 use super::{define_scope, token_stream::TokenStream, Parser};
 
@@ -144,6 +144,5 @@ impl super::Parse for UseTreeRenameScope {
 }
 
 fn is_use_path_segment(kind: SyntaxKind) -> bool {
-    use SyntaxKind::*;
-    matches!(kind, Ident | SelfKw | Star)
+    is_path_segment(kind) || matches!(kind, SyntaxKind::Star)
 }

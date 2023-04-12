@@ -3,8 +3,8 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/items/use.fe
 ---
-Root@0..278
-  ItemList@0..278
+Root@0..308
+  ItemList@0..308
     Use@0..12
       UseKw@0..3 "use"
       WhiteSpace@3..4 " "
@@ -260,4 +260,27 @@ Root@0..278
         UsePath@277..278
           UsePathSegment@277..278
             Star@277..278 "*"
+    Newline@278..280 "\n\n"
+    Use@280..292
+      UseKw@280..283 "use"
+      WhiteSpace@283..284 " "
+      UseTree@284..292
+        UsePath@284..292
+          UsePathSegment@284..289
+            SuperKw@284..289 "super"
+          Colon2@289..291 "::"
+          UsePathSegment@291..292
+            Star@291..292 "*"
+    Newline@292..293 "\n"
+    Use@293..307
+      UseKw@293..296 "use"
+      WhiteSpace@296..297 " "
+      UseTree@297..307
+        UsePath@297..307
+          UsePathSegment@297..302
+            IngotKw@297..302 "ingot"
+          Colon2@302..304 "::"
+          UsePathSegment@304..307
+            Ident@304..307 "Foo"
+    Newline@307..308 "\n"
 

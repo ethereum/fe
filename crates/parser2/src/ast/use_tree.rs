@@ -54,7 +54,9 @@ impl UsePathSegment {
     pub fn kind(&self) -> Option<UsePathSegmentKind> {
         match self.syntax().first_child_or_token() {
             Some(node) => match node.kind() {
-                SK::SelfKw => Some(UsePathSegmentKind::SelfPath(node.into_token().unwrap())),
+                SK::IngotKw => Some(UsePathSegmentKind::Ingot(node.into_token().unwrap())),
+                SK::SuperKw => Some(UsePathSegmentKind::Super(node.into_token().unwrap())),
+                SK::SelfKw => Some(UsePathSegmentKind::Self_(node.into_token().unwrap())),
                 SK::Ident => Some(UsePathSegmentKind::Ident(node.into_token().unwrap())),
                 SK::Star => Some(UsePathSegmentKind::Glob(node.into_token().unwrap())),
                 _ => None,
@@ -65,6 +67,14 @@ impl UsePathSegment {
 
     pub fn ident(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
+    }
+
+    pub fn ingot_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::IngotKw)
+    }
+
+    pub fn super_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::SuperKw)
     }
 
     pub fn self_token(&self) -> Option<SyntaxToken> {
@@ -98,8 +108,12 @@ impl UseTreeAlias {
 
 /// A path segment in a use tree.
 pub enum UsePathSegmentKind {
+    /// `ingot`
+    Ingot(SyntaxToken),
+    /// `super`
+    Super(SyntaxToken),
     /// `self`
-    SelfPath(SyntaxToken),
+    Self_(SyntaxToken),
     /// `foo`
     Ident(SyntaxToken),
     /// `*`

@@ -35,6 +35,8 @@ pub struct IdentId {
 }
 impl IdentId {
     pub fn is_self(&self, db: &dyn HirDb) -> bool {
+        // TODO: Keyword should be prefilled in the database.
+        // ref: https://github.com/salsa-rs/salsa/pull/440
         self.data(db) == "self"
     }
 }

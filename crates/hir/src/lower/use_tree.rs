@@ -43,10 +43,12 @@ impl UsePathSegment {
     ) -> Partial<Self> {
         ast.kind()
             .map(|kind| match kind {
+                ast::UsePathSegmentKind::Ingot(_) => Self::Ingot,
+                ast::UsePathSegmentKind::Super(_) => Self::Super,
                 ast::UsePathSegmentKind::Ident(ident) => {
                     Self::Ident(IdentId::lower_token(ctxt, ident))
                 }
-                ast::UsePathSegmentKind::SelfPath(_) => Self::SelfPath,
+                ast::UsePathSegmentKind::Self_(_) => Self::Self_,
                 ast::UsePathSegmentKind::Glob(_) => Self::Glob,
             })
             .into()

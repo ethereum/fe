@@ -8,17 +8,15 @@ impl PathId {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Path) -> Self {
         let mut segments = Vec::new();
         for seg in ast.into_iter() {
-            let segment = if seg.is_self() {
-                Some(PathSegment::Self_)
-            } else if seg.is_self_ty() {
-                Some(PathSegment::SelfTy)
-            } else if let Some(ident) = seg.ident() {
-                Some(PathSegment::Ident(IdentId::new(
-                    ctxt.db,
-                    ident.text().to_string(),
-                )))
-            } else {
-                None
+            let segment = match seg.kind() {
+                Some(ast::PathSegmentKind::Ingot(_)) => Some(PathSegment::Ingot),
+                Some(ast::PathSegmentKind::Super(_)) => Some(PathSegment::Super),
+                Some(ast::PathSegmentKind::SelfTy(_)) => Some(PathSegment::SelfTy),
+                Some(ast::PathSegmentKind::Self_(_)) => Some(PathSegment::Self_),
+                Some(ast::PathSegmentKind::Ident(ident)) => {
+                    Some(PathSegment::Ident(IdentId::lower_token(ctxt, ident)))
+                }
+                None => None,
             }
             .into();
             segments.push(segment);

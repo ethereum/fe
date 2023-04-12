@@ -220,6 +220,12 @@ pub enum SyntaxKind {
     /// `unsafe`
     #[token("unsafe")]
     UnsafeKw,
+    /// `ingot`
+    #[token("ingot")]
+    IngotKw,
+    /// `super`
+    #[token("super")]
+    SuperKw,
 
     /// `<<`
     LShift,

@@ -22,8 +22,12 @@ pub struct UseTreeId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UsePathSegment {
     Ident(IdentId),
-    /// `self`,
-    SelfPath,
+    /// `ingot`.
+    Ingot,
+    /// `super`.
+    Super,
+    /// `self`.
+    Self_,
     /// `*`.
     Glob,
 }
