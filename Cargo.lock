@@ -919,6 +919,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-hir-analysis"
+version = "0.20.0-alpha"
+dependencies = [
+ "fe-common",
+ "fe-hir",
+ "salsa-2022",
+]
+
+[[package]]
 name = "fe-library"
 version = "0.22.0"
 dependencies = [

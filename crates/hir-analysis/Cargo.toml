@@ -1,0 +1,14 @@
+[package]
+name = "fe-hir-analysis"
+version = "0.20.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR definition and lowering for Fe lang"
+
+[dependencies]
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+
+hir = { path = "../hir", package = "fe-hir" }
+common = { path = "../common", package = "fe-common" }
