@@ -21,6 +21,13 @@ use super::{
     type_alias_ast, use_ast, AugAssignDesugared, DesugaredOrigin, HirOrigin, LazySpan,
 };
 
+/// This type represents function from the hir origin to another hir origin to
+/// identify the span of HIR node. `LazyTransitionFn` is regarded as a closure
+/// that takes a `HirOrigin` and [`LazyArg`], `LazyArg` is considered as
+/// captured variables.
+/// The reason why we use `LazyTransitionFn` instead of `dyn
+/// Fn` is that we want to make all types that use `LazyTransitionFn` to be
+/// `Clone` and `Eq`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct LazyTransitionFn {
     pub(super) f: fn(ResolvedOrigin, LazyArg) -> ResolvedOrigin,
@@ -318,6 +325,12 @@ macro_rules! define_lazy_span_node {
         impl crate::span::LazySpan for $name {
             fn resolve(&self, db: &dyn crate::SpannedHirDb) -> common::diagnostics::Span {
                 self.0.resolve(db)
+            }
+        }
+
+        impl From<$name> for crate::span::DynLazySpan {
+            fn from(val: $name) -> Self {
+                Self(val.0)
             }
         }
     };

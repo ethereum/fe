@@ -76,6 +76,15 @@ pub enum Partial<T> {
     Absent,
 }
 
+impl<T> Partial<T> {
+    pub fn unwrap(&self) -> &T {
+        match self {
+            Self::Present(value) => value,
+            Self::Absent => panic!("unwrap called on absent value"),
+        }
+    }
+}
+
 impl<T> Default for Partial<T> {
     fn default() -> Self {
         Self::Absent

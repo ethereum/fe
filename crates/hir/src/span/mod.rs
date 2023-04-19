@@ -26,6 +26,18 @@ pub mod use_tree;
 
 mod transition;
 
+/// This struct represents a dynamic lazy span, which can be converted from all
+/// types that implement [`LazySpan`] in this module. We want to avoid `dyn
+/// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to
+/// a lot of difficulties in salsa integration
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DynLazySpan(SpanTransitionChain);
+impl LazySpan for DynLazySpan {
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
+        self.0.resolve(db)
+    }
+}
+
 /// The trait provides a way to extract [`Span`](common::diagnostics::Span) from
 /// types which don't have a span information directly, but can be resolved into
 /// a span lazily.
@@ -169,5 +181,7 @@ impl AugAssignDesugared {
 }
 
 use transition::define_lazy_span_node;
+
+use self::transition::SpanTransitionChain;
 
 define_lazy_span_node!(LazySpanAtom);
