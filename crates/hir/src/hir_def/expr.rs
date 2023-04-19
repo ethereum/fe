@@ -1,5 +1,7 @@
 use cranelift_entity::entity_impl;
 
+use crate::span::expr::LazyExprSpan;
+
 use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -43,6 +45,12 @@ pub enum Expr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
 entity_impl!(ExprId);
+
+impl ExprId {
+    pub fn lazy_span(self, body: Body) -> LazyExprSpan {
+        LazyExprSpan::new(self, body)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldIndex {

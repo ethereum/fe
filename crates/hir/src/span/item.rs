@@ -275,7 +275,7 @@ mod tests {
             }
         "#;
 
-        let mod_ = db.parse_source_to_first_item::<Mod>(text);
+        let mod_ = db.expect_item::<Mod>(text);
         let top_mod = mod_.top_mod(db.upcast());
         let mod_span = mod_.lazy_span();
         assert_eq!(
@@ -296,7 +296,7 @@ mod tests {
                 where U: Add
         "#;
 
-        let fn_ = db.parse_source_to_first_item::<Func>(text);
+        let fn_ = db.expect_item::<Func>(text);
         let top_mod = fn_.top_mod(db.upcast());
         let fn_span = fn_.lazy_span();
         assert_eq!("my_func", db.text_at(top_mod, &fn_span.name()));
@@ -347,7 +347,7 @@ mod tests {
                 pub y: foo::Bar<2>
             }"#;
 
-        let struct_ = db.parse_source_to_first_item::<Struct>(text);
+        let struct_ = db.expect_item::<Struct>(text);
         let top_mod = struct_.top_mod(db.upcast());
         let struct_span = struct_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &struct_span.name()));
@@ -374,7 +374,7 @@ mod tests {
                 Baz(u32, i32)
             }"#;
 
-        let enum_ = db.parse_source_to_first_item::<Enum>(text);
+        let enum_ = db.expect_item::<Enum>(text);
         let top_mod = enum_.top_mod(db.upcast());
         let enum_span = enum_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &enum_span.name()));
@@ -396,7 +396,7 @@ mod tests {
             pub type Foo = u32
         "#;
 
-        let type_alias = db.parse_source_to_first_item::<TypeAlias>(text);
+        let type_alias = db.expect_item::<TypeAlias>(text);
         let top_mod = type_alias.top_mod(db.upcast());
         let type_alias_span = type_alias.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &type_alias_span.alias()));
@@ -412,7 +412,7 @@ mod tests {
             use foo::bar::{baz::*, qux as Alias}
         "#;
 
-        let use_ = db.parse_source_to_first_item::<Use>(text);
+        let use_ = db.expect_item::<Use>(text);
         let top_mod = use_.top_mod(db.upcast());
         let use_tree = use_.lazy_span().use_tree();
 

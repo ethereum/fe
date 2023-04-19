@@ -1,5 +1,5 @@
 use common::{
-    diagnostics::{AnalysisPass, CompleteDiagnostic, GlobalErrorCode, Severity, Span},
+    diagnostics::{AnalysisPass, CompleteDiagnostic, GlobalErrorCode, Severity, Span, SpanKind},
     InputFile,
 };
 use parser::GreenNode;
@@ -38,7 +38,7 @@ impl DiagnosticVoucher for ParseDiagnostic {
 
     fn to_complete(self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
-        let span = Span::new(self.file, self.error.range);
+        let span = Span::new(self.file, self.error.range, SpanKind::Original);
         CompleteDiagnostic::new(Severity::Error, self.error.msg, span, vec![], error_code)
     }
 }

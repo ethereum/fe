@@ -1,6 +1,8 @@
 use cranelift_entity::entity_impl;
 
-use super::{IdentId, LitKind, Partial, PathId};
+use crate::span::pat::LazyPatSpan;
+
+use super::{Body, IdentId, LitKind, Partial, PathId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
@@ -17,6 +19,12 @@ pub enum Pat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PatId(u32);
 entity_impl!(PatId);
+
+impl PatId {
+    pub fn lazy_span(self, body: Body) -> LazyPatSpan {
+        LazyPatSpan::new(self, body)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPatField {

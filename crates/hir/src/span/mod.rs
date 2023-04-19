@@ -128,14 +128,6 @@ where
         Self::Raw(AstPtr::new(ast))
     }
 
-    fn syntax_ptr(&self) -> Option<SyntaxNodePtr> {
-        match self {
-            HirOrigin::Raw(ptr) => Some(ptr.syntax_node_ptr()),
-            HirOrigin::Expanded(ptr) => Some(ptr.clone()),
-            _ => None,
-        }
-    }
-
     pub(crate) fn desugared(origin: impl Into<DesugaredOrigin>) -> Self {
         Self::Desugared(origin.into())
     }

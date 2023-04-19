@@ -1,5 +1,4 @@
-use common::InputFile;
-use parser::{ast, SyntaxNode};
+use parser::ast;
 
 use crate::{
     hir_def::{Body, StmtId},
@@ -8,8 +7,8 @@ use crate::{
 };
 
 use super::{
-    body_ast, body_source_map, define_lazy_span_node,
-    transition::{ChainInitiator, SpanTransitionChain},
+    body_source_map, define_lazy_span_node,
+    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyStmtSpan, ast::Stmt,);
@@ -39,15 +38,44 @@ pub(crate) struct StmtRoot {
 }
 
 impl ChainInitiator for StmtRoot {
-    fn init(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
+    fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
-        let stmt_source = source_map.stmt_map.node_to_source(self.stmt);
-        let ptr = stmt_source
-            .syntax_ptr()
-            .unwrap_or_else(|| body_ast(db, self.body).syntax_ptr().unwrap());
+        let origin = source_map.stmt_map.node_to_source(self.stmt);
+        let top_mod = self.body.top_mod(db.upcast());
+        ResolvedOrigin::resolve(db, top_mod, origin)
+    }
+}
 
-        let (file, root_node) = self.body.top_mod(db.upcast()).init(db);
-        let node = ptr.to_node(&root_node);
-        (file, node)
+#[cfg(test)]
+mod tests {
+    use crate::{hir_def::Body, test_db::TestDb};
+    use common::Upcast;
+
+    #[test]
+    fn aug_assign() {
+        let mut db = TestDb::default();
+
+        let text = r#" {
+            fn foo() {
+                let mut x = 0
+                x += 1
+            }
+        }"#;
+
+        let body: Body = db.expect_item::<Body>(text);
+        let top_mod = body.top_mod(db.upcast());
+        for (i, stmt) in body.stmts(db.upcast()).keys().enumerate() {
+            match i {
+                0 => {
+                    let span = stmt.lazy_span(body);
+                    assert_eq!("let mut x = 0", db.text_at(top_mod, &span));
+                }
+                1 => {
+                    let span = stmt.lazy_span(body);
+                    assert_eq!("x += 1", db.text_at(top_mod, &span));
+                }
+                _ => unreachable!(),
+            }
+        }
     }
 }

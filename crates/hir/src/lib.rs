@@ -133,16 +133,12 @@ mod test_db {
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn parse_source_to_first_item<T>(&mut self, text: &str) -> T
+        pub fn expect_item<T>(&mut self, text: &str) -> T
         where
             ItemKind: TryInto<T, Error = &'static str>,
         {
             let tree = self.parse_source(text);
-            tree.children(tree.top_mod)
-                .next()
-                .unwrap()
-                .try_into()
-                .unwrap()
+            tree.dfs().find_map(|it| it.try_into().ok()).unwrap()
         }
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
