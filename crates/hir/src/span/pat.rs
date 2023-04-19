@@ -9,7 +9,7 @@ use crate::{
 
 use super::{
     body_ast, body_source_map, define_lazy_span_node,
-    transition::{ChainRoot, SpanTransitionChain},
+    transition::{ChainInitiator, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyPatSpan, ast::Pat,);
@@ -73,21 +73,21 @@ define_lazy_span_node!(
     }
 );
 
-#[derive(Clone, Copy)]
-struct PatRoot {
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct PatRoot {
     pat: PatId,
     body: Body,
 }
 
-impl ChainRoot for PatRoot {
-    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
+impl ChainInitiator for PatRoot {
+    fn init(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
         let source_map = body_source_map(db, self.body);
         let pat_source = source_map.pat_map.node_to_source(self.pat);
         let ptr = pat_source
             .syntax_ptr()
             .unwrap_or_else(|| body_ast(db, self.body).syntax_ptr().unwrap());
 
-        let (file, root_node) = self.body.top_mod(db.upcast()).root(db);
+        let (file, root_node) = self.body.top_mod(db.upcast()).init(db);
         let node = ptr.to_node(&root_node);
         (file, node)
     }
