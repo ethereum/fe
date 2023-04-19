@@ -11,12 +11,25 @@ define_lazy_span_node!(
 );
 impl LazyAttrListSpan {
     pub fn normal_attr(&self, idx: usize) -> LazyNormalAttrSpan {
-        let transition = move |node: parser::SyntaxNode| {
+        fn f(
+            node: parser::SyntaxNode,
+            arg: crate::span::transition::LazyArg,
+        ) -> Option<parser::NodeOrToken> {
+            let idx = match arg {
+                crate::span::transition::LazyArg::Idx(idx) => idx,
+                _ => unreachable!(),
+            };
             ast::AttrList::cast(node)
                 .and_then(|f| f.normal_attrs().nth(idx))
                 .map(|n| n.syntax().clone().into())
+        }
+
+        let lazy_transition = crate::span::transition::LazyTransitionFn {
+            f,
+            arg: crate::span::transition::LazyArg::Idx(idx),
         };
-        LazyNormalAttrSpan(self.0.push_transition(std::sync::Arc::new(transition)))
+
+        LazyNormalAttrSpan(self.0.push_transition(lazy_transition))
     }
 }
 

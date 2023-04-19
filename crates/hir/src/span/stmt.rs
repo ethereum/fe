@@ -9,7 +9,7 @@ use crate::{
 
 use super::{
     body_ast, body_source_map, define_lazy_span_node,
-    transition::{ChainRoot, SpanTransitionChain},
+    transition::{ChainInitiator, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyStmtSpan, ast::Stmt,);
@@ -32,21 +32,21 @@ define_lazy_span_node!(
     }
 );
 
-#[derive(Clone, Copy)]
-struct StmtRoot {
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct StmtRoot {
     stmt: StmtId,
     body: Body,
 }
 
-impl ChainRoot for StmtRoot {
-    fn root(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
+impl ChainInitiator for StmtRoot {
+    fn init(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
         let source_map = body_source_map(db, self.body);
         let stmt_source = source_map.stmt_map.node_to_source(self.stmt);
         let ptr = stmt_source
             .syntax_ptr()
             .unwrap_or_else(|| body_ast(db, self.body).syntax_ptr().unwrap());
 
-        let (file, root_node) = self.body.top_mod(db.upcast()).root(db);
+        let (file, root_node) = self.body.top_mod(db.upcast()).init(db);
         let node = ptr.to_node(&root_node);
         (file, node)
     }

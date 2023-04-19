@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use common::{diagnostics::Span, InputFile};
 use parser::{ast::prelude::*, syntax_node::NodeOrToken, SyntaxNode};
-use smallvec::SmallVec;
 
 use crate::{
     hir_def::{
@@ -13,28 +10,83 @@ use crate::{
 };
 
 use super::{
-    body_ast, const_ast, contract_ast, enum_ast, extern_func_ast, func_ast, impl_ast,
-    impl_trait_ast, mod_ast, struct_ast, trait_ast, type_alias_ast, use_ast, LazySpan,
+    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, extern_func_ast, func_ast,
+    impl_ast, impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast,
+    type_alias_ast, use_ast, LazySpan,
 };
 
-type TransitionFn = Arc<dyn Fn(SyntaxNode) -> Option<NodeOrToken>>;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct LazyTransitionFn {
+    pub(super) f: fn(SyntaxNode, LazyArg) -> Option<NodeOrToken>,
+    pub(super) arg: LazyArg,
+}
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) enum LazyArg {
+    Idx(usize),
+    None,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct SpanTransitionChain {
-    root: Arc<dyn ChainRoot>,
-    chain: SmallVec<[TransitionFn; 4]>,
+    root: ChainRoot,
+    chain: Vec<LazyTransitionFn>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
+pub(crate) enum ChainRoot {
+    TopMod(TopLevelMod),
+    Mod(Mod),
+    Func(Func),
+    ExternFunc(ExternFunc),
+    Struct(Struct),
+    Contract(Contract),
+    Enum(Enum),
+    TypeAlias(TypeAlias),
+    Impl(Impl),
+    Trait(Trait),
+    ImplTrait(ImplTrait),
+    Const(Const),
+    Use(Use),
+    Body(Body),
+    Stmt(StmtRoot),
+    Expr(ExprRoot),
+    Pat(PatRoot),
+}
+
+impl ChainInitiator for ChainRoot {
+    fn init(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
+        match self {
+            Self::TopMod(top_mod) => top_mod.init(db),
+            Self::Mod(mod_) => mod_.init(db),
+            Self::Func(func) => func.init(db),
+            Self::ExternFunc(extern_func) => extern_func.init(db),
+            Self::Struct(struct_) => struct_.init(db),
+            Self::Contract(contract) => contract.init(db),
+            Self::Enum(enum_) => enum_.init(db),
+            Self::TypeAlias(type_alias) => type_alias.init(db),
+            Self::Impl(impl_) => impl_.init(db),
+            Self::Trait(trait_) => trait_.init(db),
+            Self::ImplTrait(impl_trait) => impl_trait.init(db),
+            Self::Const(const_) => const_.init(db),
+            Self::Use(use_) => use_.init(db),
+            Self::Body(body) => body.init(db),
+            Self::Stmt(stmt) => stmt.init(db),
+            Self::Expr(expr) => expr.init(db),
+            Self::Pat(pat) => pat.init(db),
+        }
+    }
 }
 
 impl SpanTransitionChain {
-    pub(super) fn new<T: ChainRoot + 'static>(root: T) -> Self {
-        let root = Arc::new(root);
+    pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
         Self {
-            root,
-            chain: SmallVec::new(),
+            root: root.into(),
+            chain: Vec::new(),
         }
     }
 
-    pub(super) fn push_transition(&self, transition: TransitionFn) -> Self {
+    pub(super) fn push_transition(&self, transition: LazyTransitionFn) -> Self {
         let mut new_state = self.clone();
         new_state.chain.push(transition);
         new_state
@@ -43,10 +95,10 @@ impl SpanTransitionChain {
 
 impl LazySpan for SpanTransitionChain {
     fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
-        let (file, mut node) = self.root.root(db);
+        let (file, mut node) = self.root.init(db);
 
-        for transition in &self.chain {
-            node = match transition(node.clone()) {
+        for LazyTransitionFn { f, arg } in &self.chain {
+            node = match f(node.clone(), *arg) {
                 Some(NodeOrToken::Node(node)) => node,
                 Some(NodeOrToken::Token(token)) => {
                     return Span::new(file, token.text_range());
@@ -61,12 +113,12 @@ impl LazySpan for SpanTransitionChain {
     }
 }
 
-pub(super) trait ChainRoot {
-    fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode);
+pub trait ChainInitiator {
+    fn init(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode);
 }
 
-impl ChainRoot for TopLevelMod {
-    fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
+impl ChainInitiator for TopLevelMod {
+    fn init(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
         let file = self.file(db.upcast());
         let ast = top_mod_ast(db.upcast(), *self);
         (file, ast.syntax().clone())
@@ -76,10 +128,10 @@ impl ChainRoot for TopLevelMod {
 macro_rules! impl_chain_root {
     ($(($ty:ty, $fn:ident),)*) => {
         $(
-        impl ChainRoot for $ty {
-            fn root(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
+        impl ChainInitiator for $ty {
+            fn init(&self, db: &dyn crate::SpannedHirDb) -> (InputFile, SyntaxNode) {
                 let ast = $fn(db, *self);
-                let (file, root) = self.top_mod(db.upcast()).root(db);
+                let (file, root) = self.top_mod(db.upcast()).init(db);
                 let ptr = ast.syntax_ptr().unwrap();
                 let node = ptr.to_node(&root);
                 (file, node)
@@ -118,7 +170,7 @@ macro_rules! define_lazy_span_node {
             )?
         )?
     ) => {
-        #[derive(Clone)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
         pub struct $name(pub(crate) crate::span::transition::SpanTransitionChain);
         $(
             $(
@@ -131,13 +183,18 @@ macro_rules! define_lazy_span_node {
             $($(
                 pub fn $name_token(&self) -> crate::span::LazySpanAtom {
                     use parser::ast::prelude::*;
-                    let transition = |node: parser::SyntaxNode| {
+                    fn f(node: parser::SyntaxNode, _: crate::span::transition::LazyArg) -> Option<parser::NodeOrToken> {
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|n| n.$getter_token())
                             .map(|n| n.into())
+                    }
+
+                    let lazy_transition = crate::span::transition::LazyTransitionFn {
+                        f,
+                        arg: crate::span::transition::LazyArg::None,
                     };
                     crate::span::LazySpanAtom(
-                        self.0.push_transition(std::sync::Arc::new(transition))
+                        self.0.push_transition(lazy_transition)
                     )
                 }
             )*)?
@@ -145,12 +202,18 @@ macro_rules! define_lazy_span_node {
             $($(
                 pub fn $name_node(&self) -> $result {
                     use parser::ast::prelude::*;
-                    let transition = |node: parser::SyntaxNode| {
+
+                    fn f(node: parser::SyntaxNode, _: crate::span::transition::LazyArg) -> Option<parser::NodeOrToken> {
                         <$sk_node as AstNode>::cast(node)
-                            .and_then(|f| f.$getter_node())
+                            .and_then(|n| n.$getter_node())
                             .map(|n| n.syntax().clone().into())
+                    }
+
+                    let lazy_transition = crate::span::transition::LazyTransitionFn {
+                        f,
+                        arg: crate::span::transition::LazyArg::None,
                     };
-                    $result(self.0.push_transition(std::sync::Arc::new(transition)))
+                    $result(self.0.push_transition(lazy_transition))
                 }
             )*)?
 
@@ -158,12 +221,23 @@ macro_rules! define_lazy_span_node {
 
                 pub fn $name_iter(&self, idx: usize) -> $result_iter {
                     use parser::ast::prelude::*;
-                    let transition = move |node: parser::SyntaxNode| {
+                    fn f(node: parser::SyntaxNode, arg: crate::span::transition::LazyArg) -> Option<parser::NodeOrToken> {
+                        let idx = match arg {
+                            crate::span::transition::LazyArg::Idx(idx) => idx,
+                            _ => unreachable!(),
+                        };
+
                         <$sk_node as AstNode>::cast(node)
                             .and_then(|f| f.into_iter().nth(idx))
                             .map(|n| n.syntax().clone().into())
+                    }
+
+                    let lazy_transition = crate::span::transition::LazyTransitionFn {
+                        f,
+                        arg: crate::span::transition::LazyArg::Idx(idx),
                     };
-                    $result_iter(self.0.push_transition(std::sync::Arc::new(transition)))
+
+                    $result_iter(self.0.push_transition(lazy_transition))
                 }
             )*)?
         })?)?
