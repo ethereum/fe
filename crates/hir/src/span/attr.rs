@@ -1,5 +1,7 @@
 use parser::ast::{self, prelude::*};
 
+use crate::span::transition::ResolvedOrigin;
+
 use super::define_lazy_span_node;
 
 define_lazy_span_node!(
@@ -11,17 +13,16 @@ define_lazy_span_node!(
 );
 impl LazyAttrListSpan {
     pub fn normal_attr(&self, idx: usize) -> LazyNormalAttrSpan {
-        fn f(
-            node: parser::SyntaxNode,
-            arg: crate::span::transition::LazyArg,
-        ) -> Option<parser::NodeOrToken> {
+        fn f(origin: ResolvedOrigin, arg: crate::span::transition::LazyArg) -> ResolvedOrigin {
             let idx = match arg {
                 crate::span::transition::LazyArg::Idx(idx) => idx,
                 _ => unreachable!(),
             };
-            ast::AttrList::cast(node)
-                .and_then(|f| f.normal_attrs().nth(idx))
-                .map(|n| n.syntax().clone().into())
+            origin.map(|node| {
+                ast::AttrList::cast(node)
+                    .and_then(|f| f.normal_attrs().nth(idx))
+                    .map(|n| n.syntax().clone().into())
+            })
         }
 
         let lazy_transition = crate::span::transition::LazyTransitionFn {

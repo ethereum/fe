@@ -1,5 +1,4 @@
-use common::InputFile;
-use parser::{ast, SyntaxNode};
+use parser::ast;
 
 use crate::{
     hir_def::{Body, ExprId},
@@ -8,8 +7,8 @@ use crate::{
 };
 
 use super::{
-    body_ast, body_source_map, define_lazy_span_node,
-    transition::{ChainInitiator, SpanTransitionChain},
+    body_source_map, define_lazy_span_node,
+    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyExprSpan, ast::Expr,);
@@ -169,15 +168,10 @@ pub(crate) struct ExprRoot {
 }
 
 impl ChainInitiator for ExprRoot {
-    fn init(&self, db: &dyn SpannedHirDb) -> (InputFile, SyntaxNode) {
+    fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
-        let expr_source = source_map.expr_map.node_to_source(self.expr);
-        let ptr = expr_source
-            .syntax_ptr()
-            .unwrap_or_else(|| body_ast(db, self.body).syntax_ptr().unwrap());
-
-        let (file, root_node) = self.body.top_mod(db.upcast()).init(db);
-        let node = ptr.to_node(&root_node);
-        (file, node)
+        let origin = source_map.expr_map.node_to_source(self.expr);
+        let top_mod = self.body.top_mod(db.upcast());
+        ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }

@@ -1,6 +1,8 @@
 use cranelift_entity::entity_impl;
 
-use super::{ExprId, PatId, TypeId};
+use crate::span::stmt::LazyStmtSpan;
+
+use super::{Body, ExprId, PatId, TypeId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
@@ -31,3 +33,9 @@ pub enum Stmt {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StmtId(u32);
 entity_impl!(StmtId);
+
+impl StmtId {
+    pub fn lazy_span(self, body: Body) -> LazyStmtSpan {
+        LazyStmtSpan::new(self, body)
+    }
+}
