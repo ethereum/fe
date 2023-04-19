@@ -3,7 +3,7 @@ use crate::SyntaxKind;
 use super::{
     attr::parse_attr_list,
     define_scope,
-    param::{parse_where_clause_opt, GenericParamListScope},
+    param::{parse_generic_params_opt, parse_where_clause_opt},
     token_stream::TokenStream,
     type_::parse_type,
     Parser,
@@ -15,7 +15,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for StructScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::StructKw);
 
         parser.with_next_expected_tokens(
@@ -28,11 +28,7 @@ impl super::Parse for StructScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
-            },
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -55,7 +51,7 @@ define_scope! {
     )
 }
 impl super::Parse for RecordFieldDefListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -89,7 +85,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for RecordFieldDefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parse_attr_list(parser);
 
@@ -104,7 +100,7 @@ impl super::Parse for RecordFieldDefScope {
         );
         if parser.bump_if(SyntaxKind::Colon) {
             parser.with_next_expected_tokens(
-                |parser| parse_type(parser, None, false),
+                |parser| parse_type(parser, None),
                 &[SyntaxKind::Newline, SyntaxKind::RBrace],
             );
         } else {

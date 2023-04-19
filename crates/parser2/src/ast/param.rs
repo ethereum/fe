@@ -101,6 +101,15 @@ pub enum GenericParamKind {
     Const(ConstGenericParam),
 }
 
+impl GenericParamKind {
+    pub fn syntax(&self) -> &rowan::SyntaxNode<FeLang> {
+        match self {
+            GenericParamKind::Type(param) => param.syntax(),
+            GenericParamKind::Const(param) => param.syntax(),
+        }
+    }
+}
+
 ast_node! {
     /// `(label1: arg1, arg2, ..)`
     pub struct CallArgList,
@@ -156,6 +165,10 @@ impl ConstGenericParam {
         support::token(self.syntax(), SK::Ident)
     }
 
+    pub fn const_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::ConstKw)
+    }
+
     /// Returns the type of the const generic parameter.
     pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
@@ -199,11 +212,7 @@ ast_node! {
     SK::TypeGenericArg,
 }
 impl TypeGenericArg {
-    pub fn type_(&self) -> Option<super::Type> {
-        support::child(self.syntax())
-    }
-
-    pub fn bounds(&self) -> Option<TypeBoundList> {
+    pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
 }
@@ -223,6 +232,11 @@ ast_node! {
     pub struct WhereClause,
     SK::WhereClause,
     IntoIterator<Item=WherePredicate>,
+}
+impl WhereClause {
+    pub fn where_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::WhereKw)
+    }
 }
 
 ast_node! {
@@ -309,6 +323,14 @@ pub enum FnParamLabel {
     Underscore(SyntaxToken),
 }
 impl FnParamLabel {
+    pub fn syntax(&self) -> SyntaxToken {
+        match self {
+            FnParamLabel::Ident(token) => token,
+            FnParamLabel::Underscore(token) => token,
+        }
+        .clone()
+    }
+
     fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Ident => Some(FnParamLabel::Ident(token)),
@@ -327,6 +349,15 @@ pub enum FnParamName {
     Underscore(SyntaxToken),
 }
 impl FnParamName {
+    pub fn syntax(&self) -> SyntaxToken {
+        match self {
+            FnParamName::Ident(token) => token,
+            FnParamName::SelfParam(token) => token,
+            FnParamName::Underscore(token) => token,
+        }
+        .clone()
+    }
+
     fn from_token(token: SyntaxToken) -> Option<Self> {
         match token.kind() {
             SK::Ident => Some(FnParamName::Ident(token)),
@@ -355,21 +386,21 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(GenericParamListScope::default(), None);
-        GenericParamList::cast(parser.finish().0).unwrap()
+        GenericParamList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_generic_arg(source: &str) -> GenericArgList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(GenericArgListScope::new(true), None);
-        GenericArgList::cast(parser.finish().0).unwrap()
+        parser.parse(GenericArgListScope::default(), None);
+        GenericArgList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_where_clause(source: &str) -> WhereClause {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         parser.parse(WhereClauseScope::default(), None);
-        WhereClause::cast(parser.finish().0).unwrap()
+        WhereClause::cast(parser.finish_to_node().0).unwrap()
     }
 
     #[test]
@@ -430,15 +461,13 @@ mod tests {
     #[test]
     #[wasm_bindgen_test]
     fn generic_arg() {
-        let source = r#"<T: T1, "foo">"#;
+        let source = r#"<T, "foo">"#;
         let ga = parse_generic_arg(source);
         let mut args = ga.iter();
 
-        let GenericArgKind::Type(a1) = args.next().unwrap().kind() else {
+        let GenericArgKind::Type(_) = args.next().unwrap().kind() else {
             panic!("expected type arg");
         };
-        assert!(a1.bounds().is_some());
-
         let GenericArgKind::Const(a2) = args.next().unwrap().kind() else {
             panic!("expected const arg");
         };

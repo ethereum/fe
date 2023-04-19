@@ -1,7 +1,7 @@
 use rowan::ast::{support, AstNode};
 
 use super::ast_node;
-use crate::SyntaxKind as SK;
+use crate::{SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
     /// A statement.
@@ -14,7 +14,6 @@ ast_node! {
     | SK::WhileStmt
     | SK::ContinueStmt
     | SK::BreakStmt
-    | SK::AssertStmt
     | SK::ReturnStmt
     | SK::ExprStmt
 }
@@ -29,7 +28,6 @@ impl Stmt {
             SK::WhileStmt => StmtKind::While(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ContinueStmt => StmtKind::Continue(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::BreakStmt => StmtKind::Break(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::AssertStmt => StmtKind::Assert(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ReturnStmt => StmtKind::Return(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ExprStmt => StmtKind::Expr(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
@@ -82,9 +80,9 @@ ast_node! {
     SK::AugAssignStmt,
 }
 impl AugAssignStmt {
-    /// Returns the pattern of the lhs of the assignment.
-    pub fn pat(&self) -> Option<super::Pat> {
-        support::child(self.syntax())
+    /// Returns the identifier of the lhs of the aug assignment.
+    pub fn ident(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
     }
 
     pub fn op(&self) -> Option<super::ArithBinOp> {
@@ -159,29 +157,6 @@ ast_node! {
 }
 
 ast_node! {
-    /// `assert cond` or
-    /// `assert cond, message`
-    pub struct AssertStmt,
-    SK::AssertStmt
-}
-impl AssertStmt {
-    /// Returns the condition of the assert statement.
-    pub fn cond(&self) -> Option<super::Expr> {
-        support::child(self.syntax())
-    }
-
-    /// Returns the message of the assert statement.
-    pub fn message(&self) -> Option<super::Expr> {
-        let mut exprs = support::children(self.syntax());
-        let first = exprs.next();
-        match exprs.next() {
-            Some(expr) => Some(expr),
-            None => first,
-        }
-    }
-}
-
-ast_node! {
     /// `return` or
     /// `return expr`
     pub struct ReturnStmt,
@@ -191,6 +166,12 @@ impl ReturnStmt {
     /// Returns the expression of the return statement.
     pub fn expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
+    }
+
+    /// Returns `true` if there is an expression or `Error` node after `return`
+    /// keyword.
+    pub fn has_value(&self) -> bool {
+        self.syntax().children().count() > 1
     }
 }
 
@@ -214,7 +195,6 @@ pub enum StmtKind {
     While(WhileStmt),
     Continue(ContinueStmt),
     Break(BreakStmt),
-    Assert(AssertStmt),
     Return(ReturnStmt),
     Expr(ExprStmt),
 }
@@ -238,7 +218,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::stmt::parse_stmt(&mut parser, None);
-        Stmt::cast(parser.finish().0)
+        Stmt::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
             .try_into()
@@ -278,10 +258,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn aug_assign() {
         let aug_assign_stmt: AugAssignStmt = parse_stmt("x += 1");
-        assert!(matches!(
-            aug_assign_stmt.pat().unwrap().kind(),
-            PatKind::Path(_)
-        ));
+        assert!(matches!(aug_assign_stmt.ident().unwrap().text(), "x",));
         assert!(matches!(
             aug_assign_stmt.op().unwrap(),
             crate::ast::ArithBinOp::Add(_)
@@ -289,10 +266,7 @@ mod tests {
 
         let aug_assign_stmt: AugAssignStmt = parse_stmt("x <<= 1");
 
-        assert!(matches!(
-            aug_assign_stmt.pat().unwrap().kind(),
-            PatKind::Path(_)
-        ));
+        assert!(matches!(aug_assign_stmt.ident().unwrap().text(), "x",));
         assert!(matches!(
             aug_assign_stmt.op().unwrap(),
             crate::ast::ArithBinOp::LShift(_)

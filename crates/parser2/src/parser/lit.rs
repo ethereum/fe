@@ -8,7 +8,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for LitScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         match parser.current_kind() {
             Some(kind) if is_lit(kind) => {
                 parser.bump();

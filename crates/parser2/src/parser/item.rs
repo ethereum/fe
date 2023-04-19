@@ -6,19 +6,20 @@ use super::{
     attr, define_scope,
     expr::parse_expr,
     func::FnDefScope,
-    param::{parse_where_clause_opt, GenericParamListScope},
+    param::{parse_generic_params_opt, parse_where_clause_opt},
     struct_::RecordFieldDefListScope,
-    token_stream::TokenStream,
-    type_::{parse_type, TupleTypeScope},
+    token_stream::{LexicalToken, TokenStream},
+    type_::{parse_type, PathTypeScope, TupleTypeScope},
     use_tree::UseTreeScope,
     Parser,
 };
 
 define_scope! {
     #[doc(hidden)]
-    pub ItemListScope,
+    pub ItemListScope {inside_mod: bool},
     ItemList,
     Override(
+        ModKw,
         FnKw,
         StructKw,
         ContractKw,
@@ -36,12 +37,22 @@ define_scope! {
     )
 }
 impl super::Parse for ItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         use crate::SyntaxKind::*;
+
+        if self.inside_mod {
+            parser.bump_expected(LBrace);
+        }
 
         loop {
             parser.set_newline_as_trivia(true);
+            if self.inside_mod && parser.bump_if(RBrace) {
+                break;
+            }
             if parser.current_kind().is_none() {
+                if self.inside_mod {
+                    parser.error("expected `}` to close the module");
+                }
                 break;
             }
 
@@ -58,11 +69,19 @@ impl super::Parse for ItemListScope {
 
             if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
                 parser.error("expected `fn` after `unsafe` keyword");
-            } else if modifier.is_pub() && parser.current_kind() == Some(ExternKw) {
-                parser.error("`pub` can't be used for `extern` block");
+            } else if modifier.is_pub() && matches!(parser.current_kind(), Some(ImplKw | ExternKw))
+            {
+                let error_msg = format!(
+                    "`pub` can't be used for `{}`",
+                    parser.current_token().unwrap().text()
+                );
+                parser.error(&error_msg);
             }
 
             match parser.current_kind() {
+                Some(ModKw) => {
+                    parser.parse(ModScope::default(), checkpoint);
+                }
                 Some(FnKw) => {
                     parser.parse(FnScope::default(), checkpoint);
                 }
@@ -115,7 +134,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for ItemModifierScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         if parser.bump_if(SyntaxKind::PubKw) {
             if parser.bump_if(SyntaxKind::UnsafeKw) {
                 self.kind.set(ModifierKind::PubAndUnsafe);
@@ -152,16 +171,38 @@ impl ModifierKind {
     }
 }
 
+define_scope! { ModScope, Mod, Inheritance }
+impl super::Parse for ModScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
+        parser.bump_expected(SyntaxKind::ModKw);
+        parser.with_next_expected_tokens(
+            |parser| {
+                parser.bump_or_recover(
+                    SyntaxKind::Ident,
+                    "expected identifier for the module name",
+                    None,
+                )
+            },
+            &[SyntaxKind::LBrace],
+        );
+        if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            parser.parse(ItemListScope::new(true), None);
+        } else {
+            parser.error_and_recover("expected contract field definition", None);
+        }
+    }
+}
+
 define_scope! { ContractScope, Contract, Inheritance }
 impl super::Parse for ContractScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ContractKw);
 
         parser.with_next_expected_tokens(
             |parser| {
                 parser.bump_or_recover(
                     SyntaxKind::Ident,
-                    "expected identifier for the struct name",
+                    "expected identifier for the contract name",
                     None,
                 )
             },
@@ -178,7 +219,7 @@ impl super::Parse for ContractScope {
 
 define_scope! { EnumScope, Enum, Inheritance }
 impl super::Parse for EnumScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::EnumKw);
 
         parser.with_next_expected_tokens(
@@ -193,11 +234,7 @@ impl super::Parse for EnumScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
-            },
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -214,7 +251,7 @@ impl super::Parse for EnumScope {
 
 define_scope! { VariantDefListScope, VariantDefList, Override(RBrace, Newline) }
 impl super::Parse for VariantDefListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -240,7 +277,7 @@ impl super::Parse for VariantDefListScope {
 
 define_scope! { VariantDefScope, VariantDef, Inheritance }
 impl super::Parse for VariantDefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_or_recover(
             SyntaxKind::Ident,
             "expected ident for the variant name",
@@ -255,7 +292,7 @@ impl super::Parse for VariantDefScope {
 
 define_scope! { TraitScope, Trait, Inheritance }
 impl super::Parse for TraitScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::TraitKw);
 
         parser.bump_or_recover(
@@ -265,11 +302,7 @@ impl super::Parse for TraitScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
-            },
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -286,38 +319,53 @@ impl super::Parse for TraitScope {
 
 define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parse_fn_item_block(parser, false, FnDefScope::TraitDef)
     }
 }
 
 define_scope! { ImplScope, Impl, Inheritance }
 impl super::Parse for ImplScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ImplKw);
-
-        parser.with_next_expected_tokens(
-            |parser| {
-                parse_type(parser, None, true);
-            },
+        parser.with_recovery_tokens(
+            |parser| parse_generic_params_opt(parser),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
         );
 
-        let is_impl_trait = parser.with_next_expected_tokens(
-            |parser| {
-                if parser.bump_if(SyntaxKind::ForKw) {
-                    self.set_kind(SyntaxKind::ImplTrait);
-                    parse_type(parser, None, true);
-                    true
-                } else {
-                    false
-                }
-            },
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
+        let is_impl_trait = parser.dry_run(|parser| {
+            parser.with_next_expected_tokens(
+                |parser| parse_type(parser, None),
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
+            );
+            parser.bump_if(SyntaxKind::ForKw)
+        });
+
+        if is_impl_trait {
+            parser.replace_scope(_idx, SyntaxKind::ImplTrait);
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(PathTypeScope::default(), None);
+                },
+                &[SyntaxKind::ForKw],
+            );
+            parser.bump_expected(SyntaxKind::ForKw);
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parse_type(parser, None);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            );
+        } else {
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parse_type(parser, None);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            )
+        }
 
         parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
-
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected impl body", None);
             return;
@@ -333,21 +381,21 @@ impl super::Parse for ImplScope {
 
 define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parse_fn_item_block(parser, false, FnDefScope::Normal)
     }
 }
 
 define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parse_fn_item_block(parser, true, FnDefScope::Normal)
     }
 }
 
 define_scope! { UseScope, Use, Inheritance }
 impl super::Parse for UseScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::UseKw);
         parser.parse(UseTreeScope::default(), None);
     }
@@ -355,7 +403,7 @@ impl super::Parse for UseScope {
 
 define_scope! { ConstScope, Const, Inheritance }
 impl super::Parse for ConstScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ConstKw);
 
         parser.set_newline_as_trivia(false);
@@ -372,7 +420,7 @@ impl super::Parse for ConstScope {
                     "expected type annotation for `const`",
                     None,
                 );
-                parse_type(parser, None, false);
+                parse_type(parser, None);
             },
             &[SyntaxKind::Eq],
         );
@@ -388,7 +436,7 @@ impl super::Parse for ConstScope {
 
 define_scope! { ExternScope, Extern, Inheritance }
 impl super::Parse for ExternScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ExternKw);
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
@@ -401,14 +449,14 @@ impl super::Parse for ExternScope {
 
 define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, FnKw) }
 impl super::Parse for ExternItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parse_fn_item_block(parser, true, FnDefScope::Extern);
     }
 }
 
 define_scope! { TypeAliasScope, TypeAlias, Inheritance }
 impl super::Parse for TypeAliasScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::TypeKw);
 
@@ -425,9 +473,7 @@ impl super::Parse for TypeAliasScope {
 
         parser.with_next_expected_tokens(
             |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericParamListScope::default(), None);
-                }
+                parse_generic_params_opt(parser);
             },
             &[SyntaxKind::Eq],
         );
@@ -437,7 +483,7 @@ impl super::Parse for TypeAliasScope {
             return;
         }
 
-        parse_type(parser, None, false);
+        parse_type(parser, None);
     }
 }
 

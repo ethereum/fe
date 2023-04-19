@@ -10,7 +10,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for UseTreeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         if let Some(SyntaxKind::LBrace) = parser.current_kind() {
             parser.parse(UseTreeListScope::default(), None);
@@ -55,7 +55,7 @@ define_scope! {
     Override(Comma, RBrace)
 }
 impl super::Parse for UseTreeListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
         parser.with_next_expected_tokens(
             |parser| {
@@ -83,7 +83,7 @@ define_scope! {
     Inheritance(Colon2)
 }
 impl super::Parse for UsePathScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.parse(UsePathSegmentScope::default(), None);
 
@@ -113,7 +113,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for UsePathSegmentScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         match parser.current_kind() {
             Some(kind) if is_use_path_segment(kind) => {
                 parser.bump();
@@ -131,7 +131,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for UseTreeRenameScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::AsKw);
 

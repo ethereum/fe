@@ -177,7 +177,6 @@ impl Occurrence {
     fn phi_specialize(&self, db: &dyn AnalyzerDb, ctor: ConstructorKind) -> Vec<Self> {
         let arity = ctor.arity(db);
         (0..arity)
-            .into_iter()
             .map(|i| {
                 let mut inner = self.0.clone();
                 inner.push(i);

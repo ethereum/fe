@@ -5,13 +5,11 @@ pub mod syntax_kind;
 pub mod syntax_node;
 
 pub use syntax_kind::SyntaxKind;
-pub use syntax_node::{FeLang, SyntaxNode, SyntaxToken};
+pub use syntax_node::{FeLang, GreenNode, NodeOrToken, SyntaxNode, SyntaxToken, TextRange};
 
 use parser::RootScope;
 
-pub type TextRange = rowan::TextRange;
-
-pub fn parse_source_file(text: &str) -> (SyntaxNode, Vec<ParseError>) {
+pub fn parse_source_file(text: &str) -> (GreenNode, Vec<ParseError>) {
     let lexer = lexer::Lexer::new(text);
     let mut parser = parser::Parser::new(lexer);
     let checkpoint = parser.enter(RootScope::default(), None);
@@ -19,7 +17,8 @@ pub fn parse_source_file(text: &str) -> (SyntaxNode, Vec<ParseError>) {
     parser.parse(parser::ItemListScope::default(), None);
 
     parser.leave(checkpoint);
-    parser.finish()
+    let (node, errs) = parser.finish();
+    (node, errs)
 }
 
 /// An parse error which is accumulated in the [`parser::Parser`] while parsing.

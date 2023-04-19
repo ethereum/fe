@@ -16,7 +16,7 @@ define_scope! {
     Override(RParen, Comma)
 }
 impl super::Parse for FnParamListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
@@ -43,7 +43,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for FnParamScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_if(SyntaxKind::MutKw);
 
         let is_self = parser.with_recovery_tokens(
@@ -76,7 +76,7 @@ impl super::Parse for FnParamScope {
 
         parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
 
-        parse_type(parser, None, false);
+        parse_type(parser, None);
     }
 }
 
@@ -86,7 +86,7 @@ define_scope! {
     Override(Gt)
 }
 impl super::Parse for GenericParamListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::Lt);
         if parser.bump_if(SyntaxKind::Gt) {
             return;
@@ -107,11 +107,11 @@ define_scope! {
     Inheritance(Comma)
 }
 impl super::Parse for GenericParamScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         let is_const = parser.bump_if(SyntaxKind::ConstKw);
         if is_const {
-            self.set_kind(SyntaxKind::ConstGenericParam);
+            parser.replace_scope(_idx, SyntaxKind::ConstGenericParam);
         }
         parser.with_next_expected_tokens(
             |parser| {
@@ -129,7 +129,7 @@ impl super::Parse for GenericParamScope {
                         parser.error_and_recover("expected `:` after const parameter", None);
                         return;
                     }
-                    parse_type(parser, None, false);
+                    parse_type(parser, None);
 
                     parser.set_newline_as_trivia(true);
                 } else {
@@ -157,7 +157,7 @@ define_scope! {
     Inheritance(Plus)
 }
 impl super::Parse for TypeBoundListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::Colon);
 
         parser.parse(TypeBoundScope::default(), None);
@@ -174,30 +174,30 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for TypeBoundScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.parse(PathScope::default(), None);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::new(false), None);
+            parser.parse(GenericArgListScope::default(), None);
         }
     }
 }
 
 define_scope! {
-    pub(crate) GenericArgListScope{ allow_bounds: bool },
+    pub(crate) GenericArgListScope,
     GenericArgList,
     Override(Gt, Comma)
 }
 impl super::Parse for GenericArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::Lt);
 
         if parser.bump_if(SyntaxKind::Gt) {
             return;
         }
 
-        parser.parse(GenericArgScope::new(self.allow_bounds), None);
+        parser.parse(GenericArgScope::default(), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericArgScope::new(self.allow_bounds), None);
+            parser.parse(GenericArgScope::default(), None);
         }
 
         parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
@@ -205,34 +205,30 @@ impl super::Parse for GenericArgListScope {
 }
 
 define_scope! {
-    GenericArgScope{ allow_bounds: bool },
+    GenericArgScope,
     TypeGenericArg,
     Inheritance
 }
 impl super::Parse for GenericArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.with_next_expected_tokens(
             |parser| {
                 match parser.current_kind() {
                     Some(SyntaxKind::LBrace) => {
-                        self.set_kind(SyntaxKind::ConstGenericArg);
+                        parser.replace_scope(_idx, SyntaxKind::ConstGenericArg);
                         parser.parse(BlockExprScope::default(), None);
                     }
 
                     Some(kind) if kind.is_literal_leaf() => {
-                        self.set_kind(SyntaxKind::ConstGenericArg);
+                        parser.replace_scope(_idx, SyntaxKind::ConstGenericArg);
                         parser.parse(LitExprScope::default(), None);
                     }
 
                     _ => {
-                        parse_type(parser, None, self.allow_bounds);
+                        parse_type(parser, None);
                         if parser.current_kind() == Some(SyntaxKind::Colon) {
-                            if !self.allow_bounds {
-                                parser.error_and_recover("type bounds are not allowed here", None);
-                            } else {
-                                parser.parse(TypeBoundListScope::default(), None);
-                            }
+                            parser.error_and_recover("type bounds are not allowed here", None);
                         }
                     }
                 }
@@ -245,7 +241,7 @@ impl super::Parse for GenericArgScope {
 
 define_scope! { pub(crate) CallArgListScope, CallArgList, Override(RParen, Comma) }
 impl super::Parse for CallArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LParen);
 
         if parser.bump_if(SyntaxKind::RParen) {
@@ -263,7 +259,7 @@ impl super::Parse for CallArgListScope {
 
 define_scope! { CallArgScope, CallArg, Inheritance }
 impl super::Parse for CallArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.with_next_expected_tokens(
             |parser| {
                 parser.set_newline_as_trivia(false);
@@ -285,7 +281,7 @@ impl super::Parse for CallArgScope {
 
 define_scope! { pub(crate) WhereClauseScope, WhereClause, Inheritance(Newline) }
 impl super::Parse for WhereClauseScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::WhereKw);
 
         loop {
@@ -302,8 +298,8 @@ impl super::Parse for WhereClauseScope {
 
 define_scope! { pub(crate) WherePredicateScope, WherePredicate, Inheritance }
 impl super::Parse for WherePredicateScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_type(parser, None, false);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
+        parse_type(parser, None);
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.parse(TypeBoundListScope::default(), None);
@@ -322,4 +318,10 @@ pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
         parser.parse(WhereClauseScope::default(), None);
     }
     parser.set_newline_as_trivia(newline_as_trivia);
+}
+
+pub(crate) fn parse_generic_params_opt<S: TokenStream>(parser: &mut Parser<S>) {
+    if parser.current_kind() == Some(SyntaxKind::Lt) {
+        parser.parse(GenericParamListScope::default(), None);
+    }
 }

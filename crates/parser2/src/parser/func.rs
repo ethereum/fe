@@ -3,7 +3,7 @@ use crate::SyntaxKind;
 use super::{
     define_scope,
     expr_atom::BlockExprScope,
-    param::{parse_where_clause_opt, FnParamListScope, GenericParamListScope},
+    param::{parse_generic_params_opt, parse_where_clause_opt, FnParamListScope},
     token_stream::TokenStream,
     type_::parse_type,
     Parser,
@@ -30,7 +30,7 @@ impl Default for FnDefScope {
 }
 
 impl super::Parse for FnScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::FnKw);
 
         match self.fn_def_scope {
@@ -54,11 +54,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        },
+        |parser| parse_generic_params_opt(parser),
         &[SyntaxKind::LParen],
     );
 
@@ -76,7 +72,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     parser.with_next_expected_tokens(
         |parser| {
             if parser.bump_if(SyntaxKind::Arrow) {
-                parse_type(parser, None, false);
+                parse_type(parser, None);
             }
         },
         &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
@@ -103,11 +99,7 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| {
-            if parser.current_kind() == Some(SyntaxKind::Lt) {
-                parser.parse(GenericParamListScope::default(), None);
-            }
-        },
+        |parser| parse_generic_params_opt(parser),
         &[SyntaxKind::LParen],
     );
 
@@ -125,7 +117,7 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     parser.with_recovery_tokens(
         |parser| {
             if parser.bump_if(SyntaxKind::Arrow) {
-                parse_type(parser, None, false);
+                parse_type(parser, None);
             }
         },
         &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
@@ -161,6 +153,6 @@ fn parse_extern_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     if parser.bump_if(SyntaxKind::Arrow) {
-        parse_type(parser, None, false);
+        parse_type(parser, None);
     }
 }

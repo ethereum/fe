@@ -49,9 +49,9 @@ Root@0..231
   LetStmt@32..50
     LetKw@32..35 "let"
     WhiteSpace@35..36 " "
-    MutKw@36..39 "mut"
-    WhiteSpace@39..40 " "
-    PathPat@40..41
+    PathPat@36..41
+      MutKw@36..39 "mut"
+      WhiteSpace@39..40 " "
       Path@40..41
         PathSegment@40..41
           Ident@40..41 "x"
@@ -69,10 +69,7 @@ Root@0..231
         Int@49..50 "1"
   Newline@50..52 "\n\n"
   AugAssignStmt@52..62
-    PathPat@52..53
-      Path@52..53
-        PathSegment@52..53
-          Ident@52..53 "x"
+    Ident@52..53 "x"
     WhiteSpace@53..54 " "
     Plus@54..55 "+"
     Eq@55..56 "="
@@ -89,10 +86,7 @@ Root@0..231
           Int@61..62 "1"
   Newline@62..63 "\n"
   AugAssignStmt@63..75
-    PathPat@63..64
-      Path@63..64
-        PathSegment@63..64
-          Ident@63..64 "y"
+    Ident@63..64 "y"
     WhiteSpace@64..65 " "
     LShift@65..67
       Lt@65..66 "<"

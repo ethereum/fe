@@ -1,2 +1,0 @@
-assert 0 < x
-assert 0 < x, "`x` must be positive"

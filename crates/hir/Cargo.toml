@@ -1,0 +1,23 @@
+[package]
+name = "fe-hir"
+version = "0.20.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR definition and lowering for Fe lang"
+
+[dependencies]
+# We may need to fix this to a specific version, 
+# but I want to keep up with the latest version until the new Fe implemeentation is merged into the master.
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+derive_more = "0.99"
+cranelift-entity = "0.91"
+num-bigint = "0.4.3"
+num-traits = "0.2.15"
+camino = "1.1.4"
+rustc-hash = "1.1.0"
+
+parser = { path = "../parser2", package = "fe-parser2" }
+common = { path = "../common2", package = "fe-common2" }
+smallvec = "1.10.0"

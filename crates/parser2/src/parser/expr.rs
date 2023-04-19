@@ -175,7 +175,7 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
 
 define_scope! { UnExprScope, UnExpr, Inheritance }
 impl super::Parse for UnExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         let kind = parser.current_kind().unwrap();
         let bp = prefix_binding_power(kind).unwrap();
@@ -186,7 +186,7 @@ impl super::Parse for UnExprScope {
 
 define_scope! { BinExprScope, BinExpr, Inheritance }
 impl super::Parse for BinExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
 
         let (_, rbp) = infix_binding_power(parser).unwrap();
@@ -198,7 +198,7 @@ impl super::Parse for BinExprScope {
 
 define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }
 impl super::Parse for IndexExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
         parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
@@ -208,7 +208,7 @@ impl super::Parse for IndexExprScope {
 
 define_scope! { CallExprScope, CallExpr, Inheritance }
 impl super::Parse for CallExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
             parser.with_next_expected_tokens(
@@ -229,7 +229,7 @@ impl super::Parse for CallExprScope {
 
 define_scope! { MethodExprScope, MethodCallExpr, Inheritance }
 impl super::Parse for MethodExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot);
 
@@ -254,7 +254,7 @@ impl super::Parse for MethodExprScope {
 
 define_scope! { FieldExprScope, FieldExpr, Inheritance }
 impl super::Parse for FieldExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot);
 
@@ -280,7 +280,7 @@ impl super::Parse for FieldExprScope {
 
 define_scope! { pub(super) LShiftScope, LShift, Inheritance }
 impl super::Parse for LShiftScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_or_recover(SyntaxKind::Lt, "expected `<<`", None);
         parser.bump_or_recover(SyntaxKind::Lt, "expected `<<`", None);
     }
@@ -288,7 +288,7 @@ impl super::Parse for LShiftScope {
 
 define_scope! { pub(super) RShiftScope, RShift, Inheritance }
 impl super::Parse for RShiftScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_or_recover(SyntaxKind::Gt, "expected `>>`", None);
         parser.bump_or_recover(SyntaxKind::Gt, "expected `>>`", None);
     }
@@ -296,7 +296,7 @@ impl super::Parse for RShiftScope {
 
 define_scope! { pub(super) LtEqScope, LtEq, Inheritance }
 impl super::Parse for LtEqScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_or_recover(SyntaxKind::Lt, "expected `<=`", None);
         parser.bump_or_recover(SyntaxKind::Eq, "expected `<=`", None);
     }
@@ -304,7 +304,7 @@ impl super::Parse for LtEqScope {
 
 define_scope! { pub(super) GtEqScope, GtEq, Inheritance }
 impl super::Parse for GtEqScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_or_recover(SyntaxKind::Gt, "expected `>=`", None);
         parser.bump_or_recover(SyntaxKind::Eq, "expected `>=`", None);
     }

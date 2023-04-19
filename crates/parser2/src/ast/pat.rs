@@ -33,6 +33,11 @@ impl Pat {
             _ => unreachable!(),
         }
     }
+
+    /// Returns the `mut` keyword if the patter is mutable.
+    pub fn mut_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MutKw)
+    }
 }
 
 ast_node! {
@@ -183,7 +188,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         crate::parser::pat::parse_pat(&mut parser);
-        Pat::cast(parser.finish().0)
+        Pat::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
             .try_into()
@@ -255,7 +260,7 @@ mod tests {
     #[test]
     #[wasm_bindgen_test]
     fn record() {
-        let source = r#"Foo::Bar{a: 1, b: Foo::baz, c}"#;
+        let source = r#"Foo::Bar{a: 1, b: Foo::baz, mut c}"#;
         let record_pat: RecordPat = parse_pat(source);
 
         for (i, seg) in record_pat.path().unwrap().segments().enumerate() {
@@ -279,6 +284,7 @@ mod tests {
                 2 => {
                     assert!(field.name().is_none());
                     assert!(matches!(field.pat().unwrap().kind(), PatKind::Path(_)));
+                    assert!(field.pat().unwrap().mut_token().is_some());
                 }
                 _ => panic!("unexpected record pat"),
             }

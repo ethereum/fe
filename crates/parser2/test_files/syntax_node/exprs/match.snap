@@ -111,10 +111,9 @@ Root@0..516
     ParenExpr@89..105
       LParen@89..90 "("
       RecordInitExpr@90..104
-        PathExpr@90..91
-          Path@90..91
-            PathSegment@90..91
-              Ident@90..91 "S"
+        Path@90..91
+          PathSegment@90..91
+            Ident@90..91 "S"
         WhiteSpace@91..92 " "
         RecordFieldList@92..104
           LBrace@92..93 "{"
@@ -502,10 +501,9 @@ Root@0..516
     ParenExpr@437..463
       LParen@437..438 "("
       RecordInitExpr@438..462
-        PathExpr@438..439
-          Path@438..439
-            PathSegment@438..439
-              Ident@438..439 "S"
+        Path@438..439
+          PathSegment@438..439
+            Ident@438..439 "S"
         WhiteSpace@439..440 " "
         RecordFieldList@440..462
           LBrace@440..441 "{"

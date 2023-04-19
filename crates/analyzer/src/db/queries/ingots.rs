@@ -1,5 +1,7 @@
-use crate::namespace::items::{IngotId, IngotMode, ModuleId, ModuleSource};
-use crate::AnalyzerDb;
+use crate::{
+    namespace::items::{IngotId, IngotMode, ModuleId, ModuleSource},
+    AnalyzerDb,
+};
 use fe_common::files::{SourceFileId, Utf8Path, Utf8PathBuf};
 use indexmap::IndexSet;
 use std::rc::Rc;

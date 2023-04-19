@@ -25,7 +25,8 @@ ast_node! {
     /// A single item in a module.
     /// Use `[Item::kind]` to get the specific type of item.
     pub struct Item,
-    SK::Fn
+    SK::Mod
+    | SK::Fn
     | SK::Struct
     | SK::Contract
     | SK::Enum
@@ -40,6 +41,7 @@ ast_node! {
 impl Item {
     pub fn kind(&self) -> ItemKind {
         match self.syntax().kind() {
+            SK::Mod => ItemKind::Mod(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Fn => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Struct => ItemKind::Struct(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Contract => ItemKind::Contract(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -53,6 +55,24 @@ impl Item {
             SK::Extern => ItemKind::Extern(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
         }
+    }
+}
+
+ast_node! {
+    pub struct Mod,
+    SK::Mod,
+}
+impl super::AttrListOwner for Mod {}
+impl super::ItemModifierOwner for Mod {}
+impl Mod {
+    /// Returns the name of the function.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    /// Returns the function's parameter list.
+    pub fn items(&self) -> Option<ItemList> {
+        support::child(self.syntax())
     }
 }
 
@@ -200,7 +220,6 @@ ast_node! {
 impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
-impl super::ItemModifierOwner for Impl {}
 impl Impl {
     /// Returns the type of the impl.
     /// `Foo::Bar<T>` in `impl Foo::Bar<T> where .. { .. }`
@@ -224,11 +243,10 @@ ast_node! {
 impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
-impl super::ItemModifierOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
-    pub fn trait_(&self) -> Option<super::Type> {
+    pub fn trait_ref(&self) -> Option<super::PathType> {
         support::child(self.syntax())
     }
 
@@ -393,13 +411,14 @@ impl ItemModifier {
 }
 
 pub trait ItemModifierOwner: AstNode<Language = FeLang> {
-    fn item_modifier(&self) -> Option<ItemModifier> {
+    fn modifier(&self) -> Option<ItemModifier> {
         support::child(self.syntax())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ItemKind {
+    Mod(Mod),
     Fn(Fn),
     Struct(Struct),
     Contract(Contract),
@@ -433,10 +452,42 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         parser.parse(ItemListScope::default(), None);
-        let item_list = ItemList::cast(parser.finish().0).unwrap();
+        let item_list = ItemList::cast(parser.finish_to_node().0).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
         items.pop().unwrap().kind().try_into().unwrap()
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn mod_() {
+        let source = r"
+            pub mod foo {
+                pub fn bar() {}
+                pub struct Baz
+            }
+        ";
+        let mod_: Mod = parse_item(source);
+        assert_eq!(mod_.name().unwrap().text(), "foo");
+        let mut i = 0;
+        for item in mod_.items().unwrap().into_iter() {
+            match i {
+                0 => {
+                    assert!(matches!(item.kind(), ItemKind::Fn(_)));
+                    let func: Fn = item.kind().try_into().unwrap();
+                    assert_eq!(func.name().unwrap().text(), "bar");
+                }
+                1 => {
+                    assert!(matches!(item.kind(), ItemKind::Struct(_)));
+                    let struct_: Struct = item.kind().try_into().unwrap();
+                    assert_eq!(struct_.name().unwrap().text(), "Baz");
+                }
+                _ => panic!(),
+            }
+            i += 1;
+        }
+
+        assert_eq!(i, 2);
     }
 
     #[test]
@@ -455,7 +506,7 @@ mod tests {
         assert!(func.where_clause().is_some());
         assert!(func.body().is_some());
         assert!(matches!(func.ret_ty().unwrap().kind(), TypeKind::Tuple(_)));
-        let modifier = func.item_modifier().unwrap();
+        let modifier = func.modifier().unwrap();
         assert!(modifier.pub_kw().is_some());
         assert!(modifier.unsafe_kw().is_some());
     }
@@ -614,7 +665,8 @@ mod tests {
                 fn foo<T>(self, _t: T) -> u32 { return 1 };
             }"#;
         let i: ImplTrait = parse_item(source);
-        assert!(matches!(i.trait_().unwrap().kind(), TypeKind::Path(_)));
+        assert!(i.generic_params().is_none());
+        assert!(i.trait_ref().is_some());
         assert!(matches!(i.ty().unwrap().kind(), TypeKind::Tuple(_)));
         assert!(i.item_list().unwrap().iter().count() == 1);
     }
@@ -660,7 +712,7 @@ mod tests {
                 0 => {
                     let mut segments = child.path().unwrap().iter();
                     assert_eq!(segments.next().unwrap().ident().unwrap().text(), "bar");
-                    assert!(segments.next().unwrap().wildcard().is_some());
+                    assert!(segments.next().unwrap().glob().is_some());
                     assert!(segments.next().is_none());
                     assert!(child.children().is_none());
                 }

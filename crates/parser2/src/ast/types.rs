@@ -79,6 +79,14 @@ ast_node! {
     IntoIterator<Item=Type>,
 }
 impl TupleType {
+    pub fn l_paren(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::LParen)
+    }
+
+    pub fn r_paren(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::RParen)
+    }
+
     /// Returns the types in the tuple.
     pub fn elem_tys(&self) -> AstChildren<Type> {
         support::children(self.syntax())
@@ -92,6 +100,13 @@ ast_node! {
     SK::ArrayType,
 }
 impl ArrayType {
+    pub fn l_bracket(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::LBracket)
+    }
+
+    pub fn r_bracket(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::LBracket)
+    }
     /// Returns the type of the array elements.
     pub fn elem_ty(&self) -> Option<Type> {
         support::child(self.syntax())
@@ -126,8 +141,8 @@ mod tests {
     {
         let lexer = Lexer::new(source);
         let mut parser = parser::Parser::new(lexer);
-        parser::type_::parse_type(&mut parser, None, true);
-        Type::cast(parser.finish().0)
+        parser::type_::parse_type(&mut parser, None);
+        Type::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
             .try_into()

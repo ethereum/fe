@@ -4,7 +4,7 @@ pub(crate) use item::ItemListScope;
 
 use fxhash::{FxHashMap, FxHashSet};
 
-use crate::{syntax_node::SyntaxNode, ParseError, SyntaxKind, TextRange};
+use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
 
@@ -88,12 +88,19 @@ impl<S: TokenStream> Parser<S> {
         std::mem::replace(&mut self.is_newline_trivia, is_trivia)
     }
 
-    /// Finish the parsing and return the syntax tree.
-    pub fn finish(self) -> (SyntaxNode, Vec<ParseError>) {
+    /// Finish the parsing and return the GreeNode.
+    pub fn finish(self) -> (GreenNode, Vec<ParseError>) {
         debug_assert!(self.parents.is_empty());
         debug_assert!(!self.is_dry_run());
 
-        (SyntaxNode::new_root(self.builder.finish()), self.errors)
+        (self.builder.finish(), self.errors)
+    }
+
+    /// Finish the parsing and return the SyntaxNode.
+    /// **NOTE:** This method is mainly used for testing.
+    pub fn finish_to_node(self) -> (SyntaxNode, Vec<ParseError>) {
+        let (green_node, errors) = self.finish();
+        (SyntaxNode::new_root(green_node), errors)
     }
 
     /// Adds the `recovery_tokens` as a temporary recovery token set.
@@ -172,7 +179,7 @@ impl<S: TokenStream> Parser<S> {
         let mut is_err = std::mem::take(&mut self.is_err);
         let checkpoint = self.enter(scope.clone(), checkpoint);
         let start_checkpoint = self.checkpoint();
-        scope.parse(self);
+        scope.parse(self, self.parents.len() - 1);
         self.leave(checkpoint);
         std::mem::swap(&mut self.is_err, &mut is_err);
         (!is_err, start_checkpoint)
@@ -214,6 +221,11 @@ impl<S: TokenStream> Parser<S> {
                 .start_node_at(checkpoint, scope.syntax_kind().into());
             self.builder.finish_node();
         }
+    }
+
+    // xxx use scope?
+    pub fn replace_scope(&mut self, idx: usize, kind: SyntaxKind) {
+        self.parents[idx].0.set_kind(kind)
     }
 
     /// Add `msg` as an error to the error list, then bumps consecutive tokens
@@ -261,6 +273,14 @@ impl<S: TokenStream> Parser<S> {
     where
         F: FnOnce(&mut Self) -> R,
     {
+        self.push_dry_run_state();
+        let r = f(self);
+        self.pop_dry_run_state();
+        r
+    }
+
+    #[inline(never)]
+    fn push_dry_run_state(&mut self) {
         // Enters the dry run mode.
         self.stream.set_bt_point();
         self.dry_run_states.push(DryRunState {
@@ -270,9 +290,9 @@ impl<S: TokenStream> Parser<S> {
             auxiliary_recovery_set: self.auxiliary_recovery_set.clone(),
             is_err: self.is_err,
         });
-
-        let r = f(self);
-
+    }
+    #[inline(never)]
+    fn pop_dry_run_state(&mut self) {
         // Leaves the dry run mode.
         self.stream.backtrack();
         let state = self.dry_run_states.pop().unwrap();
@@ -281,8 +301,6 @@ impl<S: TokenStream> Parser<S> {
         self.next_trivias = state.next_trivias;
         self.auxiliary_recovery_set = state.auxiliary_recovery_set;
         self.is_err = state.is_err;
-
-        r
     }
 
     /// Bumps the current token and its leading trivias.
@@ -483,10 +501,11 @@ pub trait ParsingScope {
     fn recovery_method(&self) -> &RecoveryMethod;
 
     fn syntax_kind(&self) -> SyntaxKind;
+    fn set_kind(&mut self, kind: SyntaxKind);
 }
 
 pub trait Parse: ParsingScope + Clone {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize);
 }
 
 struct DryRunState<S: TokenStream> {
@@ -568,7 +587,11 @@ macro_rules! define_scope {
             }
 
             fn syntax_kind(&self) -> crate::SyntaxKind {
-                self.__inner.get()
+                self.__inner
+            }
+
+            fn set_kind(&mut self, kind: crate::SyntaxKind) {
+                self.__inner = kind;
             }
         }
     };
@@ -595,7 +618,11 @@ macro_rules! define_scope {
             }
 
             fn syntax_kind(&self) -> crate::SyntaxKind {
-                self.__inner.get()
+                self.__inner
+            }
+
+            fn set_kind(&mut self, kind: crate::SyntaxKind) {
+                self.__inner = kind
             }
         }
     };
@@ -610,7 +637,7 @@ macro_rules! define_scope_struct {
         $(#[$attrs])*
         #[derive(Debug, Clone)]
         $visibility struct $scope_name {
-            __inner: std::rc::Rc<std::cell::Cell<crate::SyntaxKind>>,
+            __inner: crate::SyntaxKind,
             $($field: $ty),*
         }
         impl $scope_name {
@@ -619,19 +646,15 @@ macro_rules! define_scope_struct {
                 use crate::SyntaxKind::*;
                 Self {
                     $($field,)*
-                    __inner: std::cell::Cell::new($kind).into(),
+                    __inner: $kind,
                 }
-            }
-            #[allow(unused)]
-            fn set_kind(&mut self, kind: crate::SyntaxKind) {
-                self.__inner.set(kind);
             }
         }
         impl Default for $scope_name {
             fn default() -> Self {
                 use crate::SyntaxKind::*;
                 Self {
-                    __inner: std::cell::Cell::new($kind).into(),
+                    __inner: $kind,
                     $($field: Default::default()),*
                 }
             }

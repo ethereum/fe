@@ -56,7 +56,7 @@ impl UsePathSegment {
             Some(node) => match node.kind() {
                 SK::SelfKw => Some(UsePathSegmentKind::SelfPath(node.into_token().unwrap())),
                 SK::Ident => Some(UsePathSegmentKind::Ident(node.into_token().unwrap())),
-                SK::Star => Some(UsePathSegmentKind::Wildcard(node.into_token().unwrap())),
+                SK::Star => Some(UsePathSegmentKind::Glob(node.into_token().unwrap())),
                 _ => None,
             },
             _ => None,
@@ -71,7 +71,7 @@ impl UsePathSegment {
         support::token(self.syntax(), SK::SelfKw)
     }
 
-    pub fn wildcard(&self) -> Option<SyntaxToken> {
+    pub fn glob(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Star)
     }
 }
@@ -90,6 +90,10 @@ impl UseTreeAlias {
     pub fn underscore(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Underscore)
     }
+
+    pub fn alias_syntax(&self) -> Option<SyntaxToken> {
+        self.ident().or_else(|| self.underscore())
+    }
 }
 
 /// A path segment in a use tree.
@@ -100,5 +104,5 @@ pub enum UsePathSegmentKind {
     Ident(SyntaxToken),
     /// `*`
     /// This is only allowed in the last segment of a path.
-    Wildcard(SyntaxToken),
+    Glob(SyntaxToken),
 }
