@@ -15,7 +15,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for StructScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::StructKw);
 
         parser.with_next_expected_tokens(
@@ -51,7 +51,7 @@ define_scope! {
     )
 }
 impl super::Parse for RecordFieldDefListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -85,7 +85,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for RecordFieldDefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parse_attr_list(parser);
 

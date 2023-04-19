@@ -29,7 +29,7 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 
 define_scope! { WildCardPatScope, WildCardPat, Inheritance(SyntaxKind::Pipe) }
 impl super::Parse for WildCardPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Underscore);
     }
@@ -37,7 +37,7 @@ impl super::Parse for WildCardPatScope {
 
 define_scope! { RestPatScope, RestPat, Inheritance }
 impl super::Parse for RestPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot2);
     }
@@ -45,7 +45,7 @@ impl super::Parse for RestPatScope {
 
 define_scope! { LitPatScope, LitPat, Inheritance(SyntaxKind::Pipe) }
 impl super::Parse for LitPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.parse(LitScope::default(), None);
     }
@@ -53,14 +53,14 @@ impl super::Parse for LitPatScope {
 
 define_scope! { TuplePatScope, TuplePat, Inheritance }
 impl super::Parse for TuplePatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.parse(TuplePatElemListScope::default(), None);
     }
 }
 
 define_scope! { TuplePatElemListScope, TuplePatElemList, Override(RParen) }
 impl super::Parse for TuplePatElemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
@@ -77,17 +77,17 @@ impl super::Parse for TuplePatElemListScope {
 
 define_scope! { PathPatScope, PathPat, Inheritance(Pipe) }
 impl super::Parse for PathPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         if !parser.parse(PathScope::default(), None).0 {
             return;
         }
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            self.set_kind(SyntaxKind::PathTuplePat);
+            parser.replace_scope(_idx, SyntaxKind::PathTuplePat);
             parser.parse(TuplePatElemListScope::default(), None);
         } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            self.set_kind(SyntaxKind::RecordPat);
+            parser.replace_scope(_idx, SyntaxKind::RecordPat);
             parser.parse(RecordPatFieldListScope::default(), None);
         }
     }
@@ -95,7 +95,7 @@ impl super::Parse for PathPatScope {
 
 define_scope! { RecordPatFieldListScope, RecordPatFieldList, Override(Comma, RBrace) }
 impl super::Parse for RecordPatFieldListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
         if parser.bump_if(SyntaxKind::RBrace) {
             return;
@@ -112,7 +112,7 @@ impl super::Parse for RecordPatFieldListScope {
 
 define_scope! { RecordPatFieldScope, RecordPatField, Override(Comma, RBrace) }
 impl super::Parse for RecordPatFieldScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         let has_label = parser.dry_run(|parser| {
             parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
         });
@@ -126,7 +126,7 @@ impl super::Parse for RecordPatFieldScope {
 
 define_scope! { OrPatScope, OrPat, Inheritance(SyntaxKind::Pipe) }
 impl super::Parse for OrPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::Pipe);
         parse_pat(parser);
     }

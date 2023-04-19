@@ -32,7 +32,7 @@ pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
 
 define_scope!(PtrTypeScope, PtrType, Inheritance);
 impl super::Parse for PtrTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Star);
         parse_type(parser, None);
@@ -41,7 +41,7 @@ impl super::Parse for PtrTypeScope {
 
 define_scope!(pub(crate) PathTypeScope , PathType, Inheritance);
 impl super::Parse for PathTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         if !parser.parse(PathScope::default(), None).0 {
             return;
@@ -55,7 +55,7 @@ impl super::Parse for PathTypeScope {
 
 define_scope!(SelfTypeScope, SelfType, Inheritance);
 impl super::Parse for SelfTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::SelfTypeKw);
     }
@@ -69,7 +69,7 @@ define_scope! {
     )
 }
 impl super::Parse for TupleTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
@@ -95,7 +95,7 @@ define_scope! {
     Override(RBracket)
 }
 impl super::Parse for ArrayTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
 

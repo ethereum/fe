@@ -38,7 +38,7 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Che
 
 define_scope! { LetStmtScope, LetStmt, Inheritance }
 impl super::Parse for LetStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.set_newline_as_trivia(false);
         if !parse_pat(parser) {
@@ -58,7 +58,7 @@ impl super::Parse for LetStmtScope {
 
 define_scope! { ForStmtScope, ForStmt, Inheritance }
 impl super::Parse for ForStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ForKw);
 
         parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::InKw, SyntaxKind::LBrace]);
@@ -77,7 +77,7 @@ impl super::Parse for ForStmtScope {
 
 define_scope! { WhileStmtScope, WhileStmt, Inheritance }
 impl super::Parse for WhileStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::WhileKw);
 
         parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
@@ -92,21 +92,21 @@ impl super::Parse for WhileStmtScope {
 
 define_scope! { ContinueStmtScope, ContinueStmt, Inheritance }
 impl super::Parse for ContinueStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ContinueKw);
     }
 }
 
 define_scope! { BreakStmtScope, BreakStmt, Inheritance }
 impl super::Parse for BreakStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::BreakKw);
     }
 }
 
 define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
 impl super::Parse for ReturnStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::ReturnKw);
         parser.set_newline_as_trivia(false);
 
@@ -119,7 +119,7 @@ impl super::Parse for ReturnStmtScope {
 
 define_scope! { AugAssignStmtScope, AugAssignStmt, Inheritance }
 impl super::Parse for AugAssignStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
 
         parser.with_recovery_tokens(
@@ -153,7 +153,7 @@ impl super::Parse for AugAssignStmtScope {
 
 define_scope! { AssignStmtScope, AssignStmt, Inheritance }
 impl super::Parse for AssignStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
 
         parser.with_recovery_tokens(parse_pat, &[SyntaxKind::Eq]);
@@ -168,7 +168,7 @@ impl super::Parse for AssignStmtScope {
 
 define_scope! { ExprStmtScope, ExprStmt, Inheritance }
 impl super::Parse for ExprStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parse_expr(parser);
     }
 }

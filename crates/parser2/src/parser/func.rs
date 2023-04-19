@@ -30,7 +30,7 @@ impl Default for FnDefScope {
 }
 
 impl super::Parse for FnScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::FnKw);
 
         match self.fn_def_scope {

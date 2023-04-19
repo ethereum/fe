@@ -18,7 +18,7 @@ define_scope! {
     )
 }
 impl super::Parse for AttrListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         loop {
             parser.set_newline_as_trivia(true);
             match parser.current_kind() {
@@ -42,7 +42,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for AttrScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Pound);
         parser.with_recovery_tokens(
@@ -66,7 +66,7 @@ define_scope! {
     )
 }
 impl super::Parse for AttrArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {
             return;
@@ -96,7 +96,7 @@ define_scope! {
     )
 }
 impl super::Parse for AttrArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.with_next_expected_tokens(
             |parser| parser.bump_or_recover(SyntaxKind::Ident, "Expected `key: value`", None),
             &[SyntaxKind::Colon],
@@ -117,7 +117,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for DocCommentAttrScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::DocComment);
         parser.bump_if(SyntaxKind::Newline);
     }

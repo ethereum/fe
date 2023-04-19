@@ -9,7 +9,7 @@ define_scope! {
     Inheritance(Colon2)
 }
 impl super::Parse for PathScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.parse(PathSegmentScope::default(), None);
         while parser.bump_if(SyntaxKind::Colon2) {
@@ -24,7 +24,7 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for PathSegmentScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         match parser.current_kind() {
             Some(kind) if is_path_segment(kind) => {
                 parser.bump();

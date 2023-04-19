@@ -51,7 +51,7 @@ define_scope! {
     )
 }
 impl super::Parse for BlockExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -82,7 +82,7 @@ impl super::Parse for BlockExprScope {
 
 define_scope! { IfExprScope, IfExpr, Inheritance }
 impl super::Parse for IfExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::IfKw);
 
         parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
@@ -115,7 +115,7 @@ impl super::Parse for IfExprScope {
 
 define_scope! { MatchExprScope, MatchExpr, Inheritance }
 impl super::Parse for MatchExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::MatchKw);
 
         parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
@@ -130,7 +130,7 @@ impl super::Parse for MatchExprScope {
 
 define_scope! { MatchArmListScope, MatchArmList, Override(SyntaxKind::Newline, SyntaxKind::RBrace) }
 impl super::Parse for MatchArmListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -158,7 +158,7 @@ impl super::Parse for MatchArmListScope {
 
 define_scope! { MatchArmScope, MatchArm, Inheritance }
 impl super::Parse for MatchArmScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
 
         parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::FatArrow]);
@@ -170,20 +170,20 @@ impl super::Parse for MatchArmScope {
 
 define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
 impl super::Parse for LitExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.parse(lit::LitScope::default(), None);
     }
 }
 
 define_scope! { PathExprScope{ allow_record_init: bool }, PathExpr, Inheritance }
 impl super::Parse for PathExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.with_recovery_tokens(
             |parser| parser.parse(path::PathScope::default(), None),
             &[SyntaxKind::LBrace],
         );
         if parser.current_kind() == Some(SyntaxKind::LBrace) && self.allow_record_init {
-            self.set_kind(SyntaxKind::RecordInitExpr);
+            parser.replace_scope(_idx, SyntaxKind::RecordInitExpr);
             parser.parse(RecordFieldListScope::default(), None);
         }
     }
@@ -191,7 +191,7 @@ impl super::Parse for PathExprScope {
 
 define_scope! { RecordFieldListScope, RecordFieldList, Override(RBrace, Comma) }
 impl super::Parse for RecordFieldListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBrace);
 
         if parser.bump_if(SyntaxKind::RBrace) {
@@ -218,7 +218,7 @@ impl super::Parse for RecordFieldListScope {
 
 define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.set_newline_as_trivia(false);
         parser.bump_if(SyntaxKind::Ident);
 
@@ -230,17 +230,17 @@ impl super::Parse for RecordFieldScope {
 
 define_scope! { ParenScope, ParenExpr, Override(RParen, Comma) }
 impl super::Parse for ParenScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LParen);
 
         if parser.bump_if(SyntaxKind::RParen) {
-            self.set_kind(SyntaxKind::ParenExpr);
+            parser.replace_scope(_idx, SyntaxKind::ParenExpr);
             return;
         }
 
         parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         while parser.bump_if(SyntaxKind::Comma) {
-            self.set_kind(SyntaxKind::TupleExpr);
+            parser.replace_scope(_idx, SyntaxKind::TupleExpr);
             parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
         }
 
@@ -254,7 +254,7 @@ define_scope! {
     Override(RBracket, Comma, SemiColon)
 }
 impl super::Parse for ArrayScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>, _idx: usize) {
         parser.bump_expected(SyntaxKind::LBracket);
 
         if parser.bump_if(SyntaxKind::RBracket) {
@@ -271,7 +271,7 @@ impl super::Parse for ArrayScope {
         );
 
         if parser.bump_if(SyntaxKind::SemiColon) {
-            self.set_kind(SyntaxKind::ArrayRepExpr);
+            parser.replace_scope(_idx, SyntaxKind::ArrayRepExpr);
             parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
         } else {
             while parser.bump_if(SyntaxKind::Comma) {
