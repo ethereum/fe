@@ -175,3 +175,38 @@ impl ChainInitiator for ExprRoot {
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        hir_def::{Body, Expr, Stmt},
+        test_db::TestDb,
+    };
+    use common::Upcast;
+
+    #[test]
+    fn aug_assign() {
+        let mut db = TestDb::default();
+
+        let text = r#" {
+            fn foo(mut x: i32) {
+                x += 1
+            }
+        }"#;
+
+        let body: Body = db.expect_item::<Body>(text);
+        let bin_expr = match body.stmts(db.upcast()).values().next().unwrap().unwrap() {
+            Stmt::Assign(_, rhs) => *rhs,
+            _ => unreachable!(),
+        };
+        let (lhs, rhs) = match body.exprs(db.upcast())[bin_expr].unwrap() {
+            Expr::Bin(lhs, rhs, _) => (lhs, rhs),
+            _ => unreachable!(),
+        };
+
+        let top_mod = body.top_mod(db.upcast());
+        assert_eq!("x += 1", db.text_at(top_mod, &bin_expr.lazy_span(body)));
+        assert_eq!("x", db.text_at(top_mod, &lhs.lazy_span(body)));
+        assert_eq!("1", db.text_at(top_mod, &rhs.lazy_span(body)));
+    }
+}
