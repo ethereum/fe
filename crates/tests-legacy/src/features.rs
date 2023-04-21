@@ -304,112 +304,6 @@ test_method_return! { pure_fn, "pure_fn.fe", &[uint_token(42), uint_token(26)], 
 test_method_return! { pure_fn_internal_call, "pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68) }
 test_method_return! { pure_fn_standalone, "pure_fn_standalone.fe", &[uint_token(5)], uint_token(210) }
 test_method_return! { value_semantics, "value_semantics.fe", &[], bool_token(true) }
-// unary invert
-test_method_return! { return_invert_i256, "return_invert_i256.fe", &[int_token(1)], int_token(-2) }
-test_method_return! { return_invert_i128, "return_invert_i128.fe", &[int_token(1)], int_token(-2) }
-test_method_return! { return_invert_i64, "return_invert_i64.fe", &[int_token(4000000000)], int_token(-4000000001) }
-test_method_return! { return_invert_i32, "return_invert_i32.fe", &[int_token(30000)], int_token(-30001) }
-test_method_return! { return_invert_i16, "return_invert_i16.fe", &[int_token(2000)], int_token(-2001) }
-test_method_return! { return_invert_i8, "return_invert_i8.fe", &[int_token(1)], int_token(-2) }
-test_method_return! { return_invert_u256, "return_invert_u256.fe", &[uint_token(1)], uint_token_from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639934") }
-test_method_return! { return_invert_u128, "return_invert_u128.fe", &[uint_token(1)], uint_token_from_dec_str("340282366920938463463374607431768211454") }
-test_method_return! { return_invert_u64, "return_invert_u64.fe", &[uint_token(1)], uint_token_from_dec_str("18446744073709551614") }
-test_method_return! { return_invert_u32, "return_invert_u32.fe", &[uint_token(1)], uint_token(4294967294) }
-test_method_return! { return_invert_u16, "return_invert_u16.fe", &[uint_token(1)], uint_token(65534) }
-test_method_return! { return_invert_u8, "return_invert_u8.fe", &[uint_token(1)], uint_token(254) }
-// binary operators
-test_method_return! { return_addition_u256, "return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84) }
-test_method_return! { return_addition_i256_a, "return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84) }
-test_method_return! { return_addition_i256_b, "return_addition_i256.fe", &[int_token(-42), int_token(42)], int_token(0) }
-test_method_return! { return_addition_u128, "return_addition_u128.fe", &[uint_token(42), uint_token(42)], uint_token(84) }
-test_method_return! { return_subtraction_u256, "return_subtraction_u256.fe", &[uint_token(42), uint_token(42)], uint_token(0) }
-test_method_return! { return_subtraction_i256_a, "return_subtraction_i256.fe", &[int_token(-42), int_token(-42)], int_token(0) }
-test_method_return! { return_subtraction_i256_b, "return_subtraction_i256.fe", &[int_token(-42), int_token(42)], int_token(-84) }
-test_method_return! { return_multiplication_u256, "return_multiplication_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1764) }
-test_method_return! { return_multiplication_i256_a, "return_multiplication_i256.fe", &[int_token(-42), int_token(-42)], int_token(1764) }
-test_method_return! { return_multiplication_i256_b, "return_multiplication_i256.fe", &[int_token(-42), int_token(42)], int_token(-1764) }
-test_method_return! { return_division_u256, "return_division_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1) }
-test_method_return! { return_division_i256_a, "return_division_i256.fe", &[int_token(-42), int_token(-42)], int_token(1) }
-test_method_return! { return_division_i256_b, "return_division_i256.fe", &[int_token(-1), int_token(1)], int_token(-1) }
-test_method_return! { return_division_i256_c, "return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1) }
-test_method_return! { return_pow_u256_a, "return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1) }
-test_method_return! { return_pow_u256_b, "return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16) }
-test_method_return! { return_pow_i256, "return_pow_i256.fe", &[int_token(-2), uint_token(3)], int_token(-8) }
-test_method_return! { return_mod_u256_a, "return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1) }
-test_method_return! { return_mod_u256_b, "return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2) }
-test_method_return! { return_mod_u256_c, "return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0) }
-test_method_return! { return_mod_i256_a, "return_mod_i256.fe", &[int_token(5), int_token(2)], int_token(1) }
-test_method_return! { return_mod_i256_b, "return_mod_i256.fe", &[int_token(5), int_token(3)], int_token(2) }
-test_method_return! { return_mod_i256_c, "return_mod_i256.fe", &[int_token(5), int_token(5)], int_token(0) }
-test_method_return! { return_bitwiseand_u256, "return_bitwiseand_u256.fe", &[uint_token(12), uint_token(25)], uint_token(8) }
-test_method_return! { return_bitwiseand_u128, "return_bitwiseand_u128.fe", &[uint_token(12), uint_token(25)], uint_token(8) }
-test_method_return! { return_bitwiseor_u256, "return_bitwiseor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(29) }
-test_method_return! { return_bitwisexor_u256, "return_bitwisexor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(21) }
-test_method_return! { return_bitwiseshl_u8, "return_bitwiseshl_u8.fe", &[uint_token(1), uint_token(8)], uint_token(0) }
-test_method_return! { return_bitwiseshl_i8, "return_bitwiseshl_i8.fe", &[int_token(-1), uint_token(1)], int_token(-2) }
-test_method_return! { return_bitwiseshl_u256_a, "return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212) }
-test_method_return! { return_bitwiseshl_u256_b, "return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(1)], uint_token(424) }
-test_method_return! { return_bitwiseshr_u256_c, "return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212) }
-test_method_return! { return_bitwiseshr_u256_d, "return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106) }
-test_method_return! { return_bitwiseshr_i256_a, "return_bitwiseshr_i256.fe", &[int_token(212), uint_token(0)], int_token(212) }
-test_method_return! { return_bitwiseshr_i256_b, "return_bitwiseshr_i256.fe", &[int_token(212), uint_token(1)], int_token(106) }
-test_method_return! { return_bitwiseshl_i64_coerced, "return_bitwiseshl_i64_coerced.fe", &[], int_token(-1) }
-// comparison operators
-test_method_return! { return_eq_u256_a, "return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
-test_method_return! { return_eq_u256_b, "return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
-test_method_return! { return_noteq_u256a, "return_noteq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
-test_method_return! { return_noteq_u256b, "return_noteq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
-test_method_return! { return_lt_u256_a, "return_lt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
-test_method_return! { return_lt_u256_b, "return_lt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
-test_method_return! { return_lt_u256_c, "return_lt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false) }
-test_method_return! { return_lt_u128, "return_lt_u128.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
-// lt_i256 with positive and negative numbers
-test_method_return! { return_lt_i256_a, "return_lt_i256.fe", &[int_token(1), int_token(2)], bool_token(true) }
-test_method_return! { return_lt_i256_b, "return_lt_i256.fe", &[int_token(1), int_token(1)], bool_token(false) }
-test_method_return! { return_lt_i256_c, "return_lt_i256.fe", &[int_token(2), int_token(1)], bool_token(false) }
-test_method_return! { return_lt_i256_d, "return_lt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true) }
-test_method_return! { return_lt_i256_e, "return_lt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false) }
-test_method_return! { return_lt_i256_f, "return_lt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false) }
-test_method_return! { return_lte_u256_a, "return_lte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true) }
-test_method_return! { return_lte_u256_b, "return_lte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
-// lte_i256 with positive and negative numbers
-test_method_return! { return_lte_u256, "return_lte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false) }
-test_method_return! { return_lte_i256_a, "return_lte_i256.fe", &[int_token(1), int_token(2)], bool_token(true) }
-test_method_return! { return_lte_i256_b, "return_lte_i256.fe", &[int_token(1), int_token(1)], bool_token(true) }
-test_method_return! { return_lte_i256_c, "return_lte_i256.fe", &[int_token(2), int_token(1)], bool_token(false) }
-test_method_return! { return_lte_i256_d, "return_lte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true) }
-test_method_return! { return_lte_i256_e, "return_lte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true) }
-test_method_return! { return_lte_i256_f, "return_lte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false) }
-test_method_return! { return_gt_u256_a, "return_gt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true) }
-test_method_return! { return_gt_u256_b, "return_gt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false) }
-test_method_return! { return_gt_u256_c, "return_gt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
-// gt_i256 with positive and negative numbers
-test_method_return! { return_gt_i256_a, "return_gt_i256.fe", &[int_token(2), int_token(1)], bool_token(true) }
-test_method_return! { return_gt_i256_b, "return_gt_i256.fe", &[int_token(1), int_token(1)], bool_token(false) }
-test_method_return! { return_gt_i256_c, "return_gt_i256.fe", &[int_token(1), int_token(2)], bool_token(false) }
-test_method_return! { return_gt_i256_d, "return_gt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true) }
-test_method_return! { return_gt_i256_e, "return_gt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false) }
-test_method_return! { return_gt_i256_f, "return_gt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false) }
-test_method_return! { return_gte_u256_a, "return_gte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true) }
-test_method_return! { return_gte_u256_b, "return_gte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true) }
-test_method_return! { return_gte_u256_c, "return_gte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false) }
-// gte_i256 with positive and negative numbers
-test_method_return! { return_gte_i256_a, "return_gte_i256.fe", &[int_token(2), int_token(1)], bool_token(true) }
-test_method_return! { return_gte_i256_b, "return_gte_i256.fe", &[int_token(1), int_token(1)], bool_token(true) }
-test_method_return! { return_gte_i256_c, "return_gte_i256.fe", &[int_token(1), int_token(2)], bool_token(false) }
-test_method_return! { return_gte_i256_d, "return_gte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true) }
-test_method_return! { return_gte_i256_e, "return_gte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true) }
-test_method_return! { return_gte_i256_f, "return_gte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false) }
-// `and` bool operation
-test_method_return! { return_bool_op_and_a, "return_bool_op_and.fe", &[bool_token(true), bool_token(true)], bool_token(true) }
-test_method_return! { return_bool_op_and_b, "return_bool_op_and.fe", &[bool_token(true), bool_token(false)], bool_token(false) }
-test_method_return! { return_bool_op_and_c, "return_bool_op_and.fe", &[bool_token(false), bool_token(true)], bool_token(false) }
-test_method_return! { return_bool_op_and_d, "return_bool_op_and.fe", &[bool_token(false), bool_token(false)], bool_token(false) }
-// `or` bool operation
-test_method_return! { return_bool_op_or_a, "return_bool_op_or.fe", &[bool_token(true), bool_token(true)], bool_token(true) }
-test_method_return! { return_bool_op_or_b, "return_bool_op_or.fe", &[bool_token(true), bool_token(false)], bool_token(true) }
-test_method_return! { return_bool_op_or_c, "return_bool_op_or.fe", &[bool_token(false), bool_token(true)], bool_token(true) }
-test_method_return! { return_bool_op_or_d, "return_bool_op_or.fe", &[bool_token(false), bool_token(false)], bool_token(false) }
 // radix
 test_method_return! { radix_hex, "radix_hex.fe", &[], uint_token(0xfe) }
 test_method_return! { radix_octal, "radix_octal.fe", &[], uint_token(0o70) }
@@ -419,7 +313,6 @@ test_method_return! { int_literal_coercion, "int_literal_coercion.fe", &[], uint
 test_method_return! { struct_fns, "struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100) }
 test_method_return! { cast_address_to_u256, "cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS) }
 test_method_return! { for_loop_with_complex_elem_array, "for_loop_with_complex_elem_array.fe", &[], int_token(222) }
-test_method_return! { bountiful_struct_copy_bug, "bountiful_struct_copy_bug.fe", &[], uint_token(0) }
 
 #[test]
 fn return_array() {
@@ -710,41 +603,6 @@ fn events() {
                 ("NestedArray", &[nested_array]),
             ],
         );
-        assert_harness_gas_report!(harness);
-    })
-}
-
-#[test]
-fn enums() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(
-            &mut executor,
-            "enums.fe",
-            "Foo",
-            &[uint_token(26), uint_token(42)],
-        );
-
-        harness.test_function(
-            &mut executor,
-            "construct",
-            &[uint_token(1), uint_token(2)],
-            None,
-        );
-
-        harness.test_function(
-            &mut executor,
-            "method",
-            &[uint_token(1), uint_token(2)],
-            Some(&uint_token(3)),
-        );
-
-        harness.test_function(
-            &mut executor,
-            "associated_method",
-            &[uint_token(1), uint_token(2)],
-            Some(&uint_token(3)),
-        );
-
         assert_harness_gas_report!(harness);
     })
 }
@@ -2077,26 +1935,6 @@ fn ctx_param_internal_func_call() {
         let harness = deploy_contract(&mut executor, "ctx_param_internal_func_call.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, "bar", &[], Some(&uint_token(0)));
-
-        assert_harness_gas_report!(harness);
-    });
-}
-
-#[test]
-fn ctx_param_external_func_call() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "ctx_param_external_func_call.fe", "Bar", &[]);
-
-        harness.test_function(&mut executor, "call_bing", &[], Some(&uint_token(42)));
-
-        let foo_harness =
-            deploy_contract(&mut executor, "ctx_param_external_func_call.fe", "Foo", &[]);
-        harness.test_function(
-            &mut executor,
-            "call_baz",
-            &[ethabi::Token::Address(foo_harness.address)],
-            Some(&uint_token(0)),
-        );
 
         assert_harness_gas_report!(harness);
     });

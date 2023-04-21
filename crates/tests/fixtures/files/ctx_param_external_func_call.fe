@@ -12,13 +12,22 @@ contract Foo {
 }
 
 contract Bar {
-    pub fn call_baz(ctx: Context, foo_addr: address) -> u256 {
+    pub fn call_baz(self, ctx: Context, foo_addr: address) -> u256 {
         let foo: Foo = Foo(foo_addr)
         return foo.baz(ctx)
     }
 
-    pub fn call_bing(mut ctx: Context) -> u256 {
+    pub fn call_bing(self, mut ctx: Context) -> u256 {
         let mut foo: Foo = Foo.create(ctx, 0)
         return foo.bing(42)
     }
+}
+
+#test
+fn test_bar(mut ctx: Context) {
+    let bar: Bar = Bar.create(ctx, 0)
+    assert bar.call_bing(ctx) == 42
+
+    let foo: Foo = Foo.create(ctx, 0)
+    assert bar.call_baz(ctx, foo_addr: address(foo)) == ctx.block_number()
 }
