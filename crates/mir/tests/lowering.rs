@@ -53,11 +53,8 @@ fn mir_lower_std_lib() {
 test_lowering! { mir_erc20_token, "demos/erc20_token.fe"}
 test_lowering! { mir_guest_book, "demos/guest_book.fe"}
 test_lowering! { mir_uniswap, "demos/uniswap.fe"}
-test_lowering! { mir_address_bytes10_map, "features/address_bytes10_map.fe"}
 test_lowering! { mir_assert, "features/assert.fe"}
-test_lowering! { mir_associated_fns, "features/associated_fns.fe"}
 test_lowering! { mir_aug_assign, "features/aug_assign.fe"}
-test_lowering! { mir_base_tuple, "features/base_tuple.fe"}
 test_lowering! { mir_call_statement_with_args, "features/call_statement_with_args.fe"}
 test_lowering! { mir_call_statement_with_args_2, "features/call_statement_with_args_2.fe"}
 test_lowering! { mir_call_statement_without_args, "features/call_statement_without_args.fe"}

@@ -1,0 +1,52 @@
+use std::evm
+
+const FREE_MEM_PTR_BIG: u256 = 1024 
+const FREE_MEM_PTR_SMALL: u256 = 128 
+const CALL_GAS: u256 = 100000
+
+contract Foo {
+    pub unsafe fn __call__(self, ctx: Context) {
+        if ctx.msg_sig() == 0x01 {
+            evm::mstore(offset: FREE_MEM_PTR_SMALL, value: 0x02)
+        } else if ctx.msg_sig() == 0x03{
+            evm::mstore(offset: FREE_MEM_PTR_SMALL, value: 0x04)
+        } else {
+            // unknown selector
+            revert
+        }
+
+        evm::return_mem(offset: FREE_MEM_PTR_SMALL, len: 32) 
+    }
+}
+
+#test
+unsafe fn test_foo() {
+    let mut ctx: Context = Context()
+    let foo: Foo = Foo.create(ctx, 0)
+
+    // 0x01 selector call
+    evm::mstore8(offset: FREE_MEM_PTR_BIG + 3, value: 0x01)
+    assert evm::call(
+        gas: CALL_GAS, 
+        addr: address(foo), 
+        value: 0, 
+        input_offset: FREE_MEM_PTR_BIG, 
+        input_len: 32, 
+        output_offset: FREE_MEM_PTR_BIG, 
+        output_len: 32
+    ) == 1
+    assert evm::mload(offset: FREE_MEM_PTR_BIG) == 0x02
+
+    // 0x03 selector call
+    evm::mstore8(offset: FREE_MEM_PTR_BIG + 3, value: 0x03)
+    assert evm::call(
+        gas: CALL_GAS, 
+        addr: address(foo), 
+        value: 0, 
+        input_offset: FREE_MEM_PTR_BIG, 
+        input_len: 32, 
+        output_offset: FREE_MEM_PTR_BIG, 
+        output_len: 32
+    ) == 1
+    assert evm::mload(offset: FREE_MEM_PTR_BIG) == 0x04
+}
