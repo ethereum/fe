@@ -4,9 +4,9 @@ use crate::{
     errors::{self, ConstEvalError, TypeError},
     namespace::{
         items::{
-            Contract, ContractId, Enum, Function, Impl, ImplId, Item, ModuleConstant,
-            ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait, TraitId, TypeAlias,
-            TypeDef,
+            Attribute, Contract, ContractId, Enum, Function, FunctionId, Impl, ImplId, Item,
+            ModuleConstant, ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait,
+            TraitId, TypeAlias, TypeDef,
         },
         scopes::ItemScope,
         types::{self, TypeId},
@@ -105,6 +105,12 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
                 ast: node.clone(),
                 module,
             })))),
+            ast::ModuleStmt::Attribute(node) => {
+                Some(Item::Attribute(db.intern_attribute(Rc::new(Attribute {
+                    ast: node.clone(),
+                    module,
+                }))))
+            }
             ast::ModuleStmt::Pragma(_) | ast::ModuleStmt::Use(_) | ast::ModuleStmt::Impl(_) => None,
             ast::ModuleStmt::ParseError(_) => None,
         })
@@ -166,6 +172,36 @@ pub fn module_item_map(
     let mut map = IndexMap::<SmolStr, Item>::new();
 
     for item in module.all_items(db).iter() {
+        if matches!(item, Item::Attribute(_)) {
+            continue;
+        }
+
+        if let Item::Function(function) = item {
+            let sig_ast = &function.data(db).ast.kind.sig.kind;
+            if function.is_test(db) {
+                if !sig_ast.generic_params.kind.is_empty() {
+                    diagnostics.push(errors::fancy_error(
+                        "generic function parameters are not supported on test functions",
+                        vec![Label::primary(
+                            sig_ast.generic_params.span,
+                            "this cannot appear here",
+                        )],
+                        vec!["Hint: remove the generic parameters".into()],
+                    ));
+                }
+
+                if !sig_ast.args.is_empty() {
+                    let span =
+                        sig_ast.args.first().unwrap().span + sig_ast.args.last().unwrap().span;
+                    diagnostics.push(errors::fancy_error(
+                        "function parameters are not supported on test functions",
+                        vec![Label::primary(span, "this cannot appear here")],
+                        vec!["Hint: remove the parameters".into()],
+                    ));
+                }
+            }
+        }
+
         let item_name = item.name(db);
         if let Some(global_item) = global_items.get(&item_name) {
             let kind = item.item_kind_display_name();
@@ -708,4 +744,13 @@ fn resolve_use_tree(
             Analysis::new(items.into(), item.diagnostics)
         }
     }
+}
+
+pub fn module_tests(db: &dyn AnalyzerDb, ingot: ModuleId) -> Vec<FunctionId> {
+    ingot
+        .all_functions(db)
+        .iter()
+        .copied()
+        .filter(|function| function.is_test(db))
+        .collect()
 }

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: failed to parse type description
    ┌─ compile_errors/self_type_misuse.fe:17:26

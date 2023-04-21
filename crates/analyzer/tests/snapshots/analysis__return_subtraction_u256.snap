@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ return_subtraction_u256.fe:2:5

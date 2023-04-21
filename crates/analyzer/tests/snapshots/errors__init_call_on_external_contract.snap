@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `__init__()` is not directly callable
    ┌─ compile_errors/init_call_on_external_contract.fe:11:13

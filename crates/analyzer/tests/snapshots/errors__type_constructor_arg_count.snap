@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `u8` expects 1 argument, but 2 were provided
   ┌─ [snippet]:3:15

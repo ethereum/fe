@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `bar` expects 1 argument, but 0 were provided
   ┌─ compile_errors/ctx_missing_internal_call.fe:4:12

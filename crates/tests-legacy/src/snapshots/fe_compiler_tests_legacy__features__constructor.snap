@@ -1,0 +1,6 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+read_bar([]) used 295 gas
+

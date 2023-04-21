@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: missing argument label
   ┌─ compile_errors/struct_call_without_kw_args.fe:8:37

@@ -21,7 +21,8 @@ macro_rules! assert_harness_gas_report {
 
     ($harness: expr, $($expr:expr),*) => {
         let mut settings = insta::Settings::clone_current();
-        settings.set_snapshot_suffix(format!("{:?}", $($expr,)*));
+        let suffix = format!("{:?}", $($expr,)*).replace("\"", "");
+        settings.set_snapshot_suffix(suffix);
         let _guard = settings.bind_to_scope();
         assert_snapshot!(format!("{}", $harness.gas_reporter));
     }

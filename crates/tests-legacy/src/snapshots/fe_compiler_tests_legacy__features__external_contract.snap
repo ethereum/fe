@@ -1,0 +1,8 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", proxy_harness.gas_reporter)"
+---
+call_emit_event([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643), Uint(26), FixedArray([Address(0x0000000000000000000000000000000000000000), Address(0x0000000000000000000000000000000000000001), Address(0x0000000000000000000000000000000000000042), Address(0x0000000000000000000000000000000000000003), Address(0x0000000000000000000000000000000000000004)]), String("hello world")]) used 9098 gas
+call_build_array([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643), Uint(26), Uint(42)]) used 2766 gas
+add([Uint(26), Uint(42)]) used 312 gas
+

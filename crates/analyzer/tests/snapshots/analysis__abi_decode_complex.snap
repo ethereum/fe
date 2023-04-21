@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ abi_decode_complex.fe:2:5

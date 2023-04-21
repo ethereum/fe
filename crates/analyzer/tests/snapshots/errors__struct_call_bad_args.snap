@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `House` expects 2 arguments, but 3 were provided
   ┌─ compile_errors/struct_call_bad_args.fe:8:31

@@ -1,0 +1,11 @@
+---
+source: crates/tests-legacy/src/features.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+decode_static_complex([Tuple([Tuple([Int(10), Int(20)]), Int(30)])]) used 1123 gas
+decode_string_complex([Tuple([String("Hello"), Int(30)])]) used 1789 gas
+decode_bytes_complex([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)])]) used 1102 gas
+decode_nested_dynamic_complex([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])]) used 4184 gas
+decode_static_complex_elem_array([FixedArray([Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)])])]) used 3732 gas
+decode_dynamic_complex_elem_array([FixedArray([Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])]), Tuple([Tuple([Bytes([1, 2, 3, 4, 5, 6, 7, 8]), Int(30)]), Tuple([Tuple([Int(10), Int(20)]), Int(30)]), Tuple([String("Hello"), Int(30)])])])]) used 14102 gas
+

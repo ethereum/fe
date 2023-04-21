@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: Casting between numeric values can change the sign or size but not both at once
   ┌─ [snippet]:4:20

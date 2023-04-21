@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: a type named "Foo" has already been defined
   ┌─ compile_errors/duplicate_contract_in_module.fe:1:10

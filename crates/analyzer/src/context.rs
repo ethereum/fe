@@ -590,6 +590,7 @@ impl fmt::Display for CallType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constant {
     Int(BigInt),
+    Address(BigInt),
     Bool(bool),
     Str(SmolStr),
 }

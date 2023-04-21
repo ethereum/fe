@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: undefined type
   ┌─ compile_errors/return_type_undefined.fe:2:19

@@ -1,0 +1,6 @@
+---
+source: crates/tests-legacy/src/demo_uniswap.rs
+expression: "format!(\"{}\", factory_harness.gas_reporter)"
+---
+create_pair([Address(0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643), Address(0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d)]) used 1463796 gas
+

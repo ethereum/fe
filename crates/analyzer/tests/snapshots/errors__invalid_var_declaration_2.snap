@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: invalid declaration
   ┌─ compile_errors/invalid_var_declaration_2.fe:3:13

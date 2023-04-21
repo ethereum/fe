@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `create2` expects 3 arguments, but 2 were provided
   ┌─ compile_errors/ctx_undefined_create2.fe:5:13

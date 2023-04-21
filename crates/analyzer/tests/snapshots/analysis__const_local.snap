@@ -1,7 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
+assertion_line: 302
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
    ┌─ const_local.fe:2:5
@@ -11,8 +11,8 @@ note:
  4 │ │         const C2: i64 = 2
  5 │ │         const C3: i64 = 10
    · │
-15 │ │         return C10
-16 │ │     }
+16 │ │         return C10
+17 │ │     }
    │ ╰─────^ params: [] -> u256
 
 note: 
@@ -40,7 +40,9 @@ note:
    │               ^^ bool
 13 │         const C10: u256 = 42 if C9 else 0 // 42
    │               ^^^ u256
-14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
+14 │         const C11: address = 0xfefe
+   │               ^^^ address
+15 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │             ^^^^ Array<bool, 42>
 
 note: 
@@ -145,18 +147,20 @@ note:
    │
 13 │         const C10: u256 = 42 if C9 else 0 // 42
    │                           ^^^^^^^^^^^^^^^ u256 = Int(42)
-14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
+14 │         const C11: address = 0xfefe
+   │                              ^^^^^^ address = Address(65278)
+15 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │                                 ^^^       ^^^^    ^^^ u256
    │                                 │         │        
    │                                 │         bool
    │                                 u256
 
 note: 
-   ┌─ const_local.fe:14:42
+   ┌─ const_local.fe:15:42
    │
-14 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
+15 │         let _arr: Array<bool, { C10 }> = [true; { C10 }]
    │                                          ^^^^^^^^^^^^^^^ Array<bool, 42>
-15 │         return C10
+16 │         return C10
    │                ^^^ u256
 
 

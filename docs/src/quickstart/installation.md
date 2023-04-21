@@ -17,26 +17,23 @@ Depending on your operating system, the file that you download is either named `
 
 In order to be able to execute the Fe compiler we will have to make the file *executable*. This can be done by navigating to the directory where the file is located and executing `chmod + x <filename>` (e.g. `chmod +x fe`).
 
-After we have set the proper permissions we should be able to run `./fe_amd64 --help` or `./fe_mac -h` and an output that should be roughly comparable to:
+After we have set the proper permissions we should be able to run `./fe` and an output that should be roughly comparable to:
 
 ```
-Fe 0.4.0-alpha
-Compiler for the Fe language
+fe 0.21.0-alpha
+The Fe Developers <snakecharmers@ethereum.org>
+An implementation of the Fe smart contract language
 
 USAGE:
-    fe_amd64 [FLAGS] [OPTIONS] <input>
-
-FLAGS:
-    -h, --help         Prints help information
-        --overwrite    Overwrite contents of output directory`
-    -V, --version      Prints version information
+    fe_amd64_latest <SUBCOMMAND>
 
 OPTIONS:
-    -e, --emit <emit>                Comma separated compile targets e.g. -e=bytecode,yul [default: abi,bytecode]
-                                     [possible values: abi, bytecode, ast, tokens, yul, loweredAst]
-        --optimize <optimize>        Whether the Yul optimizer should be used or not e.g. --optimize=false [default: true]
-    -o, --output-dir <output-dir>    The directory to store the compiler output e.g /tmp/output [default: output]
+    -h, --help       Print help information
+    -V, --version    Print version information
 
-ARGS:
-    <input>    The input source file to use e.g erc20.fe
+SUBCOMMANDS:
+    build    Build the current project
+    check    Analyze the current project and report errors, but don't build artifacts
+    help     Print this message or the help of the given subcommand(s)
+    new      Create new fe project
 ```

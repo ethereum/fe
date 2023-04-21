@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
    ┌─ for_loop_with_continue.fe:2:5

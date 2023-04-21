@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `__init__` function is not public
   ┌─ compile_errors/non_pub_init.fe:2:5

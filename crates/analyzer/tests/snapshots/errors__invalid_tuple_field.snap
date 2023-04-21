@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: No field `item5` exists on this tuple
   ┌─ compile_errors/invalid_tuple_field.fe:5:18

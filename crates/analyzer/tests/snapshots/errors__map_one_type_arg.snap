@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `Map` expects 2 generic arguments, but 1 was provided
   ┌─ [snippet]:3:10

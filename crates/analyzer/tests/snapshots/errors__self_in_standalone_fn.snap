@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `self` can only be used in contract, struct, trait or impl functions
   ┌─ compile_errors/self_in_standalone_fn.fe:1:12

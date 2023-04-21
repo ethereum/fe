@@ -33,7 +33,8 @@ pub fn function_signature(
     let mut names = HashMap::new();
     let mut labels = HashMap::new();
 
-    function.data(db).ast.kind.generic_params.kind.iter().fold(
+    let sig_ast = &function.data(db).ast.kind;
+    sig_ast.generic_params.kind.iter().fold(
         HashMap::<SmolStr, Node<_>>::new(),
         |mut accum, param| {
             if let Some(previous) = accum.get(&param.name()) {
@@ -56,7 +57,7 @@ pub fn function_signature(
             "generic function parameters aren't yet supported outside of struct functions",
             vec![Label::primary(
                 function.data(db).ast.kind.generic_params.span,
-                "This can not appear here",
+                "this cannot appear here",
             )],
             vec!["Hint: Struct functions can have generic parameters".into()],
         );

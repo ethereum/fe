@@ -7,9 +7,119 @@
 
 Fe is moving fast. Read up on all the latest improvements.
 
-**WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
-
 [//]: # (towncrier release notes start)
+## 0.22.0 "Vulcanite" (2023-04-05)
+
+This is the first non-alpha release of Fe. Read our [announcement](https://blog.fe-lang.org/posts/beyond-alpha-preparing-fe-for-the-future/) for more details.
+
+### Features
+
+
+- Support for tests.
+
+  example:
+
+  ```
+  #test
+  fn my_test() {
+      assert 26 + 16 == 42
+  }
+  ```
+
+  Tests can be executed using the `test` subcommand.
+
+  example:
+
+  `$ fe test foo.fe` ([#807](https://github.com/ethereum/fe/issues/807))
+- Fixed broken trait orphan rule
+
+  Fe has an orphan rule for Traits similar to Rust's that requires
+  that either the trait or the type that we are implementing the trait for
+  are located in the same ingot as the `impl`. This rule was implemented
+  incorrectly so that instead of requiring them to be in the same ingot,
+  they were required to be in the same module. This change fixes this
+  so that the orphan rule is enforced correctly.
+  ([#863](https://github.com/ethereum/fe/issues/863))
+
+- `address` values can now be specified with a number literal, with no explicit
+  cast. So instead of `let t: address = address(0xfe)`, one can now write
+  `let t: address = 0xfe`. This also means that it's possible to define `const`
+  addresses: `const SOME_KNOWN_CONTRACT: address = 0xfefefefe`
+  ([#864](https://github.com/ethereum/fe/issues/864))
+
+
+### Bugfixes
+
+
+- Fixed resolving of generic arguments to associated functions.
+
+  For example, this code would previously crash the compiler:
+
+  ```rust
+  ...
+    // This function doesn't take self
+    pub fn run_static<T: Computable>(_ val: T) -> u256 {
+      return val.compute(val: 1000)
+    }
+  ...
+
+  // Invoking it would previously crash the compiler
+  Runner::run_static(Mac())
+  ...
+  ```
+  ([#861](https://github.com/ethereum/fe/issues/861))
+
+
+### Improved Documentation
+
+
+- Changed the Deployment tutorial to use foundry and the Sepolia network ([#853](https://github.com/ethereum/fe/issues/853))
+
+
+## 0.21.0-alpha (2023-02-28)
+
+
+### Features
+
+
+- Support for `Self` type
+
+  With this change `Self` (with capital `S`) can be used to refer
+  to the enclosing type in contracts, structs, impls and traits.
+
+  E.g.
+
+  ```
+  trait Min {
+    fn min() -> Self;
+  }
+
+  impl Min for u8 {
+    fn min() -> u8 { // Both `u8` or `Self` are valid here
+      return 0
+    }
+  }
+  ```
+
+  Usage: `u8::min()` ([#803](https://github.com/ethereum/fe/issues/803))
+- Added `Min` and `Max` traits to the std library.
+  The std library implements the traits for all numeric types.
+
+  Example
+
+  ```
+  use std::traits::{Min, Max}
+  ...
+
+  assert u8::min() < u8::max()
+  ``` ([#836](https://github.com/ethereum/fe/issues/836))
+
+- Upgraded underlying solc compiler to version `0.8.18`
+
+### Bugfixes
+
+- the release contains minor bugfixes
+
 ## 0.20.0-alpha (2022-12-05)
 
 

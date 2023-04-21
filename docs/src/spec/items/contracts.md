@@ -12,7 +12,6 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;  _ContractField_\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Function_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Struct_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; | [_Event_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Enum_]\
 > &nbsp;&nbsp; )
 >
@@ -46,6 +45,23 @@ contract GuestBook {
 }
 ```
 
+## The `__init__` function
+
+The `__init__` function is a special contract function that can only be called at *contract deployment time*. It is mostly used to set initial values to storage variables upon deployment.
+
+```fe
+pub contract Example {
+
+    admin: address
+
+    pub fn __init__(mut self, admin: address)  {
+        self.admin = admin
+    }
+}
+```
+
+It is **not possible** to call `__init__` at runtime.
+
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [_Visibility_]: ./visibility_and_privacy.md
@@ -53,5 +69,4 @@ contract GuestBook {
 [contract type]: ../type_system/types/contract.md
 [_Function_]: ../type_system/types/function.md
 [_Struct_]: ./structs.md
-[_Event_]: ./events.md
 [_Enum_]: ./enums.md

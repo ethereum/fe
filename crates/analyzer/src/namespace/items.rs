@@ -41,6 +41,7 @@ pub enum Item {
     // We can't represent keccak256's arg type yet.
     BuiltinFunction(builtins::GlobalFunction),
     Intrinsic(builtins::Intrinsic),
+    Attribute(AttributeId),
 }
 
 impl Item {
@@ -56,6 +57,7 @@ impl Item {
             Item::Constant(id) => id.name(db),
             Item::Ingot(id) => id.name(db),
             Item::Module(id) => id.name(db),
+            Item::Attribute(id) => id.name(db),
         }
     }
 
@@ -70,7 +72,8 @@ impl Item {
             | Item::Intrinsic(_)
             | Item::Ingot(_)
             | Item::Module(_)
-            | Item::Impl(_) => None,
+            | Item::Impl(_)
+            | Item::Attribute(_) => None,
         }
     }
 
@@ -83,6 +86,7 @@ impl Item {
             | Self::Intrinsic(_)
             | Self::Impl(_)
             | Self::GenericType(_) => true,
+            Self::Attribute(_) => false,
             Self::Type(id) => id.is_public(db),
             Self::Trait(id) => id.is_public(db),
             Self::Function(id) => id.is_public(db),
@@ -102,6 +106,7 @@ impl Item {
             | Item::Function(_)
             | Item::Constant(_)
             | Item::Ingot(_)
+            | Item::Attribute(_)
             | Item::Module(_) => false,
         }
     }
@@ -125,6 +130,7 @@ impl Item {
             Item::Constant(_) => "constant",
             Item::Ingot(_) => "ingot",
             Item::Module(_) => "module",
+            Item::Attribute(_) => "attribute",
         }
     }
 
@@ -139,6 +145,7 @@ impl Item {
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
+            | Item::Attribute(_)
             | Item::Intrinsic(_) => Rc::new(indexmap! {}),
         }
     }
@@ -152,6 +159,7 @@ impl Item {
             Item::Function(id) => Some(id.parent(db)),
             Item::Constant(id) => Some(id.parent(db)),
             Item::Module(id) => Some(id.parent(db)),
+            Item::Attribute(id) => Some(id.parent(db)),
             Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Ingot(_) => None,
         }
     }
@@ -244,11 +252,31 @@ impl Item {
             Item::Trait(id) => id.sink_diagnostics(db, sink),
             Item::Impl(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
-            Item::GenericType(_) | Item::BuiltinFunction(_) | Item::Intrinsic(_) => {}
+            Item::GenericType(_)
+            | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
+            | Item::Attribute(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
             Item::Ingot(id) => id.sink_diagnostics(db, sink),
             Item::Module(id) => id.sink_diagnostics(db, sink),
         }
+    }
+
+    pub fn attributes(&self, db: &dyn AnalyzerDb) -> Vec<AttributeId> {
+        if let Some(Item::Module(module)) = self.parent(db) {
+            let mut attributes = vec![];
+            for item in module.all_items(db).iter() {
+                if let Item::Attribute(attribute) = item {
+                    attributes.push(*attribute);
+                } else if item == self {
+                    return attributes;
+                } else {
+                    attributes = vec![];
+                }
+            }
+        }
+
+        vec![]
     }
 }
 
@@ -523,6 +551,10 @@ impl ModuleId {
         db.module_used_item_map(*self).value
     }
 
+    pub fn tests(&self, db: &dyn AnalyzerDb) -> Vec<FunctionId> {
+        db.module_tests(*self)
+    }
+
     /// Returns `true` if the `item` is in scope of the module.
     pub fn is_in_scope(&self, db: &dyn AnalyzerDb, item: Item) -> bool {
         if let Some(val) = item.module(db) {
@@ -676,6 +708,20 @@ impl ModuleId {
             .flat_map(|module| module.all_contracts(db))
             .chain((*db.module_contracts(*self)).to_vec())
             .collect::<Vec<_>>()
+    }
+
+    /// All functions, including from submodules and including duplicates
+    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Vec<FunctionId> {
+        self.items(db)
+            .iter()
+            .filter_map(|(_, item)| {
+                if let Item::Function(function) = item {
+                    Some(*function)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Returns the map of ingot deps, built-ins, and the ingot itself as
@@ -1298,6 +1344,13 @@ impl FunctionId {
     pub fn is_contract_func(self, db: &dyn AnalyzerDb) -> bool {
         self.sig(db).is_contract_func(db)
     }
+
+    pub fn is_test(&self, db: &dyn AnalyzerDb) -> bool {
+        Item::Function(*self)
+            .attributes(db)
+            .iter()
+            .any(|attribute| attribute.name(db) == "test")
+    }
 }
 
 trait FunctionsAsItems {
@@ -1457,6 +1510,35 @@ impl StructFieldId {
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.struct_field_type(*self).sink_diagnostics(sink)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Attribute {
+    pub ast: Node<SmolStr>,
+    pub module: ModuleId,
+}
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub struct AttributeId(pub(crate) u32);
+impl_intern_key!(AttributeId);
+
+impl AttributeId {
+    pub fn data(self, db: &dyn AnalyzerDb) -> Rc<Attribute> {
+        db.lookup_intern_attribute(self)
+    }
+    pub fn span(self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn name(self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.kind.to_owned()
+    }
+
+    pub fn module(self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
+
+    pub fn parent(self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
     }
 }
 
@@ -1707,12 +1789,14 @@ impl ImplId {
         &self,
         db: &dyn AnalyzerDb,
         sink: &mut impl DiagnosticSink,
-        type_module: Option<ModuleId>,
+        type_ingot: Option<IngotId>,
     ) {
-        let impl_module = self.data(db).module;
-        let is_allowed = match type_module {
-            None => impl_module == self.data(db).trait_id.module(db),
-            Some(val) => val == impl_module || self.data(db).trait_id.module(db) == impl_module,
+        let impl_ingot = self.data(db).module.ingot(db);
+        let is_allowed = match type_ingot {
+            None => impl_ingot == self.data(db).trait_id.module(db).ingot(db),
+            Some(val) => {
+                val == impl_ingot || self.data(db).trait_id.module(db).ingot(db) == impl_ingot
+            }
         };
 
         if !is_allowed {
@@ -1749,10 +1833,10 @@ impl ImplId {
                 vec![],
             )),
             Type::Struct(id) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db).ingot(db)))
             }
             Type::Enum(id) => {
-                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db)))
+                self.validate_type_or_trait_is_in_ingot(db, sink, Some(id.module(db).ingot(db)))
             }
             Type::Base(_) | Type::Array(_) | Type::Tuple(_) | Type::String(_) => {
                 self.validate_type_or_trait_is_in_ingot(db, sink, None)

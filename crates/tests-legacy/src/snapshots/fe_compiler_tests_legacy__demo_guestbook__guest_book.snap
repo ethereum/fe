@@ -1,0 +1,7 @@
+---
+source: crates/tests-legacy/src/demo_guestbook.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+sign([String("hello world")]) used 54893 gas
+get_msg([Address(0x1234000000000000000000000000000000005678)]) used 1786 gas
+

@@ -1,0 +1,28 @@
+fn sqrt(_ val: u256) -> u256 {
+    let mut z: u256
+    if val > 3 {
+        z = val
+        let mut x: u256 = val / 2 + 1
+        while x < z {
+            z = x
+            x = (val / x + x) / 2
+        }
+    } else if val != 0 {
+        z = 1
+    }
+    return z
+}
+
+fn min(a: u256, b: u256) -> u256 {
+    return a if a < b else b
+}
+
+#test
+fn test_sqrt() {
+    assert sqrt(16000) == 126
+}
+
+#test
+fn test_min() {
+    assert min(a: 1, b: 2) == 1
+}

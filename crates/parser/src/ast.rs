@@ -25,6 +25,7 @@ pub enum ModuleStmt {
     Trait(Node<Trait>),
     Impl(Node<Impl>),
     Function(Node<Function>),
+    Attribute(Node<SmolStr>),
     ParseError(Span),
 }
 
@@ -574,6 +575,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Enum(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
+            ModuleStmt::Attribute(inner) => inner.span,
             ModuleStmt::ParseError(span) => *span,
         }
     }
@@ -621,6 +623,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Enum(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Attribute(node) => writeln!(f, "#{}", node.kind),
             ModuleStmt::ParseError(span) => {
                 write!(f, "# PARSE ERROR: {}..{}", span.start, span.end)
             }

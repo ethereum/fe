@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `bar` expects 2 arguments, but 1 was provided
   ┌─ compile_errors/external_call_wrong_number_of_params.fe:7:25
