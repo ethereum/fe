@@ -17,7 +17,8 @@ pub trait SourceDb {
     #[salsa::interned]
     fn intern_file(&self, file: File) -> SourceFileId;
 
-    /// Set with `fn set_file_content(&mut self, file: SourceFileId, content: Rc<str>)
+    /// Set with `fn set_file_content(&mut self, file: SourceFileId, content:
+    /// Rc<str>)
     #[salsa::input]
     fn file_content(&self, file: SourceFileId) -> Rc<str>;
 

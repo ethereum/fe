@@ -1,0 +1,14 @@
+if x y {
+}
+
+if x {
+
+} else x {}
+
+if x { } else x if x { } else { }
+
+if x {
+    10    
+else {
+    1
+}

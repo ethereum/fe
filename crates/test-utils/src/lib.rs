@@ -1,7 +1,11 @@
+#[doc(hidden)]
+pub mod _macro_support;
+
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::keccak;
 use fe_driver as driver;
+
 use primitive_types::{H160, U256};
 use std::cell::RefCell;
 use std::collections::BTreeMap;

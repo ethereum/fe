@@ -1,0 +1,28 @@
+trait Marker {}
+
+pub trait Foo {
+    fn foo<T: Trait, const U: i32>(t: T, u: U)
+
+    fn default_method<T: Add + Sub>(lhs: T, rhs: T)  -> i32 {
+        lhs + lhs - (rhs + rhs)
+    }
+}
+
+pub trait Add<RHS: Add> 
+{
+    fn add(self, rhs: Rhs) -> Self 
+        where RHS: Sub
+}
+
+
+pub trait Parse {
+    fn parse<S: TokenStream>(mut self, mut parser: Parser<S>)
+}
+
+impl<S> Parser<S> 
+    where S: TokenStream + Clone
+{
+    pub fn parse<T: Parse>(mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> (bool, Checkpoint) {
+        (SyntaxNode::new_root(self.builder.finish()), self.errors)
+    }
+}

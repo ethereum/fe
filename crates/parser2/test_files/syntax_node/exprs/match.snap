@@ -1,0 +1,599 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/match.fe
+---
+Root@0..516
+  MatchExpr@0..10
+    MatchKw@0..5 "match"
+    WhiteSpace@5..6 " "
+    PathExpr@6..7
+      Path@6..7
+        PathSegment@6..7
+          Ident@6..7 "e"
+    WhiteSpace@7..8 " "
+    MatchArmList@8..10
+      LBrace@8..9 "{"
+      RBrace@9..10 "}"
+  Newline@10..12 "\n\n"
+  MatchExpr@12..81
+    MatchKw@12..17 "match"
+    WhiteSpace@17..18 " "
+    PathExpr@18..19
+      Path@18..19
+        PathSegment@18..19
+          Ident@18..19 "e"
+    WhiteSpace@19..20 " "
+    MatchArmList@20..81
+      LBrace@20..21 "{"
+      Newline@21..22 "\n"
+      WhiteSpace@22..26 "    "
+      MatchArm@26..50
+        PathTuplePat@26..41
+          Path@26..35
+            PathSegment@26..30
+              Ident@26..30 "Enum"
+            Colon2@30..32 "::"
+            PathSegment@32..35
+              Ident@32..35 "Add"
+          TuplePatElemList@35..41
+            LParen@35..36 "("
+            PathPat@36..37
+              Path@36..37
+                PathSegment@36..37
+                  Ident@36..37 "x"
+            Comma@37..38 ","
+            WhiteSpace@38..39 " "
+            PathPat@39..40
+              Path@39..40
+                PathSegment@39..40
+                  Ident@39..40 "y"
+            RParen@40..41 ")"
+        WhiteSpace@41..42 " "
+        FatArrow@42..44 "=>"
+        WhiteSpace@44..45 " "
+        BinExpr@45..50
+          PathExpr@45..46
+            Path@45..46
+              PathSegment@45..46
+                Ident@45..46 "x"
+          WhiteSpace@46..47 " "
+          Plus@47..48 "+"
+          WhiteSpace@48..49 " "
+          PathExpr@49..50
+            Path@49..50
+              PathSegment@49..50
+                Ident@49..50 "y"
+      Newline@50..51 "\n"
+      WhiteSpace@51..55 "    "
+      MatchArm@55..79
+        PathTuplePat@55..70
+          Path@55..64
+            PathSegment@55..59
+              Ident@55..59 "Enum"
+            Colon2@59..61 "::"
+            PathSegment@61..64
+              Ident@61..64 "Sub"
+          TuplePatElemList@64..70
+            LParen@64..65 "("
+            PathPat@65..66
+              Path@65..66
+                PathSegment@65..66
+                  Ident@65..66 "x"
+            Comma@66..67 ","
+            WhiteSpace@67..68 " "
+            PathPat@68..69
+              Path@68..69
+                PathSegment@68..69
+                  Ident@68..69 "y"
+            RParen@69..70 ")"
+        WhiteSpace@70..71 " "
+        FatArrow@71..73 "=>"
+        WhiteSpace@73..74 " "
+        BinExpr@74..79
+          PathExpr@74..75
+            Path@74..75
+              PathSegment@74..75
+                Ident@74..75 "x"
+          WhiteSpace@75..76 " "
+          Minus@76..77 "-"
+          WhiteSpace@77..78 " "
+          PathExpr@78..79
+            Path@78..79
+              PathSegment@78..79
+                Ident@78..79 "y"
+      Newline@79..80 "\n"
+      RBrace@80..81 "}"
+  Newline@81..83 "\n\n"
+  MatchExpr@83..120
+    MatchKw@83..88 "match"
+    WhiteSpace@88..89 " "
+    ParenExpr@89..105
+      LParen@89..90 "("
+      RecordInitExpr@90..104
+        Path@90..91
+          PathSegment@90..91
+            Ident@90..91 "S"
+        WhiteSpace@91..92 " "
+        RecordFieldList@92..104
+          LBrace@92..93 "{"
+          RecordField@93..97
+            Ident@93..94 "x"
+            Colon@94..95 ":"
+            WhiteSpace@95..96 " "
+            LitExpr@96..97
+              Lit@96..97
+                Int@96..97 "1"
+          Comma@97..98 ","
+          WhiteSpace@98..99 " "
+          RecordField@99..103
+            Ident@99..100 "y"
+            Colon@100..101 ":"
+            WhiteSpace@101..102 " "
+            LitExpr@102..103
+              Lit@102..103
+                Int@102..103 "2"
+          RBrace@103..104 "}"
+      RParen@104..105 ")"
+    WhiteSpace@105..106 " "
+    MatchArmList@106..120
+      LBrace@106..107 "{"
+      Newline@107..108 "\n"
+      WhiteSpace@108..112 "    "
+      MatchArm@112..118
+        WildCardPat@112..113
+          Underscore@112..113 "_"
+        WhiteSpace@113..114 " "
+        FatArrow@114..116 "=>"
+        WhiteSpace@116..117 " "
+        LitExpr@117..118
+          Lit@117..118
+            Int@117..118 "1"
+      Newline@118..119 "\n"
+      RBrace@119..120 "}"
+  Newline@120..122 "\n\n"
+  MatchExpr@122..191
+    MatchKw@122..127 "match"
+    WhiteSpace@127..128 " "
+    PathExpr@128..129
+      Path@128..129
+        PathSegment@128..129
+          Ident@128..129 "e"
+    WhiteSpace@129..130 " "
+    MatchArmList@130..191
+      LBrace@130..131 "{"
+      Newline@131..132 "\n"
+      WhiteSpace@132..136 "    "
+      MatchArm@136..160
+        PathTuplePat@136..151
+          Path@136..145
+            PathSegment@136..140
+              Ident@136..140 "Enum"
+            Colon2@140..142 "::"
+            PathSegment@142..145
+              Ident@142..145 "Add"
+          TuplePatElemList@145..151
+            LParen@145..146 "("
+            PathPat@146..147
+              Path@146..147
+                PathSegment@146..147
+                  Ident@146..147 "x"
+            Comma@147..148 ","
+            WhiteSpace@148..149 " "
+            PathPat@149..150
+              Path@149..150
+                PathSegment@149..150
+                  Ident@149..150 "y"
+            RParen@150..151 ")"
+        WhiteSpace@151..152 " "
+        FatArrow@152..154 "=>"
+        WhiteSpace@154..155 " "
+        BinExpr@155..160
+          PathExpr@155..156
+            Path@155..156
+              PathSegment@155..156
+                Ident@155..156 "x"
+          WhiteSpace@156..157 " "
+          Plus@157..158 "+"
+          WhiteSpace@158..159 " "
+          PathExpr@159..160
+            Path@159..160
+              PathSegment@159..160
+                Ident@159..160 "y"
+      Newline@160..161 "\n"
+      WhiteSpace@161..165 "    "
+      MatchArm@165..189
+        PathTuplePat@165..180
+          Path@165..174
+            PathSegment@165..169
+              Ident@165..169 "Enum"
+            Colon2@169..171 "::"
+            PathSegment@171..174
+              Ident@171..174 "Sub"
+          TuplePatElemList@174..180
+            LParen@174..175 "("
+            PathPat@175..176
+              Path@175..176
+                PathSegment@175..176
+                  Ident@175..176 "x"
+            Comma@176..177 ","
+            WhiteSpace@177..178 " "
+            PathPat@178..179
+              Path@178..179
+                PathSegment@178..179
+                  Ident@178..179 "y"
+            RParen@179..180 ")"
+        WhiteSpace@180..181 " "
+        FatArrow@181..183 "=>"
+        WhiteSpace@183..184 " "
+        BinExpr@184..189
+          PathExpr@184..185
+            Path@184..185
+              PathSegment@184..185
+                Ident@184..185 "x"
+          WhiteSpace@185..186 " "
+          Minus@186..187 "-"
+          WhiteSpace@187..188 " "
+          PathExpr@188..189
+            Path@188..189
+              PathSegment@188..189
+                Ident@188..189 "y"
+      Newline@189..190 "\n"
+      RBrace@190..191 "}"
+  Newline@191..193 "\n\n"
+  MatchExpr@193..313
+    MatchKw@193..198 "match"
+    WhiteSpace@198..199 " "
+    PathExpr@199..200
+      Path@199..200
+        PathSegment@199..200
+          Ident@199..200 "e"
+    WhiteSpace@200..201 " "
+    MatchArmList@201..313
+      LBrace@201..202 "{"
+      Newline@202..203 "\n"
+      WhiteSpace@203..207 "    "
+      MatchArm@207..249
+        PathTuplePat@207..222
+          Path@207..216
+            PathSegment@207..211
+              Ident@207..211 "Enum"
+            Colon2@211..213 "::"
+            PathSegment@213..216
+              Ident@213..216 "Add"
+          TuplePatElemList@216..222
+            LParen@216..217 "("
+            PathPat@217..218
+              Path@217..218
+                PathSegment@217..218
+                  Ident@217..218 "x"
+            Comma@218..219 ","
+            WhiteSpace@219..220 " "
+            PathPat@220..221
+              Path@220..221
+                PathSegment@220..221
+                  Ident@220..221 "y"
+            RParen@221..222 ")"
+        WhiteSpace@222..223 " "
+        FatArrow@223..225 "=>"
+        WhiteSpace@225..226 " "
+        BlockExpr@226..249
+          LBrace@226..227 "{"
+          WhiteSpace@227..228 " "
+          Newline@228..229 "\n"
+          WhiteSpace@229..237 "        "
+          ExprStmt@237..242
+            BinExpr@237..242
+              PathExpr@237..238
+                Path@237..238
+                  PathSegment@237..238
+                    Ident@237..238 "x"
+              WhiteSpace@238..239 " "
+              Plus@239..240 "+"
+              WhiteSpace@240..241 " "
+              PathExpr@241..242
+                Path@241..242
+                  PathSegment@241..242
+                    Ident@241..242 "y"
+          WhiteSpace@242..243 " "
+          Newline@243..244 "\n"
+          WhiteSpace@244..248 "    "
+          RBrace@248..249 "}"
+      Newline@249..250 "\n"
+      WhiteSpace@250..254 "    "
+      MatchArm@254..278
+        PathTuplePat@254..269
+          Path@254..263
+            PathSegment@254..258
+              Ident@254..258 "Enum"
+            Colon2@258..260 "::"
+            PathSegment@260..263
+              Ident@260..263 "Sub"
+          TuplePatElemList@263..269
+            LParen@263..264 "("
+            PathPat@264..265
+              Path@264..265
+                PathSegment@264..265
+                  Ident@264..265 "x"
+            Comma@265..266 ","
+            WhiteSpace@266..267 " "
+            PathPat@267..268
+              Path@267..268
+                PathSegment@267..268
+                  Ident@267..268 "y"
+            RParen@268..269 ")"
+        WhiteSpace@269..270 " "
+        FatArrow@270..272 "=>"
+        WhiteSpace@272..273 " "
+        BinExpr@273..278
+          PathExpr@273..274
+            Path@273..274
+              PathSegment@273..274
+                Ident@273..274 "x"
+          WhiteSpace@274..275 " "
+          Minus@275..276 "-"
+          WhiteSpace@276..277 " "
+          PathExpr@277..278
+            Path@277..278
+              PathSegment@277..278
+                Ident@277..278 "y"
+      Newline@278..279 "\n"
+      WhiteSpace@279..283 "    "
+      MatchArm@283..311
+        PathTuplePat@283..298
+          Path@283..292
+            PathSegment@283..287
+              Ident@283..287 "Enum"
+            Colon2@287..289 "::"
+            PathSegment@289..292
+              Ident@289..292 "Mul"
+          TuplePatElemList@292..298
+            LParen@292..293 "("
+            PathPat@293..294
+              Path@293..294
+                PathSegment@293..294
+                  Ident@293..294 "x"
+            Comma@294..295 ","
+            WhiteSpace@295..296 " "
+            PathPat@296..297
+              Path@296..297
+                PathSegment@296..297
+                  Ident@296..297 "y"
+            RParen@297..298 ")"
+        WhiteSpace@298..299 " "
+        FatArrow@299..301 "=>"
+        WhiteSpace@301..302 " "
+        BlockExpr@302..311
+          LBrace@302..303 "{"
+          WhiteSpace@303..304 " "
+          ExprStmt@304..309
+            BinExpr@304..309
+              PathExpr@304..305
+                Path@304..305
+                  PathSegment@304..305
+                    Ident@304..305 "x"
+              WhiteSpace@305..306 " "
+              Star@306..307 "*"
+              WhiteSpace@307..308 " "
+              PathExpr@308..309
+                Path@308..309
+                  PathSegment@308..309
+                    Ident@308..309 "y"
+          WhiteSpace@309..310 " "
+          RBrace@310..311 "}"
+      Newline@311..312 "\n"
+      RBrace@312..313 "}"
+  Newline@313..315 "\n\n"
+  MatchExpr@315..344
+    MatchKw@315..320 "match"
+    WhiteSpace@320..321 " "
+    PathExpr@321..322
+      Path@321..322
+        PathSegment@321..322
+          Ident@321..322 "e"
+    WhiteSpace@322..323 " "
+    MatchArmList@323..344
+      LBrace@323..324 "{"
+      WhiteSpace@324..325 " "
+      MatchArm@325..342
+        PathTuplePat@325..337
+          Path@325..334
+            PathSegment@325..329
+              Ident@325..329 "Enum"
+            Colon2@329..331 "::"
+            PathSegment@331..334
+              Ident@331..334 "Var"
+          TuplePatElemList@334..337
+            LParen@334..335 "("
+            PathPat@335..336
+              Path@335..336
+                PathSegment@335..336
+                  Ident@335..336 "s"
+            RParen@336..337 ")"
+        WhiteSpace@337..338 " "
+        FatArrow@338..340 "=>"
+        WhiteSpace@340..341 " "
+        PathExpr@341..342
+          Path@341..342
+            PathSegment@341..342
+              Ident@341..342 "s"
+      WhiteSpace@342..343 " "
+      RBrace@343..344 "}"
+  Newline@344..346 "\n\n"
+  MatchExpr@346..429
+    MatchKw@346..351 "match"
+    WhiteSpace@351..352 " "
+    BlockExpr@352..400
+      LBrace@352..353 "{"
+      Newline@353..354 "\n"
+      WhiteSpace@354..362 "        "
+      LetStmt@362..371
+        LetKw@362..365 "let"
+        WhiteSpace@365..366 " "
+        PathPat@366..367
+          Path@366..367
+            PathSegment@366..367
+              Ident@366..367 "x"
+        WhiteSpace@367..368 " "
+        Eq@368..369 "="
+        WhiteSpace@369..370 " "
+        LitExpr@370..371
+          Lit@370..371
+            Int@370..371 "1"
+      Newline@371..372 "\n"
+      WhiteSpace@372..380 "        "
+      ExprStmt@380..392
+        CallExpr@380..392
+          PathExpr@380..389
+            Path@380..389
+              PathSegment@380..384
+                Ident@380..384 "Enum"
+              Colon2@384..386 "::"
+              PathSegment@386..389
+                Ident@386..389 "Var"
+          CallArgList@389..392
+            LParen@389..390 "("
+            CallArg@390..391
+              PathExpr@390..391
+                Path@390..391
+                  PathSegment@390..391
+                    Ident@390..391 "x"
+            RParen@391..392 ")"
+      Newline@392..393 "\n"
+      WhiteSpace@393..399 "      "
+      RBrace@399..400 "}"
+    WhiteSpace@400..401 " "
+    Newline@401..402 "\n"
+    MatchArmList@402..429
+      LBrace@402..403 "{"
+      WhiteSpace@403..404 " "
+      Newline@404..405 "\n"
+      WhiteSpace@405..409 "    "
+      MatchArm@409..426
+        PathTuplePat@409..421
+          Path@409..418
+            PathSegment@409..413
+              Ident@409..413 "Enum"
+            Colon2@413..415 "::"
+            PathSegment@415..418
+              Ident@415..418 "Var"
+          TuplePatElemList@418..421
+            LParen@418..419 "("
+            PathPat@419..420
+              Path@419..420
+                PathSegment@419..420
+                  Ident@419..420 "s"
+            RParen@420..421 ")"
+        WhiteSpace@421..422 " "
+        FatArrow@422..424 "=>"
+        WhiteSpace@424..425 " "
+        PathExpr@425..426
+          Path@425..426
+            PathSegment@425..426
+              Ident@425..426 "s"
+      WhiteSpace@426..427 " "
+      Newline@427..428 "\n"
+      RBrace@428..429 "}"
+  Newline@429..431 "\n\n"
+  MatchExpr@431..516
+    MatchKw@431..436 "match"
+    WhiteSpace@436..437 " "
+    ParenExpr@437..463
+      LParen@437..438 "("
+      RecordInitExpr@438..462
+        Path@438..439
+          PathSegment@438..439
+            Ident@438..439 "S"
+        WhiteSpace@439..440 " "
+        RecordFieldList@440..462
+          LBrace@440..441 "{"
+          RecordField@441..455
+            Ident@441..442 "x"
+            Colon@442..443 ":"
+            WhiteSpace@443..444 " "
+            CallExpr@444..455
+              PathExpr@444..452
+                Path@444..452
+                  PathSegment@444..447
+                    Ident@444..447 "Foo"
+                  Colon2@447..449 "::"
+                  PathSegment@449..452
+                    Ident@449..452 "Bar"
+              CallArgList@452..455
+                LParen@452..453 "("
+                CallArg@453..454
+                  PathExpr@453..454
+                    Path@453..454
+                      PathSegment@453..454
+                        Ident@453..454 "x"
+                RParen@454..455 ")"
+          Comma@455..456 ","
+          WhiteSpace@456..457 " "
+          RecordField@457..461
+            Ident@457..458 "y"
+            Colon@458..459 ":"
+            WhiteSpace@459..460 " "
+            LitExpr@460..461
+              Lit@460..461
+                Int@460..461 "2"
+          RBrace@461..462 "}"
+      RParen@462..463 ")"
+    WhiteSpace@463..464 " "
+    MatchArmList@464..516
+      LBrace@464..465 "{"
+      Newline@465..466 "\n"
+      WhiteSpace@466..470 "    "
+      MatchArm@470..499
+        RecordPat@470..491
+          Path@470..471
+            PathSegment@470..471
+              Ident@470..471 "S"
+          WhiteSpace@471..472 " "
+          RecordPatFieldList@472..491
+            LBrace@472..473 "{"
+            RecordPatField@473..487
+              Ident@473..474 "x"
+              Colon@474..475 ":"
+              WhiteSpace@475..476 " "
+              PathTuplePat@476..487
+                Path@476..484
+                  PathSegment@476..479
+                    Ident@476..479 "Boo"
+                  Colon2@479..481 "::"
+                  PathSegment@481..484
+                    Ident@481..484 "Bar"
+                TuplePatElemList@484..487
+                  LParen@484..485 "("
+                  PathPat@485..486
+                    Path@485..486
+                      PathSegment@485..486
+                        Ident@485..486 "x"
+                  RParen@486..487 ")"
+            Comma@487..488 ","
+            WhiteSpace@488..489 " "
+            RecordPatField@489..490
+              PathPat@489..490
+                Path@489..490
+                  PathSegment@489..490
+                    Ident@489..490 "y"
+            RBrace@490..491 "}"
+        WhiteSpace@491..492 " "
+        FatArrow@492..494 "=>"
+        WhiteSpace@494..495 " "
+        LitExpr@495..499
+          Lit@495..499
+            TrueKw@495..499 "true"
+      Newline@499..500 "\n"
+      WhiteSpace@500..504 "    "
+      MatchArm@504..514
+        WildCardPat@504..505
+          Underscore@504..505 "_"
+        WhiteSpace@505..506 " "
+        FatArrow@506..508 "=>"
+        WhiteSpace@508..509 " "
+        LitExpr@509..514
+          Lit@509..514
+            FalseKw@509..514 "false"
+      Newline@514..515 "\n"
+      RBrace@515..516 "}"
+

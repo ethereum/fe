@@ -7,8 +7,8 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-test-runner = {path = "../test-runner", version = "^0.22.0"}
-fe-driver = {path = "../driver", version = "^0.22.0"}
+fe-test-runner = { path = "../test-runner", version = "^0.22.0" }
+fe-driver = { path = "../driver", version = "^0.22.0" }
 dir-test = "^0.1"
 
 [features]

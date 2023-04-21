@@ -1,0 +1,13 @@
+use Foo::Bar
+pub use Foo::Bar
+use Foo::*
+use Foo::Bar as Bar1
+use Foo::Trait as _
+
+use Foo::{Foo, Bar}
+use Foo::{self, Bar}
+use Foo::{self, Bar as Bar1}
+use Foo::{self as self_, Bar::{Bar as _, Baz}, *}
+
+use {Foo::Bar as Bar1, Bar::Bar as Bar2, Baz::Bar as Bar3, Trait::T}
+use *

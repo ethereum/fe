@@ -74,7 +74,7 @@ pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
     let address = B160::from(26);
     let caller = B160::from(42);
     let value = U256::ZERO;
-    let contract = Contract::new::<LatestSpec>(input, bytecode, address, caller, value);
+    let contract = Contract::new(input, bytecode, address, caller, value);
 
     let mut host = DummyHost::new(Env::default());
     let mut interpreter = Interpreter::new(contract, u64::MAX, false);

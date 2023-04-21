@@ -1,0 +1,79 @@
+---
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/stmts/for_.fe
+---
+Root@0..67
+  ForStmt@0..29
+    ForKw@0..3 "for"
+    WhiteSpace@3..4 " "
+    PathPat@4..5
+      Path@4..5
+        PathSegment@4..5
+          Ident@4..5 "i"
+    WhiteSpace@5..6 " "
+    Error@6..9
+      Ident@6..9 "arr"
+    WhiteSpace@9..10 " "
+    Error@10..13
+      LBrace@10..11 "{"
+      WhiteSpace@11..12 " "
+      RBrace@12..13 "}"
+    Newline@13..15 "\n\n"
+    Error@15..25
+      ForKw@15..18 "for"
+      WhiteSpace@18..19 " "
+      InKw@19..21 "in"
+      WhiteSpace@21..22 " "
+      Ident@22..25 "arr"
+    WhiteSpace@25..26 " "
+    BlockExpr@26..29
+      LBrace@26..27 "{"
+      WhiteSpace@27..28 " "
+      RBrace@28..29 "}"
+  Newline@29..31 "\n\n"
+  ForStmt@31..46
+    ForKw@31..34 "for"
+    WhiteSpace@34..35 " "
+    PathPat@35..36
+      Path@35..36
+        PathSegment@35..36
+          Error@35..36
+            InvalidToken@35..36 "@"
+    WhiteSpace@36..37 " "
+    InKw@37..39 "in"
+    WhiteSpace@39..40 " "
+    PathExpr@40..43
+      Path@40..43
+        PathSegment@40..43
+          Ident@40..43 "arr"
+    WhiteSpace@43..44 " "
+    BlockExpr@44..46
+      LBrace@44..45 "{"
+      RBrace@45..46 "}"
+  Newline@46..48 "\n\n"
+  ForStmt@48..67
+    ForKw@48..51 "for"
+    WhiteSpace@51..52 " "
+    PathPat@52..53
+      Path@52..53
+        PathSegment@52..53
+          Error@52..53
+            InvalidToken@52..53 "@"
+    WhiteSpace@53..54 " "
+    InKw@54..56 "in"
+    WhiteSpace@56..57 " "
+    PathExpr@57..60
+      Path@57..60
+        PathSegment@57..60
+          Ident@57..60 "arr"
+    WhiteSpace@60..61 " "
+    Error@61..64
+      Ident@61..62 "x"
+      WhiteSpace@62..63 " "
+      Ident@63..64 "y"
+    WhiteSpace@64..65 " "
+    BlockExpr@65..67
+      LBrace@65..66 "{"
+      RBrace@66..67 "}"
+

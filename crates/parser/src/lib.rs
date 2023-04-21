@@ -18,8 +18,8 @@ use fe_common::files::SourceFileId;
 ///
 /// If a fatal parse error occurred, the last element of the `Module::body` will
 /// be a `ModuleStmt::ParseError`. The parser currently has very limited ability
-/// to recover from syntax errors; this is just a first meager attempt at returning a
-/// useful AST when there are syntax errors.
+/// to recover from syntax errors; this is just a first meager attempt at
+/// returning a useful AST when there are syntax errors.
 ///
 /// A [`SourceFileId`] is required to associate any diagnostics with the
 /// underlying file.

@@ -1,0 +1,8 @@
+pub struct<T, U
+where T 
+      U: Trait
+    
+{
+    foo
+    bar: i32::foo
+}
