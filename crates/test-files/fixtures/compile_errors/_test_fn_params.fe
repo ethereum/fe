@@ -1,0 +1,7 @@
+trait MyTrait { }
+
+#test
+fn test1<T: MyTrait>() { }
+
+#test
+fn test2(x: u256) { }

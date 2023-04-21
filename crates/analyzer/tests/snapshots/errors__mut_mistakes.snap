@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: cannot modify `self.x`, as it is not mutable
   ┌─ compile_errors/mut_mistakes.fe:6:9

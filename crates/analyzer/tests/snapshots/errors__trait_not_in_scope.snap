@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: No method named `do` found for type `u256` in the current scope
   ┌─ compile_errors/trait_not_in_scope/src/main.fe:4:7

@@ -1,0 +1,21 @@
+fn bar() -> u256 {
+    const C1: i64 = 1
+    const C2: i64 = 2
+    const C3: i64 = 10
+    const C4: i64 = (C1 * C2) + C3 // 12
+    const EXP: u8 = 2
+    const C5: i64 = (C2 ** EXP) // 4
+    const C6: i64 = (C5 << 1) // 8
+    const C7: bool = (C5 < C6) and (C4 > C5) // true
+    const C8: bool = false
+    const C9: bool = C8 < C7 // true
+    const C10: u256 = 42 if C9 else 0 // 42
+    const C11: address = 0xfefe
+    let _arr: Array<bool, { C10 }> = [true; { C10 }]
+    return C10
+}
+
+#test
+fn test_bar() {
+    assert bar() == 42
+}

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `balance_of` expects 1 argument, but 2 were provided
    ┌─ src/evm.fe:50:15

@@ -40,7 +40,6 @@ pub fn mir_lowered_pseudo_monomorphized_func_signature(
         .iter()
         .map(|generic| (generic.name(), analyzer_types::TypeId::unit(db.upcast())))
         .collect::<BTreeMap<_, _>>();
-
     lower_monomorphized_func_signature(db, analyzer_func, resolved_generics)
 }
 

@@ -163,56 +163,57 @@ pub fn validate_named_args(
 
         let param_type = param.typ()?;
         // Check arg type
-        let arg_type = if let Type::Generic(Generic { bounds, .. }) = param_type.typ(context.db()) {
-            let arg_type = expr_type(context, &arg.kind.value)?;
-            for bound in bounds.iter() {
-                if !bound.is_implemented_for(context.db(), arg_type) {
-                    context.error(
-                        &format!(
-                            "the trait bound `{}: {}` is not satisfied",
-                            arg_type.display(context.db()),
-                            bound.name(context.db())
-                        ),
-                        arg.span,
-                        &format!(
-                            "the trait `{}` is not implemented for `{}`",
-                            bound.name(context.db()),
-                            arg_type.display(context.db()),
-                        ),
-                    );
+        let arg_type =
+            if let Type::Generic(Generic { bounds, .. }) = param_type.deref_typ(context.db()) {
+                let arg_type = expr_type(context, &arg.kind.value)?;
+                for bound in bounds.iter() {
+                    if !bound.is_implemented_for(context.db(), arg_type) {
+                        context.error(
+                            &format!(
+                                "the trait bound `{}: {}` is not satisfied",
+                                arg_type.display(context.db()),
+                                bound.name(context.db())
+                            ),
+                            arg.span,
+                            &format!(
+                                "the trait `{}` is not implemented for `{}`",
+                                bound.name(context.db()),
+                                arg_type.display(context.db()),
+                            ),
+                        );
+                    }
                 }
-            }
-            arg_type
-        } else {
-            let arg_attr = expr(context, &arg.kind.value, Some(param_type))?;
-            match try_coerce_type(
-                context,
-                Some(&arg.kind.value),
-                arg_attr.typ,
-                param_type,
-                param.is_sink(),
-            ) {
-                Err(TypeCoercionError::Incompatible) => {
-                    let msg = if let Some(label) = param.label() {
-                        format!("incorrect type for `{name}` argument `{label}`")
-                    } else {
-                        format!("incorrect type for `{name}` argument at position {index}")
-                    };
-                    context.type_error(&msg, arg.kind.value.span, param_type, arg_attr.typ);
+                arg_type
+            } else {
+                let arg_attr = expr(context, &arg.kind.value, Some(param_type))?;
+                match try_coerce_type(
+                    context,
+                    Some(&arg.kind.value),
+                    arg_attr.typ,
+                    param_type,
+                    param.is_sink(),
+                ) {
+                    Err(TypeCoercionError::Incompatible) => {
+                        let msg = if let Some(label) = param.label() {
+                            format!("incorrect type for `{name}` argument `{label}`")
+                        } else {
+                            format!("incorrect type for `{name}` argument at position {index}")
+                        };
+                        context.type_error(&msg, arg.kind.value.span, param_type, arg_attr.typ);
+                    }
+                    Err(TypeCoercionError::RequiresToMem) => {
+                        context.add_diagnostic(errors::to_mem_error(arg.span));
+                    }
+                    Err(TypeCoercionError::SelfContractType) => {
+                        context.add_diagnostic(errors::self_contract_type_error(
+                            arg.span,
+                            &param_type.display(context.db()),
+                        ));
+                    }
+                    Ok(_) => {}
                 }
-                Err(TypeCoercionError::RequiresToMem) => {
-                    context.add_diagnostic(errors::to_mem_error(arg.span));
-                }
-                Err(TypeCoercionError::SelfContractType) => {
-                    context.add_diagnostic(errors::self_contract_type_error(
-                        arg.span,
-                        &param_type.display(context.db()),
-                    ));
-                }
-                Ok(_) => {}
-            }
-            arg_attr.typ
-        };
+                arg_attr.typ
+            };
 
         if param_type.is_mut(context.db()) && !arg_type.is_mut(context.db()) {
             let msg = if let Some(label) = param.label() {

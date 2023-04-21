@@ -12,7 +12,7 @@ error: generic function parameters aren't yet supported outside of struct functi
   ┌─ compile_errors/contract_function_with_generic_params.fe:4:15
   │
 4 │     pub fn bar<T: Dummy>(val: T) {}
-  │               ^^^^^^^^^^ This can not appear here
+  │               ^^^^^^^^^^ this cannot appear here
   │
   = Hint: Struct functions can have generic parameters
 

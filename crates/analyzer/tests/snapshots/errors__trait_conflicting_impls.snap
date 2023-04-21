@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: duplicate `impl` blocks for trait `Foo` for type `Bar`
   ┌─ compile_errors/trait_conflicting_impls.fe:6:1

@@ -1,7 +1,7 @@
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId, FunctionSigId,
-    ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TraitId,
-    TypeAliasId,
+    self, AttributeId, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId,
+    FunctionSigId, ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId,
+    TraitId, TypeAliasId,
 };
 use crate::namespace::types::{self, Type, TypeId};
 use crate::{
@@ -34,6 +34,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn intern_struct_field(&self, data: Rc<items::StructField>) -> StructFieldId;
     #[salsa::interned]
     fn intern_enum(&self, data: Rc<items::Enum>) -> EnumId;
+    #[salsa::interned]
+    fn intern_attribute(&self, data: Rc<items::Attribute>) -> AttributeId;
     #[salsa::interned]
     fn intern_enum_variant(&self, data: Rc<items::EnumVariant>) -> EnumVariantId;
     #[salsa::interned]
@@ -106,6 +108,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn module_parent_module(&self, module: ModuleId) -> Option<ModuleId>;
     #[salsa::invoke(queries::module::module_submodules)]
     fn module_submodules(&self, module: ModuleId) -> Rc<[ModuleId]>;
+    #[salsa::invoke(queries::module::module_tests)]
+    fn module_tests(&self, module: ModuleId) -> Vec<FunctionId>;
 
     // Module Constant
     #[salsa::cycle(queries::module::module_constant_type_cycle)]

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: struct OutOfReachMarker is private
   ┌─ compile_errors/emittable_not_implementable.fe:1:31

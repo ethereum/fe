@@ -125,6 +125,7 @@ pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
                 }
                 maximum + 32
             }
+            ir::TypeKind::MPtr(ty) => abi_type_maximum_size(db, ty.deref(db.upcast())),
 
             _ => unreachable!(),
         }
@@ -155,7 +156,7 @@ pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
                 }
                 minimum + 32
             }
-
+            ir::TypeKind::MPtr(ty) => abi_type_minimum_size(db, ty.deref(db.upcast())),
             _ => unreachable!(),
         }
     }

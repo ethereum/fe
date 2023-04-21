@@ -1,7 +1,7 @@
 ---
 source: crates/analyzer/tests/analysis.rs
+assertion_line: 183
 expression: "build_snapshot(&db, module)"
-
 ---
 note: 
   ┌─ erc20_token.fe:3:5
@@ -537,8 +537,8 @@ note:
    ┌─ erc20_token.fe:83:5
    │  
 83 │ ╭     fn _transfer(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) {
-84 │ │         assert sender != address(0)
-85 │ │         assert recipient != address(0)
+84 │ │         assert sender != 0
+85 │ │         assert recipient != 0
 86 │ │         _before_token_transfer(from: sender, to: recipient, value)
    · │
 89 │ │         ctx.emit(Transfer(from: sender, to: recipient, value))
@@ -548,38 +548,26 @@ note:
 note: 
    ┌─ erc20_token.fe:84:16
    │
-84 │         assert sender != address(0)
-   │                ^^^^^^            ^ u256
-   │                │                  
+84 │         assert sender != 0
+   │                ^^^^^^    ^ address
+   │                │          
    │                address
-
-note: 
-   ┌─ erc20_token.fe:84:26
-   │
-84 │         assert sender != address(0)
-   │                          ^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:84:16
    │
-84 │         assert sender != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^ bool
-85 │         assert recipient != address(0)
-   │                ^^^^^^^^^            ^ u256
-   │                │                     
+84 │         assert sender != 0
+   │                ^^^^^^^^^^^ bool
+85 │         assert recipient != 0
+   │                ^^^^^^^^^    ^ address
+   │                │             
    │                address
-
-note: 
-   ┌─ erc20_token.fe:85:29
-   │
-85 │         assert recipient != address(0)
-   │                             ^^^^^^^^^^ address
 
 note: 
    ┌─ erc20_token.fe:85:16
    │
-85 │         assert recipient != address(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ bool
+85 │         assert recipient != 0
+   │                ^^^^^^^^^^^^^^ bool
 86 │         _before_token_transfer(from: sender, to: recipient, value)
    │                                      ^^^^^^      ^^^^^^^^^  ^^^^^ u256
    │                                      │           │           

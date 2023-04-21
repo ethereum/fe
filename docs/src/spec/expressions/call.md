@@ -26,8 +26,8 @@ Example:
 contract Foo {
 
     pub fn demo(self) {
-        let ann: address = address(0xaa)
-        let bob: address = address(0xbb)
+        let ann: address = 0xaa
+        let bob: address = 0xbb
         self.transfer(from: ann, to: bob, 25)
     }
 

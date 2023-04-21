@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: error_string_ingot(&path)
-
 ---
 error: import name conflicts with the ingot named "std"
   ┌─ compile_errors/bad_ingot/src/bing.fe:1:5

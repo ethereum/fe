@@ -1,10 +1,11 @@
+// Poor man's interface because current Fe has no interfaces yet
 contract ERC20 {
     pub fn balanceOf(self, _ account: address) -> u256 {
-        return 0
+        revert
     }
 
     pub fn transfer(self, to: address, _ amount: u256) -> bool {
-        return false
+        revert
     }
 }
 
@@ -56,9 +57,9 @@ struct Sync {
     pub reserve1: u256
 }
 
+const MINIMUM_LIQUIDITY: u256 = 1000
+
 contract UniswapV2Pair {
-    // TODO: const support (https://github.com/ethereum/fe/issues/192)
-    // const MINIMUM_LIQUIDITY: u256 = 1000
 
     balances: Map<address, u256>
     allowances: Map<address, Map<address, u256>>
@@ -190,7 +191,6 @@ contract UniswapV2Pair {
 
     // this low-level function should be called from a contract which performs important safety checks
     pub fn mint(mut self, mut ctx: Context, to: address) -> u256 {
-        let MINIMUM_LIQUIDITY: u256 = 1000
         let reserve0: u256 = self.reserve0
         let reserve1: u256 = self.reserve1
         let balance0: u256 = self.token0.balanceOf(ctx.self_address())

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: multiple applicable items in scope
    ┌─ compile_errors/ambiguous_traits3.fe:11:6

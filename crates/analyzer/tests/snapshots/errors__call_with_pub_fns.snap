@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: `pub` not allowed if `__call__` is defined
   ┌─ compile_errors/call_with_pub_fns.fe:6:12

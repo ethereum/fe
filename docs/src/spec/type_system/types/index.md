@@ -24,8 +24,7 @@ The list of types is:
             * [Enum]
         * [Map]
 * Other types:
-    * [Unit] 
-    * [Event]
+    * [Unit]
     * [Contract]
     * [Function]
 
@@ -40,6 +39,5 @@ The list of types is:
 [Enum]: enum.md
 [Map]: map.md
 [Unit]: unit.md
-[Event]: event.md
 [Contract]: contract.md
 [Function]: function.md

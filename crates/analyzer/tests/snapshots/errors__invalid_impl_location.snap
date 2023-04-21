@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: illegal `impl`. Either type or trait must be in the same ingot as the `impl`
   ┌─ compile_errors/invalid_impl_location.fe:3:1

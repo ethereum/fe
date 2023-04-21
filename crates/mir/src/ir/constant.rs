@@ -39,7 +39,7 @@ pub enum ConstantValue {
 impl From<context::Constant> for ConstantValue {
     fn from(value: context::Constant) -> Self {
         match value {
-            context::Constant::Int(num) => Self::Immediate(num),
+            context::Constant::Int(num) | context::Constant::Address(num) => Self::Immediate(num),
             context::Constant::Str(s) => Self::Str(s),
             context::Constant::Bool(b) => Self::Bool(b),
         }

@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: the function `do_private_thingz` on `struct Foo` is private
   ┌─ compile_errors/call_non_pub_fn_on_struct2.fe:8:15

@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/cases/print_ast.rs
+assertion_line: 45
 expression: "parse_and_print(\"demos/erc20_token.fe\", src)"
-
 ---
 struct Approval {
     pub owner: address
@@ -82,8 +82,8 @@ contract ERC20 {
     }
 
     fn _transfer(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) {
-        assert sender != address(0)
-        assert recipient != address(0)
+        assert sender != 0
+        assert recipient != 0
         _before_token_transfer(from: sender, to: recipient, value)
         self._balances[sender] = self._balances[sender] - value
         self._balances[recipient] = self._balances[recipient] + value

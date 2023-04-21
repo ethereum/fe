@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
-
 ---
 error: `Map<u8, u8>` type is not callable
   ┌─ [snippet]:3:3

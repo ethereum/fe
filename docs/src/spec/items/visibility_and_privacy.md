@@ -47,7 +47,7 @@ use ding::dong::Dang
 contract Foo {
     pub fn hot_dang() -> Dang {
         return Dang(
-            my_address: address(8),
+            my_address: 8,
             my_u256: 42,
             my_i8: -1
         )

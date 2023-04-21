@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: method `this_has_wrong_args_in_impl` has incompatible parameters for `this_has_wrong_args_in_impl` of trait `Foo`
    ┌─ compile_errors/trait_impl_mismatch.fe:3:5

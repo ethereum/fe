@@ -7,7 +7,9 @@ use crate::namespace::items::{
     EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef,
 };
 use crate::namespace::scopes::{check_visibility, BlockScopeType};
-use crate::namespace::types::{Array, Base, FeString, Integer, Tuple, Type, TypeDowncast, TypeId};
+use crate::namespace::types::{
+    self, Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
+};
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args};
 use crate::traversal::const_expr::eval_expr;
@@ -22,7 +24,7 @@ use fe_parser::ast as fe;
 use fe_parser::ast::GenericArg;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
-use num_traits::ToPrimitive;
+use num_traits::{ToPrimitive, Zero};
 use smol_str::SmolStr;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
@@ -550,10 +552,26 @@ fn expr_num(
         _ => unreachable!(),
     };
 
+    let literal = numeric::Literal::new(num);
+    let num = literal
+        .parse::<BigInt>()
+        .expect("the numeric literal contains a invalid digit");
+
+    if expected_type == Some(TypeId::address(context.db())) {
+        if num < BigInt::zero() && num > types::address_max() {
+            context.error(
+                "literal out of range for `address` type",
+                exp.span,
+                "does not fit into type `address`",
+            );
+        }
+        // TODO: error if literal.radix != Radix::Hexadecimal ?
+        return ExpressionAttributes::new(TypeId::address(context.db()));
+    }
+
     let int_typ = expected_type
         .and_then(|id| id.deref(context.db()).as_int(context.db()))
         .unwrap_or(Integer::U256);
-    let num = to_bigint(num);
     validate_numeric_literal_fits_type(context, num, exp.span, int_typ);
     return ExpressionAttributes::new(TypeId::int(context.db(), int_typ));
 }
@@ -642,7 +660,10 @@ fn field_type(
         Type::SPtr(inner) => {
             Ok(Type::SPtr(field_type(context, inner, field_name, field_span)?).id(context.db()))
         }
-
+        Type::SelfType(TraitOrType::TypeId(inner)) => Ok(Type::SelfType(TraitOrType::TypeId(
+            field_type(context, inner, field_name, field_span)?,
+        ))
+        .id(context.db())),
         Type::SelfContract(id) => match id.field_type(context.db(), field_name) {
             Some(typ) => Ok(typ?.make_sptr(context.db())),
             None => Err(FatalError::new(context.fancy_error(
@@ -1170,6 +1191,7 @@ fn expr_call_named_thing<T: std::fmt::Display>(
             ),
         ))),
         NamedThing::Item(Item::Impl(_)) => unreachable!(),
+        NamedThing::Item(Item::Attribute(_)) => unreachable!(),
         NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(context.error(
             &format!("`{}` is not callable", func.kind),
             func.span,
@@ -1371,6 +1393,14 @@ fn expr_call_pure(
                 args.span,
                 "unexpected generic argument list",
             )],
+            vec![],
+        );
+    }
+
+    if function.is_test(context.db()) {
+        context.fancy_error(
+            &format!("`{fn_name}` is a test function"),
+            vec![Label::primary(call_span, "test functions are not callable")],
             vec![],
         );
     }

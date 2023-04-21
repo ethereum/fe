@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: function name `keccak256` conflicts with built-in function
   ┌─ compile_errors/shadow_builtin_function.fe:2:12

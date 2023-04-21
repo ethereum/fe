@@ -1,7 +1,6 @@
 ---
 source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, test_files::fixture(path))"
-
 ---
 error: expected a constant u256 value
   ┌─ compile_errors/invalid_repeat_length.fe:3:45

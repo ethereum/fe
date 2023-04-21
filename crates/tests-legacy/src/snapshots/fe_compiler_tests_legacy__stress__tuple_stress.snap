@@ -1,0 +1,14 @@
+---
+source: crates/tests-legacy/src/stress.rs
+expression: "format!(\"{}\", harness.gas_reporter)"
+---
+build_my_tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)]) used 596 gas
+read_my_tuple_item0([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 454 gas
+read_my_tuple_item1([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 512 gas
+read_my_tuple_item2([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 546 gas
+set_my_sto_tuple([Uint(42), Int(115792089237316195423570985008687907853269984665640564039457584007913129639910)]) used 44804 gas
+get_my_sto_tuple([]) used 915 gas
+emit_my_event([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 2756 gas
+build_tuple_and_emit([]) used 2809 gas
+encode_my_tuple([Tuple([Uint(26), Bool(true), Address(0x0000000000000000000000000000000000000042)])]) used 1209 gas
+
