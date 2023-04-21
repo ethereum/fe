@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "fe-hir"
-version = "0.20.0-alpha"
+version = "0.22.0"
 dependencies = [
  "camino",
  "cranelift-entity",
@@ -968,7 +968,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser2"
-version = "0.20.0-alpha"
+version = "0.22.0"
 dependencies = [
  "derive_more",
  "dir-test",
