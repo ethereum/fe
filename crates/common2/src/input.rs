@@ -23,7 +23,7 @@ pub struct InputIngot {
 
     /// A list of ingots which the current ingot depends on.
     #[return_ref]
-    pub dependency: BTreeSet<IngotDependency>,
+    pub external_ingots: BTreeSet<IngotDependency>,
 
     /// A list of files which the current ingot contains.
     #[return_ref]
@@ -40,7 +40,7 @@ impl InputIngot {
         path: &str,
         kind: IngotKind,
         version: Version,
-        dependency: BTreeSet<IngotDependency>,
+        external_ingots: BTreeSet<IngotDependency>,
     ) -> InputIngot {
         let path = Utf8PathBuf::from(path);
         let root_file = None;
@@ -49,7 +49,7 @@ impl InputIngot {
             path,
             kind,
             version,
-            dependency,
+            external_ingots,
             BTreeSet::default(),
             root_file,
         )

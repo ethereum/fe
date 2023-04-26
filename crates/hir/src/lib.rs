@@ -1,5 +1,5 @@
-use common::{InputDb, Upcast};
-use hir_def::module_tree_impl;
+use common::{InputDb, InputIngot, Upcast};
+use hir_def::{module_tree_impl, IdentId, TopLevelMod};
 pub use lower::parse::ParseDiagnostic;
 
 use lower::{
@@ -53,7 +53,28 @@ pub struct Jar(
     scope_graph_impl,
     map_file_to_mod_impl,
     parse_file_impl,
+    external_ingots_impl,
 );
+
+/// Returns the root modules and names of external ingots that the given `ingot`
+/// depends on.
+/// From the outside of the crate, this functionality can be accessed via
+/// [`TopLevelMod::external_ingots`](crate::TopLevelMod::external_ingots).
+// The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
+// access `InputIngot` directly.
+#[salsa::tracked(return_ref)]
+pub(crate) fn external_ingots_impl(
+    db: &dyn HirDb,
+    ingot: InputIngot,
+) -> Vec<(IdentId, TopLevelMod)> {
+    let mut res = Vec::new();
+    for dep in ingot.external_ingots(db.upcast()) {
+        let name = IdentId::new(db, dep.name.to_string());
+        let root = module_tree_impl(db, dep.ingot).root_data().top_mod;
+        res.push((name, root))
+    }
+    res
+}
 
 pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}

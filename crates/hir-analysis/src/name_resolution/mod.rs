@@ -15,7 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{HirAnalysisDb, Spanned};
 
 pub mod import_resolver;
-pub mod vis_checker;
+pub mod visibility_checker;
 
 pub struct NameResolver<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
@@ -24,15 +24,17 @@ pub struct NameResolver<'db, 'a> {
 }
 
 impl<'db, 'a> NameResolver<'db, 'a> {
-    pub fn resolve_query(&mut self, scope: ScopeId, query: NameQuery) -> Vec<QueryAnswer> {
+    pub fn resolve_query(&mut self, scope: ScopeId, query: NameQuery) -> Vec<ResolvedName> {
         // If the query is already resolved, return the cached result.
         if let Some(answer) = self.cache_store.get(scope, query) {
             return answer.clone();
         };
 
-        // The shadowing rule is `$ = NamedImports > GlobImports > Lex`, where `$` means
-        // current scope. This ordering means that greater scope shadows lower
-        // scopes having the same name in the same domain and
+        // The shadowing rule is
+        // `$ = NamedImports > GlobImports > Lex > external ingot`,
+        // where `$` means current scope. This ordering means that
+        // greater scope shadows lower scopes having the same name in the same
+        // domain and
 
         // 1. Look for the name in the current scope and named imports.
         let mut results = Vec::new();
@@ -42,7 +44,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(QueryAnswer::new(edge.dest, edge.vis, None));
+                        results.push(ResolvedName::new(edge.dest, edge.vis, None));
                     }
                 }
 
@@ -60,7 +62,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(QueryAnswer::new(
+                        results.push(ResolvedName::new(
                             edge.dest,
                             edge.vis,
                             Some(named_import.span.clone()),
@@ -74,7 +76,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // If the name is found in the current scope or named imports, we don't need to
         // look for it further.
         if !results.is_empty() {
-            self.cache_store.cache_answer(scope, query, results.clone());
+            self.cache_store
+                .cache_resolved(scope, query, results.clone());
             return results;
         }
 
@@ -84,7 +87,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(QueryAnswer::new_glob(
+                        results.push(ResolvedName::new_glob(
                             edge.dest,
                             edge.vis,
                             Some(glob_import.span.clone()),
@@ -98,16 +101,34 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // If the name is found in the glob imports, we don't need to look for it
         // further.
         if !results.is_empty() {
-            self.cache_store.cache_answer(scope, query, results.clone());
+            self.cache_store
+                .cache_resolved(scope, query, results.clone());
             return results;
         }
 
-        // 3. Look for the name in the lexical scope.
+        // 3. Look for the name in the lexical scope if it exists, else look for the
+        // name in the external ingot.
         if let Some(parent) = parent {
             self.cache_store.cache_delegated(scope, query, parent);
             self.resolve_query(parent, query)
+        } else if query.domain == NameDomain::Item {
+            for (name, root_mod) in scope.top_mod.external_ingots(self.db.upcast()) {
+                if *name == query.name {
+                    results.push(ResolvedName::new(
+                        ScopeId::root(*root_mod),
+                        Visibility::Public,
+                        None,
+                    ));
+                }
+            }
+
+            // Ensure that all names of external ingots don't conflict with each other.
+            debug_assert!(results.len() < 2);
+            self.cache_store
+                .cache_resolved(scope, query, results.clone());
+            results
         } else {
-            self.cache_store.cache_answer(scope, query, vec![]);
+            self.cache_store.cache_resolved(scope, query, vec![]);
             vec![]
         }
     }
@@ -125,14 +146,14 @@ pub struct NameQuery {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct QueryAnswer {
+pub struct ResolvedName {
     pub scope: ScopeId,
     pub vis: Visibility,
     pub import_span: Option<DynLazySpan>,
     pub via_glob_import: bool,
 }
 
-impl QueryAnswer {
+impl ResolvedName {
     pub fn new(scope: ScopeId, vis: Visibility, import_span: Option<DynLazySpan>) -> Self {
         Self {
             scope,
@@ -152,7 +173,7 @@ impl QueryAnswer {
     }
 }
 
-impl QueryAnswer {
+impl ResolvedName {
     pub fn is_valid(&self) -> bool {
         self.scope.is_valid()
     }
@@ -160,16 +181,16 @@ impl QueryAnswer {
 
 #[derive(Default)]
 struct ResolvedQueryCacheStore {
-    cache: FxHashMap<(ScopeId, NameQuery), Either<Vec<QueryAnswer>, ScopeId>>,
+    cache: FxHashMap<(ScopeId, NameQuery), Either<Vec<ResolvedName>, ScopeId>>,
     no_cache: bool,
 }
 
 impl ResolvedQueryCacheStore {
-    fn cache_answer(&mut self, scope: ScopeId, query: NameQuery, answer: Vec<QueryAnswer>) {
+    fn cache_resolved(&mut self, scope: ScopeId, query: NameQuery, resolved: Vec<ResolvedName>) {
         if self.no_cache {
             return;
         }
-        self.cache.insert((scope, query), Either::Left(answer));
+        self.cache.insert((scope, query), Either::Left(resolved));
     }
 
     fn cache_delegated(&mut self, scope: ScopeId, query: NameQuery, parent: ScopeId) {
@@ -179,9 +200,9 @@ impl ResolvedQueryCacheStore {
         self.cache.insert((scope, query), Either::Right(parent));
     }
 
-    fn get(&self, scope: ScopeId, query: NameQuery) -> Option<Vec<QueryAnswer>> {
+    fn get(&self, scope: ScopeId, query: NameQuery) -> Option<Vec<ResolvedName>> {
         match self.cache.get(&(scope, query)) {
-            Some(Either::Left(answers)) => Some(answers.clone()),
+            Some(Either::Left(resolved)) => Some(resolved.clone()),
             Some(Either::Right(delegated)) => Some(self.get(*delegated, query)?),
             _ => None,
         }

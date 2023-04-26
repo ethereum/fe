@@ -7,6 +7,7 @@ use common::{InputFile, InputIngot};
 use parser::ast;
 
 use crate::{
+    external_ingots_impl,
     hir_def::TraitRef,
     lower,
     span::{
@@ -73,21 +74,21 @@ impl TopLevelMod {
         lower::scope_graph_impl(db, self)
     }
 
-    pub fn ingot_module_tree(self, db: &dyn HirDb) -> &ModuleTree {
+    pub fn module_tree(self, db: &dyn HirDb) -> &ModuleTree {
         module_tree_impl(db, self.ingot(db))
     }
 
     pub fn ingot_root(self, db: &dyn HirDb) -> TopLevelMod {
-        self.ingot_module_tree(db).root_data().top_mod
+        self.module_tree(db).root_data().top_mod
     }
 
     pub fn parent(self, db: &dyn HirDb) -> Option<TopLevelMod> {
-        let module_tree = self.ingot_module_tree(db);
+        let module_tree = self.module_tree(db);
         module_tree.parent(self)
     }
 
     pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
-        let module_tree = self.ingot_module_tree(db);
+        let module_tree = self.module_tree(db);
         module_tree.children(self)
     }
 
@@ -99,10 +100,16 @@ impl TopLevelMod {
         self != Self::invalid()
     }
 
-    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+    pub fn vis(self, _db: &dyn HirDb) -> Visibility {
         // We don't have a way to specify visibility of a top level module.
         // Please change here if we introduce it.
         Visibility::Public
+    }
+
+    /// Returns the root modules and names of external ingots that this module
+    /// depends on.
+    pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, TopLevelMod)] {
+        external_ingots_impl(db, self.ingot(db)).as_slice()
     }
 }
 
@@ -397,6 +404,12 @@ pub type ExternItemListId = ImplItemListId;
 pub enum Visibility {
     Public,
     Private,
+}
+
+impl Visibility {
+    pub fn is_pub(self) -> bool {
+        self == Self::Public
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

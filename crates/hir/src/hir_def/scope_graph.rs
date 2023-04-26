@@ -112,6 +112,14 @@ pub struct ScopeId {
 }
 
 impl ScopeId {
+    pub fn new(top_mod: TopLevelMod, local_id: LocalScopeId) -> Self {
+        Self { top_mod, local_id }
+    }
+
+    pub fn root(top_mod: TopLevelMod) -> Self {
+        Self::new(top_mod, LocalScopeId::root())
+    }
+
     pub fn span(self, _db: &dyn HirDb) -> DynLazySpan {
         todo!()
     }
@@ -126,11 +134,15 @@ impl ScopeId {
     pub fn is_valid(self) -> bool {
         self != Self::invalid()
     }
-}
 
-impl ScopeId {
-    pub fn new(top_mod: TopLevelMod, local_id: LocalScopeId) -> Self {
-        Self { top_mod, local_id }
+    pub fn scope_data(self, db: &dyn HirDb) -> &LocalScope {
+        self.top_mod
+            .module_scope_graph(db)
+            .scope_data(self.local_id)
+    }
+
+    pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
+        self.scope_data(db).parent_module
     }
 }
 
