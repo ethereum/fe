@@ -922,7 +922,6 @@ dependencies = [
 name = "fe-hir-analysis"
 version = "0.20.0-alpha"
 dependencies = [
- "cranelift-entity",
  "either",
  "fe-common",
  "fe-hir",

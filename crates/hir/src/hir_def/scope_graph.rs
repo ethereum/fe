@@ -11,6 +11,7 @@ pub struct ScopeGraph {
     pub scopes: PrimaryMap<LocalScopeId, LocalScope>,
     pub item_map: FxHashMap<ItemKind, LocalScopeId>,
     pub unresolved_imports: FxHashMap<LocalScopeId, Vec<Use>>,
+    pub unresolved_exports: FxHashMap<LocalScopeId, Vec<Use>>,
 }
 
 impl ScopeGraph {
@@ -77,14 +78,16 @@ pub struct LocalScope {
     pub kind: ScopeKind,
     pub edges: Vec<ScopeEdge>,
     pub parent_module: Option<ScopeId>,
+    pub vis: Visibility,
 }
 
 impl LocalScope {
-    pub fn new(kind: ScopeKind, parent_module: Option<ScopeId>) -> Self {
+    pub fn new(kind: ScopeKind, parent_module: Option<ScopeId>, vis: Visibility) -> Self {
         Self {
             kind,
             edges: vec![],
             parent_module,
+            vis,
         }
     }
 }
@@ -102,7 +105,6 @@ pub enum ScopeKind {
 pub struct ScopeEdge {
     pub dest: ScopeId,
     pub kind: EdgeKind,
-    pub vis: Visibility,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -135,14 +137,26 @@ impl ScopeId {
         self != Self::invalid()
     }
 
-    pub fn scope_data(self, db: &dyn HirDb) -> &LocalScope {
+    pub fn data(self, db: &dyn HirDb) -> &LocalScope {
         self.top_mod
             .module_scope_graph(db)
             .scope_data(self.local_id)
     }
 
+    pub fn kind(self, db: &dyn HirDb) -> ScopeKind {
+        self.data(db).kind
+    }
+
+    pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
+        self.data(db)
+            .edges
+            .iter()
+            .find(|e| matches!(e.kind, EdgeKind::Lex(_) | EdgeKind::Super(_)))
+            .map(|e| e.dest)
+    }
+
     pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
-        self.scope_data(db).parent_module
+        self.data(db).parent_module
     }
 }
 

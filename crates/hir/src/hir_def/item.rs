@@ -56,6 +56,25 @@ pub enum ItemKind {
     Body(Body),
 }
 
+impl ItemKind {
+    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+        use ItemKind::*;
+        match self {
+            TopMod(top_mod) => top_mod.vis(db),
+            Mod(mod_) => mod_.vis(db),
+            Func(func) => func.vis(db),
+            Struct(struct_) => struct_.vis(db),
+            Contract(contract) => contract.vis(db),
+            Enum(enum_) => enum_.vis(db),
+            TypeAlias(type_) => type_.vis(db),
+            Trait(trait_) => trait_.vis(db),
+            Const(const_) => const_.vis(db),
+            Use(use_) => use_.vis(db),
+            Impl(_) | ImplTrait(_) | Body(_) => Visibility::Private,
+        }
+    }
+}
+
 #[salsa::tracked]
 pub struct TopLevelMod {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
