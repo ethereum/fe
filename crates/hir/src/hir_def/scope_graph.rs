@@ -1,7 +1,9 @@
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::{IdentId, ItemKind, TopLevelMod, Use};
+use crate::{span::DynLazySpan, HirDb};
+
+use super::{IdentId, ItemKind, TopLevelMod, Use, Visibility};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
@@ -74,13 +76,15 @@ impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
 pub struct LocalScope {
     pub kind: ScopeKind,
     pub edges: Vec<ScopeEdge>,
+    pub parent_module: Option<ScopeId>,
 }
 
 impl LocalScope {
-    pub fn new(kind: ScopeKind) -> Self {
+    pub fn new(kind: ScopeKind, parent_module: Option<ScopeId>) -> Self {
         Self {
             kind,
             edges: vec![],
+            parent_module,
         }
     }
 }
@@ -98,12 +102,30 @@ pub enum ScopeKind {
 pub struct ScopeEdge {
     pub dest: ScopeId,
     pub kind: EdgeKind,
+    pub vis: Visibility,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScopeId {
     pub top_mod: TopLevelMod,
     pub local_id: LocalScopeId,
+}
+
+impl ScopeId {
+    pub fn span(self, _db: &dyn HirDb) -> DynLazySpan {
+        todo!()
+    }
+
+    pub fn invalid() -> Self {
+        Self {
+            top_mod: TopLevelMod::invalid(),
+            local_id: LocalScopeId::invalid(),
+        }
+    }
+
+    pub fn is_valid(self) -> bool {
+        self != Self::invalid()
+    }
 }
 
 impl ScopeId {
@@ -229,6 +251,14 @@ entity_impl!(LocalScopeId);
 impl LocalScopeId {
     pub(crate) fn root() -> Self {
         LocalScopeId(0)
+    }
+
+    pub fn invalid() -> Self {
+        LocalScopeId(u32::MAX)
+    }
+
+    pub fn is_valid(self) -> bool {
+        self != Self::invalid()
     }
 }
 

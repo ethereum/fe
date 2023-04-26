@@ -90,6 +90,20 @@ impl TopLevelMod {
         let module_tree = self.ingot_module_tree(db);
         module_tree.children(self)
     }
+
+    pub fn invalid() -> Self {
+        Self(salsa::Id::from_u32(u32::MAX - 1))
+    }
+
+    pub fn is_valid(self) -> bool {
+        self != Self::invalid()
+    }
+
+    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+        // We don't have a way to specify visibility of a top level module.
+        // Please change here if we introduce it.
+        Visibility::Public
+    }
 }
 
 #[salsa::tracked]
@@ -99,7 +113,7 @@ pub struct Mod {
 
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
 
     pub top_mod: TopLevelMod,
 
@@ -135,6 +149,10 @@ impl Func {
     pub fn lazy_span(self) -> LazyFuncSpan {
         LazyFuncSpan::new(self)
     }
+
+    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+        self.modifier(db).to_visibility()
+    }
 }
 
 #[salsa::tracked]
@@ -144,7 +162,7 @@ pub struct Struct {
 
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub fields: RecordFieldListId,
@@ -166,7 +184,7 @@ pub struct Contract {
 
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
     pub fields: RecordFieldListId,
     pub top_mod: TopLevelMod,
 
@@ -186,7 +204,7 @@ pub struct Enum {
 
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub variants: EnumVariantListId,
@@ -208,7 +226,7 @@ pub struct TypeAlias {
 
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub ty: Partial<TypeId>,
@@ -251,7 +269,7 @@ pub struct Trait {
     pub name: Partial<IdentId>,
 
     pub attributes: AttrListId,
-    pub is_pub: bool,
+    pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
     pub top_mod: TopLevelMod,
@@ -293,6 +311,7 @@ pub struct Const {
 
     pub name: Partial<IdentId>,
     pub body: Partial<Body>,
+    pub vis: Visibility,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -310,6 +329,7 @@ pub struct Use {
     id: TrackedItemId,
 
     pub tree: Partial<super::UseTreeId>,
+    pub vis: Visibility,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -330,10 +350,10 @@ pub enum ItemModifier {
 }
 
 impl ItemModifier {
-    pub fn is_pub(self) -> bool {
+    pub fn to_visibility(self) -> Visibility {
         match self {
-            ItemModifier::Pub | ItemModifier::PubAndUnsafe => true,
-            ItemModifier::Unsafe | ItemModifier::None => false,
+            ItemModifier::Pub | ItemModifier::PubAndUnsafe => Visibility::Public,
+            ItemModifier::Unsafe | ItemModifier::None => Visibility::Private,
         }
     }
 }
@@ -348,7 +368,7 @@ pub struct RecordFieldListId {
 pub struct RecordField {
     pub name: Partial<IdentId>,
     pub ty: Partial<TypeId>,
-    pub is_pub: bool,
+    pub vis: Visibility,
 }
 
 #[salsa::interned]
@@ -372,6 +392,12 @@ pub struct ImplItemListId {
 pub type TraitItemListId = ImplItemListId;
 pub type ImplTraitItemListId = ImplItemListId;
 pub type ExternItemListId = ImplItemListId;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Visibility {
+    Public,
+    Private,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TrackedItemId {

@@ -4,7 +4,7 @@ use crate::{
             EdgeKind, LocalScope, LocalScopeId, ScopeEdge, ScopeGraph, ScopeId, ScopeKind,
         },
         EnumVariantListId, FnParamListId, FnParamName, GenericParamListId, ItemKind,
-        RecordFieldListId, TopLevelMod,
+        RecordFieldListId, TopLevelMod, Visibility,
     },
     HirDb,
 };
@@ -63,18 +63,28 @@ impl<'db> ScopeGraphBuilder<'db> {
 
         if let ItemKind::TopMod(top_mod) = item {
             debug_assert!(self.scope_stack.is_empty());
-            self.add_local_edge(item_scope, item_scope, EdgeKind::self_());
+            self.add_local_edge(
+                item_scope,
+                item_scope,
+                EdgeKind::self_(),
+                Visibility::Private,
+            );
 
-            self.add_global_edge(item_scope, top_mod.ingot_root(self.db), EdgeKind::ingot());
+            self.add_global_edge(
+                item_scope,
+                top_mod.ingot_root(self.db),
+                EdgeKind::ingot(),
+                Visibility::Private,
+            );
             for child in top_mod.children(self.db) {
                 let child_name = child.name(self.db);
                 let edge = EdgeKind::mod_(child_name);
-                self.add_global_edge(item_scope, child, edge)
+                self.add_global_edge(item_scope, child, edge, child.vis(self.db))
             }
 
             if let Some(parent) = top_mod.parent(self.db) {
                 let parent_edge = EdgeKind::super_();
-                self.add_global_edge(item_scope, parent, parent_edge);
+                self.add_global_edge(item_scope, parent, parent_edge, Visibility::Private);
             }
             self.module_stack.pop().unwrap();
 
@@ -82,114 +92,161 @@ impl<'db> ScopeGraphBuilder<'db> {
         }
 
         let parent_scope = *self.scope_stack.last().unwrap();
-        let parent_to_child_edge = match item {
+        let (parent_to_child_edge, vis) = match item {
             Mod(inner) => {
                 self.add_local_edge(
                     item_scope,
                     *self.module_stack.last().unwrap(),
                     EdgeKind::super_(),
+                    inner.vis(self.db),
                 );
                 self.add_global_edge(
                     item_scope,
                     self.top_mod.ingot_root(self.db),
                     EdgeKind::ingot(),
+                    Visibility::Private,
                 );
-                self.add_local_edge(item_scope, item_scope, EdgeKind::self_());
+                self.add_local_edge(
+                    item_scope,
+                    item_scope,
+                    EdgeKind::self_(),
+                    Visibility::Private,
+                );
 
                 self.module_stack.pop().unwrap();
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::mod_)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::mod_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             Func(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
                 if let Some(params) = inner.params(self.db).to_opt() {
                     self.add_func_param_scope(item_scope, params);
                 }
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::value)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::value)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             Struct(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_field_scope(item_scope, inner.fields(self.db));
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::type_)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::type_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    Visibility::Private,
+                )
             }
 
             Contract(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_field_scope(item_scope, inner.fields(self.db));
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::type_)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::type_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             Enum(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_variant_scope(item_scope, inner.variants(self.db));
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::type_)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::type_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             TypeAlias(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::type_)
-                    .unwrap_or_else(EdgeKind::anon)
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::type_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             Impl(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                self.add_local_edge(item_scope, item_scope, EdgeKind::self_ty());
-                EdgeKind::anon()
+                self.add_local_edge(
+                    item_scope,
+                    item_scope,
+                    EdgeKind::self_ty(),
+                    Visibility::Private,
+                );
+                (EdgeKind::anon(), Visibility::Private)
             }
 
             Trait(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                self.add_local_edge(item_scope, item_scope, EdgeKind::self_ty());
-                inner
-                    .name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::trait_)
-                    .unwrap_or_else(EdgeKind::anon)
+                self.add_local_edge(
+                    item_scope,
+                    item_scope,
+                    EdgeKind::self_ty(),
+                    Visibility::Private,
+                );
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::trait_)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             ImplTrait(inner) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
+                self.add_lex_edge(item_scope, parent_scope);
                 self.add_generic_param_scope(item_scope, inner.generic_params(self.db));
-                self.add_local_edge(item_scope, item_scope, EdgeKind::self_ty());
-                EdgeKind::anon()
+                self.add_local_edge(
+                    item_scope,
+                    item_scope,
+                    EdgeKind::self_ty(),
+                    Visibility::Private,
+                );
+                (EdgeKind::anon(), Visibility::Private)
             }
 
-            Const(c) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
-                c.name(self.db)
-                    .to_opt()
-                    .map(EdgeKind::value)
-                    .unwrap_or_else(EdgeKind::anon)
+            Const(inner) => {
+                self.add_lex_edge(item_scope, parent_scope);
+                (
+                    inner
+                        .name(self.db)
+                        .to_opt()
+                        .map(EdgeKind::value)
+                        .unwrap_or_else(EdgeKind::anon),
+                    inner.vis(self.db),
+                )
             }
 
             Use(use_) => {
@@ -199,54 +256,54 @@ impl<'db> ScopeGraphBuilder<'db> {
                     .or_default()
                     .push(use_);
 
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
-                EdgeKind::anon()
+                self.add_lex_edge(item_scope, parent_scope);
+                (EdgeKind::anon(), use_.vis(self.db))
             }
 
             Body(_) => {
-                self.add_local_edge(item_scope, parent_scope, EdgeKind::lex());
-                EdgeKind::anon()
+                self.add_lex_edge(item_scope, parent_scope);
+                (EdgeKind::anon(), Visibility::Private)
             }
 
             _ => unreachable!(),
         };
 
-        self.add_local_edge(parent_scope, item_scope, parent_to_child_edge);
+        self.add_local_edge(parent_scope, item_scope, parent_to_child_edge, vis);
     }
 
     fn add_field_scope(&mut self, current_scope: LocalScopeId, fields: RecordFieldListId) {
         for (i, field) in fields.data(self.db).iter().enumerate() {
-            let scope = LocalScope::new(ScopeKind::Field(i));
+            let scope = LocalScope::new(ScopeKind::Field(i), self.parent_module_id());
             let field_scope = self.graph.scopes.push(scope);
-            self.add_local_edge(field_scope, current_scope, EdgeKind::lex());
+            self.add_lex_edge(field_scope, current_scope);
             let kind = field
                 .name
                 .to_opt()
                 .map(EdgeKind::field)
                 .unwrap_or_else(EdgeKind::anon);
-            self.add_local_edge(current_scope, field_scope, kind)
+            self.add_local_edge(current_scope, field_scope, kind, field.vis)
         }
     }
 
     fn add_variant_scope(&mut self, current_scope: LocalScopeId, variants: EnumVariantListId) {
         for (i, field) in variants.data(self.db).iter().enumerate() {
-            let scope = LocalScope::new(ScopeKind::Variant(i));
+            let scope = LocalScope::new(ScopeKind::Variant(i), self.parent_module_id());
             let variant_scope = self.graph.scopes.push(scope);
-            self.add_local_edge(variant_scope, current_scope, EdgeKind::lex());
+            self.add_lex_edge(variant_scope, current_scope);
             let kind = field
                 .name
                 .to_opt()
                 .map(EdgeKind::variant)
                 .unwrap_or_else(EdgeKind::anon);
-            self.add_local_edge(current_scope, variant_scope, kind)
+            self.add_local_edge(current_scope, variant_scope, kind, Visibility::Public)
         }
     }
 
     fn add_func_param_scope(&mut self, current_scope: LocalScopeId, params: FnParamListId) {
         for (i, param) in params.data(self.db).iter().enumerate() {
-            let scope = LocalScope::new(ScopeKind::FnParam(i));
+            let scope = LocalScope::new(ScopeKind::FnParam(i), self.parent_module_id());
             let generic_param_scope = self.graph.scopes.push(scope);
-            self.add_local_edge(generic_param_scope, current_scope, EdgeKind::lex());
+            self.add_lex_edge(generic_param_scope, current_scope);
             let kind = param
                 .name
                 .to_opt()
@@ -256,21 +313,31 @@ impl<'db> ScopeGraphBuilder<'db> {
                     FnParamName::Underscore => EdgeKind::anon(),
                 })
                 .unwrap_or_else(EdgeKind::anon);
-            self.add_local_edge(current_scope, generic_param_scope, kind)
+            self.add_local_edge(
+                current_scope,
+                generic_param_scope,
+                kind,
+                Visibility::Private,
+            )
         }
     }
 
     fn add_generic_param_scope(&mut self, current_scope: LocalScopeId, params: GenericParamListId) {
         for (i, param) in params.data(self.db).iter().enumerate() {
-            let scope = LocalScope::new(ScopeKind::GenericParam(i));
+            let scope = LocalScope::new(ScopeKind::GenericParam(i), self.parent_module_id());
             let generic_param_scope = self.graph.scopes.push(scope);
-            self.add_local_edge(generic_param_scope, current_scope, EdgeKind::lex());
+            self.add_lex_edge(generic_param_scope, current_scope);
             let kind = param
                 .name()
                 .to_opt()
                 .map(EdgeKind::generic_param)
                 .unwrap_or_else(EdgeKind::anon);
-            self.add_local_edge(current_scope, generic_param_scope, kind)
+            self.add_local_edge(
+                current_scope,
+                generic_param_scope,
+                kind,
+                Visibility::Private,
+            )
         }
     }
 
@@ -278,20 +345,49 @@ impl<'db> ScopeGraphBuilder<'db> {
         LocalScope {
             kind: ScopeKind::Item(self.top_mod.into()),
             edges: Vec::new(),
+            parent_module: self.parent_module_id(),
         }
     }
 
-    fn add_local_edge(&mut self, source: LocalScopeId, dest: LocalScopeId, kind: EdgeKind) {
+    fn parent_module_id(&self) -> Option<ScopeId> {
+        if let Some(id) = self.module_stack.last() {
+            Some(ScopeId::new(self.top_mod, *id))
+        } else if let Some(top_mod) = self.top_mod.parent(self.db) {
+            Some(ScopeId::new(top_mod, LocalScopeId::root()))
+        } else {
+            None
+        }
+    }
+
+    fn add_local_edge(
+        &mut self,
+        source: LocalScopeId,
+        dest: LocalScopeId,
+        kind: EdgeKind,
+        vis: Visibility,
+    ) {
         self.graph.scopes[source].edges.push(ScopeEdge {
             dest: ScopeId::new(self.top_mod, dest),
             kind,
+            vis,
         });
     }
 
-    fn add_global_edge(&mut self, source: LocalScopeId, dest: TopLevelMod, kind: EdgeKind) {
+    fn add_lex_edge(&mut self, source: LocalScopeId, dest: LocalScopeId) {
+        self.add_local_edge(source, dest, EdgeKind::lex(), Visibility::Private);
+    }
+
+    fn add_global_edge(
+        &mut self,
+        source: LocalScopeId,
+        dest: TopLevelMod,
+        kind: EdgeKind,
+        vis: Visibility,
+    ) {
         self.graph.scopes[source].edges.push(ScopeEdge {
             dest: ScopeId::new(dest, LocalScopeId::root()),
             kind,
+            vis,
         });
     }
 }

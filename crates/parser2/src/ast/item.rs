@@ -270,6 +270,7 @@ ast_node! {
     SK::Const,
 }
 impl super::AttrListOwner for Const {}
+impl ItemModifierOwner for Const {}
 impl Const {
     /// Returns the name of the const.
     /// `FOO` in `const FOO: u32 = 42;`
@@ -296,6 +297,7 @@ ast_node! {
     SK::Use,
 }
 impl super::AttrListOwner for Use {}
+impl ItemModifierOwner for Use {}
 impl Use {
     /// Returns the use tree.
     /// `foo::{bar, Baz::*}` in `use foo::{bar, Baz::*}`

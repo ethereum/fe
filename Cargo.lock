@@ -909,7 +909,6 @@ dependencies = [
  "camino",
  "cranelift-entity",
  "derive_more",
- "either",
  "fe-common2",
  "fe-parser2",
  "num-bigint",
@@ -923,9 +922,13 @@ dependencies = [
 name = "fe-hir-analysis"
 version = "0.20.0-alpha"
 dependencies = [
+ "cranelift-entity",
+ "either",
  "fe-common",
  "fe-hir",
+ "rustc-hash",
  "salsa-2022",
+ "smallvec",
 ]
 
 [[package]]

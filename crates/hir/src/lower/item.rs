@@ -72,21 +72,13 @@ impl Mod {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Mod(name).join(parent_id);
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         if let Some(items) = ast.items() {
             lower_module_items(ctxt, id.clone(), items);
         }
 
         let origin = HirOrigin::raw(&ast);
-        let mod_ = Self::new(
-            ctxt.db(),
-            id,
-            name,
-            attributes,
-            is_pub,
-            ctxt.top_mod(),
-            origin,
-        );
+        let mod_ = Self::new(ctxt.db(), id, name, attributes, vis, ctxt.top_mod(), origin);
         ctxt.leave_scope(mod_)
     }
 }
@@ -152,7 +144,7 @@ impl Struct {
         let id = TrackedItemId::Struct(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
@@ -163,7 +155,7 @@ impl Struct {
             id,
             name,
             attributes,
-            is_pub,
+            vis,
             generic_params,
             where_clause,
             fields,
@@ -186,7 +178,7 @@ impl Contract {
         let id = TrackedItemId::Contract(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
         let origin = HirOrigin::raw(&ast);
 
@@ -195,7 +187,7 @@ impl Contract {
             id,
             name,
             attributes,
-            is_pub,
+            vis,
             fields,
             ctxt.top_mod(),
             origin,
@@ -216,7 +208,7 @@ impl Enum {
         let id = TrackedItemId::Enum(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let variants = EnumVariantListId::lower_ast_opt(ctxt, ast.variants());
@@ -227,7 +219,7 @@ impl Enum {
             id,
             name,
             attributes,
-            is_pub,
+            vis,
             generic_params,
             where_clause,
             variants,
@@ -250,7 +242,7 @@ impl TypeAlias {
         let id = TrackedItemId::TypeAlias(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
@@ -261,7 +253,7 @@ impl TypeAlias {
             id,
             name,
             attributes,
-            is_pub,
+            vis,
             generic_params,
             where_clause,
             ty,
@@ -320,7 +312,7 @@ impl Trait {
         let id = TrackedItemId::Trait(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let is_pub = ItemModifier::lower_ast(ast.modifier()).is_pub();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let origin = HirOrigin::raw(&ast);
@@ -336,7 +328,7 @@ impl Trait {
             id,
             name,
             attributes,
-            is_pub,
+            vis,
             generic_params,
             where_clause,
             ctxt.top_mod(),
@@ -399,9 +391,10 @@ impl Const {
             .value()
             .map(|ast| Body::lower_ast(ctxt, id.clone(), ast))
             .into();
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let origin = HirOrigin::raw(&ast);
 
-        let const_ = Self::new(ctxt.db(), id, name, body, ctxt.top_mod(), origin);
+        let const_ = Self::new(ctxt.db(), id, name, body, vis, ctxt.top_mod(), origin);
         ctxt.leave_scope(const_)
     }
 }
@@ -418,7 +411,8 @@ impl Use {
         let id = TrackedItemId::Use(tree).join(parent_id);
 
         let origin = HirOrigin::raw(&ast);
-        let use_ = Self::new(ctxt.db(), id, tree, ctxt.top_mod(), origin);
+        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
+        let use_ = Self::new(ctxt.db(), id, tree, vis, ctxt.top_mod(), origin);
         ctxt.leave_scope(use_)
     }
 }
@@ -457,9 +451,13 @@ impl RecordField {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let is_pub = ast.pub_kw().is_some();
+        let vis = if ast.pub_kw().is_some() {
+            Visibility::Public
+        } else {
+            Visibility::Private
+        };
 
-        Self { name, ty, is_pub }
+        Self { name, ty, vis }
     }
 }
 
