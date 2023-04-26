@@ -19,11 +19,11 @@ impl super::Parse for UseTreeScope {
 
         let use_path_scope = UsePathScope::default();
         parser.parse(use_path_scope.clone(), None);
-        let has_wildcard = use_path_scope.has_wildcard.get();
+        let is_glob = use_path_scope.is_glob.get();
 
         if parser.current_kind() == Some(SyntaxKind::AsKw) {
-            if has_wildcard {
-                parser.error_and_recover("cant use `as` with wildcard", None);
+            if is_glob {
+                parser.error_and_recover("can't use `as` with `*`", None);
             }
             if parser.current_kind() == Some(SyntaxKind::AsKw) {
                 parser.parse(UseTreeRenameScope::default(), None);
@@ -35,15 +35,11 @@ impl super::Parse for UseTreeScope {
             return;
         }
         match parser.current_kind() {
-            Some(SyntaxKind::LBrace) if !has_wildcard => {
-                if has_wildcard {
-                    parser.error_and_recover("can't use `*` with `{}`", None);
-                } else {
-                    parser.parse(UseTreeListScope::default(), None);
-                }
+            Some(SyntaxKind::LBrace) if !is_glob => {
+                parser.parse(UseTreeListScope::default(), None);
             }
             _ => {
-                parser.error_and_recover("expected identifier, `*` or `self`", None);
+                parser.error_and_recover("can't use `*` with `{}`", None);
             }
         };
     }
@@ -78,7 +74,7 @@ impl super::Parse for UseTreeListScope {
 }
 
 define_scope! {
-    UsePathScope{ has_wildcard: Rc<Cell<bool>>},
+    UsePathScope{ is_glob: Rc<Cell<bool>>},
     UsePath,
     Inheritance(Colon2)
 }
@@ -93,13 +89,13 @@ impl super::Parse for UsePathScope {
                     && parser.parse(UsePathSegmentScope::default(), None).0
             });
             if is_path_segment {
+                if self.is_glob.get() {
+                    parser.error_and_recover("can't specify path after `*`", None);
+                }
                 parser.bump_expected(SyntaxKind::Colon2);
-                self.has_wildcard
+                self.is_glob
                     .set(parser.current_kind() == Some(SyntaxKind::Star));
                 parser.parse(UsePathSegmentScope::default(), None);
-                if self.has_wildcard.get() {
-                    break;
-                }
             } else {
                 break;
             }
