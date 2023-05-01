@@ -926,6 +926,7 @@ dependencies = [
  "either",
  "fe-common",
  "fe-hir",
+ "fe-macros",
  "rustc-hash",
  "salsa-2022",
  "smallvec",
@@ -2126,7 +2127,7 @@ dependencies = [
 [[package]]
 name = "salsa-2022"
 version = "0.1.0"
-source = "git+https://github.com/salsa-rs/salsa#67d290dc26f0026d93982f2611b1dc2f6058ebd4"
+source = "git+https://github.com/salsa-rs/salsa#d4a94fbf07bb837f3d9d0a4caa5db4d5db29243f"
 dependencies = [
  "arc-swap",
  "crossbeam",
@@ -2144,7 +2145,7 @@ dependencies = [
 [[package]]
 name = "salsa-2022-macros"
 version = "0.1.0"
-source = "git+https://github.com/salsa-rs/salsa#67d290dc26f0026d93982f2611b1dc2f6058ebd4"
+source = "git+https://github.com/salsa-rs/salsa#d4a94fbf07bb837f3d9d0a4caa5db4d5db29243f"
 dependencies = [
  "eyre",
  "heck 0.4.1",

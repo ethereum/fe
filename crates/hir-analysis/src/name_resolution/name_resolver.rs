@@ -1,6 +1,7 @@
 use either::Either;
 use hir::{
     hir_def::{
+        kw,
         scope_graph::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge,
             ScopeEdge, ScopeId, SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge,
@@ -26,8 +27,8 @@ pub struct NameResolver<'db, 'a> {
 pub enum ResolvedPath {
     FullResolved(ScopeId),
 
-    /// The path is partially resolved; this means that the segments from
-    /// `unresolved_from` depend on a type.
+    /// The path is partially resolved; this means that the `resolved` is a type
+    /// and the following segments depend on type to resolve.
     /// These unresolved parts are resolved in the later type inference and
     /// trait solving phases.
     PartialResolved {
@@ -66,34 +67,34 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // The shadowing rule is
         // `$ = NamedImports > GlobImports > Lex > external ingot > builtin types`,
-        // where `$` means current scope. This ordering means that
-        // greater scope shadows lower scopes having the same name in the same
-        // domain and
+        // where `$` means current scope.
+        // This ordering means that greater one shadows lower ones having the same name
+        // in the same domain.
 
-        // 1. Look for the name in the current scope and named imports.
         let mut results = Vec::new();
-        let mut found_scopes = FxHashSet::default();
         let mut parent = None;
+        // 1. Look for the name in the current scope and named imports.
+        let mut found_scopes = FxHashSet::default();
         for edge in self.edges(scope) {
-            match edge.kind.propagate(self.db, query) {
+            match edge.kind.propagate(query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         results.push(ResolvedName::scope(edge.dest, None));
                     }
                 }
 
-                PropagatedQuery::Continuation => {
+                PropagatedQuery::Continuation if query.option.allow_lex => {
                     debug_assert!(parent.is_none());
                     parent = Some(edge.dest);
                 }
 
-                PropagatedQuery::UnPropagated => {}
+                _ => {}
             }
         }
 
         for named_import in self.importer.named_imports(scope) {
             let edge = &named_import.data;
-            match edge.kind.propagate(self.db, query) {
+            match edge.kind.propagate(query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         results.push(ResolvedName::scope(
@@ -114,7 +115,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 2. Look for the name in the glob imports.
         for glob_import in self.importer.glob_imports(scope) {
             let edge = &glob_import.data;
-            match edge.kind.propagate(self.db, query) {
+            match edge.kind.propagate(query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         results.push(ResolvedName::scope(
@@ -155,7 +156,9 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
 
         // 5. Look for the name in the builtin types.
-        // TODO: Think about how to handle builtin types.
+        if let Some(builtin) = BuiltinName::lookup_for(query.name) {
+            results.push(ResolvedName::Builtin(builtin));
+        }
         self.cache_store
             .cache_resolved(scope, query, results.clone());
 
@@ -172,6 +175,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 pub struct NameQuery {
     name: IdentId,
     domain: NameContext,
+    option: QueryOption,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -181,6 +185,45 @@ pub enum ResolvedName {
         scope: ScopeId,
         import_span: Option<DynLazySpan>,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct QueryOption {
+    allow_lex: bool,
+}
+
+impl QueryOption {
+    pub fn new() -> Self {
+        Self { allow_lex: true }
+    }
+
+    pub fn disallow_lex(&mut self) -> &mut Self {
+        self.allow_lex = false;
+        self
+    }
+}
+
+impl ResolvedName {
+    pub fn scope(scope: ScopeId, import_span: Option<DynLazySpan>) -> Self {
+        Self::Scope { scope, import_span }
+    }
+
+    pub fn builtin(builtin: BuiltinName) -> Self {
+        Self::Builtin(builtin)
+    }
+
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::Scope { scope, .. } => scope.is_valid(),
+            Self::Builtin(_) => true,
+        }
+    }
+}
+
+impl Default for QueryOption {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
@@ -200,22 +243,26 @@ pub enum BuiltinName {
     I256,
 }
 
-impl ResolvedName {
-    pub fn scope(scope: ScopeId, import_span: Option<DynLazySpan>) -> Self {
-        Self::Scope { scope, import_span }
-    }
-
-    pub fn builtin(builtin: BuiltinName) -> Self {
-        Self::Builtin(builtin)
-    }
-}
-
-impl ResolvedName {
-    pub fn is_valid(&self) -> bool {
-        match self {
-            Self::Scope { scope, .. } => scope.is_valid(),
-            Self::Builtin(_) => true,
+impl BuiltinName {
+    /// Returns the builtin name if the `name` is a builtin name.
+    pub fn lookup_for(name: IdentId) -> Option<Self> {
+        match name {
+            kw::BOOL => Self::Bool,
+            kw::U8 => Self::U8,
+            kw::U16 => Self::U16,
+            kw::U32 => Self::U32,
+            kw::U64 => Self::U64,
+            kw::U128 => Self::U128,
+            kw::U256 => Self::U256,
+            kw::I8 => Self::I8,
+            kw::I16 => Self::I16,
+            kw::I32 => Self::I32,
+            kw::I64 => Self::I64,
+            kw::I128 => Self::I128,
+            kw::I256 => Self::I256,
+            _ => return None,
         }
+        .into()
     }
 }
 
@@ -260,7 +307,7 @@ pub enum NameContext {
 
 trait QueryPropagator {
     // TODO: `db` is not necessary if we implement prefilled keywords.
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery;
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -271,13 +318,13 @@ enum PropagatedQuery {
 }
 
 impl QueryPropagator for LexEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, _query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, _query: NameQuery) -> PropagatedQuery {
         PropagatedQuery::Continuation
     }
 }
 
 impl QueryPropagator for ModEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         match query.domain {
             NameContext::Item if self.0 == query.name => PropagatedQuery::Terminated,
             _ => PropagatedQuery::UnPropagated,
@@ -286,7 +333,7 @@ impl QueryPropagator for ModEdge {
 }
 
 impl QueryPropagator for TypeEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Type) {
             return PropagatedQuery::UnPropagated;
         }
@@ -300,7 +347,7 @@ impl QueryPropagator for TypeEdge {
 }
 
 impl QueryPropagator for TraitEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Type) {
             return PropagatedQuery::UnPropagated;
         }
@@ -314,7 +361,7 @@ impl QueryPropagator for TraitEdge {
 }
 
 impl QueryPropagator for ValueEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Value) {
             return PropagatedQuery::UnPropagated;
         }
@@ -328,7 +375,7 @@ impl QueryPropagator for ValueEdge {
 }
 
 impl QueryPropagator for GenericParamEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Type) {
             return PropagatedQuery::UnPropagated;
         }
@@ -342,7 +389,7 @@ impl QueryPropagator for GenericParamEdge {
 }
 
 impl QueryPropagator for FieldEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Field) {
             return PropagatedQuery::UnPropagated;
         }
@@ -356,7 +403,7 @@ impl QueryPropagator for FieldEdge {
 }
 
 impl QueryPropagator for VariantEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Variant) {
             return PropagatedQuery::UnPropagated;
         }
@@ -370,12 +417,12 @@ impl QueryPropagator for VariantEdge {
 }
 
 impl QueryPropagator for SuperEdge {
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item) {
             return PropagatedQuery::UnPropagated;
         }
 
-        if query.name.is_super(db.upcast()) {
+        if query.name.is_super() {
             PropagatedQuery::Terminated
         } else {
             PropagatedQuery::UnPropagated
@@ -384,12 +431,12 @@ impl QueryPropagator for SuperEdge {
 }
 
 impl QueryPropagator for IngotEdge {
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item) {
             return PropagatedQuery::UnPropagated;
         }
 
-        if query.name.is_ingot(db.upcast()) {
+        if query.name.is_ingot() {
             PropagatedQuery::Terminated
         } else {
             PropagatedQuery::UnPropagated
@@ -398,12 +445,12 @@ impl QueryPropagator for IngotEdge {
 }
 
 impl QueryPropagator for SelfTyEdge {
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Type) {
             return PropagatedQuery::UnPropagated;
         }
 
-        if query.name.is_self_ty(db.upcast()) {
+        if query.name.is_self_ty() {
             PropagatedQuery::Terminated
         } else {
             PropagatedQuery::UnPropagated
@@ -412,12 +459,12 @@ impl QueryPropagator for SelfTyEdge {
 }
 
 impl QueryPropagator for SelfEdge {
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         if !matches!(query.domain, NameContext::Item | NameContext::Value) {
             return PropagatedQuery::UnPropagated;
         }
 
-        if query.name.is_self(db.upcast()) {
+        if query.name.is_self() {
             PropagatedQuery::Terminated
         } else {
             PropagatedQuery::UnPropagated
@@ -426,27 +473,27 @@ impl QueryPropagator for SelfEdge {
 }
 
 impl QueryPropagator for AnonEdge {
-    fn propagate(&self, _db: &dyn HirAnalysisDb, _query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, _query: NameQuery) -> PropagatedQuery {
         PropagatedQuery::UnPropagated
     }
 }
 
 impl QueryPropagator for EdgeKind {
-    fn propagate(&self, db: &dyn HirAnalysisDb, query: NameQuery) -> PropagatedQuery {
+    fn propagate(&self, query: NameQuery) -> PropagatedQuery {
         match self {
-            EdgeKind::Lex(edge) => edge.propagate(db, query),
-            EdgeKind::Mod(edge) => edge.propagate(db, query),
-            EdgeKind::Type(edge) => edge.propagate(db, query),
-            EdgeKind::Trait(edge) => edge.propagate(db, query),
-            EdgeKind::GenericParam(edge) => edge.propagate(db, query),
-            EdgeKind::Value(edge) => edge.propagate(db, query),
-            EdgeKind::Field(edge) => edge.propagate(db, query),
-            EdgeKind::Variant(edge) => edge.propagate(db, query),
-            EdgeKind::Super(edge) => edge.propagate(db, query),
-            EdgeKind::Ingot(edge) => edge.propagate(db, query),
-            EdgeKind::Self_(edge) => edge.propagate(db, query),
-            EdgeKind::SelfTy(edge) => edge.propagate(db, query),
-            EdgeKind::Anon(edge) => edge.propagate(db, query),
+            EdgeKind::Lex(edge) => edge.propagate(query),
+            EdgeKind::Mod(edge) => edge.propagate(query),
+            EdgeKind::Type(edge) => edge.propagate(query),
+            EdgeKind::Trait(edge) => edge.propagate(query),
+            EdgeKind::GenericParam(edge) => edge.propagate(query),
+            EdgeKind::Value(edge) => edge.propagate(query),
+            EdgeKind::Field(edge) => edge.propagate(query),
+            EdgeKind::Variant(edge) => edge.propagate(query),
+            EdgeKind::Super(edge) => edge.propagate(query),
+            EdgeKind::Ingot(edge) => edge.propagate(query),
+            EdgeKind::Self_(edge) => edge.propagate(query),
+            EdgeKind::SelfTy(edge) => edge.propagate(query),
+            EdgeKind::Anon(edge) => edge.propagate(query),
         }
     }
 }

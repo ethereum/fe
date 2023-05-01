@@ -15,3 +15,4 @@ either = "1.8"
 
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common", package = "fe-common" }
+macros = { path = "../macros", package = "fe-macros" }
