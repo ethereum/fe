@@ -1,6 +1,6 @@
 use parser::ast;
 
-use crate::hir_def::{use_tree::*, IdentId, Partial};
+use crate::hir_def::{kw, use_tree::*, IdentId, Partial};
 
 use super::FileLowerCtxt;
 
@@ -43,12 +43,12 @@ impl UsePathSegment {
     ) -> Partial<Self> {
         ast.kind()
             .map(|kind| match kind {
-                ast::UsePathSegmentKind::Ingot(_) => Self::Ident(IdentId::ingot_kw(ctxt.db())),
-                ast::UsePathSegmentKind::Super(_) => Self::Ident(IdentId::super_kw(ctxt.db())),
+                ast::UsePathSegmentKind::Ingot(_) => Self::Ident(kw::INGOT),
+                ast::UsePathSegmentKind::Super(_) => Self::Ident(kw::SUPER),
                 ast::UsePathSegmentKind::Ident(ident) => {
                     Self::Ident(IdentId::lower_token(ctxt, ident))
                 }
-                ast::UsePathSegmentKind::Self_(_) => Self::Ident(IdentId::self_kw(ctxt.db())),
+                ast::UsePathSegmentKind::Self_(_) => Self::Ident(kw::SELF),
                 ast::UsePathSegmentKind::Glob(_) => Self::Glob,
             })
             .into()

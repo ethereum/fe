@@ -910,6 +910,7 @@ dependencies = [
  "cranelift-entity",
  "derive_more",
  "fe-common2",
+ "fe-macros",
  "fe-parser2",
  "num-bigint",
  "num-traits",
@@ -935,6 +936,16 @@ name = "fe-library"
 version = "0.22.0"
 dependencies = [
  "include_dir",
+]
+
+[[package]]
+name = "fe-macros"
+version = "0.1.1"
+dependencies = [
+ "glob",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.15",
 ]
 
 [[package]]

@@ -14,19 +14,24 @@ pub fn check_visibility(
     ref_scope: ScopeId,
     resolved: &ResolvedName,
 ) -> bool {
+    let ResolvedName::Scope{scope, .. } = resolved else {
+        // If resolved is a builtin name, then it's always visible .
+        return true;
+    };
+
     // If resolved is public, then it is visible.
-    if resolved.scope.data(db.upcast()).vis.is_pub() {
+    if scope.data(db.upcast()).vis.is_pub() {
         return true;
     }
 
-    let Some(def_scope) = (match resolved.scope.kind(db.upcast()) {
+    let Some(def_scope) = (match scope.kind(db.upcast()) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
         ScopeKind::Field(_) => {
-            resolved.scope.parent(db.upcast()).and_then(|scope| scope.parent(db.upcast()))
+            scope.parent(db.upcast()).and_then(|scope| scope.parent(db.upcast()))
         },
         _ => {
-            resolved.scope.parent(db.upcast())
+            scope.parent(db.upcast())
         }
     }) else {
         return false;

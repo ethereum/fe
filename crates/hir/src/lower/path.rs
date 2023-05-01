@@ -1,6 +1,6 @@
 use parser::{ast, SyntaxToken};
 
-use crate::hir_def::{IdentId, Partial, PathId};
+use crate::hir_def::{kw, IdentId, Partial, PathId};
 
 use super::FileLowerCtxt;
 
@@ -9,10 +9,10 @@ impl PathId {
         let mut segments = Vec::new();
         for seg in ast.into_iter() {
             let segment = match seg.kind() {
-                Some(ast::PathSegmentKind::Ingot(_)) => Some(IdentId::ingot_kw(ctxt.db())),
-                Some(ast::PathSegmentKind::Super(_)) => Some(IdentId::super_kw(ctxt.db())),
-                Some(ast::PathSegmentKind::SelfTy(_)) => Some(IdentId::self_ty_kw(ctxt.db())),
-                Some(ast::PathSegmentKind::Self_(_)) => Some(IdentId::self_kw(ctxt.db())),
+                Some(ast::PathSegmentKind::Ingot(_)) => Some(kw::INGOT),
+                Some(ast::PathSegmentKind::Super(_)) => Some(kw::SUPER),
+                Some(ast::PathSegmentKind::SelfTy(_)) => Some(kw::SELF_TY),
+                Some(ast::PathSegmentKind::Self_(_)) => Some(kw::SELF),
                 Some(ast::PathSegmentKind::Ident(ident)) => Some(IdentId::lower_token(ctxt, ident)),
                 None => None,
             }

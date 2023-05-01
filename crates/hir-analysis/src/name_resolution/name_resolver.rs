@@ -25,10 +25,17 @@ pub struct NameResolver<'db, 'a> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolvedPath {
     FullResolved(ScopeId),
+
+    /// The path is partially resolved; this means that the segments from
+    /// `unresolved_from` depend on a type.
+    /// These unresolved parts are resolved in the later type inference and
+    /// trait solving phases.
     PartialResolved {
         resolved: ScopeId,
         unresolved_from: usize,
     },
+
+    /// The path resolution failed at the given segment.
     Failed {
         failed_at: usize,
         cause: NameResolutionFailure,
@@ -71,7 +78,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(ResolvedName::new(edge.dest, None));
+                        results.push(ResolvedName::scope(edge.dest, None));
                     }
                 }
 
@@ -89,7 +96,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(ResolvedName::new(
+                        results.push(ResolvedName::scope(
                             edge.dest,
                             Some(named_import.span.clone()),
                         ));
@@ -110,7 +117,10 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             match edge.kind.propagate(self.db, query) {
                 PropagatedQuery::Terminated => {
                     if found_scopes.insert(edge.dest) {
-                        results.push(ResolvedName::new(edge.dest, Some(glob_import.span.clone())));
+                        results.push(ResolvedName::scope(
+                            edge.dest,
+                            Some(glob_import.span.clone()),
+                        ));
                     }
                 }
                 PropagatedQuery::Continuation | PropagatedQuery::UnPropagated => {}
@@ -132,7 +142,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         if query.domain == NameContext::Item {
             for (name, root_mod) in scope.top_mod.external_ingots(self.db.upcast()) {
                 if *name == query.name {
-                    results.push(ResolvedName::new(ScopeId::root(*root_mod), None));
+                    results.push(ResolvedName::scope(ScopeId::root(*root_mod), None));
                 }
             }
             // Ensure that all names of external ingots don't conflict with each other.
@@ -165,20 +175,47 @@ pub struct NameQuery {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ResolvedName {
-    pub scope: ScopeId,
-    pub import_span: Option<DynLazySpan>,
+pub enum ResolvedName {
+    Builtin(BuiltinName),
+    Scope {
+        scope: ScopeId,
+        import_span: Option<DynLazySpan>,
+    },
+}
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+pub enum BuiltinName {
+    Bool,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    U256,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    I256,
 }
 
 impl ResolvedName {
-    pub fn new(scope: ScopeId, import_span: Option<DynLazySpan>) -> Self {
-        Self { scope, import_span }
+    pub fn scope(scope: ScopeId, import_span: Option<DynLazySpan>) -> Self {
+        Self::Scope { scope, import_span }
+    }
+
+    pub fn builtin(builtin: BuiltinName) -> Self {
+        Self::Builtin(builtin)
     }
 }
 
 impl ResolvedName {
     pub fn is_valid(&self) -> bool {
-        self.scope.is_valid()
+        match self {
+            Self::Scope { scope, .. } => scope.is_valid(),
+            Self::Builtin(_) => true,
+        }
     }
 }
 

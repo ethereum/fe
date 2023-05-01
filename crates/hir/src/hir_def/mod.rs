@@ -1,6 +1,7 @@
 pub mod attr;
 pub mod body;
 pub mod expr;
+pub mod ident;
 pub mod item;
 pub mod params;
 pub mod pat;
@@ -15,6 +16,7 @@ pub(crate) mod module_tree;
 pub use attr::*;
 pub use body::*;
 pub use expr::*;
+pub use ident::*;
 pub use item::*;
 use num_bigint::BigUint;
 pub use params::*;
@@ -25,47 +27,6 @@ pub use types::*;
 pub use use_tree::*;
 
 pub use module_tree::*;
-
-use crate::HirDb;
-
-#[salsa::interned]
-pub struct IdentId {
-    data: String,
-}
-// TODO: Keyword should be prefilled in the database.
-// ref: https://github.com/salsa-rs/salsa/pull/440
-impl IdentId {
-    pub fn is_super(self, db: &dyn HirDb) -> bool {
-        self == Self::super_kw(db)
-    }
-
-    pub fn is_ingot(self, db: &dyn HirDb) -> bool {
-        self == Self::ingot_kw(db)
-    }
-
-    pub fn is_self(self, db: &dyn HirDb) -> bool {
-        self == Self::self_kw(db)
-    }
-
-    pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
-        self == Self::self_ty_kw(db)
-    }
-    pub fn super_kw(db: &dyn HirDb) -> Self {
-        IdentId::new(db, "super".to_string())
-    }
-
-    pub fn ingot_kw(db: &dyn HirDb) -> Self {
-        IdentId::new(db, "ingot".to_string())
-    }
-
-    pub fn self_kw(db: &dyn HirDb) -> Self {
-        IdentId::new(db, "self".to_string())
-    }
-
-    pub fn self_ty_kw(db: &dyn HirDb) -> Self {
-        IdentId::new(db, "Self".to_string())
-    }
-}
 
 #[salsa::interned]
 pub struct IntegerId {

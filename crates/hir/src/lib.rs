@@ -1,7 +1,6 @@
 use common::{InputDb, InputIngot, Upcast};
 use hir_def::{module_tree_impl, IdentId, TopLevelMod};
 pub use lower::parse::ParseDiagnostic;
-
 use lower::{
     map_file_to_mod_impl,
     parse::{parse_file_impl, ParseDiagnosticAccumulator},
@@ -76,7 +75,14 @@ pub(crate) fn external_ingots_impl(
     res
 }
 
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {
+    fn prefill(&self)
+    where
+        Self: Sized,
+    {
+        IdentId::prefill(self)
+    }
+}
 impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
@@ -101,6 +107,7 @@ pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {}
 
 #[cfg(test)]
 mod test_db {
+    use super::HirDb;
     use std::collections::BTreeSet;
 
     use common::{
@@ -115,10 +122,19 @@ mod test_db {
         LowerHirDb, SpannedHirDb,
     };
 
-    #[derive(Default)]
     #[salsa::db(common::Jar, crate::Jar)]
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
+    }
+
+    impl Default for TestDb {
+        fn default() -> Self {
+            let db = Self {
+                storage: Default::default(),
+            };
+            db.prefill();
+            db
+        }
     }
     impl SpannedHirDb for TestDb {}
     impl LowerHirDb for TestDb {}

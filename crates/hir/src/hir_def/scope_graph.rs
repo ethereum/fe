@@ -1,7 +1,7 @@
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{span::DynLazySpan, HirDb};
+use crate::HirDb;
 
 use super::{IdentId, ItemKind, TopLevelMod, Use, Visibility};
 
@@ -120,10 +120,6 @@ impl ScopeId {
 
     pub fn root(top_mod: TopLevelMod) -> Self {
         Self::new(top_mod, LocalScopeId::root())
-    }
-
-    pub fn span(self, _db: &dyn HirDb) -> DynLazySpan {
-        todo!()
     }
 
     pub fn invalid() -> Self {
