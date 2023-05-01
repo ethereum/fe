@@ -18,8 +18,7 @@ contract Foo {
 }
 
 #test
-unsafe fn test_foo() {
-    let mut ctx: Context = Context()
+unsafe fn test_foo(mut ctx: Context) {
     let foo: Foo = Foo.create(ctx, 0)
     assert foo.get_from_storage(index: 3) == 3
     assert Foo::get_from_memory(index: 3) == 4
@@ -37,8 +36,7 @@ const FREE_MEM_PTR: u256 = 1024
 const CALL_GAS: u256 = 100000
 
 #test
-unsafe fn test_array_oob_dyn() {
-    let mut ctx: Context = Context()
+unsafe fn test_array_oob_dyn(mut ctx: Context) {
     let array_index_oob: ArrayIndexOobDyn = ArrayIndexOobDyn.create(ctx, value: 0)
     let expected_revert_data: Array<u8, 36> =  [78, 72, 123, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50]
 
@@ -76,8 +74,7 @@ unsafe fn test_array_oob_dyn() {
 // }
 
 // #test
-// unsafe fn test_array_oob_static() {
-//     let mut ctx: Context = Context()
+// unsafe fn test_array_oob_static(mut ctx: Context) {
 //     let array_index_oob: ArrayIndexOobStatic = ArrayIndexOobStatic.create(ctx, value: 0)
 //     let expected_revert_data: Array<u8, 36> =  [78, 72, 123, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50]
 

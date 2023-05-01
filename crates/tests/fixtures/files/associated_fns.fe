@@ -22,8 +22,7 @@ contract Foo {
 }
 
 #test
-unsafe fn test_foo() {
-    let mut ctx: Context = Context()
+fn test_foo(mut ctx: Context) {
     let mut foo: Foo = Foo.create(ctx, 0)
     assert foo.bar(val: 12) == 144
 }
