@@ -1,13 +1,17 @@
-use super::expressions::parse_expr;
-use super::functions::parse_fn_def;
-use super::types::{
-    parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def, parse_type_alias,
-    parse_type_desc,
+use super::{
+    contracts::parse_contract_def,
+    expressions::parse_expr,
+    functions::parse_fn_def,
+    types::{
+        parse_enum_def, parse_impl_def, parse_path_tail, parse_struct_def, parse_trait_def,
+        parse_type_alias, parse_type_desc,
+    },
 };
-use super::{contracts::parse_contract_def, types::parse_enum_def};
-use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
-use crate::node::{Node, Span};
-use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
+use crate::{
+    ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree},
+    node::{Node, Span},
+    Label, ParseFailed, ParseResult, Parser, TokenKind,
+};
 
 use semver::VersionReq;
 

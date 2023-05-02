@@ -1,11 +1,14 @@
-use crate::ast::{
-    self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
+use crate::{
+    ast::{
+        self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
+    },
+    grammar::{
+        expressions::parse_expr,
+        functions::{parse_fn_def, parse_fn_sig},
+    },
+    node::{Node, Span},
+    ParseFailed, ParseResult, Parser, Token, TokenKind,
 };
-use crate::grammar::expressions::parse_expr;
-use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
-use crate::node::{Node, Span};
-use crate::Token;
-use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use fe_common::diagnostics::Label;
 use if_chain::if_chain;
 use smol_str::SmolStr;

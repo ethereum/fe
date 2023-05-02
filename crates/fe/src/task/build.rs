@@ -1,10 +1,11 @@
-use std::fs;
-use std::io::{Error, Write};
-use std::path::Path;
+use std::{
+    fs,
+    io::{Error, Write},
+    path::Path,
+};
 
 use clap::{ArgEnum, Args};
-use fe_common::diagnostics::print_diagnostics;
-use fe_common::files::SourceFileId;
+use fe_common::{diagnostics::print_diagnostics, files::SourceFileId};
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";

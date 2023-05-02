@@ -7,8 +7,7 @@ pub use parser::{Label, ParseFailed, ParseResult, Parser};
 pub mod node;
 
 use ast::Module;
-use fe_common::diagnostics::Diagnostic;
-use fe_common::files::SourceFileId;
+use fe_common::{diagnostics::Diagnostic, files::SourceFileId};
 
 /// Parse a [`Module`] from the file content string.
 ///

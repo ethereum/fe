@@ -1,19 +1,19 @@
-use crate::namespace::items::{
-    self, AttributeId, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId,
-    FunctionSigId, ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId,
-    TraitId, TypeAliasId,
-};
-use crate::namespace::types::{self, Type, TypeId};
 use crate::{
     context::{Analysis, Constant, FunctionBody},
-    namespace::items::EnumId,
-};
-use crate::{
     errors::{ConstEvalError, TypeError},
-    namespace::items::EnumVariantId,
+    namespace::{
+        items::{
+            self, AttributeId, ContractFieldId, ContractId, DepGraphWrapper, EnumId, EnumVariantId,
+            EnumVariantKind, FunctionId, FunctionSigId, ImplId, IngotId, Item, ModuleConstantId,
+            ModuleId, StructFieldId, StructId, TraitId, TypeAliasId,
+        },
+        types::{self, Type, TypeId},
+    },
 };
-use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
-use fe_common::{SourceFileId, Span};
+use fe_common::{
+    db::{SourceDb, SourceDbStorage, Upcast, UpcastMut},
+    SourceFileId, Span,
+};
 use fe_parser::ast;
 use indexmap::map::IndexMap;
 use smol_str::SmolStr;

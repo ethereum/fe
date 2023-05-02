@@ -5,33 +5,34 @@ use crate::{
     pattern_analysis::PatternMatrix,
 };
 
-use crate::namespace::items::{
-    ContractId, DiagnosticSink, FunctionId, FunctionSigId, Item, TraitId,
-};
-use crate::namespace::types::{Generic, SelfDecl, Type, TypeId};
-use crate::AnalyzerDb;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
-    namespace::scopes::BlockScopeType,
-};
-use crate::{
     errors::{self, IncompleteItem, TypeError},
-    namespace::items::ModuleId,
+    namespace::{
+        items::{ContractId, DiagnosticSink, FunctionId, FunctionSigId, Item, ModuleId, TraitId},
+        scopes::BlockScopeType,
+        types::{Generic, SelfDecl, Type, TypeId},
+    },
+    AnalyzerDb,
 };
-use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
-use fe_common::Span;
-use fe_parser::ast;
-use fe_parser::node::{Node, NodeId};
+use fe_common::{diagnostics::Diagnostic, Span};
+use fe_parser::{
+    ast,
+    node::{Node, NodeId},
+};
 
 use indexmap::IndexMap;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::fmt::{self, Debug};
-use std::hash::Hash;
-use std::marker::PhantomData;
-use std::rc::Rc;
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{self, Debug},
+    hash::Hash,
+    marker::PhantomData,
+    rc::Rc,
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Analysis<T> {

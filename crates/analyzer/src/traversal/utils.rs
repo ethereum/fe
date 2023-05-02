@@ -1,11 +1,12 @@
-use fe_common::diagnostics::Label;
-use fe_common::Span;
+use fe_common::{diagnostics::Label, Span};
 
-use crate::context::{AnalyzerContext, DiagnosticVoucher};
-use crate::display::Displayable;
-use crate::errors::BinaryOperationError;
-use crate::namespace::types::TypeId;
-use crate::AnalyzerDb;
+use crate::{
+    context::{AnalyzerContext, DiagnosticVoucher},
+    display::Displayable,
+    errors::BinaryOperationError,
+    namespace::types::TypeId,
+    AnalyzerDb,
+};
 use std::fmt::Display;
 
 fn type_label(db: &dyn AnalyzerDb, span: Span, typ: TypeId) -> Label {

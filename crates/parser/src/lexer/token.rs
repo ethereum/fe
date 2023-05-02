@@ -1,5 +1,4 @@
-use crate::node::Node;
-use crate::node::Span;
+use crate::node::{Node, Span};
 use logos::Logos;
 use smol_str::SmolStr;
 use std::ops::Add;

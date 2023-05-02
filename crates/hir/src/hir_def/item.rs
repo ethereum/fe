@@ -73,6 +73,13 @@ impl ItemKind {
             Impl(_) | ImplTrait(_) | Body(_) => Visibility::Private,
         }
     }
+
+    pub fn is_type(self) -> bool {
+        matches!(
+            self,
+            Self::Struct(_) | Self::Enum(_) | Self::Contract(_) | Self::TypeAlias(_)
+        )
+    }
 }
 
 #[salsa::tracked]
@@ -109,14 +116,6 @@ impl TopLevelMod {
     pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
         let module_tree = self.module_tree(db);
         module_tree.children(self)
-    }
-
-    pub fn invalid() -> Self {
-        Self(salsa::Id::from_u32(u32::MAX - 1))
-    }
-
-    pub fn is_valid(self) -> bool {
-        self != Self::invalid()
     }
 
     pub fn vis(self, _db: &dyn HirDb) -> Visibility {

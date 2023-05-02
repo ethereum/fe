@@ -1,8 +1,8 @@
-use hir::hir_def::scope_graph::{ScopeId, ScopeKind};
+use hir::hir_def::scope_graph::ScopeId;
 
 use crate::HirAnalysisDb;
 
-use super::name_resolver::ResolvedName;
+use super::name_resolver::{NameDomain, ResolvedName, ResolvedNameKind};
 
 /// Return `true` if the given `resolved` is visible from the `ref_scope`.
 /// The resolved name is visible from `ref_scope` if
@@ -14,7 +14,7 @@ pub fn check_visibility(
     ref_scope: ScopeId,
     resolved: &ResolvedName,
 ) -> bool {
-    let ResolvedName::Scope{scope, .. } = resolved else {
+    let ResolvedNameKind::Scope{scope, .. } = resolved.kind else {
         // If resolved is a builtin name, then it's always visible .
         return true;
     };
@@ -24,16 +24,14 @@ pub fn check_visibility(
         return true;
     }
 
-    let Some(def_scope) = (match scope.kind(db.upcast()) {
+    let Some(def_scope) = (if resolved.domain == NameDomain::Field {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
-        ScopeKind::Field(_) => {
             scope.parent(db.upcast()).and_then(|scope| scope.parent(db.upcast()))
-        },
-        _ => {
+        } else {
             scope.parent(db.upcast())
-        }
-    }) else {
+        })
+    else {
         return false;
     };
 

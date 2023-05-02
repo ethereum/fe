@@ -1,23 +1,29 @@
 #![allow(dead_code)]
-use hir::hir_def::scope_graph::{ScopeEdge, ScopeId};
+use hir::hir_def::{
+    scope_graph::{ScopeEdge, ScopeId},
+    IdentId,
+};
 use rustc_hash::FxHashMap;
 
-use crate::Spanned;
+use super::name_resolver::{NameResolutionError, ResolvedNameSet};
 
 pub struct ResolvedImports {
     pub resolved: FxHashMap<ScopeId, ScopeEdge>,
 }
 
 pub struct ImportResolver {
-    resolved: FxHashMap<ScopeId, Vec<Spanned<ScopeEdge>>>,
-    glob_resolved: FxHashMap<ScopeId, Vec<Spanned<ScopeEdge>>>,
+    resolved: FxHashMap<ScopeId, ResolvedImportSet>,
+    glob_resolved: FxHashMap<ScopeId, ResolvedImportSet>,
     states: FxHashMap<ScopeId, ScopeState>,
 }
 
 pub trait Importer {
-    fn glob_imports(&self, scope: ScopeId) -> &[Spanned<ScopeEdge>];
-    fn named_imports(&self, scope: ScopeId) -> &[Spanned<ScopeEdge>];
+    fn named_imports(&self, scope: ScopeId) -> Option<&ResolvedImportSet>;
+    fn glob_imports(&self, scope: ScopeId) -> Option<&ResolvedImportSet>;
 }
+
+pub(super) type ResolvedImportSet =
+    FxHashMap<IdentId, Result<ResolvedNameSet, NameResolutionError>>;
 
 /// This is the state of import resolution for a given scope.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,11 +35,11 @@ enum ScopeState {
 }
 
 impl Importer for ImportResolver {
-    fn glob_imports(&self, scope: ScopeId) -> &[Spanned<ScopeEdge>] {
-        &self.glob_resolved[&scope]
+    fn named_imports(&self, scope: ScopeId) -> Option<&ResolvedImportSet> {
+        self.resolved.get(&scope)
     }
 
-    fn named_imports(&self, scope: ScopeId) -> &[Spanned<ScopeEdge>] {
-        &self.resolved[&scope]
+    fn glob_imports(&self, scope: ScopeId) -> Option<&ResolvedImportSet> {
+        self.glob_resolved.get(&scope)
     }
 }

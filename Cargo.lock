@@ -923,6 +923,7 @@ dependencies = [
 name = "fe-hir-analysis"
 version = "0.20.0-alpha"
 dependencies = [
+ "derive_more",
  "either",
  "fe-common",
  "fe-hir",

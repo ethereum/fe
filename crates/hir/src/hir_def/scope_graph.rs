@@ -122,17 +122,6 @@ impl ScopeId {
         Self::new(top_mod, LocalScopeId::root())
     }
 
-    pub fn invalid() -> Self {
-        Self {
-            top_mod: TopLevelMod::invalid(),
-            local_id: LocalScopeId::invalid(),
-        }
-    }
-
-    pub fn is_valid(self) -> bool {
-        self != Self::invalid()
-    }
-
     pub fn data(self, db: &dyn HirDb) -> &LocalScope {
         self.top_mod
             .module_scope_graph(db)
@@ -153,6 +142,14 @@ impl ScopeId {
 
     pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
         self.data(db).parent_module
+    }
+
+    pub fn is_type(self, db: &dyn HirDb) -> bool {
+        match self.data(db).kind {
+            ScopeKind::Item(item) => item.is_type(),
+            ScopeKind::GenericParam(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -273,14 +270,6 @@ entity_impl!(LocalScopeId);
 impl LocalScopeId {
     pub(crate) fn root() -> Self {
         LocalScopeId(0)
-    }
-
-    pub fn invalid() -> Self {
-        LocalScopeId(u32::MAX)
-    }
-
-    pub fn is_valid(self) -> bool {
-        self != Self::invalid()
     }
 }
 

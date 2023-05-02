@@ -12,6 +12,7 @@ salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 smallvec = "1.10"
 rustc-hash = "1.1.0"
 either = "1.8"
+derive_more = "0.99"
 
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common", package = "fe-common" }

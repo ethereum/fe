@@ -4,5 +4,5 @@ use super::IdentId;
 
 #[salsa::interned]
 pub struct PathId {
-    segments: Vec<Partial<IdentId>>,
+    pub segments: Vec<Partial<IdentId>>,
 }
