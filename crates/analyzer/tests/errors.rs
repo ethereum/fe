@@ -319,6 +319,8 @@ test_file! { init_call_on_external_contract }
 test_file! { call_wrong_return_type }
 test_file! { call_duplicate_def }
 test_file! { call_call_on_self }
+
+test_file! { call_method_in_storage }
 test_file! { call_call_on_external_contract }
 test_file! { call_with_pub_fns }
 test_file! { abi_encode_u256 }
