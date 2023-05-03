@@ -1,5 +1,3 @@
-use std::evm::{balance, balance_of}
-
 contract Foo {
     pub fn my_balance(self, ctx: Context) -> u256 {
         return ctx.self_balance()
@@ -8,4 +6,12 @@ contract Foo {
     pub fn other_balance(self, ctx: Context, someone: address) -> u256 {
         return ctx.balance_of(someone)
     }
+}
+
+#test
+unsafe fn test_foo() {
+    let mut ctx: Context = Context()
+    let foo: Foo = Foo.create(ctx, 0)
+    assert foo.my_balance(ctx) == 0
+    assert foo.other_balance(ctx, someone: ctx.self_address()) == 0
 }
