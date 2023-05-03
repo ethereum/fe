@@ -20,8 +20,7 @@ contract Foo {
 }
 
 #test
-unsafe fn test_foo() {
-    let mut ctx: Context = Context()
+unsafe fn test_foo(mut ctx: Context) {
     let foo: Foo = Foo.create(ctx, 0)
 
     // 0x01 selector call
