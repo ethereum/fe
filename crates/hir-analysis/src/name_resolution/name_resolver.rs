@@ -673,6 +673,7 @@ impl NameDomain {
 
 trait QueryPropagator {
     fn propagate(&self, query: NameQuery) -> PropagatedQuery;
+    fn propagate_glob(&self) -> PropagatedQuery;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -690,6 +691,10 @@ impl QueryPropagator for LexEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
 }
 
 impl QueryPropagator for ModEdge {
@@ -699,6 +704,10 @@ impl QueryPropagator for ModEdge {
         } else {
             PropagatedQuery::UnPropagated
         }
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::Terminated
     }
 }
 
@@ -710,6 +719,10 @@ impl QueryPropagator for TypeEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::Terminated
+    }
 }
 
 impl QueryPropagator for TraitEdge {
@@ -719,6 +732,9 @@ impl QueryPropagator for TraitEdge {
         } else {
             PropagatedQuery::UnPropagated
         }
+    }
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::Terminated
     }
 }
 
@@ -730,6 +746,9 @@ impl QueryPropagator for ValueEdge {
             PropagatedQuery::UnPropagated
         }
     }
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::Terminated
+    }
 }
 
 impl QueryPropagator for GenericParamEdge {
@@ -739,6 +758,10 @@ impl QueryPropagator for GenericParamEdge {
         } else {
             PropagatedQuery::UnPropagated
         }
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
     }
 }
 
@@ -750,6 +773,10 @@ impl QueryPropagator for FieldEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
 }
 
 impl QueryPropagator for VariantEdge {
@@ -759,6 +786,10 @@ impl QueryPropagator for VariantEdge {
         } else {
             PropagatedQuery::UnPropagated
         }
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::Terminated
     }
 }
 
@@ -770,6 +801,10 @@ impl QueryPropagator for SuperEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
 }
 
 impl QueryPropagator for IngotEdge {
@@ -779,6 +814,10 @@ impl QueryPropagator for IngotEdge {
         } else {
             PropagatedQuery::UnPropagated
         }
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
     }
 }
 
@@ -790,6 +829,10 @@ impl QueryPropagator for SelfTyEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
 }
 
 impl QueryPropagator for SelfEdge {
@@ -800,10 +843,18 @@ impl QueryPropagator for SelfEdge {
             PropagatedQuery::UnPropagated
         }
     }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
 }
 
 impl QueryPropagator for AnonEdge {
     fn propagate(&self, _query: NameQuery) -> PropagatedQuery {
+        PropagatedQuery::UnPropagated
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
         PropagatedQuery::UnPropagated
     }
 }
@@ -824,6 +875,24 @@ impl QueryPropagator for EdgeKind {
             EdgeKind::Self_(edge) => edge.propagate(query),
             EdgeKind::SelfTy(edge) => edge.propagate(query),
             EdgeKind::Anon(edge) => edge.propagate(query),
+        }
+    }
+
+    fn propagate_glob(&self) -> PropagatedQuery {
+        match self {
+            EdgeKind::Lex(edge) => edge.propagate_glob(),
+            EdgeKind::Mod(edge) => edge.propagate_glob(),
+            EdgeKind::Type(edge) => edge.propagate_glob(),
+            EdgeKind::Trait(edge) => edge.propagate_glob(),
+            EdgeKind::GenericParam(edge) => edge.propagate_glob(),
+            EdgeKind::Value(edge) => edge.propagate_glob(),
+            EdgeKind::Field(edge) => edge.propagate_glob(),
+            EdgeKind::Variant(edge) => edge.propagate_glob(),
+            EdgeKind::Super(edge) => edge.propagate_glob(),
+            EdgeKind::Ingot(edge) => edge.propagate_glob(),
+            EdgeKind::Self_(edge) => edge.propagate_glob(),
+            EdgeKind::SelfTy(edge) => edge.propagate_glob(),
+            EdgeKind::Anon(edge) => edge.propagate_glob(),
         }
     }
 }
