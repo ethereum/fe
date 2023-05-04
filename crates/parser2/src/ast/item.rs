@@ -304,6 +304,10 @@ impl Use {
     pub fn use_tree(&self) -> Option<super::UseTree> {
         support::child(self.syntax())
     }
+
+    pub fn has_sub_tree(&self) -> bool {
+        self.use_tree().map_or(false, |it| it.has_subtree())
+    }
 }
 
 ast_node! {

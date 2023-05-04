@@ -3,24 +3,9 @@ use crate::hir_def::Partial;
 use super::IdentId;
 
 #[salsa::interned]
-pub struct UseTreeId {
-    /// The base path of the use tree.
-    /// `Foo::Foo2` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`
-    ///
-    /// NOTE: If the tree root is started with `{}`, then the `path` is `None`.
+pub struct UsePathId {
     #[return_ref]
-    pub path: Vec<Partial<UsePathSegment>>,
-
-    /// The subtree of the use tree.
-    ///
-    /// `Bar::*` and `Baz::{x, y}` in `Foo::Foo2::{Bar::*, Baz::{x, y}}`.
-    #[return_ref]
-    pub subtree: Vec<UseTreeId>,
-
-    //// The alias of this use tree.
-    /// `Bar` in `Foo as Bar;`
-    #[return_ref]
-    pub alias: Option<Partial<UseAlias>>,
+    pub segments: Vec<Partial<UsePathSegment>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

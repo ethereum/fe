@@ -42,7 +42,7 @@ pub struct Jar(
     hir_def::EnumVariantListId,
     hir_def::ImplItemListId,
     hir_def::TypeId,
-    hir_def::UseTreeId,
+    hir_def::UsePathId,
     /// Accumulated diagnostics.
     ParseDiagnosticAccumulator,
     /// Private tracked functions. These are not part of the public API, and
@@ -176,6 +176,16 @@ mod test_db {
         {
             let tree = self.parse_source(text);
             tree.items_dfs().find_map(|it| it.try_into().ok()).unwrap()
+        }
+
+        pub fn expect_items<T>(&mut self, text: &str) -> Vec<T>
+        where
+            ItemKind: TryInto<T, Error = &'static str>,
+        {
+            let tree = self.parse_source(text);
+            tree.items_dfs()
+                .filter_map(|it| it.try_into().ok())
+                .collect()
         }
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {

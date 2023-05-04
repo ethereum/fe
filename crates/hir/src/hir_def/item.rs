@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     module_tree_impl, scope_graph::ScopeGraph, AttrListId, Body, FnParamListId, GenericParamListId,
-    IdentId, ModuleTree, Partial, TypeId, WhereClauseId,
+    IdentId, ModuleTree, Partial, TypeId, UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -353,7 +353,8 @@ pub struct Use {
     #[id]
     id: TrackedItemId,
 
-    pub tree: Partial<super::UseTreeId>,
+    pub path: Partial<super::UsePathId>,
+    pub alias: Option<Partial<UseAlias>>,
     pub vis: Visibility,
     pub top_mod: TopLevelMod,
 
@@ -443,7 +444,7 @@ pub enum TrackedItemId {
     Trait(Partial<IdentId>),
     ImplTrait(Partial<TraitRef>, Partial<TypeId>),
     Const(Partial<IdentId>),
-    Use(Partial<super::UseTreeId>),
+    Use(Partial<super::UsePathId>),
     Extern,
     Joined(Box<Self>, Box<Self>),
 }

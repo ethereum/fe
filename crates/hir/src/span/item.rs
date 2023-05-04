@@ -1,8 +1,15 @@
-use parser::ast;
+use parser::ast::{self, prelude::AstNode};
 
-use crate::hir_def::{
-    Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait, TypeAlias,
-    Use,
+use crate::{
+    hir_def::{
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
+        TypeAlias, Use,
+    },
+    span::{
+        transition::{LazyArg, LazyTransitionFn, ResolvedOrigin, ResolvedOriginKind},
+        use_tree::LazyUsePathSpan,
+        DesugaredOrigin, DesugaredUseFocus,
+    },
 };
 
 use super::{
@@ -10,7 +17,7 @@ use super::{
     define_lazy_span_node,
     params::{LazyFnParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     types::{LazyPathTypeSpan, LazyTypeSpan},
-    use_tree::LazyUseTreeSpan,
+    use_tree::LazyUseAliasSpan,
 };
 
 define_lazy_span_node!(LazyTopLevelModSpan, ast::Root, new(TopLevelMod),);
@@ -167,9 +174,62 @@ define_lazy_span_node!(
     new(Use),
     @node {
         (attributes, attr_list, LazyAttrListSpan),
-        (use_tree, use_tree, LazyUseTreeSpan),
     }
 );
+
+impl LazyUseSpan {
+    pub fn path(&self) -> LazyUsePathSpan {
+        fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
+            origin
+                .map(|node| {
+                    ast::Use::cast(node)
+                        .and_then(|use_| use_.use_tree())
+                        .and_then(|tree| tree.path())
+                        .map(|n| n.syntax().clone().into())
+                })
+                .map_desugared(|root, desugared| match desugared {
+                    DesugaredOrigin::Use(mut use_) => {
+                        use_.focus = DesugaredUseFocus::Path;
+                        ResolvedOriginKind::Desugared(root, DesugaredOrigin::Use(use_))
+                    }
+                    _ => ResolvedOriginKind::None,
+                })
+        }
+
+        let lazy_transition = LazyTransitionFn {
+            f,
+            arg: LazyArg::None,
+        };
+
+        LazyUsePathSpan(self.0.push_transition(lazy_transition))
+    }
+
+    pub fn alias(&self) -> LazyUseAliasSpan {
+        fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
+            origin
+                .map(|node| {
+                    ast::Use::cast(node)
+                        .and_then(|use_| use_.use_tree())
+                        .and_then(|tree| tree.alias())
+                        .map(|n| n.syntax().clone().into())
+                })
+                .map_desugared(|root, desugared| match desugared {
+                    DesugaredOrigin::Use(mut use_) => {
+                        use_.focus = DesugaredUseFocus::Alias;
+                        ResolvedOriginKind::Desugared(root, DesugaredOrigin::Use(use_))
+                    }
+                    _ => ResolvedOriginKind::None,
+                })
+        }
+
+        let lazy_transition = LazyTransitionFn {
+            f,
+            arg: LazyArg::None,
+        };
+
+        LazyUseAliasSpan(self.0.push_transition(lazy_transition))
+    }
+}
 
 define_lazy_span_node!(LazyBodySpan, ast::Expr, new(Body),);
 
@@ -394,24 +454,48 @@ mod tests {
         let mut db = TestDb::default();
 
         let text = r#"
-            use foo::bar::{baz::*, qux as Alias}
+            use foo::bar::baz::Trait as _
         "#;
 
         let use_ = db.expect_item::<Use>(text);
+
         let top_mod = use_.top_mod(db.upcast());
-        let use_tree = use_.lazy_span().use_tree();
+        let use_span = use_.lazy_span();
+        let use_path_span = use_span.path();
+        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
+        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
+        assert_eq!("Trait", db.text_at(top_mod, &use_path_span.segment(3)));
+        assert_eq!("as _", db.text_at(top_mod, &use_span.alias()));
+        assert_eq!("_", db.text_at(top_mod, &use_span.alias().name()));
+    }
 
-        assert_eq!("foo::bar", db.text_at(top_mod, &use_tree.path()));
-        let use_tree_list = use_tree.subtree();
-        let use_tree_1 = use_tree_list.tree(0);
-        let use_tree_2 = use_tree_list.tree(1);
+    #[test]
+    fn use_span_desugared() {
+        let mut db = TestDb::default();
 
-        assert_eq!("baz::*", db.text_at(top_mod, &use_tree_1.path()));
-        assert_eq!("qux", db.text_at(top_mod, &use_tree_2.path()));
-        assert_eq!("as Alias", db.text_at(top_mod, &use_tree_2.alias()));
-        assert_eq!(
-            "Alias",
-            db.text_at(top_mod, &use_tree_2.alias().alias_name())
-        );
+        let text = r#"
+            use foo::bar::{baz::*, qux as Alias}
+        "#;
+
+        let uses = db.expect_items::<Use>(text);
+        assert_eq!(uses.len(), 2);
+
+        let top_mod = uses[0].top_mod(db.upcast());
+
+        let use_span = uses[0].lazy_span();
+        let use_path_span = use_span.path();
+        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
+        assert_eq!("qux", db.text_at(top_mod, &use_path_span.segment(2)));
+        assert_eq!("as Alias", db.text_at(top_mod, &use_span.alias()));
+        assert_eq!("Alias", db.text_at(top_mod, &use_span.alias().name()));
+
+        let use_span = uses[1].lazy_span();
+        let use_path_span = use_span.path();
+        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
+        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
+        assert_eq!("*", db.text_at(top_mod, &use_path_span.segment(3)));
     }
 }

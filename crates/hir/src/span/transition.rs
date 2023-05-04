@@ -11,14 +11,15 @@ use crate::{
         Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
         TypeAlias, Use,
     },
-    lower::{map_file_to_mod_impl, top_mod_ast},
+    lower::top_mod_ast,
     SpannedHirDb,
 };
 
 use super::{
     body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
     impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
-    use_ast, AugAssignDesugared, DesugaredOrigin, HirOrigin, LazySpan,
+    use_ast, AugAssignDesugared, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan,
+    UseDesugared,
 };
 
 /// This type represents function from the hir origin to another hir origin to
@@ -88,7 +89,9 @@ impl ResolvedOrigin {
         let kind = match origin {
             HirOrigin::Raw(ptr) => ResolvedOriginKind::Node(ptr.syntax_node_ptr().to_node(&root)),
             HirOrigin::Expanded(ptr) => ResolvedOriginKind::Expanded(ptr.to_node(&root)),
-            HirOrigin::Desugared(desugared) => ResolvedOriginKind::Desugared(desugared.clone()),
+            HirOrigin::Desugared(desugared) => {
+                ResolvedOriginKind::Desugared(root, desugared.clone())
+            }
             HirOrigin::None => ResolvedOriginKind::None,
         };
 
@@ -113,13 +116,28 @@ impl ResolvedOrigin {
             kind,
         }
     }
+
+    pub(crate) fn map_desugared<F>(self, f: F) -> Self
+    where
+        F: FnOnce(SyntaxNode, DesugaredOrigin) -> ResolvedOriginKind,
+    {
+        let kind = match self.kind {
+            ResolvedOriginKind::Desugared(root, desugared) => f(root, desugared),
+            kind => kind,
+        };
+
+        ResolvedOrigin {
+            file: self.file,
+            kind,
+        }
+    }
 }
 
 pub(crate) enum ResolvedOriginKind {
     Node(SyntaxNode),
     Token(SyntaxToken),
     Expanded(SyntaxNode),
-    Desugared(DesugaredOrigin),
+    Desugared(SyntaxNode, DesugaredOrigin),
     None,
 }
 
@@ -179,7 +197,9 @@ impl LazySpan for SpanTransitionChain {
             ResolvedOriginKind::Expanded(node) => {
                 Span::new(resolved.file, node.text_range(), SpanKind::Expanded)
             }
-            ResolvedOriginKind::Desugared(desugared) => desugared.resolve(db, resolved.file),
+            ResolvedOriginKind::Desugared(root, desugared) => {
+                desugared.resolve(db, root, resolved.file)
+            }
             ResolvedOriginKind::None => Span::new(
                 resolved.file,
                 TextRange::new(0.into(), 0.into()),
@@ -333,25 +353,54 @@ macro_rules! define_lazy_span_node {
 }
 
 impl DesugaredOrigin {
-    fn resolve(self, db: &dyn SpannedHirDb, file: InputFile) -> Span {
+    fn resolve(self, _db: &dyn SpannedHirDb, root: SyntaxNode, file: InputFile) -> Span {
         let range = match self {
             Self::AugAssign(AugAssignDesugared::Stmt(ptr)) => {
-                let top_mod = map_file_to_mod_impl(db.upcast(), file);
-                let top_mod_ast = top_mod_ast(db.upcast(), top_mod);
-                ptr.syntax_node_ptr()
-                    .to_node(top_mod_ast.syntax())
-                    .text_range()
+                ptr.syntax_node_ptr().to_node(&root).text_range()
             }
-
             Self::AugAssign(AugAssignDesugared::Lhs(range)) => range,
-
             Self::AugAssign(AugAssignDesugared::Rhs(ptr)) => {
-                let top_mod = map_file_to_mod_impl(db.upcast(), file);
-                let top_mod_ast = top_mod_ast(db.upcast(), top_mod);
-                ptr.syntax_node_ptr()
-                    .to_node(top_mod_ast.syntax())
-                    .text_range()
+                ptr.syntax_node_ptr().to_node(&root).text_range()
             }
+
+            Self::Use(UseDesugared {
+                root: use_root,
+                path,
+                alias,
+                focus,
+            }) => match focus {
+                DesugaredUseFocus::Root => use_root.syntax_node_ptr().to_node(&root).text_range(),
+                DesugaredUseFocus::Path => {
+                    if let Some(first_seg) = path.first() {
+                        let last_seg = path.last().unwrap();
+                        TextRange::new(
+                            first_seg
+                                .syntax_node_ptr()
+                                .to_node(&root)
+                                .text_range()
+                                .start(),
+                            last_seg.syntax_node_ptr().to_node(&root).text_range().end(),
+                        )
+                    } else {
+                        return Span::new(
+                            file,
+                            TextRange::new(0.into(), 0.into()),
+                            SpanKind::NotFound,
+                        );
+                    }
+                }
+                DesugaredUseFocus::Alias => {
+                    if let Some(alias) = alias {
+                        alias.syntax_node_ptr().to_node(&root).text_range()
+                    } else {
+                        return Span::new(
+                            file,
+                            TextRange::new(0.into(), 0.into()),
+                            SpanKind::NotFound,
+                        );
+                    }
+                }
+            },
         };
 
         Span::new(file, range, SpanKind::Original)

@@ -26,7 +26,7 @@ impl super::Parse for UseTreeScope {
                 parser.error_and_recover("can't use `as` with `*`", None);
             }
             if parser.current_kind() == Some(SyntaxKind::AsKw) {
-                parser.parse(UseTreeRenameScope::default(), None);
+                parser.parse(UseTreeAliasScope::default(), None);
             }
             return;
         }
@@ -122,11 +122,11 @@ impl super::Parse for UsePathSegmentScope {
 }
 
 define_scope! {
-    UseTreeRenameScope,
+    UseTreeAliasScope,
     UseTreeRename,
     Inheritance
 }
-impl super::Parse for UseTreeRenameScope {
+impl super::Parse for UseTreeAliasScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::AsKw);

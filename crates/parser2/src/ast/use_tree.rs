@@ -27,9 +27,14 @@ impl UseTree {
         support::child(self.syntax())
     }
 
+    /// Returns `true` if this use tree has children tree.
+    pub fn has_subtree(&self) -> bool {
+        self.children().is_some()
+    }
+
     //// Returns the alias of this use tree.
     /// `Bar` in `Foo as Bar;`
-    pub fn alias(&self) -> Option<UseTreeAlias> {
+    pub fn alias(&self) -> Option<UseAlias> {
         support::child(self.syntax())
     }
 }
@@ -87,10 +92,10 @@ impl UsePathSegment {
 }
 
 ast_node! {
-    pub struct UseTreeAlias,
+    pub struct UseAlias,
     SK::UseTreeRename,
 }
-impl UseTreeAlias {
+impl UseAlias {
     //// Returns `Some` if the alias is specified as an ident.
     pub fn ident(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
@@ -101,7 +106,8 @@ impl UseTreeAlias {
         support::token(self.syntax(), SK::Underscore)
     }
 
-    pub fn alias_syntax(&self) -> Option<SyntaxToken> {
+    /// Returns `Some` if the alias has a name or `_`.
+    pub fn alias(&self) -> Option<SyntaxToken> {
         self.ident().or_else(|| self.underscore())
     }
 }

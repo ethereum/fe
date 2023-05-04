@@ -157,6 +157,10 @@ pub enum DesugaredOrigin {
     /// The HIR node is the result of desugaring an augmented assignment
     /// statement.
     AugAssign(AugAssignDesugared),
+
+    /// The HIR node is the result of desugaring a AST use.
+    /// In HIR lowering, nested use tree is flattened into a single use path.
+    Use(UseDesugared),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -173,6 +177,40 @@ pub enum AugAssignDesugared {
 impl AugAssignDesugared {
     pub(crate) fn stmt(ast: &ast::AugAssignStmt) -> Self {
         Self::Stmt(AstPtr::new(ast))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UseDesugared {
+    pub root: AstPtr<ast::Use>,
+    pub path: Vec<AstPtr<ast::UsePathSegment>>,
+    pub alias: Option<AstPtr<ast::UseAlias>>,
+    focus: DesugaredUseFocus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum DesugaredUseFocus {
+    Root,
+    Path,
+    Alias,
+}
+
+impl UseDesugared {
+    pub(super) fn new(ast: &ast::Use) -> Self {
+        Self {
+            root: AstPtr::new(ast),
+            path: vec![],
+            alias: None,
+            focus: DesugaredUseFocus::Root,
+        }
+    }
+
+    pub(super) fn add_alias(&mut self, alias: &ast::UseAlias) {
+        self.alias = Some(AstPtr::new(alias))
+    }
+
+    pub(super) fn push_seg(&mut self, seg: &ast::UsePathSegment) {
+        self.path.push(AstPtr::new(seg));
     }
 }
 

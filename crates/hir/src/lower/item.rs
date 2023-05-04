@@ -3,7 +3,7 @@ use parser::ast::{self, prelude::*};
 use crate::{
     hir_def::{
         item::*, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
-        UseTreeId, WhereClauseId,
+        WhereClauseId,
     },
     span::HirOrigin,
 };
@@ -399,26 +399,8 @@ impl Const {
     }
 }
 
-impl Use {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Use,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
-        let tree = UseTreeId::lower_ast_partial(ctxt, ast.use_tree());
-        let id = TrackedItemId::Use(tree).join(parent_id);
-
-        let origin = HirOrigin::raw(&ast);
-        let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
-        let use_ = Self::new(ctxt.db(), id, tree, vis, ctxt.top_mod(), origin);
-        ctxt.leave_scope(use_)
-    }
-}
-
 impl ItemModifier {
-    fn lower_ast(ast: Option<ast::ItemModifier>) -> Self {
+    pub(super) fn lower_ast(ast: Option<ast::ItemModifier>) -> Self {
         let Some(ast) = ast else {
             return Self::None;
         };
