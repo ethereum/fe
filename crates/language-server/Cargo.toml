@@ -1,0 +1,14 @@
+[package]
+name = "fe-language-server"
+version = "0.22.0"
+edition = "2021"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "An LSP language server for Fe lang"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lsp-server = "0.7.0"
+lsp-types = "0.94.0"
