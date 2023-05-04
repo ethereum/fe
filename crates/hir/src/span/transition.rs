@@ -85,7 +85,7 @@ impl ResolvedOrigin {
     where
         T: AstNode<Language = FeLang>,
     {
-        let root = top_mod_ast(db.upcast(), top_mod).syntax().clone();
+        let root = top_mod_ast(db.as_hir_db(), top_mod).syntax().clone();
         let kind = match origin {
             HirOrigin::Raw(ptr) => ResolvedOriginKind::Node(ptr.syntax_node_ptr().to_node(&root)),
             HirOrigin::Expanded(ptr) => ResolvedOriginKind::Expanded(ptr.to_node(&root)),
@@ -95,7 +95,7 @@ impl ResolvedOrigin {
             HirOrigin::None => ResolvedOriginKind::None,
         };
 
-        ResolvedOrigin::new(top_mod.file(db.upcast()), kind)
+        ResolvedOrigin::new(top_mod.file(db.as_hir_db()), kind)
     }
 
     pub(crate) fn map<F>(self, f: F) -> Self
@@ -180,14 +180,14 @@ impl SpanTransitionChain {
 }
 
 impl LazySpan for SpanTransitionChain {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
         let mut resolved = self.root.init(db);
 
         for LazyTransitionFn { f, arg } in &self.chain {
             resolved = f(resolved, *arg);
         }
 
-        match resolved.kind {
+        Some(match resolved.kind {
             ResolvedOriginKind::Node(node) => {
                 Span::new(resolved.file, node.text_range(), SpanKind::Original)
             }
@@ -200,12 +200,8 @@ impl LazySpan for SpanTransitionChain {
             ResolvedOriginKind::Desugared(root, desugared) => {
                 desugared.resolve(db, root, resolved.file)
             }
-            ResolvedOriginKind::None => Span::new(
-                resolved.file,
-                TextRange::new(0.into(), 0.into()),
-                SpanKind::NotFound,
-            ),
-        }
+            ResolvedOriginKind::None => return None,
+        })
     }
 }
 
@@ -217,8 +213,8 @@ pub(crate) trait ChainInitiator {
 
 impl ChainInitiator for TopLevelMod {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-        let file = self.file(db.upcast());
-        let ast = top_mod_ast(db.upcast(), *self);
+        let file = self.file(db.as_hir_db());
+        let ast = top_mod_ast(db.as_hir_db(), *self);
         ResolvedOrigin::new(file, ResolvedOriginKind::Node(ast.syntax().clone()))
     }
 }
@@ -228,7 +224,7 @@ macro_rules! impl_chain_root {
         $(
         impl ChainInitiator for $ty {
             fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-                let top_mod = self.top_mod(db.upcast());
+                let top_mod = self.top_mod(db.as_hir_db());
                 let origin = $fn(db, *self);
                 ResolvedOrigin::resolve(db, top_mod, origin)
             }
@@ -339,14 +335,14 @@ macro_rules! define_lazy_span_node {
 
 
         impl crate::span::LazySpan for $name {
-            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> common::diagnostics::Span {
+            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<common::diagnostics::Span> {
                 self.0.resolve(db)
             }
         }
 
         impl From<$name> for crate::span::DynLazySpan {
             fn from(val: $name) -> Self {
-                Self(val.0)
+                Self(val.0.into())
             }
         }
     };

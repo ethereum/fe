@@ -15,5 +15,5 @@ either = "1.8"
 derive_more = "0.99"
 
 hir = { path = "../hir", package = "fe-hir" }
-common = { path = "../common", package = "fe-common" }
+common = { path = "../common2", package = "fe-common2" }
 macros = { path = "../macros", package = "fe-macros" }

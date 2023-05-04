@@ -76,6 +76,15 @@ pub struct FnParam {
     pub ty: Partial<TypeId>,
 }
 
+impl FnParam {
+    pub fn name(&self) -> Option<IdentId> {
+        match self.name.to_opt()? {
+            FnParamName::Ident(name) => Some(name),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePredicate {
     pub ty: Partial<TypeId>,
@@ -91,9 +100,17 @@ pub enum FnParamLabel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FnParamName {
     /// `self` parameter.
-    Self_,
     Ident(IdentId),
     Underscore,
+}
+
+impl FnParamName {
+    pub fn as_name(&self) -> Option<IdentId> {
+        match self {
+            FnParamName::Ident(name) => Some(*name),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

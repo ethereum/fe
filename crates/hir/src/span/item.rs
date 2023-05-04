@@ -283,8 +283,6 @@ define_lazy_span_node!(
 
 #[cfg(test)]
 mod tests {
-    use common::Upcast;
-
     use crate::{
         hir_def::{Enum, Func, Mod, Struct, TypeAlias, Use},
         test_db::TestDb,
@@ -321,7 +319,7 @@ mod tests {
         "#;
 
         let mod_ = db.expect_item::<Mod>(text);
-        let top_mod = mod_.top_mod(db.upcast());
+        let top_mod = mod_.top_mod(db.as_hir_db());
         let mod_span = mod_.lazy_span();
         assert_eq!(
             r#"mod foo {
@@ -342,7 +340,7 @@ mod tests {
         "#;
 
         let fn_ = db.expect_item::<Func>(text);
-        let top_mod = fn_.top_mod(db.upcast());
+        let top_mod = fn_.top_mod(db.as_hir_db());
         let fn_span = fn_.lazy_span();
         assert_eq!("my_func", db.text_at(top_mod, &fn_span.name()));
 
@@ -393,7 +391,7 @@ mod tests {
             }"#;
 
         let struct_ = db.expect_item::<Struct>(text);
-        let top_mod = struct_.top_mod(db.upcast());
+        let top_mod = struct_.top_mod(db.as_hir_db());
         let struct_span = struct_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &struct_span.name()));
 
@@ -420,7 +418,7 @@ mod tests {
             }"#;
 
         let enum_ = db.expect_item::<Enum>(text);
-        let top_mod = enum_.top_mod(db.upcast());
+        let top_mod = enum_.top_mod(db.as_hir_db());
         let enum_span = enum_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &enum_span.name()));
 
@@ -442,7 +440,7 @@ mod tests {
         "#;
 
         let type_alias = db.expect_item::<TypeAlias>(text);
-        let top_mod = type_alias.top_mod(db.upcast());
+        let top_mod = type_alias.top_mod(db.as_hir_db());
         let type_alias_span = type_alias.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &type_alias_span.alias()));
         assert_eq!("u32", db.text_at(top_mod, &type_alias_span.ty()));
@@ -459,7 +457,7 @@ mod tests {
 
         let use_ = db.expect_item::<Use>(text);
 
-        let top_mod = use_.top_mod(db.upcast());
+        let top_mod = use_.top_mod(db.as_hir_db());
         let use_span = use_.lazy_span();
         let use_path_span = use_span.path();
         assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
@@ -481,7 +479,7 @@ mod tests {
         let uses = db.expect_items::<Use>(text);
         assert_eq!(uses.len(), 2);
 
-        let top_mod = uses[0].top_mod(db.upcast());
+        let top_mod = uses[0].top_mod(db.as_hir_db());
 
         let use_span = uses[0].lazy_span();
         let use_path_span = use_span.path();

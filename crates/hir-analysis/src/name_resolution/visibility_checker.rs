@@ -1,50 +1,43 @@
-use hir::hir_def::scope_graph::ScopeId;
+use hir::hir_def::{
+    scope_graph::{ScopeId, ScopeKind},
+    Use,
+};
 
 use crate::HirAnalysisDb;
 
-use super::name_resolver::{NameDomain, ResolvedName, ResolvedNameKind};
-
-/// Return `true` if the given `resolved` is visible from the `ref_scope`.
+/// Return `true` if the given `target_scope` is visible from the `ref_scope`.
 /// The resolved name is visible from `ref_scope` if
 /// 1. It is declared as public, or
-/// 2. The `ref_scope` is a child or the same scope of the scope where the
-///    resolved name is defined.
-pub fn check_visibility(
-    db: &dyn HirAnalysisDb,
-    ref_scope: ScopeId,
-    resolved: &ResolvedName,
-) -> bool {
-    let ResolvedNameKind::Scope{scope, .. } = resolved.kind else {
-        // If resolved is a builtin name, then it's always visible .
-        return true;
-    };
-
+/// 2. The `ref_scope` is a transitive reflexive child of the scope where the
+/// name is defined.
+pub fn is_scope_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, target_scope: ScopeId) -> bool {
     // If resolved is public, then it is visible.
-    if scope.data(db.upcast()).vis.is_pub() {
+    if target_scope.data(db.as_hir_db()).vis.is_pub() {
         return true;
     }
 
-    let Some(def_scope) = (if resolved.domain == NameDomain::Field {
+    let Some(def_scope) = (if matches!(ref_scope.kind(db.as_hir_db()), ScopeKind::Field(_)) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
-            scope.parent(db.upcast()).and_then(|scope| scope.parent(db.upcast()))
+            target_scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))
         } else {
-            scope.parent(db.upcast())
+            target_scope.parent(db.as_hir_db())
         })
     else {
         return false;
     };
 
-    // If ref scope is a child scope or the same scope of the def scope, then it is
-    // visible.
-    let mut parent = Some(ref_scope);
-    while let Some(scope) = parent {
-        if scope == def_scope {
-            return true;
-        } else {
-            parent = scope.parent(db.upcast());
-        }
+    ref_scope.is_transitive_child_of(db.as_hir_db(), def_scope)
+}
+
+/// Return `true` if the given `use_` is visible from the `ref_scope`.
+pub(super) fn is_use_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, use_: Use) -> bool {
+    let use_scope = ScopeId::from_item(db.as_hir_db(), use_.into());
+
+    if use_scope.data(db.as_hir_db()).vis.is_pub() {
+        return true;
     }
 
-    false
+    let use_def_scope = use_scope.parent(db.as_hir_db()).unwrap();
+    ref_scope.is_transitive_child_of(db.as_hir_db(), use_def_scope)
 }

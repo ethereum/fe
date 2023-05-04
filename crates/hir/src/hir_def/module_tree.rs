@@ -171,7 +171,7 @@ impl<'db> ModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_mod = map_file_to_mod_impl(self.db, self.ingot.root_file(self.db.upcast()));
+        let root_mod = map_file_to_mod_impl(self.db, self.ingot.root_file(self.db.as_input_db()));
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
@@ -182,27 +182,28 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.ingot.files(self.db.upcast()) {
+        for &file in self.ingot.files(self.db.as_input_db()) {
             let top_mod = map_file_to_mod_impl(self.db, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            self.path_map.insert(file.path(self.db.upcast()), module_id);
+            self.path_map
+                .insert(file.path(self.db.as_input_db()), module_id);
             self.mod_map.insert(top_mod, module_id);
         }
     }
 
     fn build_tree(&mut self) {
-        let root = self.ingot.root_file(self.db.upcast());
+        let root = self.ingot.root_file(self.db.as_input_db());
 
-        for &child in self.ingot.files(self.db.upcast()) {
+        for &child in self.ingot.files(self.db.as_input_db()) {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
             }
 
-            let root_path = root.path(self.db.upcast());
+            let root_path = root.path(self.db.as_input_db());
             let root_mod = map_file_to_mod_impl(self.db, root);
-            let child_path = child.path(self.db.upcast());
+            let child_path = child.path(self.db.as_input_db());
             let child_mod = map_file_to_mod_impl(self.db, child);
 
             // If the file is in the same directory as the root file, the file is a direct
@@ -227,7 +228,7 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn parent_module(&self, file: InputFile) -> Option<ModuleTreeNodeId> {
-        let file_path = file.path(self.db.upcast());
+        let file_path = file.path(self.db.as_input_db());
         let file_dir = file_path.parent()?;
         let parent_dir = file_dir.parent()?;
 

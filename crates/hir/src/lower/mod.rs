@@ -8,15 +8,15 @@ use parser::{
 
 use crate::{
     hir_def::{
-        module_tree_impl, scope_graph::ScopeGraph, IdentId, IntegerId, ItemKind, LitKind,
+        module_tree_impl, scope_graph::ScopeGraph, IdentId, IngotId, IntegerId, ItemKind, LitKind,
         ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
     },
-    HirDb, LowerHirDb, ParseDiagnostic,
+    HirDb, LowerHirDb, ParserError,
 };
 
 use self::{
     item::lower_module_items,
-    parse::{parse_file_impl, ParseDiagnosticAccumulator},
+    parse::{parse_file_impl, ParseErrorAccumulator},
     scope_builder::ScopeGraphBuilder,
 };
 
@@ -39,12 +39,12 @@ mod use_tree;
 /// any parsing or lowering.
 /// To perform the actual lowering, use `module_item_tree` function.
 pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
-    map_file_to_mod_impl(db.upcast(), file)
+    map_file_to_mod_impl(db.as_hir_db(), file)
 }
 
 /// Returns the item tree of the given top-level module.
 pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
-    scope_graph_impl(db.upcast(), top_mod)
+    scope_graph_impl(db.as_hir_db(), top_mod)
 }
 
 /// Returns the root node of the given top-level module.
@@ -52,31 +52,31 @@ pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
 pub fn parse_file_with_diag(
     db: &dyn LowerHirDb,
     top_mod: TopLevelMod,
-) -> (GreenNode, Vec<ParseDiagnostic>) {
+) -> (GreenNode, Vec<ParserError>) {
     (
-        parse_file_impl(db.upcast(), top_mod),
-        parse_file_impl::accumulated::<ParseDiagnosticAccumulator>(db.upcast(), top_mod),
+        parse_file_impl(db.as_hir_db(), top_mod),
+        parse_file_impl::accumulated::<ParseErrorAccumulator>(db.as_hir_db(), top_mod),
     )
 }
 
 /// Returns the root node of the given top-level module.
 /// If diagnostics are needed, use [`parse_file_with_diag`] instead.
 pub fn parse_file(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> GreenNode {
-    parse_file_impl(db.upcast(), top_mod)
+    parse_file_impl(db.as_hir_db(), top_mod)
 }
 
 /// Returns the ingot module tree of the given ingot.
 pub fn module_tree(db: &dyn LowerHirDb, ingot: InputIngot) -> &ModuleTree {
-    module_tree_impl(db.upcast(), ingot)
+    module_tree_impl(db.as_hir_db(), ingot)
 }
 
 #[salsa::tracked]
 pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, file: InputFile) -> TopLevelMod {
-    let path = file.path(db.upcast());
+    let path = file.path(db.as_input_db());
     let name = path.file_stem().unwrap();
     let mod_name = IdentId::new(db, name.to_string());
-    let ingot = file.ingot(db.upcast());
-    TopLevelMod::new(db, mod_name, ingot, file)
+    let ingot = file.ingot(db.as_input_db());
+    TopLevelMod::new(db, mod_name, IngotId::new(db, ingot), file)
 }
 
 #[salsa::tracked(return_ref)]

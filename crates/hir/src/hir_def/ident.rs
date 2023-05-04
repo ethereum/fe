@@ -1,6 +1,6 @@
 #[salsa::interned]
 pub struct IdentId {
-    data: String,
+    pub data: String,
 }
 impl IdentId {
     pub fn is_super(self) -> bool {

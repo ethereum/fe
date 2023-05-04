@@ -1,17 +1,16 @@
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::HirDb;
+use crate::{hir_def::GenericParamOwner, span::DynLazySpan, HirDb};
 
-use super::{IdentId, ItemKind, TopLevelMod, Use, Visibility};
+use super::{Enum, Func, IdentId, IngotId, ItemKind, Struct, TopLevelMod, Use, Visibility};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
     pub top_mod: TopLevelMod,
     pub scopes: PrimaryMap<LocalScopeId, LocalScope>,
     pub item_map: FxHashMap<ItemKind, LocalScopeId>,
-    pub unresolved_imports: FxHashMap<LocalScopeId, Vec<Use>>,
-    pub unresolved_exports: FxHashMap<LocalScopeId, Vec<Use>>,
+    pub unresolved_uses: Vec<Use>,
 }
 
 impl ScopeGraph {
@@ -78,15 +77,22 @@ pub struct LocalScope {
     pub kind: ScopeKind,
     pub edges: Vec<ScopeEdge>,
     pub parent_module: Option<ScopeId>,
+    pub parent_scope: Option<LocalScopeId>,
     pub vis: Visibility,
 }
 
 impl LocalScope {
-    pub fn new(kind: ScopeKind, parent_module: Option<ScopeId>, vis: Visibility) -> Self {
+    pub fn new(
+        kind: ScopeKind,
+        parent_module: Option<ScopeId>,
+        parent_scope: Option<LocalScopeId>,
+        vis: Visibility,
+    ) -> Self {
         Self {
             kind,
             edges: vec![],
             parent_module,
+            parent_scope,
             vis,
         }
     }
@@ -109,8 +115,8 @@ pub struct ScopeEdge {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScopeId {
-    pub top_mod: TopLevelMod,
-    pub local_id: LocalScopeId,
+    top_mod: TopLevelMod,
+    local_id: LocalScopeId,
 }
 
 impl ScopeId {
@@ -118,14 +124,67 @@ impl ScopeId {
         Self { top_mod, local_id }
     }
 
+    pub fn from_item(db: &dyn HirDb, item: ItemKind) -> Self {
+        let top_mod = item.top_mod(db);
+        let scope_graph = top_mod.scope_graph(db);
+        Self::new(top_mod, scope_graph.item_scope(item))
+    }
+
     pub fn root(top_mod: TopLevelMod) -> Self {
         Self::new(top_mod, LocalScopeId::root())
     }
 
-    pub fn data(self, db: &dyn HirDb) -> &LocalScope {
+    /// Returns the scope graph containing this scope.
+    pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
+        self.top_mod.scope_graph(db)
+    }
+
+    /// Returns the local id of the scope graph.
+    pub fn to_local(self) -> LocalScopeId {
+        self.local_id
+    }
+
+    pub fn edges(self, db: &dyn HirDb) -> &[ScopeEdge] {
+        self.scope_graph(db).edges(self.local_id)
+    }
+
+    /// Returns `true` if `scope` is reachable from `self` by following only
+    /// lexical edges.
+    pub fn is_lex_child(self, db: &dyn HirDb, parent: ScopeId) -> bool {
+        if self.top_mod != parent.top_mod {
+            return false;
+        }
+
+        let scope_graph = self.scope_graph(db);
+        self.local_id.is_lex_child(scope_graph, parent.local_id)
+    }
+
+    /// Returns true if `self` is a transitive reflexive child of `of`.
+    pub fn is_transitive_child_of(self, db: &dyn HirDb, of: ScopeId) -> bool {
+        let mut current = Some(self);
+
+        while let Some(scope) = current {
+            if scope == of {
+                return true;
+            }
+            current = scope.parent(db);
+        }
+
+        false
+    }
+
+    /// Returns the `TopLevelMod` containing the scope .
+    pub fn top_mod(self) -> TopLevelMod {
         self.top_mod
-            .module_scope_graph(db)
-            .scope_data(self.local_id)
+    }
+
+    /// Return the `IngotId` containing the scope.
+    pub fn ingot(self, db: &dyn HirDb) -> IngotId {
+        self.top_mod.ingot(db)
+    }
+
+    pub fn data(self, db: &dyn HirDb) -> &LocalScope {
+        self.top_mod.scope_graph(db).scope_data(self.local_id)
     }
 
     pub fn kind(self, db: &dyn HirDb) -> ScopeKind {
@@ -140,6 +199,14 @@ impl ScopeId {
             .map(|e| e.dest)
     }
 
+    pub fn lex_parent(self, db: &dyn HirDb) -> Option<Self> {
+        self.data(db)
+            .edges
+            .iter()
+            .find(|e| matches!(e.kind, EdgeKind::Lex(_)))
+            .map(|e| e.dest)
+    }
+
     pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
         self.data(db).parent_module
     }
@@ -150,6 +217,16 @@ impl ScopeId {
             ScopeKind::GenericParam(_) => true,
             _ => false,
         }
+    }
+
+    pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
+        let s_graph = self.top_mod.scope_graph(db);
+        self.local_id.name(db, s_graph)
+    }
+
+    pub fn name_span(self, db: &dyn HirDb) -> Option<DynLazySpan> {
+        let s_graph = self.top_mod.scope_graph(db);
+        self.local_id.name_span(s_graph)
     }
 }
 
@@ -268,6 +345,100 @@ pub struct LocalScopeId(u32);
 entity_impl!(LocalScopeId);
 
 impl LocalScopeId {
+    pub fn to_global(self, top_mod: TopLevelMod) -> ScopeId {
+        ScopeId::new(top_mod, self)
+    }
+
+    /// Returns `true` if `scope` is reachable from `self` by following only
+    /// lexical edges.
+    pub fn is_lex_child(self, s_graph: &ScopeGraph, scope: LocalScopeId) -> bool {
+        let data = self.data(s_graph);
+        match data.parent_scope {
+            Some(parent) => {
+                if parent == scope {
+                    return true;
+                }
+                parent.is_lex_child(s_graph, scope)
+            }
+            None => false,
+        }
+    }
+
+    pub fn data(self, s_graph: &ScopeGraph) -> &LocalScope {
+        &s_graph.scopes[self]
+    }
+
+    pub fn name(self, db: &dyn HirDb, s_graph: &ScopeGraph) -> Option<IdentId> {
+        match self.data(s_graph).kind {
+            ScopeKind::Item(item) => item.name(db),
+
+            ScopeKind::Variant(idx) => {
+                let parent: Enum = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                parent.variants(db).data(db)[idx].name.to_opt()
+            }
+
+            ScopeKind::Field(idx) => {
+                let parent: Struct = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                parent.fields(db).data(db)[idx].name.to_opt()
+            }
+
+            ScopeKind::FnParam(idx) => {
+                let parent: Func = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                parent.params(db).to_opt()?.data(db)[idx].name()
+            }
+
+            ScopeKind::GenericParam(idx) => {
+                let parent =
+                    GenericParamOwner::from_item_opt(self.parent_item(s_graph).unwrap()).unwrap();
+
+                let params = &parent.params(db).data(db)[idx];
+                params.name().to_opt()
+            }
+        }
+    }
+
+    pub fn name_span(self, s_graph: &ScopeGraph) -> Option<DynLazySpan> {
+        match self.data(s_graph).kind {
+            ScopeKind::Item(item) => item.name_span(),
+
+            ScopeKind::Variant(idx) => {
+                let parent: Enum = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                Some(parent.lazy_span().variants().variant(idx).name().into())
+            }
+
+            ScopeKind::Field(idx) => {
+                let parent: Struct = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                Some(parent.lazy_span().fields().field(idx).name().into())
+            }
+
+            ScopeKind::FnParam(idx) => {
+                let parent: Func = self.parent_item(s_graph).unwrap().try_into().unwrap();
+                Some(parent.lazy_span().params().param(idx).name().into())
+            }
+
+            ScopeKind::GenericParam(idx) => {
+                let parent =
+                    GenericParamOwner::from_item_opt(self.parent_item(s_graph).unwrap()).unwrap();
+
+                Some(parent.params_span().param(idx).into())
+            }
+        }
+    }
+
+    pub fn parent(self, s_graph: &ScopeGraph) -> Option<LocalScopeId> {
+        self.data(s_graph).parent_scope
+    }
+
+    pub fn parent_item(self, s_graph: &ScopeGraph) -> Option<ItemKind> {
+        match self.data(s_graph).kind {
+            ScopeKind::Item(item) => Some(item),
+            _ => {
+                let parent = self.parent(s_graph)?;
+                parent.parent_item(s_graph)
+            }
+        }
+    }
+
     pub(crate) fn root() -> Self {
         LocalScopeId(0)
     }

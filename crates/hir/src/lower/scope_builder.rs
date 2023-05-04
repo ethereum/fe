@@ -26,8 +26,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                 top_mod,
                 scopes: Default::default(),
                 item_map: Default::default(),
-                unresolved_imports: Default::default(),
-                unresolved_exports: Default::default(),
+                unresolved_uses: Default::default(),
             },
             scope_stack: Default::default(),
             module_stack: Default::default(),
@@ -66,7 +65,11 @@ impl<'db> ScopeGraphBuilder<'db> {
             debug_assert!(self.scope_stack.is_empty());
             self.add_local_edge(item_scope, item_scope, EdgeKind::self_());
 
-            self.add_global_edge(item_scope, top_mod.ingot_root(self.db), EdgeKind::ingot());
+            self.add_global_edge(
+                item_scope,
+                top_mod.ingot(self.db).root_mod(self.db),
+                EdgeKind::ingot(),
+            );
             for child in top_mod.children(self.db) {
                 let child_name = child.name(self.db);
                 let edge = EdgeKind::mod_(child_name);
@@ -92,7 +95,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                 );
                 self.add_global_edge(
                     item_scope,
-                    self.top_mod.ingot_root(self.db),
+                    self.top_mod.ingot(self.db).root_mod(self.db),
                     EdgeKind::ingot(),
                 );
                 self.add_local_edge(item_scope, item_scope, EdgeKind::self_());
@@ -195,12 +198,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             }
 
             Use(use_) => {
-                let import_map = if use_.vis(self.db).is_pub() {
-                    &mut self.graph.unresolved_exports
-                } else {
-                    &mut self.graph.unresolved_imports
-                };
-                import_map.entry(parent_scope).or_default().push(use_);
+                self.graph.unresolved_uses.push(use_);
 
                 self.add_lex_edge(item_scope, parent_scope);
                 EdgeKind::anon()
@@ -219,7 +217,12 @@ impl<'db> ScopeGraphBuilder<'db> {
 
     fn add_field_scope(&mut self, current_scope: LocalScopeId, fields: RecordFieldListId) {
         for (i, field) in fields.data(self.db).iter().enumerate() {
-            let scope = LocalScope::new(ScopeKind::Field(i), self.parent_module_id(), field.vis);
+            let scope = LocalScope::new(
+                ScopeKind::Field(i),
+                self.parent_module_id(),
+                Some(current_scope),
+                field.vis,
+            );
             let field_scope = self.graph.scopes.push(scope);
             self.add_lex_edge(field_scope, current_scope);
             let kind = field
@@ -236,6 +239,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             let scope = LocalScope::new(
                 ScopeKind::Variant(i),
                 self.parent_module_id(),
+                Some(current_scope),
                 Visibility::Public,
             );
             let variant_scope = self.graph.scopes.push(scope);
@@ -254,6 +258,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             let scope = LocalScope::new(
                 ScopeKind::FnParam(i),
                 self.parent_module_id(),
+                Some(current_scope),
                 Visibility::Private,
             );
             let generic_param_scope = self.graph.scopes.push(scope);
@@ -262,7 +267,6 @@ impl<'db> ScopeGraphBuilder<'db> {
                 .name
                 .to_opt()
                 .map(|name| match name {
-                    FnParamName::Self_ => EdgeKind::self_(),
                     FnParamName::Ident(ident) => EdgeKind::value(ident),
                     FnParamName::Underscore => EdgeKind::anon(),
                 })
@@ -276,6 +280,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             let scope = LocalScope::new(
                 ScopeKind::GenericParam(i),
                 self.parent_module_id(),
+                Some(current_scope),
                 Visibility::Private,
             );
             let generic_param_scope = self.graph.scopes.push(scope);
@@ -290,12 +295,12 @@ impl<'db> ScopeGraphBuilder<'db> {
     }
 
     fn dummy_scope(&self) -> LocalScope {
-        LocalScope {
-            kind: ScopeKind::Item(self.top_mod.into()),
-            edges: Vec::new(),
-            parent_module: self.parent_module_id(),
-            vis: Visibility::Public,
-        }
+        LocalScope::new(
+            ScopeKind::Item(self.top_mod.into()),
+            self.parent_module_id(),
+            None,
+            Visibility::Public,
+        )
     }
 
     fn parent_module_id(&self) -> Option<ScopeId> {
@@ -308,15 +313,16 @@ impl<'db> ScopeGraphBuilder<'db> {
         }
     }
 
+    fn add_lex_edge(&mut self, child: LocalScopeId, parent: LocalScopeId) {
+        self.add_local_edge(child, parent, EdgeKind::lex());
+        self.graph.scopes[child].parent_scope = Some(parent);
+    }
+
     fn add_local_edge(&mut self, source: LocalScopeId, dest: LocalScopeId, kind: EdgeKind) {
         self.graph.scopes[source].edges.push(ScopeEdge {
             dest: ScopeId::new(self.top_mod, dest),
             kind,
         });
-    }
-
-    fn add_lex_edge(&mut self, source: LocalScopeId, dest: LocalScopeId) {
-        self.add_local_edge(source, dest, EdgeKind::lex());
     }
 
     fn add_global_edge(&mut self, source: LocalScopeId, dest: TopLevelMod, kind: EdgeKind) {

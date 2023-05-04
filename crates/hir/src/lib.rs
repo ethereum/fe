@@ -1,9 +1,9 @@
-use common::{InputDb, InputIngot, Upcast};
+use common::{InputDb, InputIngot};
 use hir_def::{module_tree_impl, IdentId, TopLevelMod};
-pub use lower::parse::ParseDiagnostic;
+pub use lower::parse::ParserError;
 use lower::{
     map_file_to_mod_impl,
-    parse::{parse_file_impl, ParseDiagnosticAccumulator},
+    parse::{parse_file_impl, ParseErrorAccumulator},
     scope_graph_impl,
 };
 
@@ -14,6 +14,7 @@ pub mod span;
 
 #[salsa::jar(db = HirDb)]
 pub struct Jar(
+    hir_def::IngotId,
     // Tracked Hir items.
     hir_def::TopLevelMod,
     hir_def::Mod,
@@ -44,7 +45,7 @@ pub struct Jar(
     hir_def::TypeId,
     hir_def::UsePathId,
     /// Accumulated diagnostics.
-    ParseDiagnosticAccumulator,
+    ParseErrorAccumulator,
     /// Private tracked functions. These are not part of the public API, and
     /// thus, can't be accessed from outside of the crate without implementing
     /// [`LowerHirDb`] marker trait.
@@ -67,7 +68,7 @@ pub(crate) fn external_ingots_impl(
     ingot: InputIngot,
 ) -> Vec<(IdentId, TopLevelMod)> {
     let mut res = Vec::new();
-    for dep in ingot.external_ingots(db.upcast()) {
+    for dep in ingot.external_ingots(db.as_input_db()) {
         let name = IdentId::new(db, dep.name.to_string());
         let root = module_tree_impl(db, dep.ingot).root_data().top_mod;
         res.push((name, root))
@@ -75,22 +76,37 @@ pub(crate) fn external_ingots_impl(
     res
 }
 
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {
+pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {
     fn prefill(&self)
     where
         Self: Sized,
     {
         IdentId::prefill(self)
     }
+
+    fn as_input_db(&self) -> &dyn InputDb {
+        <Self as salsa::DbWithJar<common::Jar>>::as_jar_db::<'_>(self)
+    }
 }
-impl<DB> HirDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + InputDb + Upcast<dyn InputDb> {}
+impl<DB> HirDb for DB
+where
+    DB: ?Sized + salsa::DbWithJar<Jar> + InputDb,
+{
+    fn as_input_db(&self) -> &dyn InputDb {
+        <Self as salsa::DbWithJar<common::Jar>>::as_jar_db::<'_>(self)
+    }
+}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
 /// invalidate the cache in salsa when a revision is updated. Therefore,
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
-pub trait LowerHirDb: HirDb + Upcast<dyn HirDb> {}
+pub trait LowerHirDb: HirDb {
+    fn as_hir_db(&self) -> &dyn HirDb {
+        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
+    }
+}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -103,7 +119,11 @@ pub trait LowerHirDb: HirDb + Upcast<dyn HirDb> {}
 /// generate [CompleteDiagnostic](common::diagnostics::CompleteDiagnostic) from
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
-pub trait SpannedHirDb: HirDb + Upcast<dyn HirDb> {}
+pub trait SpannedHirDb: HirDb {
+    fn as_hir_db(&self) -> &dyn HirDb {
+        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
+    }
+}
 
 #[cfg(test)]
 mod test_db {
@@ -112,7 +132,7 @@ mod test_db {
 
     use common::{
         input::{IngotKind, Version},
-        InputFile, InputIngot, Upcast,
+        InputFile, InputIngot,
     };
 
     use crate::{
@@ -150,18 +170,12 @@ mod test_db {
             })
         }
     }
-    impl Upcast<dyn common::InputDb> for TestDb {
-        fn upcast(&self) -> &(dyn common::InputDb + 'static) {
-            self
-        }
-    }
-    impl Upcast<dyn crate::HirDb> for TestDb {
-        fn upcast(&self) -> &(dyn crate::HirDb + 'static) {
-            self
-        }
-    }
 
     impl TestDb {
+        pub fn as_hir_db(&self) -> &dyn HirDb {
+            <Self as salsa::DbWithJar<crate::Jar>>::as_jar_db::<'_>(self)
+        }
+
         pub fn parse_source(&mut self, text: &str) -> &ScopeGraph {
             let file = self.standalone_file(text);
             let top_mod = map_file_to_mod(self, file);
@@ -189,9 +203,9 @@ mod test_db {
         }
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
-            let range = span.resolve(self).range;
-            let file = top_mod.file(self.upcast());
-            let text = file.text(self.upcast());
+            let range = span.resolve(self).unwrap().range;
+            let file = top_mod.file(self.as_hir_db());
+            let text = file.text(self.as_hir_db().as_input_db());
             &text[range.start().into()..range.end().into()]
         }
 

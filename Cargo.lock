@@ -925,7 +925,7 @@ version = "0.20.0-alpha"
 dependencies = [
  "derive_more",
  "either",
- "fe-common",
+ "fe-common2",
  "fe-hir",
  "fe-macros",
  "rustc-hash",

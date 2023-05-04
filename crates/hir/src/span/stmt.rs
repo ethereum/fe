@@ -41,7 +41,7 @@ impl ChainInitiator for StmtRoot {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.stmt_map.node_to_source(self.stmt);
-        let top_mod = self.body.top_mod(db.upcast());
+        let top_mod = self.body.top_mod(db.as_hir_db());
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
@@ -49,7 +49,6 @@ impl ChainInitiator for StmtRoot {
 #[cfg(test)]
 mod tests {
     use crate::{hir_def::Body, test_db::TestDb};
-    use common::Upcast;
 
     #[test]
     fn aug_assign() {
@@ -63,8 +62,8 @@ mod tests {
         }"#;
 
         let body: Body = db.expect_item::<Body>(text);
-        let top_mod = body.top_mod(db.upcast());
-        for (i, stmt) in body.stmts(db.upcast()).keys().enumerate() {
+        let top_mod = body.top_mod(db.as_hir_db());
+        for (i, stmt) in body.stmts(db.as_hir_db()).keys().enumerate() {
             match i {
                 0 => {
                     let span = stmt.lazy_span(body);

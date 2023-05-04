@@ -1,6 +1,6 @@
 use parser::ast::{self};
 
-use crate::hir_def::{params::*, Body, IdentId, PathId, TypeId};
+use crate::hir_def::{kw, params::*, Body, IdentId, PathId, TypeId};
 
 use super::FileLowerCtxt;
 
@@ -186,7 +186,7 @@ impl FnParamName {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParamName) -> Self {
         match ast {
             ast::FnParamName::Ident(name) => FnParamName::Ident(IdentId::lower_token(ctxt, name)),
-            ast::FnParamName::SelfParam(_) => FnParamName::Self_,
+            ast::FnParamName::SelfParam(_) => FnParamName::Ident(kw::SELF),
             ast::FnParamName::Underscore(_) => FnParamName::Underscore,
         }
     }

@@ -9,21 +9,21 @@ use crate::{diagnostics::DiagnosticVoucher, hir_def::TopLevelMod, HirDb, Spanned
 #[salsa::tracked]
 pub(crate) fn parse_file_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> GreenNode {
     let file = top_mod.file(db);
-    let text = file.text(db.upcast());
+    let text = file.text(db.as_input_db());
     let (node, parse_errors) = parser::parse_source_file(text);
 
     for error in parse_errors {
-        ParseDiagnosticAccumulator::push(db, ParseDiagnostic { file, error });
+        ParseErrorAccumulator::push(db, ParserError { file, error });
     }
     node
 }
 
 #[doc(hidden)]
 #[salsa::accumulator]
-pub struct ParseDiagnosticAccumulator(ParseDiagnostic);
+pub struct ParseErrorAccumulator(ParserError);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseDiagnostic {
+pub struct ParserError {
     file: InputFile,
     error: parser::ParseError,
 }
@@ -31,7 +31,7 @@ pub struct ParseDiagnostic {
 // `ParseError` has span information, but this is not a problem because the
 // parsing procedure itself depends on the file content, and thus span
 // information.
-impl DiagnosticVoucher for ParseDiagnostic {
+impl DiagnosticVoucher for ParserError {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(AnalysisPass::Parse, 0)
     }
@@ -39,6 +39,12 @@ impl DiagnosticVoucher for ParseDiagnostic {
     fn to_complete(self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
         let span = Span::new(self.file, self.error.range, SpanKind::Original);
-        CompleteDiagnostic::new(Severity::Error, self.error.msg, span, vec![], error_code)
+        CompleteDiagnostic::new(
+            Severity::Error,
+            self.error.msg,
+            span.into(),
+            vec![],
+            error_code,
+        )
     }
 }

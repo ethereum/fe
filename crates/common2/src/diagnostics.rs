@@ -6,7 +6,7 @@ use crate::InputFile;
 pub struct CompleteDiagnostic {
     pub severity: Severity,
     pub message: String,
-    pub span: Span,
+    pub span: Option<Span>,
     pub sub_diagnostics: Vec<SubDiagnostic>,
     pub error_code: GlobalErrorCode,
 }
@@ -15,7 +15,7 @@ impl CompleteDiagnostic {
     pub fn new(
         severity: Severity,
         message: String,
-        span: Span,
+        span: Option<Span>,
         sub_diagnostics: Vec<SubDiagnostic>,
         error_code: GlobalErrorCode,
     ) -> Self {
@@ -45,7 +45,17 @@ impl GlobalErrorCode {
 pub struct SubDiagnostic {
     pub severity: Severity,
     pub message: String,
-    pub span: Span,
+    pub span: Option<Span>,
+}
+
+impl SubDiagnostic {
+    pub fn new(severity: Severity, message: String, span: Option<Span>) -> Self {
+        Self {
+            severity,
+            message,
+            span,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -93,7 +103,10 @@ pub enum Severity {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnalysisPass {
     Parse = 1,
+
+    ImportResolution,
     NameResolution,
+
     TyCheck,
 
     ExternalAnalysis(ExternalAnalysisKey) = u16::MAX,

@@ -82,7 +82,7 @@ impl ChainInitiator for PatRoot {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.pat_map.node_to_source(self.pat);
-        let top_mod = self.body.top_mod(db.upcast());
+        let top_mod = self.body.top_mod(db.as_hir_db());
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }

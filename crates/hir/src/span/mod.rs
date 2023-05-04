@@ -31,10 +31,19 @@ mod transition;
 /// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to
 /// a lot of difficulties in salsa integration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynLazySpan(SpanTransitionChain);
+pub struct DynLazySpan(Option<SpanTransitionChain>);
+impl DynLazySpan {
+    pub fn invalid_span() -> Self {
+        Self(None)
+    }
+}
 impl LazySpan for DynLazySpan {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
-        self.0.resolve(db)
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
+        if let Some(chain) = &self.0 {
+            chain.resolve(db)
+        } else {
+            None
+        }
     }
 }
 
@@ -42,63 +51,63 @@ impl LazySpan for DynLazySpan {
 /// types which don't have a span information directly, but can be resolved into
 /// a span lazily.
 pub trait LazySpan {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span;
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span>;
 }
 
 pub fn toplevel_ast(db: &dyn SpannedHirDb, item: TopLevelMod) -> HirOrigin<ast::Root> {
-    HirOrigin::raw(&top_mod_ast(db.upcast(), item))
+    HirOrigin::raw(&top_mod_ast(db.as_hir_db(), item))
 }
 
 pub fn mod_ast(db: &dyn SpannedHirDb, item: Mod) -> &HirOrigin<ast::Mod> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Fn> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn struct_ast(db: &dyn SpannedHirDb, item: Struct) -> &HirOrigin<ast::Struct> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn contract_ast(db: &dyn SpannedHirDb, item: Contract) -> &HirOrigin<ast::Contract> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn enum_ast(db: &dyn SpannedHirDb, item: Enum) -> &HirOrigin<ast::Enum> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn type_alias_ast(db: &dyn SpannedHirDb, item: TypeAlias) -> &HirOrigin<ast::TypeAlias> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn impl_ast(db: &dyn SpannedHirDb, item: Impl) -> &HirOrigin<ast::Impl> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn trait_ast(db: &dyn SpannedHirDb, item: Trait) -> &HirOrigin<ast::Trait> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn impl_trait_ast(db: &dyn SpannedHirDb, item: ImplTrait) -> &HirOrigin<ast::ImplTrait> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn const_ast(db: &dyn SpannedHirDb, item: Const) -> &HirOrigin<ast::Const> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn use_ast(db: &dyn SpannedHirDb, item: Use) -> &HirOrigin<ast::Use> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn body_ast(db: &dyn SpannedHirDb, item: Body) -> &HirOrigin<ast::Expr> {
-    item.origin(db.upcast())
+    item.origin(db.as_hir_db())
 }
 
 pub fn body_source_map(db: &dyn SpannedHirDb, item: Body) -> &crate::hir_def::BodySourceMap {
-    item.source_map(db.upcast())
+    item.source_map(db.as_hir_db())
 }
 
 /// This enum represents the origin of the HIR node in a file.
