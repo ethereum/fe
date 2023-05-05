@@ -12,6 +12,7 @@ contract Foo {
 unsafe fn test_foo() {
     let mut ctx: Context = Context()
     let foo: Foo = Foo.create(ctx, 0)
+    // todo: make non-zero
     assert foo.my_balance(ctx) == 0
     assert foo.other_balance(ctx, someone: ctx.self_address()) == 0
 }
