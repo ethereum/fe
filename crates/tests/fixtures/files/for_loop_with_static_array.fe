@@ -1,0 +1,12 @@
+#test
+fn test_for_loop_with_static_array() {
+    let mut my_array: Array<u256, 3> = [0; 3]
+    my_array[0] = 5
+    my_array[1] = 10
+    my_array[2] = 15
+    let mut sum: u256 = 0
+    for i in my_array {
+        sum = sum + i
+    }
+    assert sum == 30
+}

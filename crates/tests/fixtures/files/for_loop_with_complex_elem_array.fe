@@ -1,16 +1,3 @@
-contract Foo {
-    pub fn bar() -> i256 {
-        let my_array: Array<Pair, 3> = [Pair::new(-1, 1), Pair::new(10, -10), Pair::new(-100, 100)]
-
-        let mut sum: i256 = 0
-        for pair in my_array {
-            sum += pair.l1_norm()
-        }
-
-        return sum
-    }
-}
-
 struct Pair {
     pub x: i256
     pub y: i256
@@ -30,4 +17,16 @@ fn abs(_ val: i256) -> i256 {
     } else {
         return val
     }
+}
+
+#test
+fn test_loop() {
+    let my_array: Array<Pair, 3> = [Pair::new(-1, 1), Pair::new(10, -10), Pair::new(-100, 100)]
+
+    let mut sum: i256 = 0
+    for pair in my_array {
+        sum += pair.l1_norm()
+    }
+
+    assert sum == 222
 }
