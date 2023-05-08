@@ -1,0 +1,11 @@
+contract Foo {
+    pub fn bar(self, ctx: Context) -> u256 {
+        return ctx.block_number()
+    }
+}
+
+#test
+fn test_foo(mut ctx: Context) {
+    let foo: Foo = Foo.create(ctx, 0)
+    assert foo.bar(ctx) == 0
+}
