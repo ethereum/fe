@@ -1,0 +1,10 @@
+#test
+fn test_loop_with_break() {
+    let mut val: u256 = 0
+    while val < 2 {
+        val = val + 1
+        break
+    }
+
+    assert val == 1
+}

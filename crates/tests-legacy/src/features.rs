@@ -251,11 +251,6 @@ test_method_return! { for_loop_with_static_array, "for_loop_with_static_array.fe
 test_method_return! { for_loop_with_static_array_from_sto, "for_loop_with_static_array_from_sto.fe", &[], uint_token(6) }
 test_method_return! { for_loop_with_break, "for_loop_with_break.fe", &[], uint_token(15) }
 test_method_return! { for_loop_with_continue, "for_loop_with_continue.fe", &[], uint_token(17) }
-test_method_return! { while_loop_with_continue, "while_loop_with_continue.fe", &[], uint_token(1) }
-test_method_return! { while_loop, "while_loop.fe", &[], uint_token(3) }
-test_method_return! { while_loop_test_from_sto, "while_loop_test_from_sto.fe", &[], uint_token(42) }
-test_method_return! { while_loop_with_break, "while_loop_with_break.fe", &[], uint_token(1) }
-test_method_return! { while_loop_with_break_2, "while_loop_with_break_2.fe", &[], uint_token(1) }
 test_method_return! { if_statement_a, "if_statement.fe", &[uint_token(6)], uint_token(1) }
 test_method_return! { if_statement_b, "if_statement.fe", &[uint_token(4)], uint_token(0) }
 test_method_return! { if_statement_test_from_sto, "if_statement_test_from_sto.fe", &[], uint_token(42) }
