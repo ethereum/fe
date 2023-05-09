@@ -1,3 +1,8 @@
+mod server;
+mod state;
+
+use server::run_server;
+
 fn main() {
-    println!("Hello, world!");
+    let _ = run_server();
 }
