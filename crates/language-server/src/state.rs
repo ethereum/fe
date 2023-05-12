@@ -34,7 +34,6 @@ impl ServerState {
     }
     
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
-        // unimplemented!()
         Ok(())
     }
 }
