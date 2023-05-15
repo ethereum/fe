@@ -9,7 +9,7 @@ import {
 import { join } from 'path';
 
 vscode.commands.registerCommand('fe-analyzer.helloWorld', () => {
-    vscode.window.showInformationMessage('Hello World from fe-language-server!');
+    vscode.window.showInformationMessage('Hello World from fe-analyzer extension!');
 });
 
 let client: LanguageClient;
@@ -18,7 +18,7 @@ export async function activate(
   context: vscode.ExtensionContext
 ): Promise<void> {
   // todo: bundle binary with extension  
-  const serverPath = join(__dirname, '..', '..', '..', '..', '..', 'target', 'debug', 'fe-language-server')
+  const serverPath = join(__dirname, '..', '..', '..', '..', '..', 'target', 'debug', 'fe-language-server');
 
   const serverExecutable: Executable = {
     command: serverPath,

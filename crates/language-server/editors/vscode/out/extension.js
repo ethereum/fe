@@ -5,7 +5,7 @@ const vscode = require("vscode");
 const node_1 = require("vscode-languageclient/node");
 const path_1 = require("path");
 vscode.commands.registerCommand('fe-analyzer.helloWorld', () => {
-    vscode.window.showInformationMessage('Hello World from fe-language-server!');
+    vscode.window.showInformationMessage('Hello World from fe-analyzer extension!');
 });
 let client;
 async function activate(context) {
