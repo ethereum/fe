@@ -1,7 +1,8 @@
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
-use lsp_server::Message;
-use lsp_types::{notification::Notification};
+use lsp_server::{Message, Response};
+use lsp_types::{notification::Notification, request::Request};
+use serde::Deserialize;
 
 pub struct ServerState {
     sender: Sender<Message>,
@@ -34,6 +35,27 @@ impl ServerState {
     }
     
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
+        // handle hover request
+        if let lsp_server::Message::Request(req) = msg {
+            if req.method == lsp_types::request::HoverRequest::METHOD {
+                let params = lsp_types::HoverParams::deserialize(req.params)?;
+                // for now let's just return "hi"
+                
+                let result = lsp_types::Hover {
+                    contents: lsp_types::HoverContents::Scalar(lsp_types::MarkedString::String(String::from("hi"))),
+                    range: None,
+                };
+
+                let response_message = lsp_server::Message::Response(Response {
+                    id: req.id,
+                    result: Some(serde_json::to_value(result)?),
+                    error: None,
+                });
+
+                self.sender.send(response_message)?;
+            }
+        }
+
         Ok(())
     }
 }
