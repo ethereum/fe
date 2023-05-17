@@ -14,7 +14,6 @@ pub fn run_server() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();
 
     let (request_id, initialize_params) = connection.initialize_start()?;
-    //
     // todo: actually use initialization params
 
     let capabilities = server_capabilities();
@@ -52,7 +51,8 @@ pub fn run_server() -> Result<()> {
         })
     )?;
 
+    let result = ServerState::new(connection.sender).run(connection.receiver);
     io_threads.join().unwrap();
-
-    ServerState::new(connection.sender).run(connection.receiver)
+    
+    result
 }

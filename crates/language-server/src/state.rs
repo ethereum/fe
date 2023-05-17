@@ -24,6 +24,11 @@ impl ServerState {
             }
 
             self.handle_message(msg)?;
+            
+            // debugging spam
+            // if (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1) == 0 {
+            //     self.log_info(String::from("hi"))?;
+            // }
         }
         Ok(())
     }
@@ -35,17 +40,20 @@ impl ServerState {
     }
     
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
+        // log the message with `self.log_info`
+        self.log_info(format!("MESSAGE: {:?}", msg))?;
+
         if let lsp_server::Message::Request(req) = msg {
             // log the request to the console
-            println!("request: {:?}", req);
 
             // handle hover request
             if req.method == lsp_types::request::HoverRequest::METHOD {
+                // log the hover request to the console
                 let params = lsp_types::HoverParams::deserialize(req.params)?;
                 // for now let's just return "hi"
                 
                 let result = lsp_types::Hover {
-                    contents: lsp_types::HoverContents::Scalar(lsp_types::MarkedString::String(String::from("hi"))),
+                    contents: lsp_types::HoverContents::Scalar(lsp_types::MarkedString::String(format!("{:?}", params))),
                     range: None,
                 };
 
@@ -59,6 +67,19 @@ impl ServerState {
             }
         }
 
+        Ok(())
+    }
+    
+    fn log_info(&mut self, message: String) -> Result<()> {
+        self.sender.send(
+            lsp_server::Message::Notification(lsp_server::Notification {
+                method: String::from("window/logMessage"),
+                params: serde_json::to_value(lsp_types::LogMessageParams {
+                    typ: lsp_types::MessageType::INFO,
+                    message: message,
+                }).unwrap()
+            })
+        )?;
         Ok(())
     }
 }
