@@ -7,6 +7,7 @@ import {
 } from "vscode-languageclient/node";
 
 import { join } from 'path';
+import { clientLog, serverOutputChannel } from "./log";
 
 vscode.commands.registerCommand('fe-analyzer.helloWorld', () => {
     vscode.window.showInformationMessage('Hello World from fe-analyzer extension!');
@@ -30,7 +31,10 @@ export async function activate(
   };
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "Fe" }],
+    documentSelector: [{ scheme: "file", language: "fe" }],
+    traceOutputChannel: serverOutputChannel,
+    // @ts-ignore
+    outputChannel: clientLog.output,
   };
 
   client = new LanguageClient(
@@ -41,7 +45,9 @@ export async function activate(
   );
 
   // Start the client. This will also launch the server
-  client.start();
+  await client.start();
+  
+  // console log all messages from the server
 }
 
 export function deactivate(): Thenable<void> | undefined {

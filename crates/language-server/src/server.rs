@@ -1,6 +1,6 @@
 use super::state::ServerState;
 use anyhow::Result;
-use lsp_server::Connection;
+use lsp_server::{Connection, Notification};
 use lsp_types::{ServerCapabilities, HoverProviderCapability};
 
 fn server_capabilities() -> ServerCapabilities {
@@ -30,6 +30,27 @@ pub fn run_server() -> Result<()> {
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
 
     connection.initialize_finish(request_id, initialize_result)?;
+    // send a "hello" message to the client
+    connection.sender.send(
+        lsp_server::Message::Notification(Notification {
+            method: String::from("window/showMessage"),
+            params: serde_json::to_value(lsp_types::ShowMessageParams {
+                typ: lsp_types::MessageType::INFO,
+                message: String::from("hello from the Fe language server"),
+            }).unwrap()
+        })
+    )?;
+    
+    // log a startup message
+    connection.sender.send(
+        lsp_server::Message::Notification(Notification {
+            method: String::from("window/logMessage"),
+            params: serde_json::to_value(lsp_types::LogMessageParams {
+                typ: lsp_types::MessageType::INFO,
+                message: String::from("Fe language server started"),
+            }).unwrap()
+        })
+    )?;
 
     io_threads.join().unwrap();
 

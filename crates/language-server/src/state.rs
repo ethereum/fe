@@ -35,8 +35,11 @@ impl ServerState {
     }
     
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
-        // handle hover request
         if let lsp_server::Message::Request(req) = msg {
+            // log the request to the console
+            println!("request: {:?}", req);
+
+            // handle hover request
             if req.method == lsp_types::request::HoverRequest::METHOD {
                 let params = lsp_types::HoverParams::deserialize(req.params)?;
                 // for now let's just return "hi"

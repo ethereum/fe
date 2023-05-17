@@ -6,6 +6,7 @@ logs
 # dist
 *.tsbuildinfo
 node_modules/
+out/
 
 # Optional npm cache directory
 .npm
