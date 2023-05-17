@@ -1,3 +1,5 @@
+use std::io::BufRead;
+
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
 use lsp_server::{Message, Response};
@@ -10,11 +12,9 @@ pub struct ServerState {
 
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
-        ServerState {
-           sender 
-        }
+        ServerState { sender }
     }
-    
+
     pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
         while let Some(msg) = self.next_message(&receiver) {
             if let lsp_server::Message::Notification(notification) = &msg {
@@ -24,7 +24,7 @@ impl ServerState {
             }
 
             self.handle_message(msg)?;
-            
+
             // debugging spam
             // if (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1) == 0 {
             //     self.log_info(String::from("hi"))?;
@@ -32,13 +32,13 @@ impl ServerState {
         }
         Ok(())
     }
-    
+
     fn next_message(&self, receiver: &Receiver<Message>) -> Option<Message> {
         crossbeam_channel::select! {
             recv(receiver) -> msg => msg.ok()
         }
     }
-    
+
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
         // log the message with `self.log_info`
         self.log_info(format!("MESSAGE: {:?}", msg))?;
@@ -50,10 +50,29 @@ impl ServerState {
             if req.method == lsp_types::request::HoverRequest::METHOD {
                 // log the hover request to the console
                 let params = lsp_types::HoverParams::deserialize(req.params)?;
-                // for now let's just return "hi"
-                
+
+                // open the file and read the line at the given position
+                let file = std::fs::File::open(
+                    &params
+                        .text_document_position_params
+                        .text_document
+                        .uri
+                        .path(),
+                )?;
+                let reader = std::io::BufReader::new(file);
+                let line = reader
+                    .lines()
+                    .nth(params.text_document_position_params.position.line as usize)
+                    .unwrap()
+                    .unwrap();
+
                 let result = lsp_types::Hover {
-                    contents: lsp_types::HoverContents::Scalar(lsp_types::MarkedString::String(format!("{:?}", params))),
+                    contents: lsp_types::HoverContents::Markup(
+                        lsp_types::MarkupContent::from(lsp_types::MarkupContent {
+                            kind: lsp_types::MarkupKind::Markdown,
+                            value: format!("### Hovering over:\n```{}```\n\n{}", &line, serde_json::to_string_pretty(&params).unwrap()),
+                        }),
+                    ),
                     range: None,
                 };
 
@@ -69,17 +88,18 @@ impl ServerState {
 
         Ok(())
     }
-    
+
     fn log_info(&mut self, message: String) -> Result<()> {
-        self.sender.send(
-            lsp_server::Message::Notification(lsp_server::Notification {
+        self.sender.send(lsp_server::Message::Notification(
+            lsp_server::Notification {
                 method: String::from("window/logMessage"),
                 params: serde_json::to_value(lsp_types::LogMessageParams {
                     typ: lsp_types::MessageType::INFO,
                     message: message,
-                }).unwrap()
-            })
-        )?;
+                })
+                .unwrap(),
+            },
+        ))?;
         Ok(())
     }
 }
