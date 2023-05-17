@@ -570,7 +570,6 @@ pub fn type_desc(
             if let Some(val) = self_type {
                 Ok(Type::SelfType(val).id(context.db()))
             } else {
-                dbg!("Reporting error");
                 Err(TypeError::new(context.error(
                     "`Self` can not be used here",
                     desc.span,

@@ -37,7 +37,7 @@ pub fn compile_single_contract(
         .replace("{src}", yul_src);
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)
-        .map_err(|_| YulcError("JSON serialization error".into()))?;
+        .map_err(|e| YulcError(format!("JSON serialization error: {e}")))?;
 
     let bytecode = output["contracts"]["input.yul"][name]["evm"]["bytecode"]["object"]
         .to_string()
@@ -90,7 +90,9 @@ fn test_solc_sanity() {
         .to_string()
         .replace('"', "");
 
-    // solc 0.8.4: push1 0; push1 0; sstore  "6000600055"
-    // solc 0.8.7: push1 0; dup1;    sstore  "60008055"
-    assert_eq!(bytecode, "60008055", "incorrect bytecode",);
+    // solc 0.8.4: push1 0; push1 0; sstore     "6000600055"
+    // solc 0.8.7: push1 0; dup1; sstore        "60008055"
+    // solc 0.8.20:  push0; dup1; sstore        "5f8055"
+    // solc 0.8.22:  push0; dup1; sstore; stop  "5f805500"
+    assert_eq!(bytecode, "5f805500", "incorrect bytecode",);
 }

@@ -11,9 +11,9 @@ struct DualHarness {
 }
 
 struct CaptureResult<'a> {
-    fe_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    fe_capture: (evm::ExitReason, Vec<u8>),
     fe_used_gas: u64,
-    solidity_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    solidity_capture: (evm::ExitReason, Vec<u8>),
     solidity_used_gas: u64,
     name: &'a str,
     input: &'a [ethabi::Token],
@@ -38,15 +38,12 @@ impl<'a> CaptureResult<'a> {
     }
 
     pub fn assert_return_data_equal(&self) -> &Self {
-        if let (evm::Capture::Exit((_, fe_data)), evm::Capture::Exit((_, sol_data))) =
-            (&self.fe_capture, &self.solidity_capture)
-        {
-            assert_eq!(
-                fe_data, sol_data,
-                "Called {} with input: {:?}",
-                self.name, self.input
-            )
-        }
+        let ((_, fe_data), (_, sol_data)) = (&self.fe_capture, &self.solidity_capture);
+        assert_eq!(
+            fe_data, sol_data,
+            "Called {} with input: {:?}",
+            self.name, self.input
+        );
         self
     }
 
@@ -55,8 +52,8 @@ impl<'a> CaptureResult<'a> {
         if !matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
             (
-                evm::Capture::Exit((evm::ExitReason::Revert(_), _)),
-                evm::Capture::Exit((evm::ExitReason::Revert(_), _))
+                (evm::ExitReason::Revert(_), _),
+                (evm::ExitReason::Revert(_), _)
             )
         ) {
             panic!(
@@ -87,8 +84,8 @@ impl<'a> CaptureResult<'a> {
         if !matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
             (
-                evm::Capture::Exit((evm::ExitReason::Succeed(_), _)),
-                evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+                (evm::ExitReason::Succeed(_), _),
+                (evm::ExitReason::Succeed(_), _)
             )
         ) {
             panic!(
@@ -103,8 +100,8 @@ impl<'a> CaptureResult<'a> {
         matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
             (
-                evm::Capture::Exit((evm::ExitReason::Succeed(_), _)),
-                evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+                (evm::ExitReason::Succeed(_), _),
+                (evm::ExitReason::Succeed(_), _)
             )
         )
     }
@@ -113,8 +110,8 @@ impl<'a> CaptureResult<'a> {
         matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
             (
-                evm::Capture::Exit((evm::ExitReason::Revert(_), _)),
-                evm::Capture::Exit((evm::ExitReason::Revert(_), _))
+                (evm::ExitReason::Revert(_), _),
+                (evm::ExitReason::Revert(_), _)
             )
         )
     }

@@ -15,4 +15,4 @@ indexmap = "1.6.2"
 
 # used by revm; we need to force the js feature for wasm support
 getrandom = { version = "0.2.8", features = ["js"] }
-revm = "3.0"
+revm = "3.3"

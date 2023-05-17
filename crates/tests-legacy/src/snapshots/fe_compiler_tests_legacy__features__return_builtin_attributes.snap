@@ -2,14 +2,14 @@
 source: crates/tests-legacy/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
-base_fee([]) used 122 gas
-coinbase([]) used 144 gas
-prevrandao([]) used 166 gas
-number([]) used 188 gas
-timestamp([]) used 210 gas
-chainid([]) used 232 gas
-sender([]) used 254 gas
-value([]) used 276 gas
-origin([]) used 298 gas
-gas_price([]) used 317 gas
+base_fee([]) used 121 gas
+coinbase([]) used 143 gas
+prevrandao([]) used 165 gas
+number([]) used 187 gas
+timestamp([]) used 209 gas
+chainid([]) used 231 gas
+sender([]) used 253 gas
+value([]) used 275 gas
+origin([]) used 297 gas
+gas_price([]) used 316 gas
 

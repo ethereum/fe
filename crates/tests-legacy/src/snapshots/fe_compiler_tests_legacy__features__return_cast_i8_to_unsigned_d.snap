@@ -2,5 +2,5 @@
 source: crates/tests-legacy/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
-bar([Int(127)]) used 202 gas
+bar([Int(127)]) used 201 gas
 
