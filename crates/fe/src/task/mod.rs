@@ -2,6 +2,8 @@ mod build;
 mod check;
 mod new;
 #[cfg(feature = "solc-backend")]
+mod prove;
+#[cfg(feature = "solc-backend")]
 mod test;
 mod utils;
 
@@ -9,6 +11,8 @@ pub use build::{build, BuildArgs};
 pub use check::{check, CheckArgs};
 use clap::Subcommand;
 pub use new::{create_new_project, NewProjectArgs};
+#[cfg(feature = "solc-backend")]
+pub use prove::{prove, ProveArgs};
 #[cfg(feature = "solc-backend")]
 pub use test::{test, TestArgs};
 
@@ -19,4 +23,6 @@ pub enum Commands {
     New(NewProjectArgs),
     #[cfg(feature = "solc-backend")]
     Test(TestArgs),
+    #[cfg(feature = "solc-backend")]
+    Prove(ProveArgs),
 }

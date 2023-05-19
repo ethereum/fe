@@ -1,0 +1,18 @@
+[package]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
+description = "proof backend for Fe defintions"
+edition = "2021"
+keywords = ["fe", "kevm"]
+license = "GPL-3.0-or-later"
+name = "kevm-proof-service"
+repository = "https://github.com/ethereum/fe"
+version = "0.23.0"
+
+[dependencies]
+fe-proof-service = {path = "../proof-service", version = "^0.23.0"}
+kevm = {path = "../kevm", version = "^0.23.0"}
+smol_str = "0.1.21"
+serde_yaml = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+indexmap = { version="1.6.2", features = ["serde"] }

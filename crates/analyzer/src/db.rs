@@ -110,6 +110,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn module_submodules(&self, module: ModuleId) -> Rc<[ModuleId]>;
     #[salsa::invoke(queries::module::module_tests)]
     fn module_tests(&self, module: ModuleId) -> Vec<FunctionId>;
+    #[salsa::invoke(queries::module::module_invariants)]
+    fn module_invariants(&self, module: ModuleId) -> Vec<FunctionId>;
 
     // Module Constant
     #[salsa::cycle(queries::module::module_constant_type_cycle)]

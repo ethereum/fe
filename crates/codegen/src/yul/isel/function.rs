@@ -668,7 +668,8 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
         debug_assert!(to.is_primitive(self.db.upcast()));
 
         let value = self.value_expr(value);
-        self.ctx.runtime.primitive_cast(self.db, value, from_ty)
+        // self.ctx.runtime.primitive_cast(self.db, value, from_ty)
+        value
     }
 
     fn assign_inst_result(&mut self, inst: InstId, rhs: yul::Expression, rhs_ty: TypeId) {

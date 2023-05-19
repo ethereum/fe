@@ -30,5 +30,9 @@ fn main() {
         Commands::Test(arg) => {
             task::test(arg);
         }
+        #[cfg(feature = "solc-backend")]
+        Commands::Prove(arg) => {
+            task::prove(arg);
+        }
     }
 }

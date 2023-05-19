@@ -22,7 +22,21 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
         .map(yul::Statement::FunctionDefinition)
         .collect();
     let test_func_name = identifier! { (db.codegen_function_symbol_name(test)) };
-    let call = function_call_statement! {[test_func_name]()};
+    let call_args = test
+        .signature(db.upcast())
+        .params
+        .iter()
+        .enumerate()
+        .filter_map(|(n, param)| {
+            if param.name == "ctx" {
+                None
+            } else {
+                let value = literal_expression! { (n * 32) };
+                Some(expression! { calldataload([value]) })
+            }
+        })
+        .collect::<Vec<_>>();
+    let call = function_call_statement! {[test_func_name]([call_args...])};
 
     let code = code! {
         [dep_functions...]

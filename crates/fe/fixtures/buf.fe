@@ -1,0 +1,79 @@
+use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+use std::spec
+
+#invariant
+fn rw_u8(a: u8, b: u8) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 16)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u8(value: a)
+    writer.write_u8(value: b)
+
+    spec::assert_eq(reader.read_u8(), a)
+    spec::assert_eq(reader.read_u8(), b)
+}
+
+#invariant
+fn rw_single_u8(a: u8) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 1)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u8(value: a)
+    spec::assert_eq(reader.read_u8(), a)
+}
+
+#invariant
+fn rw_single_u16(a: u16) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 2)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u16(value: a)
+    spec::assert_eq(reader.read_u16(), a)
+}
+
+#invariant
+fn rw_u16(a: u16, b: u16) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 4)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u16(value: a)
+    writer.write_u16(value: b)
+
+    spec::assert_eq(reader.read_u16(), a)
+    spec::assert_eq(reader.read_u16(), b)
+}
+
+
+#invariant
+fn rw_u256(a: u256, b: u256) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 64)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u256(value: a)
+    writer.write_u256(value: b)
+
+    spec::assert_eq(reader.read_u256(), a)
+    spec::assert_eq(reader.read_u256(), b)
+}
+
+#invariant
+fn rw_mix(a: u256, b: u8, c: u128, d: u128) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 64)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write_u256(value: a)
+    writer.write_u8(value: b)
+    writer.write_u128(value: c)
+    writer.write_u128(value: d)
+
+    spec::assert_eq(reader.read_u256(), a)
+    spec::assert_eq(reader.read_u8(), b)
+    spec::assert_eq(reader.read_u128(), c)
+    spec::assert_eq(reader.read_u128(), d)
+}

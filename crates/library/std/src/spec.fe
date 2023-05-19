@@ -1,0 +1,85 @@
+use ingot::evm
+
+fn valid() {
+    unsafe { 
+        evm::return_mem(offset: 0, len: 0) 
+    }
+}
+
+fn invalid() {
+    unsafe { 
+        evm::revert_mem(offset: 0, len: 0) 
+    }
+}
+
+pub fn given_eq(_ a: u256, _ b: u256) {
+    if evm::eq(a, b) == 0 {
+        valid()
+    }
+}
+
+pub fn given_ne(_ a: u256, _ b: u256) {
+    if evm::eq(a, b) == 1 {
+        valid()
+    }
+}
+
+pub fn given_lte(_ a: u256, _ b: u256) {
+    if evm::gt(a, b) == 1 {
+        valid()
+    }
+}
+
+pub fn given_gte(_ a: u256, _ b: u256) {
+    if evm::lt(a, b) == 1 {
+        valid()
+    }
+}
+
+pub fn given_true(_ a: bool) {
+    if not a {
+        valid()
+    }
+}
+
+pub fn given_false(_ a: bool) {
+    if a {
+        valid()
+    }
+}
+
+pub fn assert_eq(_ a: u256, _ b: u256) {
+    if evm::eq(a, b) == 0 {
+        invalid()
+    }
+}
+
+pub fn assert_ne(_ a: u256, _ b: u256) {
+    if evm::eq(a, b) == 1 {
+        invalid()
+    }
+}
+
+pub fn assert_lte(_ a: u256, _ b: u256) {
+    if evm::gt(a, b) == 1 {
+        invalid()
+    }
+}
+
+pub fn assert_gte(_ a: u256, _ b: u256) {
+    if evm::lt(a, b) == 1 {
+        invalid()
+    }
+}
+
+pub fn assert_true(_ a: bool) {
+    if not a {
+        invalid()
+    }
+}
+
+pub fn assert_false(_ a: bool) {
+    if a {
+        invalid()
+    }
+}

@@ -1,0 +1,30 @@
+use std::evm
+
+contract StoreU256:
+    my_u256: u256
+
+    pub fn __call__(self):
+        unsafe:
+            evm::mstore(offset: 0, value: self.my_u256)
+            evm::return_mem(offset: 0, len: 32)
+
+
+contract StoreSolMap:
+    pub fn __call__():
+        unsafe:
+            let key: u256 = evm::call_data_load(offset: 0)
+            evm::mstore(offset: 0, value: key)
+            evm::mstore(offset: 32, value: 0)
+            let slot: u256 = evm::keccak256_mem(offset: 0, len: 64)
+            let value: u256 = evm::sload(offset: slot)
+            evm::mstore(offset: 0, value)
+            evm::return_mem(offset: 0, len: 32)
+
+contract StoreFeMap:
+    my_map: Map<u256, u256>
+
+    pub fn __call__(self):
+        unsafe:
+            let key: u256 = evm::call_data_load(offset: 0)
+            evm::mstore(offset: 0, value: self.my_map[key])
+            evm::return_mem(offset: 0, len: 32)
