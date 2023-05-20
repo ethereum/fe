@@ -8,6 +8,8 @@ use hir::{
     HirDb,
 };
 
+use crate::HirAnalysisDb;
+
 use super::name_resolver::NameRes;
 
 #[salsa::accumulator]
@@ -32,8 +34,10 @@ impl ImportError {
         Self::new(span, ImportErrorKind::NotFound(ident))
     }
 
-    pub fn invisible(span: DynLazySpan, resolved: NameRes) -> Self {
-        Self::new(span, ImportErrorKind::Invisible(resolved))
+    pub fn invisible(db: &dyn HirAnalysisDb, span: DynLazySpan, resolved: NameRes) -> Self {
+        let name = resolved.kind.name(db).unwrap();
+        let name_span = resolved.kind.name_span(db);
+        Self::new(span, ImportErrorKind::Invisible(name, name_span))
     }
 
     pub fn ambiguous(span: DynLazySpan, ident: IdentId) -> Self {
@@ -69,7 +73,7 @@ pub enum ImportErrorKind {
     NotFound(IdentId),
 
     /// The import path segment is not visible.
-    Invisible(NameRes),
+    Invisible(IdentId, Option<DynLazySpan>),
 
     /// The import path segment is ambiguous.
     Ambiguous(IdentId),
@@ -93,11 +97,8 @@ impl ImportErrorKind {
         match self {
             ImportErrorKind::Conflict(_) => "import conflicts with another import".to_string(),
             ImportErrorKind::NotFound(name) => format!("{} is not found", name.data(db)),
-            ImportErrorKind::Invisible(resolved) => {
-                format!(
-                    "{} is not visible",
-                    resolved.scope.name(db).unwrap().data(db)
-                )
+            ImportErrorKind::Invisible(name, _) => {
+                format!("{} is not visible", name.data(db),)
             }
             ImportErrorKind::Ambiguous(name) => format!("{} is ambiguous", name.data(db)),
         }
@@ -113,14 +114,16 @@ impl ImportErrorKind {
 
             ImportErrorKind::NotFound(_) | ImportErrorKind::Ambiguous(_) => vec![],
 
-            ImportErrorKind::Invisible(resolved) => {
-                let span = resolved.scope.name_span(db.as_hir_db()).unwrap();
-                vec![SubDiagnostic::new(
-                    Severity::Note,
-                    "not visible because of this declaration".to_string(),
-                    span.resolve(db),
-                )]
-            }
+            ImportErrorKind::Invisible(_, span) => span
+                .as_ref()
+                .map(|span| {
+                    vec![SubDiagnostic::new(
+                        Severity::Note,
+                        "not visible because of this declaration".to_string(),
+                        span.resolve(db),
+                    )]
+                })
+                .unwrap_or_default(),
         }
     }
 }

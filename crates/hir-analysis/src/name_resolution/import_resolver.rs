@@ -15,8 +15,8 @@ use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
 use super::{
     diagnostics::ImportError,
     name_resolver::{
-        NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, NameResolutionError,
-        NameResolver, QueryDirective,
+        NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, NameResKind,
+        NameResolutionError, NameResolver, QueryDirective,
     },
 };
 
@@ -203,7 +203,10 @@ impl<'db> ImportResolver<'db> {
             }
         };
 
-        let target_scope = base_path_resolved.current_scope();
+        let Some(target_scope) = base_path_resolved.current_scope() else {
+            return (None, true);
+        };
+
         let original_scope = base_path_resolved.original_scope;
         let use_ = base_path_resolved.use_;
 
@@ -321,8 +324,12 @@ impl<'db> ImportResolver<'db> {
         // anymore.
         // We don't need to report the error here because the parser should have already
         // reported it.
-        let Some(query) = self.make_query(i_use) else {
-            return None;
+        let query = match self.make_query(i_use) {
+            Ok(query) => query,
+            Err(err) => {
+                self.register_error(i_use, err);
+                return None;
+            }
         };
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
@@ -343,7 +350,7 @@ impl<'db> ImportResolver<'db> {
             return Some(IUseResolution::Full(resolved));
         }
 
-        if resolved.contains_external_ingot(self.db, i_use) || resolved.contains_glob_imported() {
+        if resolved.contains_external(self.db, i_use) || resolved.contains_glob_imported() {
             self.suspicious_imports.insert(i_use.use_);
         }
 
@@ -363,7 +370,7 @@ impl<'db> ImportResolver<'db> {
             for &use_ in &s_graph.unresolved_uses {
                 let i_use = IntermediateUse::new(self.db, use_);
                 self.intermediate_uses
-                    .entry(i_use.current_scope())
+                    .entry(i_use.original_scope)
                     .or_default()
                     .push_back(i_use);
             }
@@ -418,7 +425,7 @@ impl<'db> ImportResolver<'db> {
     fn verify_ambiguity(&mut self, use_: Use) {
         let i_use = IntermediateUse::new(self.db, use_);
         let first_segment_ident = i_use.current_segment_ident(self.db).unwrap();
-        let scope = i_use.current_scope();
+        let scope = i_use.original_scope;
         let ingot = scope.ingot(self.db.as_hir_db());
 
         // The ambiguity in the first segment possibly occurs when the segment is
@@ -475,7 +482,7 @@ impl<'db> ImportResolver<'db> {
         // This ambiguity can be detected by the normal shadowing rules , so it can be
         // verified by calling `resolve_base_path`.
         //
-        // The ambiguity about the final segment of the PATH can be verified during the
+        // The ambiguity about the final segment of the path can be verified during the
         // fixed point calculation, so verification is not necessary.
         self.resolve_base_path(i_use);
     }
@@ -514,9 +521,15 @@ impl<'db> ImportResolver<'db> {
 
     /// Makes a query for the current segment of the intermediate use to be
     /// resolved.
-    fn make_query(&self, i_use: &IntermediateUse) -> Option<NameQuery> {
-        let seg_name = i_use.current_segment_ident(self.db)?;
+    fn make_query(&self, i_use: &IntermediateUse) -> Result<NameQuery, NameResolutionError> {
+        let Some(seg_name) = i_use.current_segment_ident(self.db)  else {
+            return Err(NameResolutionError::Invalid);
+        };
+
         let mut directive = QueryDirective::new();
+        let Some(current_scope) = i_use.current_scope() else {
+            return Err(NameResolutionError::NotFound);
+        };
 
         // In the middle of the use path, disallow lexically scoped names and
         // external names.
@@ -524,11 +537,7 @@ impl<'db> ImportResolver<'db> {
             directive.disallow_lex().disallow_external();
         }
 
-        if self.does_named_import_exist_for(
-            seg_name,
-            i_use.current_scope(),
-            i_use.is_first_segment(),
-        ) {
+        if self.does_named_import_exist_for(seg_name, current_scope, i_use.is_first_segment()) {
             directive.disallow_glob().disallow_external();
         }
 
@@ -536,15 +545,15 @@ impl<'db> ImportResolver<'db> {
             directive.add_domain(NameDomain::Value);
         }
 
-        Some(NameQuery::with_directive(
+        Ok(NameQuery::with_directive(
             seg_name,
-            i_use.current_scope(),
+            current_scope,
             directive,
         ))
     }
 
     /// Returns `true` if there is an unresolved named import for the given name
-    /// in the given scope or its lexical parent scope.
+    /// in the given scope or its lexical parents(if `allow_lex` is `true`).
     fn does_named_import_exist_for(&self, name: IdentId, scope: ScopeId, allow_lex: bool) -> bool {
         let mut current_scope = Some(scope);
 
@@ -585,9 +594,12 @@ impl<'db> ImportResolver<'db> {
         ScopeState::Semi
     }
 
-    /// Returns `true` if the `i_use` can be proceed further in
+    /// Returns `true` if the next segment of the intermediate use is
+    /// deterministically resolvable.
     fn is_decidable(&self, i_use: &IntermediateUse) -> bool {
-        let target_scope = i_use.current_scope();
+        let Some(target_scope) = i_use.current_scope() else {
+            return true;
+        };
 
         if i_use.is_first_segment() {
             let mut target_scope = Some(target_scope);
@@ -714,7 +726,7 @@ struct IntermediateUse {
     use_: Use,
     current_res: Option<NameRes>,
     original_scope: ScopeId,
-    resolved_until: usize,
+    unresolved_from: usize,
 }
 
 impl IntermediateUse {
@@ -726,16 +738,19 @@ impl IntermediateUse {
             use_,
             current_res: None,
             original_scope: scope,
-            resolved_until: 0,
+            unresolved_from: 0,
         }
     }
 
-    /// Returns the scope that this intermediate use is contained.
-    fn current_scope(&self) -> ScopeId {
+    /// Returns the scope that the current resolution is pointed to.
+    fn current_scope(&self) -> Option<ScopeId> {
         if let Some(current_res) = self.current_res.as_ref() {
-            current_res.scope
+            match current_res.kind {
+                NameResKind::Scope(scope) => Some(scope),
+                NameResKind::Prim(_) => None,
+            }
         } else {
-            self.original_scope
+            self.original_scope.into()
         }
     }
 
@@ -756,7 +771,7 @@ impl IntermediateUse {
             use_: self.use_,
             current_res,
             original_scope: self.original_scope,
-            resolved_until: self.resolved_until + 1,
+            unresolved_from: self.unresolved_from + 1,
         }
     }
 
@@ -765,7 +780,7 @@ impl IntermediateUse {
         self.use_
             .lazy_span()
             .path()
-            .segment(self.resolved_until)
+            .segment(self.unresolved_from)
             .into()
     }
 
@@ -776,7 +791,7 @@ impl IntermediateUse {
             .to_opt()?
             .segments(db.as_hir_db());
 
-        let seg_idx = self.resolved_until;
+        let seg_idx = self.unresolved_from;
         let segment = segments[seg_idx].to_opt()?;
         segment.ident()
     }
@@ -792,8 +807,10 @@ impl IntermediateUse {
             .map(|p| p.segment_len(db.as_hir_db()))
     }
 
+    /// Returns `true` if the segment that should be resolved next is the first
+    /// segment.
     fn is_first_segment(&self) -> bool {
-        self.resolved_until == 0
+        self.unresolved_from == 0
     }
 
     /// Returns `true` if the use path except the last segment is fully
@@ -803,7 +820,7 @@ impl IntermediateUse {
             return false;
         };
 
-        self.resolved_until + 1 == segment_len
+        self.unresolved_from + 1 == segment_len
     }
 }
 
@@ -947,13 +964,19 @@ fn resolved_imports_for_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> &Resolv
 }
 
 impl NameBinding {
-    fn contains_external_ingot(&self, db: &dyn HirAnalysisDb, i_use: &IntermediateUse) -> bool {
-        let current_ingot = i_use.current_scope().ingot(db.as_hir_db());
-        self.resolutions
-            .values()
-            .any(|r| r.scope.ingot(db.as_hir_db()) != current_ingot)
+    /// Returns true if the binding contains an resolution that is not in the
+    /// same ingot as the current resolution of the `i_use`.
+    fn contains_external(&self, db: &dyn HirAnalysisDb, i_use: &IntermediateUse) -> bool {
+        let Some(current_ingot) = i_use.current_scope().map(|scope| scope.ingot(db.as_hir_db())) else {
+            return false;
+        };
+        self.resolutions.values().any(|r| match r.kind {
+            NameResKind::Scope(scope) => scope.ingot(db.as_hir_db()) != current_ingot,
+            NameResKind::Prim(_) => true,
+        })
     }
 
+    /// Returns true if the binding contains a glob import.
     fn contains_glob_imported(&self) -> bool {
         self.resolutions
             .values()

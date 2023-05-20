@@ -6,6 +6,7 @@ pub mod item;
 pub mod params;
 pub mod pat;
 pub mod path;
+pub mod prim_ty;
 pub mod scope_graph;
 pub mod stmt;
 pub mod types;

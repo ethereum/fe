@@ -7,6 +7,7 @@ use std::{
 use either::Either;
 use hir::{
     hir_def::{
+        prim_ty::PrimTy,
         scope_graph::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             ScopeKind, SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge,
@@ -85,10 +86,6 @@ pub struct PathResolutionError {
 impl PathResolutionError {
     fn new(kind: NameResolutionError, failed_at: usize) -> Self {
         Self { kind, failed_at }
-    }
-
-    fn not_found(failed_at: usize) -> Self {
-        Self::new(NameResolutionError::NotFound, failed_at)
     }
 
     fn invalid(failed_at: usize) -> Self {
@@ -206,7 +203,11 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 4. Look for the name in the lexical scope if it exists.
         if let Some(parent) = parent {
-            match self.resolve_query(query.clone_with_scope(parent)) {
+            let mut query_for_parent = query;
+            query_for_parent.scope = parent;
+            query_for_parent.directive.disallow_external();
+
+            match self.resolve_query(query_for_parent) {
                 Ok(mut resolved) => {
                     resolved.lexed();
                     self.try_merge(&mut binding, &resolved, query)?;
@@ -244,10 +245,11 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
 
         // 6. Look for the name in the builtin types.
-        // todo: Add db.builtin_scopes() and use it here.
-        // if let Some(builtin) = BuiltinName::lookup_for(query.name) {
-        //     resolved_set.push_name(ResolvedName::new_builtin(builtin,
-        // builtin.domain())) };
+        for &prim in PrimTy::all_types() {
+            if query.name == prim.name() {
+                binding.push(&NameRes::new_prim(prim));
+            }
+        }
 
         self.finalize_query_result(query, binding)
     }
@@ -267,7 +269,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     /// - The function is used for glob imports, so it's necessary to return
     ///   monotonously increasing results. Also, we can't arbitrarily choose the
     ///   possible resolution from multiple candidates to avoid hiding
-    ///   ambiguity. That's why we can't use `NameBinding` and
+    ///   ambiguity. That's also the reason why we can't use `NameBinding` and
     ///   `NameBinding::merge` in this function.
     ///
     /// The below examples demonstrates the second point.
@@ -300,7 +302,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     ) -> FxHashMap<IdentId, Vec<NameRes>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
         let mut found_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
-        let mut found_scopes: FxHashSet<(IdentId, ScopeId)> = FxHashSet::default();
+        let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
 
         for edge in target.edges(self.db.as_hir_db()) {
             let scope = match edge.kind.propagate_glob(directive) {
@@ -311,7 +313,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             };
 
             let name = scope.name(self.db.as_hir_db()).unwrap();
-            if !found_scopes.insert((name, scope)) {
+            if !found_kinds.insert((name, scope.into())) {
                 continue;
             }
             let res = NameRes::new_scope(
@@ -331,10 +333,10 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     continue;
                 }
 
-                let seen_domain = found_domains.get(&name).copied().unwrap_or_default();
+                let found_domain = found_domains.get(&name).copied().unwrap_or_default();
                 for res in import.binding.iter() {
-                    if (seen_domain & res.domain as u8 != 0)
-                        || !found_scopes.insert((name, res.scope))
+                    if (found_domain & res.domain as u8 != 0)
+                        || !found_kinds.insert((name, res.kind))
                     {
                         continue;
                     }
@@ -363,7 +365,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                             .unwrap_or_default();
 
                         if (seen_domain & res.domain as u8 != 0)
-                            || !found_scopes.insert((name, res.scope))
+                            || !found_kinds.insert((name, res.kind))
                         {
                             continue;
                         }
@@ -427,38 +429,39 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     ///       resolved.
     fn resolve_segment(
         &mut self,
-        pred: NameRes,
-        segment: Partial<IdentId>,
-        seg_idx: usize,
-        is_last: bool,
+        _pred: NameRes,
+        _segment: Partial<IdentId>,
+        _seg_idx: usize,
+        _is_last: bool,
     ) -> Result<Either<ResolvedPath, NameRes>, PathResolutionError> {
-        let Partial::Present(seg) = segment else {
-            return Err(PathResolutionError::invalid(seg_idx));
-        };
+        todo!()
+        // let Partial::Present(seg) = segment else {
+        //     return Err(PathResolutionError::invalid(seg_idx));
+        // };
 
-        let scope = pred.scope;
-        let query = NameQuery::new(seg, scope);
-        let resolved_set = match self.resolve_query(query) {
-            Ok(resolved) => resolved,
-            Err(NameResolutionError::NotFound) if pred.is_type(self.db) => {
-                // If the parent scope of the current segment is a type and the segment is not
-                // found, then it should be resolved in the trait solving phase.
-                return Ok(Either::Left(ResolvedPath::partial(pred, seg_idx)));
-            }
-            Err(e) => {
-                return Err(PathResolutionError::new(e, seg_idx));
-            }
-        };
+        // let scope = pred.scope;
+        // let query = NameQuery::new(seg, scope);
+        // let resolved_set = match self.resolve_query(query) {
+        //     Ok(resolved) => resolved,
+        //     Err(NameResolutionError::NotFound) if pred.is_type(self.db) => {
+        //         // If the parent scope of the current segment is a type and
+        // the segment is not         // found, then it should be
+        // resolved in the trait solving phase.         return
+        // Ok(Either::Left(ResolvedPath::partial(pred, seg_idx)));     }
+        //     Err(e) => {
+        //         return Err(PathResolutionError::new(e, seg_idx));
+        //     }
+        // };
 
-        if is_last {
-            Ok(Either::Left(ResolvedPath::Full(resolved_set)))
-        } else if resolved_set.len() > 1 {
-            // Case a. is already handled above.
-            // Handles case b. here.
-            return Err(PathResolutionError::not_found(seg_idx));
-        } else {
-            Ok(Either::Right(resolved_set.into_iter().next().unwrap()))
-        }
+        // if is_last {
+        //     Ok(Either::Left(ResolvedPath::Full(resolved_set)))
+        // } else if resolved_set.len() > 1 {
+        //     // Case a. is already handled above.
+        //     // Handles case b. here.
+        //     return Err(PathResolutionError::not_found(seg_idx));
+        // } else {
+        //     Ok(Either::Right(resolved_set.into_iter().next().unwrap()))
+        // }
     }
 
     fn try_merge(
@@ -525,14 +528,6 @@ impl NameQuery {
 
     pub fn name(&self) -> IdentId {
         self.name
-    }
-
-    fn clone_with_scope(self, scope: ScopeId) -> Self {
-        Self {
-            name: self.name,
-            scope,
-            directive: self.directive,
-        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -665,22 +660,25 @@ impl NameBinding {
         }
     }
 
-    /// Push the `res` into the set. If name conflict happens, the old
-    /// resolution will be returned, otherwise `None` will be returned.
+    /// Push the `res` into the set.
     fn push(&mut self, res: &NameRes) -> Option<NameRes> {
         let domain = res.domain;
         match self.resolutions.entry(domain) {
             Entry::Occupied(mut e) => {
                 let old_derivation = e.get().derivation.clone();
-                if old_derivation < res.derivation {
-                    e.insert(res.clone());
-                    None
-                } else if res.derivation < old_derivation {
-                    None
-                } else {
-                    let old = e.get().clone();
-                    e.insert(res.clone());
-                    Some(old)
+                match res.derivation.cmp(&old_derivation) {
+                    cmp::Ordering::Less => None,
+                    cmp::Ordering::Equal => {
+                        if e.get().kind == res.kind {
+                            None
+                        } else {
+                            Some(res.clone())
+                        }
+                    }
+                    cmp::Ordering::Greater => {
+                        e.insert(res.clone());
+                        None
+                    }
                 }
             }
 
@@ -723,20 +721,26 @@ impl From<NameRes> for NameBinding {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NameRes {
-    pub scope: ScopeId,
+    pub kind: NameResKind,
     pub domain: NameDomain,
     pub derivation: NameDerivation,
 }
 
 impl NameRes {
     pub fn is_type(&self, db: &dyn HirAnalysisDb) -> bool {
-        self.scope.is_type(db.as_hir_db())
+        match self.kind {
+            NameResKind::Prim(_) => true,
+            NameResKind::Scope(scope) => scope.is_type(db.as_hir_db()),
+        }
     }
 
     pub fn is_visible(&self, db: &dyn HirAnalysisDb, from: ScopeId) -> bool {
         let scope_or_use = match self.derivation {
-            NameDerivation::Def | NameDerivation::Builtin | NameDerivation::External => {
-                Either::Left(self.scope)
+            NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
+                match self.kind {
+                    NameResKind::Scope(scope) => Either::Left(scope),
+                    NameResKind::Prim(_) => return true,
+                }
             }
             NameDerivation::NamedImported(use_) | NameDerivation::GlobImported(use_) => {
                 Either::Right(use_)
@@ -763,8 +767,8 @@ impl NameRes {
 
     pub(super) fn derived_from(&self, db: &dyn HirAnalysisDb) -> Option<DynLazySpan> {
         match self.derivation {
-            NameDerivation::Def | NameDerivation::Builtin | NameDerivation::External => {
-                self.scope.name_span(db.as_hir_db())
+            NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
+                self.kind.name_span(db)
             }
             NameDerivation::NamedImported(use_) => use_.imported_name_span(db.as_hir_db()),
             NameDerivation::GlobImported(use_) => use_.glob_span(db.as_hir_db()),
@@ -784,9 +788,39 @@ impl NameRes {
 
     fn new_scope(scope: ScopeId, domain: NameDomain, derivation: NameDerivation) -> Self {
         Self {
-            scope,
+            kind: scope.into(),
             derivation,
             domain,
+        }
+    }
+
+    fn new_prim(prim: PrimTy) -> Self {
+        Self {
+            kind: prim.into(),
+            derivation: NameDerivation::Prim,
+            domain: NameDomain::Item,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::From)]
+pub enum NameResKind {
+    Scope(ScopeId),
+    Prim(PrimTy),
+}
+
+impl NameResKind {
+    pub fn name_span(self, db: &dyn HirAnalysisDb) -> Option<DynLazySpan> {
+        match self {
+            NameResKind::Scope(scope) => scope.name_span(db.as_hir_db()),
+            NameResKind::Prim(_) => None,
+        }
+    }
+
+    pub fn name(self, db: &dyn HirAnalysisDb) -> Option<IdentId> {
+        match self {
+            NameResKind::Scope(scope) => scope.name(db.as_hir_db()),
+            NameResKind::Prim(prim) => prim.name().into(),
         }
     }
 }
@@ -798,7 +832,7 @@ pub enum NameDerivation {
     GlobImported(Use),
     Lex(Box<NameDerivation>),
     External,
-    Builtin,
+    Prim,
 }
 
 impl NameDerivation {
@@ -835,8 +869,14 @@ impl PartialOrd for NameDerivation {
             (NameDerivation::External, _) => Some(cmp::Ordering::Greater),
             (_, NameDerivation::External) => Some(cmp::Ordering::Less),
 
-            (NameDerivation::Builtin, NameDerivation::Builtin) => Some(cmp::Ordering::Equal),
+            (NameDerivation::Prim, NameDerivation::Prim) => Some(cmp::Ordering::Equal),
         }
+    }
+}
+
+impl Ord for NameDerivation {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -872,84 +912,6 @@ impl fmt::Display for NameResolutionError {
 }
 
 impl std::error::Error for NameResolutionError {}
-
-// #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
-// pub enum BuiltinName {
-//     Bool,
-//     U8,
-//     U16,
-//     U32,
-//     U64,
-//     U128,
-//     U256,
-//     I8,
-//     I16,
-//     I32,
-//     I64,
-//     I128,
-//     I256,
-// }
-//
-// impl BuiltinName {
-//     /// Returns the builtin name if the `name` is a builtin name.
-//     pub fn lookup_for(name: IdentId) -> Option<Self> {
-//         match name {
-//             kw::BOOL => Self::Bool,
-//             kw::U8 => Self::U8,
-//             kw::U16 => Self::U16,
-//             kw::U32 => Self::U32,
-//             kw::U64 => Self::U64,
-//             kw::U128 => Self::U128,
-//             kw::U256 => Self::U256,
-//             kw::I8 => Self::I8,
-//             kw::I16 => Self::I16,
-//             kw::I32 => Self::I32,
-//             kw::I64 => Self::I64,
-//             kw::I128 => Self::I128,
-//             kw::I256 => Self::I256,
-//             _ => return None,
-//         }
-//         .into()
-//     }
-//
-//     pub fn domain(self) -> NameDomain {
-//         // Currently all builtin belong to the item domain.
-//         match self {
-//             Self::Bool
-//             | Self::U8
-//             | Self::U16
-//             | Self::U32
-//             | Self::U64
-//             | Self::U128
-//             | Self::U256
-//             | Self::I8
-//             | Self::I16
-//             | Self::I32
-//             | Self::I64
-//             | Self::I128
-//             | Self::I256 => NameDomain::Item,
-//         }
-//     }
-//
-//     pub fn is_type(self) -> bool {
-//         // Currently all builtin names are types.
-//         match self {
-//             Self::Bool
-//             | Self::U8
-//             | Self::U16
-//             | Self::U32
-//             | Self::U64
-//             | Self::U128
-//             | Self::U256
-//             | Self::I8
-//             | Self::I16
-//             | Self::I32
-//             | Self::I64
-//             | Self::I128
-//             | Self::I256 => true,
-//         }
-//     }
-// }
 
 #[derive(Default)]
 struct ResolvedQueryCacheStore {
