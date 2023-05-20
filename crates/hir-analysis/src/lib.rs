@@ -7,8 +7,8 @@ pub struct Jar(
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
-    fn as_hir_db(&self) -> &dyn HirDb {
-        <Self as salsa::DbWithJar<hir::Jar>>::as_jar_db::<'_>(self)
+    fn as_hir_analysis_db(&self) -> &dyn HirAnalysisDb {
+        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }
 }
 impl<DB> HirAnalysisDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + HirDb {}

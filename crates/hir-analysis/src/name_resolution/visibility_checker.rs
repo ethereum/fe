@@ -16,7 +16,7 @@ pub fn is_scope_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, target_scope
         return true;
     }
 
-    let Some(def_scope) = (if matches!(ref_scope.kind(db.as_hir_db()), ScopeKind::Field(_)) {
+    let Some(def_scope) = (if matches!(target_scope.kind(db.as_hir_db()), ScopeKind::Field(_) | ScopeKind::Variant(_)) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
             target_scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))

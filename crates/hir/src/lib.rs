@@ -84,16 +84,8 @@ pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {
         IdentId::prefill(self)
     }
 
-    fn as_input_db(&self) -> &dyn InputDb {
-        <Self as salsa::DbWithJar<common::Jar>>::as_jar_db::<'_>(self)
-    }
-}
-impl<DB> HirDb for DB
-where
-    DB: ?Sized + salsa::DbWithJar<Jar> + InputDb,
-{
-    fn as_input_db(&self) -> &dyn InputDb {
-        <Self as salsa::DbWithJar<common::Jar>>::as_jar_db::<'_>(self)
+    fn as_hir_db(&self) -> &dyn HirDb {
+        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }
 }
 
@@ -103,8 +95,11 @@ where
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
 pub trait LowerHirDb: HirDb {
-    fn as_hir_db(&self) -> &dyn HirDb {
-        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
+    fn as_lower_hir_db(&self) -> &dyn LowerHirDb
+    where
+        Self: Sized,
+    {
+        self
     }
 }
 
@@ -120,8 +115,11 @@ pub trait LowerHirDb: HirDb {
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
 pub trait SpannedHirDb: HirDb {
-    fn as_hir_db(&self) -> &dyn HirDb {
-        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
+    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb
+    where
+        Self: Sized,
+    {
+        self
     }
 }
 
@@ -156,6 +154,7 @@ mod test_db {
             db
         }
     }
+    impl HirDb for TestDb {}
     impl SpannedHirDb for TestDb {}
     impl LowerHirDb for TestDb {}
     impl salsa::Database for TestDb {
@@ -172,10 +171,6 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn as_hir_db(&self) -> &dyn HirDb {
-            <Self as salsa::DbWithJar<crate::Jar>>::as_jar_db::<'_>(self)
-        }
-
         pub fn parse_source(&mut self, text: &str) -> &ScopeGraph {
             let file = self.standalone_file(text);
             let top_mod = map_file_to_mod(self, file);

@@ -286,6 +286,7 @@ mod tests {
     use crate::{
         hir_def::{Enum, Func, Mod, Struct, TypeAlias, Use},
         test_db::TestDb,
+        HirDb,
     };
 
     #[test]

@@ -192,11 +192,16 @@ impl ScopeId {
     }
 
     pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
-        self.data(db)
-            .edges
-            .iter()
-            .find(|e| matches!(e.kind, EdgeKind::Lex(_) | EdgeKind::Super(_)))
-            .map(|e| e.dest)
+        let mut super_dest = None;
+        for edge in self.edges(db) {
+            if let EdgeKind::Lex(_) = edge.kind {
+                return Some(edge.dest);
+            }
+            if let EdgeKind::Super(_) = edge.kind {
+                super_dest = Some(edge.dest);
+            }
+        }
+        super_dest
     }
 
     pub fn lex_parent(self, db: &dyn HirDb) -> Option<Self> {

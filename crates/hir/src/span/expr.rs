@@ -181,6 +181,7 @@ mod tests {
     use crate::{
         hir_def::{Body, Expr, Stmt},
         test_db::TestDb,
+        HirDb,
     };
 
     #[test]

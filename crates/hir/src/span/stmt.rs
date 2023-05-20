@@ -48,7 +48,7 @@ impl ChainInitiator for StmtRoot {
 
 #[cfg(test)]
 mod tests {
-    use crate::{hir_def::Body, test_db::TestDb};
+    use crate::{hir_def::Body, test_db::TestDb, HirDb};
 
     #[test]
     fn aug_assign() {

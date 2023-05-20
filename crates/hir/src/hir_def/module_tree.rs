@@ -6,7 +6,7 @@ use cranelift_entity::{entity_impl, PrimaryMap};
 
 use crate::{lower::map_file_to_mod_impl, HirDb};
 
-use super::{IdentId, TopLevelMod};
+use super::{IdentId, IngotId, TopLevelMod};
 
 /// This tree represents the structure of an ingot.
 /// Internal modules are not included in this tree, instead, they are included
@@ -60,7 +60,7 @@ pub struct ModuleTree {
     pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
     pub(crate) mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
 
-    pub(crate) ingot: InputIngot,
+    pub ingot: IngotId,
 }
 
 impl ModuleTree {
@@ -113,7 +113,7 @@ impl ModuleTree {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
-pub fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree {
+pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree {
     ModuleTreeBuilder::new(db, ingot).build()
 }
 
@@ -150,7 +150,8 @@ entity_impl!(ModuleTreeNodeId);
 
 struct ModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,
-    ingot: InputIngot,
+    input_ingot: InputIngot,
+    ingot: IngotId,
     module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
     mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
     path_map: BTreeMap<&'db Utf8Path, ModuleTreeNodeId>,
@@ -160,7 +161,8 @@ impl<'db> ModuleTreeBuilder<'db> {
     fn new(db: &'db dyn HirDb, ingot: InputIngot) -> Self {
         Self {
             db,
-            ingot,
+            input_ingot: ingot,
+            ingot: IngotId::new(db, ingot),
             module_tree: PrimaryMap::default(),
             mod_map: BTreeMap::default(),
             path_map: BTreeMap::default(),
@@ -171,7 +173,11 @@ impl<'db> ModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_mod = map_file_to_mod_impl(self.db, self.ingot.root_file(self.db.as_input_db()));
+        let root_mod = map_file_to_mod_impl(
+            self.db,
+            self.ingot,
+            self.input_ingot.root_file(self.db.as_input_db()),
+        );
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
@@ -182,8 +188,8 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.ingot.files(self.db.as_input_db()) {
-            let top_mod = map_file_to_mod_impl(self.db, file);
+        for &file in self.input_ingot.files(self.db.as_input_db()) {
+            let top_mod = map_file_to_mod_impl(self.db, self.ingot, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
             self.path_map
@@ -193,18 +199,18 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn build_tree(&mut self) {
-        let root = self.ingot.root_file(self.db.as_input_db());
+        let root = self.input_ingot.root_file(self.db.as_input_db());
 
-        for &child in self.ingot.files(self.db.as_input_db()) {
+        for &child in self.input_ingot.files(self.db.as_input_db()) {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
             }
 
             let root_path = root.path(self.db.as_input_db());
-            let root_mod = map_file_to_mod_impl(self.db, root);
+            let root_mod = map_file_to_mod_impl(self.db, self.ingot, root);
             let child_path = child.path(self.db.as_input_db());
-            let child_mod = map_file_to_mod_impl(self.db, child);
+            let child_mod = map_file_to_mod_impl(self.db, self.ingot, child);
 
             // If the file is in the same directory as the root file, the file is a direct
             // child of the root.

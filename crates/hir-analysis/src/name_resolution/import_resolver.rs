@@ -824,6 +824,7 @@ impl IntermediateUse {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum IUseResolution {
     /// The all segments are resolved.
     Full(NameBinding),
