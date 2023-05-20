@@ -146,13 +146,9 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
     }
 
-    pub fn resolve_query(
-        &mut self,
-        scope: ScopeId,
-        query: NameQuery,
-    ) -> Result<NameBinding, NameResolutionError> {
+    pub fn resolve_query(&mut self, query: NameQuery) -> Result<NameBinding, NameResolutionError> {
         // If the query is already resolved, return the cached result.
-        if let Some(resolved) = self.cache_store.get(scope, query) {
+        if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
         };
 
@@ -166,7 +162,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
-        for edge in scope.edges(self.db.as_hir_db()) {
+        for edge in query.scope.edges(self.db.as_hir_db()) {
             match edge.kind.propagate(query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
@@ -193,45 +189,45 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 2. Look for the name in the named imports of the current scope.
         if let Some(imported) = self
             .importer
-            .named_imports(self.db, scope)
+            .named_imports(self.db, query.scope)
             .and_then(|imports| imports.get(&query.name))
         {
-            self.try_merge(&mut binding, &imported.binding, scope, query)?;
+            self.try_merge(&mut binding, &imported.binding, query)?;
         }
 
         // 3. Look for the name in the glob imports.
         if query.directive.allow_glob {
-            if let Some(imported) = self.importer.glob_imports(self.db, scope) {
+            if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
                 for res in imported.name_res_for(query.name) {
-                    self.try_push(&mut binding, res, scope, query)?;
+                    self.try_push(&mut binding, res, query)?;
                 }
             }
         }
 
         // 4. Look for the name in the lexical scope if it exists.
         if let Some(parent) = parent {
-            match self.resolve_query(parent, query) {
+            match self.resolve_query(query.clone_with_scope(parent)) {
                 Ok(mut resolved) => {
                     resolved.lexed();
-                    self.try_merge(&mut binding, &resolved, scope, query)?;
+                    self.try_merge(&mut binding, &resolved, query)?;
                 }
 
                 Err(NameResolutionError::NotFound) => {}
                 Err(err) => {
-                    self.cache_store
-                        .cache_result(scope, query, Err(err.clone()));
+                    self.cache_store.cache_result(query, Err(err.clone()));
                     return Err(err);
                 }
             }
         }
 
         if !query.directive.allow_external {
-            return self.finalize_query_result(scope, query, binding);
+            return self.finalize_query_result(query, binding);
         }
 
         // 5. Look for the name in the external ingots.
         if query.directive.is_allowed_domain(NameDomain::Item as u8) {
-            scope
+            query
+                .scope
                 .top_mod()
                 .ingot(self.db.as_hir_db())
                 .external_ingots(self.db.as_hir_db())
@@ -253,7 +249,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         //     resolved_set.push_name(ResolvedName::new_builtin(builtin,
         // builtin.domain())) };
 
-        self.finalize_query_result(scope, query, binding)
+        self.finalize_query_result(query, binding)
     }
 
     /// Collect all visible resolutions in the given `target` scope.
@@ -276,15 +272,17 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     ///
     /// The below examples demonstrates the second point.
     /// We need to report ambiguous error at `const C: S = S` because `S` is
-    /// ambiguous.
+    /// ambiguous, on the other hand, we need NOT to report ambiguous error in
+    /// `foo` modules because `S` is not referred to in the module.
     ///
     /// ```fe
     /// use foo::*
     /// const C: S = S
     ///
     /// mod foo {
-    ///     pub use inner1::*;
-    ///     pub use inner2::*;
+    ///     pub use inner1::*
+    ///     pub use inner2::*
+    ///
     ///     mod inner1 {
     ///           pub struct S {}
     ///     }
@@ -301,8 +299,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         unresolved_named_imports: FxHashSet<IdentId>,
     ) -> FxHashMap<IdentId, Vec<NameRes>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
-        let mut seen_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
-        let mut seen_scope: FxHashSet<(IdentId, ScopeId)> = FxHashSet::default();
+        let mut found_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
+        let mut found_scopes: FxHashSet<(IdentId, ScopeId)> = FxHashSet::default();
 
         for edge in target.edges(self.db.as_hir_db()) {
             let scope = match edge.kind.propagate_glob(directive) {
@@ -313,7 +311,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             };
 
             let name = scope.name(self.db.as_hir_db()).unwrap();
-            if !seen_scope.insert((name, scope)) {
+            if !found_scopes.insert((name, scope)) {
                 continue;
             }
             let res = NameRes::new_scope(
@@ -322,26 +320,26 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 NameDerivation::Def,
             );
 
-            *seen_domains.entry(name).or_default() |= res.domain as u8;
+            *found_domains.entry(name).or_default() |= res.domain as u8;
             res_collection.entry(name).or_default().push(res);
         }
 
-        let mut seen_domains_after_named = seen_domains.clone();
+        let mut found_domains_after_named = found_domains.clone();
         if let Some(named_imports) = self.importer.named_imports(self.db, target) {
             for (&name, import) in named_imports {
                 if !is_use_visible(self.db, ref_scope, import.use_) {
                     continue;
                 }
 
-                let seen_domain = seen_domains.get(&name).copied().unwrap_or_default();
+                let seen_domain = found_domains.get(&name).copied().unwrap_or_default();
                 for res in import.binding.iter() {
                     if (seen_domain & res.domain as u8 != 0)
-                        || !seen_scope.insert((name, res.scope))
+                        || !found_scopes.insert((name, res.scope))
                     {
                         continue;
                     }
 
-                    *seen_domains_after_named.entry(name).or_default() |= res.domain as u8;
+                    *found_domains_after_named.entry(name).or_default() |= res.domain as u8;
 
                     res_collection.entry(name).or_default().push(res.clone());
                 }
@@ -359,13 +357,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     }
 
                     for res in res_for_name.iter() {
-                        let seen_domain = seen_domains_after_named
+                        let seen_domain = found_domains_after_named
                             .get(&name)
                             .copied()
                             .unwrap_or_default();
 
                         if (seen_domain & res.domain as u8 != 0)
-                            || !seen_scope.insert((name, res.scope))
+                            || !found_scopes.insert((name, res.scope))
                         {
                             continue;
                         }
@@ -381,7 +379,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     /// Finalize the query result and cache it to the cache store.
     fn finalize_query_result(
         &mut self,
-        scope: ScopeId,
         query: NameQuery,
         resolved_set: NameBinding,
     ) -> Result<NameBinding, NameResolutionError> {
@@ -390,7 +387,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         } else {
             Ok(resolved_set)
         };
-        self.cache_store.cache_result(scope, query, result.clone());
+        self.cache_store.cache_result(query, result.clone());
         result
     }
 
@@ -440,8 +437,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         };
 
         let scope = pred.scope;
-        let query = NameQuery::new(seg);
-        let resolved_set = match self.resolve_query(scope, query) {
+        let query = NameQuery::new(seg, scope);
+        let resolved_set = match self.resolve_query(query) {
             Ok(resolved) => resolved,
             Err(NameResolutionError::NotFound) if pred.is_type(self.db) => {
                 // If the parent scope of the current segment is a type and the segment is not
@@ -468,7 +465,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         &mut self,
         target: &mut NameBinding,
         from: &NameBinding,
-        scope: ScopeId,
         query: NameQuery,
     ) -> Result<(), NameResolutionError> {
         if target
@@ -478,8 +474,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             Ok(())
         } else {
             let err = NameResolutionError::Ambiguous;
-            self.cache_store
-                .cache_result(scope, query, Err(err.clone()));
+            self.cache_store.cache_result(query, Err(err.clone()));
             Err(err)
         }
     }
@@ -488,15 +483,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         &mut self,
         target: &mut NameBinding,
         res: &NameRes,
-        scope: ScopeId,
         query: NameQuery,
     ) -> Result<(), NameResolutionError> {
         if target.push(res).is_none() {
             Ok(())
         } else {
             let err = NameResolutionError::Ambiguous;
-            self.cache_store
-                .cache_result(scope, query, Err(err.clone()));
+            self.cache_store.cache_result(query, Err(err.clone()));
             Err(err)
         }
     }
@@ -504,26 +497,42 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NameQuery {
+    /// The name to be resolved.
     name: IdentId,
+    /// The scope where the name is resolved.
+    scope: ScopeId,
     directive: QueryDirective,
 }
 
 impl NameQuery {
     /// Create a new name query with the default query directive.
-    pub fn new(name: IdentId) -> Self {
+    pub fn new(name: IdentId, scope: ScopeId) -> Self {
         Self {
             name,
+            scope,
             directive: Default::default(),
         }
     }
 
     /// Create a new name query with the given query directive.
-    pub fn with_directive(name: IdentId, directive: QueryDirective) -> Self {
-        Self { name, directive }
+    pub fn with_directive(name: IdentId, scope: ScopeId, directive: QueryDirective) -> Self {
+        Self {
+            name,
+            scope,
+            directive,
+        }
     }
 
     pub fn name(&self) -> IdentId {
         self.name
+    }
+
+    fn clone_with_scope(self, scope: ScopeId) -> Self {
+        Self {
+            name: self.name,
+            scope,
+            directive: self.directive,
+        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -944,29 +953,20 @@ impl std::error::Error for NameResolutionError {}
 
 #[derive(Default)]
 struct ResolvedQueryCacheStore {
-    cache: FxHashMap<(ScopeId, NameQuery), Result<NameBinding, NameResolutionError>>,
+    cache: FxHashMap<NameQuery, Result<NameBinding, NameResolutionError>>,
     no_cache: bool,
 }
 
 impl ResolvedQueryCacheStore {
-    fn cache_result(
-        &mut self,
-        scope: ScopeId,
-        query: NameQuery,
-        result: Result<NameBinding, NameResolutionError>,
-    ) {
+    fn cache_result(&mut self, query: NameQuery, result: Result<NameBinding, NameResolutionError>) {
         if self.no_cache {
             return;
         }
-        self.cache.insert((scope, query), result);
+        self.cache.insert(query, result);
     }
 
-    fn get(
-        &self,
-        scope: ScopeId,
-        query: NameQuery,
-    ) -> Option<&Result<NameBinding, NameResolutionError>> {
-        self.cache.get(&(scope, query))
+    fn get(&self, query: NameQuery) -> Option<&Result<NameBinding, NameResolutionError>> {
+        self.cache.get(&query)
     }
 }
 

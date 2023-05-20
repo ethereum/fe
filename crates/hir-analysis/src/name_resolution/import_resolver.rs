@@ -35,14 +35,14 @@ pub struct ImportResolver<'db> {
     /// The errors that have been accumulated during the import resolution.
     accumulated_errors: Vec<ImportError>,
 
-    /// The number of imported bindings.
+    /// The number of imported resolutions.
     /// This is used to judge if a import resolution doesn't change in each
     /// iteration of fixed point calculation.
-    /// This check rely on the fact that the number of bindings is monotonically
-    /// increasing.
+    /// This check rely on the fact that the number of resolutions is
+    /// monotonically increasing.
     num_imported_res: FxHashMap<Use, usize>,
 
-    /// The set of imports that its resolution starts with an external ingot.
+    /// The set of imports that are suspicious to be ambiguous.
     /// In this case, the use will turns out to be ambiguous after the import
     /// resolution reaches the fixed point.
     suspicious_imports: FxHashSet<Use>,
@@ -326,7 +326,7 @@ impl<'db> ImportResolver<'db> {
         };
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
-        let resolved = match resolver.resolve_query(i_use.current_scope(), query) {
+        let resolved = match resolver.resolve_query(query) {
             Ok(resolved) => resolved,
 
             Err(NameResolutionError::NotFound) if !self.is_decidable(i_use) => {
@@ -536,7 +536,11 @@ impl<'db> ImportResolver<'db> {
             directive.add_domain(NameDomain::Value);
         }
 
-        Some(NameQuery::with_directive(seg_name, directive))
+        Some(NameQuery::with_directive(
+            seg_name,
+            i_use.current_scope(),
+            directive,
+        ))
     }
 
     /// Returns `true` if there is an unresolved named import for the given name
