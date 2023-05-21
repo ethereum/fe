@@ -87,6 +87,8 @@ impl<'db> ScopeGraphBuilder<'db> {
         let parent_scope = *self.scope_stack.last().unwrap();
         let parent_to_child_edge = match item {
             Mod(inner) => {
+                self.module_stack.pop().unwrap();
+
                 self.add_local_edge(
                     item_scope,
                     *self.module_stack.last().unwrap(),
@@ -99,7 +101,6 @@ impl<'db> ScopeGraphBuilder<'db> {
                 );
                 self.add_local_edge(item_scope, item_scope, EdgeKind::self_());
 
-                self.module_stack.pop().unwrap();
                 inner
                     .name(self.db)
                     .to_opt()
