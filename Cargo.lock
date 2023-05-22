@@ -923,11 +923,15 @@ dependencies = [
 name = "fe-hir-analysis"
 version = "0.20.0-alpha"
 dependencies = [
+ "codespan-reporting",
  "derive_more",
+ "dir-test",
  "either",
  "fe-common2",
+ "fe-compiler-test-utils",
  "fe-hir",
  "fe-macros",
+ "itertools",
  "rustc-hash",
  "salsa-2022",
  "smallvec",

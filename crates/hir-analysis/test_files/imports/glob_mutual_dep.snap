@@ -1,0 +1,24 @@
+---
+source: crates/hir-analysis/tests/import.rs
+expression: res
+input_file: crates/hir-analysis/test_files/imports/glob_mutual_dep.fe
+---
+note: 
+  ┌─ test_file.fe:1:1
+  │
+1 │ use foo::*
+  │ ^^^^^^^^^^ test_file::bar::Bar | test_file::foo::Foo
+
+note: 
+  ┌─ test_file.fe:4:5
+  │
+4 │     pub use super::bar::*
+  │     ^^^^^^^^^^^^^^^^^^^^^ test_file::bar::Bar | test_file::foo::Foo
+
+note: 
+   ┌─ test_file.fe:10:5
+   │
+10 │     pub use super::foo::*
+   │     ^^^^^^^^^^^^^^^^^^^^^ test_file::bar::Bar | test_file::foo::Foo
+
+

@@ -8,6 +8,7 @@ use hir::{
     hir_def::{scope_graph::ScopeId, IdentId, IngotId, Use},
     span::DynLazySpan,
 };
+use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
@@ -64,7 +65,8 @@ impl<'db> ImportResolver<'db> {
         self.initialize_i_uses();
 
         let mut changed = true;
-        let mut unresolved_scope: VecDeque<_> = self.intermediate_uses.keys().copied().collect();
+        let mut unresolved_scope: VecDeque<_> =
+            self.intermediate_uses.keys().copied().dedup().collect();
         while changed {
             changed = false;
             let n_unresolved_scope = unresolved_scope.len();
@@ -87,7 +89,7 @@ impl<'db> ImportResolver<'db> {
 
                     match self.resolve_i_use(i_use) {
                         (Some(updated_i_use), resolved) => {
-                            changed = changed || resolved;
+                            changed |= resolved;
                             self.intermediate_uses
                                 .get_mut(&scope)
                                 .unwrap()
@@ -95,12 +97,12 @@ impl<'db> ImportResolver<'db> {
                         }
 
                         (None, resolved) => {
-                            changed = changed || resolved;
+                            changed |= resolved;
                         }
                     }
                 }
 
-                if self.scope_state(scope).is_closed() {
+                if !self.scope_state(scope).is_closed() {
                     unresolved_scope.push_back(scope);
                 }
             }
@@ -537,7 +539,7 @@ impl<'db> ImportResolver<'db> {
             directive.disallow_lex().disallow_external();
         }
 
-        if self.does_named_import_exist_for(seg_name, current_scope, i_use.is_first_segment()) {
+        if self.contains_unresolved_named_use(seg_name, current_scope, i_use.is_first_segment()) {
             directive.disallow_glob().disallow_external();
         }
 
@@ -554,7 +556,12 @@ impl<'db> ImportResolver<'db> {
 
     /// Returns `true` if there is an unresolved named import for the given name
     /// in the given scope or its lexical parents(if `allow_lex` is `true`).
-    fn does_named_import_exist_for(&self, name: IdentId, scope: ScopeId, allow_lex: bool) -> bool {
+    fn contains_unresolved_named_use(
+        &self,
+        name: IdentId,
+        scope: ScopeId,
+        allow_lex: bool,
+    ) -> bool {
         let mut current_scope = Some(scope);
 
         while let Some(scope) = current_scope {

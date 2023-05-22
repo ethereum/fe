@@ -342,7 +342,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     }
 
                     *found_domains_after_named.entry(name).or_default() |= res.domain as u8;
-
                     res_collection.entry(name).or_default().push(res.clone());
                 }
             }
@@ -762,6 +761,13 @@ impl NameRes {
         match scope_or_use {
             Either::Left(target_scope) => is_scope_visible(db, from, target_scope),
             Either::Right(use_) => is_use_visible(db, from, use_),
+        }
+    }
+
+    pub fn pretty_path(&self, db: &dyn HirAnalysisDb) -> Option<String> {
+        match self.kind {
+            NameResKind::Scope(scope) => scope.pretty_path(db.as_hir_db()),
+            NameResKind::Prim(prim) => prim.name().data(db.as_hir_db()).into(),
         }
     }
 

@@ -233,6 +233,15 @@ impl ScopeId {
         let s_graph = self.top_mod.scope_graph(db);
         self.local_id.name_span(s_graph)
     }
+
+    pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
+        if let Some(parent) = self.parent(db) {
+            let parent_path = parent.pretty_path(db)?;
+            Some(format!("{}::{}", parent_path, self.name(db)?.data(db)))
+        } else {
+            self.name(db).map(|name| name.data(db))
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
