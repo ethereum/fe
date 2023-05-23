@@ -1,7 +1,4 @@
-use hir::hir_def::{
-    scope_graph::{ScopeId, ScopeKind},
-    Use,
-};
+use hir::hir_def::{scope_graph::ScopeId, Use};
 
 use crate::HirAnalysisDb;
 
@@ -16,7 +13,7 @@ pub fn is_scope_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, target_scope
         return true;
     }
 
-    let Some(def_scope) = (if matches!(target_scope.kind(db.as_hir_db()), ScopeKind::Field(_) | ScopeKind::Variant(_)) {
+    let Some(def_scope) = (if matches!(target_scope, ScopeId::Field(..) | ScopeId::Variant(..)) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
             target_scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))
@@ -32,7 +29,7 @@ pub fn is_scope_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, target_scope
 
 /// Return `true` if the given `use_` is visible from the `ref_scope`.
 pub(super) fn is_use_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, use_: Use) -> bool {
-    let use_scope = ScopeId::from_item(db.as_hir_db(), use_.into());
+    let use_scope = ScopeId::from_item(use_.into());
 
     if use_scope.data(db.as_hir_db()).vis.is_pub() {
         return true;

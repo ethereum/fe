@@ -22,8 +22,9 @@ use crate::{
 };
 
 use super::{
-    scope_graph::ScopeGraph, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, IngotId,
-    Partial, TypeId, UseAlias, WhereClauseId,
+    scope_graph::{ScopeGraph, ScopeId},
+    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
+    UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -68,6 +69,18 @@ pub enum GenericParamOwner {
 }
 
 impl GenericParamOwner {
+    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+        match self {
+            GenericParamOwner::Func(func) => func.top_mod(db),
+            GenericParamOwner::Struct(struct_) => struct_.top_mod(db),
+            GenericParamOwner::Enum(enum_) => enum_.top_mod(db),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.top_mod(db),
+            GenericParamOwner::Impl(impl_) => impl_.top_mod(db),
+            GenericParamOwner::Trait(trait_) => trait_.top_mod(db),
+            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.top_mod(db),
+        }
+    }
+
     pub fn params(&self, db: &dyn HirDb) -> GenericParamListId {
         match self {
             GenericParamOwner::Func(func) => func.generic_params(db),
@@ -214,14 +227,14 @@ impl TopLevelMod {
     /// If you need all the children, use [`children_nested`] instead.
     pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.scope_graph(db);
-        let scope = s_graph.scope_from_item(self.into());
+        let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
     /// Returns all the children of this module, including nested items.
     pub fn children_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.scope_graph(db);
-        s_graph.items_dfs()
+        s_graph.items_dfs(db)
     }
 
     pub fn parent(self, db: &dyn HirDb) -> Option<TopLevelMod> {
@@ -257,7 +270,7 @@ impl Mod {
 
     pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
-        let scope = s_graph.scope_from_item(self.into());
+        let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 }

@@ -171,8 +171,7 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&mut self, text: &str) -> &ScopeGraph {
-            let file = self.standalone_file(text);
+        pub fn parse_source(&self, file: InputFile) -> &ScopeGraph {
             let top_mod = map_file_to_mod(self, file);
             scope_graph(self, top_mod)
         }
@@ -183,16 +182,20 @@ mod test_db {
         where
             ItemKind: TryInto<T, Error = &'static str>,
         {
-            let tree = self.parse_source(text);
-            tree.items_dfs().find_map(|it| it.try_into().ok()).unwrap()
+            let file = self.standalone_file(text);
+            let tree = self.parse_source(file);
+            tree.items_dfs(self)
+                .find_map(|it| it.try_into().ok())
+                .unwrap()
         }
 
         pub fn expect_items<T>(&mut self, text: &str) -> Vec<T>
         where
             ItemKind: TryInto<T, Error = &'static str>,
         {
-            let tree = self.parse_source(text);
-            tree.items_dfs()
+            let file = self.standalone_file(text);
+            let tree = self.parse_source(file);
+            tree.items_dfs(self)
                 .filter_map(|it| it.try_into().ok())
                 .collect()
         }
@@ -204,7 +207,7 @@ mod test_db {
             &text[range.start().into()..range.end().into()]
         }
 
-        fn standalone_file(&mut self, text: &str) -> InputFile {
+        pub fn standalone_file(&mut self, text: &str) -> InputFile {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);

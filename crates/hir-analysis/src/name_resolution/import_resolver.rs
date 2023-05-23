@@ -738,7 +738,7 @@ struct IntermediateUse {
 
 impl IntermediateUse {
     fn new(db: &dyn HirAnalysisDb, use_: Use) -> Self {
-        let scope = ScopeId::from_item(db.as_hir_db(), use_.into())
+        let scope = ScopeId::from_item(use_.into())
             .lex_parent(db.as_hir_db())
             .unwrap();
         Self {
@@ -930,7 +930,7 @@ impl Importer for IntermediateResolvedImports {
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
     ) -> Option<&'a NamedImportSet> {
-        if scope.top_mod().ingot(db.as_hir_db()) != self.ingot {
+        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .named_resolved
                 .get(&scope)
@@ -944,7 +944,7 @@ impl Importer for IntermediateResolvedImports {
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
     ) -> Option<&'a GlobImportSet> {
-        if scope.top_mod().ingot(db.as_hir_db()) != self.ingot {
+        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .glob_resolved
                 .get(&scope)
@@ -958,7 +958,7 @@ impl Importer for IntermediateResolvedImports {
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
     ) -> &'a [NameBinding] {
-        if scope.top_mod().ingot(db.as_hir_db()) != self.ingot {
+        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             &resolved_imports_for_scope(db, scope).unnamed_resolved
         } else {
             &self.resolved_imports.unnamed_resolved

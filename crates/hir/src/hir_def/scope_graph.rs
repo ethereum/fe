@@ -1,23 +1,22 @@
 use std::collections::BTreeSet;
 
-use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{hir_def::GenericParamOwner, span::DynLazySpan, HirDb};
 
-use super::{Enum, Func, IdentId, IngotId, ItemKind, Struct, TopLevelMod, Use, Visibility};
+use super::{Enum, Func, IdentId, IngotId, ItemKind, TopLevelMod, Use, Visibility};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
     pub top_mod: TopLevelMod,
-    pub scopes: PrimaryMap<LocalScopeId, LocalScope>,
-    pub item_map: FxHashMap<ItemKind, LocalScopeId>,
-    pub unresolved_uses: BTreeSet<Use>,
+    pub scopes: FxHashMap<ScopeId, Scope>,
+    pub unresolved_uses: FxHashSet<Use>,
 }
 
 impl ScopeGraph {
-    pub fn items_dfs(&self) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind> + 'a {
         ScopeGraphItemIterDfs {
+            db,
             graph: self,
             visited: Default::default(),
             stack: vec![self.top_mod.into()],
@@ -25,151 +24,84 @@ impl ScopeGraph {
     }
 
     /// Returns the direct child items of the scope.
-    pub fn child_items(&self, scope: LocalScopeId) -> impl Iterator<Item = ItemKind> + '_ {
-        self.edges(scope).iter().filter_map(|edge| match edge.kind {
+    pub fn child_items(&self, scope: ScopeId) -> impl Iterator<Item = ItemKind> + '_ {
+        self.edges(scope).filter_map(|edge| match edge.kind {
             EdgeKind::Lex(_) | EdgeKind::Super(_) | EdgeKind::Ingot(_) | EdgeKind::SelfTy(_) => {
                 None
             }
 
-            _ => self.item_from_scope(edge.dest.to_local()),
+            _ => edge.dest.to_item(),
         })
     }
 
-    pub fn edges(&self, scope: LocalScopeId) -> &[ScopeEdge] {
-        &self.scopes[scope].edges
+    pub fn edges(&self, scope: ScopeId) -> impl Iterator<Item = &ScopeEdge> + '_ {
+        self.scopes[&scope].edges.iter()
     }
 
-    pub fn scope_data(&self, scope: LocalScopeId) -> &LocalScope {
+    pub fn scope_data(&self, scope: &ScopeId) -> &Scope {
         &self.scopes[scope]
     }
-
-    pub fn item_from_scope(&self, scope: LocalScopeId) -> Option<ItemKind> {
-        if let ScopeKind::Item(item) = self.scope_data(scope).kind {
-            Some(item)
-        } else {
-            None
-        }
-    }
-
-    pub fn scope_from_item(&self, item: ItemKind) -> LocalScopeId {
-        self.item_map[&item]
-    }
 }
 
-struct ScopeGraphItemIterDfs<'a> {
-    graph: &'a ScopeGraph,
-    visited: FxHashSet<ItemKind>,
-    stack: Vec<ItemKind>,
-}
-
-impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
-    type Item = ItemKind;
-
-    fn next(&mut self) -> Option<ItemKind> {
-        let item = self.stack.pop()?;
-        self.visited.insert(item);
-        let scope_id = self.graph.scope_from_item(item);
-
-        for edge in self.graph.edges(scope_id) {
-            let ScopeId { top_mod, local_id } = edge.dest;
-            if top_mod != self.graph.top_mod {
-                continue;
-            }
-            if let Some(item) = self.graph.item_from_scope(local_id) {
-                if !self.visited.contains(&item) {
-                    self.stack.push(item);
-                }
-            }
-        }
-        Some(item)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LocalScope {
-    pub kind: ScopeKind,
-    pub edges: Vec<ScopeEdge>,
-    pub parent_module: Option<ScopeId>,
-    pub parent_scope: Option<LocalScopeId>,
-    pub vis: Visibility,
-}
-
-impl LocalScope {
-    pub fn new(
-        kind: ScopeKind,
-        parent_module: Option<ScopeId>,
-        parent_scope: Option<LocalScopeId>,
-        vis: Visibility,
-    ) -> Self {
-        Self {
-            kind,
-            edges: vec![],
-            parent_module,
-            parent_scope,
-            vis,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ScopeKind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ScopeId {
     Item(ItemKind),
-    GenericParam(usize),
-    FnParam(usize),
-    Field(usize),
-    Variant(usize),
+    GenericParam(ItemKind, usize),
+    FnParam(ItemKind, usize),
+    Field(ItemKind, usize),
+    Variant(ItemKind, usize),
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ScopeEdge {
-    pub dest: ScopeId,
-    pub kind: EdgeKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ScopeId {
-    top_mod: TopLevelMod,
-    local_id: LocalScopeId,
-}
-
 impl ScopeId {
-    pub fn new(top_mod: TopLevelMod, local_id: LocalScopeId) -> Self {
-        Self { top_mod, local_id }
+    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+        match self {
+            ScopeId::Item(item) => item.top_mod(db),
+            ScopeId::GenericParam(item, _) => item.top_mod(db),
+            ScopeId::FnParam(item, _) => item.top_mod(db),
+            ScopeId::Field(item, _) => item.top_mod(db),
+            ScopeId::Variant(item, _) => item.top_mod(db),
+        }
     }
 
-    pub fn from_item(db: &dyn HirDb, item: ItemKind) -> Self {
-        let top_mod = item.top_mod(db);
-        let scope_graph = top_mod.scope_graph(db);
-        Self::new(top_mod, scope_graph.scope_from_item(item))
+    pub fn from_item(item: ItemKind) -> Self {
+        Self::Item(item)
+    }
+
+    pub fn to_item(self) -> Option<ItemKind> {
+        match self {
+            ScopeId::Item(item) => Some(item),
+            _ => None,
+        }
     }
 
     pub fn root(top_mod: TopLevelMod) -> Self {
-        Self::new(top_mod, LocalScopeId::root())
+        Self::Item(top_mod.into())
     }
 
     /// Returns the scope graph containing this scope.
     pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
-        self.top_mod.scope_graph(db)
+        self.top_mod(db).scope_graph(db)
     }
 
-    /// Returns the local id of the scope graph.
-    pub fn to_local(self) -> LocalScopeId {
-        self.local_id
-    }
-
-    pub fn edges(self, db: &dyn HirDb) -> &[ScopeEdge] {
-        self.scope_graph(db).edges(self.local_id)
+    pub fn edges(self, db: &dyn HirDb) -> impl Iterator<Item = &ScopeEdge> {
+        self.scope_graph(db).edges(self)
     }
 
     /// Returns `true` if `scope` is reachable from `self` by following only
     /// lexical edges.
-    pub fn is_lex_child(self, db: &dyn HirDb, parent: ScopeId) -> bool {
-        if self.top_mod != parent.top_mod {
+    pub fn is_lex_child(self, db: &dyn HirDb, scope: &ScopeId) -> bool {
+        if self.top_mod(db) != scope.top_mod(db) {
             return false;
         }
 
-        let scope_graph = self.scope_graph(db);
-        self.local_id.is_lex_child(scope_graph, parent.local_id)
+        match self.lex_parent(db) {
+            Some(lex_parent) => {
+                if &lex_parent == scope {
+                    return true;
+                }
+                lex_parent.is_lex_child(db, scope)
+            }
+            None => false,
+        }
     }
 
     /// Returns true if `self` is a transitive reflexive child of `of`.
@@ -186,22 +118,13 @@ impl ScopeId {
         false
     }
 
-    /// Returns the `TopLevelMod` containing the scope .
-    pub fn top_mod(self) -> TopLevelMod {
-        self.top_mod
-    }
-
     /// Return the `IngotId` containing the scope.
     pub fn ingot(self, db: &dyn HirDb) -> IngotId {
-        self.top_mod.ingot(db)
+        self.top_mod(db).ingot(db)
     }
 
-    pub fn data(self, db: &dyn HirDb) -> &LocalScope {
-        self.top_mod.scope_graph(db).scope_data(self.local_id)
-    }
-
-    pub fn kind(self, db: &dyn HirDb) -> ScopeKind {
-        self.data(db).kind
+    pub fn data(self, db: &dyn HirDb) -> &Scope {
+        self.top_mod(db).scope_graph(db).scope_data(&self)
     }
 
     pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
@@ -226,25 +149,90 @@ impl ScopeId {
     }
 
     pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
-        self.data(db).parent_module
+        let parent_item = self.parent_item(db)?;
+        match parent_item {
+            ItemKind::Mod(_) | ItemKind::TopMod(_) => Some(Self::Item(parent_item)),
+            _ => {
+                let parent_id = Self::from_item(parent_item);
+                parent_id.parent_module(db)
+            }
+        }
     }
 
     pub fn is_type(self, db: &dyn HirDb) -> bool {
-        match self.data(db).kind {
-            ScopeKind::Item(item) => item.is_type(),
-            ScopeKind::GenericParam(_) => true,
+        match self.data(db).id {
+            ScopeId::Item(item) => item.is_type(),
+            ScopeId::GenericParam(..) => true,
             _ => false,
         }
     }
 
     pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
-        let s_graph = self.top_mod.scope_graph(db);
-        self.local_id.name(db, s_graph)
+        match self.data(db).id {
+            ScopeId::Item(item) => item.name(db),
+
+            ScopeId::Variant(parent, idx) => {
+                let enum_: Enum = parent.try_into().unwrap();
+                enum_.variants(db).data(db)[idx].name.to_opt()
+            }
+
+            ScopeId::Field(parent, idx) => match parent {
+                ItemKind::Struct(s) => s.fields(db).data(db)[idx].name.to_opt(),
+                ItemKind::Contract(c) => c.fields(db).data(db)[idx].name.to_opt(),
+                _ => unreachable!(),
+            },
+
+            ScopeId::FnParam(parent, idx) => {
+                let func: Func = parent.try_into().unwrap();
+                func.params(db).to_opt()?.data(db)[idx].name()
+            }
+
+            ScopeId::GenericParam(parent, idx) => {
+                let parent = GenericParamOwner::from_item_opt(parent).unwrap();
+
+                let params = &parent.params(db).data(db)[idx];
+                params.name().to_opt()
+            }
+        }
+    }
+
+    pub fn parent_item(self, db: &dyn HirDb) -> Option<ItemKind> {
+        let data = self.data(db);
+        match data.id {
+            ScopeId::Item(item) => Some(item),
+            _ => {
+                let parent = data.parent_scope?;
+                parent.parent_item(db)
+            }
+        }
     }
 
     pub fn name_span(self, db: &dyn HirDb) -> Option<DynLazySpan> {
-        let s_graph = self.top_mod.scope_graph(db);
-        self.local_id.name_span(s_graph)
+        match self.data(db).id {
+            ScopeId::Item(item) => item.name_span(),
+
+            ScopeId::Variant(parent, idx) => {
+                let enum_: Enum = parent.try_into().unwrap();
+                Some(enum_.lazy_span().variants().variant(idx).name().into())
+            }
+
+            ScopeId::Field(parent, idx) => match parent {
+                ItemKind::Struct(s) => Some(s.lazy_span().fields().field(idx).name().into()),
+                ItemKind::Contract(c) => Some(c.lazy_span().fields().field(idx).name().into()),
+                _ => unreachable!(),
+            },
+
+            ScopeId::FnParam(parent, idx) => {
+                let func: Func = parent.try_into().unwrap();
+                Some(func.lazy_span().params().param(idx).name().into())
+            }
+
+            ScopeId::GenericParam(parent, idx) => {
+                let parent = GenericParamOwner::from_item_opt(parent).unwrap();
+
+                Some(parent.params_span().param(idx).into())
+            }
+        }
     }
 
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
@@ -257,7 +245,62 @@ impl ScopeId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
+struct ScopeGraphItemIterDfs<'a> {
+    db: &'a dyn HirDb,
+    graph: &'a ScopeGraph,
+    visited: FxHashSet<ItemKind>,
+    stack: Vec<ItemKind>,
+}
+
+impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
+    type Item = ItemKind;
+
+    fn next(&mut self) -> Option<ItemKind> {
+        let item = self.stack.pop()?;
+        self.visited.insert(item);
+        let scope_id = ScopeId::from_item(item);
+
+        for edge in self.graph.edges(scope_id) {
+            let top_mod = edge.dest.top_mod(self.db);
+            if top_mod != self.graph.top_mod {
+                continue;
+            }
+            if let Some(item) = edge.dest.to_item() {
+                if !self.visited.contains(&item) {
+                    self.stack.push(item);
+                }
+            }
+        }
+        Some(item)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Scope {
+    pub id: ScopeId,
+    pub edges: BTreeSet<ScopeEdge>,
+    pub parent_scope: Option<ScopeId>,
+    pub vis: Visibility,
+}
+
+impl Scope {
+    pub fn new(kind: ScopeId, parent_scope: Option<ScopeId>, vis: Visibility) -> Self {
+        Self {
+            id: kind,
+            edges: Default::default(),
+            parent_scope,
+            vis,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ScopeEdge {
+    pub dest: ScopeId,
+    pub kind: EdgeKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub enum EdgeKind {
     Lex(LexEdge),
     Mod(ModEdge),
@@ -328,148 +371,44 @@ impl EdgeKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LexEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct ModEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct TypeEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct TraitEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct ValueEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct GenericParamEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct FieldEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct VariantEdge(pub IdentId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SuperEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IngotEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct SelfTyEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub struct SelfEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AnonEdge();
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalScopeId(u32);
-entity_impl!(LocalScopeId);
-
-impl LocalScopeId {
-    pub fn to_global(self, top_mod: TopLevelMod) -> ScopeId {
-        ScopeId::new(top_mod, self)
-    }
-
-    /// Returns `true` if `scope` is reachable from `self` by following only
-    /// lexical edges.
-    pub fn is_lex_child(self, s_graph: &ScopeGraph, scope: LocalScopeId) -> bool {
-        let data = self.data(s_graph);
-        match data.parent_scope {
-            Some(parent) => {
-                if parent == scope {
-                    return true;
-                }
-                parent.is_lex_child(s_graph, scope)
-            }
-            None => false,
-        }
-    }
-
-    pub fn data(self, s_graph: &ScopeGraph) -> &LocalScope {
-        &s_graph.scopes[self]
-    }
-
-    pub fn name(self, db: &dyn HirDb, s_graph: &ScopeGraph) -> Option<IdentId> {
-        match self.data(s_graph).kind {
-            ScopeKind::Item(item) => item.name(db),
-
-            ScopeKind::Variant(idx) => {
-                let parent: Enum = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                parent.variants(db).data(db)[idx].name.to_opt()
-            }
-
-            ScopeKind::Field(idx) => {
-                let parent: Struct = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                parent.fields(db).data(db)[idx].name.to_opt()
-            }
-
-            ScopeKind::FnParam(idx) => {
-                let parent: Func = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                parent.params(db).to_opt()?.data(db)[idx].name()
-            }
-
-            ScopeKind::GenericParam(idx) => {
-                let parent =
-                    GenericParamOwner::from_item_opt(self.parent_item(s_graph).unwrap()).unwrap();
-
-                let params = &parent.params(db).data(db)[idx];
-                params.name().to_opt()
-            }
-        }
-    }
-
-    pub fn name_span(self, s_graph: &ScopeGraph) -> Option<DynLazySpan> {
-        match self.data(s_graph).kind {
-            ScopeKind::Item(item) => item.name_span(),
-
-            ScopeKind::Variant(idx) => {
-                let parent: Enum = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                Some(parent.lazy_span().variants().variant(idx).name().into())
-            }
-
-            ScopeKind::Field(idx) => {
-                let parent: Struct = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                Some(parent.lazy_span().fields().field(idx).name().into())
-            }
-
-            ScopeKind::FnParam(idx) => {
-                let parent: Func = self.parent_item(s_graph).unwrap().try_into().unwrap();
-                Some(parent.lazy_span().params().param(idx).name().into())
-            }
-
-            ScopeKind::GenericParam(idx) => {
-                let parent =
-                    GenericParamOwner::from_item_opt(self.parent_item(s_graph).unwrap()).unwrap();
-
-                Some(parent.params_span().param(idx).into())
-            }
-        }
-    }
-
-    pub fn parent(self, s_graph: &ScopeGraph) -> Option<LocalScopeId> {
-        self.data(s_graph).parent_scope
-    }
-
-    pub fn parent_item(self, s_graph: &ScopeGraph) -> Option<ItemKind> {
-        match self.data(s_graph).kind {
-            ScopeKind::Item(item) => Some(item),
-            _ => {
-                let parent = self.parent(s_graph)?;
-                parent.parent_item(s_graph)
-            }
-        }
-    }
-
-    pub(crate) fn root() -> Self {
-        LocalScopeId(0)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -495,15 +434,16 @@ mod tests {
             }
         "#;
 
-        let scope_graph = db.parse_source(text);
-        assert_eq!(scope_graph.items_dfs().count(), 8);
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
+        assert_eq!(scope_graph.items_dfs(&db).count(), 8);
 
-        for (i, item) in scope_graph.items_dfs().enumerate() {
+        for (i, item) in scope_graph.items_dfs(&db).enumerate() {
             match i {
                 0 => assert!(matches!(item, ItemKind::TopMod(_))),
-                1 => assert!(matches!(item, ItemKind::Mod(_))),
-                2 => assert!(matches!(item, ItemKind::Struct(_))),
-                3 => assert!(matches!(item, ItemKind::Enum(_))),
+                1 => assert!(matches!(item, ItemKind::Enum(_))),
+                2 => assert!(matches!(item, ItemKind::Mod(_))),
+                3 => assert!(matches!(item, ItemKind::Struct(_))),
                 4 => assert!(matches!(item, ItemKind::Mod(_))),
                 5 => assert!(matches!(item, ItemKind::Func(_))),
                 6 => assert!(matches!(item, ItemKind::Func(_))),

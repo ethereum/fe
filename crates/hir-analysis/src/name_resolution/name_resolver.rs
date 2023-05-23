@@ -10,8 +10,7 @@ use hir::{
         prim_ty::PrimTy,
         scope_graph::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
-            ScopeKind, SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge,
-            VariantEdge,
+            SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
         IdentId, ItemKind, Partial, PathId, Use,
     },
@@ -119,11 +118,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
 
         // Set pred segment to the current scope.
-        let mut pred = NameRes::new_scope(
-            scope,
-            NameDomain::from_scope(self.db, scope),
-            NameDerivation::Def,
-        );
+        let mut pred =
+            NameRes::new_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
 
         let seg_len = segments.len();
         for (i, seg) in segments[0..seg_len - 1].iter().enumerate() {
@@ -165,7 +161,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     if found_scopes.insert(edge.dest) {
                         let res = NameRes::new_scope(
                             edge.dest,
-                            NameDomain::from_scope(self.db, edge.dest),
+                            NameDomain::from_scope(edge.dest),
                             NameDerivation::Def,
                         );
                         if binding.push(&res).is_some() {
@@ -229,7 +225,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         if query.directive.is_allowed_domain(NameDomain::Item as u8) {
             query
                 .scope
-                .top_mod()
+                .top_mod(self.db.as_hir_db())
                 .ingot(self.db.as_hir_db())
                 .external_ingots(self.db.as_hir_db())
                 .iter()
@@ -316,11 +312,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             if !found_kinds.insert((name, scope.into())) {
                 continue;
             }
-            let res = NameRes::new_scope(
-                scope,
-                NameDomain::from_scope(self.db, scope),
-                NameDerivation::Def,
-            );
+            let res = NameRes::new_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
 
             *found_domains.entry(name).or_default() |= res.domain as u8;
             res_collection.entry(name).or_default().push(res);
@@ -966,14 +958,14 @@ pub enum NameDomain {
 }
 
 impl NameDomain {
-    fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
-        match scope.data(db.as_hir_db()).kind {
-            ScopeKind::Item(ItemKind::Func(_) | ItemKind::Const(_)) | ScopeKind::FnParam(_) => {
+    fn from_scope(scope: ScopeId) -> Self {
+        match scope {
+            ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_)) | ScopeId::FnParam(..) => {
                 Self::Value
             }
-            ScopeKind::Item(_) | ScopeKind::GenericParam(_) => Self::Item,
-            ScopeKind::Field(_) => Self::Field,
-            ScopeKind::Variant(_) => Self::Value,
+            ScopeId::Item(_) | ScopeId::GenericParam(..) => Self::Item,
+            ScopeId::Field(..) => Self::Field,
+            ScopeId::Variant(..) => Self::Value,
         }
     }
 }

@@ -303,7 +303,8 @@ mod tests {
             }
         "#;
 
-        let item_tree = db.parse_source(text);
+        let file = db.standalone_file(text);
+        let item_tree = db.parse_source(file);
         let top_mod = item_tree.top_mod;
         assert_eq!(text, db.text_at(top_mod, &top_mod.lazy_span()));
     }
