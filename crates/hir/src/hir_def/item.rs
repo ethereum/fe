@@ -204,14 +204,29 @@ impl TopLevelMod {
         lower::scope_graph_impl(db, self)
     }
 
+    /// Returns the child top level modules of `self`.
+    pub fn child_top_mods(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
+        let module_tree = self.ingot(db).module_tree(db);
+        module_tree.children(self)
+    }
+
+    /// Returns the top level children of this module.
+    /// If you need all the children, use [`children_nested`] instead.
+    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.scope_graph(db);
+        let scope = s_graph.scope_from_item(self.into());
+        s_graph.child_items(scope)
+    }
+
+    /// Returns all the children of this module, including nested items.
+    pub fn children_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.scope_graph(db);
+        s_graph.items_dfs()
+    }
+
     pub fn parent(self, db: &dyn HirDb) -> Option<TopLevelMod> {
         let module_tree = self.ingot(db).module_tree(db);
         module_tree.parent(self)
-    }
-
-    pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
-        let module_tree = self.ingot(db).module_tree(db);
-        module_tree.children(self)
     }
 
     pub fn vis(self, _db: &dyn HirDb) -> Visibility {
@@ -238,6 +253,12 @@ pub struct Mod {
 impl Mod {
     pub fn lazy_span(self) -> LazyModSpan {
         LazyModSpan::new(self)
+    }
+
+    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = s_graph.scope_from_item(self.into());
+        s_graph.child_items(scope)
     }
 }
 

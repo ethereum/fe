@@ -38,7 +38,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
     pub fn build(self) -> ScopeGraph {
         debug_assert!(matches!(
-            self.graph.scope_item(LocalScopeId::root()),
+            self.graph.item_from_scope(LocalScopeId::root()),
             Some(ItemKind::TopMod(_))
         ));
 
@@ -69,7 +69,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                 top_mod.ingot(self.db).root_mod(self.db),
                 EdgeKind::ingot(),
             );
-            for child in top_mod.children(self.db) {
+            for child in top_mod.child_top_mods(self.db) {
                 let child_name = child.name(self.db);
                 let edge = EdgeKind::mod_(child_name);
                 self.add_global_edge(item_scope, child, edge)
@@ -199,7 +199,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             }
 
             Use(use_) => {
-                self.graph.unresolved_uses.push(use_);
+                self.graph.unresolved_uses.insert(use_);
 
                 self.add_lex_edge(item_scope, parent_scope);
                 EdgeKind::anon()

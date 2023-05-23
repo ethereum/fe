@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -10,7 +12,7 @@ pub struct ScopeGraph {
     pub top_mod: TopLevelMod,
     pub scopes: PrimaryMap<LocalScopeId, LocalScope>,
     pub item_map: FxHashMap<ItemKind, LocalScopeId>,
-    pub unresolved_uses: Vec<Use>,
+    pub unresolved_uses: BTreeSet<Use>,
 }
 
 impl ScopeGraph {
@@ -22,6 +24,17 @@ impl ScopeGraph {
         }
     }
 
+    /// Returns the direct child items of the scope.
+    pub fn child_items(&self, scope: LocalScopeId) -> impl Iterator<Item = ItemKind> + '_ {
+        self.edges(scope).iter().filter_map(|edge| match edge.kind {
+            EdgeKind::Lex(_) | EdgeKind::Super(_) | EdgeKind::Ingot(_) | EdgeKind::SelfTy(_) => {
+                None
+            }
+
+            _ => self.item_from_scope(edge.dest.to_local()),
+        })
+    }
+
     pub fn edges(&self, scope: LocalScopeId) -> &[ScopeEdge] {
         &self.scopes[scope].edges
     }
@@ -30,7 +43,7 @@ impl ScopeGraph {
         &self.scopes[scope]
     }
 
-    pub fn scope_item(&self, scope: LocalScopeId) -> Option<ItemKind> {
+    pub fn item_from_scope(&self, scope: LocalScopeId) -> Option<ItemKind> {
         if let ScopeKind::Item(item) = self.scope_data(scope).kind {
             Some(item)
         } else {
@@ -38,7 +51,7 @@ impl ScopeGraph {
         }
     }
 
-    pub fn item_scope(&self, item: ItemKind) -> LocalScopeId {
+    pub fn scope_from_item(&self, item: ItemKind) -> LocalScopeId {
         self.item_map[&item]
     }
 }
@@ -55,14 +68,14 @@ impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
     fn next(&mut self) -> Option<ItemKind> {
         let item = self.stack.pop()?;
         self.visited.insert(item);
-        let scope_id = self.graph.item_scope(item);
+        let scope_id = self.graph.scope_from_item(item);
 
         for edge in self.graph.edges(scope_id) {
             let ScopeId { top_mod, local_id } = edge.dest;
             if top_mod != self.graph.top_mod {
                 continue;
             }
-            if let Some(item) = self.graph.scope_item(local_id) {
+            if let Some(item) = self.graph.item_from_scope(local_id) {
                 if !self.visited.contains(&item) {
                     self.stack.push(item);
                 }
@@ -127,7 +140,7 @@ impl ScopeId {
     pub fn from_item(db: &dyn HirDb, item: ItemKind) -> Self {
         let top_mod = item.top_mod(db);
         let scope_graph = top_mod.scope_graph(db);
-        Self::new(top_mod, scope_graph.item_scope(item))
+        Self::new(top_mod, scope_graph.scope_from_item(item))
     }
 
     pub fn root(top_mod: TopLevelMod) -> Self {

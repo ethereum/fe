@@ -14,6 +14,8 @@ pub mod use_tree;
 
 pub(crate) mod module_tree;
 
+use std::ops::Deref;
+
 pub use attr::*;
 pub use body::*;
 use common::{input::IngotKind, InputIngot};
@@ -30,7 +32,26 @@ pub use use_tree::*;
 
 use num_bigint::BigUint;
 
-use crate::{external_ingots_impl, HirDb};
+use crate::{external_ingots_impl, span::LazySpan, HirDb};
+
+pub struct Spanned<T, S>
+where
+    S: LazySpan,
+{
+    pub value: T,
+    pub span: S,
+}
+
+impl<T, S> Deref for Spanned<T, S>
+where
+    S: LazySpan,
+{
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
 
 #[salsa::tracked]
 pub struct IngotId {
