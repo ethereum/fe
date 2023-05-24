@@ -31,7 +31,7 @@ mod transition;
 /// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to
 /// a lot of difficulties in salsa integration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynLazySpan(Option<SpanTransitionChain>);
+pub struct DynLazySpan(pub(super) Option<SpanTransitionChain>);
 impl DynLazySpan {
     pub fn invalid_span() -> Self {
         Self(None)
@@ -45,6 +45,11 @@ impl LazySpan for DynLazySpan {
             None
         }
     }
+}
+pub(crate) trait SpanDowncast {
+    fn downcast(dyn_span: DynLazySpan) -> Option<Self>
+    where
+        Self: Sized;
 }
 
 /// The trait provides a way to extract [`Span`](common::diagnostics::Span) from

@@ -345,6 +345,12 @@ macro_rules! define_lazy_span_node {
                 Self(val.0.into())
             }
         }
+
+        impl crate::span::SpanDowncast for $name  {
+            fn downcast(val: crate::span::DynLazySpan) -> Option<Self> {
+                val.0.map(|inner| Self(inner))
+            }
+        }
     };
 }
 

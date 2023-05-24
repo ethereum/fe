@@ -103,8 +103,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     /// use foo::FOO
     ///
     /// mod foo {
-    ///     const FOO: i32 = 1
-    ///     struct FOO {}
+    ///     pub const FOO: i32 = 1
+    ///     pub struct FOO {}
     /// }
     /// ```
     pub fn resolve_path(
