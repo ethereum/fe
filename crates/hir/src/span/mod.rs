@@ -46,6 +46,34 @@ impl LazySpan for DynLazySpan {
         }
     }
 }
+impl FromIterator<Self> for DynLazySpan {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Self>,
+    {
+        let mut iter = iter.into_iter();
+
+        let Some(first) = iter.next().map(|first| first.0).flatten() else {
+            return Self::invalid_span();
+        };
+        let chain_root = first.root;
+        let mut chain = first.chain;
+
+        for item in iter {
+            let Some(mut item) = item.0 else {
+               return Self::invalid_span();
+            };
+
+            chain.append(&mut item.chain);
+        }
+
+        Self(Some(SpanTransitionChain {
+            root: chain_root,
+            chain,
+        }))
+    }
+}
+
 pub(crate) trait SpanDowncast {
     fn downcast(dyn_span: DynLazySpan) -> Option<Self>
     where

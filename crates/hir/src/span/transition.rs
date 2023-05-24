@@ -43,8 +43,8 @@ pub(crate) enum LazyArg {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct SpanTransitionChain {
-    root: ChainRoot,
-    chain: Vec<LazyTransitionFn>,
+    pub(super) root: ChainRoot,
+    pub(super) chain: Vec<LazyTransitionFn>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
