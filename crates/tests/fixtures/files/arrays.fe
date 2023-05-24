@@ -58,7 +58,7 @@ unsafe fn test_array_oob_dyn(mut ctx: Context) {
     let mut offset: u256 = FREE_MEM_PTR 
 
     for expected_byte in expected_revert_data {
-        assert evm::shr(248, evm::mload(offset)) == expected_byte
+        assert evm::shr(bits: 248, value: evm::mload(offset)) == expected_byte
         offset += 1
     }
 }
