@@ -2,8 +2,8 @@ use parser::ast::{self, prelude::AstNode};
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
-        TypeAlias, Use,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
+        Trait, TypeAlias, Use,
     },
     span::{
         transition::{LazyArg, LazyTransitionFn, ResolvedOrigin, ResolvedOriginKind},
@@ -16,11 +16,19 @@ use super::{
     attr::LazyAttrListSpan,
     define_lazy_span_node,
     params::{LazyFnParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
+    transition::SpanTransitionChain,
     types::{LazyPathTypeSpan, LazyTypeSpan},
     use_tree::LazyUseAliasSpan,
 };
 
-define_lazy_span_node!(LazyTopLevelModSpan, ast::Root, new(TopLevelMod),);
+define_lazy_span_node!(LazyTopModSpan, ast::Root, new(TopLevelMod),);
+
+define_lazy_span_node!(LazyItemSpan);
+impl LazyItemSpan {
+    pub fn new(item: ItemKind) -> Self {
+        Self(SpanTransitionChain::new(item))
+    }
+}
 
 define_lazy_span_node!(
     LazyModSpan,

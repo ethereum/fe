@@ -12,8 +12,8 @@ use crate::{
     span::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
-            LazyImplTraitSpan, LazyModSpan, LazyStructSpan, LazyTopLevelModSpan, LazyTraitSpan,
-            LazyTypeAliasSpan, LazyUseSpan,
+            LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
+            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
         },
         params::LazyGenericParamListSpan,
         DynLazySpan, HirOrigin,
@@ -55,6 +55,12 @@ pub enum ItemKind {
     /// Body is not an `Item`, but this makes it easier for analyzers to handle
     /// it.
     Body(Body),
+}
+
+impl ItemKind {
+    pub fn lazy_span(self) -> LazyItemSpan {
+        LazyItemSpan::new(self)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
@@ -209,8 +215,8 @@ pub struct TopLevelMod {
     pub(crate) file: InputFile,
 }
 impl TopLevelMod {
-    pub fn lazy_span(self) -> LazyTopLevelModSpan {
-        LazyTopLevelModSpan::new(self)
+    pub fn lazy_span(self) -> LazyTopModSpan {
+        LazyTopModSpan::new(self)
     }
 
     pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {

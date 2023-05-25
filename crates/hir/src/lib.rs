@@ -11,6 +11,7 @@ pub mod diagnostics;
 pub mod hir_def;
 pub mod lower;
 pub mod span;
+pub mod visitor;
 
 #[salsa::jar(db = HirDb)]
 pub struct Jar(

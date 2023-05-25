@@ -8,8 +8,8 @@ use parser::{
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod, Trait,
-        TypeAlias, Use,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
+        Trait, TypeAlias, Use,
     },
     lower::top_mod_ast,
     SpannedHirDb,
@@ -47,8 +47,24 @@ pub(crate) struct SpanTransitionChain {
     pub(super) chain: Vec<LazyTransitionFn>,
 }
 
+impl SpanTransitionChain {
+    pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
+        Self {
+            root: root.into(),
+            chain: Vec::new(),
+        }
+    }
+
+    pub(super) fn push_transition(&self, transition: LazyTransitionFn) -> Self {
+        let mut new_state = self.clone();
+        new_state.chain.push(transition);
+        new_state
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
 pub(crate) enum ChainRoot {
+    ItemKind(ItemKind),
     TopMod(TopLevelMod),
     Mod(Mod),
     Func(Func),
@@ -144,6 +160,21 @@ pub(crate) enum ResolvedOriginKind {
 impl ChainInitiator for ChainRoot {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
         match self {
+            Self::ItemKind(kind) => match kind {
+                ItemKind::TopMod(top_mod) => top_mod.init(db),
+                ItemKind::Mod(mod_) => mod_.init(db),
+                ItemKind::Func(func) => func.init(db),
+                ItemKind::Struct(struct_) => struct_.init(db),
+                ItemKind::Contract(contract) => contract.init(db),
+                ItemKind::Enum(enum_) => enum_.init(db),
+                ItemKind::TypeAlias(type_alias) => type_alias.init(db),
+                ItemKind::Impl(impl_) => impl_.init(db),
+                ItemKind::Trait(trait_) => trait_.init(db),
+                ItemKind::ImplTrait(impl_trait) => impl_trait.init(db),
+                ItemKind::Const(const_) => const_.init(db),
+                ItemKind::Use(use_) => use_.init(db),
+                ItemKind::Body(body) => body.init(db),
+            },
             Self::TopMod(top_mod) => top_mod.init(db),
             Self::Mod(mod_) => mod_.init(db),
             Self::Func(func) => func.init(db),
@@ -161,21 +192,6 @@ impl ChainInitiator for ChainRoot {
             Self::Expr(expr) => expr.init(db),
             Self::Pat(pat) => pat.init(db),
         }
-    }
-}
-
-impl SpanTransitionChain {
-    pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
-        Self {
-            root: root.into(),
-            chain: Vec::new(),
-        }
-    }
-
-    pub(super) fn push_transition(&self, transition: LazyTransitionFn) -> Self {
-        let mut new_state = self.clone();
-        new_state.chain.push(transition);
-        new_state
     }
 }
 

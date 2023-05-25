@@ -9,7 +9,7 @@ use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
 
-use crate::span::HirOrigin;
+use crate::span::{item::LazyBodySpan, HirOrigin};
 
 use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod, TrackedItemId};
 
@@ -30,6 +30,12 @@ pub struct Body {
     pub(crate) source_map: BodySourceMap,
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Expr>,
+}
+
+impl Body {
+    pub fn lazy_span(self) -> LazyBodySpan {
+        LazyBodySpan::new(self)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
