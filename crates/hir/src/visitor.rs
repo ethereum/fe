@@ -2,6 +2,10 @@
 use std::{marker::PhantomData, mem};
 
 use crate::{
+    hir_def::{
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
+        Trait, TypeAlias, Use,
+    },
     span::{
         item::{
             LazyBodySpan, LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan,
@@ -33,7 +37,7 @@ where
     }
 
     fn pop_span(&mut self) {
-        self.span.0.pop_transition();
+        self.span.0.as_mut().map(|chain| chain.pop_transition());
     }
 
     pub fn current_span(&self) -> Option<T>

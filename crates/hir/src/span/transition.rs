@@ -55,10 +55,12 @@ impl SpanTransitionChain {
         }
     }
 
-    pub(super) fn push_transition(&self, transition: LazyTransitionFn) -> Self {
-        let mut new_state = self.clone();
-        new_state.chain.push(transition);
-        new_state
+    pub(super) fn push(&mut self, transition: LazyTransitionFn) {
+        self.chain.push(transition);
+    }
+
+    pub(crate) fn pop_transition(&mut self) {
+        self.chain.pop();
     }
 }
 
@@ -289,62 +291,91 @@ macro_rules! define_lazy_span_node {
 
             $($(
                 pub fn $name_token(&self) -> crate::span::LazySpanAtom {
-                    use parser::ast::prelude::*;
-                    fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|n| n.$getter_token())
-                            .map(|n| n.into()))
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_token _moved>]()
                     }
+                }
 
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::None,
-                    };
-                    crate::span::LazySpanAtom(
-                        self.0.push_transition(lazy_transition)
-                    )
+                paste::paste! {
+                    pub fn [<$name_token _moved>](mut self) -> crate::span::LazySpanAtom {
+                        use parser::ast::prelude::*;
+                        fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|n| n.$getter_token())
+                                .map(|n| n.into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::None,
+                        };
+
+                        self.0.push(lazy_transition);
+                        crate::span::LazySpanAtom(self.0)
+                    }
                 }
             )*)?
 
             $($(
                 pub fn $name_node(&self) -> $result {
-                    use parser::ast::prelude::*;
-
-                    fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|n| n.$getter_node())
-                            .map(|n| n.syntax().clone().into()))
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_node _moved>]()
                     }
+                }
 
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::None,
-                    };
-                    $result(self.0.push_transition(lazy_transition))
+                paste::paste! {
+                        pub fn [<$name_node _moved>](mut self) -> $result {
+                        use parser::ast::prelude::*;
+
+                        fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|n| n.$getter_node())
+                                .map(|n| n.syntax().clone().into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::None,
+                        };
+                        self.0.push(lazy_transition);
+                        $result(self.0)
+                    }
                 }
             )*)?
 
             $($(
 
                 pub fn $name_iter(&self, idx: usize) -> $result_iter {
-                    use parser::ast::prelude::*;
-                    fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        let idx = match arg {
-                            crate::span::transition::LazyArg::Idx(idx) => idx,
-                            _ => unreachable!(),
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_iter _moved>](idx)
+                    }
+                }
+
+                paste::paste! {
+                    pub fn [<$name_iter _moved>](mut self, idx: usize) -> $result_iter {
+                        use parser::ast::prelude::*;
+                        fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            let idx = match arg {
+                                crate::span::transition::LazyArg::Idx(idx) => idx,
+                                _ => unreachable!(),
+                            };
+
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|f| f.into_iter().nth(idx))
+                                .map(|n| n.syntax().clone().into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::Idx(idx),
                         };
 
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|f| f.into_iter().nth(idx))
-                            .map(|n| n.syntax().clone().into()))
+                        self.0.push(lazy_transition);
+                        $result_iter(self.0)
                     }
-
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::Idx(idx),
-                    };
-
-                    $result_iter(self.0.push_transition(lazy_transition))
                 }
             )*)?
         })?)?

@@ -187,6 +187,10 @@ define_lazy_span_node!(
 
 impl LazyUseSpan {
     pub fn path(&self) -> LazyUsePathSpan {
+        self.clone().path_moved()
+    }
+
+    pub fn path_moved(mut self) -> LazyUsePathSpan {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -209,10 +213,15 @@ impl LazyUseSpan {
             arg: LazyArg::None,
         };
 
-        LazyUsePathSpan(self.0.push_transition(lazy_transition))
+        self.0.push(lazy_transition);
+        LazyUsePathSpan(self.0)
     }
 
     pub fn alias(&self) -> LazyUseAliasSpan {
+        self.clone().alias_moved()
+    }
+
+    pub fn alias_moved(mut self) -> LazyUseAliasSpan {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -235,7 +244,8 @@ impl LazyUseSpan {
             arg: LazyArg::None,
         };
 
-        LazyUseAliasSpan(self.0.push_transition(lazy_transition))
+        self.0.push(lazy_transition);
+        LazyUseAliasSpan(self.0)
     }
 }
 

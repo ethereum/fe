@@ -47,7 +47,7 @@ impl LazySpan for DynLazySpan {
     }
 }
 
-pub(crate) trait SpanDowncast {
+pub trait SpanDowncast {
     fn downcast(dyn_span: DynLazySpan) -> Option<Self>
     where
         Self: Sized;

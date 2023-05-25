@@ -13,6 +13,10 @@ define_lazy_span_node!(
 );
 impl LazyAttrListSpan {
     pub fn normal_attr(&self, idx: usize) -> LazyNormalAttrSpan {
+        self.clone().normal_attr_moved(idx)
+    }
+
+    pub fn normal_attr_moved(mut self, idx: usize) -> LazyNormalAttrSpan {
         fn f(origin: ResolvedOrigin, arg: crate::span::transition::LazyArg) -> ResolvedOrigin {
             let idx = match arg {
                 crate::span::transition::LazyArg::Idx(idx) => idx,
@@ -30,7 +34,8 @@ impl LazyAttrListSpan {
             arg: crate::span::transition::LazyArg::Idx(idx),
         };
 
-        LazyNormalAttrSpan(self.0.push_transition(lazy_transition))
+        self.0.push(lazy_transition);
+        LazyNormalAttrSpan(self.0)
     }
 }
 
