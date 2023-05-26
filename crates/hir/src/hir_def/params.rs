@@ -5,7 +5,7 @@ use super::{Body, IdentId, Partial, PathId};
 #[salsa::interned]
 pub struct GenericArgListId {
     #[return_ref]
-    pub args: Vec<GenericArg>,
+    pub data: Vec<GenericArg>,
 }
 
 #[salsa::interned]

@@ -46,6 +46,11 @@ impl LazyUsePathSpan {
 }
 
 define_lazy_span_node!(LazyUsePathSegmentSpan);
+impl LazyUsePathSegmentSpan {
+    pub fn into_atom(self) -> LazySpanAtom {
+        LazySpanAtom(self.0)
+    }
+}
 
 define_lazy_span_node!(LazyUseAliasSpan, ast::UseAlias,);
 

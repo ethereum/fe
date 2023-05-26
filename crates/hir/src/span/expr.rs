@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{Body, ExprId},
-    span::{params::LazyGenericArgListSpan, path::LazyPathSpan, LazySpanAtom},
+    span::{params::LazyGenericArgListSpan, path::LazyPathSpan, LazyLitSpan, LazySpanAtom},
     SpannedHirDb,
 };
 
@@ -13,9 +13,13 @@ use super::{
 
 define_lazy_span_node!(LazyExprSpan, ast::Expr,);
 impl LazyExprSpan {
-    pub fn new(expr: ExprId, body: Body) -> Self {
+    pub fn new(body: Body, expr: ExprId) -> Self {
         let root = ExprRoot { expr, body };
         Self(SpanTransitionChain::new(root))
+    }
+
+    pub fn into_lit_expr(self) -> LazyLitExprSpan {
+        LazyLitExprSpan(self.0)
     }
 
     pub fn into_bin_expr(self) -> LazyBinExprSpan {
@@ -48,6 +52,14 @@ impl LazyExprSpan {
 
     pub fn into_match_expr(self) -> LazyMatchExprSpan {
         LazyMatchExprSpan(self.0)
+    }
+}
+
+define_lazy_span_node! {
+    LazyLitExprSpan,
+    ast::LitExpr,
+    @node {
+        (lit, lit, LazyLitSpan),
     }
 }
 
@@ -101,7 +113,7 @@ define_lazy_span_node!(
     ast::RecordInitExpr,
     @node {
         (path, path, LazyPathSpan),
-        (fields, fields, LazyRecordFieldListSpan),
+        (fields, fields, LazyFieldListSpan),
     }
 );
 
@@ -138,15 +150,15 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyRecordFieldListSpan,
-    ast::RecordFieldList,
+    LazyFieldListSpan,
+    ast::FieldList,
     @idx {
-        (field, LazyRecordFieldSpan),
+        (field, LazyFieldSpan),
     }
 );
 
 define_lazy_span_node!(
-    LazyRecordFieldSpan,
+    LazyFieldSpan,
     ast::RecordField,
     @token {
         (label, label),
@@ -157,14 +169,16 @@ define_lazy_span_node!(
     LazyMatchArmListSpan,
     ast::MatchArmList,
     @idx {
-        (arm, LazySpanAtom),
+        (arm, LazyMatchArmSpan),
     }
 );
+
+define_lazy_span_node!(LazyMatchArmSpan);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct ExprRoot {
     expr: ExprId,
-    body: Body,
+    pub(crate) body: Body,
 }
 
 impl ChainInitiator for ExprRoot {

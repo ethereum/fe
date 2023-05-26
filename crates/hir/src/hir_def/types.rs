@@ -2,7 +2,7 @@ use super::{Body, GenericArgListId, Partial, PathId};
 
 #[salsa::interned]
 pub struct TypeId {
-    kind: TypeKind,
+    pub data: TypeKind,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

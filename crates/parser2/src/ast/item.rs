@@ -160,7 +160,7 @@ impl Enum {
     }
 
     /// Returns the enum's variant def list.
-    pub fn variants(&self) -> Option<EnumVariantDefList> {
+    pub fn variants(&self) -> Option<VariantDefList> {
         support::child(self.syntax())
     }
 }
@@ -351,17 +351,17 @@ impl RecordFieldDef {
 }
 
 ast_node! {
-    pub struct EnumVariantDefList,
+    pub struct VariantDefList,
     SK::VariantDefList,
-    IntoIterator<Item=EnumVariantDef>
+    IntoIterator<Item=VariantDef>
 }
 
 ast_node! {
     /// `Foo(i32, u32)`
-    pub struct EnumVariantDef,
+    pub struct VariantDef,
     SK::VariantDef,
 }
-impl EnumVariantDef {
+impl VariantDef {
     /// Returns the name of the variant.
     /// `Foo` in `Foo(i32, u32)`
     pub fn name(&self) -> Option<SyntaxToken> {

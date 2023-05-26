@@ -24,7 +24,7 @@ pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
-mod transition;
+pub(crate) mod transition;
 
 /// This struct represents a dynamic lazy span, which can be converted from all
 /// types that implement [`LazySpan`] in this module. We want to avoid `dyn
@@ -234,3 +234,9 @@ use transition::define_lazy_span_node;
 use self::transition::SpanTransitionChain;
 
 define_lazy_span_node!(LazySpanAtom);
+impl LazySpanAtom {
+    pub(super) fn into_lit_span(self) -> LazyLitSpan {
+        LazyLitSpan(self.0)
+    }
+}
+define_lazy_span_node!(LazyLitSpan);

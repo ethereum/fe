@@ -796,7 +796,7 @@ impl IntermediateUse {
             .use_
             .path(db.as_hir_db())
             .to_opt()?
-            .segments(db.as_hir_db());
+            .data(db.as_hir_db());
 
         let seg_idx = self.unresolved_from;
         let segment = segments[seg_idx].to_opt()?;

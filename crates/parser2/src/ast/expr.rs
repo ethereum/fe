@@ -176,7 +176,7 @@ impl RecordInitExpr {
     }
 
     /// Returns the fields of the record init expression.
-    pub fn fields(&self) -> Option<RecordFieldList> {
+    pub fn fields(&self) -> Option<FieldList> {
         support::child(self.syntax())
     }
 }
@@ -351,7 +351,7 @@ pub enum ExprKind {
 
 ast_node! {
     /// `{ label1: expr1, expr2 }`
-    pub struct RecordFieldList,
+    pub struct FieldList,
     SK::RecordFieldList,
     IntoIterator<Item=RecordField>
 }

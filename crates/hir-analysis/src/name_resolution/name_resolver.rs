@@ -112,7 +112,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         path: PathId,
         scope: ScopeId,
     ) -> Result<ResolvedPath, PathResolutionError> {
-        let segments = path.segments(self.db.as_hir_db());
+        let segments = path.data(self.db.as_hir_db());
         if segments.is_empty() {
             return Err(PathResolutionError::invalid(0));
         }

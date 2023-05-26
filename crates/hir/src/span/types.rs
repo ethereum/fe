@@ -4,8 +4,8 @@ use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::Lazy
 
 use super::define_lazy_span_node;
 
-define_lazy_span_node!(LazyTypeSpan);
-impl LazyTypeSpan {
+define_lazy_span_node!(LazyTySpan);
+impl LazyTySpan {
     /// Convert this [`LazyTypeSpan`] into a [`LazyPathTypeSpan`].
     ///
     /// If the type that is pointed to by this is not a path type, the result
@@ -46,7 +46,7 @@ define_lazy_span_node!(
         (star, star),
     }
     @node {
-        (ty, inner, LazyTypeSpan),
+        (ty, inner, LazyTySpan),
     }
 );
 
@@ -68,7 +68,7 @@ define_lazy_span_node!(
         (r_paren, r_paren),
     }
     @idx {
-        (elem_ty, LazyTypeSpan),
+        (elem_ty, LazyTySpan),
     }
 );
 
@@ -80,7 +80,7 @@ define_lazy_span_node!(
         (r_bracket, r_bracket),
     }
     @node {
-        (elem, elem_ty, LazyTypeSpan),
+        (elem, elem_ty, LazyTySpan),
         (len, len, LazyBodySpan),
     }
 );

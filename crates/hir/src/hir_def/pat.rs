@@ -1,6 +1,6 @@
 use cranelift_entity::entity_impl;
 
-use crate::span::pat::LazyPatSpan;
+use crate::{span::pat::LazyPatSpan, HirDb};
 
 use super::{Body, IdentId, LitKind, Partial, PathId};
 
@@ -22,7 +22,11 @@ entity_impl!(PatId);
 
 impl PatId {
     pub fn lazy_span(self, body: Body) -> LazyPatSpan {
-        LazyPatSpan::new(self, body)
+        LazyPatSpan::new(body, self)
+    }
+
+    pub fn data(self, db: &dyn HirDb, body: Body) -> &Partial<Pat> {
+        &body.pats(db)[self]
     }
 }
 

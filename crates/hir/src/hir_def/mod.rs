@@ -67,7 +67,7 @@ pub struct StringId {
     pub data: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
 pub enum LitKind {
     Int(IntegerId),
     String(StringId),
@@ -104,6 +104,10 @@ impl<T> Partial<T> {
             Self::Present(value) => Some(value),
             Self::Absent => None,
         }
+    }
+
+    pub fn is_present(&self) -> bool {
+        matches!(self, Self::Present(_))
     }
 }
 

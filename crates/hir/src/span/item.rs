@@ -17,7 +17,7 @@ use super::{
     define_lazy_span_node,
     params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     transition::SpanTransitionChain,
-    types::{LazyPathTypeSpan, LazyTypeSpan},
+    types::{LazyPathTypeSpan, LazyTySpan},
     use_tree::LazyUseAliasSpan,
 };
 
@@ -58,7 +58,7 @@ define_lazy_span_node!(
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
         (params, params, LazyFuncParamListSpan),
-        (ret_ty, ret_ty, LazyTypeSpan),
+        (ret_ty, ret_ty, LazyTySpan),
     }
 );
 
@@ -74,7 +74,7 @@ define_lazy_span_node!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (fields, fields, LazyRecordFieldDefListSpan),
+        (fields, fields, LazyFieldDefListSpan),
     }
 );
 
@@ -88,7 +88,7 @@ define_lazy_span_node!(
     @node {
         (attributes, attr_list, LazyAttrListSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (fields, fields, LazyRecordFieldDefListSpan),
+        (fields, fields, LazyFieldDefListSpan),
     }
 );
 
@@ -104,7 +104,7 @@ define_lazy_span_node!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (variants, variants, LazyEnumVariantListSpan),
+        (variants, variants, LazyVariantDefListSpan),
     }
 );
 
@@ -120,7 +120,7 @@ define_lazy_span_node!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 
@@ -132,7 +132,7 @@ define_lazy_span_node!(
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
-        (target_ty, ty, LazyTypeSpan),
+        (target_ty, ty, LazyTySpan),
     }
 );
 define_lazy_span_node!(
@@ -159,7 +159,7 @@ define_lazy_span_node!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (trait_ref, trait_ref, LazyPathTypeSpan),
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 
@@ -172,7 +172,7 @@ define_lazy_span_node!(
     }
     @node {
         (attributes, attr_list, LazyAttrListSpan),
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 
@@ -252,41 +252,41 @@ impl LazyUseSpan {
 define_lazy_span_node!(LazyBodySpan, ast::Expr, new(Body),);
 
 define_lazy_span_node!(
-    LazyRecordFieldDefListSpan,
+    LazyFieldDefListSpan,
     ast::RecordFieldDefList,
     @idx {
-        (field, LazyRecordFieldDefSpan),
+        (field, LazyFieldDefSpan),
     }
 );
 
 define_lazy_span_node!(
-    LazyRecordFieldDefSpan,
+    LazyFieldDefSpan,
     ast::RecordFieldDef,
     @token {
         (pub_span, pub_kw),
         (name, name),
     }
     @node {
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 
 define_lazy_span_node!(
-    LazyEnumVariantListSpan,
-    ast::EnumVariantDefList,
+    LazyVariantDefListSpan,
+    ast::VariantDefList,
     @idx {
-        (variant, LazyEnumVariantSpan),
+        (variant, LazyVariantDefSpan),
     }
 );
 
 define_lazy_span_node!(
-    LazyEnumVariantSpan,
-    ast::EnumVariantDef,
+    LazyVariantDefSpan,
+    ast::VariantDef,
     @token {
         (name, name),
     }
     @node {
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 

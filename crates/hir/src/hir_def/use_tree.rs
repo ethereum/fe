@@ -5,26 +5,26 @@ use super::IdentId;
 #[salsa::interned]
 pub struct UsePathId {
     #[return_ref]
-    pub segments: Vec<Partial<UsePathSegment>>,
+    pub data: Vec<Partial<UsePathSegment>>,
 }
 
 impl UsePathId {
     pub fn is_glob(&self, db: &dyn HirDb) -> bool {
-        self.segments(db)
+        self.data(db)
             .last()
             .and_then(|seg| seg.to_opt())
             .map_or(false, |seg| seg.is_glob())
     }
 
     pub fn last_ident(&self, db: &dyn HirDb) -> Option<IdentId> {
-        self.segments(db)
+        self.data(db)
             .last()
             .and_then(|seg| seg.to_opt())
             .and_then(|seg| seg.ident())
     }
 
     pub fn segment_len(&self, db: &dyn HirDb) -> usize {
-        self.segments(db).len()
+        self.data(db).len()
     }
 }
 

@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{Body, StmtId},
-    span::types::LazyTypeSpan,
+    span::types::LazyTySpan,
     SpannedHirDb,
 };
 
@@ -13,7 +13,7 @@ use super::{
 
 define_lazy_span_node!(LazyStmtSpan, ast::Stmt,);
 impl LazyStmtSpan {
-    pub fn new(stmt: StmtId, body: Body) -> Self {
+    pub fn new(body: Body, stmt: StmtId) -> Self {
         let root = StmtRoot { stmt, body };
         Self(SpanTransitionChain::new(root))
     }
@@ -27,14 +27,14 @@ define_lazy_span_node!(
     LazyLetStmtSpan,
     ast::LetStmt,
     @node {
-        (ty, type_annotation, LazyTypeSpan),
+        (ty, type_annotation, LazyTySpan),
     }
 );
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct StmtRoot {
     stmt: StmtId,
-    body: Body,
+    pub(crate) body: Body,
 }
 
 impl ChainInitiator for StmtRoot {

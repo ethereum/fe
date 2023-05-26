@@ -85,7 +85,7 @@ impl Expr {
                     .map(|fields| {
                         fields
                             .into_iter()
-                            .map(|field| RecordField::lower_ast(ctxt, field))
+                            .map(|field| Field::lower_ast(ctxt, field))
                             .collect()
                     })
                     .unwrap_or_default();
@@ -257,7 +257,7 @@ impl CallArg {
     }
 }
 
-impl RecordField {
+impl Field {
     fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::RecordField) -> Self {
         let label = ast
             .label()

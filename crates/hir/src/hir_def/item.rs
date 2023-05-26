@@ -320,7 +320,7 @@ pub struct Struct {
     pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-    pub fields: RecordFieldListId,
+    pub fields: FieldDefListId,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -340,7 +340,7 @@ pub struct Contract {
     pub name: Partial<IdentId>,
     pub attributes: AttrListId,
     pub vis: Visibility,
-    pub fields: RecordFieldListId,
+    pub fields: FieldDefListId,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -362,7 +362,7 @@ pub struct Enum {
     pub vis: Visibility,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-    pub variants: EnumVariantListId,
+    pub variants: VariantDefListId,
     pub top_mod: TopLevelMod,
 
     #[return_ref]
@@ -414,6 +414,12 @@ impl Impl {
     pub fn lazy_span(self) -> LazyImplSpan {
         LazyImplSpan::new(self)
     }
+
+    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = ScopeId::from_item(self.into());
+        s_graph.child_items(scope)
+    }
 }
 
 #[salsa::tracked]
@@ -436,6 +442,12 @@ impl Trait {
     pub fn lazy_span(self) -> LazyTraitSpan {
         LazyTraitSpan::new(self)
     }
+
+    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = ScopeId::from_item(self.into());
+        s_graph.child_items(scope)
+    }
 }
 
 #[salsa::tracked]
@@ -456,6 +468,12 @@ pub struct ImplTrait {
 impl ImplTrait {
     pub fn lazy_span(self) -> LazyImplTraitSpan {
         LazyImplTraitSpan::new(self)
+    }
+
+    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = ScopeId::from_item(self.into());
+        s_graph.child_items(scope)
     }
 }
 
@@ -567,26 +585,26 @@ impl ItemModifier {
 }
 
 #[salsa::interned]
-pub struct RecordFieldListId {
+pub struct FieldDefListId {
     #[return_ref]
-    pub data: Vec<RecordField>,
+    pub data: Vec<FieldDef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordField {
+pub struct FieldDef {
     pub name: Partial<IdentId>,
     pub ty: Partial<TypeId>,
     pub vis: Visibility,
 }
 
 #[salsa::interned]
-pub struct EnumVariantListId {
+pub struct VariantDefListId {
     #[return_ref]
-    pub data: Vec<EnumVariant>,
+    pub data: Vec<VariantDef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariant {
+pub struct VariantDef {
     pub name: Partial<IdentId>,
     pub ty: Option<TypeId>,
 }

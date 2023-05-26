@@ -4,8 +4,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
-        EnumVariantListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
-        RecordFieldListId, TopLevelMod, Use, Visibility,
+        FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind, TopLevelMod,
+        Use, VariantDefListId, Visibility,
     },
     HirDb,
 };
@@ -249,7 +249,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         &mut self,
         parent_node: NodeId,
         parent_item: ItemKind,
-        fields: RecordFieldListId,
+        fields: FieldDefListId,
     ) {
         let parent_scope = ScopeId::Item(parent_item);
 
@@ -272,7 +272,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         &mut self,
         parent_node: NodeId,
         parent_item: ItemKind,
-        variants: EnumVariantListId,
+        variants: VariantDefListId,
     ) {
         let parent_scope = ScopeId::Item(parent_item);
         let parent_vis = parent_item.vis(self.db);

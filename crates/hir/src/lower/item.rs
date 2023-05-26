@@ -147,7 +147,7 @@ impl Struct {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
+        let fields = FieldDefListId::lower_ast_opt(ctxt, ast.fields());
         let origin = HirOrigin::raw(&ast);
 
         let struct_ = Self::new(
@@ -179,7 +179,7 @@ impl Contract {
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
-        let fields = RecordFieldListId::lower_ast_opt(ctxt, ast.fields());
+        let fields = FieldDefListId::lower_ast_opt(ctxt, ast.fields());
         let origin = HirOrigin::raw(&ast);
 
         let contract = Self::new(
@@ -211,7 +211,7 @@ impl Enum {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let variants = EnumVariantListId::lower_ast_opt(ctxt, ast.variants());
+        let variants = VariantDefListId::lower_ast_opt(ctxt, ast.variants());
         let origin = HirOrigin::raw(&ast);
 
         let enum_ = Self::new(
@@ -414,11 +414,11 @@ impl ItemModifier {
     }
 }
 
-impl RecordFieldListId {
+impl FieldDefListId {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDefList) -> Self {
         let fields = ast
             .into_iter()
-            .map(|field| RecordField::lower_ast(ctxt, field))
+            .map(|field| FieldDef::lower_ast(ctxt, field))
             .collect();
         Self::new(ctxt.db(), fields)
     }
@@ -429,7 +429,7 @@ impl RecordFieldListId {
     }
 }
 
-impl RecordField {
+impl FieldDef {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
@@ -443,23 +443,23 @@ impl RecordField {
     }
 }
 
-impl EnumVariantListId {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::EnumVariantDefList) -> Self {
+impl VariantDefListId {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::VariantDefList) -> Self {
         let variants = ast
             .into_iter()
-            .map(|variant| EnumVariant::lower_ast(ctxt, variant))
+            .map(|variant| VariantDef::lower_ast(ctxt, variant))
             .collect();
         Self::new(ctxt.db(), variants)
     }
 
-    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::EnumVariantDefList>) -> Self {
+    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::VariantDefList>) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
             .unwrap_or(Self::new(ctxt.db(), Vec::new()))
     }
 }
 
-impl EnumVariant {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::EnumVariantDef) -> Self {
+impl VariantDef {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::VariantDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = ast.ty().map(|ty| TypeId::lower_ast(ctxt, ty));
 
