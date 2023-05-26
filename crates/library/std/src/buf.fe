@@ -54,7 +54,7 @@ pub struct MemoryBuffer {
     pub fn from_u8(value: u8) -> Self {
         let mut buf: MemoryBuffer = MemoryBuffer::new(len: 1)
         let mut writer: MemoryBufferWriter = buf.writer()
-        writer.write_u8(value)
+        writer.write(value)
         return buf
     }
 
@@ -97,39 +97,13 @@ pub struct MemoryBufferWriter {
         return self.cur.remainder()
     }
 
-    fn write_offset(mut self, len: u256) -> u256 {
+    pub fn write_offset(mut self, len: u256) -> u256 {
         return self.buf.offset() + self.cur.advance(len)
     }
 
-    fn write_n(mut self, value: u256, len: u256) {
+    pub fn write_n(mut self, value: u256, len: u256) {
         let offset: u256 = self.write_offset(len)
         unsafe { rewrite_slot(offset, value, len) }
-    }
-
-    pub fn write_u8(mut self, value: u8) {
-        let offset: u256 = self.write_offset(len: 1)
-        unsafe { evm::mstore8(offset, value) }
-    }
-
-    pub fn write_u16(mut self, value: u16) {
-        self.write_n(value: u256(value), len: 2)
-    }
-
-    pub fn write_u32(mut self, value: u32) {
-        self.write_n(value: u256(value), len: 4)
-    }
-
-    pub fn write_u64(mut self, value: u64) {
-        self.write_n(value: u256(value), len: 8)
-    }
-
-    pub fn write_u128(mut self, value: u128) {
-        self.write_n(value: u256(value), len: 16)
-    }
-
-    pub fn write_u256(mut self, value: u256) {
-        let offset: u256 = self.write_offset(len: 32)
-        unsafe { evm::mstore(offset, value) }
     }
 
     pub fn write_buf(mut self, buf: MemoryBuffer) {
@@ -139,29 +113,66 @@ pub struct MemoryBufferWriter {
             let bytes_remaining: u256 = reader.remainder() 
 
             if bytes_remaining >= 32 {
-                self.write_u256(value: reader.read_u256())
+                self.write(value: reader.read_u256())
             } else if bytes_remaining == 0 {
                 break 
             } else {
-                self.write_u8(value: reader.read_u8())
+                self.write(value: reader.read_u8())
             }
         }
     }
 
-    // panicked at 'missing impl', crates/mir/src/lower/function.rs:1036:22
-    // pub fn write<T: MemoryBufferWrite>(mut self, value: T) {
-    //     value.write_buf(writer: self)
-    // }
+    pub fn write<T: MemoryBufferWrite>(mut self, value: T) {
+        value.write_buf(writer: self)
+    }
 }
 
-// pub trait MemoryBufferWrite {
-//     fn write_buf(self, mut writer: MemoryBufferWriter);
-// }
-// 
-// impl MemoryBufferWrite for u256 { .. }
-// .
-// .
-// impl MemoryBufferWrite for u8 { .. }
+pub trait MemoryBufferWrite {
+    fn write_buf(self, mut writer: MemoryBufferWriter);
+}
+
+impl MemoryBufferWrite for u256 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        let offset: u256 = writer.write_offset(len: 32)
+        unsafe { evm::mstore(offset, value: self) }
+    }
+}
+
+impl MemoryBufferWrite for u128 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        writer.write_n(value: u256(self), len: 16)
+    }
+}
+
+impl MemoryBufferWrite for u64 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        writer.write_n(value: u256(self), len: 8)
+    }
+}
+
+impl MemoryBufferWrite for u32 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        writer.write_n(value: u256(self), len: 4)
+    }
+}
+
+impl MemoryBufferWrite for u16 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        writer.write_n(value: u256(self), len: 2)
+    }
+}
+
+impl MemoryBufferWrite for u8 {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {
+        let offset: u256 = writer.write_offset(len: 1)
+        unsafe { evm::mstore8(offset, value: self) }
+    }
+}
+
+// This is needed to prevent the `mir_lower_std_lib` to crash the compiler
+impl MemoryBufferWrite for () {
+    fn write_buf(self, mut writer: MemoryBufferWriter) {}
+}
 
 /// Rewrites the left-most `len` bytes in slot with the right-most `len` bytes of `value`.
 unsafe fn rewrite_slot(offset: u256, value: u256, len: u256) {
@@ -247,11 +258,11 @@ pub struct MemoryBufferReader {
             let bytes_remaining: u256 = writer.remainder()
 
             if bytes_remaining >= 32 {
-                writer.write_u256(value: self.read_u256())
+                writer.write(value: self.read_u256())
             } else if bytes_remaining == 0 {
                 break 
             } else {
-                writer.write_u8(value: self.read_u8())
+                writer.write(value: self.read_u8())
             }
         }
 

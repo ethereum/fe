@@ -26,7 +26,7 @@ fn test_raw_call(mut ctx: Context) {
     )
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u256(value: 42)
+    writer.write(value: 42)
     assert ctx.raw_call(addr: address(foo), value: 0, buf)
     
     let mut reader: MemoryBufferReader = buf.reader()
