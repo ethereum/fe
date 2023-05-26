@@ -5,10 +5,10 @@ use crate::span::{path::LazyPathSpan, LazySpanAtom};
 use super::{define_lazy_span_node, types::LazyTypeSpan};
 
 define_lazy_span_node!(
-    LazyFnParamListSpan,
-    ast::FnParamList,
+    LazyFuncParamListSpan,
+    ast::FuncParamList,
     @idx {
-        (param, LazyFnParamSpan),
+        (param, LazyFuncParamSpan),
     }
 );
 
@@ -40,8 +40,8 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyFnParamSpan,
-    ast::FnParam,
+    LazyFuncParamSpan,
+    ast::FuncParam,
     @token {
        (mut_kw, mut_token),
     }

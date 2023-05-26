@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FnParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
+    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
     UseAlias, WhereClauseId,
 };
 
@@ -290,7 +290,7 @@ pub struct Func {
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
     pub where_clause: WhereClauseId,
-    pub params: Partial<FnParamListId>,
+    pub params: Partial<FuncParamListId>,
     pub ret_ty: Option<TypeId>,
     pub modifier: ItemModifier,
     pub body: Option<Body>,
@@ -298,7 +298,7 @@ pub struct Func {
     pub top_mod: TopLevelMod,
 
     #[return_ref]
-    pub(crate) origin: HirOrigin<ast::Fn>,
+    pub(crate) origin: HirOrigin<ast::Func>,
 }
 impl Func {
     pub fn lazy_span(self) -> LazyFuncSpan {
@@ -617,7 +617,7 @@ impl Visibility {
 pub enum TrackedItemId {
     TopLevelMod(IdentId),
     Mod(Partial<IdentId>),
-    Fn(Partial<IdentId>),
+    Func(Partial<IdentId>),
     Struct(Partial<IdentId>),
     Contract(Partial<IdentId>),
     Enum(Partial<IdentId>),

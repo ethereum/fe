@@ -26,7 +26,7 @@ ast_node! {
     /// Use `[Item::kind]` to get the specific type of item.
     pub struct Item,
     SK::Mod
-    | SK::Fn
+    | SK::Func
     | SK::Struct
     | SK::Contract
     | SK::Enum
@@ -42,7 +42,7 @@ impl Item {
     pub fn kind(&self) -> ItemKind {
         match self.syntax().kind() {
             SK::Mod => ItemKind::Mod(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Fn => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::Func => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Struct => ItemKind::Struct(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Contract => ItemKind::Contract(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::Enum => ItemKind::Enum(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -78,21 +78,21 @@ impl Mod {
 
 ast_node! {
     /// `pub fn foo<T, U: Trait>(_ x: T, from u: U) -> T where T: Trait2 { ... }`
-    pub struct Fn,
-    SK::Fn,
+    pub struct Func,
+    SK::Func,
 }
-impl super::GenericParamsOwner for Fn {}
-impl super::WhereClauseOwner for Fn {}
-impl super::AttrListOwner for Fn {}
-impl super::ItemModifierOwner for Fn {}
-impl Fn {
+impl super::GenericParamsOwner for Func {}
+impl super::WhereClauseOwner for Func {}
+impl super::AttrListOwner for Func {}
+impl super::ItemModifierOwner for Func {}
+impl Func {
     /// Returns the name of the function.
     pub fn name(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
     }
 
     /// Returns the function's parameter list.
-    pub fn params(&self) -> Option<super::FnParamList> {
+    pub fn params(&self) -> Option<super::FuncParamList> {
         support::child(self.syntax())
     }
 
@@ -379,25 +379,25 @@ impl EnumVariantDef {
 ast_node! {
     pub struct TraitItemList,
     SK::TraitItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ImplItemList,
     SK::ImplItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ImplTraitItemList,
     SK::ImplTraitItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ExternItemList,
     SK::ExternItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
@@ -425,7 +425,7 @@ pub trait ItemModifierOwner: AstNode<Language = FeLang> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ItemKind {
     Mod(Mod),
-    Fn(Fn),
+    Fn(Func),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -480,7 +480,7 @@ mod tests {
             match i {
                 0 => {
                     assert!(matches!(item.kind(), ItemKind::Fn(_)));
-                    let func: Fn = item.kind().try_into().unwrap();
+                    let func: Func = item.kind().try_into().unwrap();
                     assert_eq!(func.name().unwrap().text(), "bar");
                 }
                 1 => {
@@ -504,7 +504,7 @@ mod tests {
                 #evm
                 pub unsafe fn foo<T, U: Trait>(_ x: T, from u: U) -> (T, U) where T: Trait2 { return }
             "#;
-        let func: Fn = parse_item(source);
+        let func: Func = parse_item(source);
 
         assert_eq!(func.name().unwrap().text(), "foo");
         assert_eq!(func.attr_list().unwrap().iter().count(), 2);

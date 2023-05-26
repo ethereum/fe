@@ -15,7 +15,7 @@ use crate::{
 use super::{
     attr::LazyAttrListSpan,
     define_lazy_span_node,
-    params::{LazyFnParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
+    params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     transition::SpanTransitionChain,
     types::{LazyPathTypeSpan, LazyTypeSpan},
     use_tree::LazyUseAliasSpan,
@@ -47,7 +47,7 @@ define_lazy_span_node!(
 
 define_lazy_span_node!(
     LazyFuncSpan,
-    ast::Fn,
+    ast::Func,
     new(Func),
     @token {
         (name, name),
@@ -57,7 +57,7 @@ define_lazy_span_node!(
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
-        (params, params, LazyFnParamListSpan),
+        (params, params, LazyFuncParamListSpan),
         (ret_ty, ret_ty, LazyTypeSpan),
     }
 );

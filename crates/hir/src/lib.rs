@@ -35,7 +35,7 @@ pub struct Jar(
     hir_def::IntegerId,
     hir_def::StringId,
     hir_def::PathId,
-    hir_def::FnParamListId,
+    hir_def::FuncParamListId,
     hir_def::AttrListId,
     hir_def::WhereClauseId,
     hir_def::GenericArgListId,

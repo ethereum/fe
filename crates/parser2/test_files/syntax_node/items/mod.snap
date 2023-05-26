@@ -17,11 +17,11 @@ Root@0..146
         LBrace@12..13 "{"
         Newline@13..14 "\n"
         WhiteSpace@14..18 "    "
-        Fn@18..78
+        Func@18..78
           FnKw@18..20 "fn"
           WhiteSpace@20..21 " "
           Ident@21..28 "foo_foo"
-          FnParamList@28..53
+          FuncParamList@28..53
             LParen@28..29 "("
             FnParam@29..37
               Ident@29..32 "bar"

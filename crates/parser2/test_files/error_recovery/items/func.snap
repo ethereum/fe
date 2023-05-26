@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/func.fe
 ---
 Root@0..133
   ItemList@0..133
-    Fn@0..78
+    Func@0..78
       FnKw@0..2 "fn"
       WhiteSpace@2..3 " "
       Ident@3..6 "foo"
@@ -23,7 +23,7 @@ Root@0..133
         Gt@15..16 ">"
       Error@16..17
         Gt@16..17 ">"
-      FnParamList@17..47
+      FuncParamList@17..47
         LParen@17..18 "("
         FnParam@18..24
           Ident@18..19 "x"
@@ -93,7 +93,7 @@ Root@0..133
         Newline@75..77 "\n\n"
         RBrace@77..78 "}"
     Newline@78..80 "\n\n"
-    Fn@80..132
+    Func@80..132
       FnKw@80..82 "fn"
       WhiteSpace@82..83 " "
       Ident@83..86 "foo"
@@ -110,7 +110,7 @@ Root@0..133
             Gt@97..98 ">"
           Error@98..98
         Error@98..98
-      FnParamList@98..106
+      FuncParamList@98..106
         LParen@98..99 "("
         FnParam@99..105
           Ident@99..100 "x"

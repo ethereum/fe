@@ -40,11 +40,11 @@ impl GenericParamListId {
     }
 }
 
-impl FnParamListId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParamList) -> Self {
+impl FuncParamListId {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamList) -> Self {
         let params = ast
             .into_iter()
-            .map(|param| FnParam::lower_ast(ctxt, param))
+            .map(|param| FuncParam::lower_ast(ctxt, param))
             .collect();
         Self::new(ctxt.db(), params)
     }
@@ -137,13 +137,13 @@ impl GenericParam {
     }
 }
 
-impl FnParam {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParam) -> Self {
+impl FuncParam {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParam) -> Self {
         let is_mut = ast.mut_token().is_some();
-        let label = ast.label().map(|ast| FnParamLabel::lower_ast(ctxt, ast));
+        let label = ast.label().map(|ast| FuncParamLabel::lower_ast(ctxt, ast));
         let name = ast
             .name()
-            .map(|ast| FnParamName::lower_ast(ctxt, ast))
+            .map(|ast| FuncParamName::lower_ast(ctxt, ast))
             .into();
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
 
@@ -182,21 +182,25 @@ impl TypeBound {
     }
 }
 
-impl FnParamName {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParamName) -> Self {
+impl FuncParamName {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamName) -> Self {
         match ast {
-            ast::FnParamName::Ident(name) => FnParamName::Ident(IdentId::lower_token(ctxt, name)),
-            ast::FnParamName::SelfParam(_) => FnParamName::Ident(kw::SELF),
-            ast::FnParamName::Underscore(_) => FnParamName::Underscore,
+            ast::FuncParamName::Ident(name) => {
+                FuncParamName::Ident(IdentId::lower_token(ctxt, name))
+            }
+            ast::FuncParamName::SelfParam(_) => FuncParamName::Ident(kw::SELF),
+            ast::FuncParamName::Underscore(_) => FuncParamName::Underscore,
         }
     }
 }
 
-impl FnParamLabel {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FnParamLabel) -> Self {
+impl FuncParamLabel {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamLabel) -> Self {
         match ast {
-            ast::FnParamLabel::Ident(name) => FnParamLabel::Ident(IdentId::lower_token(ctxt, name)),
-            ast::FnParamLabel::Underscore(_) => FnParamLabel::Underscore,
+            ast::FuncParamLabel::Ident(name) => {
+                FuncParamLabel::Ident(IdentId::lower_token(ctxt, name))
+            }
+            ast::FuncParamLabel::Underscore(_) => FuncParamLabel::Underscore,
         }
     }
 }

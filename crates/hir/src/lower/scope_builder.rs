@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
-        EnumVariantListId, FnParamListId, FnParamName, GenericParamListId, ItemKind,
+        EnumVariantListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
         RecordFieldListId, TopLevelMod, Use, Visibility,
     },
     HirDb,
@@ -296,12 +296,12 @@ impl<'db> ScopeGraphBuilder<'db> {
         &mut self,
         parent_node: NodeId,
         parent_item: ItemKind,
-        params: FnParamListId,
+        params: FuncParamListId,
     ) {
         let parent_scope = ScopeId::Item(parent_item);
 
         for (i, param) in params.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::FnParam(parent_item, i);
+            let scope_id = ScopeId::FuncParam(parent_item, i);
             let scope = Scope::new(scope_id, Some(parent_scope), Visibility::Private);
             let func_param_node = self.graph.push(scope_id, scope);
 
@@ -310,8 +310,8 @@ impl<'db> ScopeGraphBuilder<'db> {
                 .name
                 .to_opt()
                 .map(|name| match name {
-                    FnParamName::Ident(ident) => EdgeKind::value(ident),
-                    FnParamName::Underscore => EdgeKind::anon(),
+                    FuncParamName::Ident(ident) => EdgeKind::value(ident),
+                    FuncParamName::Underscore => EdgeKind::anon(),
                 })
                 .unwrap_or_else(EdgeKind::anon);
             self.graph.add_edge(parent_node, func_param_node, kind)

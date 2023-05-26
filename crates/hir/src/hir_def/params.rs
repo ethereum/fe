@@ -15,15 +15,15 @@ pub struct GenericParamListId {
 }
 
 #[salsa::interned]
-pub struct FnParamListId {
+pub struct FuncParamListId {
     #[return_ref]
-    pub data: Vec<FnParam>,
+    pub data: Vec<FuncParam>,
 }
 
 #[salsa::interned]
 pub struct WhereClauseId {
     #[return_ref]
-    pub predicates: Vec<WherePredicate>,
+    pub data: Vec<WherePredicate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -69,17 +69,17 @@ pub struct ConstGenericArg {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FnParam {
+pub struct FuncParam {
     pub is_mut: bool,
-    pub label: Option<FnParamLabel>,
-    pub name: Partial<FnParamName>,
+    pub label: Option<FuncParamLabel>,
+    pub name: Partial<FuncParamName>,
     pub ty: Partial<TypeId>,
 }
 
-impl FnParam {
+impl FuncParam {
     pub fn name(&self) -> Option<IdentId> {
         match self.name.to_opt()? {
-            FnParamName::Ident(name) => Some(name),
+            FuncParamName::Ident(name) => Some(name),
             _ => None,
         }
     }
@@ -92,22 +92,22 @@ pub struct WherePredicate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FnParamLabel {
+pub enum FuncParamLabel {
     Ident(IdentId),
     Underscore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FnParamName {
+pub enum FuncParamName {
     /// `self` parameter.
     Ident(IdentId),
     Underscore,
 }
 
-impl FnParamName {
+impl FuncParamName {
     pub fn as_name(&self) -> Option<IdentId> {
         match self {
-            FnParamName::Ident(name) => Some(*name),
+            FuncParamName::Ident(name) => Some(*name),
             _ => None,
         }
     }

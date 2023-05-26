@@ -33,7 +33,7 @@ mod transition;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynLazySpan(pub(super) Option<SpanTransitionChain>);
 impl DynLazySpan {
-    pub fn invalid_span() -> Self {
+    pub fn invalid() -> Self {
         Self(None)
     }
 }
@@ -68,7 +68,7 @@ pub fn mod_ast(db: &dyn SpannedHirDb, item: Mod) -> &HirOrigin<ast::Mod> {
     item.origin(db.as_hir_db())
 }
 
-pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Fn> {
+pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Func> {
     item.origin(db.as_hir_db())
 }
 

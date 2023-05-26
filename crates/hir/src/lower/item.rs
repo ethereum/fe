@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        item::*, AttrListId, Body, FnParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
+        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
         WhereClauseId,
     },
     span::HirOrigin,
@@ -87,20 +87,20 @@ impl Func {
     pub(super) fn lower_ast(
         ctxt: &mut FileLowerCtxt<'_>,
         parent_id: TrackedItemId,
-        ast: ast::Fn,
+        ast: ast::Func,
         is_extern: bool,
     ) -> Self {
         ctxt.enter_scope(false);
 
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Fn(name).join(parent_id);
+        let id = TrackedItemId::Func(name).join(parent_id);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let params = ast
             .params()
-            .map(|params| FnParamListId::lower_ast(ctxt, params))
+            .map(|params| FuncParamListId::lower_ast(ctxt, params))
             .into();
         let ret_ty = ast.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
         let modifier = ItemModifier::lower_ast(ast.modifier());

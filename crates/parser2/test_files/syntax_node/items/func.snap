@@ -5,14 +5,14 @@ input_file: crates/parser2/test_files/syntax_node/items/func.fe
 ---
 Root@0..361
   ItemList@0..361
-    Fn@0..30
+    Func@0..30
       ItemModifier@0..3
         PubKw@0..3 "pub"
       WhiteSpace@3..4 " "
       FnKw@4..6 "fn"
       WhiteSpace@6..7 " "
       Ident@7..10 "foo"
-      FnParamList@10..12
+      FuncParamList@10..12
         LParen@10..11 "("
         RParen@11..12 ")"
       WhiteSpace@12..13 " "
@@ -36,11 +36,11 @@ Root@0..361
         Newline@28..29 "\n"
         RBrace@29..30 "}"
     Newline@30..32 "\n\n"
-    Fn@32..80
+    Func@32..80
       FnKw@32..34 "fn"
       WhiteSpace@34..35 " "
       Ident@35..38 "bar"
-      FnParamList@38..63
+      FuncParamList@38..63
         LParen@38..39 "("
         FnParam@39..47
           Ident@39..42 "bar"
@@ -82,11 +82,11 @@ Root@0..361
         Newline@78..79 "\n"
         RBrace@79..80 "}"
     Newline@80..82 "\n\n"
-    Fn@82..178
+    Func@82..178
       FnKw@82..84 "fn"
       WhiteSpace@84..85 " "
       Ident@85..88 "baz"
-      FnParamList@88..161
+      FuncParamList@88..161
         LParen@88..89 "("
         FnParam@89..109
           Ident@89..93 "from"
@@ -156,7 +156,7 @@ Root@0..361
         Newline@176..177 "\n"
         RBrace@177..178 "}"
     Newline@178..180 "\n\n"
-    Fn@180..306
+    Func@180..306
       FnKw@180..182 "fn"
       WhiteSpace@182..183 " "
       Ident@183..192 "generics1"
@@ -176,7 +176,7 @@ Root@0..361
         TypeGenericParam@203..204
           Ident@203..204 "U"
         Gt@204..205 ">"
-      FnParamList@205..225
+      FuncParamList@205..225
         LParen@205..206 "("
         FnParam@206..210
           Ident@206..207 "t"
@@ -275,7 +275,7 @@ Root@0..361
         Newline@304..305 "\n"
         RBrace@305..306 "}"
     Newline@306..308 "\n\n"
-    Fn@308..361
+    Func@308..361
       FnKw@308..310 "fn"
       WhiteSpace@310..311 " "
       Ident@311..315 "decl"
@@ -288,7 +288,7 @@ Root@0..361
         TypeGenericParam@319..320
           Ident@319..320 "U"
         Gt@320..321 ">"
-      FnParamList@321..340
+      FuncParamList@321..340
         LParen@321..322 "("
         FnParam@322..339
           Ident@322..323 "t"

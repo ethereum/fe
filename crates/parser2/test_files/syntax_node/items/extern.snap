@@ -20,7 +20,7 @@ Root@0..146
         LBrace@20..21 "{"
         Newline@21..22 "\n"
         WhiteSpace@22..26 "    "
-        Fn@26..76
+        Func@26..76
           ItemModifier@26..36
             PubKw@26..29 "pub"
             WhiteSpace@29..30 " "
@@ -29,7 +29,7 @@ Root@0..146
           FnKw@37..39 "fn"
           WhiteSpace@39..40 " "
           Ident@40..45 "write"
-          FnParamList@45..68
+          FuncParamList@45..68
             LParen@45..46 "("
             FnParam@46..55
               Ident@46..49 "loc"
@@ -61,7 +61,7 @@ Root@0..146
                 Ident@72..76 "bool"
         Newline@76..77 "\n"
         WhiteSpace@77..81 "    "
-        Fn@81..131
+        Func@81..131
           ItemModifier@81..91
             PubKw@81..84 "pub"
             WhiteSpace@84..85 " "
@@ -70,7 +70,7 @@ Root@0..146
           FnKw@92..94 "fn"
           WhiteSpace@94..95 " "
           Ident@95..99 "read"
-          FnParamList@99..122
+          FuncParamList@99..122
             LParen@99..100 "("
             FnParam@100..109
               Ident@100..103 "loc"
@@ -102,11 +102,11 @@ Root@0..146
                 Ident@126..131 "usize"
         Newline@131..132 "\n"
         WhiteSpace@132..136 "    "
-        Fn@136..144
+        Func@136..144
           FnKw@136..138 "fn"
           WhiteSpace@138..139 " "
           Ident@139..142 "foo"
-          FnParamList@142..144
+          FuncParamList@142..144
             LParen@142..143 "("
             RParen@143..144 ")"
         Newline@144..145 "\n"

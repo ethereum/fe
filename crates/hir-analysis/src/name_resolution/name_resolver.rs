@@ -960,7 +960,7 @@ pub enum NameDomain {
 impl NameDomain {
     fn from_scope(scope: ScopeId) -> Self {
         match scope {
-            ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_)) | ScopeId::FnParam(..) => {
+            ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_)) | ScopeId::FuncParam(..) => {
                 Self::Value
             }
             ScopeId::Item(_) | ScopeId::GenericParam(..) => Self::Item,

@@ -47,7 +47,7 @@ impl ScopeGraph {
 pub enum ScopeId {
     Item(ItemKind),
     GenericParam(ItemKind, usize),
-    FnParam(ItemKind, usize),
+    FuncParam(ItemKind, usize),
     Field(ItemKind, usize),
     Variant(ItemKind, usize),
 }
@@ -56,7 +56,7 @@ impl ScopeId {
         match self {
             ScopeId::Item(item) => item.top_mod(db),
             ScopeId::GenericParam(item, _) => item.top_mod(db),
-            ScopeId::FnParam(item, _) => item.top_mod(db),
+            ScopeId::FuncParam(item, _) => item.top_mod(db),
             ScopeId::Field(item, _) => item.top_mod(db),
             ScopeId::Variant(item, _) => item.top_mod(db),
         }
@@ -182,7 +182,7 @@ impl ScopeId {
                 _ => unreachable!(),
             },
 
-            ScopeId::FnParam(parent, idx) => {
+            ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
                 func.params(db).to_opt()?.data(db)[idx].name()
             }
@@ -222,7 +222,7 @@ impl ScopeId {
                 _ => unreachable!(),
             },
 
-            ScopeId::FnParam(parent, idx) => {
+            ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
                 Some(func.lazy_span().params().param(idx).name().into())
             }

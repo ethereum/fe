@@ -341,7 +341,7 @@ pub enum SyntaxKind {
     /// `mod s { .. }`
     Mod,
     /// `fn foo(x: i32) -> i32 { .. }`
-    Fn,
+    Func,
     /// `struct Foo { .. }`
     Struct,
     /// `contract Foo { .. }`
@@ -433,7 +433,7 @@ pub enum SyntaxKind {
     GenericParamList,
 
     /// `(x: i32, _ y: mut i32)`
-    FnParamList,
+    FuncParamList,
 
     /// `_ x: mut i32`
     FnParam,
