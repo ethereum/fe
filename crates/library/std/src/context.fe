@@ -81,11 +81,10 @@ pub struct Context {
             if evm::balance() < wei {
                 revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
             }
-
-            let success: u256 = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
-                                          input_offset: 0, input_len: 0,
-                                          output_offset: 0, output_len: 0)
-            if success == 0 {
+            let buffer: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
+            let success: bool = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
+                                          buffer)
+            if success {
                 revert Error(code: ERROR_FAILED_SEND_VALUE)
             }
         }
@@ -96,18 +95,15 @@ pub struct Context {
         self, 
         addr: address, 
         value: u256, 
-        mut buf: RawCallBuffer 
+        buffer: RawCallBuffer 
     ) -> bool {
         unsafe {
             return evm::call(
                 gas: evm::gas_remaining(), 
                 addr, 
                 value,
-                input_offset: buf.offset(), 
-                input_len: buf.input_len(),
-                output_offset: buf.offset(), 
-                output_len: buf.output_len()
-            ) == 1
+                buffer
+            ) 
         }
     }
 

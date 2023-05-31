@@ -1,3 +1,5 @@
+use ingot::buf
+
 // Basic context accessor functions.
 pub unsafe fn chain_id() -> u256 {
   return __chainid()
@@ -236,8 +238,8 @@ pub unsafe fn call_data_size() -> u256 {
     return __calldatasize()
 }
 
-pub unsafe fn call_data_copy(to_offset t: u256, from_offset f: u256, len: u256) {
-    __calldatacopy(t, f, len)
+pub fn call_data_copy(buffer: buf::MemoryBuffer) {
+    unsafe { __calldatacopy(buffer.offset(), buffer.offset(), buffer.len()) }
 }
 
 pub unsafe fn code_size() -> u256 {
@@ -284,8 +286,8 @@ pub unsafe fn create2(value v: u256, offset p: u256, len n: u256, salt s: u256) 
 }
 
 // TODO: return bool (success)
-pub unsafe fn call(gas: u256, addr: address, value: u256, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
-    return __call(gas, u256(addr), value, input_offset, input_len, output_offset, output_len)
+pub fn call(gas: u256, addr: address, value: u256, buffer: buf::RawCallBuffer) -> bool {
+  unsafe{ return __call(gas, u256(addr), value, buffer.offset(), buffer.input_len(), buffer.offset(), buffer.output_len()) == 1 }
 }
 
 pub unsafe fn call_code(gas: u256, addr: address, value: u256, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
