@@ -58,10 +58,10 @@ pub fn ec_recover(hash: u256, v: u256, r: u256, s: u256) -> address {
     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
 
     let mut writer: MemoryBufferWriter = buf.writer()
-    writer.write_u256(value: hash)
-    writer.write_u256(value: v)
-    writer.write_u256(value: r)
-    writer.write_u256(value: s)
+    writer.write(value: hash)
+    writer.write(value: v)
+    writer.write(value: r)
+    writer.write(value: s)
 
     Precompile::EcRecover.single_buf_call(buf)
 
@@ -106,9 +106,9 @@ pub fn mod_exp(
     ) 
 
     let mut writer: MemoryBufferWriter = buf.writer()
-    writer.write_u256(value: b_size)
-    writer.write_u256(value: e_size)
-    writer.write_u256(value: m_size)
+    writer.write(value: b_size)
+    writer.write(value: e_size)
+    writer.write(value: m_size)
     writer.write_buf(buf: b)
     writer.write_buf(buf: e)
     writer.write_buf(buf: m)
@@ -124,10 +124,10 @@ pub fn ec_add(x1: u256, y1: u256, x2: u256, y2: u256) -> (u256, u256) {
     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u256(value: x1)
-    writer.write_u256(value: y1)
-    writer.write_u256(value: x2)
-    writer.write_u256(value: y2)
+    writer.write(value: x1)
+    writer.write(value: y1)
+    writer.write(value: x2)
+    writer.write(value: y2)
 
     Precompile::EcAdd.single_buf_call(buf)
 
@@ -140,9 +140,9 @@ pub fn ec_mul(x: u256, y: u256, s: u256) -> (u256, u256) {
     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u256(value: x)
-    writer.write_u256(value: y)
-    writer.write_u256(value: s)
+    writer.write(value: x)
+    writer.write(value: y)
+    writer.write(value: s)
 
     Precompile::EcMul.single_buf_call(buf)
 
@@ -169,11 +169,11 @@ pub fn blake_2f(
     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 213) 
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u32(value: rounds)
-    for value in h { writer.write_u64(value) }
-    for value in m { writer.write_u64(value) }
-    for value in t { writer.write_u64(value) }
-    writer.write_u8(value: 1 if f else 0)
+    writer.write(value: rounds)
+    for value in h { writer.write(value) }
+    for value in m { writer.write(value) }
+    for value in t { writer.write(value) }
+    writer.write(value: u8(1) if f else u8(0))
 
     Precompile::Blake2f.single_buf_call(buf)
 
