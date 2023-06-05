@@ -18,7 +18,7 @@ let client: LanguageClient;
 export async function activate(
   context: vscode.ExtensionContext
 ): Promise<void> {
-  // todo: bundle binary with extension  
+  // todo: bundle binary with extension (also: make this configurable?)  
   const serverPath = join(__dirname, '..', '..', '..', '..', '..', 'target', 'debug', 'fe-language-server');
 
   const serverExecutable: Executable = {

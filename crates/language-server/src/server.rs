@@ -6,6 +6,10 @@ use lsp_types::{ServerCapabilities, HoverProviderCapability};
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
+        // full sync mode for now
+        text_document_sync: Some(lsp_types::TextDocumentSyncCapability::Kind(
+            lsp_types::TextDocumentSyncKind::FULL,
+        )),
         ..Default::default()
     }
 }
@@ -13,7 +17,7 @@ fn server_capabilities() -> ServerCapabilities {
 pub fn run_server() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();
 
-    let (request_id, initialize_params) = connection.initialize_start()?;
+    let (request_id, _initialize_params) = connection.initialize_start()?;
     // todo: actually use initialization params
 
     let capabilities = server_capabilities();
@@ -51,8 +55,8 @@ pub fn run_server() -> Result<()> {
         })
     )?;
 
-    let result = ServerState::new(connection.sender).run(connection.receiver);
+    let result = ServerState::new(connection.sender).run(connection.receiver)?;
     io_threads.join().unwrap();
     
-    result
+    Ok(result)
 }

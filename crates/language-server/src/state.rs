@@ -1,18 +1,20 @@
-use std::io::BufRead;
-
+use fe_analyzer::db::TestDb;
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
-use lsp_server::{Message, Response};
+use lsp_server::{Message};
 use lsp_types::{notification::Notification, request::Request};
-use serde::Deserialize;
+// use super::db::LanguageServerDb;
+
+use crate::handlers::{request::handle_hover, notifications::handle_document_did_open};
 
 pub struct ServerState {
-    sender: Sender<Message>,
+    pub sender: Sender<Message>,
+    pub analyzer_db: TestDb,
 }
 
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
-        ServerState { sender }
+        ServerState { sender, analyzer_db: TestDb::default() }
     }
 
     pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
@@ -23,12 +25,7 @@ impl ServerState {
                 }
             }
 
-            self.handle_message(msg)?;
-
-            // debugging spam
-            // if (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1) == 0 {
-            //     self.log_info(String::from("hi"))?;
-            // }
+            let _ = self.handle_message(msg);
         }
         Ok(())
     }
@@ -40,56 +37,36 @@ impl ServerState {
     }
 
     fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
-        // log the message with `self.log_info`
-        self.log_info(format!("MESSAGE: {:?}", msg))?;
-
         if let lsp_server::Message::Request(req) = msg {
-            // log the request to the console
+            self.log_info(format!("REQUEST: {:?}", req))?;
 
-            // handle hover request
-            if req.method == lsp_types::request::HoverRequest::METHOD {
-                // log the hover request to the console
-                let params = lsp_types::HoverParams::deserialize(req.params)?;
-
-                // open the file and read the line at the given position
-                let file = std::fs::File::open(
-                    &params
-                        .text_document_position_params
-                        .text_document
-                        .uri
-                        .path(),
-                )?;
-                let reader = std::io::BufReader::new(file);
-                let line = reader
-                    .lines()
-                    .nth(params.text_document_position_params.position.line as usize)
-                    .unwrap()
-                    .unwrap();
-
-                let result = lsp_types::Hover {
-                    contents: lsp_types::HoverContents::Markup(
-                        lsp_types::MarkupContent::from(lsp_types::MarkupContent {
-                            kind: lsp_types::MarkupKind::Markdown,
-                            value: format!("### Hovering over:\n```{}```\n\n{}", &line, serde_json::to_string_pretty(&params).unwrap()),
-                        }),
-                    ),
-                    range: None,
-                };
-
-                let response_message = lsp_server::Message::Response(Response {
-                    id: req.id,
-                    result: Some(serde_json::to_value(result)?),
-                    error: None,
-                });
-
-                self.sender.send(response_message)?;
+            match req.method.as_str() {
+                // TODO: implement actually useful hover handler
+                // lsp_types::request::HoverRequest::METHOD => handle_hover(self, req)?,
+                _ => {}
+            }
+        
+            
+        } else if let lsp_server::Message::Notification(note) = msg {
+            // log the notification to the console
+            self.log_info(format!("NOTIFICATION: {:?}", note))?;
+            
+            match note.method.as_str() {
+                lsp_types::notification::DidOpenTextDocument::METHOD => handle_document_did_open(self, note)?,
+                lsp_types::notification::DidChangeTextDocument::METHOD => handle_document_did_open(self, note)?,
+                _ => {}
             }
         }
 
         Ok(())
     }
 
-    fn log_info(&mut self, message: String) -> Result<()> {
+    pub(crate) fn send_response(&mut self, response: lsp_server::Response) -> Result<()> {
+        self.sender.send(lsp_server::Message::Response(response))?;
+        Ok(())
+    }
+
+    pub(crate) fn log_info(&mut self, message: String) -> Result<()> {
         self.sender.send(lsp_server::Message::Notification(
             lsp_server::Notification {
                 method: String::from("window/logMessage"),
