@@ -40,8 +40,8 @@ impl ImportError {
         Self::new(span, ImportErrorKind::Invisible(name, name_span))
     }
 
-    pub fn ambiguous(span: DynLazySpan, ident: IdentId) -> Self {
-        Self::new(span, ImportErrorKind::Ambiguous(ident))
+    pub fn ambiguous(span: DynLazySpan, ident: IdentId, candidates: Vec<DynLazySpan>) -> Self {
+        Self::new(span, ImportErrorKind::Ambiguous(ident, candidates))
     }
 }
 
@@ -76,7 +76,7 @@ pub enum ImportErrorKind {
     Invisible(IdentId, Option<DynLazySpan>),
 
     /// The import path segment is ambiguous.
-    Ambiguous(IdentId),
+    Ambiguous(IdentId, Vec<DynLazySpan>),
 }
 
 impl ImportErrorKind {
@@ -85,7 +85,7 @@ impl ImportErrorKind {
             ImportErrorKind::Conflict(_) => 0,
             ImportErrorKind::NotFound(_) => 1,
             ImportErrorKind::Invisible(..) => 2,
-            ImportErrorKind::Ambiguous(_) => 3,
+            ImportErrorKind::Ambiguous(..) => 3,
         }
     }
 
@@ -100,7 +100,7 @@ impl ImportErrorKind {
             ImportErrorKind::Invisible(name, _) => {
                 format!("{} is not visible", name.data(db),)
             }
-            ImportErrorKind::Ambiguous(name) => format!("{} is ambiguous", name.data(db)),
+            ImportErrorKind::Ambiguous(name, _) => format!("{} is ambiguous", name.data(db)),
         }
     }
 
@@ -112,7 +112,7 @@ impl ImportErrorKind {
                 conflict_with.resolve(db),
             )],
 
-            ImportErrorKind::NotFound(_) | ImportErrorKind::Ambiguous(_) => vec![],
+            ImportErrorKind::NotFound(_) => vec![],
 
             ImportErrorKind::Invisible(_, span) => span
                 .as_ref()
@@ -124,6 +124,14 @@ impl ImportErrorKind {
                     )]
                 })
                 .unwrap_or_default(),
+
+            ImportErrorKind::Ambiguous(_, candidates) => candidates
+                .iter()
+                .enumerate()
+                .map(|(i, span)| {
+                    SubDiagnostic::new(Severity::Note, format!("candidate #{i}"), span.resolve(db))
+                })
+                .collect(),
         }
     }
 }

@@ -38,7 +38,7 @@ fn format_imports(
     let mut use_res_map: FxHashMap<Use, Vec<String>> = FxHashMap::default();
 
     for name_resolved in imports.named_resolved.values().flat_map(|r| r.values()) {
-        for res in name_resolved.binding.iter() {
+        for res in name_resolved.iter() {
             match res.derivation {
                 NameDerivation::NamedImported(use_) => use_res_map
                     .entry(use_)

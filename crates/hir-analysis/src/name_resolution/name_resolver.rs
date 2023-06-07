@@ -164,9 +164,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                             NameDomain::from_scope(edge.dest),
                             NameDerivation::Def,
                         );
-                        if binding.push(&res).is_some() {
-                            return Err(NameResolutionError::Ambiguous);
-                        }
+                        self.try_push(&mut binding, &res, query)?;
                     }
                 }
 
@@ -185,7 +183,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .named_imports(self.db, query.scope)
             .and_then(|imports| imports.get(&query.name))
         {
-            self.try_merge(&mut binding, &imported.binding, query)?;
+            self.try_merge(&mut binding, imported, query)?;
         }
 
         // 3. Look for the name in the glob imports.
@@ -231,19 +229,25 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 .iter()
                 .for_each(|(name, root_mod)| {
                     if *name == query.name {
-                        binding.push(&NameRes::new_scope(
-                            ScopeId::root(*root_mod),
-                            NameDomain::Item,
-                            NameDerivation::External,
-                        ));
+                        // We don't care about the result of `push` because we assume ingots are
+                        // guaranteed to be unique.
+                        binding
+                            .push(&NameRes::new_scope(
+                                ScopeId::root(*root_mod),
+                                NameDomain::Item,
+                                NameDerivation::External,
+                            ))
+                            .unwrap();
                     }
                 });
         }
 
         // 6. Look for the name in the builtin types.
         for &prim in PrimTy::all_types() {
+            // We don't care about the result of `push` because we assume builtin types are
+            // guaranteed to be unique.
             if query.name == prim.name() {
-                binding.push(&NameRes::new_prim(prim));
+                binding.push(&NameRes::new_prim(prim)).unwrap();
             }
         }
 
@@ -321,12 +325,14 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         let mut found_domains_after_named = found_domains.clone();
         if let Some(named_imports) = self.importer.named_imports(self.db, target) {
             for (&name, import) in named_imports {
-                if !is_use_visible(self.db, ref_scope, import.use_) {
-                    continue;
-                }
-
                 let found_domain = found_domains.get(&name).copied().unwrap_or_default();
-                for res in import.binding.iter() {
+                for res in import.iter().filter(|res| {
+                    if let NameDerivation::NamedImported(use_) = res.derivation {
+                        is_use_visible(self.db, ref_scope, use_)
+                    } else {
+                        false
+                    }
+                }) {
                     if (found_domain & res.domain as u8 != 0)
                         || !found_kinds.insert((name, res.kind))
                     {
@@ -461,16 +467,12 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         from: &NameBinding,
         query: NameQuery,
     ) -> Result<(), NameResolutionError> {
-        if target
+        target
             .merge(from.filter_by_domain(query.directive.domain))
-            .is_none()
-        {
-            Ok(())
-        } else {
-            let err = NameResolutionError::Ambiguous;
-            self.cache_store.cache_result(query, Err(err.clone()));
-            Err(err)
-        }
+            .map_err(|err| {
+                self.cache_store.cache_result(query, Err(err.clone()));
+                err
+            })
     }
 
     fn try_push(
@@ -479,13 +481,10 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         res: &NameRes,
         query: NameQuery,
     ) -> Result<(), NameResolutionError> {
-        if target.push(res).is_none() {
-            Ok(())
-        } else {
-            let err = NameResolutionError::Ambiguous;
+        target.push(res).map_err(|err| {
             self.cache_store.cache_result(query, Err(err.clone()));
-            Err(err)
-        }
+            err
+        })
     }
 }
 
@@ -635,14 +634,12 @@ impl NameBinding {
     pub(super) fn merge<'a>(
         &mut self,
         resolutions: impl Iterator<Item = &'a NameRes>,
-    ) -> Option<NameRes> {
+    ) -> Result<(), NameResolutionError> {
         for res in resolutions {
-            if let Some(conflict) = self.push(res) {
-                return Some(conflict);
-            }
+            self.push(res)?;
         }
 
-        None
+        Ok(())
     }
 
     pub(super) fn set_derivation(&mut self, derivation: NameDerivation) {
@@ -652,30 +649,33 @@ impl NameBinding {
     }
 
     /// Push the `res` into the set.
-    fn push(&mut self, res: &NameRes) -> Option<NameRes> {
+    fn push(&mut self, res: &NameRes) -> Result<(), NameResolutionError> {
         let domain = res.domain;
         match self.resolutions.entry(domain) {
             Entry::Occupied(mut e) => {
                 let old_derivation = e.get().derivation.clone();
                 match res.derivation.cmp(&old_derivation) {
-                    cmp::Ordering::Less => None,
+                    cmp::Ordering::Less => Ok(()),
                     cmp::Ordering::Equal => {
                         if e.get().kind == res.kind {
-                            None
+                            Ok(())
                         } else {
-                            Some(res.clone())
+                            Err(NameResolutionError::Ambiguous(vec![
+                                e.get().clone(),
+                                res.clone(),
+                            ]))
                         }
                     }
                     cmp::Ordering::Greater => {
                         e.insert(res.clone());
-                        None
+                        Ok(())
                     }
                 }
             }
 
             Entry::Vacant(e) => {
                 e.insert(res.clone());
-                None
+                Ok(())
             }
         }
     }
@@ -883,9 +883,6 @@ pub enum NameResolutionError {
     /// The name is not found.
     NotFound,
 
-    /// Multiple candidates are found.
-    Conflict,
-
     /// The name is invalid in parsing. Basically, no need to report it because
     /// the error is already emitted from parsing phase.
     Invalid,
@@ -894,17 +891,16 @@ pub enum NameResolutionError {
     Invisible,
 
     /// The name is found, but it's ambiguous.
-    Ambiguous,
+    Ambiguous(Vec<NameRes>),
 }
 
 impl fmt::Display for NameResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NameResolutionError::NotFound => write!(f, "name not found"),
-            NameResolutionError::Conflict => write!(f, "multiple candidates found"),
             NameResolutionError::Invalid => write!(f, "invalid name"),
             NameResolutionError::Invisible => write!(f, "name is not visible"),
-            NameResolutionError::Ambiguous => write!(f, "name is ambiguous"),
+            NameResolutionError::Ambiguous(_) => write!(f, "name is ambiguous"),
         }
     }
 }

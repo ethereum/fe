@@ -464,7 +464,7 @@ impl<'db> ImportResolver<'db> {
                     // the use might be resolved to an external ingot. This means there is an
                     // ambiguity between the external ingot and the name
                     // imported by the glob import.
-                    self.register_error(&i_use, NameResolutionError::Ambiguous);
+                    self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
                 }
             }
 
@@ -491,10 +491,7 @@ impl<'db> ImportResolver<'db> {
 
     fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
         match err {
-            // We treat `Conflict` as the same as `NotFound`.
-            // NOTE: The conflict error is happen in the `resolve_query` method, this means that the
-            // name conflict happens in the scope that is being imported.
-            NameResolutionError::NotFound | NameResolutionError::Conflict => {
+            NameResolutionError::NotFound => {
                 self.accumulated_errors.push(ImportError::not_found(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
@@ -506,10 +503,14 @@ impl<'db> ImportResolver<'db> {
                 // parsing phase.
             }
 
-            NameResolutionError::Ambiguous => {
+            NameResolutionError::Ambiguous(cands) => {
                 self.accumulated_errors.push(ImportError::ambiguous(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
+                    cands
+                        .into_iter()
+                        .filter_map(|name| name.kind.name_span(self.db))
+                        .collect(),
                 ));
             }
 
@@ -682,13 +683,7 @@ impl Importer for DefaultImporter {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ImportedBinding {
-    pub binding: NameBinding,
-    pub use_: Use,
-}
-
-pub type NamedImportSet = FxHashMap<IdentId, ImportedBinding>;
+pub type NamedImportSet = FxHashMap<IdentId, NameBinding>;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GlobImportSet {
@@ -884,22 +879,32 @@ impl IntermediateResolvedImports {
             .or_default();
 
         match imported_set.entry(imported_name) {
-            Entry::Occupied(mut e) => match e.get_mut().binding.merge(bind.iter()) {
-                Some(already_found) => {
-                    return Err(ImportError::conflict(
-                        i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
-                        already_found.derived_from(db).unwrap(),
-                    ))
+            Entry::Occupied(mut e) => match e.get_mut().merge(bind.iter()) {
+                Ok(()) => Ok(()),
+                Err(NameResolutionError::Ambiguous(cands)) => {
+                    for cand in cands {
+                        match cand.derivation {
+                            NameDerivation::NamedImported(use_) => {
+                                if i_use.use_ == use_ {
+                                    continue;
+                                }
+
+                                return Err(ImportError::conflict(
+                                    i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
+                                    cand.derived_from(db).unwrap(),
+                                ));
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                    unreachable!()
                 }
-                None => Ok(()),
+
+                Err(_) => unreachable!(),
             },
 
             Entry::Vacant(e) => {
-                let import_bind = ImportedBinding {
-                    binding: bind,
-                    use_: i_use.use_,
-                };
-                e.insert(import_bind);
+                e.insert(bind);
                 Ok(())
             }
         }

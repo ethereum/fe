@@ -903,21 +903,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fe-driver2"
-version = "0.20.0-alpha"
-dependencies = [
- "derive_more",
- "either",
- "fe-common2",
- "fe-hir",
- "fe-hir-analysis",
- "itertools",
- "rustc-hash",
- "salsa-2022",
- "smallvec",
-]
-
-[[package]]
 name = "fe-hir"
 version = "0.22.0"
 dependencies = [
