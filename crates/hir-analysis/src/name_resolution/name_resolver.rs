@@ -12,7 +12,7 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        IdentId, ItemKind, Partial, PathId, Use,
+        IdentId, ItemKind, Partial, Use,
     },
     span::DynLazySpan,
 };
@@ -86,14 +86,10 @@ impl PathResolutionError {
     fn new(kind: NameResolutionError, failed_at: usize) -> Self {
         Self { kind, failed_at }
     }
-
-    fn invalid(failed_at: usize) -> Self {
-        Self::new(NameResolutionError::Invalid, failed_at)
-    }
 }
 
 impl<'db, 'a> NameResolver<'db, 'a> {
-    /// Resolve the path to a set of possible resolutions.
+    /// Resolve the path segments to a set of possible resolutions.
     /// A path can be resolved to multiple resolutions because we have multiple
     /// name domains.
     ///
@@ -107,35 +103,53 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     ///     pub struct FOO {}
     /// }
     /// ```
-    pub fn resolve_path(
+    pub fn resolve_segments(
         &mut self,
-        path: PathId,
-        scope: ScopeId,
+        segments: Vec<Partial<IdentId>>,
+        mut scope: ScopeId,
+        directive: QueryDirective,
     ) -> Result<ResolvedPath, PathResolutionError> {
-        let segments = path.data(self.db.as_hir_db());
         if segments.is_empty() {
-            return Err(PathResolutionError::invalid(0));
+            return Err(PathResolutionError::new(NameResolutionError::Invalid, 0));
         }
 
-        // Set pred segment to the current scope.
-        let mut pred =
-            NameRes::new_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
-
-        let seg_len = segments.len();
-        for (i, seg) in segments[0..seg_len - 1].iter().enumerate() {
-            pred = match self.resolve_segment(pred, *seg, i, false)? {
-                Either::Left(resolved) => {
-                    return Ok(resolved);
+        let last_seg_idx = segments.len() - 1;
+        for (i, seg) in segments[0..last_seg_idx].iter().enumerate() {
+            let Partial::Present(ident) = seg else {
+                return Err(PathResolutionError::new(NameResolutionError::Invalid, i));
+            };
+            let query = NameQuery::new(*ident, scope);
+            scope = match self.resolve_query(query) {
+                Ok(resolved) => {
+                    let res = resolved.name_by_domain(NameDomain::Item).unwrap();
+                    if res.is_type(self.db) {
+                        return Ok(ResolvedPath::Partial {
+                            resolved: res.clone(),
+                            unresolved_from: i + 1,
+                        });
+                    } else if let Some(scope) = res.scope() {
+                        scope
+                    } else {
+                        return Err(PathResolutionError::new(
+                            NameResolutionError::NotFound,
+                            i + 1,
+                        ));
+                    }
                 }
-                Either::Right(resolved) => resolved,
-            }
+
+                Err(err) => {
+                    return Err(PathResolutionError::new(err, i));
+                }
+            };
         }
 
-        match self.resolve_segment(pred, *segments.last().unwrap(), seg_len - 1, true)? {
-            Either::Left(resolved) => Ok(resolved),
-            Either::Right(_) => {
-                unreachable!()
-            }
+        let Partial::Present(ident) = segments[last_seg_idx] else {
+                return Err(PathResolutionError::new(NameResolutionError::Invalid, last_seg_idx));
+        };
+        let query = NameQuery::with_directive(ident, scope, directive);
+        match self.resolve_query(query) {
+            Ok(resolved) => Ok(ResolvedPath::Full(resolved)),
+            Err(err) => Err(PathResolutionError::new(err, last_seg_idx)),
         }
     }
 
@@ -388,77 +402,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         };
         self.cache_store.cache_result(query, result.clone());
         result
-    }
-
-    /// Resolve the `segment`. `pred` is the resolution for the previous
-    /// segment, and `is_last` indicates the segment is the last segment of the
-    /// path.
-    ///
-    /// If the method returns `Right`, it means the path resolution is work in
-    /// progress and we need to continue look for the next segment. If the
-    /// method returns `Left`, that means the resolution for the entire path
-    /// is done.
-    ///
-    /// Even if the `is_last` is `false` the method may return `Left`, this will
-    /// happen if both 1. and 2. are satisfied:
-    /// 1. The `pred` is a type.
-    /// 2. The lookup for the `segment` results in `NotFound`.
-    /// This indicates we need further resolution for the `segment` in the later
-    /// trait solving phase.
-    /// In case the `is_last` is `true`, the function is guaranteed to return
-    /// `Ok(Left)` or `Error`.
-    ///
-    ///
-    /// We can return an error immediately in case the `is_last` is `false` and
-    /// multiple resolutions for the `segment` are found.
-    /// The reasoning is
-    /// 1. Our language allows only `Item` domain to have associated items.
-    /// 2. By 1., the middle segments should be resolved to the `Item`
-    ///    domain. Otherwise, the following segment can't be resolved.
-    /// 3. By 2., if we obtain multiple resolutions from a middle segment, this
-    ///    can be divided into two cases:
-    ///    a. Name conflict occurs. We can immediately return `Conflict` error
-    ///       in this case.
-    ///    b. All resolutions belong to different domains. This
-    ///       means that at least one of the resolutions belongs to non-`Item`
-    ///       domain. This case can be regarded as `NotFound` error because the
-    ///       following segment of the non-`Item` domain resolution can't be
-    ///       resolved.
-    fn resolve_segment(
-        &mut self,
-        _pred: NameRes,
-        _segment: Partial<IdentId>,
-        _seg_idx: usize,
-        _is_last: bool,
-    ) -> Result<Either<ResolvedPath, NameRes>, PathResolutionError> {
-        todo!()
-        // let Partial::Present(seg) = segment else {
-        //     return Err(PathResolutionError::invalid(seg_idx));
-        // };
-
-        // let scope = pred.scope;
-        // let query = NameQuery::new(seg, scope);
-        // let resolved_set = match self.resolve_query(query) {
-        //     Ok(resolved) => resolved,
-        //     Err(NameResolutionError::NotFound) if pred.is_type(self.db) => {
-        //         // If the parent scope of the current segment is a type and
-        // the segment is not         // found, then it should be
-        // resolved in the trait solving phase.         return
-        // Ok(Either::Left(ResolvedPath::partial(pred, seg_idx)));     }
-        //     Err(e) => {
-        //         return Err(PathResolutionError::new(e, seg_idx));
-        //     }
-        // };
-
-        // if is_last {
-        //     Ok(Either::Left(ResolvedPath::Full(resolved_set)))
-        // } else if resolved_set.len() > 1 {
-        //     // Case a. is already handled above.
-        //     // Handles case b. here.
-        //     return Err(PathResolutionError::not_found(seg_idx));
-        // } else {
-        //     Ok(Either::Right(resolved_set.into_iter().next().unwrap()))
-        // }
     }
 
     fn try_merge(
@@ -725,6 +668,15 @@ impl NameRes {
         }
     }
 
+    /// Returns the scope of the name resolution if the name is not a builtin
+    /// type.
+    pub fn scope(&self) -> Option<ScopeId> {
+        match self.kind {
+            NameResKind::Scope(scope) => Some(scope),
+            NameResKind::Prim(_) => None,
+        }
+    }
+
     pub fn is_visible(&self, db: &dyn HirAnalysisDb, from: ScopeId) -> bool {
         let scope_or_use = match self.derivation {
             NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
@@ -907,8 +859,8 @@ impl fmt::Display for NameResolutionError {
 
 impl std::error::Error for NameResolutionError {}
 
-#[derive(Default)]
-struct ResolvedQueryCacheStore {
+#[derive(Default, Debug, PartialEq, Eq)]
+pub(crate) struct ResolvedQueryCacheStore {
     cache: FxHashMap<NameQuery, Result<NameBinding, NameResolutionError>>,
     no_cache: bool,
 }
