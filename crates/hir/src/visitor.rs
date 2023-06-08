@@ -1734,7 +1734,7 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
-    pub fn current_span(&self) -> Option<T>
+    pub fn span(&self) -> Option<T>
     where
         T: SpanDowncast,
     {
@@ -1868,7 +1868,7 @@ mod tests {
 
     impl Visitor for MyVisitor {
         fn visit_attribute(&mut self, ctxt: &mut VisitorCtxt<LazyAttrSpan>, _attrs: &Attr) {
-            self.attributes.push(ctxt.current_span().unwrap());
+            self.attributes.push(ctxt.span().unwrap());
         }
 
         fn visit_generic_param_list(
@@ -1876,12 +1876,12 @@ mod tests {
             ctxt: &mut VisitorCtxt<LazyGenericParamListSpan>,
             _params: GenericParamListId,
         ) {
-            self.generic_param_list = Some(ctxt.current_span().unwrap());
+            self.generic_param_list = Some(ctxt.span().unwrap());
         }
 
         fn visit_lit(&mut self, ctxt: &mut VisitorCtxt<LazyLitSpan>, lit: LitKind) {
             if let LitKind::Int(_) = lit {
-                self.lit_ints.push(ctxt.current_span().unwrap());
+                self.lit_ints.push(ctxt.span().unwrap());
             }
         }
     }

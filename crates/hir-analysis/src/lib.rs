@@ -2,8 +2,10 @@ use hir::{span::DynLazySpan, HirDb};
 
 #[salsa::jar(db = HirAnalysisDb)]
 pub struct Jar(
+    /// Functions for import/name resolutions.
+    name_resolution::resolve_path_early,
     name_resolution::resolve_imports,
-    name_resolution::diagnostics::ImportErrorAccumulator,
+    name_resolution::diagnostics::NameResolutionDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

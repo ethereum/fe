@@ -61,71 +61,7 @@ impl ItemKind {
     pub fn lazy_span(self) -> LazyItemSpan {
         LazyItemSpan::new(self)
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
-pub enum GenericParamOwner {
-    Func(Func),
-    Struct(Struct),
-    Enum(Enum),
-    TypeAlias(TypeAlias),
-    Impl(Impl),
-    Trait(Trait),
-    ImplTrait(ImplTrait),
-}
-
-impl GenericParamOwner {
-    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
-        match self {
-            GenericParamOwner::Func(func) => func.top_mod(db),
-            GenericParamOwner::Struct(struct_) => struct_.top_mod(db),
-            GenericParamOwner::Enum(enum_) => enum_.top_mod(db),
-            GenericParamOwner::TypeAlias(type_alias) => type_alias.top_mod(db),
-            GenericParamOwner::Impl(impl_) => impl_.top_mod(db),
-            GenericParamOwner::Trait(trait_) => trait_.top_mod(db),
-            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.top_mod(db),
-        }
-    }
-
-    pub fn params(&self, db: &dyn HirDb) -> GenericParamListId {
-        match self {
-            GenericParamOwner::Func(func) => func.generic_params(db),
-            GenericParamOwner::Struct(struct_) => struct_.generic_params(db),
-            GenericParamOwner::Enum(enum_) => enum_.generic_params(db),
-            GenericParamOwner::TypeAlias(type_alias) => type_alias.generic_params(db),
-            GenericParamOwner::Impl(impl_) => impl_.generic_params(db),
-            GenericParamOwner::Trait(trait_) => trait_.generic_params(db),
-            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.generic_params(db),
-        }
-    }
-
-    pub fn params_span(&self) -> LazyGenericParamListSpan {
-        match self {
-            GenericParamOwner::Func(func) => func.lazy_span().generic_params(),
-            GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params(),
-            GenericParamOwner::Enum(enum_) => enum_.lazy_span().generic_params(),
-            GenericParamOwner::TypeAlias(type_alias) => type_alias.lazy_span().generic_params(),
-            GenericParamOwner::Impl(impl_) => impl_.lazy_span().generic_params(),
-            GenericParamOwner::Trait(trait_) => trait_.lazy_span().generic_params(),
-            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.lazy_span().generic_params(),
-        }
-    }
-
-    pub fn from_item_opt(item: ItemKind) -> Option<Self> {
-        match item {
-            ItemKind::Func(func) => Some(GenericParamOwner::Func(func)),
-            ItemKind::Struct(struct_) => Some(GenericParamOwner::Struct(struct_)),
-            ItemKind::Enum(enum_) => Some(GenericParamOwner::Enum(enum_)),
-            ItemKind::TypeAlias(type_alias) => Some(GenericParamOwner::TypeAlias(type_alias)),
-            ItemKind::Impl(impl_) => Some(GenericParamOwner::Impl(impl_)),
-            ItemKind::Trait(trait_) => Some(GenericParamOwner::Trait(trait_)),
-            ItemKind::ImplTrait(impl_trait) => Some(GenericParamOwner::ImplTrait(impl_trait)),
-            _ => None,
-        }
-    }
-}
-
-impl ItemKind {
     pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
         use ItemKind::*;
         match self {
@@ -202,6 +138,68 @@ impl ItemKind {
             self,
             Self::Struct(_) | Self::Enum(_) | Self::Contract(_) | Self::TypeAlias(_)
         )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
+pub enum GenericParamOwner {
+    Func(Func),
+    Struct(Struct),
+    Enum(Enum),
+    TypeAlias(TypeAlias),
+    Impl(Impl),
+    Trait(Trait),
+    ImplTrait(ImplTrait),
+}
+
+impl GenericParamOwner {
+    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+        match self {
+            GenericParamOwner::Func(func) => func.top_mod(db),
+            GenericParamOwner::Struct(struct_) => struct_.top_mod(db),
+            GenericParamOwner::Enum(enum_) => enum_.top_mod(db),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.top_mod(db),
+            GenericParamOwner::Impl(impl_) => impl_.top_mod(db),
+            GenericParamOwner::Trait(trait_) => trait_.top_mod(db),
+            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.top_mod(db),
+        }
+    }
+
+    pub fn params(&self, db: &dyn HirDb) -> GenericParamListId {
+        match self {
+            GenericParamOwner::Func(func) => func.generic_params(db),
+            GenericParamOwner::Struct(struct_) => struct_.generic_params(db),
+            GenericParamOwner::Enum(enum_) => enum_.generic_params(db),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.generic_params(db),
+            GenericParamOwner::Impl(impl_) => impl_.generic_params(db),
+            GenericParamOwner::Trait(trait_) => trait_.generic_params(db),
+            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.generic_params(db),
+        }
+    }
+
+    pub fn params_span(&self) -> LazyGenericParamListSpan {
+        match self {
+            GenericParamOwner::Func(func) => func.lazy_span().generic_params(),
+            GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params(),
+            GenericParamOwner::Enum(enum_) => enum_.lazy_span().generic_params(),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.lazy_span().generic_params(),
+            GenericParamOwner::Impl(impl_) => impl_.lazy_span().generic_params(),
+            GenericParamOwner::Trait(trait_) => trait_.lazy_span().generic_params(),
+            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.lazy_span().generic_params(),
+        }
+    }
+
+    pub fn from_item_opt(item: ItemKind) -> Option<Self> {
+        match item {
+            ItemKind::Func(func) => Some(GenericParamOwner::Func(func)),
+            ItemKind::Struct(struct_) => Some(GenericParamOwner::Struct(struct_)),
+            ItemKind::Enum(enum_) => Some(GenericParamOwner::Enum(enum_)),
+            ItemKind::TypeAlias(type_alias) => Some(GenericParamOwner::TypeAlias(type_alias)),
+            ItemKind::Impl(impl_) => Some(GenericParamOwner::Impl(impl_)),
+            ItemKind::Trait(trait_) => Some(GenericParamOwner::Trait(trait_)),
+            ItemKind::ImplTrait(impl_trait) => Some(GenericParamOwner::ImplTrait(impl_trait)),
+            _ => None,
+        }
     }
 }
 

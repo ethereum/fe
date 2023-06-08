@@ -14,14 +14,14 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
 
 use super::{
-    diagnostics::ImportError,
+    diagnostics::NameResolutionDiag,
     name_resolver::{
         NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, NameResKind,
         NameResolutionError, NameResolver, QueryDirective,
     },
 };
 
-pub struct ImportResolver<'db> {
+pub(crate) struct ImportResolver<'db> {
     db: &'db dyn HirAnalysisDb,
 
     /// The ingot that is being resolved.
@@ -34,7 +34,7 @@ pub struct ImportResolver<'db> {
     intermediate_uses: FxHashMap<ScopeId, VecDeque<IntermediateUse>>,
 
     /// The errors that have been accumulated during the import resolution.
-    accumulated_errors: Vec<ImportError>,
+    accumulated_errors: Vec<NameResolutionDiag>,
 
     /// The number of imported resolutions.
     /// This is used to judge if a import resolution doesn't change in each
@@ -61,7 +61,7 @@ impl<'db> ImportResolver<'db> {
         }
     }
 
-    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports, Vec<ImportError>) {
+    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports, Vec<NameResolutionDiag>) {
         self.initialize_i_uses();
 
         let mut changed = true;
@@ -492,7 +492,7 @@ impl<'db> ImportResolver<'db> {
     fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
         match err {
             NameResolutionError::NotFound => {
-                self.accumulated_errors.push(ImportError::not_found(
+                self.accumulated_errors.push(NameResolutionDiag::not_found(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                 ));
@@ -504,7 +504,7 @@ impl<'db> ImportResolver<'db> {
             }
 
             NameResolutionError::Ambiguous(cands) => {
-                self.accumulated_errors.push(ImportError::ambiguous(
+                self.accumulated_errors.push(NameResolutionDiag::ambiguous(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                     cands
@@ -860,7 +860,7 @@ impl IntermediateResolvedImports {
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
         mut bind: NameBinding,
-    ) -> Result<(), ImportError> {
+    ) -> Result<(), NameResolutionDiag> {
         let scope = i_use.original_scope;
         bind.set_derivation(NameDerivation::NamedImported(i_use.use_));
 
@@ -889,7 +889,7 @@ impl IntermediateResolvedImports {
                                     continue;
                                 }
 
-                                return Err(ImportError::conflict(
+                                return Err(NameResolutionDiag::conflict(
                                     i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
                                     cand.derived_from(db).unwrap(),
                                 ));

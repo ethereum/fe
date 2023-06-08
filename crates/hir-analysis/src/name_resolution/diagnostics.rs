@@ -13,15 +13,15 @@ use crate::HirAnalysisDb;
 use super::name_resolver::NameRes;
 
 #[salsa::accumulator]
-pub struct ImportErrorAccumulator(ImportError);
+pub struct NameResolutionDiagAccumulator(NameResolutionDiag);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImportError {
+pub struct NameResolutionDiag {
     span: DynLazySpan,
     kind: ImportErrorKind,
 }
 
-impl ImportError {
+impl NameResolutionDiag {
     pub fn new(span: DynLazySpan, kind: ImportErrorKind) -> Self {
         Self { span, kind }
     }
@@ -45,7 +45,7 @@ impl ImportError {
     }
 }
 
-impl DiagnosticVoucher for ImportError {
+impl DiagnosticVoucher for NameResolutionDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(AnalysisPass::ImportResolution, self.kind.local_code())
     }

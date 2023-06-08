@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{hir_def::GenericParamOwner, span::DynLazySpan, HirDb};
 
-use super::{Enum, Func, IdentId, IngotId, ItemKind, TopLevelMod, Use, Visibility};
+use super::{Enum, Func, FuncParamLabel, IdentId, IngotId, ItemKind, TopLevelMod, Use, Visibility};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
@@ -184,7 +184,12 @@ impl ScopeId {
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
-                func.params(db).to_opt()?.data(db)[idx].name()
+                let param = &func.params(db).to_opt()?.data(db)[idx];
+                if let Some(FuncParamLabel::Ident(ident)) = param.label {
+                    Some(ident)
+                } else {
+                    param.name()
+                }
             }
 
             ScopeId::GenericParam(parent, idx) => {
@@ -224,7 +229,13 @@ impl ScopeId {
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
-                Some(func.lazy_span().params().param(idx).name().into())
+                let param = &func.params(db).to_opt()?.data(db)[idx];
+                let param_span = func.lazy_span().params().param(idx);
+                if let Some(FuncParamLabel::Ident(_)) = param.label {
+                    Some(param_span.label().into())
+                } else {
+                    Some(param_span.name().into())
+                }
             }
 
             ScopeId::GenericParam(parent, idx) => {
