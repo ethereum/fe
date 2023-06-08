@@ -89,7 +89,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
             return;
         };
 
-        self.check_conflict(scope, query);
+        self.check_conflict(scope, query, NameDomain::from_scope(scope));
     }
 
     fn check_field_conflict(&mut self, fields: FieldDefListId) {
@@ -100,7 +100,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
                 continue;
             };
 
-            self.check_conflict(scope, query);
+            self.check_conflict(scope, query, NameDomain::from_scope(scope));
         }
     }
 
@@ -112,7 +112,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
                 continue;
             };
 
-            self.check_conflict(scope, query);
+            self.check_conflict(scope, query, NameDomain::from_scope(scope));
         }
     }
 
@@ -124,7 +124,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
                 continue;
             };
 
-            self.check_conflict(scope, query);
+            self.check_conflict(scope, query, NameDomain::from_scope(scope));
         }
     }
 
@@ -136,29 +136,26 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
                 continue;
             };
 
-            self.check_conflict(scope, query);
+            self.check_conflict(scope, query, NameDomain::from_scope(scope));
         }
     }
 
     fn make_query_for_conflict_check(&self, scope: ScopeId) -> Option<NameQuery> {
         let name = scope.name(self.db.as_hir_db())?;
         let mut directive = QueryDirective::new();
-        directive
-            .set_domain(NameDomain::from_scope(scope))
-            .disallow_lex()
-            .disallow_glob()
-            .disallow_external();
+        directive.disallow_lex().disallow_glob().disallow_external();
 
         let parent_scope = scope.parent(self.db.as_hir_db())?;
         Some(NameQuery::with_directive(name, parent_scope, directive))
     }
 
-    fn check_conflict(&mut self, scope: ScopeId, query: NameQuery) {
-        match self.resolver.resolve_query(query) {
+    fn check_conflict(&mut self, scope: ScopeId, query: NameQuery, domain: NameDomain) {
+        let binding = self.resolver.resolve_query(query);
+        match binding.res_in_domain(domain) {
             Ok(_) => {}
             Err(NameResolutionError::Ambiguous(cands)) => {
                 let conflicted_span = cands
-                    .into_iter()
+                    .iter()
                     .find_map(|res| {
                         let conflicted_scope = res.scope()?;
                         if conflicted_scope == scope {

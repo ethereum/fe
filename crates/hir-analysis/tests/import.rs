@@ -50,7 +50,6 @@ fn format_imports(
     }
 
     for (_, glob_set) in imports.glob_resolved.iter() {
-        dbg!(glob_set.iter().count());
         for (&use_, res_set) in glob_set.iter() {
             for res in res_set.values().flatten() {
                 use_res_map

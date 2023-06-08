@@ -311,7 +311,7 @@ pub struct ScopeEdge {
     pub kind: EdgeKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub enum EdgeKind {
     Lex(LexEdge),
     Mod(ModEdge),

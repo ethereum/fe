@@ -119,9 +119,9 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 return Err(PathResolutionError::new(NameResolutionError::Invalid, i));
             };
             let query = NameQuery::new(*ident, scope);
-            scope = match self.resolve_query(query) {
-                Ok(resolved) => {
-                    let res = resolved.name_by_domain(NameDomain::Item).unwrap();
+            let binding = self.resolve_query(query);
+            scope = match binding.res_in_domain(NameDomain::Item) {
+                Ok(res) => {
                     if res.is_type(self.db) {
                         return Ok(ResolvedPath::Partial {
                             resolved: res.clone(),
@@ -136,9 +136,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                         ));
                     }
                 }
-
                 Err(err) => {
-                    return Err(PathResolutionError::new(err, i));
+                    return Err(PathResolutionError::new(err.clone(), i));
                 }
             };
         }
@@ -147,13 +146,11 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 return Err(PathResolutionError::new(NameResolutionError::Invalid, last_seg_idx));
         };
         let query = NameQuery::with_directive(ident, scope, directive);
-        match self.resolve_query(query) {
-            Ok(resolved) => Ok(ResolvedPath::Full(resolved)),
-            Err(err) => Err(PathResolutionError::new(err, last_seg_idx)),
-        }
+        let resolved = self.resolve_query(query);
+        Ok(ResolvedPath::Full(resolved))
     }
 
-    pub fn resolve_query(&mut self, query: NameQuery) -> Result<NameBinding, NameResolutionError> {
+    pub fn resolve_query(&mut self, query: NameQuery) -> NameBinding {
         // If the query is already resolved, return the cached result.
         if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
@@ -167,20 +164,10 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // This ordering means that greater one shadows lower ones in the same domain.
         let mut parent = None;
 
-        macro_rules! return_if_filled {
-            ($self:expr, $binding:expr, $directive:expr) => {
-                if binding.is_filled($directive) {
-                    let resolved = binding.clone();
-                    $self.cache_store.cache_result(query, Ok(resolved.clone()));
-                    return Ok(resolved);
-                }
-            };
-        }
-
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
         for edge in query.scope.edges(self.db.as_hir_db()) {
-            match edge.kind.propagate(query) {
+            match edge.kind.propagate(&query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         let res = NameRes::new_scope(
@@ -188,7 +175,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                             NameDomain::from_scope(edge.dest),
                             NameDerivation::Def,
                         );
-                        self.try_push(&mut binding, &res, query)?;
+                        binding.push(&res);
                     }
                 }
 
@@ -200,7 +187,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 PropagationResult::UnPropagated => {}
             }
         }
-        return_if_filled!(self, binding, query.directive);
 
         // 2. Look for the name in the named imports of the current scope.
         if let Some(imported) = self
@@ -208,19 +194,17 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .named_imports(self.db, query.scope)
             .and_then(|imports| imports.get(&query.name))
         {
-            self.try_merge(&mut binding, imported, query)?;
+            binding.merge(imported.iter());
         }
-        return_if_filled!(self, binding, query.directive);
 
         // 3. Look for the name in the glob imports.
         if query.directive.allow_glob {
             if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
                 for res in imported.name_res_for(query.name) {
-                    self.try_push(&mut binding, res, query)?;
+                    binding.push(res);
                 }
             }
         }
-        return_if_filled!(self, binding, query.directive);
 
         // 4. Look for the name in the lexical scope if it exists.
         if let Some(parent) = parent {
@@ -228,55 +212,40 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             query_for_parent.scope = parent;
             query_for_parent.directive.disallow_external();
 
-            match self.resolve_query(query_for_parent) {
-                Ok(mut resolved) => {
-                    resolved.lexed();
-                    self.try_merge(&mut binding, &resolved, query)?;
-                }
-
-                Err(NameResolutionError::NotFound) => {}
-                Err(err) => {
-                    self.cache_store.cache_result(query, Err(err.clone()));
-                    return Err(err);
-                }
-            }
+            let mut resolved = self.resolve_query(query_for_parent);
+            resolved.set_lexed_derivation();
+            binding.merge(resolved.iter());
         }
-        return_if_filled!(self, binding, query.directive);
 
         if !query.directive.allow_external {
             return self.finalize_query_result(query, binding);
         }
 
         // 5. Look for the name in the external ingots.
-        if query.directive.is_allowed_domain(NameDomain::Item as u8) {
-            query
-                .scope
-                .top_mod(self.db.as_hir_db())
-                .ingot(self.db.as_hir_db())
-                .external_ingots(self.db.as_hir_db())
-                .iter()
-                .for_each(|(name, root_mod)| {
-                    if *name == query.name {
-                        // We don't care about the result of `push` because we assume ingots are
-                        // guaranteed to be unique.
-                        binding
-                            .push(&NameRes::new_scope(
-                                ScopeId::root(*root_mod),
-                                NameDomain::Item,
-                                NameDerivation::External,
-                            ))
-                            .unwrap();
-                    }
-                });
-        }
-        return_if_filled!(self, binding, query.directive);
+        query
+            .scope
+            .top_mod(self.db.as_hir_db())
+            .ingot(self.db.as_hir_db())
+            .external_ingots(self.db.as_hir_db())
+            .iter()
+            .for_each(|(name, root_mod)| {
+                if *name == query.name {
+                    // We don't care about the result of `push` because we assume ingots are
+                    // guaranteed to be unique.
+                    binding.push(&NameRes::new_scope(
+                        ScopeId::root(*root_mod),
+                        NameDomain::Item,
+                        NameDerivation::External,
+                    ))
+                }
+            });
 
         // 6. Look for the name in the builtin types.
         for &prim in PrimTy::all_types() {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
             if query.name == prim.name() {
-                binding.push(&NameRes::new_prim(prim)).unwrap();
+                binding.push(&NameRes::new_prim(prim));
             }
         }
 
@@ -326,7 +295,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         &mut self,
         target: ScopeId,
         ref_scope: ScopeId,
-        directive: QueryDirective,
         unresolved_named_imports: FxHashSet<IdentId>,
     ) -> FxHashMap<IdentId, Vec<NameRes>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
@@ -334,7 +302,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
 
         for edge in target.edges(self.db.as_hir_db()) {
-            let scope = match edge.kind.propagate_glob(directive) {
+            let scope = match edge.kind.propagate_glob() {
                 PropagationResult::Terminated => edge.dest,
                 _ => {
                     continue;
@@ -405,44 +373,9 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     /// Finalize the query result and cache it to the cache store.
-    fn finalize_query_result(
-        &mut self,
-        query: NameQuery,
-        resolved_set: NameBinding,
-    ) -> Result<NameBinding, NameResolutionError> {
-        let result = if resolved_set.is_empty() {
-            Err(NameResolutionError::NotFound)
-        } else {
-            Ok(resolved_set)
-        };
-        self.cache_store.cache_result(query, result.clone());
-        result
-    }
-
-    fn try_merge(
-        &mut self,
-        target: &mut NameBinding,
-        from: &NameBinding,
-        query: NameQuery,
-    ) -> Result<(), NameResolutionError> {
-        target
-            .merge(from.filter_by_domain(query.directive.domain))
-            .map_err(|err| {
-                self.cache_store.cache_result(query, Err(err.clone()));
-                err
-            })
-    }
-
-    fn try_push(
-        &mut self,
-        target: &mut NameBinding,
-        res: &NameRes,
-        query: NameQuery,
-    ) -> Result<(), NameResolutionError> {
-        target.push(res).map_err(|err| {
-            self.cache_store.cache_result(query, Err(err.clone()));
-            err
-        })
+    fn finalize_query_result(&mut self, query: NameQuery, binding: NameBinding) -> NameBinding {
+        self.cache_store.cache_result(query, binding.clone());
+        binding
     }
 }
 
@@ -491,8 +424,6 @@ pub struct QueryDirective {
     /// If `allow_glob` is `true`, then the resolver uses the glob import to
     /// resolve the name.
     allow_glob: bool,
-
-    domain: u8,
 }
 
 impl QueryDirective {
@@ -504,21 +435,7 @@ impl QueryDirective {
             allow_lex: true,
             allow_external: true,
             allow_glob: true,
-            domain: NameDomain::Item as u8,
         }
-    }
-
-    /// Set the `domain` to lookup, the allowed domain set that are already set
-    /// will be overwritten.
-    pub fn set_domain(&mut self, domain: NameDomain) -> &mut Self {
-        self.domain = domain as u8;
-        self
-    }
-
-    /// Append the `domain` to the allowed domain set.
-    pub fn add_domain(&mut self, domain: NameDomain) -> &mut Self {
-        self.domain |= domain as u8;
-        self
     }
 
     /// Disallow lexical scope lookup.
@@ -536,12 +453,6 @@ impl QueryDirective {
         self.allow_glob = false;
         self
     }
-
-    /// Returns true if the `domain` is allowed to lookup in the current
-    /// setting.
-    pub(super) fn is_allowed_domain(&self, domain: u8) -> bool {
-        self.domain & domain != 0
-    }
 }
 
 impl Default for QueryDirective {
@@ -555,116 +466,109 @@ impl Default for QueryDirective {
 /// different name domains.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct NameBinding {
-    pub(super) resolutions: FxHashMap<NameDomain, NameRes>,
+    pub(super) resolutions: FxHashMap<NameDomain, NameResolutionResult<NameRes>>,
 }
 
 impl NameBinding {
-    /// Returns the number of resolutions.
+    /// Returns the number of resolutions in the binding.
     pub fn len(&self) -> usize {
-        self.resolutions.len()
+        self.iter().count()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.resolutions.is_empty()
+        self.len() == 0
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &NameRes> {
-        self.resolutions.values()
+        self.resolutions
+            .values()
+            .filter_map(|res| res.as_ref().ok())
     }
 
-    pub fn filter_by_visibility(&self, db: &dyn HirAnalysisDb, from: ScopeId) -> Self {
-        let mut resolutions = FxHashMap::default();
-        for (domain, res) in &self.resolutions {
-            if res.is_visible(db, from) {
-                resolutions.insert(*domain, res.clone());
-            }
-        }
-        Self { resolutions }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut NameRes> {
+        self.resolutions
+            .values_mut()
+            .filter_map(|res| res.as_mut().ok())
+    }
+
+    pub fn errors(&self) -> impl Iterator<Item = &NameResolutionError> {
+        self.resolutions
+            .values()
+            .filter_map(|res| res.as_ref().err())
     }
 
     /// Returns the resolution of the given `domain`.
-    pub fn name_by_domain(&self, domain: NameDomain) -> Option<&NameRes> {
-        self.resolutions.get(&domain)
+    pub fn res_in_domain(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
+        self.resolutions
+            .get(&domain)
+            .unwrap_or(&Err(NameResolutionError::NotFound))
     }
 
     /// Merge the `resolutions` into the set. If name conflict happens, the old
     /// resolution will be returned, otherwise `None` will be returned.
-    pub(super) fn merge<'a>(
-        &mut self,
-        resolutions: impl Iterator<Item = &'a NameRes>,
-    ) -> Result<(), NameResolutionError> {
+    pub(super) fn merge<'a>(&mut self, resolutions: impl Iterator<Item = &'a NameRes>) {
         for res in resolutions {
-            self.push(res)?;
+            self.push(res);
         }
-
-        Ok(())
     }
 
     pub(super) fn set_derivation(&mut self, derivation: NameDerivation) {
-        for res in self.resolutions.values_mut() {
+        for res in self.iter_mut() {
             res.derivation = derivation.clone();
         }
     }
 
     /// Push the `res` into the set.
-    fn push(&mut self, res: &NameRes) -> Result<(), NameResolutionError> {
+    fn push(&mut self, res: &NameRes) {
         let domain = res.domain;
         match self.resolutions.entry(domain) {
             Entry::Occupied(mut e) => {
-                let old_derivation = e.get().derivation.clone();
+                let old_res = match e.get() {
+                    Ok(res) => res,
+                    Err(NameResolutionError::NotFound) => {
+                        e.insert(Ok(res.clone())).ok();
+                        return;
+                    }
+                    Err(_) => {
+                        return;
+                    }
+                };
+
+                let old_derivation = old_res.derivation.clone();
                 match res.derivation.cmp(&old_derivation) {
-                    cmp::Ordering::Less => Ok(()),
+                    cmp::Ordering::Less => {}
                     cmp::Ordering::Equal => {
-                        if e.get().kind == res.kind {
-                            Ok(())
+                        if old_res.kind == res.kind {
                         } else {
-                            Err(NameResolutionError::Ambiguous(vec![
-                                e.get().clone(),
+                            e.insert(Err(NameResolutionError::Ambiguous(vec![
+                                old_res.clone(),
                                 res.clone(),
-                            ]))
+                            ])))
+                            .ok();
                         }
                     }
                     cmp::Ordering::Greater => {
-                        e.insert(res.clone());
-                        Ok(())
+                        e.insert(Ok(res.clone())).ok();
                     }
                 }
             }
 
             Entry::Vacant(e) => {
-                e.insert(res.clone());
-                Ok(())
+                e.insert(Ok(res.clone()));
             }
         }
     }
 
-    fn filter_by_domain(&self, domain: u8) -> impl Iterator<Item = &NameRes> {
-        self.resolutions
-            .values()
-            .filter(move |res| ((res.domain as u8) & domain) != 0)
-    }
-
-    fn lexed(&mut self) {
-        for res in self.resolutions.values_mut() {
+    fn set_lexed_derivation(&mut self) {
+        for res in self.iter_mut() {
             res.derivation.lexed()
         }
-    }
-
-    fn is_filled(&self, directive: QueryDirective) -> bool {
-        for domain in NameDomain::all_domains() {
-            if directive.is_allowed_domain(*domain as u8) && !self.resolutions.contains_key(domain)
-            {
-                return false;
-            }
-        }
-
-        true
     }
 }
 
 impl IntoIterator for NameBinding {
-    type Item = NameRes;
-    type IntoIter = IntoValues<NameDomain, NameRes>;
+    type Item = NameResolutionResult<NameRes>;
+    type IntoIter = IntoValues<NameDomain, NameResolutionResult<NameRes>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.resolutions.into_values()
@@ -672,9 +576,9 @@ impl IntoIterator for NameBinding {
 }
 
 impl From<NameRes> for NameBinding {
-    fn from(resolution: NameRes) -> Self {
+    fn from(res: NameRes) -> Self {
         let mut names = FxHashMap::default();
-        names.insert(resolution.domain, resolution);
+        names.insert(res.domain, Ok(res));
         Self { resolutions: names }
     }
 }
@@ -872,6 +776,8 @@ pub enum NameResolutionError {
     Ambiguous(Vec<NameRes>),
 }
 
+pub type NameResolutionResult<T> = Result<T, NameResolutionError>;
+
 impl fmt::Display for NameResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -887,19 +793,19 @@ impl std::error::Error for NameResolutionError {}
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedQueryCacheStore {
-    cache: FxHashMap<NameQuery, Result<NameBinding, NameResolutionError>>,
+    cache: FxHashMap<NameQuery, NameBinding>,
     no_cache: bool,
 }
 
 impl ResolvedQueryCacheStore {
-    fn cache_result(&mut self, query: NameQuery, result: Result<NameBinding, NameResolutionError>) {
+    fn cache_result(&mut self, query: NameQuery, result: NameBinding) {
         if self.no_cache {
             return;
         }
         self.cache.insert(query, result);
     }
 
-    fn get(&self, query: NameQuery) -> Option<&Result<NameBinding, NameResolutionError>> {
+    fn get(&self, query: NameQuery) -> Option<&NameBinding> {
         self.cache.get(&query)
     }
 }
@@ -942,33 +848,11 @@ impl NameDomain {
             ScopeId::Variant(..) => Self::Value,
         }
     }
-
-    fn all_domains() -> &'static [Self; 3] {
-        &[Self::Item, Self::Value, Self::Field]
-    }
 }
 
 trait QueryPropagator {
-    fn propagate(&self, query: NameQuery) -> PropagationResult {
-        if query.directive.is_allowed_domain(Self::ALLOWED_DOMAIN) {
-            self.propagate_impl(query)
-        } else {
-            PropagationResult::UnPropagated
-        }
-    }
-
-    fn propagate_glob(&self, directive: QueryDirective) -> PropagationResult {
-        if directive.is_allowed_domain(Self::ALLOWED_DOMAIN) {
-            self.propagate_glob_impl()
-        } else {
-            PropagationResult::UnPropagated
-        }
-    }
-
-    const ALLOWED_DOMAIN: u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult;
-    fn propagate_glob_impl(&self) -> PropagationResult;
+    fn propagate(self, query: &NameQuery) -> PropagationResult;
+    fn propagate_glob(self) -> PropagationResult;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -979,9 +863,7 @@ enum PropagationResult {
 }
 
 impl QueryPropagator for LexEdge {
-    const ALLOWED_DOMAIN: u8 = ALL_DOMAINS;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if query.directive.allow_lex {
             PropagationResult::Continuation
         } else {
@@ -989,15 +871,13 @@ impl QueryPropagator for LexEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for ModEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
@@ -1005,15 +885,13 @@ impl QueryPropagator for ModEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::Terminated
     }
 }
 
 impl QueryPropagator for TypeEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
@@ -1021,45 +899,41 @@ impl QueryPropagator for TypeEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::Terminated
     }
 }
 
 impl QueryPropagator for TraitEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
         }
     }
-    fn propagate_glob_impl(&self) -> PropagationResult {
+
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::Terminated
     }
 }
 
 impl QueryPropagator for ValueEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Value as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
         }
     }
-    fn propagate_glob_impl(&self) -> PropagationResult {
+
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::Terminated
     }
 }
 
 impl QueryPropagator for GenericParamEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
@@ -1067,15 +941,13 @@ impl QueryPropagator for GenericParamEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for FieldEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Field as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
@@ -1083,15 +955,13 @@ impl QueryPropagator for FieldEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for VariantEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
         } else {
@@ -1099,15 +969,13 @@ impl QueryPropagator for VariantEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::Terminated
     }
 }
 
 impl QueryPropagator for SuperEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if query.name.is_super() {
             PropagationResult::Terminated
         } else {
@@ -1115,15 +983,13 @@ impl QueryPropagator for SuperEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for IngotEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if query.name.is_ingot() {
             PropagationResult::Terminated
         } else {
@@ -1131,15 +997,13 @@ impl QueryPropagator for IngotEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for SelfTyEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if query.name.is_self_ty() {
             PropagationResult::Terminated
         } else {
@@ -1147,15 +1011,13 @@ impl QueryPropagator for SelfTyEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for SelfEdge {
-    const ALLOWED_DOMAIN: u8 = NameDomain::Item as u8;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         if query.name.is_self() {
             PropagationResult::Terminated
         } else {
@@ -1163,61 +1025,55 @@ impl QueryPropagator for SelfEdge {
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for AnonEdge {
-    const ALLOWED_DOMAIN: u8 = 0;
-
-    fn propagate_impl(&self, _query: NameQuery) -> PropagationResult {
+    fn propagate(self, _query: &NameQuery) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 }
 
 impl QueryPropagator for EdgeKind {
-    const ALLOWED_DOMAIN: u8 = ALL_DOMAINS;
-
-    fn propagate_impl(&self, query: NameQuery) -> PropagationResult {
+    fn propagate(self, query: &NameQuery) -> PropagationResult {
         match self {
-            EdgeKind::Lex(edge) => edge.propagate_impl(query),
-            EdgeKind::Mod(edge) => edge.propagate_impl(query),
-            EdgeKind::Type(edge) => edge.propagate_impl(query),
-            EdgeKind::Trait(edge) => edge.propagate_impl(query),
-            EdgeKind::GenericParam(edge) => edge.propagate_impl(query),
-            EdgeKind::Value(edge) => edge.propagate_impl(query),
-            EdgeKind::Field(edge) => edge.propagate_impl(query),
-            EdgeKind::Variant(edge) => edge.propagate_impl(query),
-            EdgeKind::Super(edge) => edge.propagate_impl(query),
-            EdgeKind::Ingot(edge) => edge.propagate_impl(query),
-            EdgeKind::Self_(edge) => edge.propagate_impl(query),
-            EdgeKind::SelfTy(edge) => edge.propagate_impl(query),
-            EdgeKind::Anon(edge) => edge.propagate_impl(query),
+            EdgeKind::Lex(edge) => edge.propagate(query),
+            EdgeKind::Mod(edge) => edge.propagate(query),
+            EdgeKind::Type(edge) => edge.propagate(query),
+            EdgeKind::Trait(edge) => edge.propagate(query),
+            EdgeKind::GenericParam(edge) => edge.propagate(query),
+            EdgeKind::Value(edge) => edge.propagate(query),
+            EdgeKind::Field(edge) => edge.propagate(query),
+            EdgeKind::Variant(edge) => edge.propagate(query),
+            EdgeKind::Super(edge) => edge.propagate(query),
+            EdgeKind::Ingot(edge) => edge.propagate(query),
+            EdgeKind::Self_(edge) => edge.propagate(query),
+            EdgeKind::SelfTy(edge) => edge.propagate(query),
+            EdgeKind::Anon(edge) => edge.propagate(query),
         }
     }
 
-    fn propagate_glob_impl(&self) -> PropagationResult {
+    fn propagate_glob(self) -> PropagationResult {
         match self {
-            EdgeKind::Lex(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Mod(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Type(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Trait(edge) => edge.propagate_glob_impl(),
-            EdgeKind::GenericParam(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Value(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Field(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Variant(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Super(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Ingot(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Self_(edge) => edge.propagate_glob_impl(),
-            EdgeKind::SelfTy(edge) => edge.propagate_glob_impl(),
-            EdgeKind::Anon(edge) => edge.propagate_glob_impl(),
+            EdgeKind::Lex(edge) => edge.propagate_glob(),
+            EdgeKind::Mod(edge) => edge.propagate_glob(),
+            EdgeKind::Type(edge) => edge.propagate_glob(),
+            EdgeKind::Trait(edge) => edge.propagate_glob(),
+            EdgeKind::GenericParam(edge) => edge.propagate_glob(),
+            EdgeKind::Value(edge) => edge.propagate_glob(),
+            EdgeKind::Field(edge) => edge.propagate_glob(),
+            EdgeKind::Variant(edge) => edge.propagate_glob(),
+            EdgeKind::Super(edge) => edge.propagate_glob(),
+            EdgeKind::Ingot(edge) => edge.propagate_glob(),
+            EdgeKind::Self_(edge) => edge.propagate_glob(),
+            EdgeKind::SelfTy(edge) => edge.propagate_glob(),
+            EdgeKind::Anon(edge) => edge.propagate_glob(),
         }
     }
 }
-
-const ALL_DOMAINS: u8 = NameDomain::Item as u8 | NameDomain::Value as u8 | NameDomain::Field as u8;
