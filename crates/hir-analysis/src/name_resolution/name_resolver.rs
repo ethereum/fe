@@ -167,6 +167,16 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // This ordering means that greater one shadows lower ones in the same domain.
         let mut parent = None;
 
+        macro_rules! return_if_filled {
+            ($self:expr, $binding:expr, $directive:expr) => {
+                if binding.is_filled($directive) {
+                    let resolved = binding.clone();
+                    $self.cache_store.cache_result(query, Ok(resolved.clone()));
+                    return Ok(resolved);
+                }
+            };
+        }
+
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
         for edge in query.scope.edges(self.db.as_hir_db()) {
@@ -190,6 +200,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 PropagationResult::UnPropagated => {}
             }
         }
+        return_if_filled!(self, binding, query.directive);
 
         // 2. Look for the name in the named imports of the current scope.
         if let Some(imported) = self
@@ -199,6 +210,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         {
             self.try_merge(&mut binding, imported, query)?;
         }
+        return_if_filled!(self, binding, query.directive);
 
         // 3. Look for the name in the glob imports.
         if query.directive.allow_glob {
@@ -208,6 +220,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 }
             }
         }
+        return_if_filled!(self, binding, query.directive);
 
         // 4. Look for the name in the lexical scope if it exists.
         if let Some(parent) = parent {
@@ -228,6 +241,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 }
             }
         }
+        return_if_filled!(self, binding, query.directive);
 
         if !query.directive.allow_external {
             return self.finalize_query_result(query, binding);
@@ -255,6 +269,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     }
                 });
         }
+        return_if_filled!(self, binding, query.directive);
 
         // 6. Look for the name in the builtin types.
         for &prim in PrimTy::all_types() {
@@ -634,6 +649,17 @@ impl NameBinding {
             res.derivation.lexed()
         }
     }
+
+    fn is_filled(&self, directive: QueryDirective) -> bool {
+        for domain in NameDomain::all_domains() {
+            if directive.is_allowed_domain(*domain as u8) && !self.resolutions.contains_key(domain)
+            {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl IntoIterator for NameBinding {
@@ -915,6 +941,10 @@ impl NameDomain {
             ScopeId::Field(..) => Self::Field,
             ScopeId::Variant(..) => Self::Value,
         }
+    }
+
+    fn all_domains() -> &'static [Self; 3] {
+        &[Self::Item, Self::Value, Self::Field]
     }
 }
 
