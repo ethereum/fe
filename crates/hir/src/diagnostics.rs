@@ -25,3 +25,13 @@ pub trait DiagnosticVoucher: Send {
     /// Consumes voucher and makes a [`CompleteDiagnostic`].
     fn to_complete(self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;
 }
+
+impl DiagnosticVoucher for CompleteDiagnostic {
+    fn error_code(&self) -> GlobalErrorCode {
+        self.error_code.clone()
+    }
+
+    fn to_complete(self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        self
+    }
+}

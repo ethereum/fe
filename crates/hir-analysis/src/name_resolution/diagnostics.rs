@@ -1,5 +1,5 @@
 use common::diagnostics::{
-    AnalysisPass, CompleteDiagnostic, GlobalErrorCode, Severity, SubDiagnostic,
+    AnalysisPass, CompleteDiagnostic, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
@@ -26,8 +26,8 @@ impl NameResolutionDiag {
         Self { span, kind }
     }
 
-    pub fn conflict(span: DynLazySpan, conflict_with: DynLazySpan) -> Self {
-        Self::new(span, ImportErrorKind::Conflict(conflict_with))
+    pub fn conflict(span: DynLazySpan, name: IdentId, conflict_with: DynLazySpan) -> Self {
+        Self::new(span, ImportErrorKind::Conflict(name, conflict_with))
     }
 
     pub fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
@@ -47,28 +47,22 @@ impl NameResolutionDiag {
 
 impl DiagnosticVoucher for NameResolutionDiag {
     fn error_code(&self) -> GlobalErrorCode {
-        GlobalErrorCode::new(AnalysisPass::ImportResolution, self.kind.local_code())
+        GlobalErrorCode::new(AnalysisPass::NameResolution, self.kind.local_code())
     }
 
     fn to_complete(self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
-        let span = self.span.resolve(db);
+        let error_code = self.error_code();
         let message = self.kind.message(db.as_hir_db());
-        let sub_diags = self.kind.sub_diagnostics(db);
+        let sub_diags = self.kind.sub_diagnostics(db, self.span);
 
-        CompleteDiagnostic::new(
-            self.kind.severity(),
-            message,
-            span,
-            sub_diags,
-            self.error_code(),
-        )
+        CompleteDiagnostic::new(self.kind.severity(), message, sub_diags, vec![], error_code)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImportErrorKind {
     /// The import conflicts with another import.
-    Conflict(DynLazySpan),
+    Conflict(IdentId, DynLazySpan),
     /// The import path segment is not found.
     NotFound(IdentId),
 
@@ -82,7 +76,7 @@ pub enum ImportErrorKind {
 impl ImportErrorKind {
     fn local_code(&self) -> u16 {
         match self {
-            ImportErrorKind::Conflict(_) => 0,
+            ImportErrorKind::Conflict(..) => 0,
             ImportErrorKind::NotFound(_) => 1,
             ImportErrorKind::Invisible(..) => 2,
             ImportErrorKind::Ambiguous(..) => 3,
@@ -95,7 +89,9 @@ impl ImportErrorKind {
 
     fn message(&self, db: &dyn HirDb) -> String {
         match self {
-            ImportErrorKind::Conflict(_) => "import conflicts with another import".to_string(),
+            ImportErrorKind::Conflict(name, _) => {
+                format!("{} conflicts with other definitions", name.data(db))
+            }
             ImportErrorKind::NotFound(name) => format!("{} is not found", name.data(db)),
             ImportErrorKind::Invisible(name, _) => {
                 format!("{} is not visible", name.data(db),)
@@ -104,34 +100,72 @@ impl ImportErrorKind {
         }
     }
 
-    fn sub_diagnostics(&self, db: &dyn hir::SpannedHirDb) -> Vec<SubDiagnostic> {
+    fn sub_diagnostics(
+        &self,
+        db: &dyn hir::SpannedHirDb,
+        prim_span: DynLazySpan,
+    ) -> Vec<SubDiagnostic> {
         match self {
-            ImportErrorKind::Conflict(conflict_with) => vec![SubDiagnostic::new(
-                Severity::Note,
-                "conflicts with this import".to_string(),
-                conflict_with.resolve(db),
-            )],
+            ImportErrorKind::Conflict(ident, conflict_with) => {
+                let ident = ident.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "`{ident}` conflicts with another definition".to_string(),
+                        prim_span.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "{ident} redefined here ".to_string(),
+                        conflict_with.resolve(db),
+                    ),
+                ]
+            }
 
-            ImportErrorKind::NotFound(_) => vec![],
+            ImportErrorKind::NotFound(ident) => {
+                let ident = ident.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ident}` is not found"),
+                    prim_span.resolve(db),
+                )]
+            }
 
-            ImportErrorKind::Invisible(_, span) => span
-                .as_ref()
-                .map(|span| {
-                    vec![SubDiagnostic::new(
-                        Severity::Note,
-                        "not visible because of this declaration".to_string(),
+            ImportErrorKind::Invisible(ident, span) => {
+                let ident = ident.data(db.as_hir_db());
+
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ident}` is not visible"),
+                    prim_span.resolve(db),
+                )];
+                if let Some(span) = span {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("`{ident} is defined here"),
                         span.resolve(db),
-                    )]
-                })
-                .unwrap_or_default(),
+                    ))
+                }
+                diags
+            }
 
-            ImportErrorKind::Ambiguous(_, candidates) => candidates
-                .iter()
-                .enumerate()
-                .map(|(i, span)| {
-                    SubDiagnostic::new(Severity::Note, format!("candidate #{i}"), span.resolve(db))
-                })
-                .collect(),
+            ImportErrorKind::Ambiguous(ident, candidates) => {
+                let ident = ident.data(db.as_hir_db());
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ident}` is ambiguous"),
+                    prim_span.resolve(db),
+                )];
+                diags.extend(candidates.iter().enumerate().map(|(i, span)| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate #{i}"),
+                        span.resolve(db),
+                    )
+                }));
+
+                diags
+            }
         }
     }
 }

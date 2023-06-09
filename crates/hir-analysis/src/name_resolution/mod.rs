@@ -56,18 +56,18 @@ pub(crate) fn resolve_path_early(
     top_mod: TopLevelMod,
 ) -> ResolvedQueryCacheStore {
     let importer = DefaultImporter;
-    ModuleNameResolver::new(db, &importer).resolve_all(top_mod);
+    PathResolver::new(db, &importer).resolve_all(top_mod);
     todo!()
 }
 
-struct ModuleNameResolver<'db, 'a> {
+struct PathResolver<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     resolver: name_resolver::NameResolver<'db, 'a>,
     diags: Vec<diagnostics::NameResolutionDiag>,
     item_stack: Vec<ItemKind>,
 }
 
-impl<'db, 'a> ModuleNameResolver<'db, 'a> {
+impl<'db, 'a> PathResolver<'db, 'a> {
     fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
         let resolver = name_resolver::NameResolver::new(db, importer);
         Self {
@@ -85,22 +85,14 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
 
     fn check_item_conflict(&mut self, item: ItemKind) {
         let scope = ScopeId::from_item(item);
-        let Some(query) = self.make_query_for_conflict_check(scope) else {
-            return;
-        };
-
-        self.check_conflict(scope, query, NameDomain::from_scope(scope));
+        self.check_conflict(scope);
     }
 
     fn check_field_conflict(&mut self, fields: FieldDefListId) {
         let parent_item = *self.item_stack.last().unwrap();
         for i in 0..fields.data(self.db.as_hir_db()).len() {
             let scope = ScopeId::Field(parent_item, i);
-            let Some(query) = self.make_query_for_conflict_check(scope) else {
-                continue;
-            };
-
-            self.check_conflict(scope, query, NameDomain::from_scope(scope));
+            self.check_conflict(scope);
         }
     }
 
@@ -108,11 +100,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
         let parent_item = *self.item_stack.last().unwrap();
         for i in 0..variants.data(self.db.as_hir_db()).len() {
             let scope = ScopeId::Variant(parent_item, i);
-            let Some(query) = self.make_query_for_conflict_check(scope) else {
-                continue;
-            };
-
-            self.check_conflict(scope, query, NameDomain::from_scope(scope));
+            self.check_conflict(scope);
         }
     }
 
@@ -120,11 +108,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
         let parent_item = *self.item_stack.last().unwrap();
         for i in 0..params.data(self.db.as_hir_db()).len() {
             let scope = ScopeId::FuncParam(parent_item, i);
-            let Some(query) = self.make_query_for_conflict_check(scope) else {
-                continue;
-            };
-
-            self.check_conflict(scope, query, NameDomain::from_scope(scope));
+            self.check_conflict(scope);
         }
     }
 
@@ -132,24 +116,16 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
         let parent_item = *self.item_stack.last().unwrap();
         for i in 0..params.data(self.db.as_hir_db()).len() {
             let scope = ScopeId::GenericParam(parent_item, i);
-            let Some(query) = self.make_query_for_conflict_check(scope) else {
-                continue;
-            };
-
-            self.check_conflict(scope, query, NameDomain::from_scope(scope));
+            self.check_conflict(scope);
         }
     }
 
-    fn make_query_for_conflict_check(&self, scope: ScopeId) -> Option<NameQuery> {
-        let name = scope.name(self.db.as_hir_db())?;
-        let mut directive = QueryDirective::new();
-        directive.disallow_lex().disallow_glob().disallow_external();
+    fn check_conflict(&mut self, scope: ScopeId) {
+        let Some(query) = self.make_query_for_conflict_check(scope) else {
+            return;
+        };
 
-        let parent_scope = scope.parent(self.db.as_hir_db())?;
-        Some(NameQuery::with_directive(name, parent_scope, directive))
-    }
-
-    fn check_conflict(&mut self, scope: ScopeId, query: NameQuery, domain: NameDomain) {
+        let domain = NameDomain::from_scope(scope);
         let binding = self.resolver.resolve_query(query);
         match binding.res_in_domain(domain) {
             Ok(_) => {}
@@ -168,6 +144,7 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
 
                 let diag = diagnostics::NameResolutionDiag::conflict(
                     scope.name_span(self.db.as_hir_db()).unwrap(),
+                    scope.name(self.db.as_hir_db()).unwrap(),
                     conflicted_span,
                 );
                 self.diags.push(diag);
@@ -175,9 +152,18 @@ impl<'db, 'a> ModuleNameResolver<'db, 'a> {
             Err(_) => unreachable!(),
         };
     }
+
+    fn make_query_for_conflict_check(&self, scope: ScopeId) -> Option<NameQuery> {
+        let name = scope.name(self.db.as_hir_db())?;
+        let mut directive = QueryDirective::new();
+        directive.disallow_lex().disallow_glob().disallow_external();
+
+        let parent_scope = scope.parent(self.db.as_hir_db())?;
+        Some(NameQuery::with_directive(name, parent_scope, directive))
+    }
 }
 
-impl<'db, 'a> Visitor for ModuleNameResolver<'db, 'a> {
+impl<'db, 'a> Visitor for PathResolver<'db, 'a> {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
         self.check_item_conflict(item);
 

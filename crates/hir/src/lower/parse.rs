@@ -1,5 +1,8 @@
 use common::{
-    diagnostics::{AnalysisPass, CompleteDiagnostic, GlobalErrorCode, Severity, Span, SpanKind},
+    diagnostics::{
+        AnalysisPass, CompleteDiagnostic, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
+        SubDiagnostic,
+    },
     InputFile,
 };
 use parser::GreenNode;
@@ -41,8 +44,12 @@ impl DiagnosticVoucher for ParserError {
         let span = Span::new(self.file, self.error.range, SpanKind::Original);
         CompleteDiagnostic::new(
             Severity::Error,
-            self.error.msg,
-            span.into(),
+            self.error.msg.clone(),
+            vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                self.error.msg,
+                Some(span),
+            )],
             vec![],
             error_code,
         )

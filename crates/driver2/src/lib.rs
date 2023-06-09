@@ -13,12 +13,12 @@ pub trait DriverDb:
 }
 
 impl<DB> DriverDb for DB where
-    DB: salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
+    DB: Sized + salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
 {
 }
 
 #[salsa::db(common::Jar, hir::Jar, hir_analysis::Jar, Jar)]
-pub(crate) struct DriverDataBase {
+pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
 }
 

@@ -1,32 +1,44 @@
 use codespan_reporting::diagnostic::{self as cs};
 use common::{
-    diagnostics::{CompleteDiagnostic, Severity},
+    diagnostics::{LabelStyle, Severity},
     InputFile,
 };
+use hir::diagnostics::DiagnosticVoucher;
 
-use crate::DriverDb;
+use crate::DriverDataBase;
 
-pub trait ToCsrDiag {
-    fn to_csr_diag(&self, db: &dyn DriverDb) -> cs::Diagnostic<InputFile>;
+pub trait IntoCsrDiag {
+    fn into_csr(self, db: &DriverDataBase) -> cs::Diagnostic<InputFile>;
 }
 
-impl ToCsrDiag for CompleteDiagnostic {
-    fn to_csr_diag(&self, _db: &dyn DriverDb) -> cs::Diagnostic<InputFile> {
-        let severity = convert_severity(self.severity);
-        let code = Some(self.code.to_string());
-        let message = self.message;
-        let span = self.span.expect("primary diagnostic must have a span");
+impl<T> IntoCsrDiag for T
+where
+    T: DiagnosticVoucher,
+{
+    fn into_csr(self, db: &DriverDataBase) -> cs::Diagnostic<InputFile> {
+        let complete = self.to_complete(db);
 
-        let mut labels = vec![
-            cs::Label::new(cs::LabelStyle::Primary, span.file, span.range).with_message(message),
-        ];
-        labels.extend(self.sub_diagnostics.iter().filter_map(|sub_diag| {
-            let span = sub_diag.span?;
-            let range = sub_diag.range;
-            cs::Label::new(cs::LabelStyle::Secondary, span.file, span.range)
+        let severity = convert_severity(complete.severity);
+        let code = Some(complete.error_code.to_string());
+        let message = complete.message;
+
+        let labels = complete
+            .sub_diagnostics
+            .into_iter()
+            .filter_map(|sub_diag| {
+                let span = sub_diag.span?;
+                match sub_diag.style {
+                    LabelStyle::Primary => {
+                        cs::Label::new(cs::LabelStyle::Primary, span.file, span.range)
+                    }
+                    LabelStyle::Secondary => {
+                        cs::Label::new(cs::LabelStyle::Secondary, span.file, span.range)
+                    }
+                }
                 .with_message(sub_diag.message)
                 .into()
-        }));
+            })
+            .collect();
 
         cs::Diagnostic {
             severity,

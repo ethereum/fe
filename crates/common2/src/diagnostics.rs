@@ -6,8 +6,8 @@ use crate::InputFile;
 pub struct CompleteDiagnostic {
     pub severity: Severity,
     pub message: String,
-    pub span: Option<Span>,
     pub sub_diagnostics: Vec<SubDiagnostic>,
+    pub notes: Vec<String>,
     pub error_code: GlobalErrorCode,
 }
 
@@ -15,15 +15,15 @@ impl CompleteDiagnostic {
     pub fn new(
         severity: Severity,
         message: String,
-        span: Option<Span>,
         sub_diagnostics: Vec<SubDiagnostic>,
+        notes: Vec<String>,
         error_code: GlobalErrorCode,
     ) -> Self {
         Self {
             severity,
             message,
-            span,
             sub_diagnostics,
+            notes,
             error_code,
         }
     }
@@ -47,19 +47,25 @@ impl GlobalErrorCode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubDiagnostic {
-    pub severity: Severity,
+    pub style: LabelStyle,
     pub message: String,
     pub span: Option<Span>,
 }
 
 impl SubDiagnostic {
-    pub fn new(severity: Severity, message: String, span: Option<Span>) -> Self {
+    pub fn new(style: LabelStyle, message: String, span: Option<Span>) -> Self {
         Self {
-            severity,
+            style,
             message,
             span,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LabelStyle {
+    Primary,
+    Secondary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
