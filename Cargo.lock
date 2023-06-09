@@ -558,6 +558,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f046ad836ddb46a42ae6219f11208b61ef9f1b96f105a88da4ae0dd5f1b89e6"
 
 [[package]]
+name = "driver2"
+version = "0.20.0-alpha"
+dependencies = [
+ "codespan-reporting",
+ "fe-common2",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-macros",
+ "salsa-2022",
+]
+
+[[package]]
 name = "ecdsa"
 version = "0.16.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

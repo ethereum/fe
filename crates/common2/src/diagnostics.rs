@@ -39,6 +39,10 @@ impl GlobalErrorCode {
     pub fn new(pass: AnalysisPass, local_code: u16) -> Self {
         Self { pass, local_code }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("{}-{:04}", self.pass.code(), self.local_code)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -99,17 +103,28 @@ pub enum Severity {
     Note,
 }
 
-#[repr(u16)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnalysisPass {
-    Parse = 1,
+    Parse,
 
-    ImportResolution,
     NameResolution,
 
     TyCheck,
 
-    ExternalAnalysis(ExternalAnalysisKey) = u16::MAX,
+    ExternalAnalysis(ExternalAnalysisKey),
+}
+
+impl AnalysisPass {
+    pub fn code(&self) -> u16 {
+        match self {
+            Self::Parse => 1,
+            Self::NameResolution => 2,
+
+            Self::TyCheck => 3,
+
+            Self::ExternalAnalysis(_) => std::u16::MAX,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
