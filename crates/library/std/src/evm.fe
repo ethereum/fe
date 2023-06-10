@@ -286,7 +286,7 @@ pub fn create2(value v: u256, buffer: buf::MemoryBuffer, salt s: u256) -> addres
 }
 
 // TODO: return bool (success)
-pub fn call(gas: u256, addr: address, value: u256, buffer: buf::RawCallBuffer) -> bool {
+pub fn call(gas: u256, addr: address, value: u256, mut buffer: buf::RawCallBuffer) -> bool {
   unsafe{ return __call(gas, u256(addr), value, buffer.offset(), buffer.input_len(), buffer.offset(), buffer.output_len()) == 1 }
 }
 

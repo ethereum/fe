@@ -81,7 +81,7 @@ pub struct Context {
             if evm::balance() < wei {
                 revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
             }
-            let buffer: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
+            let mut buffer: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
             let success: bool = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
                                           buffer)
             if success {
@@ -95,14 +95,14 @@ pub struct Context {
         self, 
         addr: address, 
         value: u256, 
-        buffer: RawCallBuffer 
+        mut buf: RawCallBuffer 
     ) -> bool {
         unsafe {
             return evm::call(
                 gas: evm::gas_remaining(), 
                 addr, 
                 value,
-                buffer
+                buffer:buf
             ) 
         }
     }
