@@ -561,6 +561,7 @@ checksum = "4f046ad836ddb46a42ae6219f11208b61ef9f1b96f105a88da4ae0dd5f1b89e6"
 name = "driver2"
 version = "0.20.0-alpha"
 dependencies = [
+ "camino",
  "codespan-reporting",
  "fe-common2",
  "fe-hir",

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use parser::TextRange;
 
 use crate::InputFile;
@@ -39,9 +41,11 @@ impl GlobalErrorCode {
     pub fn new(pass: AnalysisPass, local_code: u16) -> Self {
         Self { pass, local_code }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        format!("{}-{:04}", self.pass.code(), self.local_code)
+impl fmt::Display for GlobalErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{:04}", self.pass.code(), self.local_code)
     }
 }
 

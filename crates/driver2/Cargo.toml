@@ -17,3 +17,4 @@ hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common2", package = "fe-common2" }
 macros = { path = "../macros", package = "fe-macros" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
+camino = "1.1.4"

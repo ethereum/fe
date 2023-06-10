@@ -51,6 +51,7 @@ pub fn resolve_imports_with_diag(
 /// Performs early path resolution in the given module and checks the conflict
 /// of the definitions.
 #[salsa::tracked(return_ref)]
+#[allow(unused)]
 pub(crate) fn resolve_path_early(
     db: &dyn HirAnalysisDb,
     top_mod: TopLevelMod,

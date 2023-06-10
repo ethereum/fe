@@ -111,12 +111,12 @@ impl ImportErrorKind {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        "`{ident}` conflicts with another definition".to_string(),
+                        format! {"`{ident}` conflicts with another definition"},
                         prim_span.resolve(db),
                     ),
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        "{ident} redefined here ".to_string(),
+                        format! {"{ident} redefined here "},
                         conflict_with.resolve(db),
                     ),
                 ]

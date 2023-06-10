@@ -1,11 +1,11 @@
-mod diagnostics;
+pub mod diagnostics;
 
 use common::InputDb;
 use hir::{HirDb, LowerHirDb, SpannedHirDb};
 use hir_analysis::HirAnalysisDb;
 
 #[salsa::jar(db = DriverDb)]
-pub struct Jar();
+pub struct Jar(diagnostics::file_line_starts);
 
 pub trait DriverDb:
     salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
