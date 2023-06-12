@@ -57,15 +57,15 @@ Run `fe --help` to explore further options.
 
 The following is a simple contract implemented in Fe.
 
-```rust
+```fe
 struct Signed {
-    book_msg: String<100>
+    pub book_msg: String<100>
 }
 
 contract GuestBook {
     messages: Map<address, String<100>>
 
-    pub fn sign(self, ctx: Context, book_msg: String<100>) {
+    pub fn sign(mut self, mut ctx: Context, book_msg: String<100>) {
         self.messages[ctx.msg_sender()] = book_msg
         ctx.emit(Signed(book_msg: book_msg))
     }
