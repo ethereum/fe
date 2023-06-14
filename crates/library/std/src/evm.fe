@@ -238,8 +238,8 @@ pub unsafe fn call_data_size() -> u256 {
     return __calldatasize()
 }
 
-pub fn call_data_copy(buffer: buf::MemoryBuffer) {
-    unsafe { __calldatacopy(buffer.offset(), buffer.offset(), buffer.len()) }
+pub unsafe fn call_data_copy(buffer: buf::MemoryBuffer, from_offset f: u256) {
+    __calldatacopy(buffer.offset(), f, buffer.len())
 }
 
 pub unsafe fn code_size() -> u256 {

@@ -95,14 +95,14 @@ pub struct Context {
         self, 
         addr: address, 
         value: u256, 
-        mut buf: RawCallBuffer 
+        mut buffer: RawCallBuffer 
     ) -> bool {
         unsafe {
             return evm::call(
                 gas: evm::gas_remaining(), 
                 addr, 
                 value,
-                buffer:buf
+                buffer
             ) 
         }
     }
