@@ -85,6 +85,7 @@ impl KSpec {
 
         cmd.arg("build")
             .arg("test-prove-fe")
+            .arg("-j8")
             .current_dir(kevm_dir_path)
             .env("FS_ID", fs_id)
             .status()

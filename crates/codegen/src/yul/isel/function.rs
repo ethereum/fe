@@ -619,30 +619,12 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             .ty(self.db.upcast(), &self.body.store)
             .deref(self.db.upcast());
         match op {
-            BinOp::Add => self
-                .ctx
-                .runtime
-                .safe_add(self.db, lhs_expr, rhs_expr, inst_result_ty),
-            BinOp::Sub => self
-                .ctx
-                .runtime
-                .safe_sub(self.db, lhs_expr, rhs_expr, inst_result_ty),
-            BinOp::Mul => self
-                .ctx
-                .runtime
-                .safe_mul(self.db, lhs_expr, rhs_expr, inst_result_ty),
-            BinOp::Div => self
-                .ctx
-                .runtime
-                .safe_div(self.db, lhs_expr, rhs_expr, inst_result_ty),
-            BinOp::Mod => self
-                .ctx
-                .runtime
-                .safe_mod(self.db, lhs_expr, rhs_expr, inst_result_ty),
-            BinOp::Pow => self
-                .ctx
-                .runtime
-                .safe_pow(self.db, lhs_expr, rhs_expr, inst_result_ty),
+            BinOp::Add => expression! { add([lhs_expr], [rhs_expr]) },
+            BinOp::Sub => expression! { sub([lhs_expr], [rhs_expr]) },
+            BinOp::Mul => expression! { mul([lhs_expr], [rhs_expr]) },
+            BinOp::Div => expression! { div([lhs_expr], [rhs_expr]) },
+            BinOp::Mod => expression! { mod([lhs_expr], [rhs_expr]) },
+            BinOp::Pow => expression! { pow([lhs_expr], [rhs_expr]) },
             BinOp::Shl => expression! {shl([rhs_expr], [lhs_expr])},
             BinOp::Shr if is_result_signed => expression! {sar([rhs_expr], [lhs_expr])},
             BinOp::Shr => expression! {shr([rhs_expr], [lhs_expr])},

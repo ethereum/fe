@@ -7,8 +7,8 @@ fn rw_u8(a: u8, b: u8) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u8(value: a)
-    writer.write_u8(value: b)
+    writer.write(value: a)
+    writer.write(value: b)
 
     spec::assert_eq(reader.read_u8(), a)
     spec::assert_eq(reader.read_u8(), b)
@@ -20,7 +20,7 @@ fn rw_single_u8(a: u8) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u8(value: a)
+    writer.write(value: a)
     spec::assert_eq(reader.read_u8(), a)
 }
 
@@ -30,7 +30,7 @@ fn rw_single_u16(a: u16) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u16(value: a)
+    writer.write(value: a)
     spec::assert_eq(reader.read_u16(), a)
 }
 
@@ -40,13 +40,12 @@ fn rw_u16(a: u16, b: u16) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u16(value: a)
-    writer.write_u16(value: b)
+    writer.write(value: a)
+    writer.write(value: b)
 
     spec::assert_eq(reader.read_u16(), a)
     spec::assert_eq(reader.read_u16(), b)
 }
-
 
 #invariant
 fn rw_u256(a: u256, b: u256) {
@@ -54,8 +53,8 @@ fn rw_u256(a: u256, b: u256) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u256(value: a)
-    writer.write_u256(value: b)
+    writer.write(value: a)
+    writer.write(value: b)
 
     spec::assert_eq(reader.read_u256(), a)
     spec::assert_eq(reader.read_u256(), b)
@@ -67,10 +66,10 @@ fn rw_mix(a: u256, b: u8, c: u128, d: u128) {
     let mut reader: MemoryBufferReader = buf.reader()
     let mut writer: MemoryBufferWriter = buf.writer()
 
-    writer.write_u256(value: a)
-    writer.write_u8(value: b)
-    writer.write_u128(value: c)
-    writer.write_u128(value: d)
+    writer.write(value: a)
+    writer.write(value: b)
+    writer.write(value: c)
+    writer.write(value: d)
 
     spec::assert_eq(reader.read_u256(), a)
     spec::assert_eq(reader.read_u8(), b)
