@@ -12,7 +12,7 @@ use indexmap::{indexmap, IndexMap};
 
 const KSPEC_TEMPLATE: &str = include_str!("../template.k");
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum KSpecType {
     U256,
     U128,
@@ -97,8 +97,16 @@ impl KSpec {
 impl Display for KSpec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let calldata = if self.args.len() != 0 {
-            (0..self.args.len())
-                .map(|n| format!("#buf(32, ARG_{})", n))
+            self.args
+                .iter()
+                .enumerate()
+                .map(|(n, typ)| {
+                    if *typ == KSpecType::Context {
+                        format!("#buf(0, ARG_{})", n)
+                    } else {
+                        format!("#buf(32, ARG_{})", n)
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join(" +Bytes ")
         } else {

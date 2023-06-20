@@ -1,10 +1,7 @@
-use fe_proof_service::{invariant::Invariant, serde_json, ProofStatus};
+use fe_proof_service::{invariant::Invariant, serde_json};
 use std::{
-    fs,
-    io::{BufRead, BufReader, BufWriter, Write},
+    io::{BufRead, BufReader, BufWriter},
     net::{TcpListener, TcpStream},
-    thread,
-    time::Duration,
 };
 
 use server_impl::Server;

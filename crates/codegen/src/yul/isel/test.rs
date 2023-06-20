@@ -22,6 +22,7 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
         .map(yul::Statement::FunctionDefinition)
         .collect();
     let test_func_name = identifier! { (db.codegen_function_symbol_name(test)) };
+    let mut call_arg_offset = 0;
     let call_args = test
         .signature(db.upcast())
         .params
@@ -31,7 +32,8 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
             if param.name == "ctx" {
                 None
             } else {
-                let value = literal_expression! { (n * 32) };
+                let value = literal_expression! { (call_arg_offset) };
+                call_arg_offset += 32;
                 Some(expression! { calldataload([value]) })
             }
         })

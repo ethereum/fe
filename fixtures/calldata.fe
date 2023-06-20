@@ -1,0 +1,11 @@
+use std::spec
+
+#invariant
+fn msg_sig(ctx: Context, a: u256) {
+    spec::given_eq(
+        a, 
+        0x1000000100000000000000000000000000000000000000000000000000000000
+    )
+
+    spec::assert_eq(ctx.msg_sig(), 0x10000001)
+}
