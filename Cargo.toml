@@ -5,5 +5,5 @@ members = ["crates/*"]
 opt-level = 3
 
 [profile.dev]
-# Speeds up the build. May need to diable for debugging.
+# Speeds up the build. May need to disable for debugging.
 debug = 0

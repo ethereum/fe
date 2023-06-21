@@ -1,0 +1,98 @@
+// use std::{evm, spec}
+use std::spec
+use std::evm
+
+#invariant
+fn simple1(a: u256) {
+    spec::given_lte(a, 26)
+
+    spec::assert_lte(a, 42)
+}
+
+#invariant
+fn simple2(a: u256) {
+    spec::given_lte(a, 42)
+
+    spec::assert_ne(a, 43)
+}
+
+#invariant
+fn simple3(a: u256, b: u256) {
+    spec::given_lte(a, b)
+    spec::given_eq(a, 42)
+
+    spec::assert_ne(b, 26)
+}
+
+#invariant
+fn simple4(a: u256, b: u256) {
+    spec::given_lte(a, 42)
+    spec::given_lte(b, 26)
+
+    spec::assert_lte(evm::add(a, b), 68)
+}
+
+#invariant
+fn simple5(a: u256) {
+    spec::given_lte(a, 42)
+    spec::given_gte(a, 26)
+
+    spec::assert_ne(a, 25)
+    spec::assert_ne(a, 45)
+}
+
+#invariant
+fn simple6(a: u256) {
+    spec::given_lte(a, 42)
+    spec::given_gte(a, 42)
+
+    spec::assert_eq(a, 42)
+}
+
+fn sq(_ a: u256) -> u256 {
+    return evm::mul(a, a)
+}
+
+// #invariant
+// // rewrite fails
+// fn simple7(a: u256, b: u256, c: u256) {
+//     spec::given_lte(a, 1023)
+//     spec::given_lte(b, 1023)
+//     spec::given_lte(c, 1023)
+
+//     // a ^ 2 + b ^ 2 = c ^ 2
+//     spec::given_eq(
+//         evm::add(sq(a), sq(a)),
+//         sq(c)
+//     ) 
+//     spec::given_eq(b, 4)
+
+//     spec::assert_eq(c, 5)
+// }
+
+#invariant
+fn simple8(a: u256, b: u256, c: u256) {
+    spec::given_eq(a, 42)
+    spec::given_eq(c, 68)
+    spec::given_eq(b, 1023)
+
+    // a + b = c
+    spec::given_eq(evm::add(a, b), c)
+
+    spec::assert_eq(b, 26)
+}
+
+#invariant
+fn simple9(a: bool, b: bool) {
+    spec::given_false(a)
+    spec::given_true(b)
+
+    spec::assert_true(a or b)
+    spec::assert_false(a and b)
+}
+
+#invariant
+fn simple10(ctx: Context) {
+    spec::given_lte(ctx.block_number(), 26)
+    spec::assert_ne(ctx.block_number(), 27)
+}

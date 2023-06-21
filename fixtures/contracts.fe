@@ -1,0 +1,12 @@
+use std::spec
+
+contract Foo {
+    pub fn get_42(self) -> u256 {
+        return 42
+    }
+}
+
+#invariant
+fn verify_get_42(ctx: Context, foo: Foo) {
+    spec::assert_eq(foo.get_42(), 42)
+}

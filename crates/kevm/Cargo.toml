@@ -1,0 +1,11 @@
+[package]
+name = "kevm"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+smol_str = "0.1.21"
+indexmap = { version="1.6.2", features = ["serde"] }

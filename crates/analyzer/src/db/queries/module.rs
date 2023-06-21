@@ -760,3 +760,12 @@ pub fn module_tests(db: &dyn AnalyzerDb, ingot: ModuleId) -> Vec<FunctionId> {
         .filter(|function| function.is_test(db))
         .collect()
 }
+
+pub fn module_invariants(db: &dyn AnalyzerDb, ingot: ModuleId) -> Vec<FunctionId> {
+    ingot
+        .all_functions(db)
+        .iter()
+        .copied()
+        .filter(|function| function.is_invariant(db))
+        .collect()
+}

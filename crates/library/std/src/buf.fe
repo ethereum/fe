@@ -29,7 +29,7 @@ struct Cursor {
     /// Reverts if the cursor is advanced beyond the given length.
     pub fn advance(mut self, len: u256) -> u256 {
         let cur: u256 = self.cur
-        assert cur + len < self.len + 1
+        // assert cur + len < self.len + 1
         self.cur += len
         return cur 
     }
@@ -47,7 +47,7 @@ pub struct MemoryBuffer {
 
     pub fn new(len: u256) -> Self {
         unsafe {
-            return MemoryBuffer(offset: alloc(len), len)
+            return MemoryBuffer(offset: alloc(len: len + 31), len)
         }
     }
 
@@ -103,7 +103,8 @@ pub struct MemoryBufferWriter {
 
     pub fn write_n(mut self, value: u256, len: u256) {
         let offset: u256 = self.write_offset(len)
-        unsafe { rewrite_slot(offset, value, len) }
+        let shifted_value: u256 = evm::shl(bits: 256 - len * 8, value)
+        unsafe { evm::mstore(offset, value: shifted_value) }
     }
 
     pub fn write_buf(mut self, buf: MemoryBuffer) {
@@ -164,35 +165,13 @@ impl MemoryBufferWrite for u16 {
 
 impl MemoryBufferWrite for u8 {
     fn write_buf(self, mut writer: MemoryBufferWriter) {
-        let offset: u256 = writer.write_offset(len: 1)
-        unsafe { evm::mstore8(offset, value: self) }
+        writer.write_n(value: u256(self), len: 1)
     }
 }
 
 // This is needed to prevent the `mir_lower_std_lib` to crash the compiler
 impl MemoryBufferWrite for () {
     fn write_buf(self, mut writer: MemoryBufferWriter) {}
-}
-
-/// Rewrites the left-most `len` bytes in slot with the right-most `len` bytes of `value`.
-unsafe fn rewrite_slot(offset: u256, value: u256, len: u256) {
-    // bit mask for right side of 256 bit slot
-    let mask: u256 = evm::shr(
-        bits: len * 8, 
-        value: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff 
-    )
-    // new value shifted to left
-    let shifted_value: u256 = evm::shl(
-        bits: 256 - len * 8, 
-        value
-    )
-
-    let old_value: u256 = evm::mload(offset)
-    let new_value: u256 = evm::bitwise_or(
-        evm::bitwise_and(mask, old_value),
-        shifted_value
-    )
-    evm::mstore(offset, value: new_value)
 }
 
 /// Memory buffer reader abstraction.

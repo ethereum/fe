@@ -7,6 +7,7 @@ use fe_common::db::Upcast;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::FileKind;
 use fe_parser::ast::SmolStr;
+use fe_proof_service::invariant::Invariant;
 use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};
 use serde_json::Value;
@@ -81,6 +82,23 @@ pub fn compile_single_file_tests(
 
     if diags.is_empty() {
         Ok((module.name(db), compile_module_tests(db, module, optimize)))
+    } else {
+        Err(CompileError(diags))
+    }
+}
+
+#[cfg(feature = "solc-backend")]
+pub fn compile_single_file_invariants(
+    db: &mut Db,
+    path: &str,
+    src: &str,
+    optimize: bool,
+) -> Result<Vec<Invariant>, CompileError> {
+    let module = ModuleId::new_standalone(db, path, src);
+    let diags = module.diagnostics(db);
+
+    if diags.is_empty() {
+        Ok(compile_module_invariants(db, module, optimize))
     } else {
         Err(CompileError(diags))
     }
@@ -196,6 +214,7 @@ fn compile_test(db: &mut Db, test: FunctionId, optimize: bool) -> CompiledTest {
     let yul_test = fe_codegen::yul::isel::lower_test(db, test)
         .to_string()
         .replace('"', "\\\"");
+    println!("{}", yul_test);
     let bytecode = compile_to_evm("test", &yul_test, optimize);
     CompiledTest::new(test.name(db), bytecode)
 }
@@ -206,6 +225,26 @@ fn compile_module_tests(db: &mut Db, module_id: ModuleId, optimize: bool) -> Vec
         .tests(db)
         .iter()
         .map(|test| compile_test(db, *test, optimize))
+        .collect()
+}
+
+#[cfg(feature = "solc-backend")]
+fn compile_module_invariants(db: &mut Db, module_id: ModuleId, optimize: bool) -> Vec<Invariant> {
+    use fe_proof_service::invariant::Invariant;
+
+    module_id
+        .invariants(db)
+        .iter()
+        .map(|test| {
+            let args = test
+                .signature(db)
+                .params
+                .iter()
+                .map(|param| param.typ.as_ref().unwrap().name(db))
+                .collect();
+            let test = compile_test(db, *test, optimize);
+            Invariant::new(test.name, args, test.bytecode)
+        })
         .collect()
 }
 

@@ -1,0 +1,13 @@
+contract Foo:
+    pub fn _u256(baz: u256) -> u256:
+        return baz
+
+    pub fn _address(baz: address) -> address:
+        return baz
+
+    pub fn _u8(baz: u8) -> u8:
+        return baz
+
+    pub fn _address_u16(bar: address, baz: u16) -> (address, u16):
+        return (bar, baz)
+

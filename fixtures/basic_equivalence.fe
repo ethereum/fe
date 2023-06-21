@@ -1,0 +1,63 @@
+use std::spec
+use std::evm
+
+#invariant
+fn de_morgan_true(a: bool, b: bool) {
+    spec::given_true(a and b)
+    spec::assert_true(not ((not a) or (not b)))
+}
+
+#invariant
+fn de_morgan_false(a: bool, b: bool) {
+    spec::given_false(a and b)
+    spec::assert_false(not ((not a) or (not b)))
+}
+
+#invariant
+fn shl_shr_248(a: u256) {
+    spec::given_lte(a, 255)
+
+    let shl_a: u256 = evm::shl(bits: 248, value: a)
+    spec::assert_eq(
+        a,
+        evm::shr(bits: 248, value: shl_a)
+    )
+}
+
+#invariant
+fn shl_shr_n(a: u256, n: u256) {
+    spec::given_lte(a, 255)
+    spec::given_lte(n, 248)
+
+    let shl_a: u256 = evm::shl(bits: n, value: a)
+    spec::assert_eq(
+        a,
+        evm::shr(bits: n, value: shl_a)
+    )
+}
+
+const FREE_MEM_PTR: u256 = 4096
+
+#invariant
+unsafe fn read_byte_shl_248(a: u8) {
+    evm::mstore(
+        offset: FREE_MEM_PTR, 
+        value: evm::shl(bits: 248, value: a)
+    )
+
+    spec::assert_eq(
+        a,
+        evm::shr(bits: 248, value: evm::mload(offset: FREE_MEM_PTR))
+    )
+}
+
+// #invariant
+// incomplete
+// unsafe fn read_byte_mstore8(a: u8) {
+//     evm::mstore8(offset: FREE_MEM_PTR, value: a)
+
+//     spec::assert_eq(
+//         a,
+//         evm::shr(bits: 248, value: evm::mload(offset: FREE_MEM_PTR))
+//     )
+// }

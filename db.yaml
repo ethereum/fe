@@ -1,0 +1,48 @@
+6899393809540637772:
+  name: simple10
+  complete: true
+10648093925226451130:
+  name: simple1
+  complete: true
+9866189969293882850:
+  name: simple2
+  complete: true
+1491244125428245047:
+  name: simple6
+  complete: true
+17014316732147409137:
+  name: simple4
+  complete: true
+16497824417235581307:
+  name: simple3
+  complete: true
+14785961722918986698:
+  name: simple5
+  complete: true
+6672846181222220742:
+  name: simple9
+  complete: true
+2691375950895637890:
+  name: simple8
+  complete: true
+10351748462964682631:
+  name: simple6
+  complete: false
+13725409941853743582:
+  name: simple4
+  complete: false
+4205870993505503282:
+  name: read_byte_shl_248
+  complete: true
+17646573292089816401:
+  name: shl_shr_248
+  complete: true
+13658001998889555973:
+  name: shl_shr_n
+  complete: false
+6342915096082124860:
+  name: de_morgan_true
+  complete: true
+11455748359517230147:
+  name: de_morgan_false
+  complete: true

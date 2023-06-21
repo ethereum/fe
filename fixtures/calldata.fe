@@ -1,0 +1,12 @@
+use std::spec
+use std::evm
+
+#invariant
+unsafe fn msg_sig(ctx: Context) {
+    spec::given_eq(
+        evm::call_data_load(offset: 0), 
+        0x1000000100000000000000000000000000000000000000000000000000000000
+    )
+
+    spec::assert_eq(ctx.msg_sig(), 0x10000001)
+}

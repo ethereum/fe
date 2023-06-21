@@ -555,6 +555,10 @@ impl ModuleId {
         db.module_tests(*self)
     }
 
+    pub fn invariants(&self, db: &dyn AnalyzerDb) -> Vec<FunctionId> {
+        db.module_invariants(*self)
+    }
+
     /// Returns `true` if the `item` is in scope of the module.
     pub fn is_in_scope(&self, db: &dyn AnalyzerDb, item: Item) -> bool {
         if let Some(val) = item.module(db) {
@@ -1350,6 +1354,13 @@ impl FunctionId {
             .attributes(db)
             .iter()
             .any(|attribute| attribute.name(db) == "test")
+    }
+
+    pub fn is_invariant(&self, db: &dyn AnalyzerDb) -> bool {
+        Item::Function(*self)
+            .attributes(db)
+            .iter()
+            .any(|attribute| attribute.name(db) == "invariant")
     }
 }
 

@@ -163,7 +163,8 @@ pub trait RuntimeProvider {
             expression! { signextend([significant], [value]) }
         } else {
             let mask = BitMask::new(from_size);
-            expression! { and([value], [mask.as_expr()]) }
+            // expression! { and([value], [mask.as_expr()]) }
+            value
         }
     }
 
