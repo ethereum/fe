@@ -9,7 +9,7 @@ use server_impl::Server;
 mod server_impl;
 
 fn main() {
-    let listener = TcpListener::bind("10.0.0.144:7878").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let mut server = Server::new("db.yaml");
 
     server.display();

@@ -1,9 +1,10 @@
 use std::spec
+use std::evm
 
 #invariant
-fn msg_sig(ctx: Context, a: u256) {
+unsafe fn msg_sig(ctx: Context) {
     spec::given_eq(
-        a, 
+        evm::call_data_load(offset: 0), 
         0x1000000100000000000000000000000000000000000000000000000000000000
     )
 

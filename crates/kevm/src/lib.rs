@@ -46,9 +46,7 @@ impl KSpecType {
                 format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 8)")
             }
             KSpecType::Bool => format!("andBool (0 ==Int {arg_name} orBool {arg_name} ==Int 1)"),
-            KSpecType::Context => {
-                format!("andBool 0 ==Int {arg_name}")
-            }
+            KSpecType::Context => panic!("no bounds for ctx"),
         }
     }
 }
@@ -96,38 +94,32 @@ impl KSpec {
 
 impl Display for KSpec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let calldata = if self.args.len() != 0 {
-            self.args
-                .iter()
-                .enumerate()
-                .map(|(n, typ)| {
-                    if *typ == KSpecType::Context {
-                        format!("#buf(0, ARG_{})", n)
-                    } else {
-                        format!("#buf(32, ARG_{})", n)
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(" +Bytes ")
-        } else {
-            "_ => #buf(0, 0)".to_string()
-        };
+        let mut mem_args = vec![];
+        let mut requirements = vec![];
+        let mut arg_num = 0;
 
-        let requirements = self
-            .args
-            .iter()
-            .enumerate()
-            .map(|(n, typ)| typ.bounds(&format!("ARG_{}", n)))
-            .collect::<Vec<_>>()
-            .join("\n");
+        for arg in &self.args {
+            if *arg != KSpecType::Context {
+                let arg_name = format!("ARG_{}", arg_num);
+                requirements.push(arg.bounds(&arg_name));
+                mem_args.push(format!("#buf(32, {})", arg_name));
+                arg_num += 1;
+            }
+        }
+
+        let mem_args = if mem_args.is_empty() {
+            "_".to_string()
+        } else {
+            mem_args.join(" +Bytes ")
+        };
 
         write!(
             f,
             "{}",
             KSPEC_TEMPLATE
                 .replace("$CODE", &format!("\"0x{}\"", &self.code))
-                .replace("$CALLDATA", &calldata)
-                .replace("$REQUIREMENTS", &requirements)
+                .replace("$MEM_ARGS", &mem_args)
+                .replace("$REQUIREMENTS", &requirements.join("\n"))
         )
     }
 }

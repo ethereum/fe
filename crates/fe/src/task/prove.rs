@@ -40,7 +40,7 @@ fn single_file_invariants(prove_arg: &ProveArgs) -> Vec<Invariant> {
 
 pub fn prove(prove_arg: ProveArgs) {
     let invariants = single_file_invariants(&prove_arg);
-    let server = ProofClient::new("10.0.0.144:7878");
+    let server = ProofClient::new("127.0.0.1:7878");
 
     for invariant in invariants {
         let name = invariant.name.clone();

@@ -1,11 +1,8 @@
-use invariant::{Invariant, InvariantHeader};
+use invariant::Invariant;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use std::io::{BufReader, BufWriter, Read, Write};
-use std::net::{Shutdown, SocketAddr, TcpStream, ToSocketAddrs};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::io::{BufReader, BufWriter, Write};
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 
 pub use serde_json;
 

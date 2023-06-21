@@ -21,29 +21,41 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
         .into_iter()
         .map(yul::Statement::FunctionDefinition)
         .collect();
-    let test_func_name = identifier! { (db.codegen_function_symbol_name(test)) };
-    let mut call_arg_offset = 0;
-    let call_args = test
-        .signature(db.upcast())
-        .params
-        .iter()
-        .enumerate()
-        .filter_map(|(n, param)| {
-            if param.name == "ctx" {
-                None
-            } else {
-                let value = literal_expression! { (call_arg_offset) };
-                call_arg_offset += 32;
-                Some(expression! { calldataload([value]) })
+    let call = {
+        let test_func_name = identifier! { (db.codegen_function_symbol_name(test)) };
+        let mut assignments = vec![];
+        let mut call_args = vec![];
+
+        let mut arg_num = 0;
+        for param in test.signature(db.upcast()).params.iter() {
+            if param.name != "ctx" {
+                let arg_name = format!("arg_{}", arg_num);
+                let arg_ident = identifier! { (arg_name) };
+                let arg_offset = literal_expression! { (arg_num * 32) };
+
+                assignments.append(&mut statements! {
+                    (let [arg_ident.clone()] := mload([arg_offset.clone()]))
+                    (mstore([arg_offset], 0))
+                });
+
+                call_args.push(identifier_expression! { [arg_ident] });
+
+                arg_num += 1
             }
-        })
-        .collect::<Vec<_>>();
-    let call = function_call_statement! {[test_func_name]([call_args...])};
+        }
+
+        let call = function_call_statement! {[test_func_name]([call_args...])};
+
+        statements! {
+            [assignments...]
+            [call]
+        }
+    };
 
     let code = code! {
         [dep_functions...]
         [runtime_funcs...]
-        [call]
+        [call...]
         (stop())
     };
 

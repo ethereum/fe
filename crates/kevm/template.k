@@ -18,19 +18,17 @@ module INVARIANT-SPEC
                 <touchedAccounts> _ => ?_ </touchedAccounts>
 
                 <callState>
-                    // todo: gen this part
                     <program> #parseByteStack($CODE) </program>
                     <jumpDests> #computeValidJumpDests(#parseByteStack($CODE)) </jumpDests>
 
                     <id> ACCT_ID </id> // contract owner
                     <caller> CALLER_ID </caller> // who called this contract; in the beginning, origin // msg.sender
 
-                    // todo: gen this part
-                    <callData> $CALLDATA </callData>
+                    <callData> _ </callData>
 
                     <callValue> 0 </callValue>
                     <wordStack> .WordStack => ?_ </wordStack>
-                    <localMem> .Bytes => ?_ </localMem>
+                    <localMem> $MEM_ARGS </localMem>
                     <pc> 0 => ?_ </pc>
                     <gas> #gas(_VGAS) => ?_ </gas>
                     <memoryUsed> 0 => ?_ </memoryUsed>

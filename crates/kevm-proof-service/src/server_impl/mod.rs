@@ -7,10 +7,7 @@ use std::{
     time::{self, Duration},
 };
 
-use fe_proof_service::{
-    invariant::{Invariant, InvariantHeader},
-    ProofStatus,
-};
+use fe_proof_service::{invariant::Invariant, ProofStatus};
 use indexmap::{indexmap, IndexMap};
 use kevm::KSpecExecPool;
 use smol_str::SmolStr;
@@ -44,6 +41,7 @@ impl Server {
     pub fn check_invariant(&mut self, invariant: Invariant) -> ProofStatus {
         let id = invariant.id();
         let spec = Spec::new_from_invariant(invariant);
+        println!("{}", &spec.k_spec);
         self.state.lock().unwrap().add_spec(spec);
         self.state.lock().unwrap().update();
         self.state.lock().unwrap().proof_status(id)
