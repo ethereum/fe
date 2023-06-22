@@ -214,7 +214,7 @@ fn compile_test(db: &mut Db, test: FunctionId, optimize: bool) -> CompiledTest {
     let yul_test = fe_codegen::yul::isel::lower_test(db, test)
         .to_string()
         .replace('"', "\\\"");
-    println!("{}", yul_test);
+    // println!("{}", yul_test);
     let bytecode = compile_to_evm("test", &yul_test, optimize);
     CompiledTest::new(test.name(db), bytecode)
 }

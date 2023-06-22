@@ -7,6 +7,6 @@ contract Foo {
 }
 
 #invariant
-fn verify_get_42(ctx: Context, foo: Foo) {
+fn verify_get_42(foo: Foo) {
     spec::assert_eq(foo.get_42(), 42)
 }
