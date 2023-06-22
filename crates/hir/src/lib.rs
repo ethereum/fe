@@ -1,3 +1,4 @@
+use analysis_pass::ModuleAnalysisPass;
 use common::{InputDb, InputIngot};
 use hir_def::{module_tree_impl, IdentId, TopLevelMod};
 pub use lower::parse::ParserError;
@@ -6,6 +7,7 @@ use lower::{
     parse::{parse_file_impl, ParseErrorAccumulator},
     scope_graph_impl,
 };
+use parser::GreenNode;
 
 pub mod analysis_pass;
 pub mod diagnostics;
@@ -57,6 +59,33 @@ pub struct Jar(
     parse_file_impl,
     external_ingots_impl,
 );
+
+#[derive(Clone, Copy)]
+pub struct ParsingPass<'db> {
+    db: &'db dyn HirDb,
+}
+
+impl<'db> ParsingPass<'db> {
+    pub fn new(db: &'db dyn HirDb) -> Self {
+        Self { db }
+    }
+
+    pub fn green_node(self, top_mod: TopLevelMod) -> GreenNode {
+        parse_file_impl(self.db, top_mod)
+    }
+}
+
+impl<'db> ModuleAnalysisPass for ParsingPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod,
+    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher>> {
+        parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
+            .into_iter()
+            .map(|d| Box::new(d) as _)
+            .collect()
+    }
+}
 
 /// Returns the root modules and names of external ingots that the given `ingot`
 /// depends on.

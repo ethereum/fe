@@ -13,12 +13,12 @@ use crate::HirAnalysisDb;
 use super::name_resolver::NameRes;
 
 #[salsa::accumulator]
-pub struct NameResolutionDiagAccumulator(NameResolutionDiag);
+pub struct NameResolutionDiagAccumulator(pub(super) NameResolutionDiag);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameResolutionDiag {
-    span: DynLazySpan,
-    kind: ImportErrorKind,
+    pub span: DynLazySpan,
+    pub kind: ImportErrorKind,
 }
 
 impl NameResolutionDiag {

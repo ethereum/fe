@@ -3,7 +3,7 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use parser::{
     ast::{self, prelude::*},
-    GreenNode, SyntaxNode, SyntaxToken,
+    SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -11,14 +11,10 @@ use crate::{
         module_tree_impl, scope_graph::ScopeGraph, IdentId, IngotId, IntegerId, ItemKind, LitKind,
         ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
     },
-    HirDb, LowerHirDb, ParserError,
+    HirDb, LowerHirDb,
 };
 
-use self::{
-    item::lower_module_items,
-    parse::{parse_file_impl, ParseErrorAccumulator},
-    scope_builder::ScopeGraphBuilder,
-};
+use self::{item::lower_module_items, parse::parse_file_impl, scope_builder::ScopeGraphBuilder};
 
 pub(crate) mod parse;
 
@@ -46,24 +42,6 @@ pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
 /// Returns the item tree of the given top-level module.
 pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
     scope_graph_impl(db.as_hir_db(), top_mod)
-}
-
-/// Returns the root node of the given top-level module.
-/// This function also returns the diagnostics produced by parsing the file.
-pub fn parse_file_with_diag(
-    db: &dyn LowerHirDb,
-    top_mod: TopLevelMod,
-) -> (GreenNode, Vec<ParserError>) {
-    (
-        parse_file_impl(db.as_hir_db(), top_mod),
-        parse_file_impl::accumulated::<ParseErrorAccumulator>(db.as_hir_db(), top_mod),
-    )
-}
-
-/// Returns the root node of the given top-level module.
-/// If diagnostics are needed, use [`parse_file_with_diag`] instead.
-pub fn parse_file(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> GreenNode {
-    parse_file_impl(db.as_hir_db(), top_mod)
 }
 
 /// Returns the ingot module tree of the given ingot.

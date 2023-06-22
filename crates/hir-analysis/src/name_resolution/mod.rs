@@ -1,4 +1,6 @@
 use hir::{
+    analysis_pass::ModuleAnalysisPass,
+    diagnostics::DiagnosticVoucher,
     hir_def::{
         scope_graph::ScopeId, FieldDefListId, FuncParamListId, GenericParamListId, IngotId,
         ItemKind, TopLevelMod, VariantDefListId,
@@ -28,8 +30,35 @@ pub mod import_resolver;
 pub mod name_resolver;
 pub mod visibility_checker;
 
+pub struct ImportAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> ImportAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+
+    pub fn resolve_imports(&self, ingot: IngotId) -> &'db ResolvedImports {
+        resolve_imports(self.db, ingot)
+    }
+}
+
+impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
+    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+        let ingot = top_mod.ingot(self.db.as_hir_db());
+        resolve_imports::accumulated::<NameResolutionDiagAccumulator>(self.db, ingot)
+            .into_iter()
+            .filter_map(|diag| {
+                (diag.span.top_mod(self.db.as_hir_db()) == Some(top_mod))
+                    .then(|| Box::new(diag) as _)
+            })
+            .collect()
+    }
+}
+
 #[salsa::tracked(return_ref)]
-pub fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
+pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     for diag in diags {
@@ -37,15 +66,6 @@ pub fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImport
     }
 
     imports
-}
-
-pub fn resolve_imports_with_diag(
-    db: &dyn HirAnalysisDb,
-    ingot: IngotId,
-) -> (&ResolvedImports, Vec<diagnostics::NameResolutionDiag>) {
-    let imports = resolve_imports(db, ingot);
-    let diagnostics = resolve_imports::accumulated::<NameResolutionDiagAccumulator>(db, ingot);
-    (imports, diagnostics)
 }
 
 /// Performs early path resolution in the given module and checks the conflict

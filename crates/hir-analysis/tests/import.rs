@@ -6,9 +6,9 @@ use std::path::Path;
 use dir_test::{dir_test, Fixture};
 use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::name_resolution::{
-    import_resolver::ResolvedImports, name_resolver::NameDerivation, resolve_imports_with_diag,
+    import_resolver::ResolvedImports, name_resolver::NameDerivation, ImportAnalysisPass,
 };
-use hir::hir_def::Use;
+use hir::{analysis_pass::ModuleAnalysisPass, hir_def::Use};
 use rustc_hash::FxHashMap;
 
 #[dir_test(
@@ -21,9 +21,11 @@ fn test_standalone(fixture: Fixture<&str>) {
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
 
-    let (resolved_imports, diags) = resolve_imports_with_diag(&db, top_mod.ingot(&db));
+    let mut pass = ImportAnalysisPass::new(&db);
+    let resolved_imports = pass.resolve_imports(top_mod.ingot(&db));
+    let diags = pass.run_on_module(top_mod);
     if !diags.is_empty() {
-        panic!("Failed to resolve imports: {:?}", diags);
+        panic!("Failed to resolve imports");
     }
 
     let res = format_imports(&db, &mut prop_formatter, resolved_imports);
