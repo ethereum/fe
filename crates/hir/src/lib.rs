@@ -7,6 +7,7 @@ use lower::{
     scope_graph_impl,
 };
 
+pub mod analysis_pass;
 pub mod diagnostics;
 pub mod hir_def;
 pub mod lower;
