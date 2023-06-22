@@ -11,7 +11,7 @@ use crate::{
         TypeAlias, Use,
     },
     lower::top_mod_ast,
-    SpannedHirDb,
+    HirDb, SpannedHirDb,
 };
 
 pub mod attr;
@@ -35,6 +35,10 @@ pub struct DynLazySpan(pub(super) Option<SpanTransitionChain>);
 impl DynLazySpan {
     pub fn invalid() -> Self {
         Self(None)
+    }
+
+    pub fn top_mod(&self, db: &dyn HirDb) -> Option<TopLevelMod> {
+        self.0.as_ref().map(|chain| chain.top_mod(db))
     }
 }
 impl LazySpan for DynLazySpan {

@@ -12,7 +12,7 @@ use crate::{
         Trait, TypeAlias, Use,
     },
     lower::top_mod_ast,
-    SpannedHirDb,
+    HirDb, SpannedHirDb,
 };
 
 use super::{
@@ -52,6 +52,28 @@ impl SpanTransitionChain {
         Self {
             root: root.into(),
             chain: Vec::new(),
+        }
+    }
+
+    pub(super) fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+        match self.root {
+            ChainRoot::ItemKind(item) => item.top_mod(db),
+            ChainRoot::TopMod(top_mod) => top_mod,
+            ChainRoot::Mod(m) => m.top_mod(db),
+            ChainRoot::Func(f) => f.top_mod(db),
+            ChainRoot::Struct(s) => s.top_mod(db),
+            ChainRoot::Contract(c) => c.top_mod(db),
+            ChainRoot::Enum(e) => e.top_mod(db),
+            ChainRoot::TypeAlias(t) => t.top_mod(db),
+            ChainRoot::Impl(i) => i.top_mod(db),
+            ChainRoot::Trait(t) => t.top_mod(db),
+            ChainRoot::ImplTrait(i) => i.top_mod(db),
+            ChainRoot::Const(c) => c.top_mod(db),
+            ChainRoot::Use(u) => u.top_mod(db),
+            ChainRoot::Body(b) => b.top_mod(db),
+            ChainRoot::Stmt(s) => s.body.top_mod(db),
+            ChainRoot::Expr(e) => e.body.top_mod(db),
+            ChainRoot::Pat(p) => p.body.top_mod(db),
         }
     }
 
@@ -288,6 +310,10 @@ macro_rules! define_lazy_span_node {
             $(pub fn new(hir: $hir_ty) -> Self {
                 Self(crate::span::transition::SpanTransitionChain::new(hir))
             })?
+
+            pub fn top_mod(&self, db: &dyn crate::HirDb) -> Option<crate::hir_def::TopLevelMod> {
+                Some(self.0.top_mod(db))
+            }
 
             $($(
                 pub fn $name_token(&self) -> crate::span::LazySpanAtom {
