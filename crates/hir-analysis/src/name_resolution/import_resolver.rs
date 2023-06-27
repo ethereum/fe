@@ -911,9 +911,11 @@ impl IntermediateResolvedImports {
 
                         if i_use.use_ != use_ {
                             return Err(NameResDiag::conflict(
-                                i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
                                 imported_name,
-                                cand.derived_from(db).unwrap(),
+                                vec![
+                                    i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
+                                    cand.derived_from(db).unwrap(),
+                                ],
                             ));
                         }
                     }

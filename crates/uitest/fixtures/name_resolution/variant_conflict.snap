@@ -1,0 +1,15 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/variant_conflict.fe
+---
+error[2-0001]: `Var1` conflicts with other definitions
+  ┌─ variant_conflict.fe:2:5
+  │
+2 │     Var1
+  │     ^^^^ `Var1` is defined here
+3 │     Var2
+4 │     Var1
+  │     ---- `Var1` is redefined here
+
+

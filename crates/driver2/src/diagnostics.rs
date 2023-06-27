@@ -70,15 +70,15 @@ pub fn file_line_starts(db: &dyn DriverDb, file: InputFile) -> Vec<usize> {
 
 impl<'a> cs_files::Files<'a> for DriverDataBase {
     type FileId = InputFile;
-    type Name = &'a str;
-    type Source = &'a Utf8Path;
+    type Name = &'a Utf8Path;
+    type Source = &'a str;
 
     fn name(&'a self, file_id: Self::FileId) -> Result<Self::Name, cs_files::Error> {
-        Ok(file_id.text(self))
+        Ok(file_id.path(self).as_path())
     }
 
     fn source(&'a self, file_id: Self::FileId) -> Result<Self::Source, cs_files::Error> {
-        Ok(file_id.path(self).as_path())
+        Ok(file_id.text(self))
     }
 
     fn line_index(

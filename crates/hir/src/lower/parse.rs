@@ -1,6 +1,6 @@
 use common::{
     diagnostics::{
-        AnalysisPass, CompleteDiagnostic, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
+        CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
         SubDiagnostic,
     },
     InputFile,
@@ -36,7 +36,7 @@ pub struct ParserError {
 // information.
 impl DiagnosticVoucher for ParserError {
     fn error_code(&self) -> GlobalErrorCode {
-        GlobalErrorCode::new(AnalysisPass::Parse, 0)
+        GlobalErrorCode::new(DiagnosticPass::Parse, 1)
     }
 
     fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {

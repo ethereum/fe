@@ -2,23 +2,21 @@ use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, FieldDefListId, FuncParamListId, GenericParamListId, IngotId,
-        ItemKind, TopLevelMod, VariantDefListId,
+        scope_graph::ScopeId, FieldDefListId, GenericParamListId, IngotId, ItemKind, TopLevelMod,
+        VariantDefListId,
     },
-    span::{
-        item::{LazyFieldDefListSpan, LazyItemSpan, LazyVariantDefListSpan},
-        params::LazyFuncParamListSpan,
-    },
+    span::item::{LazyFieldDefListSpan, LazyItemSpan, LazyVariantDefListSpan},
     visitor::{
-        walk_field_def_list, walk_func_param_list, walk_generic_param_list, walk_item,
-        walk_variant_def_list, Visitor, VisitorCtxt,
+        walk_field_def_list, walk_generic_param_list, walk_item, walk_variant_def_list, Visitor,
+        VisitorCtxt,
     },
 };
+use rustc_hash::FxHashSet;
 
 use crate::HirAnalysisDb;
 
 use self::{
-    diagnostics::{NameResErrorKind, NameResolutionDiagAccumulator},
+    diagnostics::{NameResDiag, NameResolutionDiagAccumulator},
     import_resolver::{DefaultImporter, ResolvedImports},
     name_resolver::{
         NameDomain, NameQuery, NameResolutionError, QueryDirective, ResolvedQueryCacheStore,
@@ -49,10 +47,7 @@ impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
         let ingot = top_mod.ingot(self.db.as_hir_db());
         resolve_imports::accumulated::<NameResolutionDiagAccumulator>(self.db, ingot)
             .into_iter()
-            .filter_map(|diag| {
-                (diag.span.top_mod(self.db.as_hir_db()) == Some(top_mod))
-                    .then(|| Box::new(diag) as _)
-            })
+            .filter_map(|diag| (diag.top_mod(self.db) == top_mod).then(|| Box::new(diag) as _))
             .collect()
     }
 }
@@ -75,9 +70,7 @@ impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
         // TODO: Impl collector.
         errors
             .into_iter()
-            .filter_map(|err| {
-                matches!(err.kind, NameResErrorKind::Conflict(..)).then(|| Box::new(err) as _)
-            })
+            .filter_map(|err| matches!(err, NameResDiag::Conflict(..)).then(|| Box::new(err) as _))
             .collect()
     }
 }
@@ -105,15 +98,24 @@ pub(crate) fn resolve_path_early(
     top_mod: TopLevelMod,
 ) -> ResolvedQueryCacheStore {
     let importer = DefaultImporter;
-    PathResolver::new(db, &importer).resolve_all(top_mod);
-    todo!()
+    let mut resolver = PathResolver::new(db, &importer);
+    resolver.resolve_all(top_mod);
+
+    for diag in resolver.diags {
+        NameResolutionDiagAccumulator::push(db, diag);
+    }
+    resolver.inner.into_cache_store()
 }
 
 struct PathResolver<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
-    resolver: name_resolver::NameResolver<'db, 'a>,
+    inner: name_resolver::NameResolver<'db, 'a>,
     diags: Vec<diagnostics::NameResDiag>,
     item_stack: Vec<ItemKind>,
+
+    /// The set of scopes that have already been conflicted to avoid duplicate
+    /// diagnostics.
+    already_conflicted: FxHashSet<ScopeId>,
 }
 
 impl<'db, 'a> PathResolver<'db, 'a> {
@@ -121,9 +123,10 @@ impl<'db, 'a> PathResolver<'db, 'a> {
         let resolver = name_resolver::NameResolver::new(db, importer);
         Self {
             db: db.as_hir_analysis_db(),
-            resolver,
+            inner: resolver,
             diags: Vec::new(),
             item_stack: Vec::new(),
+            already_conflicted: FxHashSet::default(),
         }
     }
 
@@ -153,14 +156,6 @@ impl<'db, 'a> PathResolver<'db, 'a> {
         }
     }
 
-    fn check_func_param_conflict(&mut self, params: FuncParamListId) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..params.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::FuncParam(parent_item, i);
-            self.check_conflict(scope);
-        }
-    }
-
     fn check_generic_param_conflict(&mut self, params: GenericParamListId) {
         let parent_item = *self.item_stack.last().unwrap();
         for i in 0..params.data(self.db.as_hir_db()).len() {
@@ -170,29 +165,30 @@ impl<'db, 'a> PathResolver<'db, 'a> {
     }
 
     fn check_conflict(&mut self, scope: ScopeId) {
+        if !self.already_conflicted.insert(scope) {
+            return;
+        }
+
         let Some(query) = self.make_query_for_conflict_check(scope) else {
             return;
         };
 
         let domain = NameDomain::from_scope(scope);
-        let binding = self.resolver.resolve_query(query);
+        let binding = self.inner.resolve_query(query);
         match binding.res_in_domain(domain) {
             Ok(_) => {}
+
             Err(NameResolutionError::Ambiguous(cands)) => {
                 let conflicted_span = cands
                     .iter()
-                    .find_map(|res| {
+                    .filter_map(|res| {
                         let conflicted_scope = res.scope()?;
-                        if conflicted_scope == scope {
-                            None
-                        } else {
-                            conflicted_scope.name_span(self.db.as_hir_db())
-                        }
+                        self.already_conflicted.insert(conflicted_scope);
+                        conflicted_scope.name_span(self.db.as_hir_db())
                     })
-                    .unwrap();
+                    .collect();
 
                 let diag = diagnostics::NameResDiag::conflict(
-                    scope.name_span(self.db.as_hir_db()).unwrap(),
                     scope.name(self.db.as_hir_db()).unwrap(),
                     conflicted_span,
                 );
@@ -246,14 +242,5 @@ impl<'db, 'a> Visitor for PathResolver<'db, 'a> {
     ) {
         self.check_generic_param_conflict(params);
         walk_generic_param_list(self, ctxt, params);
-    }
-
-    fn visit_func_param_list(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,
-        params: FuncParamListId,
-    ) {
-        self.check_func_param_conflict(params);
-        walk_func_param_list(self, ctxt, params)
     }
 }

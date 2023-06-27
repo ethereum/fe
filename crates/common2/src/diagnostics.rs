@@ -29,16 +29,26 @@ impl CompleteDiagnostic {
             error_code,
         }
     }
+
+    pub fn primary_span(&self) -> Span {
+        self.sub_diagnostics
+            .iter()
+            .find_map(|sub| match sub.style {
+                LabelStyle::Primary => Some(sub.span.clone().unwrap()),
+                _ => None,
+            })
+            .unwrap()
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct GlobalErrorCode {
-    pub pass: AnalysisPass,
+    pub pass: DiagnosticPass,
     pub local_code: u16,
 }
 
 impl GlobalErrorCode {
-    pub fn new(pass: AnalysisPass, local_code: u16) -> Self {
+    pub fn new(pass: DiagnosticPass, local_code: u16) -> Self {
         Self { pass, local_code }
     }
 }
@@ -79,6 +89,21 @@ pub struct Span {
     pub kind: SpanKind,
 }
 
+impl PartialOrd for Span {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.file.cmp(&other.file) {
+            std::cmp::Ordering::Equal => self.range.start().partial_cmp(&other.range.start()),
+            ord => return Some(ord),
+        }
+    }
+}
+
+impl Ord for Span {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SpanKind {
     /// A node corresponding is originally written in the source code.
@@ -113,8 +138,8 @@ pub enum Severity {
     Note,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AnalysisPass {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DiagnosticPass {
     Parse,
 
     NameResolution,
@@ -124,7 +149,7 @@ pub enum AnalysisPass {
     ExternalAnalysis(ExternalAnalysisKey),
 }
 
-impl AnalysisPass {
+impl DiagnosticPass {
     pub fn code(&self) -> u16 {
         match self {
             Self::Parse => 1,
@@ -137,7 +162,7 @@ impl AnalysisPass {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ExternalAnalysisKey {
     name: String,
 }

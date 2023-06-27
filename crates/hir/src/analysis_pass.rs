@@ -32,7 +32,7 @@ impl<'db> AnalysisPassManager<'db> {
         self.module_passes.push(pass);
     }
 
-    pub fn add_func_pass(&mut self, pass: Box<dyn FuncAnalysisPass + 'db>) {
+    pub fn add_func_pass<T>(&mut self, pass: Box<dyn FuncAnalysisPass + 'db>) {
         self.func_passes.push(pass);
     }
 

@@ -7,6 +7,7 @@ use codespan_reporting::term::{
     termcolor::{BufferWriter, ColorChoice},
 };
 use common::{
+    diagnostics::CompleteDiagnostic,
     input::{IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
@@ -43,6 +44,8 @@ pub struct DriverDataBase {
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
     pub fn run_on_file(&mut self, file_path: &path::Path) {
+        self.diags.clear();
+
         let kind = IngotKind::StandAlone;
         // We set the ingot version to 0.0.0 for stand-alone file.
         let version = Version::new(0, 0, 0);
@@ -76,7 +79,7 @@ impl DriverDataBase {
         let mut buffer = writer.buffer();
         let config = term::Config::default();
 
-        for diag in &self.diags {
+        for diag in self.finalize_diags() {
             term::emit(&mut buffer, &config, self, &diag.into_cs(self)).unwrap();
         }
 
@@ -89,11 +92,20 @@ impl DriverDataBase {
         let mut buffer = writer.buffer();
         let config = term::Config::default();
 
-        for diag in &self.diags {
-            term::emit(&mut buffer, &config, self, &diag.into_cs(self))
-                .expect("failed to emit diagnostic");
+        for diag in self.finalize_diags() {
+            term::emit(&mut buffer, &config, self, &diag.into_cs(self)).unwrap();
         }
+
         std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
+    }
+
+    fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
+        diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+        diags
     }
 }
 

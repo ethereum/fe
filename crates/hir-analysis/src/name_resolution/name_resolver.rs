@@ -51,6 +51,10 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             cache_store,
         }
     }
+
+    pub(super) fn into_cache_store(self) -> ResolvedQueryCacheStore {
+        self.cache_store
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -523,10 +527,16 @@ impl NameBinding {
         let domain = res.domain;
         match self.resolutions.entry(domain) {
             Entry::Occupied(mut e) => {
-                let old_res = match e.get() {
+                let old_res = match e.get_mut() {
                     Ok(res) => res,
                     Err(NameResolutionError::NotFound) => {
                         e.insert(Ok(res.clone())).ok();
+                        return;
+                    }
+                    Err(NameResolutionError::Ambiguous(ambiguous_set)) => {
+                        if ambiguous_set[0].derivation == res.derivation {
+                            ambiguous_set.push(res.clone());
+                        }
                         return;
                     }
                     Err(_) => {
@@ -538,10 +548,11 @@ impl NameBinding {
                 match res.derivation.cmp(&old_derivation) {
                     cmp::Ordering::Less => {}
                     cmp::Ordering::Equal => {
-                        if old_res.kind == res.kind {
-                        } else {
+                        if old_res.kind != res.kind {
+                            let old_res_cloned = old_res.clone();
+                            let res = res.clone();
                             e.insert(Err(NameResolutionError::Ambiguous(vec![
-                                old_res.clone(),
+                                old_res_cloned,
                                 res.clone(),
                             ])))
                             .ok();

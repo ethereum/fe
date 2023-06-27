@@ -1,0 +1,14 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/generic_param_conflict.fe
+---
+error[2-0001]: `T` conflicts with other definitions
+  ┌─ generic_param_conflict.fe:1:16
+  │
+1 │ pub struct MyS<T, U, T> {
+  │                ^     - `T` is redefined here
+  │                │      
+  │                `T` is defined here
+
+

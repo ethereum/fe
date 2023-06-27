@@ -26,9 +26,11 @@ impl ScopeGraph {
     /// Returns the direct child items of the scope.
     pub fn child_items(&self, scope: ScopeId) -> impl Iterator<Item = ItemKind> + '_ {
         self.edges(scope).filter_map(|edge| match edge.kind {
-            EdgeKind::Lex(_) | EdgeKind::Super(_) | EdgeKind::Ingot(_) | EdgeKind::SelfTy(_) => {
-                None
-            }
+            EdgeKind::Lex(_)
+            | EdgeKind::Super(_)
+            | EdgeKind::Ingot(_)
+            | EdgeKind::SelfTy(_)
+            | EdgeKind::Self_(_) => None,
 
             _ => edge.dest.to_item(),
         })
