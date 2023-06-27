@@ -13,54 +13,54 @@ use crate::HirAnalysisDb;
 use super::name_resolver::NameRes;
 
 #[salsa::accumulator]
-pub struct NameResolutionDiagAccumulator(pub(super) NameResolutionDiag);
+pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NameResolutionDiag {
+pub struct NameResDiag {
     pub span: DynLazySpan,
-    pub kind: ImportErrorKind,
+    pub kind: NameResErrorKind,
 }
 
-impl NameResolutionDiag {
-    pub fn new(span: DynLazySpan, kind: ImportErrorKind) -> Self {
+impl NameResDiag {
+    pub fn new(span: DynLazySpan, kind: NameResErrorKind) -> Self {
         Self { span, kind }
     }
 
     pub fn conflict(span: DynLazySpan, name: IdentId, conflict_with: DynLazySpan) -> Self {
-        Self::new(span, ImportErrorKind::Conflict(name, conflict_with))
+        Self::new(span, NameResErrorKind::Conflict(name, conflict_with))
     }
 
     pub fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
-        Self::new(span, ImportErrorKind::NotFound(ident))
+        Self::new(span, NameResErrorKind::NotFound(ident))
     }
 
     pub fn invisible(db: &dyn HirAnalysisDb, span: DynLazySpan, resolved: NameRes) -> Self {
         let name = resolved.kind.name(db).unwrap();
         let name_span = resolved.kind.name_span(db);
-        Self::new(span, ImportErrorKind::Invisible(name, name_span))
+        Self::new(span, NameResErrorKind::Invisible(name, name_span))
     }
 
     pub fn ambiguous(span: DynLazySpan, ident: IdentId, candidates: Vec<DynLazySpan>) -> Self {
-        Self::new(span, ImportErrorKind::Ambiguous(ident, candidates))
+        Self::new(span, NameResErrorKind::Ambiguous(ident, candidates))
     }
 }
 
-impl DiagnosticVoucher for NameResolutionDiag {
+impl DiagnosticVoucher for NameResDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(AnalysisPass::NameResolution, self.kind.local_code())
     }
 
-    fn to_complete(self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
         let message = self.kind.message(db.as_hir_db());
-        let sub_diags = self.kind.sub_diagnostics(db, self.span);
+        let sub_diags = self.kind.sub_diagnostics(db, self.span.clone());
 
         CompleteDiagnostic::new(self.kind.severity(), message, sub_diags, vec![], error_code)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImportErrorKind {
+pub enum NameResErrorKind {
     /// The import conflicts with another import.
     Conflict(IdentId, DynLazySpan),
     /// The import path segment is not found.
@@ -73,13 +73,13 @@ pub enum ImportErrorKind {
     Ambiguous(IdentId, Vec<DynLazySpan>),
 }
 
-impl ImportErrorKind {
+impl NameResErrorKind {
     fn local_code(&self) -> u16 {
         match self {
-            ImportErrorKind::Conflict(..) => 0,
-            ImportErrorKind::NotFound(_) => 1,
-            ImportErrorKind::Invisible(..) => 2,
-            ImportErrorKind::Ambiguous(..) => 3,
+            NameResErrorKind::Conflict(..) => 0,
+            NameResErrorKind::NotFound(_) => 1,
+            NameResErrorKind::Invisible(..) => 2,
+            NameResErrorKind::Ambiguous(..) => 3,
         }
     }
 
@@ -89,14 +89,14 @@ impl ImportErrorKind {
 
     fn message(&self, db: &dyn HirDb) -> String {
         match self {
-            ImportErrorKind::Conflict(name, _) => {
+            NameResErrorKind::Conflict(name, _) => {
                 format!("{} conflicts with other definitions", name.data(db))
             }
-            ImportErrorKind::NotFound(name) => format!("{} is not found", name.data(db)),
-            ImportErrorKind::Invisible(name, _) => {
+            NameResErrorKind::NotFound(name) => format!("{} is not found", name.data(db)),
+            NameResErrorKind::Invisible(name, _) => {
                 format!("{} is not visible", name.data(db),)
             }
-            ImportErrorKind::Ambiguous(name, _) => format!("{} is ambiguous", name.data(db)),
+            NameResErrorKind::Ambiguous(name, _) => format!("{} is ambiguous", name.data(db)),
         }
     }
 
@@ -106,7 +106,7 @@ impl ImportErrorKind {
         prim_span: DynLazySpan,
     ) -> Vec<SubDiagnostic> {
         match self {
-            ImportErrorKind::Conflict(ident, conflict_with) => {
+            NameResErrorKind::Conflict(ident, conflict_with) => {
                 let ident = ident.data(db.as_hir_db());
                 vec![
                     SubDiagnostic::new(
@@ -122,7 +122,7 @@ impl ImportErrorKind {
                 ]
             }
 
-            ImportErrorKind::NotFound(ident) => {
+            NameResErrorKind::NotFound(ident) => {
                 let ident = ident.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
@@ -131,7 +131,7 @@ impl ImportErrorKind {
                 )]
             }
 
-            ImportErrorKind::Invisible(ident, span) => {
+            NameResErrorKind::Invisible(ident, span) => {
                 let ident = ident.data(db.as_hir_db());
 
                 let mut diags = vec![SubDiagnostic::new(
@@ -149,7 +149,7 @@ impl ImportErrorKind {
                 diags
             }
 
-            ImportErrorKind::Ambiguous(ident, candidates) => {
+            NameResErrorKind::Ambiguous(ident, candidates) => {
                 let ident = ident.data(db.as_hir_db());
                 let mut diags = vec![SubDiagnostic::new(
                     LabelStyle::Primary,

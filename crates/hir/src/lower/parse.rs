@@ -39,7 +39,7 @@ impl DiagnosticVoucher for ParserError {
         GlobalErrorCode::new(AnalysisPass::Parse, 0)
     }
 
-    fn to_complete(self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
         let span = Span::new(self.file, self.error.range, SpanKind::Original);
         CompleteDiagnostic::new(
@@ -47,7 +47,7 @@ impl DiagnosticVoucher for ParserError {
             self.error.msg.clone(),
             vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                self.error.msg,
+                self.error.msg.clone(),
                 Some(span),
             )],
             vec![],

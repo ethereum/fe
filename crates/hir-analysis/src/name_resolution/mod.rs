@@ -18,7 +18,7 @@ use hir::{
 use crate::HirAnalysisDb;
 
 use self::{
-    diagnostics::NameResolutionDiagAccumulator,
+    diagnostics::{NameResErrorKind, NameResolutionDiagAccumulator},
     import_resolver::{DefaultImporter, ResolvedImports},
     name_resolver::{
         NameDomain, NameQuery, NameResolutionError, QueryDirective, ResolvedQueryCacheStore,
@@ -57,6 +57,31 @@ impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
     }
 }
 
+pub struct DefConflictAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> DefConflictAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
+    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+        let errors =
+            resolve_path_early::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+
+        // TODO: Impl collector.
+        errors
+            .into_iter()
+            .filter_map(|err| {
+                matches!(err.kind, NameResErrorKind::Conflict(..)).then(|| Box::new(err) as _)
+            })
+            .collect()
+    }
+}
+
 #[salsa::tracked(return_ref)]
 pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
@@ -68,8 +93,11 @@ pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> Resolve
     imports
 }
 
-/// Performs early path resolution in the given module and checks the conflict
-/// of the definitions.
+/// Performs early path resolution and cache the resolutions for paths appeared
+/// in the given module. Also checks the conflict of the item definitions
+///
+/// NOTE: This method doesn't check the conflict in impl blocks since it
+/// requires ingot granularity analysis.
 #[salsa::tracked(return_ref)]
 #[allow(unused)]
 pub(crate) fn resolve_path_early(
@@ -84,7 +112,7 @@ pub(crate) fn resolve_path_early(
 struct PathResolver<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     resolver: name_resolver::NameResolver<'db, 'a>,
-    diags: Vec<diagnostics::NameResolutionDiag>,
+    diags: Vec<diagnostics::NameResDiag>,
     item_stack: Vec<ItemKind>,
 }
 
@@ -163,7 +191,7 @@ impl<'db, 'a> PathResolver<'db, 'a> {
                     })
                     .unwrap();
 
-                let diag = diagnostics::NameResolutionDiag::conflict(
+                let diag = diagnostics::NameResDiag::conflict(
                     scope.name_span(self.db.as_hir_db()).unwrap(),
                     scope.name(self.db.as_hir_db()).unwrap(),
                     conflicted_span,

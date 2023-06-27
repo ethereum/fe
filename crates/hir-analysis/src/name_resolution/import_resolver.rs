@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    diagnostics::NameResolutionDiag,
+    diagnostics::NameResDiag,
     name_resolver::{
         NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, NameResKind,
         NameResolutionError, NameResolutionResult, NameResolver, QueryDirective,
@@ -37,7 +37,7 @@ pub(crate) struct ImportResolver<'db> {
     intermediate_uses: FxHashMap<ScopeId, VecDeque<IntermediateUse>>,
 
     /// The errors that have been accumulated during the import resolution.
-    accumulated_errors: Vec<NameResolutionDiag>,
+    accumulated_errors: Vec<NameResDiag>,
 
     /// The number of imported resolutions.
     /// This is used to judge if a import resolution doesn't change in each
@@ -64,7 +64,7 @@ impl<'db> ImportResolver<'db> {
         }
     }
 
-    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports, Vec<NameResolutionDiag>) {
+    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports, Vec<NameResDiag>) {
         self.initialize_i_uses();
 
         let mut changed = true;
@@ -516,7 +516,7 @@ impl<'db> ImportResolver<'db> {
     fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
         match err {
             NameResolutionError::NotFound => {
-                self.accumulated_errors.push(NameResolutionDiag::not_found(
+                self.accumulated_errors.push(NameResDiag::not_found(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                 ));
@@ -528,7 +528,7 @@ impl<'db> ImportResolver<'db> {
             }
 
             NameResolutionError::Ambiguous(cands) => {
-                self.accumulated_errors.push(NameResolutionDiag::ambiguous(
+                self.accumulated_errors.push(NameResDiag::ambiguous(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                     cands
@@ -878,7 +878,7 @@ impl IntermediateResolvedImports {
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
         mut bind: NameBinding,
-    ) -> Result<(), NameResolutionDiag> {
+    ) -> Result<(), NameResDiag> {
         let scope = i_use.original_scope;
         bind.set_derivation(NameDerivation::NamedImported(i_use.use_));
 
@@ -910,7 +910,7 @@ impl IntermediateResolvedImports {
                         };
 
                         if i_use.use_ != use_ {
-                            return Err(NameResolutionDiag::conflict(
+                            return Err(NameResDiag::conflict(
                                 i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
                                 imported_name,
                                 cand.derived_from(db).unwrap(),

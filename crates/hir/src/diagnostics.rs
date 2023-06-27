@@ -22,8 +22,8 @@ use crate::SpannedHirDb;
 /// `[LazySpan]`(crate::span::LazySpan) and types that implement `LazySpan`.
 pub trait DiagnosticVoucher: Send {
     fn error_code(&self) -> GlobalErrorCode;
-    /// Consumes voucher and makes a [`CompleteDiagnostic`].
-    fn to_complete(self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;
+    /// Makes a [`CompleteDiagnostic`].
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;
 }
 
 impl DiagnosticVoucher for CompleteDiagnostic {
@@ -31,7 +31,17 @@ impl DiagnosticVoucher for CompleteDiagnostic {
         self.error_code.clone()
     }
 
-    fn to_complete(self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
-        self
+    fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        self.clone()
+    }
+}
+
+impl DiagnosticVoucher for Box<dyn DiagnosticVoucher> {
+    fn error_code(&self) -> GlobalErrorCode {
+        self.as_ref().error_code()
+    }
+
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        self.as_ref().to_complete(db)
     }
 }
