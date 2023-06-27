@@ -1,10 +1,10 @@
 ---
 source: crates/uitest/src/lib.rs
 expression: diags
-input_file: crates/uitest/fixtures/name_resolution/field_conflict.fe
+input_file: crates/uitest/fixtures/name_resolution/conflict_field.fe
 ---
 error[2-0001]: `x` conflicts with other definitions
-  ┌─ field_conflict.fe:2:5
+  ┌─ conflict_field.fe:2:5
   │
 2 │     x: i32
   │     ^ `x` is defined here

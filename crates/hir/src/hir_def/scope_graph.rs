@@ -80,10 +80,10 @@ impl ScopeId {
     }
 
     pub fn is_importable(self) -> bool {
-        match self {
-            ScopeId::GenericParam(..) | ScopeId::FuncParam(..) | ScopeId::Field(..) => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            ScopeId::GenericParam(..) | ScopeId::FuncParam(..) | ScopeId::Field(..)
+        )
     }
 
     /// Returns the scope graph containing this scope.

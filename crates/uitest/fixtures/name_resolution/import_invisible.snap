@@ -1,0 +1,15 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_invisible.fe
+---
+error[2-0003]: `Bar` is not visible
+  ┌─ import_invisible.fe:1:10
+  │
+1 │ use foo::Bar
+  │          ^^^ `Bar` is not visible
+  ·
+4 │     struct Bar {}
+  │            --- `Bar is defined here
+
+

@@ -1,0 +1,5 @@
+use foo::Bar
+
+mod foo {
+    struct Bar {}
+}

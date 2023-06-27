@@ -1,0 +1,24 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_cycle.fe
+---
+error[2-0002]: `Foo` is not found
+  ┌─ import_cycle.fe:1:5
+  │
+1 │ use Foo as Bar
+  │     ^^^ `Foo` is not found
+
+error[2-0002]: `Bar` is not found
+  ┌─ import_cycle.fe:2:5
+  │
+2 │ use Bar as Baz
+  │     ^^^ `Bar` is not found
+
+error[2-0002]: `Baz` is not found
+  ┌─ import_cycle.fe:3:5
+  │
+3 │ use Baz as Foo
+  │     ^^^ `Baz` is not found
+
+
