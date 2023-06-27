@@ -20,7 +20,7 @@ use hir_analysis::{
     HirAnalysisDb,
 };
 
-use crate::diagnostics::IntoCsDiag;
+use crate::diagnostics::ToCsDiag;
 
 #[salsa::jar(db = DriverDb)]
 pub struct Jar(diagnostics::file_line_starts);
@@ -80,7 +80,7 @@ impl DriverDataBase {
         let config = term::Config::default();
 
         for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.into_cs(self)).unwrap();
+            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
         }
 
         eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
@@ -93,7 +93,7 @@ impl DriverDataBase {
         let config = term::Config::default();
 
         for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.into_cs(self)).unwrap();
+            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
         }
 
         std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
@@ -127,7 +127,7 @@ impl Default for DriverDataBase {
     }
 }
 
-fn initialize_analysis_pass<'db>(db: &'db DriverDataBase) -> AnalysisPassManager<'db> {
+fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));

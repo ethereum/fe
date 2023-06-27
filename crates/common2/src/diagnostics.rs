@@ -93,7 +93,7 @@ impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match self.file.cmp(&other.file) {
             std::cmp::Ordering::Equal => self.range.start().partial_cmp(&other.range.start()),
-            ord => return Some(ord),
+            ord => Some(ord),
         }
     }
 }

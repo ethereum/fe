@@ -12,15 +12,15 @@ use hir::diagnostics::DiagnosticVoucher;
 
 use crate::{DriverDataBase, DriverDb};
 
-pub trait IntoCsDiag {
-    fn into_cs(&self, db: &DriverDataBase) -> cs_diag::Diagnostic<InputFile>;
+pub trait ToCsDiag {
+    fn to_cs(&self, db: &DriverDataBase) -> cs_diag::Diagnostic<InputFile>;
 }
 
-impl<T> IntoCsDiag for T
+impl<T> ToCsDiag for T
 where
     T: DiagnosticVoucher,
 {
-    fn into_cs(&self, db: &DriverDataBase) -> cs_diag::Diagnostic<InputFile> {
+    fn to_cs(&self, db: &DriverDataBase) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db);
 
         let severity = convert_severity(complete.severity);

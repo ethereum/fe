@@ -553,7 +553,7 @@ impl NameBinding {
                             let res = res.clone();
                             e.insert(Err(NameResolutionError::Ambiguous(vec![
                                 old_res_cloned,
-                                res.clone(),
+                                res,
                             ])))
                             .ok();
                         }
