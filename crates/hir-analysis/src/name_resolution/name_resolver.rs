@@ -781,7 +781,7 @@ pub enum NameResolutionError {
     Invalid,
 
     /// The name is found, but it's not visible from the reference site.
-    Invisible,
+    Invisible(NameRes),
 
     /// The name is found, but it's ambiguous.
     Ambiguous(Vec<NameRes>),
@@ -794,7 +794,7 @@ impl fmt::Display for NameResolutionError {
         match self {
             NameResolutionError::NotFound => write!(f, "name not found"),
             NameResolutionError::Invalid => write!(f, "invalid name"),
-            NameResolutionError::Invisible => write!(f, "name is not visible"),
+            NameResolutionError::Invisible(_) => write!(f, "name is not visible"),
             NameResolutionError::Ambiguous(_) => write!(f, "name is ambiguous"),
         }
     }

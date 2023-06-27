@@ -411,21 +411,35 @@ impl<'db> ImportResolver<'db> {
                 return true;
             }
         };
+        let mut representative_invisible_res = None;
         binding.resolutions.retain(|_, res| {
             let Ok(res) = res else {
                 return false;
             };
             match res.scope() {
-                Some(scope) => is_scope_visible(self.db, i_use.original_scope, scope),
+                Some(scope) => {
+                    if is_scope_visible(self.db, i_use.original_scope, scope) {
+                        true
+                    } else {
+                        if scope.is_importable() {
+                            representative_invisible_res.get_or_insert_with(|| res.clone());
+                        }
+                        false
+                    }
+                }
                 None => true,
             }
         });
 
         let n_res = binding.len();
         let is_decidable = self.is_decidable(&i_use);
-
         if n_res == 0 && is_decidable {
-            self.register_error(&i_use, NameResolutionError::NotFound);
+            let error = if let Some(invisible_res) = representative_invisible_res {
+                NameResolutionError::Invisible(invisible_res)
+            } else {
+                NameResolutionError::NotFound
+            };
+            self.register_error(&i_use, error);
             return true;
         }
 
@@ -538,10 +552,12 @@ impl<'db> ImportResolver<'db> {
                 ));
             }
 
-            // `Invisible` is not expected to be returned from `resolve_query` since `NameResolver`
-            // doesn't care about visibility.
-            NameResolutionError::Invisible => {
-                unreachable!()
+            NameResolutionError::Invisible(name_res) => {
+                self.accumulated_errors.push(NameResDiag::invisible(
+                    self.db,
+                    i_use.current_segment_span(),
+                    name_res,
+                ));
             }
         }
     }

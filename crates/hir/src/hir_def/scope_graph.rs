@@ -79,6 +79,13 @@ impl ScopeId {
         Self::Item(top_mod.into())
     }
 
+    pub fn is_importable(self) -> bool {
+        match self {
+            ScopeId::GenericParam(..) | ScopeId::FuncParam(..) | ScopeId::Field(..) => false,
+            _ => true,
+        }
+    }
+
     /// Returns the scope graph containing this scope.
     pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
         self.top_mod(db).scope_graph(db)
