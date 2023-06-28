@@ -1,8 +1,8 @@
 use std::buf::{
     RawCallBuffer,
-    MemoryBufferReader, 
     MemoryBufferWriter,
-    MemoryBuffer
+    MemoryBuffer,
+    RawCallBufferReader
 }
 use std::evm
 
@@ -34,7 +34,9 @@ fn test_raw_call(mut ctx: Context) {
 
     writer.write(value: 42)
     assert ctx.raw_call(addr: address(foo), value: 0, buf)
-    let mut reader: MemoryBufferReader = buf.reader()
+    let mut reader: RawCallBufferReader = RawCallBufferReader::new(
+        buf
+    )
     assert reader.read_u256() == 26
 
     assert not ctx.raw_call(addr: address(foo), value: 0, buf)

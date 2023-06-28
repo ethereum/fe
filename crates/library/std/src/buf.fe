@@ -309,11 +309,85 @@ pub struct RawCallBuffer {
         return self.buf.offset()
     }
 
-    pub fn reader(self) -> MemoryBufferReader {
-        return self.buf.reader()
+    pub fn reader(self) -> RawCallBufferReader {
+         return RawCallBufferReader::new(buf: self)
     }
 
     pub fn writer(mut self) -> MemoryBufferWriter {
         return self.buf.writer()
     }
+}
+
+pub struct RawCallBufferReader {
+    buf: RawCallBuffer
+    /// Returns a new reader for the given buffer.
+    pub fn new(buf: RawCallBuffer) -> Self {
+        return RawCallBufferReader(buf)
+    }
+
+    fn read_offset(mut self, len: u256) -> u256 {
+        return self.buf.offset()
+    }
+
+    fn read_n(mut self, len: u256) -> u256 {
+        let offset: u256 = self.read_offset(len)
+        unsafe {
+            let value: u256 = evm::mload(offset)
+            return evm::shr(bits: 256 - len * 8, value)
+        }
+    }
+
+    pub fn read_u8(mut self) -> u8 {
+        return u8(self.read_n(len: 1))
+    }
+
+    pub fn read_u16(mut self) -> u16 {
+        return u16(self.read_n(len: 2))
+    }
+
+    pub fn read_u32(mut self) -> u32 {
+        return u32(self.read_n(len: 4))
+    }
+
+    pub fn read_u64(mut self) -> u64 {
+        return u64(self.read_n(len: 8))
+    }
+
+    pub fn read_u128(mut self) -> u128 {
+        return u128(self.read_n(len: 16))
+    }
+
+    pub fn read_u256(mut self) -> u256 {
+        let offset: u256 = self.read_offset(len: 32)
+        unsafe {
+            let value: u256 = evm::mload(offset)
+            return value
+        }
+    }
+
+//    pub fn read_buf(mut self, len: u256) -> RawCallBuffer {
+//        let mut buf: RawCallBuffer = RawCallBuffer::new(len) 
+//        let mut writer: MemoryBufferWriter = buf.writer()
+//
+//        while true {
+//            let bytes_remaining: u256 = writer.remainder()
+//
+//            if bytes_remaining >= 32 {
+//                writer.write(value: self.read_u256())
+//            } else if bytes_remaining == 0 {
+//                break 
+//            } else {
+//                writer.write(value: self.read_u8())
+//            }
+//        }
+//
+//        return buf
+//    }
+
+    // `T` has not been defined
+    // pub fn read<T: MemoryBufferRead>(mut self) -> T {
+    //     T::read_buf(writer: self)
+    // }
+
+
 }
