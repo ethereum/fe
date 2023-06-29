@@ -1,5 +1,22 @@
 use foo::Bar
-
 mod foo {
     struct Bar {}
 }
+
+use foo2::Bar
+mod foo2 {
+    use foo3::Bar
+
+    mod foo3 {
+        pub struct Bar {}
+    }
+}
+
+use foo3::foo4::Bar
+mod foo3 {
+    mod foo4 {
+        pub struct Bar {}
+    }
+}
+
+

@@ -175,7 +175,7 @@ impl<'db, 'a> PathResolver<'db, 'a> {
 
         let domain = NameDomain::from_scope(scope);
         let binding = self.inner.resolve_query(query);
-        match binding.res_in_domain(domain) {
+        match binding.res_by_domain(domain) {
             Ok(_) => {}
 
             Err(NameResolutionError::Ambiguous(cands)) => {

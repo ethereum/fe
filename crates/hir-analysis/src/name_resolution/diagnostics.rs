@@ -10,8 +10,6 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
-use super::name_resolver::NameRes;
-
 #[salsa::accumulator]
 pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);
 
@@ -39,10 +37,12 @@ impl NameResDiag {
         Self::NotFound(span, ident)
     }
 
-    pub fn invisible(db: &dyn HirAnalysisDb, span: DynLazySpan, resolved: NameRes) -> Self {
-        let name = resolved.kind.name(db).unwrap();
-        let name_span = resolved.kind.name_span(db);
-        Self::Invisible(span, name, name_span)
+    pub fn invisible(
+        span: DynLazySpan,
+        name: IdentId,
+        invisible_span: Option<DynLazySpan>,
+    ) -> Self {
+        Self::Invisible(span, name, invisible_span)
     }
 
     pub fn ambiguous(span: DynLazySpan, ident: IdentId, candidates: Vec<DynLazySpan>) -> Self {

@@ -124,7 +124,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             };
             let query = NameQuery::new(*ident, scope);
             let binding = self.resolve_query(query);
-            scope = match binding.res_in_domain(NameDomain::Item) {
+            scope = match binding.res_by_domain(NameDomain::Item) {
                 Ok(res) => {
                     if res.is_type(self.db) {
                         return Ok(ResolvedPath::Partial {
@@ -502,10 +502,14 @@ impl NameBinding {
     }
 
     /// Returns the resolution of the given `domain`.
-    pub fn res_in_domain(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
+    pub fn res_by_domain(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
         self.resolutions
             .get(&domain)
             .unwrap_or(&Err(NameResolutionError::NotFound))
+    }
+
+    pub fn filter_by_domain(&mut self, domain: NameDomain) {
+        self.resolutions.retain(|d, _| *d == domain);
     }
 
     /// Merge the `resolutions` into the set. If name conflict happens, the old
@@ -781,7 +785,7 @@ pub enum NameResolutionError {
     Invalid,
 
     /// The name is found, but it's not visible from the reference site.
-    Invisible(NameRes),
+    Invisible(Option<DynLazySpan>),
 
     /// The name is found, but it's ambiguous.
     Ambiguous(Vec<NameRes>),

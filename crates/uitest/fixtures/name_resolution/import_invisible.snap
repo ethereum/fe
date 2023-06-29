@@ -1,5 +1,5 @@
 ---
-source: crates/uitest/src/lib.rs
+source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/import_invisible.fe
 ---
@@ -8,8 +8,26 @@ error[2-0003]: `Bar` is not visible
   │
 1 │ use foo::Bar
   │          ^^^ `Bar` is not visible
-  ·
-4 │     struct Bar {}
+2 │ mod foo {
+3 │     struct Bar {}
   │            --- `Bar is defined here
+
+error[2-0003]: `Bar` is not visible
+  ┌─ import_invisible.fe:6:11
+  │
+6 │ use foo2::Bar
+  │           ^^^ `Bar` is not visible
+7 │ mod foo2 {
+8 │     use foo3::Bar
+  │     ------------- `Bar is defined here
+
+error[2-0003]: `foo4` is not visible
+   ┌─ import_invisible.fe:15:11
+   │
+15 │ use foo3::foo4::Bar
+   │           ^^^^ `foo4` is not visible
+16 │ mod foo3 {
+17 │     mod foo4 {
+   │         ---- `foo4 is defined here
 
 

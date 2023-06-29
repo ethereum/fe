@@ -33,6 +33,5 @@ mod wasm {
         let mut driver = DriverDataBase::default();
         let path = Path::new(fixture.path());
         driver.run_on_file(path, fixture.content());
-        let diags = driver.format_diags();
     }
 }

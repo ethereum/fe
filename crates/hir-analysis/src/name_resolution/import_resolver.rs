@@ -332,66 +332,88 @@ impl<'db> ImportResolver<'db> {
         };
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
-        let binding = resolver.resolve_query(query);
+        let mut binding = resolver.resolve_query(query);
 
-        // Try to resolve the last segment of the use path.
-        // We need to check the all domains of the resolution and make an appropriate
-        // error by considering all domain's result.
-        // The following cases should be considered:
-        // - If the resolution is not found in all domains and the use path is
-        //   decidable, we can report an error.
-        // - If one of the domains has an error other than `NotFound` or `Invalid`, we
-        //   can report the error and stop the resolution immediately.
-        if i_use.is_base_resolved(self.db) {
-            for err in binding.errors() {
-                if !matches!(
-                    err,
-                    NameResolutionError::NotFound | NameResolutionError::Invalid
-                ) {
-                    self.register_error(i_use, err.clone());
-                    return None;
+        // Filter out invisible resolutions.
+        let mut invisible_span = None;
+        binding.resolutions.retain(|_, res| {
+            let Ok(res) = res else {
+                return true;
+            };
+            match res.scope() {
+                Some(scope) => {
+                    if let NameDerivation::GlobImported(use_)
+                    | NameDerivation::NamedImported(use_) = res.derivation
+                    {
+                        if !is_use_visible(self.db, i_use.original_scope, use_) {
+                            invisible_span.get_or_insert_with(|| use_.lazy_span().into());
+                            false
+                        } else {
+                            true
+                        }
+                    } else if is_scope_visible(self.db, i_use.original_scope, scope) {
+                        true
+                    } else {
+                        if scope.is_importable() {
+                            if let Some(span) = res.kind.name_span(self.db) {
+                                invisible_span.get_or_insert(span);
+                            }
+                        }
+                        false
+                    }
                 }
+                None => true,
             }
+        });
 
-            if binding.is_empty() {
-                if self.is_decidable(i_use) {
-                    self.register_error(i_use, NameResolutionError::NotFound);
-                    return None;
-                } else {
-                    return Some(IUseResolution::Unchanged(i_use.clone()));
-                }
-            }
-
-            for res in binding.iter() {
-                if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
-                    self.suspicious_imports.insert(i_use.use_);
-                    break;
-                }
-            }
-
-            return Some(IUseResolution::Full(binding));
+        // Filter out irrelevant resolutions if the segment is not the last one.
+        if !i_use.is_base_resolved(self.db) {
+            binding.filter_by_domain(NameDomain::Item);
         }
 
-        let res = match binding.res_in_domain(NameDomain::Item) {
-            Ok(res) => res,
-            Err(NameResolutionError::NotFound) if !self.is_decidable(i_use) => {
-                return Some(IUseResolution::Unchanged(i_use.clone()))
-            }
-            Err(err) => {
+        for err in binding.errors() {
+            if !matches!(
+                err,
+                NameResolutionError::NotFound | NameResolutionError::Invalid
+            ) {
                 self.register_error(i_use, err.clone());
                 return None;
             }
-        };
-
-        if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
-            self.suspicious_imports.insert(i_use.use_);
+        }
+        if binding.is_empty() {
+            if self.is_decidable(i_use) {
+                let err = if let Some(invisible_span) = invisible_span {
+                    NameResolutionError::Invisible(invisible_span.into())
+                } else {
+                    NameResolutionError::NotFound
+                };
+                self.register_error(i_use, err);
+                return None;
+            } else {
+                return Some(IUseResolution::Unchanged(i_use.clone()));
+            };
         }
 
-        let next_i_use = i_use.proceed(res.clone());
-        if next_i_use.is_base_resolved(self.db) {
-            Some(IUseResolution::BasePath(next_i_use))
+        // If the resolution is derived from glob import or external crate, we have to
+        // insert the use into the `suspicious_imports` set to verify the ambiguity
+        // after the algorithm reaches the fixed point.
+        for res in binding.iter() {
+            if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
+                self.suspicious_imports.insert(i_use.use_);
+                break;
+            }
+        }
+
+        if i_use.is_base_resolved(self.db) {
+            Some(IUseResolution::Full(binding))
         } else {
-            Some(IUseResolution::Partial(next_i_use))
+            let res = binding.res_by_domain(NameDomain::Item).clone().unwrap();
+            let next_i_use = i_use.proceed(res);
+            if next_i_use.is_base_resolved(self.db) {
+                Some(IUseResolution::BasePath(next_i_use))
+            } else {
+                Some(IUseResolution::Partial(next_i_use))
+            }
         }
     }
 
@@ -414,7 +436,7 @@ impl<'db> ImportResolver<'db> {
     fn try_finalize_named_use(&mut self, i_use: IntermediateUse) -> bool {
         debug_assert!(i_use.is_base_resolved(self.db));
 
-        let mut binding = match self.resolve_segment(&i_use) {
+        let binding = match self.resolve_segment(&i_use) {
             Some(IUseResolution::Full(binding)) => binding,
             Some(IUseResolution::Unchanged(_)) => {
                 return false;
@@ -426,38 +448,9 @@ impl<'db> ImportResolver<'db> {
                 return true;
             }
         };
-        let mut representative_invisible_res = None;
-        binding.resolutions.retain(|_, res| {
-            let Ok(res) = res else {
-                return false;
-            };
-            match res.scope() {
-                Some(scope) => {
-                    if is_scope_visible(self.db, i_use.original_scope, scope) {
-                        true
-                    } else {
-                        if scope.is_importable() {
-                            representative_invisible_res.get_or_insert_with(|| res.clone());
-                        }
-                        false
-                    }
-                }
-                None => true,
-            }
-        });
 
         let n_res = binding.len();
         let is_decidable = self.is_decidable(&i_use);
-        if n_res == 0 && is_decidable {
-            let error = if let Some(invisible_res) = representative_invisible_res {
-                NameResolutionError::Invisible(invisible_res)
-            } else {
-                NameResolutionError::NotFound
-            };
-            self.register_error(&i_use, error);
-            return true;
-        }
-
         if *self.num_imported_res.entry(i_use.use_).or_default() == n_res {
             return is_decidable;
         }
@@ -567,11 +560,11 @@ impl<'db> ImportResolver<'db> {
                 ));
             }
 
-            NameResolutionError::Invisible(name_res) => {
+            NameResolutionError::Invisible(invisible_span) => {
                 self.accumulated_errors.push(NameResDiag::invisible(
-                    self.db,
                     i_use.current_segment_span(),
-                    name_res,
+                    i_use.current_segment_ident(self.db).unwrap(),
+                    invisible_span,
                 ));
             }
         }
@@ -642,15 +635,10 @@ impl<'db> ImportResolver<'db> {
         };
 
         if i_uses.is_empty() {
-            return ScopeState::Closed;
+            ScopeState::Closed
+        } else {
+            ScopeState::Open
         }
-        for i_use in i_uses {
-            if i_use.is_exported(self.db) {
-                return ScopeState::Open;
-            }
-        }
-
-        ScopeState::Semi
     }
 
     /// Returns `true` if the next segment of the intermediate use is
@@ -759,10 +747,6 @@ enum ScopeState {
     // The scope is open, meaning that the scope needs further resolution.
     Open,
 
-    /// The scope is partially resolved, meaning that the exports in the scope
-    /// is fully resolved but the imports are partially resolved.
-    Semi,
-
     /// The scope is closed, meaning that the all imports in the scope is fully
     /// resolved.
     Closed,
@@ -805,10 +789,6 @@ impl IntermediateUse {
         } else {
             self.original_scope.into()
         }
-    }
-
-    fn is_exported(&self, db: &dyn HirAnalysisDb) -> bool {
-        self.use_.vis(db.as_hir_db()).is_pub()
     }
 
     fn is_glob(&self, db: &dyn HirAnalysisDb) -> bool {
