@@ -44,6 +44,17 @@ pub struct DriverDataBase {
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
     pub fn run_on_file(&mut self, file_path: &path::Path, source: &str) {
+        self.run_on_file_with_pass_manager(file_path, source, initialize_analysis_pass);
+    }
+
+    pub fn run_on_file_with_pass_manager<F>(
+        &mut self,
+        file_path: &path::Path,
+        source: &str,
+        pm_builder: F,
+    ) where
+        F: FnOnce(&DriverDataBase) -> AnalysisPassManager<'_>,
+    {
         self.diags.clear();
 
         let kind = IngotKind::StandAlone;
@@ -67,7 +78,7 @@ impl DriverDataBase {
         let top_mod = map_file_to_mod(self, file);
 
         self.diags = {
-            let mut pass_manager = initialize_analysis_pass(self);
+            let mut pass_manager = pm_builder(self);
             pass_manager.run_on_module(top_mod)
         };
     }
