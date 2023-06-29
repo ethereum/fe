@@ -334,7 +334,25 @@ impl<'db> ImportResolver<'db> {
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
         let binding = resolver.resolve_query(query);
 
+        // Try to resolve the last segment of the use path.
+        // We need to check the all domains of the resolution and make an appropriate
+        // error by considering all domain's result.
+        // The following cases should be considered:
+        // - If the resolution is not found in all domains and the use path is
+        //   decidable, we can report an error.
+        // - If one of the domains has an error other than `NotFound` or `Invalid`, we
+        //   can report the error and stop the resolution immediately.
         if i_use.is_base_resolved(self.db) {
+            for err in binding.errors() {
+                if !matches!(
+                    err,
+                    NameResolutionError::NotFound | NameResolutionError::Invalid
+                ) {
+                    self.register_error(i_use, err.clone());
+                    return None;
+                }
+            }
+
             if binding.is_empty() {
                 if self.is_decidable(i_use) {
                     self.register_error(i_use, NameResolutionError::NotFound);
@@ -343,17 +361,14 @@ impl<'db> ImportResolver<'db> {
                     return Some(IUseResolution::Unchanged(i_use.clone()));
                 }
             }
-            if self.is_decidable(i_use) {
-                for err in binding.errors() {
-                    self.register_error(i_use, err.clone());
-                }
-            }
+
             for res in binding.iter() {
                 if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
                     self.suspicious_imports.insert(i_use.use_);
                     break;
                 }
             }
+
             return Some(IUseResolution::Full(binding));
         }
 

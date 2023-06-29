@@ -151,11 +151,16 @@ impl NameResDiag {
                     format!("`{ident}` is ambiguous"),
                     prim_span.resolve(db),
                 )];
-                diags.extend(candidates.iter().enumerate().map(|(i, span)| {
+                let mut cand_spans: Vec<_> = candidates
+                    .iter()
+                    .filter_map(|span| span.resolve(db))
+                    .collect();
+                cand_spans.sort_unstable();
+                diags.extend(cand_spans.into_iter().enumerate().map(|(i, span)| {
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("candidate #{i}"),
-                        span.resolve(db),
+                        format!("candidate `#{i}`"),
+                        Some(span),
                     )
                 }));
 

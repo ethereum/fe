@@ -29,7 +29,6 @@ mod wasm {
     #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/fixtures/name_resolution",
         glob: "*.fe",
-        postfix: "wasm"
     )]
     #[dir_test_attr(#[wasm_bindgen_test])]
     fn run_name_resolution(fixture: Fixture<&str>) {
