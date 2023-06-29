@@ -43,7 +43,7 @@ pub struct DriverDataBase {
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
-    pub fn run_on_file(&mut self, file_path: &path::Path) {
+    pub fn run_on_file(&mut self, file_path: &path::Path, source: &str) {
         self.diags.clear();
 
         let kind = IngotKind::StandAlone;
@@ -59,8 +59,7 @@ impl DriverDataBase {
         );
 
         let file_name = root_file.file_name().unwrap().to_str().unwrap();
-        let file_content = std::fs::read_to_string(root_file).unwrap();
-        let file = InputFile::new(self, ingot, file_name.into(), file_content);
+        let file = InputFile::new(self, ingot, file_name.into(), source.to_string());
 
         ingot.set_root_file(self, file);
         ingot.set_files(self, [file].into());
