@@ -1,15 +1,14 @@
 use std::buf::{
     RawCallBuffer,
+    MemoryBufferReader, 
     MemoryBufferWriter,
-    MemoryBuffer,
-    RawCallBufferReader
+    MemoryBuffer
 }
 use std::evm
 
 contract Foo {
     pub unsafe fn __call__() {
         if evm::call_data_load(offset: 0) == 42 {
-            //evm::mstore(offset: 0, value: 26)
             let mut buf:MemoryBuffer = MemoryBuffer::new(
                 len:32
             )
@@ -34,9 +33,8 @@ fn test_raw_call(mut ctx: Context) {
 
     writer.write(value: 42)
     assert ctx.raw_call(addr: address(foo), value: 0, buf)
-    let mut reader: RawCallBufferReader = RawCallBufferReader::new(
-        buf
-    )
+    
+    let mut reader: MemoryBufferReader = buf.reader()
     assert reader.read_u256() == 26
 
     assert not ctx.raw_call(addr: address(foo), value: 0, buf)
