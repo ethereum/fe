@@ -1,0 +1,32 @@
+use std::evm
+
+contract Foo {
+    pub fn __call__() {
+        unsafe {
+            let ctx: Context = Context()
+            let value: u256 = u256(bar(ctx))
+            evm::mstore(offset: 0, value)
+            evm::return_mem(offset: 0, len: 32)
+        }
+    }
+
+    fn bar(ctx: Context) -> address {
+        return ctx.self_address()
+    }
+}
+
+#test
+unsafe fn test_foo(mut ctx: Context) {
+    let foo_address: address = address(Foo.create(ctx, 0))
+    assert evm::call(
+        gas: 10000, 
+        addr: foo_address, 
+        value: 0, 
+        input_offset: 0, 
+        input_len: 0, 
+        output_offset: 100, 
+        output_len: 32
+    ) == 1
+    let bar_result: address = address(evm::mload(offset: 100))
+    assert foo_address == bar_result
+}

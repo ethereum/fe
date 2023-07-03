@@ -1,0 +1,100 @@
+contract Foo {
+    my_num: u256
+
+    pub fn add(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v += b
+        return v
+    }
+
+    pub fn sub(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v -= b
+        return v
+    }
+
+    pub fn mul(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v *= b
+        return v
+    }
+
+    pub fn div(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v /= b
+        return v
+    }
+
+    pub fn mod(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v %= b
+        return v
+    }
+
+    pub fn pow(self, a: u256, b: u256) -> u256 {
+        let mut v: u256 = a
+        v **= b
+        return v
+    }
+
+    pub fn lshift(self, a: u8, b: u8) -> u8 {
+        let mut v: u8 = a
+        v <<= b
+        return v
+    }
+
+    pub fn rshift(self, a: u8, b: u8) -> u8 {
+        let mut v: u8 = a
+        v >>= b
+        return v
+    }
+
+    pub fn bit_or(self, a: u8, b: u8) -> u8 {
+        let mut v: u8 = a
+        v |= b
+        return v
+    }
+
+    pub fn bit_xor(self, a: u8, b: u8) -> u8 {
+        let mut v: u8 = a
+        v ^= b
+        return v
+    }
+
+    pub fn bit_and(self, a: u8, b: u8) -> u8 {
+        let mut v: u8 = a
+        v &= b
+        return v
+    }
+
+    pub fn add_from_sto(mut self, a: u256, b: u256) -> u256 {
+        self.my_num = a
+        self.my_num += b
+        return self.my_num
+    }
+
+    pub fn add_from_mem(self, a: u256, b: u256) -> u256 {
+        let mut my_array: Array<u256, 10> = [0; 10]
+        my_array[7] = a
+        my_array[7] += b
+        return my_array[7]
+    }
+}
+
+#test
+fn test_foo(mut ctx: Context) {
+    let mut foo: Foo = Foo.create(ctx, 0)
+    assert foo.add(a: 2, b: 5) == 7
+    assert foo.sub(a: 42, b: 26) == 16
+    assert foo.mul(a: 10, b: 42) == 420
+    assert foo.div(a: 43, b: 5) == 8
+    assert foo.mod(a: 43, b: 5) == 3
+    assert foo.pow(a: 3, b: 5) == 243
+    assert foo.lshift(a: 1, b: 7) == 128
+    assert foo.rshift(a: 128, b: 7) == 1
+    assert foo.bit_or(a: 26, b: 42) == 58
+    assert foo.bit_xor(a: 26, b: 42) == 48
+    assert foo.bit_and(a: 26, b: 42) == 10
+    assert foo.add_from_sto(a: 2, b: 5) == 7
+    assert foo.add_from_mem(a: 2, b: 5) == 7
+}

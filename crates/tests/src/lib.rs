@@ -32,5 +32,3 @@ fn single_file_test_run(fixture: Fixture<&str>) {
         panic!("{}", test_sink)
     }
 }
-
-// TODO: implement ingot test runner

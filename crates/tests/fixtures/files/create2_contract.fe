@@ -1,0 +1,21 @@
+contract Foo {
+    pub fn get_my_num(self) -> u256 {
+        return 42
+    }
+}
+
+contract FooFactory {
+    pub fn create2_foo(self, mut ctx: Context) -> address {
+        let foo: Foo = Foo.create2(ctx, 0, 52)
+        return address(foo)
+    }
+}
+
+#test
+fn test_foo_factory(mut ctx: Context) {
+    let foo_factory: FooFactory = FooFactory.create(ctx, 0)
+    let foo_address: address = foo_factory.create2_foo(ctx)
+    // todo: this should require context
+    let foo: Foo = Foo(foo_address)
+    assert foo.get_my_num() == 42 
+}

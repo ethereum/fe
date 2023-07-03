@@ -4,8 +4,15 @@ contract Foo {
     pub fn bar(mut self) -> u256 {
         self.my_bool = false
         while self.my_bool {
-
+            revert
         }
+
         return 42
     }
+}
+
+#test
+fn test_foo(mut ctx: Context) {
+    let mut foo: Foo = Foo.create(ctx, 0)
+    assert foo.bar() == 42
 }

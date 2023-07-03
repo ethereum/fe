@@ -10,3 +10,9 @@ contract Foo {
         return sum
     }
 }
+
+#test
+fn test_foo(mut ctx: Context) {
+    let mut foo: Foo = Foo.create(ctx, 0)
+    assert foo.bar() == 6
+}

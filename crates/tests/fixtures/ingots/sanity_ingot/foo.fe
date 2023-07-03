@@ -1,9 +1,0 @@
-#test
-fn test_add() {
-    assert 1 + 1 == 2
-}
-
-#test
-fn test_add_broken() {
-    assert 1 + 1 == 3
-}
