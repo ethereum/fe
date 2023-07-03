@@ -84,7 +84,7 @@ pub struct Context {
             let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
             let success: bool = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
                                           buf)
-            if success {
+            if not success {
                 revert Error(code: ERROR_FAILED_SEND_VALUE)
             }
         }
