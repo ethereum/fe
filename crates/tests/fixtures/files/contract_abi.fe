@@ -33,7 +33,7 @@ contract MyContract {
             // self.foo.encode(writer)
             let value: u256 = self.foo
             value.encode(writer)
-            evm::return_mem(offset: buf.offset(), len: buf.len())
+            evm::return_mem(buf)
         } else {
             revert UnknownSelector(selector)
         }
