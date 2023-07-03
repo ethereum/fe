@@ -5,8 +5,8 @@ use ingot::error::{
     Error
 }
 use ingot::buf::{
-    RawCallBuffer, 
-    MemoryBufferReader, 
+    RawCallBuffer,
+    MemoryBufferReader,
     MemoryBufferWriter
 }
 
@@ -81,11 +81,10 @@ pub struct Context {
             if evm::balance() < wei {
                 revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
             }
-
-            let success: u256 = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
-                                          input_offset: 0, input_len: 0,
-                                          output_offset: 0, output_len: 0)
-            if success == 0 {
+            let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
+            let success: bool = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
+                                          buf)
+            if not success {
                 revert Error(code: ERROR_FAILED_SEND_VALUE)
             }
         }
@@ -93,25 +92,22 @@ pub struct Context {
 
     /// Makes a call to the given address.
     pub fn raw_call(
-        self, 
-        addr: address, 
-        value: u256, 
-        mut buf: RawCallBuffer 
+        self,
+        addr: address,
+        value: u256,
+        mut buf: RawCallBuffer
     ) -> bool {
         unsafe {
             return evm::call(
-                gas: evm::gas_remaining(), 
-                addr, 
+                gas: evm::gas_remaining(),
+                addr,
                 value,
-                input_offset: buf.offset(), 
-                input_len: buf.input_len(),
-                output_offset: buf.offset(), 
-                output_len: buf.output_len()
-            ) == 1
+                buf
+            )
         }
     }
 
     pub fn emit<T: Emittable>(mut self, _ val: T) {
         val.emit(OutOfReachMarker())
-    }    
+    }
 }

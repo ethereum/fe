@@ -1,4 +1,10 @@
 use std::evm
+use std::buf::{
+    RawCallBuffer,
+    MemoryBufferWriter,
+    MemoryBufferReader,
+    MemoryBuffer
+}
 
 contract Foo {
     my_array: Array<u256, 10>
@@ -32,34 +38,29 @@ contract ArrayIndexOobDyn {
     }
 }
 
-const FREE_MEM_PTR: u256 = 1024
 const CALL_GAS: u256 = 100000
 
 #test
 unsafe fn test_array_oob_dyn(mut ctx: Context) {
     let array_index_oob: ArrayIndexOobDyn = ArrayIndexOobDyn.create(ctx, value: 0)
     let expected_revert_data: Array<u8, 36> =  [78, 72, 123, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50]
-
+    let mut buf : RawCallBuffer = RawCallBuffer::new(input_len: 32, output_len: 36)
+    let mut writer: MemoryBufferWriter = buf.writer()
+    let mut reader: MemoryBufferReader = buf.reader()
     // store index value
-    evm::mstore(offset: FREE_MEM_PTR, value: 26)
-
+    writer.write(value: 26)
     // verify that the call reverts
-    assert evm::call(
+    assert not evm::call(
         gas: CALL_GAS, 
         addr: address(array_index_oob), 
-        value: 0, 
-        input_offset: FREE_MEM_PTR, 
-        input_len: 32, 
-        output_offset: FREE_MEM_PTR,
-        output_len: 36
-    ) == 0
+        value: 0,
+        buf
+    ) 
 
     // check the revert data
-    let mut offset: u256 = FREE_MEM_PTR 
 
     for expected_byte in expected_revert_data {
-        assert evm::shr(bits: 248, value: evm::mload(offset)) == expected_byte
-        offset += 1
+        assert reader.read_u8() == expected_byte
     }
 }
 
