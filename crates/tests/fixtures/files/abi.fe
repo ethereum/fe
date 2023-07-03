@@ -9,11 +9,25 @@ use std::buf::{
     RawCallBuffer
 }
 use std::evm
+use std::traits::Max
 
 contract AbiDecodeU256 {
     pub unsafe fn __call__(ctx: Context) {
         let mut reader: CalldataReader = ctx.calldata_reader()
         let value: u256 = u256::decode(reader)
+
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+        let mut writer: MemoryBufferWriter = buf.writer()
+        writer.write(value)
+
+        evm::return_mem(buf)
+    }
+}
+
+contract AbiDecodeU128 {
+    pub unsafe fn __call__(ctx: Context) {
+        let mut reader: CalldataReader = ctx.calldata_reader()
+        let value: u128 = u128::decode(reader)
 
         let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
         let mut writer: MemoryBufferWriter = buf.writer()
@@ -65,6 +79,21 @@ fn u256_decode(mut ctx: Context) {
     let mut reader: MemoryBufferReader = buf.reader()
     assert reader.read_u256() == 42
 }
+
+#test
+fn u128_decode_invalid(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeU128.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: u256::max())
+
+    assert not ctx.raw_call(addr: decoder, value: 0, buf)
+}
+
 
 // type MyArray = Array<u256, 2>
 // type MyTuple = (u256, u256) 
