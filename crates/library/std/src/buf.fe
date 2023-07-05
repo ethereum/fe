@@ -297,3 +297,48 @@ pub struct RawCallBuffer {
         return self.buf.writer()
     }
 }
+
+pub struct CalldataReader {
+    cur: Cursor
+
+    fn read_offset(mut self, len: u256) -> u256 {
+        return self.cur.advance(len)
+    }
+
+    fn read_n(mut self, len: u256) -> u256 {
+        let offset: u256 = self.read_offset(len)
+        unsafe {
+            let value: u256 = evm::call_data_load(offset)
+            return evm::shr(bits: 256 - len * 8, value)
+        }
+    }
+
+    pub fn read_u8(mut self) -> u8 {
+        return u8(self.read_n(len: 1))
+    }
+
+    pub fn read_u16(mut self) -> u16 {
+        return u16(self.read_n(len: 2))
+    }
+
+    pub fn read_u32(mut self) -> u32 {
+        return u32(self.read_n(len: 4))
+    }
+
+    pub fn read_u64(mut self) -> u64 {
+        return u64(self.read_n(len: 8))
+    }
+
+    pub fn read_u128(mut self) -> u128 {
+        return u128(self.read_n(len: 16))
+    }
+
+    pub fn read_u256(mut self) -> u256 {
+        let offset: u256 = self.read_offset(len: 32)
+        unsafe {
+            let value: u256 = evm::mload(offset)
+            return value
+        }
+    }
+
+}
