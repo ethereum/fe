@@ -1,5 +1,3 @@
-// error: cannot glob import from ingot
-// use std::{abi::Abi, evm}
 use std::abi::{AbiDecode, AbiEncode}
 use std::context::{Context, CalldataReader}
 use std::buf::{
@@ -18,7 +16,7 @@ contract AbiDecodeU256 {
 
         let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
         let mut writer: MemoryBufferWriter = buf.writer()
-        writer.write(value)
+        value.encode(writer) 
 
         evm::return_mem(buf)
     }
@@ -31,40 +29,40 @@ contract AbiDecodeU128 {
 
         let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
         let mut writer: MemoryBufferWriter = buf.writer()
-        writer.write(value)
+        value.encode(writer) 
 
         evm::return_mem(buf)
     }
 }
 
-// #test
-// unsafe fn u256_decode() {
-//     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 64)
+contract AbiDecodeAddress {
+    pub unsafe fn __call__(ctx: Context) {
+        let mut reader: CalldataReader = ctx.calldata_reader()
+        let value: address = address::decode(reader)
 
-//     let mut writer: MemoryBufferWriter = buf.writer()
-//     writer.write(value: 26)
-//     writer.write(value: 42)
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+        let mut writer: MemoryBufferWriter = buf.writer()
+        value.encode(writer) 
 
-//     let mut reader: MemoryBufferReader = buf.reader()
-//     assert u256::decode(reader) == 26
-//     assert u256::decode(reader) == 42 
-// }
+        evm::return_mem(buf)
+    }
+}
 
-#test
-fn u256_encode() {
-    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 64)
+contract AbiDecodeBool {
+    pub unsafe fn __call__(ctx: Context) {
+        let mut reader: CalldataReader = ctx.calldata_reader()
+        let value: bool = bool::decode(reader)
 
-    let mut writer: MemoryBufferWriter = buf.writer()
-    26.encode(writer)
-    42.encode(writer) 
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+        let mut writer: MemoryBufferWriter = buf.writer()
+        value.encode(writer) 
 
-    let mut reader: MemoryBufferReader = buf.reader()
-    assert reader.read_u256() == 26
-    assert reader.read_u256() == 42
+        evm::return_mem(buf)
+    }
 }
 
 #test
-fn u256_decode(mut ctx: Context) {
+fn u256_abi(mut ctx: Context) {
     let decoder: address = address(AbiDecodeU256.create(ctx, 0))
     let mut buf: RawCallBuffer = RawCallBuffer::new(
         input_len: 32, 
@@ -81,8 +79,56 @@ fn u256_decode(mut ctx: Context) {
 }
 
 #test
-fn u128_decode_invalid(mut ctx: Context) {
+fn u128_abi(mut ctx: Context) {
     let decoder: address = address(AbiDecodeU128.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: 42)
+
+    assert ctx.raw_call(addr: decoder, value: 0, buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    assert reader.read_u256() == 42
+}
+
+#test
+fn u128_abi_invalid(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeU128.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: u256(u128::max()) + 1)
+
+    assert not ctx.raw_call(addr: decoder, value: 0, buf)
+}
+
+#test
+fn address_abi(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeAddress.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: 42)
+
+    assert ctx.raw_call(addr: decoder, value: 0, buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    assert reader.read_u256() == 42
+}
+
+#test
+fn address_abi_invalid(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeAddress.create(ctx, 0))
     let mut buf: RawCallBuffer = RawCallBuffer::new(
         input_len: 32, 
         output_len: 32
@@ -94,6 +140,36 @@ fn u128_decode_invalid(mut ctx: Context) {
     assert not ctx.raw_call(addr: decoder, value: 0, buf)
 }
 
+#test
+fn bool_abi(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeBool.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: 1)
+
+    assert ctx.raw_call(addr: decoder, value: 0, buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    assert reader.read_u256() == 1 
+}
+
+#test
+fn bool_abi_invalid(mut ctx: Context) {
+    let decoder: address = address(AbiDecodeBool.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(
+        input_len: 32, 
+        output_len: 32
+    )
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: 3)
+
+    assert not ctx.raw_call(addr: decoder, value: 0, buf)
+}
 
 // type MyArray = Array<u256, 2>
 // type MyTuple = (u256, u256) 

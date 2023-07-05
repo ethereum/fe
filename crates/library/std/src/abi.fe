@@ -11,6 +11,9 @@ pub trait AbiEncode {
     fn encode(self, mut writer: MemoryBufferWriter);
 }
 
+
+// unsigned integers
+
 impl AbiDecode for u256 {
     fn decode(mut reader: CalldataReader) -> Self {
         return reader.read_u256()
@@ -54,6 +57,105 @@ impl AbiDecode for u64 {
 impl AbiEncode for u64 {
     fn encode(self, mut writer: MemoryBufferWriter) {
         return writer.write(value: u256(self))
+    }
+}
+
+impl AbiDecode for u32 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+        if value > u32::max() {
+            revert
+        } else {
+            return u32(value)
+        }
+    }
+}
+
+impl AbiEncode for u32 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: u256(self))
+    }
+}
+
+impl AbiDecode for u16 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+        if value > u16::max() {
+            revert
+        } else {
+            return u16(value)
+        }
+    }
+}
+
+impl AbiEncode for u16 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: u256(self))
+    }
+}
+
+impl AbiDecode for u8 {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+        if value > u8::max() {
+            revert
+        } else {
+            return u8(value)
+        }
+    }
+}
+
+impl AbiEncode for u8 {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        return writer.write(value: u256(self))
+    }
+}
+
+// signed integers
+
+// todo
+
+// misc types
+
+impl AbiDecode for bool {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+
+        if value == 0 {
+            return false
+        } else if value == 1 {
+            return true 
+        } else {
+            revert
+        }
+    }
+}
+
+impl AbiEncode for bool {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        if self {
+            writer.write(value: 1)
+        } else {
+            writer.write(value: 0)
+        }
+    }
+}
+
+impl AbiDecode for address {
+    fn decode(mut reader: CalldataReader) -> Self {
+        let value: u256 = reader.read_u256()
+
+        if value > 2 ^ 160 {
+           revert 
+        } else {
+            return address(value)
+        }
+    }
+}
+
+impl AbiEncode for address {
+    fn encode(self, mut writer: MemoryBufferWriter) {
+        writer.write(value: u256(self))
     }
 }
 
