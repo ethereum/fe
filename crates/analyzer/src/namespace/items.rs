@@ -741,9 +741,24 @@ impl ModuleId {
         items
     }
 
-    /// All module constants.
+    /// All module constants, including those being used from other modules.
     pub fn all_constants(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleConstantId>> {
-        db.module_constants(*self)
+        let used_constants: Vec<_> = self
+            .used_items(db)
+            .iter()
+            .filter_map(|(_, (_, item))| match item {
+                Item::Constant(id) => Some(*id),
+                _ => None,
+            })
+            .collect();
+
+        let all_constants: Vec<_> = db
+            .module_constants(*self)
+            .iter()
+            .cloned()
+            .chain(used_constants)
+            .collect();
+        Rc::new(all_constants)
     }
 
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {

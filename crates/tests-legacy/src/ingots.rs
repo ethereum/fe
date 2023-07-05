@@ -44,6 +44,12 @@ fn test_ingot_pub_contract() {
     })
 }
 #[test]
+fn test_imported_constant() {
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "imported_constant", "Foo", &[]);
+    })
+}
+#[test]
 fn test_basic_ingot() {
     with_executor(&|mut executor| {
         let harness = deploy_ingot(&mut executor, "basic_ingot", "Foo", &[]);

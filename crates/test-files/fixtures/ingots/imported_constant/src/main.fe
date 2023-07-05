@@ -1,0 +1,8 @@
+use constants::MAX_ITEMS
+
+contract Foo {
+    pub fn __init__() {
+        let data: Array<u256, {MAX_ITEMS}> = [1; {MAX_ITEMS}]
+        assert data[0] + data[1] == 2
+    }
+}
