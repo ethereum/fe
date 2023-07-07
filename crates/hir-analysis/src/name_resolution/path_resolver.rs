@@ -34,6 +34,24 @@ pub(super) struct EarlyResolvedPathWithTrajectory {
     pub(super) trajectory: Vec<NameRes>,
 }
 
+impl EarlyResolvedPathWithTrajectory {
+    pub(super) fn check_trajectory_visibility(
+        &self,
+        db: &dyn HirAnalysisDb,
+    ) -> PathResolutionResult<()> {
+        let original_scope = self.trajectory.first().unwrap().scope().unwrap();
+        for (i, res) in self.trajectory[1..].iter().enumerate() {
+            if !res.is_visible(db, original_scope) {
+                return Err(PathResolutionError::new(
+                    NameResolutionError::Invisible(res.derived_from(db)),
+                    i,
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
 pub type PathResolutionResult<T> = Result<T, PathResolutionError>;
 
 #[derive(Debug, derive_more::Display, Clone, PartialEq, Eq, Hash, derive_more::Error)]
@@ -149,7 +167,7 @@ impl<'a> IntermediatePath<'a> {
         let Partial::Present(name) = self.path[self.idx] else {
             return Err(PathResolutionError::new(
                 NameResolutionError::Invalid,
-                self.idx
+                self.idx,
             ));
         };
 
@@ -157,7 +175,7 @@ impl<'a> IntermediatePath<'a> {
             return Err(PathResolutionError::new(
                 NameResolutionError::NotFound,
                 self.idx,
-            ))
+            ));
         };
 
         let mut directive = QueryDirective::new();

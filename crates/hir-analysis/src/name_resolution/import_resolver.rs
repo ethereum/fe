@@ -351,7 +351,7 @@ impl<'db> ImportResolver<'db> {
                         } else {
                             true
                         }
-                    } else if is_scope_visible_from(self.db, i_use.original_scope, scope) {
+                    } else if is_scope_visible_from(self.db, scope, i_use.original_scope) {
                         true
                     } else {
                         if scope.is_importable() {
@@ -573,7 +573,7 @@ impl<'db> ImportResolver<'db> {
     /// Makes a query for the current segment of the intermediate use to be
     /// resolved.
     fn make_query(&self, i_use: &IntermediateUse) -> NameResolutionResult<NameQuery> {
-        let Some(seg_name) = i_use.current_segment_ident(self.db)  else {
+        let Some(seg_name) = i_use.current_segment_ident(self.db) else {
             return Err(NameResolutionError::Invalid);
         };
 
@@ -1011,7 +1011,10 @@ impl NameRes {
     /// Returns true if the binding contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
     fn is_external(&self, db: &dyn HirAnalysisDb, i_use: &IntermediateUse) -> bool {
-        let Some(current_ingot) = i_use.current_scope().map(|scope| scope.ingot(db.as_hir_db())) else {
+        let Some(current_ingot) = i_use
+            .current_scope()
+            .map(|scope| scope.ingot(db.as_hir_db()))
+        else {
             return false;
         };
 
