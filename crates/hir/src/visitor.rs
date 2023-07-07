@@ -1532,7 +1532,7 @@ pub fn walk_path<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, p
 where
     V: Visitor + ?Sized,
 {
-    for (idx, segment) in path.data(ctxt.db).iter().enumerate() {
+    for (idx, segment) in path.segments(ctxt.db).iter().enumerate() {
         if let Some(ident) = segment.to_opt() {
             ctxt.with_new_ctxt(
                 |span| span.segment_moved(idx).into_atom(),

@@ -1,5 +1,6 @@
 #[salsa::interned]
 pub struct IdentId {
+    #[return_ref]
     pub data: String,
 }
 impl IdentId {

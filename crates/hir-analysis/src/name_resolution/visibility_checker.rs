@@ -7,24 +7,28 @@ use crate::HirAnalysisDb;
 /// 1. It is declared as public, or
 /// 2. The `ref_scope` is a transitive reflexive child of the scope where the
 /// name is defined.
-pub fn is_scope_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, target_scope: ScopeId) -> bool {
+pub(crate) fn is_scope_visible_from(
+    db: &dyn HirAnalysisDb,
+    scope: ScopeId,
+    from_scope: ScopeId,
+) -> bool {
     // If resolved is public, then it is visible.
-    if target_scope.data(db.as_hir_db()).vis.is_pub() {
+    if scope.data(db.as_hir_db()).vis.is_pub() {
         return true;
     }
 
-    let Some(def_scope) = (if matches!(target_scope, ScopeId::Field(..) | ScopeId::Variant(..)) {
+    let Some(def_scope) = (if matches!(scope, ScopeId::Field(..) | ScopeId::Variant(..)) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
-            target_scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))
+            scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))
         } else {
-            target_scope.parent(db.as_hir_db())
+            scope.parent(db.as_hir_db())
         })
     else {
         return false;
     };
 
-    ref_scope.is_transitive_child_of(db.as_hir_db(), def_scope)
+    from_scope.is_transitive_child_of(db.as_hir_db(), def_scope)
 }
 
 /// Return `true` if the given `use_` is visible from the `ref_scope`.

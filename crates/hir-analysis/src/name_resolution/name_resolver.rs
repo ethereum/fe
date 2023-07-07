@@ -12,7 +12,7 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        IdentId, ItemKind, Partial, Use,
+        IdentId, ItemKind, Use,
     },
     span::DynLazySpan,
 };
@@ -22,366 +22,8 @@ use crate::HirAnalysisDb;
 
 use super::{
     import_resolver::Importer,
-    visibility_checker::{is_scope_visible, is_use_visible},
+    visibility_checker::{is_scope_visible_from, is_use_visible},
 };
-
-pub struct NameResolver<'db, 'a> {
-    db: &'db dyn HirAnalysisDb,
-    importer: &'a dyn Importer,
-    cache_store: ResolvedQueryCacheStore,
-}
-
-impl<'db, 'a> NameResolver<'db, 'a> {
-    pub(super) fn new(db: &'db dyn HirAnalysisDb, importer: &'a dyn Importer) -> Self {
-        Self {
-            db,
-            importer,
-            cache_store: Default::default(),
-        }
-    }
-
-    pub(super) fn new_no_cache(db: &'db dyn HirAnalysisDb, importer: &'a dyn Importer) -> Self {
-        let cache_store = ResolvedQueryCacheStore {
-            no_cache: true,
-            ..Default::default()
-        };
-        Self {
-            db,
-            importer,
-            cache_store,
-        }
-    }
-
-    pub(super) fn into_cache_store(self) -> ResolvedQueryCacheStore {
-        self.cache_store
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ResolvedPath {
-    Full(NameBinding),
-
-    /// The path is partially resolved; this means that the `resolved` is a type
-    /// and the following segments depend on type to resolve.
-    /// These unresolved parts are resolved in the later type inference and
-    /// trait solving phases.
-    Partial {
-        resolved: NameRes,
-        unresolved_from: usize,
-    },
-}
-
-impl ResolvedPath {
-    pub fn partial(resolved: NameRes, unresolved_from: usize) -> Self {
-        Self::Partial {
-            resolved,
-            unresolved_from,
-        }
-    }
-}
-
-#[derive(Debug, derive_more::Display, Clone, PartialEq, Eq, Hash, derive_more::Error)]
-#[display(fmt = "failed_at: {failed_at}, kind: {kind}")]
-pub struct PathResolutionError {
-    pub kind: NameResolutionError,
-    pub failed_at: usize,
-}
-impl PathResolutionError {
-    fn new(kind: NameResolutionError, failed_at: usize) -> Self {
-        Self { kind, failed_at }
-    }
-}
-
-impl<'db, 'a> NameResolver<'db, 'a> {
-    /// Resolve the path segments to a set of possible resolutions.
-    /// A path can be resolved to multiple resolutions because we have multiple
-    /// name domains.
-    ///
-    /// For example, the `foo::FOO` can be resolved to both `const
-    /// FOO` and `struct FOO` in the following code without any error:
-    /// ```fe
-    /// use foo::FOO
-    ///
-    /// mod foo {
-    ///     pub const FOO: i32 = 1
-    ///     pub struct FOO {}
-    /// }
-    /// ```
-    pub fn resolve_segments(
-        &mut self,
-        segments: Vec<Partial<IdentId>>,
-        mut scope: ScopeId,
-        directive: QueryDirective,
-    ) -> Result<ResolvedPath, PathResolutionError> {
-        if segments.is_empty() {
-            return Err(PathResolutionError::new(NameResolutionError::Invalid, 0));
-        }
-
-        let last_seg_idx = segments.len() - 1;
-        for (i, seg) in segments[0..last_seg_idx].iter().enumerate() {
-            let Partial::Present(ident) = seg else {
-                return Err(PathResolutionError::new(NameResolutionError::Invalid, i));
-            };
-            let query = NameQuery::new(*ident, scope);
-            let binding = self.resolve_query(query);
-            scope = match binding.res_by_domain(NameDomain::Item) {
-                Ok(res) => {
-                    if res.is_type(self.db) {
-                        return Ok(ResolvedPath::Partial {
-                            resolved: res.clone(),
-                            unresolved_from: i + 1,
-                        });
-                    } else if let Some(scope) = res.scope() {
-                        scope
-                    } else {
-                        return Err(PathResolutionError::new(
-                            NameResolutionError::NotFound,
-                            i + 1,
-                        ));
-                    }
-                }
-                Err(err) => {
-                    return Err(PathResolutionError::new(err.clone(), i));
-                }
-            };
-        }
-
-        let Partial::Present(ident) = segments[last_seg_idx] else {
-                return Err(PathResolutionError::new(NameResolutionError::Invalid, last_seg_idx));
-        };
-        let query = NameQuery::with_directive(ident, scope, directive);
-        let resolved = self.resolve_query(query);
-        Ok(ResolvedPath::Full(resolved))
-    }
-
-    pub fn resolve_query(&mut self, query: NameQuery) -> NameBinding {
-        // If the query is already resolved, return the cached result.
-        if let Some(resolved) = self.cache_store.get(query) {
-            return resolved.clone();
-        };
-
-        let mut binding = NameBinding::default();
-
-        // The shadowing rule is
-        // `$ > NamedImports > GlobImports > Lex > external ingot > builtin types`,
-        // where `$` means current scope.
-        // This ordering means that greater one shadows lower ones in the same domain.
-        let mut parent = None;
-
-        // 1. Look for the name in the current scope.
-        let mut found_scopes = FxHashSet::default();
-        for edge in query.scope.edges(self.db.as_hir_db()) {
-            match edge.kind.propagate(&query) {
-                PropagationResult::Terminated => {
-                    if found_scopes.insert(edge.dest) {
-                        let res = NameRes::new_scope(
-                            edge.dest,
-                            NameDomain::from_scope(edge.dest),
-                            NameDerivation::Def,
-                        );
-                        binding.push(&res);
-                    }
-                }
-
-                PropagationResult::Continuation => {
-                    debug_assert!(parent.is_none());
-                    parent = Some(edge.dest);
-                }
-
-                PropagationResult::UnPropagated => {}
-            }
-        }
-
-        // 2. Look for the name in the named imports of the current scope.
-        if let Some(imported) = self
-            .importer
-            .named_imports(self.db, query.scope)
-            .and_then(|imports| imports.get(&query.name))
-        {
-            binding.merge(imported.iter());
-        }
-
-        // 3. Look for the name in the glob imports.
-        if query.directive.allow_glob {
-            if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
-                for res in imported.name_res_for(query.name) {
-                    binding.push(res);
-                }
-            }
-        }
-
-        // 4. Look for the name in the lexical scope if it exists.
-        if let Some(parent) = parent {
-            let mut query_for_parent = query;
-            query_for_parent.scope = parent;
-            query_for_parent.directive.disallow_external();
-
-            let mut resolved = self.resolve_query(query_for_parent);
-            resolved.set_lexed_derivation();
-            binding.merge(resolved.iter());
-        }
-
-        if !query.directive.allow_external {
-            return self.finalize_query_result(query, binding);
-        }
-
-        // 5. Look for the name in the external ingots.
-        query
-            .scope
-            .top_mod(self.db.as_hir_db())
-            .ingot(self.db.as_hir_db())
-            .external_ingots(self.db.as_hir_db())
-            .iter()
-            .for_each(|(name, root_mod)| {
-                if *name == query.name {
-                    // We don't care about the result of `push` because we assume ingots are
-                    // guaranteed to be unique.
-                    binding.push(&NameRes::new_scope(
-                        ScopeId::root(*root_mod),
-                        NameDomain::Item,
-                        NameDerivation::External,
-                    ))
-                }
-            });
-
-        // 6. Look for the name in the builtin types.
-        for &prim in PrimTy::all_types() {
-            // We don't care about the result of `push` because we assume builtin types are
-            // guaranteed to be unique.
-            if query.name == prim.name() {
-                binding.push(&NameRes::new_prim(prim));
-            }
-        }
-
-        self.finalize_query_result(query, binding)
-    }
-
-    /// Collect all visible resolutions in the given `target` scope.
-    ///
-    /// The function follows the shadowing rule, meaning the same name in the
-    /// same domain is properly shadowed. Also, this function guarantees that
-    /// the collected resolutions are unique in terms of its name and resolved
-    /// scope.
-    ///
-    /// On the other hand, the function doesn't cause any error and collect all
-    /// resolutions even if they are in the same domain. The reason
-    /// for this is
-    /// - Ambiguous error should be reported lazily, meaning it should be
-    ///   reported when the resolution is actually used.
-    /// - The function is used for glob imports, so it's necessary to return
-    ///   monotonously increasing results. Also, we can't arbitrarily choose the
-    ///   possible resolution from multiple candidates to avoid hiding
-    ///   ambiguity. That's also the reason why we can't use `NameBinding` and
-    ///   `NameBinding::merge` in this function.
-    ///
-    /// The below examples demonstrates the second point.
-    /// We need to report ambiguous error at `const C: S = S` because `S` is
-    /// ambiguous, on the other hand, we need NOT to report ambiguous error in
-    /// `foo` modules because `S` is not referred to in the module.
-    ///
-    /// ```fe
-    /// use foo::*
-    /// const C: S = S
-    ///
-    /// mod foo {
-    ///     pub use inner1::*
-    ///     pub use inner2::*
-    ///
-    ///     mod inner1 {
-    ///           pub struct S {}
-    ///     }
-    ///     mod inner2 {
-    ///        pub struct S {}
-    ///     }
-    /// }
-    /// ```
-    pub(super) fn collect_all_resolutions_for_glob(
-        &mut self,
-        target: ScopeId,
-        ref_scope: ScopeId,
-        unresolved_named_imports: FxHashSet<IdentId>,
-    ) -> FxHashMap<IdentId, Vec<NameRes>> {
-        let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
-        let mut found_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
-        let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
-
-        for edge in target.edges(self.db.as_hir_db()) {
-            let scope = match edge.kind.propagate_glob() {
-                PropagationResult::Terminated => edge.dest,
-                _ => {
-                    continue;
-                }
-            };
-
-            let name = scope.name(self.db.as_hir_db()).unwrap();
-            if !found_kinds.insert((name, scope.into())) {
-                continue;
-            }
-            let res = NameRes::new_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
-
-            *found_domains.entry(name).or_default() |= res.domain as u8;
-            res_collection.entry(name).or_default().push(res);
-        }
-
-        let mut found_domains_after_named = found_domains.clone();
-        if let Some(named_imports) = self.importer.named_imports(self.db, target) {
-            for (&name, import) in named_imports {
-                let found_domain = found_domains.get(&name).copied().unwrap_or_default();
-                for res in import.iter().filter(|res| {
-                    if let NameDerivation::NamedImported(use_) = res.derivation {
-                        is_use_visible(self.db, ref_scope, use_)
-                    } else {
-                        false
-                    }
-                }) {
-                    if (found_domain & res.domain as u8 != 0)
-                        || !found_kinds.insert((name, res.kind))
-                    {
-                        continue;
-                    }
-
-                    *found_domains_after_named.entry(name).or_default() |= res.domain as u8;
-                    res_collection.entry(name).or_default().push(res.clone());
-                }
-            }
-        }
-
-        if let Some(glob_imports) = self.importer.glob_imports(self.db, target) {
-            for (&use_, resolutions) in glob_imports.iter() {
-                if !is_use_visible(self.db, ref_scope, use_) {
-                    continue;
-                }
-                for (&name, res_for_name) in resolutions.iter() {
-                    if unresolved_named_imports.contains(&name) {
-                        continue;
-                    }
-
-                    for res in res_for_name.iter() {
-                        let seen_domain = found_domains_after_named
-                            .get(&name)
-                            .copied()
-                            .unwrap_or_default();
-
-                        if (seen_domain & res.domain as u8 != 0)
-                            || !found_kinds.insert((name, res.kind))
-                        {
-                            continue;
-                        }
-                        res_collection.entry(name).or_default().push(res.clone());
-                    }
-                }
-            }
-        }
-
-        res_collection
-    }
-
-    /// Finalize the query result and cache it to the cache store.
-    fn finalize_query_result(&mut self, query: NameQuery, binding: NameBinding) -> NameBinding {
-        self.cache_store.cache_result(query, binding.clone());
-        binding
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NameQuery {
@@ -432,8 +74,8 @@ pub struct QueryDirective {
 
 impl QueryDirective {
     /// Make a new query directive with the default settings.
-    /// The default setting is to allow lexical scope lookup and look up names
-    /// in the `Item` domain.
+    /// The default setting is to lookup the name in the lexical scope and all
+    /// imports and external ingots.
     pub fn new() -> Self {
         Self {
             allow_lex: true,
@@ -648,7 +290,7 @@ impl NameRes {
         };
 
         match scope_or_use {
-            Either::Left(target_scope) => is_scope_visible(db, from, target_scope),
+            Either::Left(target_scope) => is_scope_visible_from(db, target_scope, from),
             Either::Right(use_) => is_use_visible(db, from, use_),
         }
     }
@@ -656,7 +298,7 @@ impl NameRes {
     pub fn pretty_path(&self, db: &dyn HirAnalysisDb) -> Option<String> {
         match self.kind {
             NameResKind::Scope(scope) => scope.pretty_path(db.as_hir_db()),
-            NameResKind::Prim(prim) => prim.name().data(db.as_hir_db()).into(),
+            NameResKind::Prim(prim) => prim.name().data(db.as_hir_db()).clone().into(),
         }
     }
 
@@ -681,7 +323,11 @@ impl NameRes {
         }
     }
 
-    fn new_scope(scope: ScopeId, domain: NameDomain, derivation: NameDerivation) -> Self {
+    pub(super) fn new_from_scope(
+        scope: ScopeId,
+        domain: NameDomain,
+        derivation: NameDerivation,
+    ) -> Self {
         Self {
             kind: scope.into(),
             derivation,
@@ -769,6 +415,267 @@ impl PartialOrd for NameDerivation {
     }
 }
 
+pub(crate) struct NameResolver<'db, 'a> {
+    db: &'db dyn HirAnalysisDb,
+    importer: &'a dyn Importer,
+    cache_store: ResolvedQueryCacheStore,
+}
+
+impl<'db, 'a> NameResolver<'db, 'a> {
+    pub(super) fn new(db: &'db dyn HirAnalysisDb, importer: &'a dyn Importer) -> Self {
+        Self {
+            db,
+            importer,
+            cache_store: Default::default(),
+        }
+    }
+
+    pub(super) fn new_no_cache(db: &'db dyn HirAnalysisDb, importer: &'a dyn Importer) -> Self {
+        let cache_store = ResolvedQueryCacheStore {
+            no_cache: true,
+            ..Default::default()
+        };
+        Self {
+            db,
+            importer,
+            cache_store,
+        }
+    }
+
+    pub(super) fn into_cache_store(self) -> ResolvedQueryCacheStore {
+        self.cache_store
+    }
+
+    pub(crate) fn resolve_query(&mut self, query: NameQuery) -> NameBinding {
+        // If the query is already resolved, return the cached result.
+        if let Some(resolved) = self.cache_store.get(query) {
+            return resolved.clone();
+        };
+
+        let mut binding = NameBinding::default();
+
+        // The shadowing rule is
+        // `$ > NamedImports > GlobImports > Lex > external ingot > builtin types`,
+        // where `$` means current scope.
+        // This ordering means that greater one shadows lower ones in the same domain.
+        let mut parent = None;
+
+        // 1. Look for the name in the current scope.
+        let mut found_scopes = FxHashSet::default();
+        for edge in query.scope.edges(self.db.as_hir_db()) {
+            match edge.kind.propagate(&query) {
+                PropagationResult::Terminated => {
+                    if found_scopes.insert(edge.dest) {
+                        let res = NameRes::new_from_scope(
+                            edge.dest,
+                            NameDomain::from_scope(edge.dest),
+                            NameDerivation::Def,
+                        );
+                        binding.push(&res);
+                    }
+                }
+
+                PropagationResult::Continuation => {
+                    debug_assert!(parent.is_none());
+                    parent = Some(edge.dest);
+                }
+
+                PropagationResult::UnPropagated => {}
+            }
+        }
+
+        // 2. Look for the name in the named imports of the current scope.
+        if let Some(imported) = self
+            .importer
+            .named_imports(self.db, query.scope)
+            .and_then(|imports| imports.get(&query.name))
+        {
+            binding.merge(imported.iter());
+        }
+
+        // 3. Look for the name in the glob imports.
+        if query.directive.allow_glob {
+            if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
+                for res in imported.name_res_for(query.name) {
+                    binding.push(res);
+                }
+            }
+        }
+
+        // 4. Look for the name in the lexical scope if it exists.
+        if let Some(parent) = parent {
+            let mut query_for_parent = query;
+            query_for_parent.scope = parent;
+            query_for_parent.directive.disallow_external();
+
+            let mut resolved = self.resolve_query(query_for_parent);
+            resolved.set_lexed_derivation();
+            binding.merge(resolved.iter());
+        }
+
+        if !query.directive.allow_external {
+            return self.finalize_query_result(query, binding);
+        }
+
+        // 5. Look for the name in the external ingots.
+        query
+            .scope
+            .top_mod(self.db.as_hir_db())
+            .ingot(self.db.as_hir_db())
+            .external_ingots(self.db.as_hir_db())
+            .iter()
+            .for_each(|(name, root_mod)| {
+                if *name == query.name {
+                    // We don't care about the result of `push` because we assume ingots are
+                    // guaranteed to be unique.
+                    binding.push(&NameRes::new_from_scope(
+                        ScopeId::root(*root_mod),
+                        NameDomain::Item,
+                        NameDerivation::External,
+                    ))
+                }
+            });
+
+        // 6. Look for the name in the builtin types.
+        for &prim in PrimTy::all_types() {
+            // We don't care about the result of `push` because we assume builtin types are
+            // guaranteed to be unique.
+            if query.name == prim.name() {
+                binding.push(&NameRes::new_prim(prim));
+            }
+        }
+
+        self.finalize_query_result(query, binding)
+    }
+
+    /// Collect all visible resolutions in the given `target` scope.
+    ///
+    /// The function follows the shadowing rule, meaning the same name in the
+    /// same domain is properly shadowed. Also, this function guarantees that
+    /// the collected resolutions are unique in terms of its name and resolved
+    /// scope.
+    ///
+    /// On the other hand, the function doesn't cause any error and collect all
+    /// resolutions even if they are in the same domain. The reason
+    /// for this is
+    /// - Ambiguous error should be reported lazily, meaning it should be
+    ///   reported when the resolution is actually used.
+    /// - The function is used for glob imports, so it's necessary to return
+    ///   monotonously increasing results. Also, we can't arbitrarily choose the
+    ///   possible resolution from multiple candidates to avoid hiding
+    ///   ambiguity. That's also the reason why we can't use `NameBinding` and
+    ///   `NameBinding::merge` in this function.
+    ///
+    /// The below examples demonstrates the second point.
+    /// We need to report ambiguous error at `const C: S = S` because `S` is
+    /// ambiguous, on the other hand, we need NOT to report ambiguous error in
+    /// `foo` modules because `S` is not referred to in the module.
+    ///
+    /// ```fe
+    /// use foo::*
+    /// const C: S = S
+    ///
+    /// mod foo {
+    ///     pub use inner1::*
+    ///     pub use inner2::*
+    ///
+    ///     mod inner1 {
+    ///           pub struct S {}
+    ///     }
+    ///     mod inner2 {
+    ///        pub struct S {}
+    ///     }
+    /// }
+    /// ```
+    pub(super) fn collect_all_resolutions_for_glob(
+        &mut self,
+        target: ScopeId,
+        ref_scope: ScopeId,
+        unresolved_named_imports: FxHashSet<IdentId>,
+    ) -> FxHashMap<IdentId, Vec<NameRes>> {
+        let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
+        let mut found_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
+        let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
+
+        for edge in target.edges(self.db.as_hir_db()) {
+            let scope = match edge.kind.propagate_glob() {
+                PropagationResult::Terminated => edge.dest,
+                _ => {
+                    continue;
+                }
+            };
+
+            let name = scope.name(self.db.as_hir_db()).unwrap();
+            if !found_kinds.insert((name, scope.into())) {
+                continue;
+            }
+            let res =
+                NameRes::new_from_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
+
+            *found_domains.entry(name).or_default() |= res.domain as u8;
+            res_collection.entry(name).or_default().push(res);
+        }
+
+        let mut found_domains_after_named = found_domains.clone();
+        if let Some(named_imports) = self.importer.named_imports(self.db, target) {
+            for (&name, import) in named_imports {
+                let found_domain = found_domains.get(&name).copied().unwrap_or_default();
+                for res in import.iter().filter(|res| {
+                    if let NameDerivation::NamedImported(use_) = res.derivation {
+                        is_use_visible(self.db, ref_scope, use_)
+                    } else {
+                        false
+                    }
+                }) {
+                    if (found_domain & res.domain as u8 != 0)
+                        || !found_kinds.insert((name, res.kind))
+                    {
+                        continue;
+                    }
+
+                    *found_domains_after_named.entry(name).or_default() |= res.domain as u8;
+                    res_collection.entry(name).or_default().push(res.clone());
+                }
+            }
+        }
+
+        if let Some(glob_imports) = self.importer.glob_imports(self.db, target) {
+            for (&use_, resolutions) in glob_imports.iter() {
+                if !is_use_visible(self.db, ref_scope, use_) {
+                    continue;
+                }
+                for (&name, res_for_name) in resolutions.iter() {
+                    if unresolved_named_imports.contains(&name) {
+                        continue;
+                    }
+
+                    for res in res_for_name.iter() {
+                        let seen_domain = found_domains_after_named
+                            .get(&name)
+                            .copied()
+                            .unwrap_or_default();
+
+                        if (seen_domain & res.domain as u8 != 0)
+                            || !found_kinds.insert((name, res.kind))
+                        {
+                            continue;
+                        }
+                        res_collection.entry(name).or_default().push(res.clone());
+                    }
+                }
+            }
+        }
+
+        res_collection
+    }
+
+    /// Finalize the query result and cache it to the cache store.
+    fn finalize_query_result(&mut self, query: NameQuery, binding: NameBinding) -> NameBinding {
+        self.cache_store.cache_result(query, binding.clone());
+        binding
+    }
+}
+
 impl Ord for NameDerivation {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.partial_cmp(other).unwrap()
@@ -813,15 +720,15 @@ pub(crate) struct ResolvedQueryCacheStore {
 }
 
 impl ResolvedQueryCacheStore {
+    pub(super) fn get(&self, query: NameQuery) -> Option<&NameBinding> {
+        self.cache.get(&query)
+    }
+
     fn cache_result(&mut self, query: NameQuery, result: NameBinding) {
         if self.no_cache {
             return;
         }
         self.cache.insert(query, result);
-    }
-
-    fn get(&self, query: NameQuery) -> Option<&NameBinding> {
-        self.cache.get(&query)
     }
 }
 

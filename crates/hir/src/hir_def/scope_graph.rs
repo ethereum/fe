@@ -260,7 +260,7 @@ impl ScopeId {
             let parent_path = parent.pretty_path(db)?;
             Some(format!("{}::{}", parent_path, self.name(db)?.data(db)))
         } else {
-            self.name(db).map(|name| name.data(db))
+            self.name(db).map(|name| name.data(db).clone())
         }
     }
 }

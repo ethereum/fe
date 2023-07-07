@@ -12,7 +12,7 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    name_resolution::visibility_checker::{is_scope_visible, is_use_visible},
+    name_resolution::visibility_checker::{is_scope_visible_from, is_use_visible},
     HirAnalysisDb,
 };
 
@@ -351,7 +351,7 @@ impl<'db> ImportResolver<'db> {
                         } else {
                             true
                         }
-                    } else if is_scope_visible(self.db, i_use.original_scope, scope) {
+                    } else if is_scope_visible_from(self.db, i_use.original_scope, scope) {
                         true
                     } else {
                         if scope.is_importable() {

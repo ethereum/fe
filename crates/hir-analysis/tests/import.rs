@@ -5,9 +5,7 @@ use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
 use fe_compiler_test_utils::snap_test;
-use fe_hir_analysis::name_resolution::{
-    import_resolver::ResolvedImports, name_resolver::NameDerivation, ImportAnalysisPass,
-};
+use fe_hir_analysis::name_resolution::{ImportAnalysisPass, NameDerivation, ResolvedImports};
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::Use};
 use rustc_hash::FxHashMap;
 

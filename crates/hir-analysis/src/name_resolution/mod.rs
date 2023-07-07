@@ -1,3 +1,15 @@
+pub mod diagnostics;
+
+mod import_resolver;
+mod name_resolver;
+mod path_resolver;
+mod visibility_checker;
+
+pub use import_resolver::ResolvedImports;
+pub use name_resolver::{
+    NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, QueryDirective,
+};
+
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
@@ -17,16 +29,9 @@ use crate::HirAnalysisDb;
 
 use self::{
     diagnostics::{NameResDiag, NameResolutionDiagAccumulator},
-    import_resolver::{DefaultImporter, ResolvedImports},
-    name_resolver::{
-        NameDomain, NameQuery, NameResolutionError, QueryDirective, ResolvedQueryCacheStore,
-    },
+    import_resolver::DefaultImporter,
+    name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
 };
-
-pub mod diagnostics;
-pub mod import_resolver;
-pub mod name_resolver;
-pub mod visibility_checker;
 
 pub struct ImportAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
