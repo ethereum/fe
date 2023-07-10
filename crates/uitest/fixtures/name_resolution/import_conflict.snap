@@ -1,16 +1,8 @@
 ---
-source: crates/uitest/src/lib.rs
+source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/import_conflict.fe
 ---
-error[2-0001]: `S` conflicts with other definitions
-  ┌─ import_conflict.fe:1:11
-  │
-1 │ use foo1::S
-  │           ^ `S` is defined here
-2 │ use foo2::S
-  │           - `S` is redefined here
-
 error[2-0001]: `S` conflicts with other definitions
   ┌─ import_conflict.fe:1:11
   │

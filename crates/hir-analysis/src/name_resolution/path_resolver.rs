@@ -201,7 +201,7 @@ impl<'a> IntermediatePath<'a> {
 
         EarlyResolvedPathWithTrajectory {
             resolved,
-            trajectory: trajectory,
+            trajectory,
         }
     }
 
@@ -233,7 +233,7 @@ impl<'a> IntermediatePath<'a> {
         debug_assert!(self.idx < self.path.len());
 
         if self.idx == self.path.len() - 1 {
-            return IntermediatePathState::ReadyToFinalize;
+            IntermediatePathState::ReadyToFinalize
         } else if self.current_res.is_type(db) {
             IntermediatePathState::TypeDependent
         } else {

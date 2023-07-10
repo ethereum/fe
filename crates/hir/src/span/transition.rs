@@ -107,6 +107,7 @@ pub(crate) enum ChainRoot {
     Pat(PatRoot),
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct ResolvedOrigin {
     pub(crate) file: InputFile,
     pub(crate) kind: ResolvedOriginKind,
@@ -173,6 +174,7 @@ impl ResolvedOrigin {
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) enum ResolvedOriginKind {
     Node(SyntaxNode),
     Token(SyntaxToken),
