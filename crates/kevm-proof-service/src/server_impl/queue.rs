@@ -24,6 +24,7 @@ pub fn k_type_from_fe_type(typ: &str) -> KSpecType {
         "u8" => KSpecType::U8,
         "bool" => KSpecType::Bool,
         "Context" => KSpecType::Context,
+        "mut Context" => KSpecType::Context,
         _ => panic!("invalid fe type string: {}", typ),
     }
 }

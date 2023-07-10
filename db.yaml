@@ -34,9 +34,9 @@
 6342915096082124860:
   name: de_morgan_true
   complete: true
-11455748359517230147:
-  name: de_morgan_false
-  complete: true
-13658001998889555973:
-  name: shl_shr_n
+14977842676755773493:
+  name: verify_get_42
+  complete: false
+14111824353587072050:
+  name: verify_get_42
   complete: false

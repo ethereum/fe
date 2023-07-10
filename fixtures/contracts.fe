@@ -7,6 +7,8 @@ contract Foo {
 }
 
 #invariant
-fn verify_get_42(foo: Foo) {
+fn verify_get_42(mut ctx: Context) {
+    let foo: Foo = Foo.create(ctx, 0)
+    spec::given_eq(u256(address(foo)), 26)
     spec::assert_eq(foo.get_42(), 42)
 }

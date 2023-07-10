@@ -1,4 +1,4 @@
-SystemTime { tv_sec: 1687455190, tv_nsec: 773921859 }
+SystemTime { tv_sec: 1688767084, tv_nsec: 496605980 }
 queue:
 
 execution pool:
@@ -16,6 +16,6 @@ id: 4205870993505503282 entry: (name: read_byte_shl_248 complete: true)
 id: 17646573292089816401 entry: (name: shl_shr_248 complete: true)
 id: 1491244125428245047 entry: (name: simple6 complete: true)
 id: 6342915096082124860 entry: (name: de_morgan_true complete: true)
-id: 11455748359517230147 entry: (name: de_morgan_false complete: true)
-id: 13658001998889555973 entry: (name: shl_shr_n complete: false)
+id: 14977842676755773493 entry: (name: verify_get_42 complete: false)
+id: 14111824353587072050 entry: (name: verify_get_42 complete: false)
 
