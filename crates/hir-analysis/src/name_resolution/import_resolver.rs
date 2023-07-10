@@ -19,8 +19,8 @@ use crate::{
 use super::{
     diagnostics::NameResDiag,
     name_resolver::{
-        NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, NameResKind,
-        NameResolutionError, NameResolutionResult, NameResolver, QueryDirective,
+        NameDerivation, NameDomain, NameQuery, NameRes, NameResKind, NameResolutionError,
+        NameResolutionResult, NameResolver, QueryDirective, ResBucket,
     },
 };
 
@@ -123,7 +123,7 @@ impl<'db> ImportResolver<'db> {
                 continue;
             }
 
-            // If the unresolved use is not a glob and the number of imported bindings is
+            // If the unresolved use is not a glob and the number of imported bucket is
             // not 0, then we can regard the resolution for the use as completed.
             // This happens if the scope that the use is referring to is not closed.
             if !i_use.is_glob(self.db) && *self.num_imported_res.entry(i_use.use_).or_default() != 0
@@ -215,7 +215,7 @@ impl<'db> ImportResolver<'db> {
         let original_scope = base_path_resolved.original_scope;
         let use_ = base_path_resolved.use_;
 
-        // Collect all unresolved named imports in the target scope to avoid binding a
+        // Collect all unresolved named imports in the target scope to avoid bucket a
         // name to a wrong resolution being brought by a glob.
         let unresolved_named_imports = match self.intermediate_uses.get(&target_scope) {
             Some(i_uses) => i_uses
@@ -234,7 +234,7 @@ impl<'db> ImportResolver<'db> {
             None => FxHashSet::default(),
         };
 
-        // Collect all bindings in the target scope.
+        // Collect all bucket in the target scope.
         let mut resolver = NameResolver::new(self.db, &self.resolved_imports);
         let resolutions = resolver.collect_all_resolutions_for_glob(
             target_scope,
@@ -332,11 +332,11 @@ impl<'db> ImportResolver<'db> {
         };
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
-        let mut binding = resolver.resolve_query(query);
+        let mut bucket = resolver.resolve_query(query);
 
         // Filter out invisible resolutions.
         let mut invisible_span = None;
-        binding.resolutions.retain(|_, res| {
+        bucket.bucket.retain(|_, res| {
             let Ok(res) = res else {
                 return true;
             };
@@ -368,10 +368,10 @@ impl<'db> ImportResolver<'db> {
 
         // Filter out irrelevant resolutions if the segment is not the last one.
         if !i_use.is_base_resolved(self.db) {
-            binding.filter_by_domain(NameDomain::Item);
+            bucket.filter_by_domain(NameDomain::Item);
         }
 
-        for err in binding.errors() {
+        for err in bucket.errors() {
             if !matches!(
                 err,
                 NameResolutionError::NotFound | NameResolutionError::Invalid
@@ -380,7 +380,7 @@ impl<'db> ImportResolver<'db> {
                 return None;
             }
         }
-        if binding.is_empty() {
+        if bucket.is_empty() {
             if self.is_decidable(i_use) {
                 let err = if let Some(invisible_span) = invisible_span {
                     NameResolutionError::Invisible(invisible_span.into())
@@ -397,7 +397,7 @@ impl<'db> ImportResolver<'db> {
         // If the resolution is derived from glob import or external crate, we have to
         // insert the use into the `suspicious_imports` set to verify the ambiguity
         // after the algorithm reaches the fixed point.
-        for res in binding.iter() {
+        for res in bucket.iter() {
             if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
                 self.suspicious_imports.insert(i_use.use_);
                 break;
@@ -405,9 +405,9 @@ impl<'db> ImportResolver<'db> {
         }
 
         if i_use.is_base_resolved(self.db) {
-            Some(IUseResolution::Full(binding))
+            Some(IUseResolution::Full(bucket))
         } else {
-            let res = binding.res_by_domain(NameDomain::Item).clone().unwrap();
+            let res = bucket.res_by_domain(NameDomain::Item).clone().unwrap();
             let next_i_use = i_use.proceed(res);
             if next_i_use.is_base_resolved(self.db) {
                 Some(IUseResolution::BasePath(next_i_use))
@@ -436,8 +436,8 @@ impl<'db> ImportResolver<'db> {
     fn try_finalize_named_use(&mut self, i_use: IntermediateUse) -> bool {
         debug_assert!(i_use.is_base_resolved(self.db));
 
-        let binding = match self.resolve_segment(&i_use) {
-            Some(IUseResolution::Full(binding)) => binding,
+        let bucket = match self.resolve_segment(&i_use) {
+            Some(IUseResolution::Full(bucket)) => bucket,
             Some(IUseResolution::Unchanged(_)) => {
                 return false;
             }
@@ -449,7 +449,7 @@ impl<'db> ImportResolver<'db> {
             }
         };
 
-        let n_res = binding.len();
+        let n_res = bucket.len();
         let is_decidable = self.is_decidable(&i_use);
         if *self.num_imported_res.entry(i_use.use_).or_default() == n_res {
             return is_decidable;
@@ -458,7 +458,7 @@ impl<'db> ImportResolver<'db> {
         self.num_imported_res.insert(i_use.use_, n_res);
         if let Err(err) = self
             .resolved_imports
-            .set_named_binds(self.db, &i_use, binding)
+            .set_named_binds(self.db, &i_use, bucket)
         {
             self.accumulated_errors.push(err);
         }
@@ -477,7 +477,7 @@ impl<'db> ImportResolver<'db> {
         let ingot = scope.ingot(self.db.as_hir_db());
 
         // The ambiguity in the first segment possibly occurs when the segment is
-        // resolved to either a glob imported binding or an external ingot in the
+        // resolved to either a glob imported bucket or an external ingot in the
         // `i_use` resolution.
         //
         // This is because:
@@ -667,7 +667,7 @@ impl<'db> ImportResolver<'db> {
 pub struct ResolvedImports {
     pub named_resolved: FxHashMap<ScopeId, NamedImportSet>,
     pub glob_resolved: FxHashMap<ScopeId, GlobImportSet>,
-    pub unnamed_resolved: Vec<NameBinding>,
+    pub unnamed_resolved: Vec<ResBucket>,
 }
 
 pub(super) trait Importer {
@@ -683,11 +683,7 @@ pub(super) trait Importer {
         scope: ScopeId,
     ) -> Option<&'a GlobImportSet>;
 
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> &'a [NameBinding];
+    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket];
 }
 
 pub(super) struct DefaultImporter;
@@ -713,16 +709,12 @@ impl Importer for DefaultImporter {
             .get(&scope)
     }
 
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> &'a [NameBinding] {
+    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket] {
         &resolved_imports_for_scope(db, scope).unnamed_resolved
     }
 }
 
-pub type NamedImportSet = FxHashMap<IdentId, NameBinding>;
+pub type NamedImportSet = FxHashMap<IdentId, ResBucket>;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GlobImportSet {
@@ -796,7 +788,7 @@ impl IntermediateUse {
     }
 
     /// Proceed the resolution of the use path to the next segment.
-    /// The binding must contain exactly one resolution.
+    /// The bucket must contain exactly one resolution.
     fn proceed(&self, next_res: NameRes) -> Self {
         Self {
             use_: self.use_,
@@ -858,7 +850,7 @@ impl IntermediateUse {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum IUseResolution {
     /// The all segments are resolved.
-    Full(NameBinding),
+    Full(ResBucket),
 
     /// The all path segments except the last one are resolved.
     BasePath(IntermediateUse),
@@ -888,7 +880,7 @@ impl IntermediateResolvedImports {
         &mut self,
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
-        mut bind: NameBinding,
+        mut bind: ResBucket,
     ) -> Result<(), NameResDiag> {
         let scope = i_use.original_scope;
         bind.set_derivation(NameDerivation::NamedImported(i_use.use_));
@@ -909,9 +901,9 @@ impl IntermediateResolvedImports {
 
         match imported_set.entry(imported_name) {
             Entry::Occupied(mut e) => {
-                let bindings = e.get_mut();
-                bindings.merge(bind.iter());
-                for err in bindings.errors() {
+                let bucket = e.get_mut();
+                bucket.merge(bind.iter());
+                for err in bucket.errors() {
                     let NameResolutionError::Ambiguous(cands) = err else {
                         continue;
                     };
@@ -989,11 +981,7 @@ impl Importer for IntermediateResolvedImports {
         }
     }
 
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> &'a [NameBinding] {
+    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket] {
         if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             &resolved_imports_for_scope(db, scope).unnamed_resolved
         } else {
@@ -1008,7 +996,7 @@ fn resolved_imports_for_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> &Resolv
 }
 
 impl NameRes {
-    /// Returns true if the binding contains an resolution that is not in the
+    /// Returns true if the bucket contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
     fn is_external(&self, db: &dyn HirAnalysisDb, i_use: &IntermediateUse) -> bool {
         let Some(current_ingot) = i_use
@@ -1024,7 +1012,7 @@ impl NameRes {
         }
     }
 
-    /// Returns true if the binding contains a glob import.
+    /// Returns true if the bucket contains a glob import.
     fn is_derived_from_glob(&self) -> bool {
         matches!(self.derivation, NameDerivation::GlobImported(_))
     }

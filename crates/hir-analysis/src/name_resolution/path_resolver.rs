@@ -5,14 +5,14 @@ use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 
 use super::{
     name_resolver::{
-        NameBinding, NameRes, NameResolutionError, NameResolver, ResolvedQueryCacheStore,
+        NameRes, NameResolutionError, NameResolver, ResBucket, ResolvedQueryCacheStore,
     },
     NameDomain, NameQuery,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EarlyResolvedPath {
-    Full(NameBinding),
+    Full(ResBucket),
 
     /// The path is partially resolved; this means that the `resolved` is a type
     /// and the following segments depend on type to resolve.
@@ -104,8 +104,8 @@ impl<'db, 'a, 'b> EarlyPathResolver<'db, 'a, 'b> {
         loop {
             match i_path.state(self.db) {
                 IntermediatePathState::ReadyToFinalize => {
-                    let binding = self.resolve_last_segment(&i_path)?;
-                    return Ok(i_path.finalize_as_full(binding));
+                    let bucket = self.resolve_last_segment(&i_path)?;
+                    return Ok(i_path.finalize_as_full(bucket));
                 }
 
                 IntermediatePathState::TypeDependent => return Ok(i_path.finalize_as_partial()),
@@ -119,21 +119,21 @@ impl<'db, 'a, 'b> EarlyPathResolver<'db, 'a, 'b> {
 
     fn resolve_segment(&mut self, i_path: &mut IntermediatePath) -> PathResolutionResult<()> {
         let query = i_path.make_query(self.db)?;
-        let binding = self.resolve_query(query);
-        i_path.proceed(binding)
+        let bucket = self.resolve_query(query);
+        i_path.proceed(bucket)
     }
 
     fn resolve_last_segment(
         &mut self,
         i_path: &IntermediatePath,
-    ) -> PathResolutionResult<NameBinding> {
+    ) -> PathResolutionResult<ResBucket> {
         let query = i_path.make_query(self.db)?;
         Ok(self.resolve_query(query))
     }
 
-    fn resolve_query(&mut self, query: NameQuery) -> NameBinding {
-        if let Some(binding) = self.cache_store.get(query) {
-            binding.clone()
+    fn resolve_query(&mut self, query: NameQuery) -> ResBucket {
+        if let Some(bucket) = self.cache_store.get(query) {
+            bucket.clone()
         } else {
             self.name_resolver.resolve_query(query)
         }
@@ -199,8 +199,8 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
-    fn finalize_as_full(mut self, binding: NameBinding) -> EarlyResolvedPathWithTrajectory {
-        let resolved = EarlyResolvedPath::Full(binding);
+    fn finalize_as_full(mut self, bucket: ResBucket) -> EarlyResolvedPathWithTrajectory {
+        let resolved = EarlyResolvedPath::Full(bucket);
         let mut trajectory = self.trajectory;
         let current_res = self.current_res;
         trajectory.push(current_res);
@@ -211,8 +211,8 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
-    fn proceed(&mut self, binding: NameBinding) -> PathResolutionResult<()> {
-        let next_res = binding
+    fn proceed(&mut self, bucket: ResBucket) -> PathResolutionResult<()> {
+        let next_res = bucket
             .res_by_domain(NameDomain::Item)
             .clone()
             .map_err(|err| PathResolutionError::new(err, self.idx))?;

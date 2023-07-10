@@ -108,15 +108,15 @@ impl Default for QueryDirective {
 }
 
 /// The struct contains the lookup result of a name query.
-/// The results can contain more than one resolved items which belong to
+/// The results can contain more than one name resolution which belong to
 /// different name domains.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct NameBinding {
-    pub(super) resolutions: FxHashMap<NameDomain, NameResolutionResult<NameRes>>,
+pub struct ResBucket {
+    pub(super) bucket: FxHashMap<NameDomain, NameResolutionResult<NameRes>>,
 }
 
-impl NameBinding {
-    /// Returns the number of resolutions in the binding.
+impl ResBucket {
+    /// Returns the number of resolutions in the bucket.
     pub fn len(&self) -> usize {
         self.iter().count()
     }
@@ -126,32 +126,26 @@ impl NameBinding {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &NameRes> {
-        self.resolutions
-            .values()
-            .filter_map(|res| res.as_ref().ok())
+        self.bucket.values().filter_map(|res| res.as_ref().ok())
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut NameRes> {
-        self.resolutions
-            .values_mut()
-            .filter_map(|res| res.as_mut().ok())
+        self.bucket.values_mut().filter_map(|res| res.as_mut().ok())
     }
 
     pub fn errors(&self) -> impl Iterator<Item = &NameResolutionError> {
-        self.resolutions
-            .values()
-            .filter_map(|res| res.as_ref().err())
+        self.bucket.values().filter_map(|res| res.as_ref().err())
     }
 
     /// Returns the resolution of the given `domain`.
     pub fn res_by_domain(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
-        self.resolutions
+        self.bucket
             .get(&domain)
             .unwrap_or(&Err(NameResolutionError::NotFound))
     }
 
     pub fn filter_by_domain(&mut self, domain: NameDomain) {
-        self.resolutions.retain(|d, _| *d == domain);
+        self.bucket.retain(|d, _| *d == domain);
     }
 
     /// Merge the `resolutions` into the set. If name conflict happens, the old
@@ -171,7 +165,7 @@ impl NameBinding {
     /// Push the `res` into the set.
     fn push(&mut self, res: &NameRes) {
         let domain = res.domain;
-        match self.resolutions.entry(domain) {
+        match self.bucket.entry(domain) {
             Entry::Occupied(mut e) => {
                 let old_res = match e.get_mut() {
                     Ok(res) => res,
@@ -223,20 +217,20 @@ impl NameBinding {
     }
 }
 
-impl IntoIterator for NameBinding {
+impl IntoIterator for ResBucket {
     type Item = NameResolutionResult<NameRes>;
     type IntoIter = IntoValues<NameDomain, NameResolutionResult<NameRes>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.resolutions.into_values()
+        self.bucket.into_values()
     }
 }
 
-impl From<NameRes> for NameBinding {
+impl From<NameRes> for ResBucket {
     fn from(res: NameRes) -> Self {
         let mut names = FxHashMap::default();
         names.insert(res.domain, Ok(res));
-        Self { resolutions: names }
+        Self { bucket: names }
     }
 }
 
@@ -446,13 +440,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         self.cache_store
     }
 
-    pub(crate) fn resolve_query(&mut self, query: NameQuery) -> NameBinding {
+    pub(crate) fn resolve_query(&mut self, query: NameQuery) -> ResBucket {
         // If the query is already resolved, return the cached result.
         if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
         };
 
-        let mut binding = NameBinding::default();
+        let mut bucket = ResBucket::default();
 
         // The shadowing rule is
         // `$ > NamedImports > GlobImports > Lex > external ingot > builtin types`,
@@ -471,7 +465,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                             NameDomain::from_scope(edge.dest),
                             NameDerivation::Def,
                         );
-                        binding.push(&res);
+                        bucket.push(&res);
                     }
                 }
 
@@ -490,14 +484,14 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .named_imports(self.db, query.scope)
             .and_then(|imports| imports.get(&query.name))
         {
-            binding.merge(imported.iter());
+            bucket.merge(imported.iter());
         }
 
         // 3. Look for the name in the glob imports.
         if query.directive.allow_glob {
             if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
                 for res in imported.name_res_for(query.name) {
-                    binding.push(res);
+                    bucket.push(res);
                 }
             }
         }
@@ -510,11 +504,11 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
             let mut resolved = self.resolve_query(query_for_parent);
             resolved.set_lexed_derivation();
-            binding.merge(resolved.iter());
+            bucket.merge(resolved.iter());
         }
 
         if !query.directive.allow_external {
-            return self.finalize_query_result(query, binding);
+            return self.finalize_query_result(query, bucket);
         }
 
         // 5. Look for the name in the external ingots.
@@ -528,7 +522,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 if *name == query.name {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
-                    binding.push(&NameRes::new_from_scope(
+                    bucket.push(&NameRes::new_from_scope(
                         ScopeId::root(*root_mod),
                         NameDomain::Item,
                         NameDerivation::External,
@@ -541,11 +535,11 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
             if query.name == prim.name() {
-                binding.push(&NameRes::new_prim(prim));
+                bucket.push(&NameRes::new_prim(prim));
             }
         }
 
-        self.finalize_query_result(query, binding)
+        self.finalize_query_result(query, bucket)
     }
 
     /// Collect all visible resolutions in the given `target` scope.
@@ -563,8 +557,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     /// - The function is used for glob imports, so it's necessary to return
     ///   monotonously increasing results. Also, we can't arbitrarily choose the
     ///   possible resolution from multiple candidates to avoid hiding
-    ///   ambiguity. That's also the reason why we can't use `NameBinding` and
-    ///   `NameBinding::merge` in this function.
+    ///   ambiguity. That's also the reason why we can't use [`ResBucket`] and
+    ///   [`ResBucket::merge`] in this function.
     ///
     /// The below examples demonstrates the second point.
     /// We need to report ambiguous error at `const C: S = S` because `S` is
@@ -670,9 +664,9 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     /// Finalize the query result and cache it to the cache store.
-    fn finalize_query_result(&mut self, query: NameQuery, binding: NameBinding) -> NameBinding {
-        self.cache_store.cache_result(query, binding.clone());
-        binding
+    fn finalize_query_result(&mut self, query: NameQuery, bucket: ResBucket) -> ResBucket {
+        self.cache_store.cache_result(query, bucket.clone());
+        bucket
     }
 }
 
@@ -715,16 +709,16 @@ impl std::error::Error for NameResolutionError {}
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedQueryCacheStore {
-    cache: FxHashMap<NameQuery, NameBinding>,
+    cache: FxHashMap<NameQuery, ResBucket>,
     no_cache: bool,
 }
 
 impl ResolvedQueryCacheStore {
-    pub(super) fn get(&self, query: NameQuery) -> Option<&NameBinding> {
+    pub(super) fn get(&self, query: NameQuery) -> Option<&ResBucket> {
         self.cache.get(&query)
     }
 
-    fn cache_result(&mut self, query: NameQuery, result: NameBinding) {
+    fn cache_result(&mut self, query: NameQuery, result: ResBucket) {
         if self.no_cache {
             return;
         }
