@@ -13,6 +13,21 @@ use crate::{
     HirDb,
 };
 
+pub mod prelude {
+    pub use super::{
+        walk_arm, walk_attribute, walk_attribute_list, walk_body, walk_call_arg,
+        walk_call_arg_list, walk_const, walk_contract, walk_enum, walk_expr, walk_field,
+        walk_field_def, walk_field_def_list, walk_field_list, walk_func, walk_func_param,
+        walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
+        walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_mod, walk_pat,
+        walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_ty, walk_type_alias,
+        walk_type_bound, walk_type_bound_list, walk_use, walk_use_path, walk_variant_def,
+        walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
+    };
+
+    pub use crate::span::lazy_spans::*;
+}
+
 /// A visitor for traversing the HIR.
 pub trait Visitor {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
@@ -84,7 +99,7 @@ pub trait Visitor {
         ctxt: &mut VisitorCtxt<'_, LazyAttrListSpan>,
         attrs: AttrListId,
     ) {
-        walk_attributes(self, ctxt, attrs);
+        walk_attribute_list(self, ctxt, attrs);
     }
 
     fn visit_attribute(&mut self, ctxt: &mut VisitorCtxt<'_, LazyAttrSpan>, attr: &Attr) {
@@ -1122,7 +1137,7 @@ where
     }
 }
 
-pub fn walk_attributes<V>(
+pub fn walk_attribute_list<V>(
     visitor: &mut V,
     ctxt: &mut VisitorCtxt<'_, LazyAttrListSpan>,
     attr: AttrListId,
