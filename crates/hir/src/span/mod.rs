@@ -26,6 +26,51 @@ pub mod use_tree;
 
 pub(crate) mod transition;
 
+pub mod lazy_spans {
+    pub use super::attr::{
+        LazyAttrArgListSpan, LazyAttrArgSpan, LazyAttrListSpan, LazyAttrSpan,
+        LazyDocCommentAttrSpan, LazyNormalAttrSpan,
+    };
+
+    pub use super::expr::{
+        LazyBinExprSpan, LazyCallArgListSpan, LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan,
+        LazyFieldExprSpan, LazyFieldListSpan, LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan,
+        LazyMatchArmSpan, LazyMatchExprSpan, LazyMethodCallExprSpan, LazyPathExprSpan,
+        LazyRecordInitExprSpan, LazyUnExprSpan,
+    };
+
+    pub use super::item::{
+        LazyBodySpan, LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFieldDefListSpan,
+        LazyFieldDefSpan, LazyFuncSpan, LazyImplSpan, LazyImplTraitSpan, LazyItemModifierSpan,
+        LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan, LazyTraitSpan,
+        LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefListSpan, LazyVariantDefSpan,
+    };
+
+    pub use super::params::{
+        LazyConstGenericParamSpan, LazyFuncParamListSpan, LazyFuncParamSpan,
+        LazyGenericArgListSpan, LazyGenericArgSpan, LazyGenericParamListSpan, LazyGenericParamSpan,
+        LazyTypeBoundListSpan, LazyTypeBoundSpan, LazyTypeGenericArgSpan, LazyWhereClauseSpan,
+        LazyWherePredicateSpan,
+    };
+
+    pub use super::pat::{
+        LazyLitPatSpan, LazyPatSpan, LazyPathPatSpan, LazyPathTuplePatSpan,
+        LazyRecordPatFieldListSpan, LazyRecordPatFieldSpan, LazyRecordPatSpan,
+    };
+
+    pub use super::path::{LazyPathSegmentSpan, LazyPathSpan};
+
+    pub use super::stmt::{LazyLetStmtSpan, LazyStmtSpan};
+
+    pub use super::types::{
+        LazyArrayTypeSpan, LazyPathTypeSpan, LazyPtrTypeSpan, LazyTupleTypeSpan, LazyTySpan,
+    };
+
+    pub use super::use_tree::{LazyUseAliasSpan, LazyUsePathSegmentSpan, LazyUsePathSpan};
+
+    pub use super::{DynLazySpan, LazyLitSpan, LazySpan, LazySpanAtom};
+}
+
 /// This struct represents a dynamic lazy span, which can be converted from all
 /// types that implement [`LazySpan`] in this module. We want to avoid `dyn
 /// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to

@@ -9,31 +9,7 @@ use crate::{
         Trait, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment,
         VariantDef, VariantDefListId, WhereClauseId, WherePredicate,
     },
-    span::{
-        attr::{LazyAttrListSpan, LazyAttrSpan},
-        expr::{
-            LazyCallArgListSpan, LazyCallArgSpan, LazyExprSpan, LazyFieldListSpan, LazyFieldSpan,
-            LazyMatchArmSpan,
-        },
-        item::{
-            LazyBodySpan, LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFieldDefListSpan,
-            LazyFieldDefSpan, LazyFuncSpan, LazyImplSpan, LazyImplTraitSpan, LazyItemSpan,
-            LazyModSpan, LazyStructSpan, LazyTopModSpan, LazyTraitSpan, LazyTypeAliasSpan,
-            LazyUseSpan, LazyVariantDefListSpan, LazyVariantDefSpan,
-        },
-        params::{
-            LazyFuncParamListSpan, LazyFuncParamSpan, LazyGenericArgListSpan, LazyGenericArgSpan,
-            LazyGenericParamListSpan, LazyGenericParamSpan, LazyTypeBoundListSpan,
-            LazyTypeBoundSpan, LazyWhereClauseSpan, LazyWherePredicateSpan,
-        },
-        pat::LazyPatSpan,
-        path::LazyPathSpan,
-        stmt::LazyStmtSpan,
-        transition::ChainRoot,
-        types::LazyTySpan,
-        use_tree::LazyUsePathSpan,
-        DynLazySpan, LazyLitSpan, LazySpan, LazySpanAtom, SpanDowncast,
-    },
+    span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
     HirDb,
 };
 
