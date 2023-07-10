@@ -10,6 +10,8 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
+use super::NameRes;
+
 #[salsa::accumulator]
 pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);
 
@@ -26,6 +28,18 @@ pub enum NameResDiag {
 
     /// The resolved name is ambiguous.
     Ambiguous(DynLazySpan, IdentId, Vec<DynLazySpan>),
+
+    /// The name is found but belongs to a different name domain other than the
+    /// Type.
+    ExpectedType(DynLazySpan, IdentId, NameRes),
+
+    /// The name is found but belongs to a different name domain other than the
+    /// trait.
+    ExpectedTrait(DynLazySpan, IdentId, NameRes),
+
+    /// The name is found but belongs to a different name domain other than the
+    /// value.
+    ExpectedValue(DynLazySpan, IdentId, NameRes),
 }
 
 impl NameResDiag {
@@ -60,6 +74,9 @@ impl NameResDiag {
             Self::NotFound(span, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::Invisible(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::Ambiguous(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::ExpectedType(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::ExpectedTrait(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::ExpectedValue(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
         }
     }
 
@@ -69,6 +86,9 @@ impl NameResDiag {
             Self::NotFound(..) => 2,
             Self::Invisible(..) => 3,
             Self::Ambiguous(..) => 4,
+            Self::ExpectedType(..) => 5,
+            Self::ExpectedTrait(..) => 6,
+            Self::ExpectedValue(..) => 7,
         }
     }
 
@@ -86,6 +106,9 @@ impl NameResDiag {
                 format!("`{}` is not visible", name.data(db),)
             }
             Self::Ambiguous(_, name, _) => format!("`{}` is ambiguous", name.data(db)),
+            Self::ExpectedType(_, _, _) => "expected type item here".to_string(),
+            Self::ExpectedTrait(_, _, _) => "expected trait item here".to_string(),
+            Self::ExpectedValue(_, _, _) => "expected value here".to_string(),
         }
     }
 
@@ -165,6 +188,36 @@ impl NameResDiag {
                 }));
 
                 diags
+            }
+
+            Self::ExpectedType(prim_span, name, res) => {
+                let res_kind_name = res.kind_name();
+                let name = name.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected type here, found {} `{}`", res_kind_name, name),
+                    prim_span.resolve(db),
+                )]
+            }
+
+            Self::ExpectedTrait(prim_span, name, res) => {
+                let res_kind_name = res.kind_name();
+                let name = name.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected trait here, found {} `{}`", res_kind_name, name),
+                    prim_span.resolve(db),
+                )]
+            }
+
+            Self::ExpectedValue(prim_span, name, res) => {
+                let res_kind_name = res.kind_name();
+                let name = name.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected value here, found {} `{}`", res_kind_name, name),
+                    prim_span.resolve(db),
+                )]
             }
         }
     }

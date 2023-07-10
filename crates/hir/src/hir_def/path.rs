@@ -1,4 +1,4 @@
-use crate::hir_def::Partial;
+use crate::{hir_def::Partial, HirDb};
 
 use super::IdentId;
 
@@ -6,4 +6,14 @@ use super::IdentId;
 pub struct PathId {
     #[return_ref]
     pub segments: Vec<Partial<IdentId>>,
+}
+
+impl PathId {
+    pub fn last_segment(self, db: &dyn HirDb) -> Partial<IdentId> {
+        self.segments(db).last().copied().unwrap_or_default()
+    }
+
+    pub fn segment_len(self, db: &dyn HirDb) -> usize {
+        self.segments(db).len()
+    }
 }

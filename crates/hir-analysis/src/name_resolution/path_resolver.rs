@@ -35,20 +35,22 @@ pub(super) struct EarlyResolvedPathWithTrajectory {
 }
 
 impl EarlyResolvedPathWithTrajectory {
-    pub(super) fn check_trajectory_visibility(
+    pub(super) fn find_invisible_segment(
         &self,
         db: &dyn HirAnalysisDb,
-    ) -> PathResolutionResult<()> {
+    ) -> Option<(usize, &NameRes)> {
         let original_scope = self.trajectory.first().unwrap().scope().unwrap();
         for (i, res) in self.trajectory[1..].iter().enumerate() {
             if !res.is_visible(db, original_scope) {
-                return Err(PathResolutionError::new(
-                    NameResolutionError::Invisible(res.derived_from(db)),
-                    i,
-                ));
+                return Some((i, res));
             }
         }
-        Ok(())
+
+        None
+    }
+
+    pub(super) fn resolved_at(&self, index: usize) -> &NameRes {
+        &self.trajectory[index]
     }
 }
 
@@ -66,17 +68,17 @@ impl PathResolutionError {
     }
 }
 
-pub(super) struct EarlyPathResolver<'db, 'a, 'b> {
+pub(super) struct EarlyPathResolver<'db, 'a, 'b, 'c> {
     db: &'db dyn HirAnalysisDb,
-    name_resolver: &'a mut NameResolver<'db, 'a>,
-    cache_store: &'b ResolvedQueryCacheStore,
+    name_resolver: &'a mut NameResolver<'db, 'b>,
+    cache_store: &'c ResolvedQueryCacheStore,
 }
 
-impl<'db, 'a, 'b> EarlyPathResolver<'db, 'a, 'b> {
+impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
     pub(super) fn new(
         db: &'db dyn HirAnalysisDb,
-        name_resolver: &'a mut NameResolver<'db, 'a>,
-        cache_store: &'b ResolvedQueryCacheStore,
+        name_resolver: &'a mut NameResolver<'db, 'b>,
+        cache_store: &'c ResolvedQueryCacheStore,
     ) -> Self {
         Self {
             db,
@@ -213,7 +215,7 @@ impl<'a> IntermediatePath<'a> {
 
     fn proceed(&mut self, bucket: ResBucket) -> PathResolutionResult<()> {
         let next_res = bucket
-            .res_by_domain(NameDomain::Item)
+            .pick(NameDomain::Type)
             .clone()
             .map_err(|err| PathResolutionError::new(err, self.idx))?;
 

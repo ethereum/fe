@@ -78,6 +78,25 @@ impl ItemKind {
         }
     }
 
+    pub fn kind_name(self) -> &'static str {
+        use ItemKind::*;
+        match self {
+            TopMod(_) => "module",
+            Mod(_) => "module",
+            Func(_) => "function",
+            Struct(_) => "struct",
+            Contract(_) => "contract",
+            Enum(_) => "enum",
+            TypeAlias(_) => "type alias",
+            Trait(_) => "trait",
+            Impl(_) => "impl",
+            ImplTrait(_) => "impl trait",
+            Const(_) => "const",
+            Use(_) => "use",
+            Body(_) => "expression body",
+        }
+    }
+
     pub fn name_span(self) -> Option<DynLazySpan> {
         use ItemKind::*;
         match self {
@@ -138,6 +157,10 @@ impl ItemKind {
             self,
             Self::Struct(_) | Self::Enum(_) | Self::Contract(_) | Self::TypeAlias(_)
         )
+    }
+
+    pub fn is_trait(self) -> bool {
+        matches!(self, Self::Trait(_))
     }
 }
 

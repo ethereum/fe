@@ -368,7 +368,7 @@ impl<'db> ImportResolver<'db> {
 
         // Filter out irrelevant resolutions if the segment is not the last one.
         if !i_use.is_base_resolved(self.db) {
-            bucket.filter_by_domain(NameDomain::Item);
+            bucket.filter_by_domain(NameDomain::Type);
         }
 
         for err in bucket.errors() {
@@ -407,7 +407,7 @@ impl<'db> ImportResolver<'db> {
         if i_use.is_base_resolved(self.db) {
             Some(IUseResolution::Full(bucket))
         } else {
-            let res = bucket.res_by_domain(NameDomain::Item).clone().unwrap();
+            let res = bucket.pick(NameDomain::Type).clone().unwrap();
             let next_i_use = i_use.proceed(res);
             if next_i_use.is_base_resolved(self.db) {
                 Some(IUseResolution::BasePath(next_i_use))

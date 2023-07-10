@@ -64,6 +64,16 @@ impl ScopeId {
         }
     }
 
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            ScopeId::Item(item) => item.kind_name(),
+            ScopeId::GenericParam(_, _) => "type",
+            ScopeId::FuncParam(_, _) => "value",
+            ScopeId::Field(_, _) => "field",
+            ScopeId::Variant(_, _) => "value",
+        }
+    }
+
     pub fn from_item(item: ItemKind) -> Self {
         Self::Item(item)
     }
@@ -172,6 +182,13 @@ impl ScopeId {
         match self.data(db).id {
             ScopeId::Item(item) => item.is_type(),
             ScopeId::GenericParam(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_trait(self, db: &dyn HirDb) -> bool {
+        match self.data(db).id {
+            ScopeId::Item(item) => item.is_trait(),
             _ => false,
         }
     }

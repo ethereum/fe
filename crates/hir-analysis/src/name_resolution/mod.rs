@@ -5,23 +5,20 @@ mod name_resolver;
 mod path_resolver;
 mod visibility_checker;
 
+use either::Either;
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
-    NameBinding, NameDerivation, NameDomain, NameQuery, NameRes, QueryDirective,
+    NameDerivation, NameDomain, NameQuery, NameRes, QueryDirective, ResBucket,
 };
 
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, FieldDefListId, GenericParamListId, IngotId, ItemKind, TopLevelMod,
-        VariantDefListId,
+        scope_graph::ScopeId, Expr, FieldDefListId, GenericParamListId, IngotId, ItemKind, Pat,
+        PathId, TopLevelMod, TypeBound, TypeId, VariantDefListId,
     },
-    span::item::{LazyFieldDefListSpan, LazyItemSpan, LazyVariantDefListSpan},
-    visitor::{
-        walk_field_def_list, walk_generic_param_list, walk_item, walk_variant_def_list, Visitor,
-        VisitorCtxt,
-    },
+    visitor::prelude::*,
 };
 use rustc_hash::FxHashSet;
 
@@ -31,6 +28,7 @@ use self::{
     diagnostics::{NameResDiag, NameResolutionDiagAccumulator},
     import_resolver::DefaultImporter,
     name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
+    path_resolver::{EarlyPathResolver, EarlyResolvedPath},
 };
 
 pub struct ImportAnalysisPass<'db> {
@@ -72,7 +70,7 @@ impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
         let errors =
             resolve_path_early::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
 
-        // TODO: Impl collector.
+        // TODO: `ImplCollector`.
         errors
             .into_iter()
             .filter_map(|err| matches!(err, NameResDiag::Conflict(..)).then(|| Box::new(err) as _))
@@ -92,10 +90,10 @@ pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> Resolve
 }
 
 /// Performs early path resolution and cache the resolutions for paths appeared
-/// in the given module. Also checks the conflict of the item definitions
+/// in the given module. Also checks the conflict of the item definitions.
 ///
-/// NOTE: This method doesn't check the conflict in impl blocks since it
-/// requires ingot granularity analysis.
+/// NOTE: This method doesn't check the conflict in impl/impl-trait blocks since
+/// it requires ingot granularity analysis.
 #[salsa::tracked(return_ref)]
 #[allow(unused)]
 pub(crate) fn resolve_path_early(
@@ -103,27 +101,30 @@ pub(crate) fn resolve_path_early(
     top_mod: TopLevelMod,
 ) -> ResolvedQueryCacheStore {
     let importer = DefaultImporter;
-    let mut resolver = PathResolver::new(db, &importer);
-    resolver.resolve_all(top_mod);
+    let mut visitor = EarlyPathVisitor::new(db, &importer);
 
-    for diag in resolver.diags {
+    let mut ctxt = VisitorCtxt::with_item(db.as_hir_db(), top_mod.into());
+    visitor.visit_item(&mut ctxt, top_mod.into());
+
+    for diag in visitor.diags {
         NameResolutionDiagAccumulator::push(db, diag);
     }
-    resolver.inner.into_cache_store()
+    visitor.inner.into_cache_store()
 }
 
-struct PathResolver<'db, 'a> {
+struct EarlyPathVisitor<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     inner: name_resolver::NameResolver<'db, 'a>,
     diags: Vec<diagnostics::NameResDiag>,
     item_stack: Vec<ItemKind>,
+    path_ctxt: Vec<ExpectedPathKind>,
 
     /// The set of scopes that have already been conflicted to avoid duplicate
     /// diagnostics.
     already_conflicted: FxHashSet<ScopeId>,
 }
 
-impl<'db, 'a> PathResolver<'db, 'a> {
+impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
         let resolver = name_resolver::NameResolver::new(db, importer);
         Self {
@@ -131,41 +132,51 @@ impl<'db, 'a> PathResolver<'db, 'a> {
             inner: resolver,
             diags: Vec::new(),
             item_stack: Vec::new(),
+            path_ctxt: Vec::new(),
             already_conflicted: FxHashSet::default(),
         }
     }
 
-    fn resolve_all(&mut self, top_mod: TopLevelMod) {
-        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), top_mod.into());
-        self.visit_item(&mut ctxt, top_mod.into());
-    }
+    fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: ResBucket) {
+        debug_assert!(!bucket.is_empty());
 
-    fn check_item_conflict(&mut self, item: ItemKind) {
-        let scope = ScopeId::from_item(item);
-        self.check_conflict(scope);
-    }
+        let path_kind = self.path_ctxt.last().unwrap();
+        let last_seg_idx = path.segment_len(self.db.as_hir_db()) - 1;
+        let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
+        let span = span.segment(last_seg_idx).into();
 
-    fn check_field_conflict(&mut self, fields: FieldDefListId) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..fields.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::Field(parent_item, i);
-            self.check_conflict(scope);
-        }
-    }
+        match path_kind.pick(self.db, bucket) {
+            // The path exists and belongs to the expected kind.
+            Either::Left(res) => {
+                if !res.is_visible(
+                    self.db,
+                    ScopeId::from_item(*self.item_stack.last().unwrap()),
+                ) {
+                    self.diags.push(NameResDiag::invisible(
+                        span,
+                        last_seg_ident,
+                        res.derived_from(self.db),
+                    ));
+                }
+            }
 
-    fn check_variant_conflict(&mut self, variants: VariantDefListId) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..variants.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::Variant(parent_item, i);
-            self.check_conflict(scope);
-        }
-    }
+            // The path exists but doesn't belong to the expected kind.
+            Either::Right(res) => match path_kind {
+                ExpectedPathKind::Type => {
+                    self.diags
+                        .push(NameResDiag::ExpectedType(span, last_seg_ident, res));
+                }
 
-    fn check_generic_param_conflict(&mut self, params: GenericParamListId) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..params.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::GenericParam(parent_item, i);
-            self.check_conflict(scope);
+                ExpectedPathKind::Trait => {
+                    self.diags
+                        .push(NameResDiag::ExpectedTrait(span, last_seg_ident, res));
+                }
+
+                ExpectedPathKind::Value => {
+                    self.diags
+                        .push(NameResDiag::ExpectedValue(span, last_seg_ident, res));
+                }
+            },
         }
     }
 
@@ -180,7 +191,7 @@ impl<'db, 'a> PathResolver<'db, 'a> {
 
         let domain = NameDomain::from_scope(scope);
         let binding = self.inner.resolve_query(query);
-        match binding.res_by_domain(domain) {
+        match binding.pick(domain) {
             Ok(_) => {}
 
             Err(NameResolutionError::Ambiguous(cands)) => {
@@ -199,6 +210,7 @@ impl<'db, 'a> PathResolver<'db, 'a> {
                 );
                 self.diags.push(diag);
             }
+
             Err(_) => unreachable!(),
         };
     }
@@ -213,31 +225,71 @@ impl<'db, 'a> PathResolver<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Visitor for PathResolver<'db, 'a> {
+impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
-        self.check_item_conflict(item);
+        // We don't need to check use statements for conflicts because they are
+        // already checked in import resolution.
+        if matches!(item, ItemKind::Use(_)) {
+            return;
+        }
+
+        let scope = ScopeId::from_item(item);
+        // We don't need to check impl/impl-trait blocks for conflicts because they
+        // needs ingot granularity analysis, the conflict checks for them is done by the
+        // `ImplCollector`.
+        if !matches!(item, ItemKind::Impl(_) | ItemKind::ImplTrait(_)) {
+            self.check_conflict(scope);
+        }
 
         self.item_stack.push(item);
+        if matches!(item, ItemKind::Body(_)) {
+            self.path_ctxt.push(ExpectedPathKind::Value);
+        } else {
+            self.path_ctxt.push(ExpectedPathKind::Type);
+        }
+
         walk_item(self, ctxt, item);
+
         self.item_stack.pop();
+        self.path_ctxt.pop();
+    }
+
+    fn visit_type_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyTypeBoundSpan>,
+        bound: &TypeBound,
+    ) {
+        self.path_ctxt.push(ExpectedPathKind::Trait);
+        walk_type_bound(self, ctxt, bound);
+        self.path_ctxt.pop();
     }
 
     fn visit_field_def_list(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyFieldDefListSpan>,
-        field: FieldDefListId,
+        fields: FieldDefListId,
     ) {
-        self.check_field_conflict(field);
-        walk_field_def_list(self, ctxt, field);
+        let parent_item = *self.item_stack.last().unwrap();
+        for i in 0..fields.data(self.db.as_hir_db()).len() {
+            let scope = ScopeId::Field(parent_item, i);
+            self.check_conflict(scope);
+        }
+
+        walk_field_def_list(self, ctxt, fields);
     }
 
     fn visit_variant_def_list(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyVariantDefListSpan>,
-        variant: VariantDefListId,
+        variants: VariantDefListId,
     ) {
-        self.check_variant_conflict(variant);
-        walk_variant_def_list(self, ctxt, variant);
+        let parent_item = *self.item_stack.last().unwrap();
+        for i in 0..variants.data(self.db.as_hir_db()).len() {
+            let scope = ScopeId::Variant(parent_item, i);
+            self.check_conflict(scope);
+        }
+
+        walk_variant_def_list(self, ctxt, variants);
     }
 
     fn visit_generic_param_list(
@@ -245,7 +297,127 @@ impl<'db, 'a> Visitor for PathResolver<'db, 'a> {
         ctxt: &mut VisitorCtxt<'_, hir::span::params::LazyGenericParamListSpan>,
         params: GenericParamListId,
     ) {
-        self.check_generic_param_conflict(params);
+        let parent_item = *self.item_stack.last().unwrap();
+        for i in 0..params.data(self.db.as_hir_db()).len() {
+            let scope = ScopeId::GenericParam(parent_item, i);
+            self.check_conflict(scope);
+        }
+
         walk_generic_param_list(self, ctxt, params);
+    }
+
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
+        self.path_ctxt.push(ExpectedPathKind::Type);
+        walk_ty(self, ctxt, ty);
+        self.path_ctxt.pop();
+    }
+
+    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat) {
+        if matches!(pat, Pat::Record { .. }) {
+            self.path_ctxt.push(ExpectedPathKind::Type);
+        } else {
+            self.path_ctxt.push(ExpectedPathKind::Value);
+        }
+        walk_pat(self, ctxt, pat);
+        self.path_ctxt.pop();
+    }
+
+    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: &Expr) {
+        if matches!(expr, Expr::RecordInit { .. }) {
+            self.path_ctxt.push(ExpectedPathKind::Type);
+        } else {
+            self.path_ctxt.push(ExpectedPathKind::Value);
+        }
+        walk_expr(self, ctxt, expr);
+        self.path_ctxt.pop();
+    }
+
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
+        let scope = ScopeId::from_item(self.item_stack.last().copied().unwrap());
+        let dummy_cache_store = ResolvedQueryCacheStore::no_cache();
+
+        let mut resolver = EarlyPathResolver::new(self.db, &mut self.inner, &dummy_cache_store);
+        let resolved_path = match resolver.resolve_path(path, scope) {
+            Ok(bucket) => bucket,
+
+            Err(err) => {
+                let failed_at = err.failed_at;
+                let span = ctxt.span().unwrap().segment(failed_at);
+                let ident = path.segments(self.db.as_hir_db())[failed_at];
+                let diag = match err.kind {
+                    NameResolutionError::NotFound => {
+                        NameResDiag::not_found(span.into(), *ident.unwrap())
+                    }
+
+                    NameResolutionError::Invalid => {
+                        return;
+                    }
+
+                    NameResolutionError::Invisible(_) => {
+                        unreachable!("`EarlyPathResolver doesn't check visibility");
+                    }
+
+                    NameResolutionError::Ambiguous(cands) => NameResDiag::ambiguous(
+                        span.into(),
+                        *ident.unwrap(),
+                        cands
+                            .into_iter()
+                            .filter_map(|res| res.derived_from(self.db))
+                            .collect(),
+                    ),
+                };
+
+                self.diags.push(diag);
+                return;
+            }
+        };
+
+        if let Some((idx, res)) = resolved_path.find_invisible_segment(self.db) {
+            let span = ctxt.span().unwrap().segment(idx);
+            let ident = path.segments(self.db.as_hir_db())[idx].unwrap();
+            let diag = NameResDiag::invisible(span.into(), *ident, res.derived_from(self.db));
+            self.diags.push(diag);
+            return;
+        }
+
+        let EarlyResolvedPath::Full(bucket) = resolved_path.resolved else {
+            return;
+        };
+        self.verify_path(path, ctxt.span().unwrap(), bucket);
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ExpectedPathKind {
+    Type,
+    Trait,
+    Value,
+}
+
+impl ExpectedPathKind {
+    fn domain(self) -> NameDomain {
+        match self {
+            ExpectedPathKind::Type => NameDomain::Type,
+            ExpectedPathKind::Trait => NameDomain::Type,
+            ExpectedPathKind::Value => NameDomain::Value,
+        }
+    }
+
+    fn pick(self, db: &dyn HirAnalysisDb, bucket: ResBucket) -> Either<NameRes, NameRes> {
+        debug_assert!(!bucket.is_empty());
+
+        let res = match bucket.pick(self.domain()).as_ref().ok() {
+            Some(res) => res.clone(),
+            None => {
+                return Either::Right(bucket.into_iter().find_map(|res| res.ok()).unwrap());
+            }
+        };
+
+        match self {
+            Self::Type if !res.is_type(db) => Either::Right(res),
+            Self::Trait if !res.is_trait(db) => Either::Right(res),
+            Self::Value if !res.is_value(db) => Either::Right(res),
+            _ => Either::Left(res),
+        }
     }
 }

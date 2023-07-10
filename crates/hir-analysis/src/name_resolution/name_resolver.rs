@@ -138,7 +138,7 @@ impl ResBucket {
     }
 
     /// Returns the resolution of the given `domain`.
-    pub fn res_by_domain(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
+    pub fn pick(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
         self.bucket
             .get(&domain)
             .unwrap_or(&Err(NameResolutionError::NotFound))
@@ -249,6 +249,17 @@ impl NameRes {
         }
     }
 
+    pub fn is_trait(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self.kind {
+            NameResKind::Prim(_) => false,
+            NameResKind::Scope(scope) => scope.is_trait(db.as_hir_db()),
+        }
+    }
+
+    pub fn is_value(&self, db: &dyn HirAnalysisDb) -> bool {
+        !self.is_type(db) && !self.is_trait(db)
+    }
+
     /// Returns the scope of the name resolution if the name is not a builtin
     /// type.
     pub fn scope(&self) -> Option<ScopeId> {
@@ -329,11 +340,18 @@ impl NameRes {
         }
     }
 
+    pub(super) fn kind_name(&self) -> &'static str {
+        match self.kind {
+            NameResKind::Scope(scope) => scope.kind_name(),
+            NameResKind::Prim(_) => "type",
+        }
+    }
+
     fn new_prim(prim: PrimTy) -> Self {
         Self {
             kind: prim.into(),
             derivation: NameDerivation::Prim,
-            domain: NameDomain::Item,
+            domain: NameDomain::Type,
         }
     }
 }
@@ -352,10 +370,10 @@ impl NameResKind {
         }
     }
 
-    pub fn name(self, db: &dyn HirAnalysisDb) -> Option<IdentId> {
+    pub fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         match self {
-            NameResKind::Scope(scope) => scope.name(db.as_hir_db()),
-            NameResKind::Prim(prim) => prim.name().into(),
+            NameResKind::Scope(scope) => scope.name(db.as_hir_db()).unwrap(),
+            NameResKind::Prim(prim) => prim.name(),
         }
     }
 }
@@ -524,7 +542,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
                         ScopeId::root(*root_mod),
-                        NameDomain::Item,
+                        NameDomain::Type,
                         NameDerivation::External,
                     ))
                 }
@@ -718,6 +736,13 @@ impl ResolvedQueryCacheStore {
         self.cache.get(&query)
     }
 
+    pub(super) fn no_cache() -> Self {
+        Self {
+            cache: FxHashMap::default(),
+            no_cache: true,
+        }
+    }
+
     fn cache_result(&mut self, query: NameQuery, result: ResBucket) {
         if self.no_cache {
             return;
@@ -744,7 +769,7 @@ impl ResolvedQueryCacheStore {
 pub enum NameDomain {
     /// The domain is associated with all items except for items that belongs to
     /// the `Value` domain.
-    Item = 0b1,
+    Type = 0b1,
     /// The domain is associated with a local variable and items that are
     /// guaranteed not to have associated names. e.g., `fn`, `const` or enum
     /// variables.
@@ -759,7 +784,7 @@ impl NameDomain {
             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_)) | ScopeId::FuncParam(..) => {
                 Self::Value
             }
-            ScopeId::Item(_) | ScopeId::GenericParam(..) => Self::Item,
+            ScopeId::Item(_) | ScopeId::GenericParam(..) => Self::Type,
             ScopeId::Field(..) => Self::Field,
             ScopeId::Variant(..) => Self::Value,
         }
