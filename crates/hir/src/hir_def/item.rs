@@ -504,6 +504,7 @@ pub struct Const {
     id: TrackedItemId,
 
     pub name: Partial<IdentId>,
+    pub ty: Partial<TypeId>,
     pub body: Partial<Body>,
     pub vis: Visibility,
     pub top_mod: TopLevelMod,

@@ -25,7 +25,7 @@ use rustc_hash::FxHashSet;
 use crate::HirAnalysisDb;
 
 use self::{
-    diagnostics::{NameResDiag, NameResolutionDiagAccumulator},
+    diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
     import_resolver::DefaultImporter,
     name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
     path_resolver::{EarlyPathResolver, EarlyResolvedPath},
@@ -48,9 +48,33 @@ impl<'db> ImportAnalysisPass<'db> {
 impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
     fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
         let ingot = top_mod.ingot(self.db.as_hir_db());
-        resolve_imports::accumulated::<NameResolutionDiagAccumulator>(self.db, ingot)
+        resolve_imports::accumulated::<ImportResolutionDiagAccumulator>(self.db, ingot)
             .into_iter()
             .filter_map(|diag| (diag.top_mod(self.db) == top_mod).then(|| Box::new(diag) as _))
+            .collect()
+    }
+}
+
+pub struct PathAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> PathAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass for PathAnalysisPass<'db> {
+    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+        let errors =
+            resolve_path_early::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+
+        errors
+            .into_iter()
+            .filter_map(|err| {
+                (!matches!(err, NameResDiag::Conflict(..))).then(|| Box::new(err) as _)
+            })
             .collect()
     }
 }
@@ -83,7 +107,7 @@ pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> Resolve
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     for diag in diags {
-        NameResolutionDiagAccumulator::push(db, diag);
+        ImportResolutionDiagAccumulator::push(db, diag);
     }
 
     imports
@@ -138,12 +162,34 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     }
 
     fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: ResBucket) {
-        debug_assert!(!bucket.is_empty());
-
         let path_kind = self.path_ctxt.last().unwrap();
         let last_seg_idx = path.segment_len(self.db.as_hir_db()) - 1;
         let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
         let span = span.segment(last_seg_idx).into();
+
+        if bucket.is_empty() {
+            let Err(err) = bucket.pick(path_kind.domain()) else {
+                unreachable!()
+            };
+
+            match err {
+                NameResolutionError::NotFound => {
+                    self.diags
+                        .push(NameResDiag::not_found(span, last_seg_ident));
+                }
+                NameResolutionError::Ambiguous(cands) => {
+                    self.diags.push(NameResDiag::ambiguous(
+                        self.db,
+                        span,
+                        last_seg_ident,
+                        cands.clone(),
+                    ));
+                }
+                _ => {}
+            };
+
+            return;
+        }
 
         match path_kind.pick(self.db, bucket) {
             // The path exists and belongs to the expected kind.
@@ -344,6 +390,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
                 let failed_at = err.failed_at;
                 let span = ctxt.span().unwrap().segment(failed_at);
                 let ident = path.segments(self.db.as_hir_db())[failed_at];
+
                 let diag = match err.kind {
                     NameResolutionError::NotFound => {
                         NameResDiag::not_found(span.into(), *ident.unwrap())
@@ -357,14 +404,9 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
                         unreachable!("`EarlyPathResolver doesn't check visibility");
                     }
 
-                    NameResolutionError::Ambiguous(cands) => NameResDiag::ambiguous(
-                        span.into(),
-                        *ident.unwrap(),
-                        cands
-                            .into_iter()
-                            .filter_map(|res| res.derived_from(self.db))
-                            .collect(),
-                    ),
+                    NameResolutionError::Ambiguous(cands) => {
+                        NameResDiag::ambiguous(self.db, span.into(), *ident.unwrap(), cands)
+                    }
                 };
 
                 self.diags.push(diag);

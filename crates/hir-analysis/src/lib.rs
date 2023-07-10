@@ -6,6 +6,7 @@ pub struct Jar(
     name_resolution::resolve_path_early,
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
+    name_resolution::diagnostics::ImportResolutionDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

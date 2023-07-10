@@ -387,6 +387,7 @@ impl Const {
 
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = TrackedItemId::Const(name).join(parent_id);
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let body = ast
             .value()
             .map(|ast| Body::lower_ast(ctxt, id.clone(), ast))
@@ -394,7 +395,7 @@ impl Const {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let origin = HirOrigin::raw(&ast);
 
-        let const_ = Self::new(ctxt.db(), id, name, body, vis, ctxt.top_mod(), origin);
+        let const_ = Self::new(ctxt.db(), id, name, ty, body, vis, ctxt.top_mod(), origin);
         ctxt.leave_scope(const_)
     }
 }

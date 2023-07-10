@@ -551,12 +551,10 @@ impl<'db> ImportResolver<'db> {
 
             NameResolutionError::Ambiguous(cands) => {
                 self.accumulated_errors.push(NameResDiag::ambiguous(
+                    self.db,
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
-                    cands
-                        .into_iter()
-                        .filter_map(|name| name.kind.name_span(self.db))
-                        .collect(),
+                    cands,
                 ));
             }
 

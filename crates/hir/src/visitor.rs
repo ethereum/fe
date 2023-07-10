@@ -767,6 +767,15 @@ where
         )
     }
 
+    if let Some(ty) = const_.ty(ctxt.db).to_opt() {
+        ctxt.with_new_ctxt(
+            |span| span.ty_moved(),
+            |ctxt| {
+                visitor.visit_ty(ctxt, ty);
+            },
+        )
+    }
+
     if let Some(body) = const_.body(ctxt.db).to_opt() {
         visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
     }

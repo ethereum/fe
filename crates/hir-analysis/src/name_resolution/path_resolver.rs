@@ -191,13 +191,17 @@ impl<'a> IntermediatePath<'a> {
 
     fn finalize_as_partial(self) -> EarlyResolvedPathWithTrajectory {
         let resolved = EarlyResolvedPath::Partial {
-            resolved: self.current_res,
+            resolved: self.current_res.clone(),
             unresolved_from: self.idx,
         };
 
+        let mut trajectory = self.trajectory;
+        let current_res = self.current_res;
+        trajectory.push(current_res);
+
         EarlyResolvedPathWithTrajectory {
             resolved,
-            trajectory: self.trajectory,
+            trajectory: trajectory,
         }
     }
 
@@ -228,10 +232,10 @@ impl<'a> IntermediatePath<'a> {
     fn state(&self, db: &dyn HirAnalysisDb) -> IntermediatePathState {
         debug_assert!(self.idx < self.path.len());
 
-        if self.current_res.is_type(db) {
+        if self.idx == self.path.len() - 1 {
+            return IntermediatePathState::ReadyToFinalize;
+        } else if self.current_res.is_type(db) {
             IntermediatePathState::TypeDependent
-        } else if self.idx == self.path.len() - 1 {
-            IntermediatePathState::ReadyToFinalize
         } else {
             IntermediatePathState::Unresolved
         }

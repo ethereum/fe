@@ -15,6 +15,9 @@ use super::NameRes;
 #[salsa::accumulator]
 pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);
 
+#[salsa::accumulator]
+pub struct ImportResolutionDiagAccumulator(pub(super) NameResDiag);
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NameResDiag {
     /// The definition conflicts with other definitions.
@@ -43,27 +46,7 @@ pub enum NameResDiag {
 }
 
 impl NameResDiag {
-    pub fn conflict(name: IdentId, conflict_with: Vec<DynLazySpan>) -> Self {
-        Self::Conflict(name, conflict_with)
-    }
-
-    pub fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
-        Self::NotFound(span, ident)
-    }
-
-    pub fn invisible(
-        span: DynLazySpan,
-        name: IdentId,
-        invisible_span: Option<DynLazySpan>,
-    ) -> Self {
-        Self::Invisible(span, name, invisible_span)
-    }
-
-    pub fn ambiguous(span: DynLazySpan, ident: IdentId, candidates: Vec<DynLazySpan>) -> Self {
-        Self::Ambiguous(span, ident, candidates)
-    }
-
-    // Returns the top-level module where the diagnostic is located.
+    /// Returns the top-level module where the diagnostic is located.
     pub fn top_mod(&self, db: &dyn HirAnalysisDb) -> TopLevelMod {
         match self {
             Self::Conflict(_, conflicts) => conflicts
@@ -78,6 +61,35 @@ impl NameResDiag {
             Self::ExpectedTrait(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedValue(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
         }
+    }
+
+    pub(super) fn conflict(name: IdentId, conflict_with: Vec<DynLazySpan>) -> Self {
+        Self::Conflict(name, conflict_with)
+    }
+
+    pub(super) fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
+        Self::NotFound(span, ident)
+    }
+
+    pub(super) fn invisible(
+        span: DynLazySpan,
+        name: IdentId,
+        invisible_span: Option<DynLazySpan>,
+    ) -> Self {
+        Self::Invisible(span, name, invisible_span)
+    }
+
+    pub(super) fn ambiguous(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        ident: IdentId,
+        cands: Vec<NameRes>,
+    ) -> Self {
+        let cands = cands
+            .into_iter()
+            .filter_map(|name| name.kind.name_span(db))
+            .collect();
+        Self::Ambiguous(span, ident, cands)
     }
 
     fn local_code(&self) -> u16 {
@@ -195,7 +207,7 @@ impl NameResDiag {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected type here, found {} `{}`", res_kind_name, name),
+                    format!("expected type here, but found {} `{}`", res_kind_name, name),
                     prim_span.resolve(db),
                 )]
             }
@@ -205,7 +217,10 @@ impl NameResDiag {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected trait here, found {} `{}`", res_kind_name, name),
+                    format!(
+                        "expected trait here, but found {} `{}`",
+                        res_kind_name, name
+                    ),
                     prim_span.resolve(db),
                 )]
             }
@@ -215,7 +230,10 @@ impl NameResDiag {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected value here, found {} `{}`", res_kind_name, name),
+                    format!(
+                        "expected value here, but found {} `{}`",
+                        res_kind_name, name
+                    ),
                     prim_span.resolve(db),
                 )]
             }
