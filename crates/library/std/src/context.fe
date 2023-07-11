@@ -19,6 +19,60 @@ pub trait Emittable {
   fn emit(self, _ val: OutOfReachMarker);
 }
 
+pub struct CalldataReader {
+    cur_offset: u256
+    len: u256
+
+    pub unsafe fn new(len: u256) -> CalldataReader {
+        return CalldataReader(cur_offset: 0, len)
+    }
+
+    pub fn remainder(self) -> u256 {
+        return self.len - self.cur_offset
+    }
+
+    pub fn advance(mut self, len: u256) -> u256 {
+        self.cur_offset += len
+        assert self.cur_offset <= self.len
+        return self.cur_offset
+    }
+
+    fn read_n(mut self, len: u256) -> u256 {
+        unsafe {
+            let value: u256 = evm::call_data_load(offset: self.cur_offset)
+            self.advance(len)
+            return evm::shr(bits: 256 - len * 8, value)
+        }
+    }
+
+    pub fn read_u8(mut self) -> u8 {
+        return u8(self.read_n(len: 1))
+    }
+
+    pub fn read_u16(mut self) -> u16 {
+        return u16(self.read_n(len: 2))
+    }
+
+    pub fn read_u32(mut self) -> u32 {
+        return u32(self.read_n(len: 4))
+    }
+
+    pub fn read_u64(mut self) -> u64 {
+        return u64(self.read_n(len: 8))
+    }
+
+    pub fn read_u128(mut self) -> u128 {
+        return u128(self.read_n(len: 16))
+    }
+    pub fn read_u256(mut self) -> u256 {
+        unsafe {
+            let value: u256 = evm::call_data_load(offset: self.cur_offset)
+            self.advance(len: 32)
+            return value
+        }
+    }
+}
+
 pub struct Context {
     pub fn base_fee(self) -> u256 {
         unsafe { return evm::base_fee() }
@@ -74,6 +128,13 @@ pub struct Context {
 
     pub fn self_address(self) -> address {
         unsafe { return address(__address()) }
+    }
+
+    pub fn calldata_reader(self) -> CalldataReader {
+        unsafe {
+            let len: u256 = evm::call_data_size()
+            return CalldataReader::new(len)
+        }
     }
 
     pub fn send_value(mut self, to: address, wei: u256) {
