@@ -15,4 +15,10 @@ error[2-0002]: `Z` is not found
 10 │     z: Z
    │        ^ `Z` is not found
 
+error[2-0002]: `V` is not found
+   ┌─ path_missing_generics.fe:13:22
+   │
+13 │ impl<T, U> MyS<T, U, V> {}
+   │                      ^ `V` is not found
+
 

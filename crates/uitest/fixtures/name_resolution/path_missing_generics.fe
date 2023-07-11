@@ -9,3 +9,5 @@ pub struct MyS<T, U>
     u: U
     z: Z
 }
+
+impl<T, U> MyS<T, U, V> {}

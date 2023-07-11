@@ -19,7 +19,7 @@ pub enum EarlyResolvedPath {
     /// These unresolved parts are resolved in the later type inference and
     /// trait solving phases.
     Partial {
-        resolved: NameRes,
+        res: NameRes,
         unresolved_from: usize,
     },
 }
@@ -191,7 +191,7 @@ impl<'a> IntermediatePath<'a> {
 
     fn finalize_as_partial(self) -> EarlyResolvedPathWithTrajectory {
         let resolved = EarlyResolvedPath::Partial {
-            resolved: self.current_res.clone(),
+            res: self.current_res.clone(),
             unresolved_from: self.idx,
         };
 
@@ -232,9 +232,12 @@ impl<'a> IntermediatePath<'a> {
     fn state(&self, db: &dyn HirAnalysisDb) -> IntermediatePathState {
         debug_assert!(self.idx < self.path.len());
 
-        if self.idx == self.path.len() - 1 {
+        let is_type_dependent =
+            (self.current_res.is_type(db) || self.current_res.is_trait(db)) && self.idx != 0;
+
+        if (self.idx == self.path.len() - 1) && !is_type_dependent {
             IntermediatePathState::ReadyToFinalize
-        } else if self.current_res.is_type(db) {
+        } else if is_type_dependent {
             IntermediatePathState::TypeDependent
         } else {
             IntermediatePathState::Unresolved
@@ -249,7 +252,7 @@ enum IntermediatePathState {
     ReadyToFinalize,
 
     /// The intermediate path points to a type and the next segment need to be
-    /// resolved in the type context.
+    /// resolved with the type context.
     TypeDependent,
 
     /// The path resolution need to be continued further.

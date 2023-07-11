@@ -57,6 +57,9 @@ impl NameQuery {
         self.name
     }
 }
+
+/// The query directive is used to control the name resolution behavior, such as
+/// whether to lookup the name in the lexical scope or not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct QueryDirective {
     /// If `allow_lex` is `true`, then the query will be propagated to the
@@ -378,13 +381,22 @@ impl NameResKind {
     }
 }
 
+/// The name derivation indicates where a name resolution comes from.
+/// Name derivation is used to track the origin of a resolution, and to
+/// determine the shadowing rules.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NameDerivation {
+    /// Derived from a definition in the current scope.
     Def,
+    /// Derived from a named import in the current scope.
     NamedImported(Use),
+    /// Derived from a glob import in the current scope.
     GlobImported(Use),
+    /// Derived from lexical parent scope.
     Lex(Box<NameDerivation>),
+    /// Derived from an external ingot.
     External,
+    /// Derived from a builtin primitive.
     Prim,
 }
 
@@ -754,7 +766,7 @@ impl ResolvedQueryCacheStore {
 /// Each resolved name is associated with a domain that indicates which domain
 /// the name belongs to.
 /// The multiple same names can be introduced in a same scope as long as they
-/// are in a different domain.
+/// are in different domains.
 ///
 /// E.g., A `Foo` can be introduced in a same scope as a type and variant at the
 /// same time. This means the code below is valid.

@@ -63,8 +63,8 @@ fn format_imports(
         let use_span = use_.lazy_span().into();
         values.sort_unstable();
         let imported_names = values.join(" | ");
-        prop_formatter.set_properties(use_.top_mod(db), use_span, imported_names)
+        prop_formatter.push_prop(use_.top_mod(db), use_span, imported_names)
     }
 
-    prop_formatter.format_all_properties(db)
+    prop_formatter.finish(db)
 }

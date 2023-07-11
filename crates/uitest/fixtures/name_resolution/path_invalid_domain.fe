@@ -16,8 +16,3 @@ where T: MyE
     Variant(MyC)
     Variant2(Var)
 }
-
-pub fn foo() {
-    let x: MyT = MyT
-    let MyE::Var{ x } = MyE::Var
-}

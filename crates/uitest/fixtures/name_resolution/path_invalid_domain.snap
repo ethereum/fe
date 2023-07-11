@@ -21,28 +21,10 @@ error[2-0005]: expected type item here
 17 │     Variant2(Var)
    │              ^^^ expected type here, but found value `Var`
 
-error[2-0005]: expected type item here
-   ┌─ path_invalid_domain.fe:21:12
-   │
-21 │     let x: MyT = MyT
-   │            ^^^ expected type here, but found trait `MyT`
-
-error[2-0005]: expected type item here
-   ┌─ path_invalid_domain.fe:22:14
-   │
-22 │     let MyE::Var{ x } = MyE::Var
-   │              ^^^ expected type here, but found value `Var`
-
 error[2-0006]: expected trait item here
    ┌─ path_invalid_domain.fe:13:10
    │
 13 │ where T: MyE
    │          ^^^ expected trait here, but found enum `MyE`
-
-error[2-0007]: expected value here
-   ┌─ path_invalid_domain.fe:21:18
-   │
-21 │     let x: MyT = MyT
-   │                  ^^^ expected value here, but found trait `MyT`
 
 

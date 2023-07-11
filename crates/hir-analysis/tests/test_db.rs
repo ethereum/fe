@@ -76,14 +76,14 @@ pub struct HirPropertyFormatter {
 }
 
 impl HirPropertyFormatter {
-    pub fn set_properties(&mut self, top_mod: TopLevelMod, span: DynLazySpan, prop: String) {
+    pub fn push_prop(&mut self, top_mod: TopLevelMod, span: DynLazySpan, prop: String) {
         self.properties
             .entry(top_mod)
             .or_default()
             .push((prop, span));
     }
 
-    pub fn format_all_properties(&mut self, db: &dyn SpannedHirDb) -> String {
+    pub fn finish(&mut self, db: &dyn SpannedHirDb) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();
         let config = term::Config::default();

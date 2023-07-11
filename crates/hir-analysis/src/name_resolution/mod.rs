@@ -10,6 +10,7 @@ pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
     NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, QueryDirective,
 };
+pub use path_resolver::EarlyResolvedPath;
 
 use hir::{
     analysis_pass::ModuleAnalysisPass,
@@ -28,7 +29,7 @@ use self::{
     diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
     import_resolver::DefaultImporter,
     name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
-    path_resolver::{EarlyPathResolver, EarlyResolvedPath},
+    path_resolver::EarlyPathResolver,
 };
 
 // TODO: Implement `resolve_path` and `resolve_segments` after implementing the
@@ -60,7 +61,7 @@ pub fn resolve_segments_early(
     // cached results immediately.
     let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
 
-    let mut resolver = EarlyPathResolver::new(db, &mut name_resolver, &cache_store);
+    let mut resolver = EarlyPathResolver::new(db, &mut name_resolver, cache_store);
     match resolver.resolve_segments(segments, scope) {
         Ok(res) => res.resolved,
         Err(_) => {
@@ -171,8 +172,11 @@ pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> Resolve
 /// Performs early path resolution and cache the resolutions for paths appeared
 /// in the given module. Also checks the conflict of the item definitions.
 ///
-/// NOTE: This method doesn't check the conflict in impl/impl-trait blocks since
-/// it requires ingot granularity analysis.
+/// NOTE: This method doesn't check
+/// - the conflict in impl/impl-trait blocks since it requires ingot granularity
+///   analysis.
+/// - the path resolution errors at expression and statement level since it
+///   generally requires type analysis
 #[salsa::tracked(return_ref)]
 pub(crate) fn resolve_path_early_impl(
     db: &dyn HirAnalysisDb,
@@ -412,31 +416,11 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat) {
-        // We don't need to check bind patterns here, it will be checked in pattern
-        // match analysis.
-        if pat.is_bind(self.db.as_hir_db()) {
-            return;
-        }
-
-        if matches!(pat, Pat::Record { .. }) {
-            self.path_ctxt.push(ExpectedPathKind::Type);
-        } else {
-            self.path_ctxt.push(ExpectedPathKind::Value);
-        }
-        walk_pat(self, ctxt, pat);
-        self.path_ctxt.pop();
-    }
-
-    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: &Expr) {
-        if matches!(expr, Expr::RecordInit { .. }) {
-            self.path_ctxt.push(ExpectedPathKind::Type);
-        } else {
-            self.path_ctxt.push(ExpectedPathKind::Value);
-        }
-        walk_expr(self, ctxt, expr);
-        self.path_ctxt.pop();
-    }
+    // We don't need to run path analysis on patterns, statements and expressions in
+    // early path resolution.
+    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: &Pat) {}
+    fn visit_stmt(&mut self, _: &mut VisitorCtxt<'_, LazyStmtSpan>, _: &hir::hir_def::Stmt) {}
+    fn visit_expr(&mut self, _: &mut VisitorCtxt<'_, LazyExprSpan>, _: &Expr) {}
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
         let scope = ScopeId::from_item(self.item_stack.last().copied().unwrap());
