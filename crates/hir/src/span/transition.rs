@@ -48,6 +48,14 @@ pub(crate) struct SpanTransitionChain {
 }
 
 impl SpanTransitionChain {
+    pub(crate) fn pop_transition(&mut self) {
+        self.chain.pop();
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.chain.len()
+    }
+
     pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
         Self {
             root: root.into(),
@@ -79,10 +87,6 @@ impl SpanTransitionChain {
 
     pub(super) fn push(&mut self, transition: LazyTransitionFn) {
         self.chain.push(transition);
-    }
-
-    pub(crate) fn pop_transition(&mut self) {
-        self.chain.pop();
     }
 }
 

@@ -13,7 +13,7 @@ impl PathId {
         self.segments(db).last().copied().unwrap_or_default()
     }
 
-    pub fn segment_len(self, db: &dyn HirDb) -> usize {
+    pub fn len(self, db: &dyn HirDb) -> usize {
         self.segments(db).len()
     }
 }

@@ -163,7 +163,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
 
     fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: ResBucket) {
         let path_kind = self.path_ctxt.last().unwrap();
-        let last_seg_idx = path.segment_len(self.db.as_hir_db()) - 1;
+        let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
         let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
         let span = span.segment(last_seg_idx).into();
 
@@ -359,6 +359,12 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
     }
 
     fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat) {
+        // We don't need to check bind patterns here, it will be checked in pattern
+        // match analysis.
+        if pat.is_bind(self.db.as_hir_db()) {
+            return;
+        }
+
         if matches!(pat, Pat::Record { .. }) {
             self.path_ctxt.push(ExpectedPathKind::Type);
         } else {

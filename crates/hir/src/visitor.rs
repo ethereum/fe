@@ -1749,9 +1749,13 @@ where
         F2: FnOnce(&mut VisitorCtxt<U>),
         U: LazySpan + SpanDowncast + Into<DynLazySpan>,
     {
+        let chain_len = self.span.0.as_ref().unwrap().len();
         let mut new_ctxt = self.transition(f1);
+
         f2(&mut new_ctxt);
-        *self = new_ctxt.pop();
+
+        let n_pop = new_ctxt.span.0.as_ref().unwrap().len() - chain_len;
+        *self = new_ctxt.pop(n_pop);
     }
 
     fn transition<F, U>(&mut self, f: F) -> VisitorCtxt<'db, U>
@@ -1772,11 +1776,13 @@ where
         .cast()
     }
 
-    fn pop<U>(mut self) -> VisitorCtxt<'db, U>
+    fn pop<U>(mut self, n_pop: usize) -> VisitorCtxt<'db, U>
     where
         U: LazySpan,
     {
-        self.span.0.as_mut().unwrap().pop_transition();
+        for _ in 0..n_pop {
+            self.span.0.as_mut().unwrap().pop_transition();
+        }
 
         Self {
             db: self.db,
