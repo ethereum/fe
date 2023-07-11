@@ -1721,6 +1721,10 @@ pub fn walk_where_predicate<V>(
 
 use attr::{Attr, AttrListId};
 
+/// [`VisitorCtxt`] is used to track the span information of the current node
+/// being visited.
+/// The context is updated automatically when entering a new node. Thus, the
+/// user need to only construct the context when invoking a visitor.
 pub struct VisitorCtxt<'db, T>
 where
     T: LazySpan,
@@ -1816,6 +1820,7 @@ macro_rules! define_ctxt_ctor {
         $span_ty:ty,
         $ctor:ident($($ctor_name:ident: $ctor_ty:ty),*)),)*) => {
         $(impl<'db> VisitorCtxt<'db, $span_ty> {
+            /// Create a new [`VisitorCtxt`] with the given item as the root of the span chain.
             pub fn $ctor(db: &'db dyn HirDb, $($ctor_name: $ctor_ty,)*) -> Self {
                 Self {
                     db,

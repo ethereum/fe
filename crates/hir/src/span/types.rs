@@ -6,7 +6,7 @@ use super::define_lazy_span_node;
 
 define_lazy_span_node!(LazyTySpan);
 impl LazyTySpan {
-    /// Convert this [`LazyTypeSpan`] into a [`LazyPathTypeSpan`].
+    /// Convert this [`LazyTySpan`] into a [`LazyPathTypeSpan`].
     ///
     /// If the type that is pointed to by this is not a path type, the result
     /// span will point to the same span of the original type.
@@ -14,7 +14,7 @@ impl LazyTySpan {
         LazyPathTypeSpan(self.0)
     }
 
-    /// Convert this [`LazyTypeSpan`] into a [`LazyPtrTypeSpan`].
+    /// Convert this [`LazyTySpan`] into a [`LazyPtrTypeSpan`].
     ///
     /// If the type that is pointed to by this is not a pointer type, the result
     /// span will point to the same span of the original type.
@@ -22,7 +22,7 @@ impl LazyTySpan {
         LazyPtrTypeSpan(self.0)
     }
 
-    /// Convert this [`LazyTypeSpan`] into a [`LazyTupleTypeSpan`].
+    /// Convert this [`LazyTySpan`] into a [`LazyTupleTypeSpan`].
     ///
     /// If the type that is pointed to by this is not a tuple type, the result
     /// span will point to the same span of the original type.
@@ -30,7 +30,7 @@ impl LazyTySpan {
         LazyTupleTypeSpan(self.0)
     }
 
-    /// convert this [`LazyTypeSpan`] into a [`LazyArrayTypeSpan`].
+    /// convert this [`LazyTySpan`] into a [`LazyArrayTypeSpan`].
     ///
     /// If the type that is pointed to by this is not an array type, the result
     /// span will point to the same span of the original type.

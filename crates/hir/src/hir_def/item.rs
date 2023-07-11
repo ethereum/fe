@@ -251,7 +251,8 @@ impl TopLevelMod {
     }
 
     /// Returns the top level children of this module.
-    /// If you need all the children, use [`children_nested`] instead.
+    /// If you need all the children, use
+    /// [`children_nested`](Self::children_nested) instead.
     pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.scope_graph(db);
         let scope = ScopeId::from_item(self.into());
