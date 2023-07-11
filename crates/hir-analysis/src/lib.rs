@@ -3,7 +3,7 @@ use hir::{span::DynLazySpan, HirDb};
 #[salsa::jar(db = HirAnalysisDb)]
 pub struct Jar(
     /// Functions for import/name resolutions.
-    name_resolution::resolve_path_early,
+    name_resolution::resolve_path_early_impl,
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,

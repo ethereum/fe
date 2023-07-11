@@ -8,15 +8,15 @@ mod visibility_checker;
 use either::Either;
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, QueryDirective, ResBucket,
+    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, QueryDirective,
 };
 
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, Expr, FieldDefListId, GenericParamListId, IngotId, ItemKind, Pat,
-        PathId, TopLevelMod, TypeBound, TypeId, VariantDefListId,
+        scope_graph::ScopeId, Expr, FieldDefListId, GenericParamListId, IdentId, IngotId, ItemKind,
+        Partial, Pat, PathId, TopLevelMod, TypeBound, TypeId, VariantDefListId,
     },
     visitor::prelude::*,
 };
@@ -31,6 +31,49 @@ use self::{
     path_resolver::{EarlyPathResolver, EarlyResolvedPath},
 };
 
+// TODO: Implement `resolve_path` and `resolve_segments` after implementing the
+// late path resolution.
+
+/// Resolves the given path in the given scope.
+/// It's not necessary to report any error even if the `EarlyResolvedPath`
+/// contains some errors; it's always reported from [`PathAnalysisPass`].
+pub fn resolve_path_early(
+    db: &dyn HirAnalysisDb,
+    path: PathId,
+    scope: ScopeId,
+) -> EarlyResolvedPath {
+    resolve_segments_early(db, path.segments(db.as_hir_db()), scope)
+}
+
+/// Resolves the given path segments in the given scope.
+/// It's not necessary to report any error even if the `EarlyResolvedPath`
+/// contains some errors; it's always reported from [`PathAnalysisPass`].
+pub fn resolve_segments_early(
+    db: &dyn HirAnalysisDb,
+    segments: &[Partial<IdentId>],
+    scope: ScopeId,
+) -> EarlyResolvedPath {
+    // Obtain cache store for the given scope.
+    let cache_store = resolve_path_early_impl(db, scope.top_mod(db.as_hir_db()));
+    let importer = DefaultImporter::default();
+    // We use the cache store that is returned from `resolve_path_early` to get
+    // cached results immediately.
+    let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
+
+    let mut resolver = EarlyPathResolver::new(db, &mut name_resolver, &cache_store);
+    match resolver.resolve_segments(segments, scope) {
+        Ok(res) => res.resolved,
+        Err(_) => {
+            // It's ok to ignore the errors here and returns an empty bucket because the
+            // precise errors are reported from `PathAnalysisPass`.
+            let bucket = NameResBucket::default();
+            EarlyResolvedPath::Full(bucket)
+        }
+    }
+}
+
+/// Performs import resolution analysis. This pass only checks correctness of
+/// the imports and doesn't emit other name resolutions errors.
 pub struct ImportAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -55,6 +98,16 @@ impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
     }
 }
 
+/// Performs path resolution analysis. This pass checks all paths appeared in a
+/// module for
+/// - Existence
+/// - Visibility
+/// - Domain correctness
+/// - Ambiguity
+///
+/// NOTE: This pass doesn't check the conflict of item definitions or import
+/// errors. If you need to check them, please consider using
+/// [`ImportAnalysisPass`] or [`DefConflictAnalysisPass`].
 pub struct PathAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -68,7 +121,7 @@ impl<'db> PathAnalysisPass<'db> {
 impl<'db> ModuleAnalysisPass for PathAnalysisPass<'db> {
     fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
         let errors =
-            resolve_path_early::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+            resolve_path_early_impl::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
 
         errors
             .into_iter()
@@ -79,6 +132,8 @@ impl<'db> ModuleAnalysisPass for PathAnalysisPass<'db> {
     }
 }
 
+/// Performs conflict analysis. This pass checks the conflict of item
+/// definitions.
 pub struct DefConflictAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -92,7 +147,7 @@ impl<'db> DefConflictAnalysisPass<'db> {
 impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
     fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
         let errors =
-            resolve_path_early::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+            resolve_path_early_impl::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
 
         // TODO: `ImplCollector`.
         errors
@@ -119,8 +174,7 @@ pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> Resolve
 /// NOTE: This method doesn't check the conflict in impl/impl-trait blocks since
 /// it requires ingot granularity analysis.
 #[salsa::tracked(return_ref)]
-#[allow(unused)]
-pub(crate) fn resolve_path_early(
+pub(crate) fn resolve_path_early_impl(
     db: &dyn HirAnalysisDb,
     top_mod: TopLevelMod,
 ) -> ResolvedQueryCacheStore {
@@ -161,7 +215,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         }
     }
 
-    fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: ResBucket) {
+    fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: NameResBucket) {
         let path_kind = self.path_ctxt.last().unwrap();
         let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
         let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
@@ -451,7 +505,7 @@ impl ExpectedPathKind {
         }
     }
 
-    fn pick(self, db: &dyn HirAnalysisDb, bucket: ResBucket) -> Either<NameRes, NameRes> {
+    fn pick(self, db: &dyn HirAnalysisDb, bucket: NameResBucket) -> Either<NameRes, NameRes> {
         debug_assert!(!bucket.is_empty());
 
         let res = match bucket.pick(self.domain()).as_ref().ok() {

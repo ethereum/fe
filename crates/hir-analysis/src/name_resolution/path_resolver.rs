@@ -5,14 +5,14 @@ use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 
 use super::{
     name_resolver::{
-        NameRes, NameResolutionError, NameResolver, ResBucket, ResolvedQueryCacheStore,
+        NameRes, NameResBucket, NameResolutionError, NameResolver, ResolvedQueryCacheStore,
     },
     NameDomain, NameQuery,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EarlyResolvedPath {
-    Full(ResBucket),
+    Full(NameResBucket),
 
     /// The path is partially resolved; this means that the `resolved` is a type
     /// and the following segments depend on type to resolve.
@@ -128,12 +128,12 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
     fn resolve_last_segment(
         &mut self,
         i_path: &IntermediatePath,
-    ) -> PathResolutionResult<ResBucket> {
+    ) -> PathResolutionResult<NameResBucket> {
         let query = i_path.make_query(self.db)?;
         Ok(self.resolve_query(query))
     }
 
-    fn resolve_query(&mut self, query: NameQuery) -> ResBucket {
+    fn resolve_query(&mut self, query: NameQuery) -> NameResBucket {
         if let Some(bucket) = self.cache_store.get(query) {
             bucket.clone()
         } else {
@@ -205,7 +205,7 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
-    fn finalize_as_full(mut self, bucket: ResBucket) -> EarlyResolvedPathWithTrajectory {
+    fn finalize_as_full(mut self, bucket: NameResBucket) -> EarlyResolvedPathWithTrajectory {
         let resolved = EarlyResolvedPath::Full(bucket);
         let mut trajectory = self.trajectory;
         let current_res = self.current_res;
@@ -217,7 +217,7 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
-    fn proceed(&mut self, bucket: ResBucket) -> PathResolutionResult<()> {
+    fn proceed(&mut self, bucket: NameResBucket) -> PathResolutionResult<()> {
         let next_res = bucket
             .pick(NameDomain::Type)
             .clone()

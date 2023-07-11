@@ -19,8 +19,8 @@ use crate::{
 use super::{
     diagnostics::NameResDiag,
     name_resolver::{
-        NameDerivation, NameDomain, NameQuery, NameRes, NameResKind, NameResolutionError,
-        NameResolutionResult, NameResolver, QueryDirective, ResBucket,
+        NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind,
+        NameResolutionError, NameResolutionResult, NameResolver, QueryDirective,
     },
 };
 
@@ -665,7 +665,7 @@ impl<'db> ImportResolver<'db> {
 pub struct ResolvedImports {
     pub named_resolved: FxHashMap<ScopeId, NamedImportSet>,
     pub glob_resolved: FxHashMap<ScopeId, GlobImportSet>,
-    pub unnamed_resolved: Vec<ResBucket>,
+    pub unnamed_resolved: Vec<NameResBucket>,
 }
 
 pub(super) trait Importer {
@@ -681,9 +681,14 @@ pub(super) trait Importer {
         scope: ScopeId,
     ) -> Option<&'a GlobImportSet>;
 
-    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket];
+    fn unnamed_imports<'a>(
+        &'a self,
+        db: &'a dyn HirAnalysisDb,
+        scope: ScopeId,
+    ) -> &'a [NameResBucket];
 }
 
+#[derive(Debug, Clone, Copy, Default)]
 pub(super) struct DefaultImporter;
 
 impl Importer for DefaultImporter {
@@ -707,12 +712,16 @@ impl Importer for DefaultImporter {
             .get(&scope)
     }
 
-    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket] {
+    fn unnamed_imports<'a>(
+        &'a self,
+        db: &'a dyn HirAnalysisDb,
+        scope: ScopeId,
+    ) -> &'a [NameResBucket] {
         &resolved_imports_for_scope(db, scope).unnamed_resolved
     }
 }
 
-pub type NamedImportSet = FxHashMap<IdentId, ResBucket>;
+pub type NamedImportSet = FxHashMap<IdentId, NameResBucket>;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GlobImportSet {
@@ -848,7 +857,7 @@ impl IntermediateUse {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum IUseResolution {
     /// The all segments are resolved.
-    Full(ResBucket),
+    Full(NameResBucket),
 
     /// The all path segments except the last one are resolved.
     BasePath(IntermediateUse),
@@ -878,7 +887,7 @@ impl IntermediateResolvedImports {
         &mut self,
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
-        mut bind: ResBucket,
+        mut bind: NameResBucket,
     ) -> Result<(), NameResDiag> {
         let scope = i_use.original_scope;
         bind.set_derivation(NameDerivation::NamedImported(i_use.use_));
@@ -979,7 +988,11 @@ impl Importer for IntermediateResolvedImports {
         }
     }
 
-    fn unnamed_imports<'a>(&'a self, db: &'a dyn HirAnalysisDb, scope: ScopeId) -> &'a [ResBucket] {
+    fn unnamed_imports<'a>(
+        &'a self,
+        db: &'a dyn HirAnalysisDb,
+        scope: ScopeId,
+    ) -> &'a [NameResBucket] {
         if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             &resolved_imports_for_scope(db, scope).unnamed_resolved
         } else {

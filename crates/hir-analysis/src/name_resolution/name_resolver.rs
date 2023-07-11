@@ -110,12 +110,12 @@ impl Default for QueryDirective {
 /// The struct contains the lookup result of a name query.
 /// The results can contain more than one name resolution which belong to
 /// different name domains.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ResBucket {
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NameResBucket {
     pub(super) bucket: FxHashMap<NameDomain, NameResolutionResult<NameRes>>,
 }
 
-impl ResBucket {
+impl NameResBucket {
     /// Returns the number of resolutions in the bucket.
     pub fn len(&self) -> usize {
         self.iter().count()
@@ -217,7 +217,7 @@ impl ResBucket {
     }
 }
 
-impl IntoIterator for ResBucket {
+impl IntoIterator for NameResBucket {
     type Item = NameResolutionResult<NameRes>;
     type IntoIter = IntoValues<NameDomain, NameResolutionResult<NameRes>>;
 
@@ -226,7 +226,7 @@ impl IntoIterator for ResBucket {
     }
 }
 
-impl From<NameRes> for ResBucket {
+impl From<NameRes> for NameResBucket {
     fn from(res: NameRes) -> Self {
         let mut names = FxHashMap::default();
         names.insert(res.domain, Ok(res));
@@ -458,13 +458,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         self.cache_store
     }
 
-    pub(crate) fn resolve_query(&mut self, query: NameQuery) -> ResBucket {
+    pub(crate) fn resolve_query(&mut self, query: NameQuery) -> NameResBucket {
         // If the query is already resolved, return the cached result.
         if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
         };
 
-        let mut bucket = ResBucket::default();
+        let mut bucket = NameResBucket::default();
 
         // The shadowing rule is
         // `$ > NamedImports > GlobImports > Lex > external ingot > builtin types`,
@@ -682,7 +682,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     /// Finalize the query result and cache it to the cache store.
-    fn finalize_query_result(&mut self, query: NameQuery, bucket: ResBucket) -> ResBucket {
+    fn finalize_query_result(&mut self, query: NameQuery, bucket: NameResBucket) -> NameResBucket {
         self.cache_store.cache_result(query, bucket.clone());
         bucket
     }
@@ -727,12 +727,12 @@ impl std::error::Error for NameResolutionError {}
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedQueryCacheStore {
-    cache: FxHashMap<NameQuery, ResBucket>,
+    cache: FxHashMap<NameQuery, NameResBucket>,
     no_cache: bool,
 }
 
 impl ResolvedQueryCacheStore {
-    pub(super) fn get(&self, query: NameQuery) -> Option<&ResBucket> {
+    pub(super) fn get(&self, query: NameQuery) -> Option<&NameResBucket> {
         self.cache.get(&query)
     }
 
@@ -743,7 +743,7 @@ impl ResolvedQueryCacheStore {
         }
     }
 
-    fn cache_result(&mut self, query: NameQuery, result: ResBucket) {
+    fn cache_result(&mut self, query: NameQuery, result: NameResBucket) {
         if self.no_cache {
             return;
         }
