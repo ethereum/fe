@@ -4,7 +4,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{hir_def::GenericParamOwner, span::DynLazySpan, HirDb};
 
-use super::{Enum, Func, FuncParamLabel, IdentId, IngotId, ItemKind, TopLevelMod, Use, Visibility};
+use super::{
+    Body, Enum, ExprId, Func, FuncParamLabel, IdentId, IngotId, ItemKind, TopLevelMod, Use,
+    Visibility,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
@@ -52,6 +55,7 @@ pub enum ScopeId {
     FuncParam(ItemKind, usize),
     Field(ItemKind, usize),
     Variant(ItemKind, usize),
+    Block(Body, ExprId),
 }
 impl ScopeId {
     pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
@@ -61,6 +65,7 @@ impl ScopeId {
             ScopeId::FuncParam(item, _) => item.top_mod(db),
             ScopeId::Field(item, _) => item.top_mod(db),
             ScopeId::Variant(item, _) => item.top_mod(db),
+            ScopeId::Block(body, _) => body.top_mod(db),
         }
     }
 
@@ -71,6 +76,7 @@ impl ScopeId {
             ScopeId::FuncParam(_, _) => "value",
             ScopeId::Field(_, _) => "field",
             ScopeId::Variant(_, _) => "value",
+            ScopeId::Block(_, _) => "block",
         }
     }
 
@@ -224,6 +230,8 @@ impl ScopeId {
                 let params = &parent.params(db).data(db)[idx];
                 params.name().to_opt()
             }
+
+            ScopeId::Block(..) => None,
         }
     }
 
@@ -269,6 +277,8 @@ impl ScopeId {
 
                 Some(parent.params_span().param(idx).into())
             }
+
+            ScopeId::Block(..) => None,
         }
     }
 

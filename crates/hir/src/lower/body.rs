@@ -18,8 +18,8 @@ impl Body {
     ) -> Self {
         let bid = TrackedBodyId::ItemBody(parent_id.into());
         let mut ctxt = BodyCtxt::new(f_ctxt, bid);
-        Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast)
+        let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
+        ctxt.build(&ast, body_expr)
     }
 
     pub(super) fn lower_ast_nested(
@@ -29,15 +29,15 @@ impl Body {
     ) -> Self {
         let bid = TrackedBodyId::NestedBody(bid.into());
         let mut ctxt = BodyCtxt::new(f_ctxt, bid);
-        Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast)
+        let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
+        ctxt.build(&ast, body_expr)
     }
 
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'_>, ast: ast::Expr) -> Self {
         let bid = TrackedBodyId::NamelessBody;
         let mut ctxt = BodyCtxt::new(f_ctxt, bid);
-        Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast)
+        let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
+        ctxt.build(&ast, body_expr)
     }
 }
 
@@ -103,11 +103,12 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         }
     }
 
-    fn build(self, ast: &ast::Expr) -> Body {
+    fn build(self, ast: &ast::Expr, body_expr: ExprId) -> Body {
         let origin = HirOrigin::raw(ast);
         let body = Body::new(
             self.f_ctxt.db(),
             self.bid,
+            body_expr,
             self.stmts,
             self.exprs,
             self.pats,
@@ -116,7 +117,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
             origin,
         );
 
-        self.f_ctxt.leave_scope(body);
+        self.f_ctxt.leave_item_scope(body);
         body
     }
 }

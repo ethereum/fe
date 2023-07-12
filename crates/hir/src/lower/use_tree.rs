@@ -22,8 +22,8 @@ impl Use {
             let alias = None;
             let top_mod = ctxt.top_mod();
             let origin = HirOrigin::raw(&ast);
-            let use_ = Self::new(ctxt.db(),id, path, alias, vis, top_mod, origin);
-            ctxt.leave_scope(use_);
+            let use_ = Self::new(ctxt.db(), id, path, alias, vis, top_mod, origin);
+            ctxt.leave_item_scope(use_);
             return vec![use_];
         };
 
@@ -38,7 +38,7 @@ impl Use {
             let top_mod = ctxt.top_mod();
             let origin = HirOrigin::raw(&ast);
             let use_ = Self::new(ctxt.db(), id, path, alias, vis, top_mod, origin);
-            ctxt.leave_scope(use_);
+            ctxt.leave_item_scope(use_);
             return vec![use_];
         }
 
@@ -52,7 +52,7 @@ impl Use {
                 let alias = alias;
                 let origin = HirOrigin::desugared(origin);
                 let use_ = Self::new(ctxt.db(), id, path, alias, vis, top_mod, origin);
-                ctxt.leave_scope(use_)
+                ctxt.leave_item_scope(use_)
             })
             .collect()
     }

@@ -8,8 +8,8 @@ use parser::{
 
 use crate::{
     hir_def::{
-        module_tree_impl, scope_graph::ScopeGraph, IdentId, IngotId, IntegerId, ItemKind, LitKind,
-        ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
+        module_tree_impl, scope_graph::ScopeGraph, ExprId, IdentId, IngotId, IntegerId, ItemKind,
+        LitKind, ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
     },
     HirDb, LowerHirDb,
 };
@@ -66,7 +66,7 @@ pub(crate) fn scope_graph_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ScopeGra
     if let Some(items) = ast.items() {
         lower_module_items(&mut ctxt, id, items);
     }
-    ctxt.leave_scope(top_mod);
+    ctxt.leave_item_scope(top_mod);
 
     ctxt.build()
 }
@@ -100,6 +100,14 @@ impl<'db> FileLowerCtxt<'db> {
         self.builder.top_mod
     }
 
+    pub(super) fn enter_block_scope(&mut self) {
+        self.builder.enter_block_scope();
+    }
+
+    pub(super) fn leave_block_scope(&mut self, block: ExprId) {
+        self.builder.leave_block_scope(block);
+    }
+
     /// Creates a new scope for an item.
     fn enter_scope(&mut self, is_mod: bool) {
         self.builder.enter_scope(is_mod);
@@ -107,11 +115,11 @@ impl<'db> FileLowerCtxt<'db> {
 
     /// Leaves the current scope, `item` should be the generated item which owns
     /// the scope.
-    fn leave_scope<I>(&mut self, item: I) -> I
+    fn leave_item_scope<I>(&mut self, item: I) -> I
     where
         I: Into<ItemKind> + Copy,
     {
-        self.builder.leave_scope(item.into());
+        self.builder.leave_item_scope(item.into());
         item
     }
 }

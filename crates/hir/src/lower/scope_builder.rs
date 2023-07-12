@@ -1,52 +1,50 @@
+use std::mem;
+
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
-        FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind, TopLevelMod,
-        Use, VariantDefListId, Visibility,
+        Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
+        TopLevelMod, Use, VariantDefListId, Visibility,
     },
     HirDb,
 };
 
-pub struct ScopeGraphBuilder<'db> {
+pub(super) struct ScopeGraphBuilder<'db> {
     pub(super) db: &'db dyn HirDb,
     pub(super) top_mod: TopLevelMod,
     graph: IntermediateScopeGraph,
     scope_stack: Vec<NodeId>,
     module_stack: Vec<NodeId>,
+    declared_blocks: FxHashMap<NodeId, Option<ExprId>>,
 }
 
 impl<'db> ScopeGraphBuilder<'db> {
-    pub(crate) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
+    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
         let mut builder = Self {
             db,
             top_mod,
             graph: IntermediateScopeGraph::default(),
             scope_stack: Default::default(),
             module_stack: Default::default(),
+            declared_blocks: FxHashMap::default(),
         };
 
         builder.enter_scope(true);
         builder
     }
 
-    pub fn build(self) -> ScopeGraph {
+    pub(super) fn build(self) -> ScopeGraph {
         self.graph.build(self.top_mod)
     }
 
-    pub fn enter_scope(&mut self, is_mod: bool) {
-        // Create dummy scope, the scope kind is initialized in `leave_scope`.
-        let (dummy_scope_id, dummy_scope) = self.dummy_scope();
-        let id = self.graph.push(dummy_scope_id, dummy_scope);
-        self.scope_stack.push(id);
-        if is_mod {
-            self.module_stack.push(id);
-        }
+    pub(super) fn enter_scope(&mut self, is_mod: bool) {
+        self.enter_scope_impl(is_mod);
     }
 
-    pub fn leave_scope(&mut self, item: ItemKind) {
+    pub(super) fn leave_item_scope(&mut self, item: ItemKind) {
         use ItemKind::*;
 
         let item_node = self.scope_stack.pop().unwrap();
@@ -229,8 +227,12 @@ impl<'db> ScopeGraphBuilder<'db> {
                 EdgeKind::anon()
             }
 
-            Body(_) => {
+            Body(body) => {
                 self.graph.add_lex_edge(item_node, parent_node);
+                for (node, block) in mem::take(&mut self.declared_blocks) {
+                    let block = block.unwrap();
+                    self.finalize_block_scope(node, body, block);
+                }
                 EdgeKind::anon()
             }
 
@@ -241,8 +243,37 @@ impl<'db> ScopeGraphBuilder<'db> {
             .add_edge(parent_node, item_node, parent_to_child_edge);
     }
 
+    pub(super) fn enter_block_scope(&mut self) {
+        let node = self.enter_scope_impl(false);
+        self.declared_blocks.insert(node, None);
+    }
+
+    pub(super) fn leave_block_scope(&mut self, block: ExprId) {
+        let block_node = self.scope_stack.pop().unwrap();
+        let parent_node = *self.scope_stack.last().unwrap();
+        *self.declared_blocks.get_mut(&block_node).unwrap() = Some(block);
+        self.graph.add_lex_edge(block_node, parent_node);
+        self.graph
+            .add_edge(parent_node, block_node, EdgeKind::anon());
+    }
+
+    fn enter_scope_impl(&mut self, is_mod: bool) -> NodeId {
+        // Create dummy scope, the scope kind is initialized in `leave_scope`.
+        let (dummy_scope_id, dummy_scope) = self.dummy_scope();
+        let id = self.graph.push(dummy_scope_id, dummy_scope);
+        self.scope_stack.push(id);
+        if is_mod {
+            self.module_stack.push(id);
+        }
+        id
+    }
+
     fn initialize_item_scope(&mut self, node: NodeId, item: ItemKind) {
         self.graph.initialize_item_scope(self.db, node, item)
+    }
+
+    fn finalize_block_scope(&mut self, node: NodeId, body: Body, block: ExprId) {
+        self.graph.finalize_block_scope(node, body, block);
     }
 
     fn add_field_scope(
@@ -392,6 +423,14 @@ impl IntermediateScopeGraph {
         scope_data.0 = scope_id;
         scope_data.1.id = scope_id;
         scope_data.1.vis = item.vis(db);
+    }
+
+    fn finalize_block_scope(&mut self, node: NodeId, body: Body, block: ExprId) {
+        let scope_id = ScopeId::Block(body, block);
+        let scope_data = &mut self.nodes[node];
+        scope_data.0 = scope_id;
+        scope_data.1.id = scope_id;
+        scope_data.1.vis = Visibility::Private;
     }
 
     fn add_lex_edge(&mut self, child: NodeId, parent: NodeId) {

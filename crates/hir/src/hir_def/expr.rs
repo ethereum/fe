@@ -42,7 +42,7 @@ pub enum Expr {
     Match(ExprId, Partial<Vec<MatchArm>>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(u32);
 entity_impl!(ExprId);
 

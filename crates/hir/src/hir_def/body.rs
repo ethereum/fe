@@ -18,6 +18,10 @@ pub struct Body {
     #[id]
     id: TrackedBodyId,
 
+    /// The expression that evaluates to the value of the body.
+    /// In case of a function body, this is always be the block expression.
+    pub body_expr: ExprId,
+
     #[return_ref]
     pub stmts: NodeStore<StmtId, Partial<Stmt>>,
     #[return_ref]

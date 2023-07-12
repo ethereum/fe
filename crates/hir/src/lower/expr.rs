@@ -20,12 +20,15 @@ impl Expr {
             }
 
             ast::ExprKind::Block(block) => {
+                ctxt.f_ctxt.enter_block_scope();
                 let mut stmts = vec![];
                 for stmt in block.stmts() {
                     let stmt = Stmt::push_to_body(ctxt, stmt);
                     stmts.push(stmt);
                 }
-                Self::Block(stmts)
+                let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+                ctxt.f_ctxt.leave_block_scope(expr_id);
+                return expr_id;
             }
 
             ast::ExprKind::Bin(bin) => {

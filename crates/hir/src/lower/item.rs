@@ -79,7 +79,7 @@ impl Mod {
 
         let origin = HirOrigin::raw(&ast);
         let mod_ = Self::new(ctxt.db(), id, name, attributes, vis, ctxt.top_mod(), origin);
-        ctxt.leave_scope(mod_)
+        ctxt.leave_item_scope(mod_)
     }
 }
 
@@ -128,7 +128,7 @@ impl Func {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(fn_)
+        ctxt.leave_item_scope(fn_)
     }
 }
 
@@ -162,7 +162,7 @@ impl Struct {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(struct_)
+        ctxt.leave_item_scope(struct_)
     }
 }
 
@@ -192,7 +192,7 @@ impl Contract {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(contract)
+        ctxt.leave_item_scope(contract)
     }
 }
 
@@ -226,7 +226,7 @@ impl Enum {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(enum_)
+        ctxt.leave_item_scope(enum_)
     }
 }
 
@@ -260,7 +260,7 @@ impl TypeAlias {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(alias)
+        ctxt.leave_item_scope(alias)
     }
 }
 
@@ -296,7 +296,7 @@ impl Impl {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(impl_)
+        ctxt.leave_item_scope(impl_)
     }
 }
 
@@ -335,7 +335,7 @@ impl Trait {
             origin,
         );
 
-        ctxt.leave_scope(trait_)
+        ctxt.leave_item_scope(trait_)
     }
 }
 
@@ -373,7 +373,7 @@ impl ImplTrait {
             ctxt.top_mod(),
             origin,
         );
-        ctxt.leave_scope(impl_trait)
+        ctxt.leave_item_scope(impl_trait)
     }
 }
 
@@ -396,7 +396,7 @@ impl Const {
         let origin = HirOrigin::raw(&ast);
 
         let const_ = Self::new(ctxt.db(), id, name, ty, body, vis, ctxt.top_mod(), origin);
-        ctxt.leave_scope(const_)
+        ctxt.leave_item_scope(const_)
     }
 }
 
