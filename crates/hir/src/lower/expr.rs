@@ -1,7 +1,9 @@
 use parser::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{expr::*, Body, GenericArgListId, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
+    hir_def::{
+        expr::*, Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt,
+    },
     span::HirOrigin,
 };
 
@@ -28,6 +30,10 @@ impl Expr {
                     stmts.push(stmt);
                 }
                 let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+
+                for item in block.items() {
+                    ItemKind::lower_ast(ctxt.f_ctxt, item);
+                }
 
                 ctxt.f_ctxt.leave_block_scope(expr_id);
                 return expr_id;

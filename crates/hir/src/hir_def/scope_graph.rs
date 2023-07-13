@@ -28,6 +28,10 @@ impl ScopeGraph {
 
     /// Returns the direct child items of the scope.
     pub fn child_items(&self, scope: ScopeId) -> impl Iterator<Item = ItemKind> + '_ {
+        self.children(scope).filter_map(|child| child.to_item())
+    }
+
+    pub fn children(&self, scope: ScopeId) -> impl Iterator<Item = ScopeId> + '_ {
         self.edges(scope).filter_map(|edge| match edge.kind {
             EdgeKind::Lex(_)
             | EdgeKind::Super(_)
@@ -35,7 +39,7 @@ impl ScopeGraph {
             | EdgeKind::SelfTy(_)
             | EdgeKind::Self_(_) => None,
 
-            _ => edge.dest.to_item(),
+            _ => Some(edge.dest),
         })
     }
 
@@ -93,6 +97,18 @@ impl ScopeId {
 
     pub fn root(top_mod: TopLevelMod) -> Self {
         Self::Item(top_mod.into())
+    }
+
+    /// Returns the nearest enclosing item.
+    pub fn item(self) -> ItemKind {
+        match self {
+            ScopeId::Item(item) => item,
+            ScopeId::GenericParam(item, _) => item,
+            ScopeId::FuncParam(item, _) => item,
+            ScopeId::Field(item, _) => item,
+            ScopeId::Variant(item, _) => item,
+            ScopeId::Block(body, _) => body.into(),
+        }
     }
 
     pub fn is_importable(self) -> bool {
@@ -283,11 +299,17 @@ impl ScopeId {
     }
 
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
+        let name = match self {
+            ScopeId::Block(body, expr) => format!("block_{}", body.block_order(db)[&expr]),
+            _ => self.name(db)?.data(db).clone(),
+        };
+        dbg!(&name);
+
         if let Some(parent) = self.parent(db) {
             let parent_path = parent.pretty_path(db)?;
-            Some(format!("{}::{}", parent_path, self.name(db)?.data(db)))
+            Some(format!("{}::{}", parent_path, name))
         } else {
-            self.name(db).map(|name| name.data(db).clone())
+            Some(name)
         }
     }
 }

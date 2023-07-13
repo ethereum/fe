@@ -23,8 +23,8 @@ use crate::{
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, ExprId, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial,
-    TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
+    UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -60,6 +60,10 @@ pub enum ItemKind {
 impl ItemKind {
     pub fn lazy_span(self) -> LazyItemSpan {
         LazyItemSpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self)
     }
 
     pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
@@ -240,6 +244,10 @@ impl TopLevelMod {
         LazyTopModSpan::new(self)
     }
 
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
+
     pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
         lower::scope_graph_impl(db, self)
     }
@@ -296,6 +304,10 @@ impl Mod {
         LazyModSpan::new(self)
     }
 
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
+
     pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
@@ -327,6 +339,10 @@ impl Func {
         LazyFuncSpan::new(self)
     }
 
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
+
     pub fn vis(self, db: &dyn HirDb) -> Visibility {
         self.modifier(db).to_visibility()
     }
@@ -352,6 +368,10 @@ impl Struct {
     pub fn lazy_span(self) -> LazyStructSpan {
         LazyStructSpan::new(self)
     }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
 }
 
 #[salsa::tracked]
@@ -371,6 +391,10 @@ pub struct Contract {
 impl Contract {
     pub fn lazy_span(self) -> LazyContractSpan {
         LazyContractSpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
     }
 }
 
@@ -394,6 +418,10 @@ impl Enum {
     pub fn lazy_span(self) -> LazyEnumSpan {
         LazyEnumSpan::new(self)
     }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
 }
 
 #[salsa::tracked]
@@ -415,6 +443,10 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn lazy_span(self) -> LazyTypeAliasSpan {
         LazyTypeAliasSpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
     }
 }
 
@@ -441,6 +473,10 @@ impl Impl {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
     }
 }
 
@@ -470,6 +506,10 @@ impl Trait {
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
 }
 
 #[salsa::tracked]
@@ -497,6 +537,10 @@ impl ImplTrait {
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
 }
 
 #[salsa::tracked]
@@ -517,6 +561,10 @@ impl Const {
     pub fn lazy_span(self) -> LazyConstSpan {
         LazyConstSpan::new(self)
     }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
 }
 
 #[salsa::tracked]
@@ -535,6 +583,10 @@ pub struct Use {
 impl Use {
     pub fn lazy_span(self) -> LazyUseSpan {
         LazyUseSpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
     }
 
     /// Returns imported name if it is present and not a glob.
@@ -671,7 +723,6 @@ pub enum TrackedItemId {
     Extern,
     FuncBody,
     NamelessBody,
-    InsideBlock(Box<Self>, ExprId),
     Joined(Box<Self>, Box<Self>),
 }
 

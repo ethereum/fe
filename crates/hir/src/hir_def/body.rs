@@ -9,9 +9,16 @@ use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
 
-use crate::span::{item::LazyBodySpan, HirOrigin};
+use crate::{
+    span::{item::LazyBodySpan, HirOrigin},
+    visitor::prelude::*,
+    HirDb,
+};
 
-use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod, TrackedItemId};
+use super::{
+    scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
+    TrackedItemId,
+};
 
 #[salsa::tracked]
 pub struct Body {
@@ -20,7 +27,7 @@ pub struct Body {
 
     /// The expression that evaluates to the value of the body.
     /// In case of a function body, this is always be the block expression.
-    pub body_expr: ExprId,
+    pub expr: ExprId,
 
     #[return_ref]
     pub stmts: NodeStore<StmtId, Partial<Stmt>>,
@@ -39,6 +46,20 @@ pub struct Body {
 impl Body {
     pub fn lazy_span(self) -> LazyBodySpan {
         LazyBodySpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
+
+    #[doc(hidden)]
+    /// Returns the BFS order of the blocks in the body.
+    ///
+    /// Currently, this is only used for testing.
+    /// When it turns out to be generally useful, we need to consider to let
+    /// salsa track this method.
+    pub fn block_order(self, db: &dyn HirDb) -> FxHashMap<ExprId, usize> {
+        BlockOrderCalculator::new(db).calculate(self)
     }
 }
 
@@ -106,5 +127,48 @@ where
             source_to_node: FxHashMap::default(),
             node_to_source: SecondaryMap::new(),
         }
+    }
+}
+
+struct BlockOrderCalculator<'db> {
+    db: &'db dyn HirDb,
+    order: FxHashMap<ExprId, usize>,
+    fresh_number: usize,
+}
+
+impl<'db> Visitor for BlockOrderCalculator<'db> {
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut crate::visitor::VisitorCtxt<'_, crate::span::expr::LazyExprSpan>,
+        expr: ExprId,
+        expr_data: &Expr,
+    ) {
+        if matches!(expr_data, Expr::Block(..)) {
+            self.order.insert(expr, self.fresh_number);
+            self.fresh_number += 1;
+        }
+
+        walk_expr(self, ctxt, expr)
+    }
+}
+
+impl<'db> BlockOrderCalculator<'db> {
+    fn new(db: &'db dyn HirDb) -> Self {
+        Self {
+            db,
+            order: FxHashMap::default(),
+            fresh_number: 0,
+        }
+    }
+
+    fn calculate(mut self, body: Body) -> FxHashMap<ExprId, usize> {
+        let expr = body.expr(self.db);
+        let Partial::Present(expr_data) = expr.data(self.db, body) else {
+            return self.order;
+        };
+
+        let mut ctxt = VisitorCtxt::with_expr(self.db, body.scope(), body, expr);
+        self.visit_expr(&mut ctxt, expr, expr_data);
+        self.order
     }
 }

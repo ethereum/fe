@@ -2,12 +2,12 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     hir_def::{
-        attr, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
-        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
-        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
-        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment,
-        VariantDef, VariantDefListId, WhereClauseId, WherePredicate,
+        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field,
+        FieldDef, FieldDefListId, FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId,
+        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
+        Impl, ImplTrait, ItemKind, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt,
+        StmtId, Struct, TopLevelMod, Trait, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
+        UsePathId, UsePathSegment, VariantDef, VariantDefListId, WhereClauseId, WherePredicate,
     },
     span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
     HirDb,
@@ -238,20 +238,35 @@ pub trait Visitor {
         walk_variant_def(self, ctxt, variant)
     }
 
-    fn visit_stmt(&mut self, ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>, stmt: &Stmt) {
+    fn visit_stmt(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>,
+        stmt: StmtId,
+        #[allow(unused_variables)] stmt_data: &Stmt,
+    ) {
         walk_stmt(self, ctxt, stmt)
     }
 
-    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: &Expr) {
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        expr: ExprId,
+        #[allow(unused_variables)] expr_data: &Expr,
+    ) {
         walk_expr(self, ctxt, expr)
+    }
+
+    fn visit_pat(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyPatSpan>,
+        pat: PatId,
+        #[allow(unused_variables)] pat_data: &Pat,
+    ) {
+        walk_pat(self, ctxt, pat)
     }
 
     fn visit_arm(&mut self, ctxt: &mut VisitorCtxt<'_, LazyMatchArmSpan>, arm: &MatchArm) {
         walk_arm(self, ctxt, arm)
-    }
-
-    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat) {
-        walk_pat(self, ctxt, pat)
     }
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
@@ -808,15 +823,18 @@ pub fn walk_body<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, b
 where
     V: Visitor + ?Sized,
 {
-    for stmt_id in body.stmts(ctxt.db).keys() {
-        visit_node_in_body!(visitor, ctxt, &stmt_id, stmt);
-    }
+    let body_expr = body.expr(ctxt.db);
+    visit_node_in_body!(visitor, ctxt, &body_expr, expr);
 }
 
-pub fn walk_stmt<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>, stmt: &Stmt)
+pub fn walk_stmt<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>, stmt: StmtId)
 where
     V: Visitor + ?Sized,
 {
+    let Partial::Present(stmt) = stmt.data(ctxt.db, ctxt.body()) else {
+        return;
+    };
+
     match stmt {
         Stmt::Let(pat_id, ty, expr_id) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
@@ -859,11 +877,15 @@ where
     }
 }
 
-pub fn walk_expr<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: &Expr)
+pub fn walk_expr<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: ExprId)
 where
     V: Visitor + ?Sized,
 {
-    match expr {
+    let Partial::Present(data) = expr.data(ctxt.db, ctxt.body()) else {
+        return;
+    };
+
+    match data {
         Expr::Lit(lit) => ctxt.with_new_ctxt(
             |span| span.into_lit_expr().lit_moved(),
             |ctxt| {
@@ -872,6 +894,13 @@ where
         ),
 
         Expr::Block(stmts) => {
+            let s_graph = ctxt.top_mod().scope_graph(ctxt.db);
+            let scope = ctxt.scope();
+            for item in s_graph.child_items(scope) {
+                let mut new_ctxt = VisitorCtxt::with_item(ctxt.db, item);
+                visitor.visit_item(&mut new_ctxt, item);
+            }
+
             for stmt_id in stmts {
                 visit_node_in_body!(visitor, ctxt, stmt_id, stmt);
             }
@@ -1052,11 +1081,15 @@ where
     visit_node_in_body!(visitor, ctxt, &arm.body, expr);
 }
 
-pub fn walk_pat<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat)
+pub fn walk_pat<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId)
 where
     V: Visitor + ?Sized,
 {
-    match pat {
+    let Partial::Present(data) = pat.data(ctxt.db, ctxt.body()) else {
+        return;
+    };
+
+    match data {
         Pat::Lit(lit) => {
             if let Some(lit) = lit.to_opt() {
                 ctxt.with_new_ctxt(
@@ -1229,8 +1262,10 @@ pub fn walk_generic_param_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
+    let parent_item = ctxt.scope().item();
     for (i, param) in params.data(ctxt.db).iter().enumerate() {
-        ctxt.with_new_ctxt(
+        ctxt.with_new_scoped_ctxt(
+            ScopeId::GenericParam(parent_item, i),
             |span| span.param_moved(i),
             |ctxt| {
                 visitor.visit_generic_param(ctxt, param);
@@ -1375,8 +1410,10 @@ pub fn walk_func_param_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
+    let parent_item = ctxt.scope().item();
     for (idx, param) in params.data(ctxt.db).iter().enumerate() {
-        ctxt.with_new_ctxt(
+        ctxt.with_new_scoped_ctxt(
+            ScopeId::FuncParam(parent_item, idx),
             |span| span.param_moved(idx),
             |ctxt| {
                 visitor.visit_func_param(ctxt, param);
@@ -1449,8 +1486,10 @@ pub fn walk_field_def_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
+    let parent_item = ctxt.scope().item();
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {
-        ctxt.with_new_ctxt(
+        ctxt.with_new_scoped_ctxt(
+            ScopeId::Field(parent_item, idx),
             |span| span.field_moved(idx),
             |ctxt| {
                 visitor.visit_field_def(ctxt, field);
@@ -1492,8 +1531,10 @@ pub fn walk_variant_def_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
+    let parent_item = ctxt.scope().item();
     for (idx, variant) in variants.data(ctxt.db).iter().enumerate() {
-        ctxt.with_new_ctxt(
+        ctxt.with_new_scoped_ctxt(
+            ScopeId::Variant(parent_item, idx),
             |span| span.variant_moved(idx),
             |ctxt| {
                 visitor.visit_variant_def(ctxt, variant);
@@ -1721,8 +1762,8 @@ pub fn walk_where_predicate<V>(
 
 use attr::{Attr, AttrListId};
 
-/// [`VisitorCtxt`] is used to track the span information of the current node
-/// being visited.
+/// [`VisitorCtxt`] is used to track the span information and the scope of the
+/// current node being visited.
 /// The context is updated automatically when entering a new node. Thus, the
 /// user need to only construct the context when invoking a visitor.
 pub struct VisitorCtxt<'db, T>
@@ -1731,6 +1772,8 @@ where
 {
     db: &'db dyn HirDb,
     span: DynLazySpan,
+    scope_stack: Vec<ScopeId>,
+
     _t: PhantomData<T>,
 }
 
@@ -1738,12 +1781,92 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
+    pub fn db(&self) -> &'db dyn HirDb {
+        self.db
+    }
+
     pub fn span(&self) -> Option<T>
     where
         T: SpanDowncast,
     {
         let dyn_span: DynLazySpan = self.span.clone();
         T::downcast(dyn_span)
+    }
+
+    pub fn scope(&self) -> ScopeId {
+        *self.scope_stack.last().unwrap()
+    }
+
+    pub fn top_mod(&self) -> TopLevelMod {
+        match self.span.0.as_ref().unwrap().root {
+            ChainRoot::ItemKind(item) => item.top_mod(self.db),
+            ChainRoot::TopMod(top_mod) => top_mod,
+            ChainRoot::Mod(mod_) => mod_.top_mod(self.db),
+            ChainRoot::Func(func) => func.top_mod(self.db),
+            ChainRoot::Struct(struct_) => struct_.top_mod(self.db),
+            ChainRoot::Contract(contract) => contract.top_mod(self.db),
+            ChainRoot::Enum(enum_) => enum_.top_mod(self.db),
+            ChainRoot::TypeAlias(alias) => alias.top_mod(self.db),
+            ChainRoot::Impl(impl_) => impl_.top_mod(self.db),
+            ChainRoot::Trait(trait_) => trait_.top_mod(self.db),
+            ChainRoot::ImplTrait(impl_trait) => impl_trait.top_mod(self.db),
+            ChainRoot::Const(const_) => const_.top_mod(self.db),
+            ChainRoot::Use(use_) => use_.top_mod(self.db),
+            ChainRoot::Body(body) => body.top_mod(self.db),
+            ChainRoot::Stmt(_) | ChainRoot::Expr(_) | ChainRoot::Pat(_) => {
+                self.body().top_mod(self.db)
+            }
+        }
+    }
+
+    /// Create a new context for visiting a pattern.
+    /// `scope` is the scope that encloses the pattern.
+    pub fn with_pat(db: &'db dyn HirDb, scope: ScopeId, body: Body, pat: PatId) -> Self {
+        Self {
+            db,
+            span: LazyPatSpan::new(body, pat).into(),
+            scope_stack: vec![scope],
+            _t: PhantomData,
+        }
+    }
+
+    /// Create a new context for visiting a statement.
+    /// `scope` is the scope that encloses the statement.
+    pub fn with_stmt(db: &'db dyn HirDb, scope: ScopeId, body: Body, stmt: StmtId) -> Self {
+        Self {
+            db,
+            span: LazyStmtSpan::new(body, stmt).into(),
+            scope_stack: vec![scope],
+            _t: PhantomData,
+        }
+    }
+
+    /// Create a new context for visiting an expression.
+    /// `scope` is the scope that encloses the expression.
+    pub fn with_expr(db: &'db dyn HirDb, scope: ScopeId, body: Body, expr: ExprId) -> Self {
+        let scope_id = match expr.data(db, body) {
+            Partial::Present(Expr::Block(_)) => ScopeId::Block(body, expr),
+            _ => scope,
+        };
+
+        Self {
+            db,
+            span: LazyExprSpan::new(body, expr).into(),
+            scope_stack: vec![scope_id],
+            _t: PhantomData,
+        }
+    }
+
+    fn with_new_scoped_ctxt<F1, F2, U>(&mut self, scope_id: ScopeId, f1: F1, f2: F2)
+    where
+        T: SpanDowncast,
+        F1: FnOnce(T) -> U,
+        F2: FnOnce(&mut VisitorCtxt<U>),
+        U: LazySpan + SpanDowncast + Into<DynLazySpan>,
+    {
+        self.scope_stack.push(scope_id);
+        self.with_new_ctxt(f1, f2);
+        self.scope_stack.pop();
     }
 
     fn with_new_ctxt<F1, F2, U>(&mut self, f1: F1, f2: F2)
@@ -1769,12 +1892,14 @@ where
         U: LazySpan + SpanDowncast + Into<DynLazySpan>,
     {
         let dyn_span = mem::replace(&mut self.span, DynLazySpan::invalid());
+        let scope_stack = mem::take(&mut self.scope_stack);
         let span = T::downcast(dyn_span).unwrap();
         let u = f(span);
 
         Self {
             db: self.db,
             span: u.into(),
+            scope_stack,
             _t: PhantomData,
         }
         .cast()
@@ -1791,6 +1916,7 @@ where
         Self {
             db: self.db,
             span: self.span,
+            scope_stack: self.scope_stack,
             _t: PhantomData,
         }
         .cast()
@@ -1800,6 +1926,7 @@ where
         VisitorCtxt {
             db: self.db,
             span: self.span,
+            scope_stack: self.scope_stack,
             _t: PhantomData,
         }
     }
@@ -1815,16 +1942,17 @@ where
     }
 }
 
-macro_rules! define_ctxt_ctor {
+macro_rules! define_item_ctxt_ctor {
     ($((
         $span_ty:ty,
-        $ctor:ident($($ctor_name:ident: $ctor_ty:ty),*)),)*) => {
+        $ctor:ident($ctor_name:ident: $ctor_ty:ty)),)*) => {
         $(impl<'db> VisitorCtxt<'db, $span_ty> {
             /// Create a new [`VisitorCtxt`] with the given item as the root of the span chain.
-            pub fn $ctor(db: &'db dyn HirDb, $($ctor_name: $ctor_ty,)*) -> Self {
+            pub fn $ctor(db: &'db dyn HirDb, $ctor_name: $ctor_ty) -> Self {
                 Self {
                     db,
-                    span: <$span_ty>::new($($ctor_name),*).into(),
+                    span: <$span_ty>::new($ctor_name).into(),
+                    scope_stack: vec![$ctor_name.scope()],
                     _t: PhantomData,
                 }
             }
@@ -1832,7 +1960,7 @@ macro_rules! define_ctxt_ctor {
     };
 }
 
-define_ctxt_ctor! {
+define_item_ctxt_ctor! {
     (LazyItemSpan, with_item(item: ItemKind)),
     (LazyTopModSpan, with_top_mod(top_mod: TopLevelMod)),
     (LazyModSpan, with_mod(mod_: Mod)),
@@ -1847,17 +1975,14 @@ define_ctxt_ctor! {
     (LazyConstSpan, with_const(const_: Const)),
     (LazyUseSpan, with_use(use_: Use)),
     (LazyBodySpan, with_body(body: Body)),
-    (LazyExprSpan, with_expr(body: Body, expr: ExprId)),
-    (LazyStmtSpan, with_stmt(body: Body, stmt: StmtId)),
-    (LazyPatSpan, with_pat(body: Body, pat: PatId)),
-
 }
 
 macro_rules! visit_node_in_body {
     ($visitor:expr,  $ctxt:expr,  $id:expr, $inner:ident) => {
         if let Partial::Present(data) = $id.data($ctxt.db, $ctxt.body()) {
+            let scope = *$ctxt.scope_stack.last().unwrap();
             paste::paste! {
-                $visitor.[<visit_ $inner>](&mut VisitorCtxt::[<with_ $inner>]($ctxt.db, $ctxt.body(), *$id), data);
+                $visitor.[<visit_ $inner>](&mut VisitorCtxt::[<with_ $inner>]($ctxt.db, scope, $ctxt.body(), *$id), *$id, data);
 
             }
         }

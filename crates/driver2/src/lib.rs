@@ -141,7 +141,7 @@ fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
     pass_manager
 }
