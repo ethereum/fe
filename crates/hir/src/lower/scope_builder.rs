@@ -7,7 +7,7 @@ use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
-        TopLevelMod, Use, VariantDefListId, Visibility,
+        TopLevelMod, TrackedItemId, Use, VariantDefListId, Visibility,
     },
     HirDb,
 };
@@ -18,6 +18,7 @@ pub(super) struct ScopeGraphBuilder<'db> {
     graph: IntermediateScopeGraph,
     scope_stack: Vec<NodeId>,
     module_stack: Vec<NodeId>,
+    id_stack: Vec<TrackedItemId>,
     declared_blocks: FxHashMap<NodeId, Option<ExprId>>,
 }
 
@@ -29,10 +30,11 @@ impl<'db> ScopeGraphBuilder<'db> {
             graph: IntermediateScopeGraph::default(),
             scope_stack: Default::default(),
             module_stack: Default::default(),
+            id_stack: Default::default(),
             declared_blocks: FxHashMap::default(),
         };
 
-        builder.enter_scope(true);
+        builder.enter_item_scope(TrackedItemId::TopLevelMod(top_mod.name(db)), true);
         builder
     }
 
@@ -40,7 +42,8 @@ impl<'db> ScopeGraphBuilder<'db> {
         self.graph.build(self.top_mod)
     }
 
-    pub(super) fn enter_scope(&mut self, is_mod: bool) {
+    pub(super) fn enter_item_scope(&mut self, id: TrackedItemId, is_mod: bool) {
+        self.id_stack.push(id);
         self.enter_scope_impl(is_mod);
     }
 
@@ -241,6 +244,10 @@ impl<'db> ScopeGraphBuilder<'db> {
 
         self.graph
             .add_edge(parent_node, item_node, parent_to_child_edge);
+    }
+
+    pub(super) fn joined_id(&self, id: TrackedItemId) -> TrackedItemId {
+        self.id_stack.last().unwrap().clone().join(id)
     }
 
     pub(super) fn enter_block_scope(&mut self) {

@@ -8,16 +8,12 @@ use crate::{
 use super::FileLowerCtxt;
 
 impl Use {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Use,
-    ) -> Vec<Self> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Use) -> Vec<Self> {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
 
         let Some(use_tree) = ast.use_tree() else {
-            ctxt.enter_scope(false);
-            let id = TrackedItemId::Use(Partial::Absent).join(parent_id);
+            let id = ctxt.joined_id(TrackedItemId::Use(Partial::Absent));
+            ctxt.enter_scope(id.clone(), false);
             let path = Partial::Absent;
             let alias = None;
             let top_mod = ctxt.top_mod();
@@ -29,9 +25,9 @@ impl Use {
 
         // If the use tree has no subtree, then there is no need to decompose it.
         if !use_tree.has_subtree() {
-            ctxt.enter_scope(false);
             let path = UsePathId::lower_ast_partial(ctxt, use_tree.path());
-            let id = TrackedItemId::Use(path).join(parent_id);
+            let id = ctxt.joined_id(TrackedItemId::Use(path));
+            ctxt.enter_scope(id.clone(), false);
             let alias = use_tree
                 .alias()
                 .map(|alias| UseAlias::lower_ast_partial(ctxt, alias));
@@ -46,8 +42,8 @@ impl Use {
         decomposed_paths
             .into_iter()
             .map(|(path, alias, origin)| {
-                ctxt.enter_scope(false);
-                let id = TrackedItemId::Use(path).join(parent_id.clone());
+                let id = ctxt.joined_id(TrackedItemId::Use(path));
+                ctxt.enter_scope(id.clone(), false);
                 let top_mod = ctxt.top_mod();
                 let alias = alias;
                 let origin = HirOrigin::desugared(origin);

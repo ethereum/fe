@@ -10,53 +10,56 @@ use crate::{
 
 use super::FileLowerCtxt;
 
-pub(crate) fn lower_module_items(
-    ctxt: &mut FileLowerCtxt<'_>,
-    id: TrackedItemId,
-    items: ast::ItemList,
-) {
+pub(crate) fn lower_module_items(ctxt: &mut FileLowerCtxt<'_>, items: ast::ItemList) {
     for item in items {
-        let Some(kind) = item.kind() else {
-            continue;
+        ItemKind::lower_ast(ctxt, item);
+    }
+}
+
+impl ItemKind {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Item) {
+        let Some(kind) = ast.kind() else {
+            return;
         };
+
         match kind {
             ast::ItemKind::Mod(mod_) => {
-                Mod::lower_ast(ctxt, id.clone(), mod_);
+                Mod::lower_ast(ctxt, mod_);
             }
             ast::ItemKind::Func(fn_) => {
-                Func::lower_ast(ctxt, id.clone(), fn_, false);
+                Func::lower_ast(ctxt, fn_, false);
             }
             ast::ItemKind::Struct(struct_) => {
-                Struct::lower_ast(ctxt, id.clone(), struct_);
+                Struct::lower_ast(ctxt, struct_);
             }
             ast::ItemKind::Contract(contract) => {
-                Contract::lower_ast(ctxt, id.clone(), contract);
+                Contract::lower_ast(ctxt, contract);
             }
             ast::ItemKind::Enum(enum_) => {
-                Enum::lower_ast(ctxt, id.clone(), enum_);
+                Enum::lower_ast(ctxt, enum_);
             }
             ast::ItemKind::TypeAlias(alias) => {
-                TypeAlias::lower_ast(ctxt, id.clone(), alias);
+                TypeAlias::lower_ast(ctxt, alias);
             }
             ast::ItemKind::Impl(impl_) => {
-                Impl::lower_ast(ctxt, id.clone(), impl_);
+                Impl::lower_ast(ctxt, impl_);
             }
             ast::ItemKind::Trait(trait_) => {
-                Trait::lower_ast(ctxt, id.clone(), trait_);
+                Trait::lower_ast(ctxt, trait_);
             }
             ast::ItemKind::ImplTrait(impl_trait) => {
-                ImplTrait::lower_ast(ctxt, id.clone(), impl_trait);
+                ImplTrait::lower_ast(ctxt, impl_trait);
             }
             ast::ItemKind::Const(const_) => {
-                Const::lower_ast(ctxt, id.clone(), const_);
+                Const::lower_ast(ctxt, const_);
             }
             ast::ItemKind::Use(use_) => {
-                Use::lower_ast(ctxt, id.clone(), use_);
+                Use::lower_ast(ctxt, use_);
             }
             ast::ItemKind::Extern(extern_) => {
                 if let Some(extern_block) = extern_.extern_block() {
                     for fn_ in extern_block {
-                        Func::lower_ast(ctxt, id.clone(), fn_, true);
+                        Func::lower_ast(ctxt, fn_, true);
                     }
                 }
             }
@@ -65,19 +68,15 @@ pub(crate) fn lower_module_items(
 }
 
 impl Mod {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Mod,
-    ) -> Self {
-        ctxt.enter_scope(true);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Mod) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Mod(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Mod(name));
+        ctxt.enter_scope(id.clone(), true);
+
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         if let Some(items) = ast.items() {
-            lower_module_items(ctxt, id.clone(), items);
+            lower_module_items(ctxt, items);
         }
 
         let origin = HirOrigin::raw(&ast);
@@ -87,16 +86,10 @@ impl Mod {
 }
 
 impl Func {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Func,
-        is_extern: bool,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Func, is_extern: bool) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Func(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Func(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -107,13 +100,9 @@ impl Func {
             .into();
         let ret_ty = ast.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
         let modifier = ItemModifier::lower_ast(ast.modifier());
-        let body = ast.body().map(|body| {
-            Body::lower_ast(
-                ctxt,
-                id.clone(),
-                ast::Expr::cast(body.syntax().clone()).unwrap(),
-            )
-        });
+        let body = ast
+            .body()
+            .map(|body| Body::lower_ast(ctxt, ast::Expr::cast(body.syntax().clone()).unwrap()));
         let origin = HirOrigin::raw(&ast);
 
         let fn_ = Self::new(
@@ -136,15 +125,10 @@ impl Func {
 }
 
 impl Struct {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Struct,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Struct) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Struct(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Struct(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -170,15 +154,10 @@ impl Struct {
 }
 
 impl Contract {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Contract,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Contract) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Contract(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Contract(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -200,15 +179,10 @@ impl Contract {
 }
 
 impl Enum {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Enum,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Enum) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Enum(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Enum(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -234,15 +208,10 @@ impl Enum {
 }
 
 impl TypeAlias {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::TypeAlias,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeAlias) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.alias());
-        let id = TrackedItemId::TypeAlias(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::TypeAlias(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -268,15 +237,10 @@ impl TypeAlias {
 }
 
 impl Impl {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Impl,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Impl) -> Self {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let id = TrackedItemId::Impl(ty).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Impl(ty));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -285,7 +249,7 @@ impl Impl {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item, false);
+                Func::lower_ast(ctxt, impl_item, false);
             }
         }
 
@@ -304,15 +268,10 @@ impl Impl {
 }
 
 impl Trait {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Trait,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Trait) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Trait(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Trait(name));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -322,7 +281,7 @@ impl Trait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item, false);
+                Func::lower_ast(ctxt, impl_item, false);
             }
         }
 
@@ -343,16 +302,11 @@ impl Trait {
 }
 
 impl ImplTrait {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::ImplTrait,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ImplTrait) -> Self {
         let trait_ref = TraitRef::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let id = TrackedItemId::ImplTrait(trait_ref, ty).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::ImplTrait(trait_ref, ty));
+        ctxt.enter_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -361,7 +315,7 @@ impl ImplTrait {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, id.clone(), impl_item, false);
+                Func::lower_ast(ctxt, impl_item, false);
             }
         }
 
@@ -381,20 +335,13 @@ impl ImplTrait {
 }
 
 impl Const {
-    pub(super) fn lower_ast(
-        ctxt: &mut FileLowerCtxt<'_>,
-        parent_id: TrackedItemId,
-        ast: ast::Const,
-    ) -> Self {
-        ctxt.enter_scope(false);
-
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Const) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = TrackedItemId::Const(name).join(parent_id);
+        let id = ctxt.joined_id(TrackedItemId::Const(name));
+        ctxt.enter_scope(id.clone(), false);
+
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let body = ast
-            .value()
-            .map(|ast| Body::lower_ast(ctxt, id.clone(), ast))
-            .into();
+        let body = ast.value().map(|ast| Body::lower_ast(ctxt, ast)).into();
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let origin = HirOrigin::raw(&ast);
 

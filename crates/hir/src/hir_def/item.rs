@@ -23,8 +23,8 @@ use crate::{
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
-    UseAlias, WhereClauseId,
+    AttrListId, Body, ExprId, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial,
+    TypeId, UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -669,6 +669,9 @@ pub enum TrackedItemId {
     Const(Partial<IdentId>),
     Use(Partial<super::UsePathId>),
     Extern,
+    FuncBody,
+    NamelessBody,
+    InsideBlock(Box<Self>, ExprId),
     Joined(Box<Self>, Box<Self>),
 }
 

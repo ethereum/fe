@@ -3,7 +3,7 @@ use parser::ast;
 use crate::{
     hir_def::{
         Body, BodySourceMap, Expr, ExprId, NodeStore, Partial, Pat, PatId, Stmt, StmtId,
-        TrackedBodyId, TrackedItemId,
+        TrackedItemId,
     },
     span::HirOrigin,
 };
@@ -11,31 +11,16 @@ use crate::{
 use super::FileLowerCtxt;
 
 impl Body {
-    pub(super) fn lower_ast(
-        f_ctxt: &mut FileLowerCtxt,
-        parent_id: TrackedItemId,
-        ast: ast::Expr,
-    ) -> Self {
-        let bid = TrackedBodyId::ItemBody(parent_id.into());
-        let mut ctxt = BodyCtxt::new(f_ctxt, bid);
-        let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast, body_expr)
-    }
-
-    pub(super) fn lower_ast_nested(
-        f_ctxt: &mut FileLowerCtxt,
-        bid: TrackedBodyId,
-        ast: ast::Expr,
-    ) -> Self {
-        let bid = TrackedBodyId::NestedBody(bid.into());
-        let mut ctxt = BodyCtxt::new(f_ctxt, bid);
+    pub(super) fn lower_ast(f_ctxt: &mut FileLowerCtxt, ast: ast::Expr) -> Self {
+        let id = f_ctxt.joined_id(TrackedItemId::FuncBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
         let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
         ctxt.build(&ast, body_expr)
     }
 
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'_>, ast: ast::Expr) -> Self {
-        let bid = TrackedBodyId::NamelessBody;
-        let mut ctxt = BodyCtxt::new(f_ctxt, bid);
+        let id = f_ctxt.joined_id(TrackedItemId::NamelessBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
         let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
         ctxt.build(&ast, body_expr)
     }
@@ -43,7 +28,7 @@ impl Body {
 
 pub(super) struct BodyCtxt<'ctxt, 'db> {
     pub(super) f_ctxt: &'ctxt mut FileLowerCtxt<'db>,
-    pub(super) bid: TrackedBodyId,
+    pub(super) id: TrackedItemId,
 
     pub(super) stmts: NodeStore<StmtId, Partial<Stmt>>,
     pub(super) exprs: NodeStore<ExprId, Partial<Expr>>,
@@ -91,11 +76,11 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         pat_id
     }
 
-    fn new(f_ctxt: &'ctxt mut FileLowerCtxt<'db>, bid: TrackedBodyId) -> Self {
-        f_ctxt.enter_scope(false);
+    fn new(f_ctxt: &'ctxt mut FileLowerCtxt<'db>, id: TrackedItemId) -> Self {
+        f_ctxt.enter_scope(id.clone(), false);
         Self {
             f_ctxt,
-            bid,
+            id,
             stmts: NodeStore::new(),
             exprs: NodeStore::new(),
             pats: NodeStore::new(),
@@ -107,7 +92,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         let origin = HirOrigin::raw(ast);
         let body = Body::new(
             self.f_ctxt.db(),
-            self.bid,
+            self.id,
             body_expr,
             self.stmts,
             self.exprs,

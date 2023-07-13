@@ -62,9 +62,8 @@ pub(crate) fn scope_graph_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ScopeGra
     let ast = top_mod_ast(db, top_mod);
     let mut ctxt = FileLowerCtxt::enter_top_mod(db, top_mod);
 
-    let id = TrackedItemId::TopLevelMod(top_mod.name(db));
     if let Some(items) = ast.items() {
-        lower_module_items(&mut ctxt, id, items);
+        lower_module_items(&mut ctxt, items);
     }
     ctxt.leave_item_scope(top_mod);
 
@@ -108,9 +107,13 @@ impl<'db> FileLowerCtxt<'db> {
         self.builder.leave_block_scope(block);
     }
 
+    pub(super) fn joined_id(&self, id: TrackedItemId) -> TrackedItemId {
+        self.builder.joined_id(id)
+    }
+
     /// Creates a new scope for an item.
-    fn enter_scope(&mut self, is_mod: bool) {
-        self.builder.enter_scope(is_mod);
+    fn enter_scope(&mut self, id: TrackedItemId, is_mod: bool) {
+        self.builder.enter_item_scope(id, is_mod);
     }
 
     /// Leaves the current scope, `item` should be the generated item which owns

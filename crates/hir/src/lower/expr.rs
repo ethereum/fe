@@ -22,11 +22,13 @@ impl Expr {
             ast::ExprKind::Block(block) => {
                 ctxt.f_ctxt.enter_block_scope();
                 let mut stmts = vec![];
+
                 for stmt in block.stmts() {
                     let stmt = Stmt::push_to_body(ctxt, stmt);
                     stmts.push(stmt);
                 }
                 let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+
                 ctxt.f_ctxt.leave_block_scope(expr_id);
                 return expr_id;
             }
@@ -134,7 +136,7 @@ impl Expr {
                 let val = Self::push_to_body_opt(ctxt, array_rep.val());
                 let len = array_rep
                     .len()
-                    .map(|ast| Body::lower_ast_nested(ctxt.f_ctxt, ctxt.bid.clone(), ast))
+                    .map(|ast| Body::lower_ast_nameless(ctxt.f_ctxt, ast))
                     .into();
                 Self::ArrayRep(val, len)
             }

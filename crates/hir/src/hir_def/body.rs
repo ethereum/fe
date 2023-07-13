@@ -16,7 +16,7 @@ use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod, Tracke
 #[salsa::tracked]
 pub struct Body {
     #[id]
-    id: TrackedBodyId,
+    id: TrackedItemId,
 
     /// The expression that evaluates to the value of the body.
     /// In case of a function body, this is always be the block expression.
@@ -40,13 +40,6 @@ impl Body {
     pub fn lazy_span(self) -> LazyBodySpan {
         LazyBodySpan::new(self)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TrackedBodyId {
-    ItemBody(Box<TrackedItemId>),
-    NestedBody(Box<Self>),
-    NamelessBody,
 }
 
 pub type NodeStore<K, V> = PrimaryMap<K, V>;
