@@ -1,6 +1,6 @@
 use walkdir::WalkDir;
 
-pub fn load_files_from_dir(dir_path: &str) -> Result<Vec<(String, String)>, std::io::Error> {
+pub fn load_fe_files_from_dir(dir_path: &str) -> Result<Vec<(String, String)>, std::io::Error> {
     let entries = WalkDir::new(dir_path);
     let mut files = vec![];
     for entry in entries.into_iter() {
