@@ -54,7 +54,7 @@ mod tests {
     fn aug_assign() {
         let mut db = TestDb::default();
 
-        let text = r#" {
+        let text = r#"
             fn foo() {
                 let mut x = 0
                 x += 1
@@ -63,6 +63,7 @@ mod tests {
 
         let body: Body = db.expect_item::<Body>(text);
         let top_mod = body.top_mod(db.as_hir_db());
+        assert!(body.stmts(db.as_hir_db()).len() == 2);
         for (i, stmt) in body.stmts(db.as_hir_db()).keys().enumerate() {
             match i {
                 0 => {

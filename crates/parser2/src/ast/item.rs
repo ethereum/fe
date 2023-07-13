@@ -25,36 +25,24 @@ ast_node! {
     /// A single item in a module.
     /// Use `[Item::kind]` to get the specific type of item.
     pub struct Item,
-    SK::Mod
-    | SK::Func
-    | SK::Struct
-    | SK::Contract
-    | SK::Enum
-    | SK::TypeAlias
-    | SK::Impl
-    | SK::Trait
-    | SK::ImplTrait
-    | SK::Const
-    | SK::Use
-    | SK::Extern,
+    SK::Item
 }
 impl Item {
-    pub fn kind(&self) -> ItemKind {
-        match self.syntax().kind() {
-            SK::Mod => ItemKind::Mod(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Func => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Struct => ItemKind::Struct(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Contract => ItemKind::Contract(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Enum => ItemKind::Enum(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::TypeAlias => ItemKind::TypeAlias(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Impl => ItemKind::Impl(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Trait => ItemKind::Trait(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::ImplTrait => ItemKind::ImplTrait(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Const => ItemKind::Const(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Use => ItemKind::Use(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Extern => ItemKind::Extern(AstNode::cast(self.syntax().clone()).unwrap()),
-            _ => unreachable!(),
-        }
+    pub fn kind(&self) -> Option<ItemKind> {
+        dbg!(self.syntax());
+        support::child(self.syntax())
+            .map(ItemKind::Mod)
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Func))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Struct))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Contract))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Enum))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::TypeAlias))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Impl))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Trait))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::ImplTrait))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Const))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Use))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Extern))
     }
 }
 
@@ -425,7 +413,7 @@ pub trait ItemModifierOwner: AstNode<Language = FeLang> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ItemKind {
     Mod(Mod),
-    Fn(Func),
+    Func(Func),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -461,7 +449,7 @@ mod tests {
         let item_list = ItemList::cast(parser.finish_to_node().0).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
-        items.pop().unwrap().kind().try_into().unwrap()
+        items.pop().unwrap().kind().unwrap().try_into().unwrap()
     }
 
     #[test]
@@ -479,13 +467,13 @@ mod tests {
         for item in mod_.items().unwrap().into_iter() {
             match i {
                 0 => {
-                    assert!(matches!(item.kind(), ItemKind::Fn(_)));
-                    let func: Func = item.kind().try_into().unwrap();
+                    assert!(matches!(item.kind().unwrap(), ItemKind::Func(_)));
+                    let func: Func = item.kind().unwrap().try_into().unwrap();
                     assert_eq!(func.name().unwrap().text(), "bar");
                 }
                 1 => {
-                    assert!(matches!(item.kind(), ItemKind::Struct(_)));
-                    let struct_: Struct = item.kind().try_into().unwrap();
+                    assert!(matches!(item.kind().unwrap(), ItemKind::Struct(_)));
+                    let struct_: Struct = item.kind().unwrap().try_into().unwrap();
                     assert_eq!(struct_.name().unwrap().text(), "Baz");
                 }
                 _ => panic!(),

@@ -5,83 +5,86 @@ input_file: crates/parser2/test_files/syntax_node/items/type.fe
 ---
 Root@0..98
   ItemList@0..98
-    TypeAlias@0..18
-      ItemModifier@0..3
-        PubKw@0..3 "pub"
-      WhiteSpace@3..4 " "
-      TypeKw@4..8 "type"
-      WhiteSpace@8..9 " "
-      Ident@9..12 "Int"
-      WhiteSpace@12..13 " "
-      Eq@13..14 "="
-      WhiteSpace@14..15 " "
-      PathType@15..18
-        Path@15..18
-          PathSegment@15..18
-            Ident@15..18 "i32"
-    WhiteSpace@18..19 " "
-    Newline@19..21 "\n\n"
-    TypeAlias@21..54
-      TypeKw@21..25 "type"
-      WhiteSpace@25..26 " "
-      Ident@26..32 "Result"
-      GenericParamList@32..35
-        Lt@32..33 "<"
-        TypeGenericParam@33..34
-          Ident@33..34 "T"
-        Gt@34..35 ">"
-      WhiteSpace@35..36 " "
-      Eq@36..37 "="
-      WhiteSpace@37..38 " "
-      PathType@38..54
-        Path@38..44
-          PathSegment@38..44
-            Ident@38..44 "Result"
-        GenericArgList@44..54
-          Lt@44..45 "<"
-          TypeGenericArg@45..46
-            PathType@45..46
-              Path@45..46
-                PathSegment@45..46
-                  Ident@45..46 "T"
-          Comma@46..47 ","
-          WhiteSpace@47..48 " "
-          TypeGenericArg@48..53
-            PathType@48..53
-              Path@48..53
-                PathSegment@48..53
-                  Ident@48..53 "Error"
-          Gt@53..54 ">"
-    Newline@54..56 "\n\n"
-    TypeAlias@56..98
-      TypeKw@56..60 "type"
-      WhiteSpace@60..61 " "
-      Ident@61..70 "WithBound"
-      GenericParamList@70..85
-        Lt@70..71 "<"
-        TypeGenericParam@71..84
-          Ident@71..72 "T"
-          TypeBoundList@72..84
-            Colon@72..73 ":"
-            WhiteSpace@73..74 " "
-            TypeBound@74..84
-              Path@74..84
-                PathSegment@74..84
-                  Ident@74..84 "TraitBound"
-        Gt@84..85 ">"
-      WhiteSpace@85..86 " "
-      Eq@86..87 "="
-      WhiteSpace@87..88 " "
-      PathType@88..98
-        Path@88..95
-          PathSegment@88..95
-            Ident@88..95 "NoBound"
-        GenericArgList@95..98
-          Lt@95..96 "<"
-          TypeGenericArg@96..97
-            PathType@96..97
-              Path@96..97
-                PathSegment@96..97
-                  Ident@96..97 "T"
-          Gt@97..98 ">"
+    Item@0..21
+      TypeAlias@0..18
+        ItemModifier@0..3
+          PubKw@0..3 "pub"
+        WhiteSpace@3..4 " "
+        TypeKw@4..8 "type"
+        WhiteSpace@8..9 " "
+        Ident@9..12 "Int"
+        WhiteSpace@12..13 " "
+        Eq@13..14 "="
+        WhiteSpace@14..15 " "
+        PathType@15..18
+          Path@15..18
+            PathSegment@15..18
+              Ident@15..18 "i32"
+      WhiteSpace@18..19 " "
+      Newline@19..21 "\n\n"
+    Item@21..56
+      TypeAlias@21..54
+        TypeKw@21..25 "type"
+        WhiteSpace@25..26 " "
+        Ident@26..32 "Result"
+        GenericParamList@32..35
+          Lt@32..33 "<"
+          TypeGenericParam@33..34
+            Ident@33..34 "T"
+          Gt@34..35 ">"
+        WhiteSpace@35..36 " "
+        Eq@36..37 "="
+        WhiteSpace@37..38 " "
+        PathType@38..54
+          Path@38..44
+            PathSegment@38..44
+              Ident@38..44 "Result"
+          GenericArgList@44..54
+            Lt@44..45 "<"
+            TypeGenericArg@45..46
+              PathType@45..46
+                Path@45..46
+                  PathSegment@45..46
+                    Ident@45..46 "T"
+            Comma@46..47 ","
+            WhiteSpace@47..48 " "
+            TypeGenericArg@48..53
+              PathType@48..53
+                Path@48..53
+                  PathSegment@48..53
+                    Ident@48..53 "Error"
+            Gt@53..54 ">"
+      Newline@54..56 "\n\n"
+    Item@56..98
+      TypeAlias@56..98
+        TypeKw@56..60 "type"
+        WhiteSpace@60..61 " "
+        Ident@61..70 "WithBound"
+        GenericParamList@70..85
+          Lt@70..71 "<"
+          TypeGenericParam@71..84
+            Ident@71..72 "T"
+            TypeBoundList@72..84
+              Colon@72..73 ":"
+              WhiteSpace@73..74 " "
+              TypeBound@74..84
+                Path@74..84
+                  PathSegment@74..84
+                    Ident@74..84 "TraitBound"
+          Gt@84..85 ">"
+        WhiteSpace@85..86 " "
+        Eq@86..87 "="
+        WhiteSpace@87..88 " "
+        PathType@88..98
+          Path@88..95
+            PathSegment@88..95
+              Ident@88..95 "NoBound"
+          GenericArgList@95..98
+            Lt@95..96 "<"
+            TypeGenericArg@96..97
+              PathType@96..97
+                Path@96..97
+                  PathSegment@96..97
+                    Ident@96..97 "T"
+            Gt@97..98 ">"
 

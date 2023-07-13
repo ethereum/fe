@@ -8,6 +8,7 @@ use crate::{
 use super::{
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
+    item::ItemScope,
     parse_pat,
     stmt::parse_stmt,
     token_stream::TokenStream,
@@ -60,6 +61,16 @@ impl super::Parse for BlockExprScope {
             {
                 break;
             }
+
+            if parser
+                .current_kind()
+                .map(SyntaxKind::is_item_head)
+                .unwrap_or_default()
+            {
+                parser.parse(ItemScope::default(), None);
+                continue;
+            }
+
             if !parse_stmt(parser, None) {
                 continue;
             }

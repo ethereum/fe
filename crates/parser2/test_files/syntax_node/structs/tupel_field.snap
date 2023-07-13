@@ -1,78 +1,80 @@
 ---
 source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
+expression: node
+input_file: crates/parser2/test_files/syntax_node/structs/tupel_field.fe
 ---
 Root@0..117
   ItemList@0..117
-    Struct@0..117
-      StructKw@0..6 "struct"
-      WhiteSpace@6..7 " "
-      Ident@7..27 "StructWithTupleField"
-      WhiteSpace@27..28 " "
-      RecordFieldDefList@28..117
-        LBrace@28..29 "{"
-        Newline@29..30 "\n"
-        WhiteSpace@30..34 "    "
-        RecordFieldDef@34..47
-          Ident@34..35 "x"
-          Colon@35..36 ":"
-          WhiteSpace@36..37 " "
-          TupleType@37..47
-            LParen@37..38 "("
-            PathType@38..41
-              Path@38..41
-                PathSegment@38..41
-                  Ident@38..41 "i32"
-            Comma@41..42 ","
-            WhiteSpace@42..43 " "
-            PathType@43..46
-              Path@43..46
-                PathSegment@43..46
-                  Ident@43..46 "u32"
-            RParen@46..47 ")"
-        Newline@47..48 "\n"
-        WhiteSpace@48..52 "    "
-        RecordFieldDef@52..105
-          Ident@52..53 "y"
-          Colon@53..54 ":"
-          WhiteSpace@54..55 " "
-          TupleType@55..105
-            LParen@55..56 "("
-            Newline@56..57 "\n"
-            WhiteSpace@57..65 "        "
-            PathType@65..68
-              Path@65..68
-                PathSegment@65..68
-                  Ident@65..68 "i32"
-            Comma@68..69 ","
-            Newline@69..70 "\n"
-            WhiteSpace@70..78 "        "
-            PathType@78..86
-              Path@78..86
-                PathSegment@78..81
-                  Ident@78..81 "foo"
-                Colon2@81..83 "::"
-                PathSegment@83..86
-                  Ident@83..86 "Bar"
-            Comma@86..87 ","
-            Newline@87..88 "\n"
-            WhiteSpace@88..96 "        "
-            PathType@96..99
-              Path@96..99
-                PathSegment@96..99
-                  Ident@96..99 "u32"
-            Newline@99..100 "\n"
-            WhiteSpace@100..104 "    "
-            RParen@104..105 ")"
-        Newline@105..106 "\n"
-        WhiteSpace@106..110 "    "
-        RecordFieldDef@110..115
-          Ident@110..111 "z"
-          Colon@111..112 ":"
-          WhiteSpace@112..113 " "
-          TupleType@113..115
-            LParen@113..114 "("
-            RParen@114..115 ")"
-        Newline@115..116 "\n"
-        RBrace@116..117 "}"
+    Item@0..117
+      Struct@0..117
+        StructKw@0..6 "struct"
+        WhiteSpace@6..7 " "
+        Ident@7..27 "StructWithTupleField"
+        WhiteSpace@27..28 " "
+        RecordFieldDefList@28..117
+          LBrace@28..29 "{"
+          Newline@29..30 "\n"
+          WhiteSpace@30..34 "    "
+          RecordFieldDef@34..47
+            Ident@34..35 "x"
+            Colon@35..36 ":"
+            WhiteSpace@36..37 " "
+            TupleType@37..47
+              LParen@37..38 "("
+              PathType@38..41
+                Path@38..41
+                  PathSegment@38..41
+                    Ident@38..41 "i32"
+              Comma@41..42 ","
+              WhiteSpace@42..43 " "
+              PathType@43..46
+                Path@43..46
+                  PathSegment@43..46
+                    Ident@43..46 "u32"
+              RParen@46..47 ")"
+          Newline@47..48 "\n"
+          WhiteSpace@48..52 "    "
+          RecordFieldDef@52..105
+            Ident@52..53 "y"
+            Colon@53..54 ":"
+            WhiteSpace@54..55 " "
+            TupleType@55..105
+              LParen@55..56 "("
+              Newline@56..57 "\n"
+              WhiteSpace@57..65 "        "
+              PathType@65..68
+                Path@65..68
+                  PathSegment@65..68
+                    Ident@65..68 "i32"
+              Comma@68..69 ","
+              Newline@69..70 "\n"
+              WhiteSpace@70..78 "        "
+              PathType@78..86
+                Path@78..86
+                  PathSegment@78..81
+                    Ident@78..81 "foo"
+                  Colon2@81..83 "::"
+                  PathSegment@83..86
+                    Ident@83..86 "Bar"
+              Comma@86..87 ","
+              Newline@87..88 "\n"
+              WhiteSpace@88..96 "        "
+              PathType@96..99
+                Path@96..99
+                  PathSegment@96..99
+                    Ident@96..99 "u32"
+              Newline@99..100 "\n"
+              WhiteSpace@100..104 "    "
+              RParen@104..105 ")"
+          Newline@105..106 "\n"
+          WhiteSpace@106..110 "    "
+          RecordFieldDef@110..115
+            Ident@110..111 "z"
+            Colon@111..112 ":"
+            WhiteSpace@112..113 " "
+            TupleType@113..115
+              LParen@113..114 "("
+              RParen@114..115 ")"
+          Newline@115..116 "\n"
+          RBrace@116..117 "}"
 

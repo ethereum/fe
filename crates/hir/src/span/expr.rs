@@ -202,7 +202,7 @@ mod tests {
     fn aug_assign() {
         let mut db = TestDb::default();
 
-        let text = r#" {
+        let text = r#"
             fn foo(mut x: i32) {
                 x += 1
             }

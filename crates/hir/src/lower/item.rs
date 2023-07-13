@@ -16,11 +16,14 @@ pub(crate) fn lower_module_items(
     items: ast::ItemList,
 ) {
     for item in items {
-        match item.kind() {
+        let Some(kind) = item.kind() else {
+            continue;
+        };
+        match kind {
             ast::ItemKind::Mod(mod_) => {
                 Mod::lower_ast(ctxt, id.clone(), mod_);
             }
-            ast::ItemKind::Fn(fn_) => {
+            ast::ItemKind::Func(fn_) => {
                 Func::lower_ast(ctxt, id.clone(), fn_, false);
             }
             ast::ItemKind::Struct(struct_) => {
