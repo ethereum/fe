@@ -735,6 +735,7 @@ dependencies = [
  "serde",
  "smol_str",
  "tiny-keccak",
+ "walkdir",
 ]
 
 [[package]]
