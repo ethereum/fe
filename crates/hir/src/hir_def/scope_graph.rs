@@ -2,7 +2,11 @@ use std::collections::BTreeSet;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{hir_def::GenericParamOwner, span::DynLazySpan, HirDb};
+use crate::{
+    hir_def::{BodyKind, GenericParamOwner},
+    span::DynLazySpan,
+    HirDb,
+};
 
 use super::{
     Body, Enum, ExprId, Func, FuncParamLabel, IdentId, IngotId, ItemKind, TopLevelMod, Use,
@@ -300,7 +304,11 @@ impl ScopeId {
 
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
         let name = match self {
-            ScopeId::Block(body, expr) => format!("block_{}", body.block_order(db)[&expr]),
+            ScopeId::Block(body, expr) => format!("{{block{}}}", body.block_order(db)[&expr]),
+            ScopeId::Item(ItemKind::Body(body)) => match body.body_kind(db) {
+                BodyKind::FuncBody => "{fn_body}".to_string().into(),
+                BodyKind::Anonymous => "{anonymous_body}".to_string().into(),
+            },
             _ => self.name(db)?.data(db).clone(),
         };
         dbg!(&name);

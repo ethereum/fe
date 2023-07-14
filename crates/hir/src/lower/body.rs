@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{
-        Body, BodySourceMap, Expr, ExprId, NodeStore, Partial, Pat, PatId, Stmt, StmtId,
+        Body, BodyKind, BodySourceMap, Expr, ExprId, NodeStore, Partial, Pat, PatId, Stmt, StmtId,
         TrackedItemId,
     },
     span::HirOrigin,
@@ -15,14 +15,14 @@ impl Body {
         let id = f_ctxt.joined_id(TrackedItemId::FuncBody);
         let mut ctxt = BodyCtxt::new(f_ctxt, id);
         let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast, body_expr)
+        ctxt.build(&ast, body_expr, BodyKind::FuncBody)
     }
 
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'_>, ast: ast::Expr) -> Self {
         let id = f_ctxt.joined_id(TrackedItemId::NamelessBody);
         let mut ctxt = BodyCtxt::new(f_ctxt, id);
         let body_expr = Expr::lower_ast(&mut ctxt, ast.clone());
-        ctxt.build(&ast, body_expr)
+        ctxt.build(&ast, body_expr, BodyKind::Anonymous)
     }
 }
 
@@ -77,7 +77,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
     }
 
     fn new(f_ctxt: &'ctxt mut FileLowerCtxt<'db>, id: TrackedItemId) -> Self {
-        f_ctxt.enter_scope(id.clone(), false);
+        f_ctxt.enter_body_scope(id.clone());
         Self {
             f_ctxt,
             id,
@@ -88,12 +88,13 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         }
     }
 
-    fn build(self, ast: &ast::Expr, body_expr: ExprId) -> Body {
+    fn build(self, ast: &ast::Expr, body_expr: ExprId, body_kind: BodyKind) -> Body {
         let origin = HirOrigin::raw(ast);
         let body = Body::new(
             self.f_ctxt.db(),
             self.id,
             body_expr,
+            body_kind,
             self.stmts,
             self.exprs,
             self.pats,

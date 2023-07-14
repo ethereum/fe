@@ -29,6 +29,8 @@ pub struct Body {
     /// In case of a function body, this is always be the block expression.
     pub expr: ExprId,
 
+    pub body_kind: BodyKind,
+
     #[return_ref]
     pub stmts: NodeStore<StmtId, Partial<Stmt>>,
     #[return_ref]
@@ -59,8 +61,14 @@ impl Body {
     /// When it turns out to be generally useful, we need to consider to let
     /// salsa track this method.
     pub fn block_order(self, db: &dyn HirDb) -> FxHashMap<ExprId, usize> {
-        BlockOrderCalculator::new(db).calculate(self)
+        BlockOrderCalculator::new(db, self).calculate()
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BodyKind {
+    FuncBody,
+    Anonymous,
 }
 
 pub type NodeStore<K, V> = PrimaryMap<K, V>;
@@ -133,6 +141,7 @@ where
 struct BlockOrderCalculator<'db> {
     db: &'db dyn HirDb,
     order: FxHashMap<ExprId, usize>,
+    body: Body,
     fresh_number: usize,
 }
 
@@ -143,7 +152,7 @@ impl<'db> Visitor for BlockOrderCalculator<'db> {
         expr: ExprId,
         expr_data: &Expr,
     ) {
-        if matches!(expr_data, Expr::Block(..)) {
+        if ctxt.body() == self.body && matches!(expr_data, Expr::Block(..)) {
             self.order.insert(expr, self.fresh_number);
             self.fresh_number += 1;
         }
@@ -153,21 +162,22 @@ impl<'db> Visitor for BlockOrderCalculator<'db> {
 }
 
 impl<'db> BlockOrderCalculator<'db> {
-    fn new(db: &'db dyn HirDb) -> Self {
+    fn new(db: &'db dyn HirDb, body: Body) -> Self {
         Self {
             db,
             order: FxHashMap::default(),
+            body,
             fresh_number: 0,
         }
     }
 
-    fn calculate(mut self, body: Body) -> FxHashMap<ExprId, usize> {
-        let expr = body.expr(self.db);
-        let Partial::Present(expr_data) = expr.data(self.db, body) else {
+    fn calculate(mut self) -> FxHashMap<ExprId, usize> {
+        let expr = self.body.expr(self.db);
+        let Partial::Present(expr_data) = expr.data(self.db, self.body) else {
             return self.order;
         };
 
-        let mut ctxt = VisitorCtxt::with_expr(self.db, body.scope(), body, expr);
+        let mut ctxt = VisitorCtxt::with_expr(self.db, self.body.scope(), self.body, expr);
         self.visit_expr(&mut ctxt, expr, expr_data);
         self.order
     }
