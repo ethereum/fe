@@ -112,8 +112,12 @@ impl<'db> FileLowerCtxt<'db> {
     }
 
     /// Creates a new scope for an item.
-    fn enter_scope(&mut self, id: TrackedItemId, is_mod: bool) {
+    fn enter_item_scope(&mut self, id: TrackedItemId, is_mod: bool) {
         self.builder.enter_item_scope(id, is_mod);
+    }
+
+    fn enter_body_scope(&mut self, id: TrackedItemId) {
+        self.builder.enter_body_scope(id);
     }
 
     /// Leaves the current scope, `item` should be the generated item which owns

@@ -1,5 +1,3 @@
-use std::mem;
-
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -19,7 +17,7 @@ pub(super) struct ScopeGraphBuilder<'db> {
     scope_stack: Vec<NodeId>,
     module_stack: Vec<NodeId>,
     id_stack: Vec<TrackedItemId>,
-    declared_blocks: FxHashMap<NodeId, Option<ExprId>>,
+    declared_blocks: Vec<FxHashMap<NodeId, Option<ExprId>>>,
 }
 
 impl<'db> ScopeGraphBuilder<'db> {
@@ -31,7 +29,7 @@ impl<'db> ScopeGraphBuilder<'db> {
             scope_stack: Default::default(),
             module_stack: Default::default(),
             id_stack: Default::default(),
-            declared_blocks: FxHashMap::default(),
+            declared_blocks: vec![],
         };
 
         builder.enter_item_scope(TrackedItemId::TopLevelMod(top_mod.name(db)), true);
@@ -45,6 +43,11 @@ impl<'db> ScopeGraphBuilder<'db> {
     pub(super) fn enter_item_scope(&mut self, id: TrackedItemId, is_mod: bool) {
         self.id_stack.push(id);
         self.enter_scope_impl(is_mod);
+    }
+
+    pub(super) fn enter_body_scope(&mut self, id: TrackedItemId) {
+        self.declared_blocks.push(FxHashMap::default());
+        self.enter_item_scope(id, false);
     }
 
     pub(super) fn leave_item_scope(&mut self, item: ItemKind) {
@@ -232,7 +235,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Body(body) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                for (node, block) in mem::take(&mut self.declared_blocks) {
+                for (node, block) in self.declared_blocks.pop().unwrap() {
                     let block = block.unwrap();
                     self.finalize_block_scope(node, body, block);
                 }
@@ -252,13 +255,18 @@ impl<'db> ScopeGraphBuilder<'db> {
 
     pub(super) fn enter_block_scope(&mut self) {
         let node = self.enter_scope_impl(false);
-        self.declared_blocks.insert(node, None);
+        self.declared_blocks.last_mut().unwrap().insert(node, None);
     }
 
     pub(super) fn leave_block_scope(&mut self, block: ExprId) {
         let block_node = self.scope_stack.pop().unwrap();
         let parent_node = *self.scope_stack.last().unwrap();
-        *self.declared_blocks.get_mut(&block_node).unwrap() = Some(block);
+        *self
+            .declared_blocks
+            .last_mut()
+            .unwrap()
+            .get_mut(&block_node)
+            .unwrap() = Some(block);
         self.graph.add_lex_edge(block_node, parent_node);
         self.graph
             .add_edge(parent_node, block_node, EdgeKind::anon());

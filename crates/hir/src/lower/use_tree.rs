@@ -13,7 +13,7 @@ impl Use {
 
         let Some(use_tree) = ast.use_tree() else {
             let id = ctxt.joined_id(TrackedItemId::Use(Partial::Absent));
-            ctxt.enter_scope(id.clone(), false);
+            ctxt.enter_item_scope(id.clone(), false);
             let path = Partial::Absent;
             let alias = None;
             let top_mod = ctxt.top_mod();
@@ -27,7 +27,7 @@ impl Use {
         if !use_tree.has_subtree() {
             let path = UsePathId::lower_ast_partial(ctxt, use_tree.path());
             let id = ctxt.joined_id(TrackedItemId::Use(path));
-            ctxt.enter_scope(id.clone(), false);
+            ctxt.enter_item_scope(id.clone(), false);
             let alias = use_tree
                 .alias()
                 .map(|alias| UseAlias::lower_ast_partial(ctxt, alias));
@@ -43,7 +43,7 @@ impl Use {
             .into_iter()
             .map(|(path, alias, origin)| {
                 let id = ctxt.joined_id(TrackedItemId::Use(path));
-                ctxt.enter_scope(id.clone(), false);
+                ctxt.enter_item_scope(id.clone(), false);
                 let top_mod = ctxt.top_mod();
                 let alias = alias;
                 let origin = HirOrigin::desugared(origin);

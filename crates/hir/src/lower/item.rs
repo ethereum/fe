@@ -71,7 +71,7 @@ impl Mod {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Mod) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Mod(name));
-        ctxt.enter_scope(id.clone(), true);
+        ctxt.enter_item_scope(id.clone(), true);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -89,7 +89,7 @@ impl Func {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Func, is_extern: bool) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Func(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -128,7 +128,7 @@ impl Struct {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Struct) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Struct(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -157,7 +157,7 @@ impl Contract {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Contract) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Contract(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -182,7 +182,7 @@ impl Enum {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Enum) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Enum(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -211,7 +211,7 @@ impl TypeAlias {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeAlias) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.alias());
         let id = ctxt.joined_id(TrackedItemId::TypeAlias(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -240,7 +240,7 @@ impl Impl {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Impl) -> Self {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = ctxt.joined_id(TrackedItemId::Impl(ty));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -271,7 +271,7 @@ impl Trait {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Trait) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Trait(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -306,7 +306,7 @@ impl ImplTrait {
         let trait_ref = TraitRef::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = ctxt.joined_id(TrackedItemId::ImplTrait(trait_ref, ty));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -338,7 +338,7 @@ impl Const {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Const) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemId::Const(name));
-        ctxt.enter_scope(id.clone(), false);
+        ctxt.enter_item_scope(id.clone(), false);
 
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let body = ast.value().map(|ast| Body::lower_ast(ctxt, ast)).into();
