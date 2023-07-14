@@ -1857,6 +1857,19 @@ where
         }
     }
 
+    /// Returns the body that encloses the current node.
+    /// # panic
+    /// Panics when the current node is not enclosed by a body.
+    pub fn body(&self) -> Body {
+        match self.span.0.as_ref().unwrap().root {
+            ChainRoot::Body(body) => body,
+            ChainRoot::Expr(expr) => expr.body,
+            ChainRoot::Stmt(stmt) => stmt.body,
+            ChainRoot::Pat(pat) => pat.body,
+            _ => panic!(),
+        }
+    }
+
     fn with_new_scoped_ctxt<F1, F2, U>(&mut self, scope_id: ScopeId, f1: F1, f2: F2)
     where
         T: SpanDowncast,
@@ -1928,16 +1941,6 @@ where
             span: self.span,
             scope_stack: self.scope_stack,
             _t: PhantomData,
-        }
-    }
-
-    fn body(&self) -> Body {
-        match self.span.0.as_ref().unwrap().root {
-            ChainRoot::Body(body) => body,
-            ChainRoot::Expr(expr) => expr.body,
-            ChainRoot::Stmt(stmt) => stmt.body,
-            ChainRoot::Pat(pat) => pat.body,
-            _ => panic!(),
         }
     }
 }

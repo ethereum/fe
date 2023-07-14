@@ -11,7 +11,7 @@ use fe_hir_analysis::{
 };
 use hir::{
     analysis_pass::ModuleAnalysisPass,
-    hir_def::{scope_graph::ScopeId, Expr, ItemKind, Pat, PathId, TopLevelMod, TypeId},
+    hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
     visitor::prelude::*,
     HirDb, SpannedHirDb,
 };
@@ -40,7 +40,6 @@ fn test_standalone(fixture: Fixture<&str>) {
         db: &db,
         top_mod,
         domain_stack: Vec::new(),
-        item_stack: Vec::new(),
         prop_formatter: &mut prop_formatter,
     }
     .visit_top_mod(&mut ctxt, top_mod);
@@ -53,7 +52,6 @@ struct PathVisitor<'db, 'a> {
     db: &'db HirAnalysisTestDb,
     top_mod: TopLevelMod,
     domain_stack: Vec<NameDomain>,
-    item_stack: Vec<ItemKind>,
     prop_formatter: &'a mut HirPropertyFormatter,
 }
 
@@ -64,10 +62,8 @@ impl<'db, 'a> Visitor for PathVisitor<'db, 'a> {
         }
 
         self.domain_stack.push(NameDomain::Type);
-        self.item_stack.push(item);
         walk_item(self, ctxt, item);
         self.domain_stack.pop();
-        self.item_stack.pop();
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
@@ -76,32 +72,21 @@ impl<'db, 'a> Visitor for PathVisitor<'db, 'a> {
         self.domain_stack.pop();
     }
 
-    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: &Pat) {
-        if pat.is_bind(self.db.as_hir_db()) {
-            return;
-        }
+    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: PatId, _: &Pat) {}
 
-        if matches!(pat, Pat::Record { .. }) {
-            self.domain_stack.push(NameDomain::Type);
-        } else {
-            self.domain_stack.push(NameDomain::Value);
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        expr: ExprId,
+        expr_data: &Expr,
+    ) {
+        if matches!(expr_data, Expr::Block { .. }) {
+            walk_expr(self, ctxt, expr);
         }
-        walk_pat(self, ctxt, pat);
-        self.domain_stack.pop();
-    }
-
-    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: &Expr) {
-        if matches!(expr, Expr::RecordInit { .. }) {
-            self.domain_stack.push(NameDomain::Type);
-        } else {
-            self.domain_stack.push(NameDomain::Value);
-        }
-        walk_expr(self, ctxt, expr);
-        self.domain_stack.pop();
     }
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
-        let scope = ScopeId::from_item(self.item_stack.last().copied().unwrap());
+        let scope = ctxt.scope();
         let resolved_path = resolve_path_early(self.db.as_hir_analysis_db(), path, scope);
         match resolved_path {
             EarlyResolvedPath::Full(bucket) => {

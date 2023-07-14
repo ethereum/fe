@@ -16,8 +16,8 @@ use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, Expr, FieldDefListId, GenericParamListId, IdentId, IngotId, ItemKind,
-        Partial, Pat, PathId, TopLevelMod, TypeBound, TypeId, VariantDefListId,
+        scope_graph::ScopeId, Expr, ExprId, IdentId, IngotId, ItemKind, Partial, Pat, PatId,
+        PathId, TopLevelMod, TypeBound, TypeId,
     },
     visitor::prelude::*,
 };
@@ -219,7 +219,13 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         }
     }
 
-    fn verify_path(&mut self, path: PathId, span: LazyPathSpan, bucket: NameResBucket) {
+    fn verify_path(
+        &mut self,
+        path: PathId,
+        scope: ScopeId,
+        span: LazyPathSpan,
+        bucket: NameResBucket,
+    ) {
         let path_kind = self.path_ctxt.last().unwrap();
         let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
         let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
@@ -252,10 +258,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         match path_kind.pick(self.db, bucket) {
             // The path exists and belongs to the expected kind.
             Either::Left(res) => {
-                if !res.is_visible(
-                    self.db,
-                    ScopeId::from_item(*self.item_stack.last().unwrap()),
-                ) {
+                if !res.is_visible(self.db, scope) {
                     self.diags.push(NameResDiag::invisible(
                         span,
                         last_seg_ident,
@@ -368,46 +371,34 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_field_def_list(
+    fn visit_field_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFieldDefListSpan>,
-        fields: FieldDefListId,
+        ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>,
+        field: &hir::hir_def::FieldDef,
     ) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..fields.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::Field(parent_item, i);
-            self.check_conflict(scope);
-        }
-
-        walk_field_def_list(self, ctxt, fields);
+        let scope = ctxt.scope();
+        self.check_conflict(scope);
+        walk_field_def(self, ctxt, field);
     }
 
-    fn visit_variant_def_list(
+    fn visit_variant_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyVariantDefListSpan>,
-        variants: VariantDefListId,
+        ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
+        variant: &hir::hir_def::VariantDef,
     ) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..variants.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::Variant(parent_item, i);
-            self.check_conflict(scope);
-        }
-
-        walk_variant_def_list(self, ctxt, variants);
+        let scope = ctxt.scope();
+        self.check_conflict(scope);
+        walk_variant_def(self, ctxt, variant);
     }
 
-    fn visit_generic_param_list(
+    fn visit_generic_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, hir::span::params::LazyGenericParamListSpan>,
-        params: GenericParamListId,
+        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
+        param: &hir::hir_def::GenericParam,
     ) {
-        let parent_item = *self.item_stack.last().unwrap();
-        for i in 0..params.data(self.db.as_hir_db()).len() {
-            let scope = ScopeId::GenericParam(parent_item, i);
-            self.check_conflict(scope);
-        }
-
-        walk_generic_param_list(self, ctxt, params);
+        let scope = ctxt.scope();
+        self.check_conflict(scope);
+        walk_generic_param(self, ctxt, param);
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
@@ -418,12 +409,24 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     // We don't need to run path analysis on patterns, statements and expressions in
     // early path resolution.
-    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: &Pat) {}
-    fn visit_stmt(&mut self, _: &mut VisitorCtxt<'_, LazyStmtSpan>, _: &hir::hir_def::Stmt) {}
-    fn visit_expr(&mut self, _: &mut VisitorCtxt<'_, LazyExprSpan>, _: &Expr) {}
+    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: PatId, _: &Pat) {}
+
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        expr: ExprId,
+        expr_data: &Expr,
+    ) {
+        match expr_data {
+            // We need to run path analysis on block expressions because they can contain items.
+            Expr::Block(_) => walk_expr(self, ctxt, expr),
+
+            _ => {}
+        }
+    }
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
-        let scope = ScopeId::from_item(self.item_stack.last().copied().unwrap());
+        let scope = ctxt.scope();
         let dummy_cache_store = ResolvedQueryCacheStore::no_cache();
 
         let mut resolver = EarlyPathResolver::new(self.db, &mut self.inner, &dummy_cache_store);
@@ -469,7 +472,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         let EarlyResolvedPath::Full(bucket) = resolved_path.resolved else {
             return;
         };
-        self.verify_path(path, ctxt.span().unwrap(), bucket);
+        self.verify_path(path, scope, ctxt.span().unwrap(), bucket);
     }
 }
 

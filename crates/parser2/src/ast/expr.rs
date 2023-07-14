@@ -65,6 +65,11 @@ impl BlockExpr {
     pub fn stmts(&self) -> impl Iterator<Item = super::Stmt> {
         self.iter()
     }
+
+    /// Returns items declared in the block.
+    pub fn items(&self) -> impl Iterator<Item = super::Item> {
+        support::children(self.syntax())
+    }
 }
 
 ast_node! {

@@ -29,7 +29,6 @@ ast_node! {
 }
 impl Item {
     pub fn kind(&self) -> Option<ItemKind> {
-        dbg!(self.syntax());
         support::child(self.syntax())
             .map(ItemKind::Mod)
             .or_else(|| support::child(self.syntax()).map(ItemKind::Func))
