@@ -223,7 +223,7 @@ pub trait AnalyzerContext {
 
     fn register_diag(&self, diag: Diagnostic) -> DiagnosticVoucher {
         self.add_diagnostic(diag);
-        DiagnosticVoucher(PhantomData::default())
+        DiagnosticVoucher(PhantomData)
     }
 }
 
@@ -314,7 +314,7 @@ pub struct DiagnosticVoucher(PhantomData<()>);
 
 impl DiagnosticVoucher {
     pub fn assume_the_parser_handled_it() -> Self {
-        Self(PhantomData::default())
+        Self(PhantomData)
     }
 }
 

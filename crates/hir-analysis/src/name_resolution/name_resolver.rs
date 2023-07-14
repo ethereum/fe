@@ -153,13 +153,10 @@ impl NameResBucket {
         self.bucket.retain(|d, _| *d == domain);
     }
 
-    pub(super) fn merge<'a>(&mut self, bucket: &NameResBucket) {
+    pub(super) fn merge(&mut self, bucket: &NameResBucket) {
         for (domain, err) in bucket.errors() {
-            match self.pick(domain) {
-                Err(NameResolutionError::NotFound) => {
-                    self.bucket.insert(domain, Err(err.clone()));
-                }
-                _ => {}
+            if let Err(NameResolutionError::NotFound) = self.pick(domain) {
+                self.bucket.insert(domain, Err(err.clone()));
             }
         }
         for res in bucket.iter() {

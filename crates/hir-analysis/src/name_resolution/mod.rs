@@ -56,7 +56,7 @@ pub fn resolve_segments_early(
 ) -> EarlyResolvedPath {
     // Obtain cache store for the given scope.
     let cache_store = resolve_path_early_impl(db, scope.top_mod(db.as_hir_db()));
-    let importer = DefaultImporter::default();
+    let importer = DefaultImporter;
     // We use the cache store that is returned from `resolve_path_early` to get
     // cached results immediately.
     let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
@@ -417,11 +417,8 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         expr: ExprId,
         expr_data: &Expr,
     ) {
-        match expr_data {
-            // We need to run path analysis on block expressions because they can contain items.
-            Expr::Block(_) => walk_expr(self, ctxt, expr),
-
-            _ => {}
+        if matches!(expr_data, Expr::Block(_)) {
+            walk_expr(self, ctxt, expr)
         }
     }
 

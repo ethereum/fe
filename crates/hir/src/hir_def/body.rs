@@ -55,7 +55,19 @@ impl Body {
     }
 
     #[doc(hidden)]
-    /// Returns the BFS order of the blocks in the body.
+    /// Returns the order of the blocks in the body in lexical order.
+    /// e.g.,
+    /// ```fe
+    /// fn foo() { // 0
+    ///     ...
+    ///     { // 1
+    ///         ...
+    ///         { // 2
+    ///             ...
+    ///         }
+    ///     }
+    /// }
+    ///
     ///
     /// Currently, this is only used for testing.
     /// When it turns out to be generally useful, we need to consider to let

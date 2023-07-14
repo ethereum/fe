@@ -306,12 +306,11 @@ impl ScopeId {
         let name = match self {
             ScopeId::Block(body, expr) => format!("{{block{}}}", body.block_order(db)[&expr]),
             ScopeId::Item(ItemKind::Body(body)) => match body.body_kind(db) {
-                BodyKind::FuncBody => "{fn_body}".to_string().into(),
-                BodyKind::Anonymous => "{anonymous_body}".to_string().into(),
+                BodyKind::FuncBody => "{fn_body}".to_string(),
+                BodyKind::Anonymous => "{anonymous_body}".to_string(),
             },
             _ => self.name(db)?.data(db).clone(),
         };
-        dbg!(&name);
 
         if let Some(parent) = self.parent(db) {
             let parent_path = parent.pretty_path(db)?;
