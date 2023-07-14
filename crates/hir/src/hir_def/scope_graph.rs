@@ -256,12 +256,13 @@ impl ScopeId {
     }
 
     pub fn parent_item(self, db: &dyn HirDb) -> Option<ItemKind> {
-        let data = self.data(db);
-        match data.id {
-            ScopeId::Item(item) => Some(item),
-            _ => {
-                let parent = data.parent_scope?;
-                parent.parent_item(db)
+        let mut parent = self.parent(db)?;
+        loop {
+            match parent {
+                ScopeId::Item(item) => return Some(item),
+                _ => {
+                    parent = parent.parent(db)?;
+                }
             }
         }
     }
@@ -355,16 +356,14 @@ impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
 pub struct Scope {
     pub id: ScopeId,
     pub edges: BTreeSet<ScopeEdge>,
-    pub parent_scope: Option<ScopeId>,
     pub vis: Visibility,
 }
 
 impl Scope {
-    pub fn new(kind: ScopeId, parent_scope: Option<ScopeId>, vis: Visibility) -> Self {
+    pub fn new(kind: ScopeId, vis: Visibility) -> Self {
         Self {
             id: kind,
             edges: Default::default(),
-            parent_scope,
             vis,
         }
     }

@@ -297,11 +297,9 @@ impl<'db> ScopeGraphBuilder<'db> {
         parent_item: ItemKind,
         fields: FieldDefListId,
     ) {
-        let parent_scope = ScopeId::Item(parent_item);
-
         for (i, field) in fields.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::Field(parent_item, i);
-            let scope_data = Scope::new(scope_id, Some(parent_scope), field.vis);
+            let scope_data = Scope::new(scope_id, field.vis);
 
             let field_node = self.graph.push(scope_id, scope_data);
             self.graph.add_lex_edge(field_node, parent_node);
@@ -320,12 +318,11 @@ impl<'db> ScopeGraphBuilder<'db> {
         parent_item: ItemKind,
         variants: VariantDefListId,
     ) {
-        let parent_scope = ScopeId::Item(parent_item);
         let parent_vis = parent_item.vis(self.db);
 
         for (i, field) in variants.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::Variant(parent_item, i);
-            let scope_data = Scope::new(scope_id, Some(parent_scope), parent_vis);
+            let scope_data = Scope::new(scope_id, parent_vis);
 
             let variant_node = self.graph.push(scope_id, scope_data);
             self.graph.add_lex_edge(variant_node, parent_node);
@@ -344,11 +341,9 @@ impl<'db> ScopeGraphBuilder<'db> {
         parent_item: ItemKind,
         params: FuncParamListId,
     ) {
-        let parent_scope = ScopeId::Item(parent_item);
-
         for (i, param) in params.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::FuncParam(parent_item, i);
-            let scope = Scope::new(scope_id, Some(parent_scope), Visibility::Private);
+            let scope = Scope::new(scope_id, Visibility::Private);
             let func_param_node = self.graph.push(scope_id, scope);
 
             self.graph.add_lex_edge(func_param_node, parent_node);
@@ -370,11 +365,9 @@ impl<'db> ScopeGraphBuilder<'db> {
         parent_item: ItemKind,
         params: GenericParamListId,
     ) {
-        let parent_scope = ScopeId::Item(parent_item);
-
         for (i, param) in params.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::GenericParam(parent_item, i);
-            let scope = Scope::new(scope_id, Some(parent_scope), Visibility::Private);
+            let scope = Scope::new(scope_id, Visibility::Private);
 
             let generic_param_node = self.graph.push(scope_id, scope);
             self.graph.add_lex_edge(generic_param_node, parent_node);
@@ -389,7 +382,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
     fn dummy_scope(&self) -> (ScopeId, Scope) {
         let scope_id = ScopeId::Item(self.top_mod.into());
-        (scope_id, Scope::new(scope_id, None, Visibility::Public))
+        (scope_id, Scope::new(scope_id, Visibility::Public))
     }
 }
 
