@@ -19,7 +19,7 @@ error[2-0003]: `Bar` is not visible
   │           ^^^ `Bar` is not visible
 7 │ mod foo2 {
 8 │     use foo3::Bar
-  │     ------------- `Bar is defined here
+  │               --- `Bar is defined here
 
 error[2-0003]: `foo4` is not visible
    ┌─ import_invisible.fe:15:11

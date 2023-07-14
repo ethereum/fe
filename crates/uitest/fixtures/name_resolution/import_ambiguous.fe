@@ -8,9 +8,9 @@ mod foo {
 
 
     pub mod inner1 {
-        struct S {}
+        pub struct S {}
     }
     mod inner2 {
-        struct S {}
+        pub struct S {}
     }
 }

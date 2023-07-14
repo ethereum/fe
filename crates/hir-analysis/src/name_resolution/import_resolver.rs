@@ -11,10 +11,7 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{
-    name_resolution::visibility_checker::{is_scope_visible_from, is_use_visible},
-    HirAnalysisDb,
-};
+use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
 
 use super::{
     diagnostics::NameResDiag,
@@ -184,6 +181,12 @@ impl<'db> ImportResolver<'db> {
     }
 
     /// Try to resolve the given glob `IntermediateUse`.
+    ///
+    /// The first value of the returned tuple is the updated `IntermediateUse`
+    /// if the resolution is not fully completed.
+    ///
+    /// The second value of the returned tuple indicates whether the resolution
+    /// is progressed from the passed `IntermediateUse`.
     fn resolve_glob(&mut self, i_use: IntermediateUse) -> (Option<IntermediateUse>, bool) {
         let (base_path_resolved, changed) = {
             if i_use.is_base_resolved(self.db) {
@@ -215,7 +218,7 @@ impl<'db> ImportResolver<'db> {
         let original_scope = base_path_resolved.original_scope;
         let use_ = base_path_resolved.use_;
 
-        // Collect all unresolved named imports in the target scope to avoid bucket a
+        // Collect all unresolved named imports in the target scope to avoid binding a
         // name to a wrong resolution being brought by a glob.
         let unresolved_named_imports = match self.intermediate_uses.get(&target_scope) {
             Some(i_uses) => i_uses
@@ -243,7 +246,7 @@ impl<'db> ImportResolver<'db> {
         );
 
         let is_decidable = self.is_decidable(&base_path_resolved);
-        let n_res = resolutions.iter().fold(0, |acc, bind| acc + bind.1.len());
+        let n_res = resolutions.iter().fold(0, |acc, res| acc + res.1.len());
         if *self.num_imported_res.entry(use_).or_default() == n_res {
             if is_decidable {
                 return (None, true);
@@ -333,6 +336,9 @@ impl<'db> ImportResolver<'db> {
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
         let mut bucket = resolver.resolve_query(query);
+        if !i_use.is_base_resolved(self.db) {
+            bucket.filter_by_domain(NameDomain::Type);
+        }
 
         // Filter out invisible resolutions.
         let mut invisible_span = None;
@@ -340,29 +346,16 @@ impl<'db> ImportResolver<'db> {
             let Ok(res) = res else {
                 return true;
             };
-            match res.scope() {
-                Some(scope) => {
-                    if let NameDerivation::GlobImported(use_)
-                    | NameDerivation::NamedImported(use_) = res.derivation
-                    {
-                        if !is_use_visible(self.db, i_use.original_scope, use_) {
-                            invisible_span.get_or_insert_with(|| use_.lazy_span().into());
-                            false
-                        } else {
-                            true
-                        }
-                    } else if is_scope_visible_from(self.db, scope, i_use.original_scope) {
-                        true
-                    } else {
-                        if scope.is_importable() {
-                            if let Some(span) = res.kind.name_span(self.db) {
-                                invisible_span.get_or_insert(span);
-                            }
-                        }
-                        false
-                    }
+
+            if !res.is_importable() {
+                false
+            } else if res.is_visible(self.db, i_use.original_scope) {
+                true
+            } else {
+                if let Some(span) = res.derived_from(self.db) {
+                    invisible_span.get_or_insert(span);
                 }
-                None => true,
+                false
             }
         });
 
@@ -371,7 +364,7 @@ impl<'db> ImportResolver<'db> {
             bucket.filter_by_domain(NameDomain::Type);
         }
 
-        for err in bucket.errors() {
+        for (_, err) in bucket.errors() {
             if !matches!(
                 err,
                 NameResolutionError::NotFound | NameResolutionError::Invalid
@@ -458,7 +451,7 @@ impl<'db> ImportResolver<'db> {
         self.num_imported_res.insert(i_use.use_, n_res);
         if let Err(err) = self
             .resolved_imports
-            .set_named_binds(self.db, &i_use, bucket)
+            .set_named_bucket(self.db, &i_use, bucket)
         {
             self.accumulated_errors.push(err);
         }
@@ -883,19 +876,19 @@ impl IntermediateResolvedImports {
         }
     }
 
-    fn set_named_binds(
+    fn set_named_bucket(
         &mut self,
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
-        mut bind: NameResBucket,
+        mut bucket: NameResBucket,
     ) -> Result<(), NameResDiag> {
         let scope = i_use.original_scope;
-        bind.set_derivation(NameDerivation::NamedImported(i_use.use_));
+        bucket.set_derivation(NameDerivation::NamedImported(i_use.use_));
 
         let imported_name = match i_use.imported_name(db) {
             Some(name) => name,
             None => {
-                self.resolved_imports.unnamed_resolved.push(bind);
+                self.resolved_imports.unnamed_resolved.push(bucket);
                 return Ok(());
             }
         };
@@ -908,9 +901,9 @@ impl IntermediateResolvedImports {
 
         match imported_set.entry(imported_name) {
             Entry::Occupied(mut e) => {
-                let bucket = e.get_mut();
-                bucket.merge(bind.iter());
-                for err in bucket.errors() {
+                let old_bucket = e.get_mut();
+                old_bucket.merge(&bucket);
+                for (_, err) in old_bucket.errors() {
                     let NameResolutionError::Ambiguous(cands) = err else {
                         continue;
                     };
@@ -934,7 +927,7 @@ impl IntermediateResolvedImports {
             }
 
             Entry::Vacant(e) => {
-                e.insert(bind);
+                e.insert(bucket);
                 Ok(())
             }
         }

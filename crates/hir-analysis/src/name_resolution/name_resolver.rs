@@ -136,8 +136,10 @@ impl NameResBucket {
         self.bucket.values_mut().filter_map(|res| res.as_mut().ok())
     }
 
-    pub fn errors(&self) -> impl Iterator<Item = &NameResolutionError> {
-        self.bucket.values().filter_map(|res| res.as_ref().err())
+    pub fn errors(&self) -> impl Iterator<Item = (NameDomain, &NameResolutionError)> {
+        self.bucket
+            .iter()
+            .filter_map(|(domain, res)| res.as_ref().err().map(|err| (*domain, err)))
     }
 
     /// Returns the resolution of the given `domain`.
@@ -151,10 +153,16 @@ impl NameResBucket {
         self.bucket.retain(|d, _| *d == domain);
     }
 
-    /// Merge the `resolutions` into the set. If name conflict happens, the old
-    /// resolution will be returned, otherwise `None` will be returned.
-    pub(super) fn merge<'a>(&mut self, resolutions: impl Iterator<Item = &'a NameRes>) {
-        for res in resolutions {
+    pub(super) fn merge<'a>(&mut self, bucket: &NameResBucket) {
+        for (domain, err) in bucket.errors() {
+            match self.pick(domain) {
+                Err(NameResolutionError::NotFound) => {
+                    self.bucket.insert(domain, Err(err.clone()));
+                }
+                _ => {}
+            }
+        }
+        for res in bucket.iter() {
             self.push(res);
         }
     }
@@ -350,6 +358,13 @@ impl NameRes {
         }
     }
 
+    pub(super) fn is_importable(&self) -> bool {
+        match self.kind {
+            NameResKind::Scope(scope) => scope.is_importable(),
+            NameResKind::Prim(_) => true,
+        }
+    }
+
     fn new_prim(prim: PrimTy) -> Self {
         Self {
             kind: prim.into(),
@@ -514,7 +529,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .named_imports(self.db, query.scope)
             .and_then(|imports| imports.get(&query.name))
         {
-            bucket.merge(imported.iter());
+            bucket.merge(imported);
         }
 
         // 3. Look for the name in the glob imports.
@@ -534,7 +549,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
             let mut resolved = self.resolve_query(query_for_parent);
             resolved.set_lexed_derivation();
-            bucket.merge(resolved.iter());
+            bucket.merge(&resolved);
         }
 
         if !query.directive.allow_external {
@@ -614,7 +629,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     pub(super) fn collect_all_resolutions_for_glob(
         &mut self,
         target: ScopeId,
-        ref_scope: ScopeId,
+        use_scope: ScopeId,
         unresolved_named_imports: FxHashSet<IdentId>,
     ) -> FxHashMap<IdentId, Vec<NameRes>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
@@ -636,21 +651,20 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             let res =
                 NameRes::new_from_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
 
-            *found_domains.entry(name).or_default() |= res.domain as u8;
-            res_collection.entry(name).or_default().push(res);
+            if res.is_visible(self.db, use_scope) {
+                *found_domains.entry(name).or_default() |= res.domain as u8;
+                res_collection.entry(name).or_default().push(res);
+            }
         }
 
         let mut found_domains_after_named = found_domains.clone();
         if let Some(named_imports) = self.importer.named_imports(self.db, target) {
             for (&name, import) in named_imports {
                 let found_domain = found_domains.get(&name).copied().unwrap_or_default();
-                for res in import.iter().filter(|res| {
-                    if let NameDerivation::NamedImported(use_) = res.derivation {
-                        is_use_visible(self.db, ref_scope, use_)
-                    } else {
-                        false
-                    }
-                }) {
+                for res in import
+                    .iter()
+                    .filter(|res| res.is_visible(self.db, use_scope))
+                {
                     if (found_domain & res.domain as u8 != 0)
                         || !found_kinds.insert((name, res.kind))
                     {
@@ -664,16 +678,19 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
 
         if let Some(glob_imports) = self.importer.glob_imports(self.db, target) {
-            for (&use_, resolutions) in glob_imports.iter() {
-                if !is_use_visible(self.db, ref_scope, use_) {
-                    continue;
-                }
+            for (_, resolutions) in glob_imports.iter() {
+                // if !is_use_visible(self.db, ref_scope, use_) {
+                //     continue;
+                // }
                 for (&name, res_for_name) in resolutions.iter() {
                     if unresolved_named_imports.contains(&name) {
                         continue;
                     }
 
-                    for res in res_for_name.iter() {
+                    for res in res_for_name
+                        .iter()
+                        .filter(|res| res.is_visible(self.db, use_scope))
+                    {
                         let seen_domain = found_domains_after_named
                             .get(&name)
                             .copied()
