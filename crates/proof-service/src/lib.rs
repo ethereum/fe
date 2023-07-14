@@ -41,7 +41,7 @@ impl ProofClient {
 }
 
 impl ProofClient {
-    pub fn check_invariant(&self, invariant: Invariant) -> ProofStatus {
+    pub fn check_invariant(&self, invariant: Invariant, rerun: bool) -> ProofStatus {
         let mut stream = TcpStream::connect(self.0).expect("connection failed");
         let mut stream_clone = stream.try_clone().unwrap();
 
@@ -50,6 +50,11 @@ impl ProofClient {
 
         let encoded_invariant = serde_json::to_string(&invariant).unwrap();
         writer.write(encoded_invariant.as_bytes()).unwrap();
+        writer.write("\n".as_bytes()).unwrap();
+        writer.flush().unwrap();
+
+        let encoded_rerun = serde_json::to_string(&rerun).unwrap();
+        writer.write(encoded_rerun.as_bytes()).unwrap();
         writer.write("\n".as_bytes()).unwrap();
         writer.flush().unwrap();
 

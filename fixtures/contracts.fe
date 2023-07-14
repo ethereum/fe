@@ -1,14 +1,19 @@
 use std::spec
+use std::evm
+use std::buf::RawCallBuffer
 
 contract Foo {
-    pub fn get_42(self) -> u256 {
-        return 42
-    }
+    pub fn __call__() { }
 }
 
 #invariant
 fn verify_get_42(mut ctx: Context) {
-    let foo: Foo = Foo.create(ctx, 0)
-    spec::given_eq(u256(address(foo)), 26)
-    spec::assert_eq(foo.get_42(), 42)
+    let foo: address = address(Foo.create(ctx, 0))
+    let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
+
+    spec::assert_true(ctx.raw_call(
+        addr: foo, 
+        value: 0, 
+        buf
+    ))
 }

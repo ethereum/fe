@@ -1,7 +1,7 @@
 use std::{
     env,
     fmt::Display,
-    fs,
+    fs::{self, File},
     io::Write,
     process::Command,
     sync::{Arc, Mutex},
@@ -66,6 +66,7 @@ impl KSpec {
         let kevm_dir_path = env::var("KEVM_DIR").unwrap();
         let spec_dir_path = format!("{kevm_dir_path}/tests/specs/fe/{fs_id}");
         let spec_file_path = format!("{spec_dir_path}/invariant-spec.k");
+        let log_file_path = format!("{fs_id}.out");
 
         if fs::metadata(&spec_dir_path).is_err() {
             fs::create_dir(&spec_dir_path).unwrap();
@@ -80,12 +81,14 @@ impl KSpec {
         file.write_all(self.to_string().as_bytes()).unwrap();
 
         let mut cmd = Command::new("make");
+        let log = File::create(log_file_path).expect("failed to open log");
 
         cmd.arg("build")
             .arg("test-prove-fe")
             .arg("-j8")
             .current_dir(kevm_dir_path)
             .env("FS_ID", fs_id)
+            .stdout(log)
             .status()
             .unwrap()
             .success()
@@ -159,9 +162,8 @@ impl KSpecExecPool {
     }
 
     pub fn remove(&mut self, id: u64) {
-        if self.cur_executing.remove(&id).is_none() {
-            panic!("no spec to remove")
-        }
+        // todo: actually terminate the process isntead of just forgetting about it
+        self.cur_executing.remove(&id);
     }
 }
 

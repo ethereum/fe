@@ -72,6 +72,10 @@ impl Db {
         self.entries.get(&id)
     }
 
+    pub fn evict(&mut self, id: u64) {
+        self.entries.remove(&id);
+    }
+
     pub fn get_mut(&mut self, id: u64) -> Option<&mut DbEntry> {
         self.entries.get_mut(&id)
     }

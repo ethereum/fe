@@ -22,21 +22,27 @@
 2691375950895637890:
   name: simple8
   complete: true
+14111824353587072050:
+  name: verify_get_42
+  complete: false
+14977842676755773493:
+  name: verify_get_42
+  complete: false
+1491244125428245047:
+  name: simple6
+  complete: true
 4205870993505503282:
   name: read_byte_shl_248
   complete: true
 17646573292089816401:
   name: shl_shr_248
   complete: true
-1491244125428245047:
-  name: simple6
-  complete: true
+13658001998889555973:
+  name: shl_shr_n
+  complete: false
 6342915096082124860:
   name: de_morgan_true
   complete: true
-14977842676755773493:
-  name: verify_get_42
-  complete: false
-14111824353587072050:
-  name: verify_get_42
-  complete: false
+11455748359517230147:
+  name: de_morgan_false
+  complete: true

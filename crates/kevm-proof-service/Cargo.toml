@@ -16,3 +16,5 @@ smol_str = "0.1.21"
 serde_yaml = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 indexmap = { version="1.6.2", features = ["serde"] }
+clap = {version="3.1.18", features = ["derive"]}
+crossterm = "0.26.1"

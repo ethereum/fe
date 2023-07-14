@@ -1,12 +1,16 @@
 use std::{
     fmt::Display,
-    fs,
-    io::Write,
+    io::{self},
     sync::{Arc, Mutex},
     thread,
     time::{self, Duration},
 };
 
+use crossterm::{
+    cursor::MoveTo,
+    execute,
+    terminal::{Clear, ClearType},
+};
 use fe_proof_service::{invariant::Invariant, ProofStatus};
 use indexmap::{indexmap, IndexMap};
 use kevm::KSpecExecPool;
@@ -38,7 +42,13 @@ impl Server {
         Self { state }
     }
 
-    pub fn check_invariant(&mut self, invariant: Invariant) -> ProofStatus {
+    pub fn forget(&mut self, invariant_id: u64) {
+        self.state.lock().unwrap().db.evict(invariant_id);
+        self.state.lock().unwrap().queue.remove(invariant_id);
+        self.state.lock().unwrap().exec_pool.remove(invariant_id);
+    }
+
+    pub fn verify(&mut self, invariant: Invariant) -> ProofStatus {
         let id = invariant.id();
         let spec = Spec::new_from_invariant(invariant);
         // println!("{}", &spec.k_spec);
@@ -47,32 +57,19 @@ impl Server {
         self.state.lock().unwrap().proof_status(id)
     }
 
-    // pub fn display<W>(&self, mut writer: W)
-    // where
-    //     W: Write + Send + 'static,
-    // {
-    //     let state_clone = Arc::clone(&self.state);
-
-    //     thread::spawn(move || loop {
-    //         thread::sleep(Duration::from_millis(1000));
-    //         let content = format!("{}", state_clone.lock().unwrap());
-    //         writer.write_all(content.as_bytes()).unwrap()
-    //     });
-    // }
-
     pub fn display(&self) {
         let state_clone = Arc::clone(&self.state);
 
         thread::spawn(move || loop {
             thread::sleep(Duration::from_millis(1000));
-            let mut file = fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open("server.state")
-                .unwrap();
+
+            let mut stdout = io::stdout();
+            execute!(stdout, Clear(ClearType::All)).unwrap();
+
             let content = format!("{}", state_clone.lock().unwrap());
-            file.write_all(content.as_bytes()).unwrap()
+            print!("{content}");
+
+            execute!(stdout, MoveTo(0, 0)).unwrap();
         });
     }
 }

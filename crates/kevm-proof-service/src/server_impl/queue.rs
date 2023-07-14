@@ -85,4 +85,8 @@ impl Queue {
     pub fn push_spec(&mut self, spec: Spec) {
         self.specs.push(spec)
     }
+
+    pub fn remove(&mut self, id: u64) {
+        self.specs.retain(|spec| spec.invariant_id != id);
+    }
 }

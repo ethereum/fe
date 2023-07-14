@@ -11,14 +11,16 @@ use fe_proof_service::ProofClient;
 #[clap(about = "Generate specs for the current project")]
 pub struct ProveArgs {
     input_path: String,
+    name: Option<String>,
+    #[clap(long, default_value = "127.0.0.1:7878")]
+    server: String,
+    #[clap(long, action)]
+    rerun: bool,
     #[clap(long, takes_value(true))]
     optimize: Option<bool>,
 }
 
-fn single_file_invariants(prove_arg: &ProveArgs) -> Vec<Invariant> {
-    let input_path = &prove_arg.input_path;
-    let optimize = prove_arg.optimize.unwrap_or(true);
-
+fn single_file_invariants(input_path: &str, optimize: bool) -> Vec<Invariant> {
     let mut db = fe_driver::Db::default();
     let content = match std::fs::read_to_string(input_path) {
         Err(err) => {
@@ -38,13 +40,24 @@ fn single_file_invariants(prove_arg: &ProveArgs) -> Vec<Invariant> {
     }
 }
 
-pub fn prove(prove_arg: ProveArgs) {
-    let invariants = single_file_invariants(&prove_arg);
-    let server = ProofClient::new("127.0.0.1:7878");
+pub fn prove(args: ProveArgs) {
+    let input_path = args.input_path;
+    let optimize = args.optimize.unwrap_or(true);
+    let rerun = args.rerun;
+    let invariants = single_file_invariants(&input_path, optimize);
+    let server = ProofClient::new(args.server);
 
     for invariant in invariants {
         let name = invariant.name.clone();
-        let status = server.check_invariant(invariant);
-        println!("{} (status: {})", &name, &status)
+
+        if let Some(match_name) = &args.name {
+            if name.contains(match_name) {
+                let status = server.check_invariant(invariant, rerun);
+                println!("{} (status: {})", &name, &status)
+            }
+        } else {
+            let status = server.check_invariant(invariant, rerun);
+            println!("{} (status: {})", &name, &status)
+        }
     }
 }
