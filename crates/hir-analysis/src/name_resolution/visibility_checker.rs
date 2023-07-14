@@ -20,11 +20,12 @@ pub(crate) fn is_scope_visible_from(
     let Some(def_scope) = (if matches!(scope, ScopeId::Field(..) | ScopeId::Variant(..)) {
         // We treat fields as if they are defined in the parent of the parent scope so
         // that field can be accessible from the scope where the parent is defined.
-            scope.parent(db.as_hir_db()).and_then(|scope| scope.parent(db.as_hir_db()))
-        } else {
-            scope.parent(db.as_hir_db())
-        })
-    else {
+        scope
+            .parent(db.as_hir_db())
+            .and_then(|scope| scope.parent(db.as_hir_db()))
+    } else {
+        scope.parent(db.as_hir_db())
+    }) else {
         return false;
     };
 

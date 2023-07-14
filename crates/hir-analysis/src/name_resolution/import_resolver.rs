@@ -5,7 +5,7 @@ use std::{
 };
 
 use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, IngotId, Use},
+    hir_def::{prim_ty::PrimTy, scope_graph::ScopeId, IdentId, IngotId, Use},
     span::DynLazySpan,
 };
 use itertools::Itertools;
@@ -391,7 +391,7 @@ impl<'db> ImportResolver<'db> {
         // insert the use into the `suspicious_imports` set to verify the ambiguity
         // after the algorithm reaches the fixed point.
         for res in bucket.iter() {
-            if res.is_external(self.db, i_use) || res.is_derived_from_glob() {
+            if res.is_builtin() || res.is_external(self.db, i_use) || res.is_derived_from_glob() {
                 self.suspicious_imports.insert(i_use.use_);
                 break;
             }
@@ -470,8 +470,8 @@ impl<'db> ImportResolver<'db> {
         let ingot = scope.ingot(self.db.as_hir_db());
 
         // The ambiguity in the first segment possibly occurs when the segment is
-        // resolved to either a glob imported bucket or an external ingot in the
-        // `i_use` resolution.
+        // resolved to either a glob imported derived resolution or an external ingot in
+        // the `i_use` resolution.
         //
         // This is because:
         // 1. the resolution of the first segment changes depending on whether the
@@ -494,14 +494,17 @@ impl<'db> ImportResolver<'db> {
                 if matches!(
                     resolved.current_res.unwrap().derivation,
                     NameDerivation::GlobImported(_)
-                ) && ingot
+                ) && (ingot
                     .external_ingots(self.db.as_hir_db())
                     .iter()
-                    .any(|(ingot_name, _)| ingot_name == &first_segment_ident)
+                    .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
+                    || PrimTy::all_types()
+                        .iter()
+                        .any(|ty| ty.name() == first_segment_ident))
                 {
                     // The resolved scope is shadowed by an glob imports while originally
-                    // the use might be resolved to an external ingot. This means there is an
-                    // ambiguity between the external ingot and the name
+                    // the use might be resolved to an external ingot or builtin. This means there
+                    // is an ambiguity between the external ingot and the name
                     // imported by the glob import.
                     self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
                 }
@@ -1014,6 +1017,10 @@ impl NameRes {
             NameResKind::Scope(scope) => scope.ingot(db.as_hir_db()) != current_ingot,
             NameResKind::Prim(_) => true,
         }
+    }
+
+    fn is_builtin(&self) -> bool {
+        matches!(self.kind, NameResKind::Prim(_))
     }
 
     /// Returns true if the bucket contains a glob import.
