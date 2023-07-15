@@ -1,0 +1,28 @@
+struct Lib {
+    pub fn square(x: u256) -> u256 {
+        return x * x
+    }
+}
+
+struct MyStruct {
+    pub x: u256
+
+    pub fn new(x: u256) -> MyStruct {
+        return MyStruct(x)
+    }
+}
+
+contract Foo {
+    my_struct: MyStruct
+
+    pub fn bar(mut self, val: u256) -> u256 {
+        self.my_struct = MyStruct::new(x: val)
+        return Lib::square(x: self.my_struct.x)
+    }
+}
+
+#test
+fn test_foo(mut ctx: Context) {
+    let mut foo: Foo = Foo.create(ctx, 0)
+    assert foo.bar(val: 12) == 144
+}

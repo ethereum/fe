@@ -1657,10 +1657,9 @@ fn expr_call_method(
                     method: *method,
                     generic_type: inner,
                 },
-                ty => {
+                _ => {
                     let method = method.function(context.db()).unwrap();
-
-                    if let Type::SPtr(inner) = ty {
+                    if let Type::SPtr(inner) = target_attributes.typ.typ(context.db()) {
                         if matches!(
                             inner.typ(context.db()),
                             Type::Struct(_) | Type::Tuple(_) | Type::Array(_)

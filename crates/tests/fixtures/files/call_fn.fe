@@ -1,0 +1,59 @@
+use std::evm
+use std::buf::{
+    RawCallBuffer,
+    MemoryBufferWriter,
+    MemoryBufferReader,
+    MemoryBuffer
+}
+use std::context::CalldataReader
+
+
+contract Foo {
+    pub unsafe fn __call__(self, ctx: Context) {
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+        let mut writer: MemoryBufferWriter = buf.writer()
+        let mut reader: CalldataReader = ctx.calldata_reader()
+        let val: u256 = reader.read_u256()
+        if val == 0x01 {
+            writer.write(value: 0x02)
+        } else if val == 0x03 {
+            writer.write(value: 0x04)
+        } else {
+            // unknown selector
+            revert
+        }
+
+        evm::return_mem(buf) 
+    }
+}
+
+#test
+unsafe fn test_foo(mut ctx: Context) {
+    let foo: Foo = Foo.create(ctx, 0)
+    let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 32, output_len: 32)
+    let mut writer: MemoryBufferWriter = buf.writer()
+    let mut reader: MemoryBufferReader = buf.reader()
+    // 0x01 selector call
+    writer.write(value: 0x01)
+    assert evm::call(
+        gas: evm::gas_remaining(), 
+        addr: address(foo), 
+        value: 0, 
+        buf
+    )
+    assert reader.read_u256() == 0x02
+
+    buf = RawCallBuffer::new(input_len: 32, output_len: 32)
+    writer = buf.writer()
+    reader = buf.reader()
+
+    // 0x03 selector call
+    writer.write(value: 0x03)
+    assert evm::call(
+         gas: evm::gas_remaining(), 
+         addr: address(foo), 
+         value: 0, 
+         buf
+    )
+    assert reader.read_u256() == 0x04
+}

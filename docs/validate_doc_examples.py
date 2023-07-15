@@ -6,6 +6,7 @@ from typing import Iterable, NamedTuple
 import subprocess
 
 THIS_DIR = pathlib.Path(__file__).parent
+ROOT_DIR = THIS_DIR.parent
 BOOK_SRC_DIR = THIS_DIR / 'src'
 TMP_SNIPPET_DIR = THIS_DIR / 'tmp_snippets'
 NEWS_DIR = THIS_DIR.parent / 'newsfragments'
@@ -33,6 +34,7 @@ def get_all_doc_files() -> Iterable[pathlib.Path]:
         yield path
     for path in NEWS_DIR.rglob('*.md'):
         yield path
+    yield ROOT_DIR / 'README.md'
 
 def get_all_snippets_in_file(path: pathlib.Path) -> Iterable[CodeSnippet]:
     with open(path) as f:

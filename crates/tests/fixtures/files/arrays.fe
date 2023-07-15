@@ -1,0 +1,100 @@
+use std::evm
+use std::buf::{
+    RawCallBuffer,
+    MemoryBufferWriter,
+    MemoryBufferReader,
+    MemoryBuffer
+}
+
+contract Foo {
+    my_array: Array<u256, 10>
+
+    pub fn __init__(mut self) {
+        self.my_array = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    }
+
+    pub fn get_from_storage(self, index: u256) -> u256 {
+        return self.my_array[index]
+    }
+
+    pub fn get_from_memory(index: u256) -> u256 {
+        let my_array: Array<u256, 10> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        return my_array[index]
+    }
+}
+
+#test
+unsafe fn test_foo(mut ctx: Context) {
+    let foo: Foo = Foo.create(ctx, 0)
+    assert foo.get_from_storage(index: 3) == 3
+    assert Foo::get_from_memory(index: 3) == 4
+}
+
+contract ArrayIndexOobDyn {
+    pub unsafe fn __call__() {
+        let index: u256 = evm::call_data_load(offset: 0)
+        let mut my_array: Array<u256, 4> = [0, 1, 2, 3]
+        evm::sstore(offset: 0, value: my_array[index])
+    }
+}
+
+const CALL_GAS: u256 = 100000
+
+#test
+unsafe fn test_array_oob_dyn(mut ctx: Context) {
+    let array_index_oob: ArrayIndexOobDyn = ArrayIndexOobDyn.create(ctx, value: 0)
+    let expected_revert_data: Array<u8, 36> =  [78, 72, 123, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50]
+    let mut buf : RawCallBuffer = RawCallBuffer::new(input_len: 32, output_len: 36)
+    let mut writer: MemoryBufferWriter = buf.writer()
+    let mut reader: MemoryBufferReader = buf.reader()
+    // store index value
+    writer.write(value: 26)
+    // verify that the call reverts
+    assert not evm::call(
+        gas: CALL_GAS, 
+        addr: address(array_index_oob), 
+        value: 0,
+        buf
+    ) 
+
+    // check the revert data
+
+    for expected_byte in expected_revert_data {
+        assert reader.read_u8() == expected_byte
+    }
+}
+
+// The following tests does not pass due absent runtime check. 
+// Obviously this couild also be a compile-time check.
+//
+// contract ArrayIndexOobStatic {
+//     pub unsafe fn __call__() {
+//         let mut my_array: Array<u256, 4> = [0, 1, 2, 3]
+//         evm::sstore(offset: 0, value: my_array[26])
+//     }
+// }
+
+// #test
+// unsafe fn test_array_oob_static(mut ctx: Context) {
+//     let array_index_oob: ArrayIndexOobStatic = ArrayIndexOobStatic.create(ctx, value: 0)
+//     let expected_revert_data: Array<u8, 36> =  [78, 72, 123, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50]
+
+//     // verify that the call reverts
+//     assert evm::call(
+//         gas: CALL_GAS, 
+//         addr: address(array_index_oob), 
+//         value: 0, 
+//         input_offset: 0, 
+//         input_len: 0, 
+//         output_offset: FREE_MEM_PTR,
+//         output_len: 36
+//     ) == 0 
+
+//     // check the revert data
+//     let mut offset: u256 = FREE_MEM_PTR 
+
+//     for expected_byte in expected_revert_data {
+//         assert evm::shr(248, evm::mload(offset)) == expected_byte
+//         offset += 1
+//     }
+// }

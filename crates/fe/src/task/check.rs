@@ -2,9 +2,8 @@ use std::path::Path;
 
 use clap::Args;
 use fe_common::diagnostics::{print_diagnostics, Diagnostic};
+use fe_common::utils::files::load_fe_files_from_dir;
 use fe_driver::Db;
-
-use super::utils::load_files_from_dir;
 
 const DEFAULT_INGOT_NAME: &str = "main";
 
@@ -32,7 +31,7 @@ fn check_ingot(db: &mut Db, input_path: &str) -> Vec<Diagnostic> {
         std::process::exit(1)
     }
 
-    let files = match load_files_from_dir(input_path) {
+    let files = match load_fe_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
             eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)
