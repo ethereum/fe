@@ -1,0 +1,39 @@
+
+use std::context::CalldataReader
+use std::buf::{RawCallBuffer, MemoryBufferReader, MemoryBufferWriter, MemoryBuffer}
+use std::evm
+
+contract SumMyNums {
+    pub fn __call__(ctx: Context) {
+        let mut reader: CalldataReader = ctx.calldata_reader()
+        let mut sum: u16 = 0
+
+        while reader.remainder() != 0 {
+            sum += reader.read_u16()
+        }
+
+        unsafe {
+            let mut buf: MemoryBuffer = MemoryBuffer::new(len: 2)
+            let mut writer: MemoryBufferWriter = buf.writer()
+            writer.write(value: sum)
+            evm::return_mem(buf)
+        }
+    }
+}
+
+#test
+fn sum_my_nums(mut ctx: Context) {
+    let addr: address = address(SumMyNums.create(ctx, 0))
+
+    let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 6, output_len: 2)
+    let mut reader: MemoryBufferReader = buf.reader()
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write(value: u16(1))
+    writer.write(value: u16(2))
+    writer.write(value: u16(3))
+
+    assert ctx.raw_call(addr, value: 0, buf)
+    assert reader.read_u16() == 6
+}
+

@@ -136,6 +136,14 @@ pub fn function_signature(
                 });
 
                 if let Some(context_type) = scope.get_context_type() {
+                    if arg.name() == "ctx" &&  typ.as_ref().map(|val| val.deref(db)) != Ok(context_type) {
+                        scope.error(
+                            "`ctx` is reserved for instances of `Context`",
+                            arg.span,
+                            "`ctx` must be an instance of `Context`",
+                        );
+                    };
+
                     if typ.as_ref().map(|val| val.deref(db)) == Ok(context_type) {
                         if arg.name() != "ctx" {
                             scope.error(

@@ -320,6 +320,8 @@ test_file! { init_call_on_external_contract }
 test_file! { call_wrong_return_type }
 test_file! { call_duplicate_def }
 test_file! { call_call_on_self }
+
+test_file! { call_method_in_storage }
 test_file! { call_call_on_external_contract }
 test_file! { call_with_pub_fns }
 test_file! { abi_encode_u256 }
@@ -342,6 +344,7 @@ test_ingot! { mainless_ingot }
 test_ingot! { bad_visibility }
 
 test_file! { ctx_not_first }
+test_file! { ctx_not_ctx_type }
 test_file! { ctx_not_after_self }
 test_file! { ctx_init }
 test_file! { ctx_undeclared }

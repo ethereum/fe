@@ -1,0 +1,11 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, test_files::fixture(path))"
+---
+error: `ctx` is reserved for instances of `Context`
+  ┌─ compile_errors/ctx_not_ctx_type.fe:2:16
+  │
+2 │     pub fn bar(ctx: u256) {}
+  │                ^^^^^^^^^ `ctx` must be an instance of `Context`
+
+

@@ -5,13 +5,13 @@ use std::{
 };
 
 use clap::{ArgEnum, Args};
-use fe_common::{diagnostics::print_diagnostics, files::SourceFileId};
+use fe_common::{
+    diagnostics::print_diagnostics, files::SourceFileId, utils::files::load_fe_files_from_dir,
+};
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 const DEFAULT_INGOT: &str = "main";
-
-use super::utils::load_files_from_dir;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 enum Emit {
@@ -88,7 +88,7 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         std::process::exit(1)
     }
 
-    let files = match load_files_from_dir(input_path) {
+    let files = match load_fe_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
             eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)

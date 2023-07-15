@@ -1,0 +1,42 @@
+type Bytes10 = Array<u8, 10>
+
+contract Foo {
+    bar: Map<address, Bytes10>
+
+    pub fn read_bar(self, key: address) -> Bytes10 {
+        return self.bar[key].to_mem()
+    }
+
+    pub fn write_bar(mut self, key: address, value: Bytes10) {
+        self.bar[key] = value
+    }
+}
+
+#test 
+fn test_foo(mut ctx: Context) {
+    let mut foo: Foo = Foo.create(ctx, 0)
+
+    let address1: address = address(0x01)
+    let address2: address = address(0x02) 
+    let bytes1: Bytes10 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] 
+    let bytes2: Bytes10 = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19] 
+
+    foo.write_bar(key: address1, value: bytes1)
+    foo.write_bar(key: address2, value: bytes2)
+
+    assert bytes10_eq(foo.read_bar(key: address1), bytes1)
+    assert bytes10_eq(foo.read_bar(key: address2), bytes2)
+}
+
+fn bytes10_eq(_ a: Bytes10, _ b: Bytes10) -> bool {
+    let mut i: u256 = 0
+
+    while i < 10 {
+        if a[i] != b[i] {
+            return false
+        }
+        i += 1
+    }
+
+    return true
+}
