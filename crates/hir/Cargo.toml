@@ -1,6 +1,6 @@
 [package]
 name = "fe-hir"
-version = "0.22.0"
+version = "0.23.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"

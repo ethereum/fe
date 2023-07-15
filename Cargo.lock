@@ -559,7 +559,7 @@ checksum = "4f046ad836ddb46a42ae6219f11208b61ef9f1b96f105a88da4ae0dd5f1b89e6"
 
 [[package]]
 name = "driver2"
-version = "0.20.0-alpha"
+version = "0.23.0"
 dependencies = [
  "dir-test",
  "fe-compiler-test-utils",
@@ -828,7 +828,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common2"
-version = "0.20.0-alpha"
+version = "0.23.0"
 dependencies = [
  "camino",
  "fe-parser2",
@@ -916,7 +916,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver2"
-version = "0.20.0-alpha"
+version = "0.23.0"
 dependencies = [
  "camino",
  "codespan-reporting",
@@ -929,7 +929,7 @@ dependencies = [
 
 [[package]]
 name = "fe-hir"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "camino",
  "cranelift-entity",
@@ -947,7 +947,7 @@ dependencies = [
 
 [[package]]
 name = "fe-hir-analysis"
-version = "0.20.0-alpha"
+version = "0.23.0"
 dependencies = [
  "codespan-reporting",
  "derive_more",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "fe-macros"
-version = "0.1.1"
+version = "0.23.0"
 dependencies = [
  "glob",
  "proc-macro2",
@@ -1023,7 +1023,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser2"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "derive_more",
  "dir-test",
