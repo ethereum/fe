@@ -39,7 +39,7 @@ pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
     map_file_to_mod_impl(db.as_hir_db(), ingot, file)
 }
 
-/// Returns the item tree of the given top-level module.
+/// Returns the scope graph of the given top-level module.
 pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
     scope_graph_impl(db.as_hir_db(), top_mod)
 }
@@ -76,7 +76,7 @@ pub(crate) fn top_mod_ast(db: &dyn HirDb, top_mod: TopLevelMod) -> ast::Root {
     ast::Root::cast(node).unwrap()
 }
 
-pub struct FileLowerCtxt<'db> {
+pub(super) struct FileLowerCtxt<'db> {
     builder: ScopeGraphBuilder<'db>,
 }
 

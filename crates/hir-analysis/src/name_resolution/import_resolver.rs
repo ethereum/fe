@@ -347,9 +347,7 @@ impl<'db> ImportResolver<'db> {
                 return true;
             };
 
-            if !res.is_importable() {
-                false
-            } else if res.is_visible(self.db, i_use.original_scope) {
+            if res.is_visible(self.db, i_use.original_scope) {
                 true
             } else {
                 if let Some(span) = res.derived_from(self.db) {

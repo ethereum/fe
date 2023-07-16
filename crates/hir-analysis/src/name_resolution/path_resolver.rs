@@ -10,6 +10,13 @@ use super::{
     NameDomain, NameQuery,
 };
 
+/// The result of early path resolution.
+/// There are two kinds of early resolution results:
+/// 1. Fully resolved path, which is a path that is fully resolved to concrete
+///    items.
+/// 2. Partially resolved path. This happens when the path is partially resolved
+///    to a type, and the rest of the path depends on the type to resolve.
+///    Type/Trait context is needed to resolve the rest of the path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EarlyResolvedPath {
     Full(NameResBucket),
@@ -164,6 +171,7 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
+    /// Make a `NameQuery` to resolve the current segment.
     fn make_query(&self, db: &dyn HirAnalysisDb) -> PathResolutionResult<NameQuery> {
         debug_assert!(self.state(db) != IntermediatePathState::TypeDependent);
         let Partial::Present(name) = self.path[self.idx] else {
@@ -189,6 +197,7 @@ impl<'a> IntermediatePath<'a> {
         Ok(NameQuery::with_directive(name, scope, directive))
     }
 
+    /// Finalizes the `IntermediatePath` as a `EarlyResolvedPath::Partial`.
     fn finalize_as_partial(self) -> EarlyResolvedPathWithTrajectory {
         let resolved = EarlyResolvedPath::Partial {
             res: self.current_res.clone(),
@@ -205,6 +214,7 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
+    /// Finalizes the `IntermediatePath` as a `EarlyResolvedPath::Full`.
     fn finalize_as_full(mut self, bucket: NameResBucket) -> EarlyResolvedPathWithTrajectory {
         let resolved = EarlyResolvedPath::Full(bucket);
         let mut trajectory = self.trajectory;
@@ -217,6 +227,9 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
+    /// Proceeds to the next segment with the given `bucket`.
+    /// If the `bucket` doesn't contain proper resolution, then an error is
+    /// returned.
     fn proceed(&mut self, bucket: NameResBucket) -> PathResolutionResult<()> {
         let next_res = bucket
             .pick(NameDomain::Type)

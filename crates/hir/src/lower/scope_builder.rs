@@ -10,6 +10,22 @@ use crate::{
     HirDb,
 };
 
+/// An [`ScopeGraph`] builder that is used to construct the scope in the hir
+/// lowering phase.
+//
+// The difficulty in constructing a scope graph lies in that the ScopeId must
+// hold the corresponding HIR node to represent the scope. However, because HIR
+// nodes tracked by salsa are immutable, it is only possible to create HIR nodes
+// once the lowering of the item is completely finished. This means that a
+// ScopeId can only be constructed after the completion of lowering, or at the
+// end point of the scope.
+//
+// Therefore, the builder's `enter_*_scope` method group does not take any
+// concrete item information as arguments. When the `enter_*_scope` method group
+// is called, the builder constructs a dummy scope and sets up the relationship
+// between this dummy scope and other scopes. Then, when the `leave_*_scope`
+// method group is called, the builder substitutes the dummy scope with the real
+// scope while keeping the relationship between scopes intact.
 pub(super) struct ScopeGraphBuilder<'db> {
     pub(super) db: &'db dyn HirDb,
     pub(super) top_mod: TopLevelMod,
@@ -273,7 +289,7 @@ impl<'db> ScopeGraphBuilder<'db> {
     }
 
     fn enter_scope_impl(&mut self, is_mod: bool) -> NodeId {
-        // Create dummy scope, the scope kind is initialized in `leave_scope`.
+        // Create dummy scope, the scope kind is initialized when leaving the scope.
         let (dummy_scope_id, dummy_scope) = self.dummy_scope();
         let id = self.graph.push(dummy_scope_id, dummy_scope);
         self.scope_stack.push(id);

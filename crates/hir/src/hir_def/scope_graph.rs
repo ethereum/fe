@@ -1,3 +1,4 @@
+///
 use std::collections::BTreeSet;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -13,14 +14,20 @@ use super::{
     Visibility,
 };
 
+/// Represents a scope relation graph in a top-level module.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeGraph {
+    /// The top-level module containing the scope graph.
     pub top_mod: TopLevelMod,
+    /// ///
+    /// The scopes in the graph.
     pub scopes: FxHashMap<ScopeId, Scope>,
+    /// The all unresolved uses in the graph, this is used in name resolution.
     pub unresolved_uses: FxHashSet<Use>,
 }
 
 impl ScopeGraph {
+    /// Represents all item scopes in a top-level module in depth-first order.
     pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind> + 'a {
         ScopeGraphItemIterDfs {
             db,
@@ -30,11 +37,12 @@ impl ScopeGraph {
         }
     }
 
-    /// Returns the direct child items of the scope.
+    /// Returns the direct child items of the given `scope`.
     pub fn child_items(&self, scope: ScopeId) -> impl Iterator<Item = ItemKind> + '_ {
         self.children(scope).filter_map(|child| child.to_item())
     }
 
+    /// Returns the direct child scopes of the given `scope`
     pub fn children(&self, scope: ScopeId) -> impl Iterator<Item = ScopeId> + '_ {
         self.edges(scope).filter_map(|edge| match edge.kind {
             EdgeKind::Lex(_)
@@ -47,6 +55,7 @@ impl ScopeGraph {
         })
     }
 
+    /// Returns the all edges outgoing from the given `scope`.
     pub fn edges(&self, scope: ScopeId) -> impl Iterator<Item = &ScopeEdge> + '_ {
         self.scopes[&scope].edges.iter()
     }
@@ -56,16 +65,29 @@ impl ScopeGraph {
     }
 }
 
+/// An reference to a `[ScopeData]` in a `ScopeGraph`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ScopeId {
+    /// An item scope.
     Item(ItemKind),
+
+    /// A generic parameter scope.
     GenericParam(ItemKind, usize),
+
+    /// A function parameter scope.
     FuncParam(ItemKind, usize),
+
+    /// A field scope.
     Field(ItemKind, usize),
+
+    /// A variant scope.
     Variant(ItemKind, usize),
+
+    /// A block scope.
     Block(Body, ExprId),
 }
 impl ScopeId {
+    /// Returns the top level module containing this scope.
     pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
         match self {
             ScopeId::Item(item) => item.top_mod(db),
@@ -77,30 +99,17 @@ impl ScopeId {
         }
     }
 
-    pub fn kind_name(&self) -> &'static str {
-        match self {
-            ScopeId::Item(item) => item.kind_name(),
-            ScopeId::GenericParam(_, _) => "type",
-            ScopeId::FuncParam(_, _) => "value",
-            ScopeId::Field(_, _) => "field",
-            ScopeId::Variant(_, _) => "value",
-            ScopeId::Block(_, _) => "block",
-        }
-    }
-
+    /// Convert an item to a scope id.
     pub fn from_item(item: ItemKind) -> Self {
         Self::Item(item)
     }
 
+    /// Convert a scope id to an item if the scope is an item.
     pub fn to_item(self) -> Option<ItemKind> {
         match self {
             ScopeId::Item(item) => Some(item),
             _ => None,
         }
-    }
-
-    pub fn root(top_mod: TopLevelMod) -> Self {
-        Self::Item(top_mod.into())
     }
 
     /// Returns the nearest enclosing item.
@@ -113,13 +122,6 @@ impl ScopeId {
             ScopeId::Variant(item, _) => item,
             ScopeId::Block(body, _) => body.into(),
         }
-    }
-
-    pub fn is_importable(self) -> bool {
-        !matches!(
-            self,
-            ScopeId::GenericParam(..) | ScopeId::FuncParam(..) | ScopeId::Field(..)
-        )
     }
 
     /// Returns the scope graph containing this scope.
@@ -168,10 +170,15 @@ impl ScopeId {
         self.top_mod(db).ingot(db)
     }
 
+    /// Returns the `Scope` data for this scope.
     pub fn data(self, db: &dyn HirDb) -> &Scope {
         self.top_mod(db).scope_graph(db).scope_data(&self)
     }
 
+    /// Returns the parent scope of this scope.
+    /// The parent scope is
+    /// 1. the lexical parent if it exists
+    /// 2. the parent module if 1. does not exist
     pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
         let mut super_dest = None;
         for edge in self.edges(db) {
@@ -185,6 +192,7 @@ impl ScopeId {
         super_dest
     }
 
+    /// Returns the lexical parent scope of this scope.
     pub fn lex_parent(self, db: &dyn HirDb) -> Option<Self> {
         self.data(db)
             .edges
@@ -193,6 +201,7 @@ impl ScopeId {
             .map(|e| e.dest)
     }
 
+    /// Returns the parent module of this scope.
     pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
         let parent_item = self.parent_item(db)?;
         match parent_item {
@@ -204,6 +213,7 @@ impl ScopeId {
         }
     }
 
+    /// Returns `true` if the scope is a type.
     pub fn is_type(self, db: &dyn HirDb) -> bool {
         match self.data(db).id {
             ScopeId::Item(item) => item.is_type(),
@@ -212,6 +222,20 @@ impl ScopeId {
         }
     }
 
+    /// Returns the item that contains this scope.
+    pub fn parent_item(self, db: &dyn HirDb) -> Option<ItemKind> {
+        let mut parent = self.parent(db)?;
+        loop {
+            match parent {
+                ScopeId::Item(item) => return Some(item),
+                _ => {
+                    parent = parent.parent(db)?;
+                }
+            }
+        }
+    }
+
+    /// Returns `true` if the scope is a trait definition.
     pub fn is_trait(self, db: &dyn HirDb) -> bool {
         match self.data(db).id {
             ScopeId::Item(item) => item.is_trait(),
@@ -255,18 +279,6 @@ impl ScopeId {
         }
     }
 
-    pub fn parent_item(self, db: &dyn HirDb) -> Option<ItemKind> {
-        let mut parent = self.parent(db)?;
-        loop {
-            match parent {
-                ScopeId::Item(item) => return Some(item),
-                _ => {
-                    parent = parent.parent(db)?;
-                }
-            }
-        }
-    }
-
     pub fn name_span(self, db: &dyn HirDb) -> Option<DynLazySpan> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name_span(),
@@ -303,6 +315,16 @@ impl ScopeId {
         }
     }
 
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            ScopeId::Item(item) => item.kind_name(),
+            ScopeId::GenericParam(_, _) => "type",
+            ScopeId::FuncParam(_, _) => "value",
+            ScopeId::Field(_, _) => "field",
+            ScopeId::Variant(_, _) => "value",
+            ScopeId::Block(_, _) => "block",
+        }
+    }
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
         let name = match self {
             ScopeId::Block(body, expr) => format!("{{block{}}}", body.block_order(db)[&expr]),
@@ -369,6 +391,10 @@ impl Scope {
     }
 }
 
+/// An edge of the scope graph.
+/// The edge contains the destination of the edge and the kind of the edge.
+/// [`EdgeKind`] is contains supplementary information about the destination
+/// scope, which is used for name resolution.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ScopeEdge {
     pub dest: ScopeId,
@@ -377,18 +403,32 @@ pub struct ScopeEdge {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub enum EdgeKind {
+    /// An edge to a lexical parent scope.
     Lex(LexEdge),
+    /// An edge to a module.
     Mod(ModEdge),
+    /// An edge to a type.
     Type(TypeEdge),
+    /// An edge to a trait.
     Trait(TraitEdge),
+    /// An edge from a scope to a generic parameter.
     GenericParam(GenericParamEdge),
+    /// An edge to a value. The value is either a function or a
+    /// constant.
     Value(ValueEdge),
+    /// An edge to a field definition scope.
     Field(FieldEdge),
+    /// An edge to a enum variant definition scope.
     Variant(VariantEdge),
+    /// An edge to a module that is referenced by a `super` keyword.
     Super(SuperEdge),
+    /// An edge to an ingot that is referenced by a `ingot` keyword.
     Ingot(IngotEdge),
+    /// An edge to a scope that is referenced by a `self` keyword.
     Self_(SelfEdge),
+    /// An edge to a scope that is referenced by a `Self` keyword.
     SelfTy(SelfTyEdge),
+    /// An edge to an anonymous scope, e.g., `impl` or function body.
     Anon(AnonEdge),
 }
 

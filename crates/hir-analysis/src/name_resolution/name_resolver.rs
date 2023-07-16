@@ -111,7 +111,7 @@ impl Default for QueryDirective {
 }
 
 /// The struct contains the lookup result of a name query.
-/// The results can contain more than one name resolution which belong to
+/// The results can contain more than one name resolutions which belong to
 /// different name domains.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NameResBucket {
@@ -242,41 +242,20 @@ impl From<NameRes> for NameResBucket {
     }
 }
 
+/// The struct contains the lookup result of a name query.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NameRes {
+    /// The kind of the resolution.
     pub kind: NameResKind,
+    /// The domain of the name resolution.
     pub domain: NameDomain,
+    /// Where the resolution is derived from. (e.g, via `use` or item definition
+    /// in the same scope).
     pub derivation: NameDerivation,
 }
 
 impl NameRes {
-    pub fn is_type(&self, db: &dyn HirAnalysisDb) -> bool {
-        match self.kind {
-            NameResKind::Prim(_) => true,
-            NameResKind::Scope(scope) => scope.is_type(db.as_hir_db()),
-        }
-    }
-
-    pub fn is_trait(&self, db: &dyn HirAnalysisDb) -> bool {
-        match self.kind {
-            NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.is_trait(db.as_hir_db()),
-        }
-    }
-
-    pub fn is_value(&self, db: &dyn HirAnalysisDb) -> bool {
-        !self.is_type(db) && !self.is_trait(db)
-    }
-
-    /// Returns the scope of the name resolution if the name is not a builtin
-    /// type.
-    pub fn scope(&self) -> Option<ScopeId> {
-        match self.kind {
-            NameResKind::Scope(scope) => Some(scope),
-            NameResKind::Prim(_) => None,
-        }
-    }
-
+    /// Returns `true` if the name is visible from the given `scope`.
     pub fn is_visible(&self, db: &dyn HirAnalysisDb, from: ScopeId) -> bool {
         let scope_or_use = match self.derivation {
             NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
@@ -305,6 +284,35 @@ impl NameRes {
         match scope_or_use {
             Either::Left(target_scope) => is_scope_visible_from(db, target_scope, from),
             Either::Right(use_) => is_use_visible(db, from, use_),
+        }
+    }
+
+    /// Returns `true` if the resolution is a type.
+    pub(crate) fn is_type(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self.kind {
+            NameResKind::Prim(_) => true,
+            NameResKind::Scope(scope) => scope.is_type(db.as_hir_db()),
+        }
+    }
+
+    /// Returns `true` if the resolution is a trait.
+    pub(crate) fn is_trait(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self.kind {
+            NameResKind::Prim(_) => false,
+            NameResKind::Scope(scope) => scope.is_trait(db.as_hir_db()),
+        }
+    }
+
+    pub(crate) fn is_value(&self, db: &dyn HirAnalysisDb) -> bool {
+        !self.is_type(db) && !self.is_trait(db)
+    }
+
+    /// Returns the scope of the name resolution if the name is not a builtin
+    /// type.
+    pub fn scope(&self) -> Option<ScopeId> {
+        match self.kind {
+            NameResKind::Scope(scope) => Some(scope),
+            NameResKind::Prim(_) => None,
         }
     }
 
@@ -355,13 +363,6 @@ impl NameRes {
         }
     }
 
-    pub(super) fn is_importable(&self) -> bool {
-        match self.kind {
-            NameResKind::Scope(scope) => scope.is_importable(),
-            NameResKind::Prim(_) => true,
-        }
-    }
-
     fn new_prim(prim: PrimTy) -> Self {
         Self {
             kind: prim.into(),
@@ -373,7 +374,9 @@ impl NameRes {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::From)]
 pub enum NameResKind {
+    /// The name is resolved to a scope.
     Scope(ScopeId),
+    /// The name is resolved to a primitive type.
     Prim(PrimTy),
 }
 
@@ -565,7 +568,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
-                        ScopeId::root(*root_mod),
+                        ScopeId::from_item((*root_mod).into()),
                         NameDomain::Type,
                         NameDerivation::External,
                     ))
@@ -782,8 +785,8 @@ impl ResolvedQueryCacheStore {
 /// The multiple same names can be introduced in a same scope as long as they
 /// are in different domains.
 ///
-/// E.g., A `Foo` can be introduced in a same scope as a type and variant at the
-/// same time. This means the code below is valid.
+/// E.g., A `Foo` in the below example can be introduced in the same scope as a
+/// type and variant at the same time.
 /// ```fe
 /// struct Foo {}
 /// enum MyEnum {
@@ -817,6 +820,7 @@ impl NameDomain {
     }
 }
 
+/// The propagator controls how the name query is propagated to the next scope.
 trait QueryPropagator {
     fn propagate(self, query: &NameQuery) -> PropagationResult;
     fn propagate_glob(self) -> PropagationResult;
@@ -824,8 +828,12 @@ trait QueryPropagator {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum PropagationResult {
+    /// The query is resolved to the next scope(edge's destination).
     Terminated,
+    /// The query resolution should be continued, i.e., the query is propagated
+    /// to the next scope and the next scope should be searched for the query.
     Continuation,
+    /// The query can't be propagated to the next scope.
     UnPropagated,
 }
 
