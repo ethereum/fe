@@ -85,19 +85,19 @@ impl ItemKind {
     pub fn kind_name(self) -> &'static str {
         use ItemKind::*;
         match self {
-            TopMod(_) => "module",
-            Mod(_) => "module",
-            Func(_) => "function",
+            TopMod(_) => "mod",
+            Mod(_) => "mod",
+            Func(_) => "fn",
             Struct(_) => "struct",
             Contract(_) => "contract",
             Enum(_) => "enum",
-            TypeAlias(_) => "type alias",
+            TypeAlias(_) => "type",
             Trait(_) => "trait",
             Impl(_) => "impl",
             ImplTrait(_) => "impl trait",
             Const(_) => "const",
             Use(_) => "use",
-            Body(_) => "expression body",
+            Body(_) => "body",
         }
     }
 
@@ -639,6 +639,12 @@ impl Use {
         } else {
             false
         }
+    }
+
+    pub(crate) fn pretty_path(&self, db: &dyn HirDb) -> String {
+        self.path(db)
+            .to_opt()
+            .map_or_else(|| "{invalid}".to_string(), |path| path.pretty_path(db))
     }
 }
 

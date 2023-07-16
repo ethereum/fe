@@ -26,6 +26,24 @@ impl UsePathId {
     pub fn segment_len(&self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
+
+    pub fn pretty_path(&self, db: &dyn HirDb) -> String {
+        let mut path = String::new();
+
+        for (i, seg) in self.data(db).iter().enumerate() {
+            if i != 0 {
+                path.push_str("::");
+            }
+            match seg {
+                Partial::Absent => path.push_str("{invalid}"),
+                Partial::Present(seg) => match seg {
+                    UsePathSegment::Ident(ident) => path.push_str(ident.data(db)),
+                    UsePathSegment::Glob => path.push('*'),
+                },
+            }
+        }
+        path
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -11,7 +11,8 @@ use fe_compiler_test_utils::snap_test;
 fn run_name_resolution(fixture: Fixture<&str>) {
     let mut driver = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    driver.run_on_file(path, fixture.content());
+    let top_mod = driver.top_mod_from_file(path, fixture.content());
+    driver.run_on_top_mod(top_mod);
     let diags = driver.format_diags();
     snap_test!(diags, fixture.path());
 }
@@ -32,6 +33,7 @@ mod wasm {
     fn run_name_resolution(fixture: Fixture<&str>) {
         let mut driver = DriverDataBase::default();
         let path = Path::new(fixture.path());
-        driver.run_on_file(path, fixture.content());
+        let top_mod = driver.top_mod_from_file(path, fixture.content());
+        driver.run_on_top_mod(top_mod);
     }
 }

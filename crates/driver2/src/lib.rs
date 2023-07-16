@@ -12,8 +12,8 @@ use common::{
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, lower::map_file_to_mod,
-    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
+    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -43,21 +43,24 @@ pub struct DriverDataBase {
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
-    pub fn run_on_file(&mut self, file_path: &path::Path, source: &str) {
-        self.run_on_file_with_pass_manager(file_path, source, initialize_analysis_pass);
+    pub fn run_on_top_mod(&mut self, top_mod: TopLevelMod) {
+        self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
     }
 
-    pub fn run_on_file_with_pass_manager<F>(
-        &mut self,
-        file_path: &path::Path,
-        source: &str,
-        pm_builder: F,
-    ) where
+    pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
+    where
         F: FnOnce(&DriverDataBase) -> AnalysisPassManager<'_>,
     {
         self.diags.clear();
+        self.diags = {
+            let mut pass_manager = pm_builder(self);
+            pass_manager.run_on_module(top_mod)
+        };
+    }
 
+    pub fn top_mod_from_file(&mut self, file_path: &path::Path, source: &str) -> TopLevelMod {
         let kind = IngotKind::StandAlone;
+
         // We set the ingot version to 0.0.0 for stand-alone file.
         let version = Version::new(0, 0, 0);
         let root_file = file_path;
@@ -71,16 +74,10 @@ impl DriverDataBase {
 
         let file_name = root_file.file_name().unwrap().to_str().unwrap();
         let file = InputFile::new(self, ingot, file_name.into(), source.to_string());
-
         ingot.set_root_file(self, file);
         ingot.set_files(self, [file].into());
 
-        let top_mod = map_file_to_mod(self, file);
-
-        self.diags = {
-            let mut pass_manager = pm_builder(self);
-            pass_manager.run_on_module(top_mod)
-        };
+        map_file_to_mod(self, file)
     }
 
     /// Prints accumulated diagnostics to stderr.

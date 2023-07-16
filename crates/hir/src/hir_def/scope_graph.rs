@@ -1,5 +1,4 @@
-///
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, io};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -10,8 +9,8 @@ use crate::{
 };
 
 use super::{
-    Body, Enum, ExprId, Func, FuncParamLabel, IdentId, IngotId, ItemKind, TopLevelMod, Use,
-    Visibility,
+    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamLabel, IdentId,
+    IngotId, ItemKind, TopLevelMod, Use, Visibility,
 };
 
 /// Represents a scope relation graph in a top-level module.
@@ -58,6 +57,11 @@ impl ScopeGraph {
     /// Returns the all edges outgoing from the given `scope`.
     pub fn edges(&self, scope: ScopeId) -> impl Iterator<Item = &ScopeEdge> + '_ {
         self.scopes[&scope].edges.iter()
+    }
+
+    /// Write a scope graph as a dot file format to given `w`.
+    pub fn write_as_dot(&self, db: &dyn HirDb, w: &mut impl io::Write) -> io::Result<()> {
+        ScopeGraphFormatter::new(db, self).render(w)
     }
 
     pub fn scope_data(&self, scope: &ScopeId) -> &Scope {
@@ -401,6 +405,11 @@ pub struct ScopeEdge {
     pub kind: EdgeKind,
 }
 
+/// A specific edge property definitions.
+///
+/// NOTE: The internal types of each variants contains very small amount of
+/// information, the reason why we need to prepare each internal types is to
+/// allow us to implement traits to each edges directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 pub enum EdgeKind {
     /// An edge to a lexical parent scope.

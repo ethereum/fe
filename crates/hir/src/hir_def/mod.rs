@@ -12,6 +12,8 @@ pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
+mod scope_graph_viz;
+
 pub(crate) mod module_tree;
 
 pub use attr::*;
