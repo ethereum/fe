@@ -28,6 +28,7 @@ smol_str = "0.1.21"
 insta = { default-features = false, version = "1.7.1" }
 rstest = "0.6.4"
 test-files = {path = "../test-files", package = "fe-test-files" }
+tests = {path = "../tests", package = "fe-compiler-tests" }
 fe-library = {path = "../library"}
 wasm-bindgen-test = "0.3"
 pretty_assertions = "1.0.0"

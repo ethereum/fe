@@ -680,6 +680,7 @@ version = "0.23.0"
 dependencies = [
  "criterion",
  "fe-common",
+ "fe-compiler-tests",
  "fe-library",
  "fe-parser",
  "fe-test-files",
@@ -767,7 +768,9 @@ dependencies = [
  "dir-test",
  "fe-common",
  "fe-driver",
+ "fe-library",
  "fe-test-runner",
+ "include_dir",
 ]
 
 [[package]]
