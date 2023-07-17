@@ -768,9 +768,7 @@ dependencies = [
  "dir-test",
  "fe-common",
  "fe-driver",
- "fe-library",
  "fe-test-runner",
- "include_dir",
 ]
 
 [[package]]

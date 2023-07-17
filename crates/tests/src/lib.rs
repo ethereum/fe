@@ -7,10 +7,6 @@ use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::files::load_fe_files_from_dir;
 use fe_test_runner::TestSink;
 
-use include_dir::{include_dir, Dir};
-
-const FIXTURES: Dir = include_dir!("$CARGO_MANIFEST_DIR/fixtures");
-
 #[dir_test(dir: "$CARGO_MANIFEST_DIR/fixtures/files", glob: "*.fe")]
 fn single_file_test_run(fixture: Fixture<&str>) {
     let mut db = fe_driver::Db::default();
@@ -76,13 +72,4 @@ fn ingot_test_run(fixture: Fixture<&str>) {
             panic!("Unable to compile {input_path}.");
         }
     }
-}
-
-/// Returns `(file_path, file_content)`
-pub fn fixture_dir_files(path: &str) -> Vec<(&'static str, &'static str)> {
-    let dir = FIXTURES
-        .get_dir(path)
-        .unwrap_or_else(|| panic!("no fixture dir named \"{path}\""));
-
-    fe_library::static_dir_files(dir)
 }

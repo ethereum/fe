@@ -113,7 +113,7 @@ macro_rules! test_analysis_ingot {
                 "test_ingot",
                 IngotMode::Main,
                 FileKind::Local,
-                &tests::fixture_dir_files($path),
+                &test_files::new_fixture_dir_files($path),
                 indexmap! { "std".into() => std },
             );
 
