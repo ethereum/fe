@@ -37,3 +37,20 @@ contract Foo {
         return bing_contract.add(40, 50)
     }
 }
+
+
+#test
+pub fn test_foo(mut ctx: Context) {
+    let baz: Baz = Foo::get_my_baz()
+    assert baz.my_bool
+    assert baz.my_u256 == 26
+    let bong: Bong = Foo::get_my_bing()
+    assert bong.my_address == address(42)
+    assert Foo::get_42() == 42
+    assert Foo::get_26() == 26
+    let dyng: dong::Dyng = Foo::get_my_dyng()
+    assert dyng.my_address == address(8)
+    assert dyng.my_u256 == 42
+    assert dyng.my_i8 == -1
+    assert Foo::create_bing_contract(ctx) == 90
+}
