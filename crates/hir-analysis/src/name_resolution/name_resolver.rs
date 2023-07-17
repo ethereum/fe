@@ -363,6 +363,13 @@ impl NameRes {
         }
     }
 
+    pub(super) fn is_importable(&self) -> bool {
+        match self.kind {
+            NameResKind::Scope(scope) => matches!(scope, ScopeId::Item(_) | ScopeId::Variant(..)),
+            NameResKind::Prim(_) => true,
+        }
+    }
+
     fn new_prim(prim: PrimTy) -> Self {
         Self {
             kind: prim.into(),

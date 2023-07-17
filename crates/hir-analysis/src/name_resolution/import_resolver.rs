@@ -347,6 +347,9 @@ impl<'db> ImportResolver<'db> {
                 return true;
             };
 
+            if !res.is_importable() {
+                return false;
+            }
             if res.is_visible(self.db, i_use.original_scope) {
                 true
             } else {
