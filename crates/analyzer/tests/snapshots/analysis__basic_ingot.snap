@@ -1,9 +1,10 @@
 ---
 source: crates/analyzer/tests/analysis.rs
+assertion_line: 247
 expression: snapshot
 ---
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:9:5
+   ┌─ ingots/basic_ingot/main.fe:9:5
    │  
  9 │ ╭     pub fn get_my_baz() -> Baz {
 10 │ │         assert file_items_work()
@@ -12,7 +13,7 @@ note:
    │ ╰─────^ params: [] -> Baz
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:10:16
+   ┌─ ingots/basic_ingot/main.fe:10:16
    │
 10 │         assert file_items_work()
    │                ^^^^^^^^^^^^^^^^^ bool
@@ -22,13 +23,13 @@ note:
    │                             bool
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:11:16
+   ┌─ ingots/basic_ingot/main.fe:11:16
    │
 11 │         return Baz(my_bool: true, my_u256: 26)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Baz
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:14:5
+   ┌─ ingots/basic_ingot/main.fe:14:5
    │  
 14 │ ╭     pub fn get_my_bing() -> Bong {
 15 │ │         return Bong(my_address: address(42))
@@ -36,25 +37,25 @@ note:
    │ ╰─────^ params: [] -> Bing
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:15:41
+   ┌─ ingots/basic_ingot/main.fe:15:41
    │
 15 │         return Bong(my_address: address(42))
    │                                         ^^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:15:33
+   ┌─ ingots/basic_ingot/main.fe:15:33
    │
 15 │         return Bong(my_address: address(42))
    │                                 ^^^^^^^^^^^ address
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:15:16
+   ┌─ ingots/basic_ingot/main.fe:15:16
    │
 15 │         return Bong(my_address: address(42))
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:18:5
+   ┌─ ingots/basic_ingot/main.fe:18:5
    │  
 18 │ ╭     pub fn get_42() -> u256 {
 19 │ │         return get_42_backend()
@@ -62,13 +63,13 @@ note:
    │ ╰─────^ params: [] -> u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:19:16
+   ┌─ ingots/basic_ingot/main.fe:19:16
    │
 19 │         return get_42_backend()
    │                ^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:22:5
+   ┌─ ingots/basic_ingot/main.fe:22:5
    │  
 22 │ ╭     pub fn get_26() -> u256 {
 23 │ │         return std::evm::add(13, 13)
@@ -76,7 +77,7 @@ note:
    │ ╰─────^ params: [] -> u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:23:30
+   ┌─ ingots/basic_ingot/main.fe:23:30
    │
 23 │         return std::evm::add(13, 13)
    │                              ^^  ^^ u256
@@ -84,13 +85,13 @@ note:
    │                              u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:23:16
+   ┌─ ingots/basic_ingot/main.fe:23:16
    │
 23 │         return std::evm::add(13, 13)
    │                ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:26:5
+   ┌─ ingots/basic_ingot/main.fe:26:5
    │  
 26 │ ╭     pub fn call_on_path() {
 27 │ │         assert bar::mee::Mee::kawum() == 1
@@ -99,7 +100,7 @@ note:
    │ ╰─────^ params: [] -> ()
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:27:16
+   ┌─ ingots/basic_ingot/main.fe:27:16
    │
 27 │         assert bar::mee::Mee::kawum() == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
@@ -107,7 +108,7 @@ note:
    │                u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:27:16
+   ┌─ ingots/basic_ingot/main.fe:27:16
    │
 27 │         assert bar::mee::Mee::kawum() == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
@@ -115,7 +116,7 @@ note:
    │                ^^^^^^^^^^^^^^^ Mee
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:28:16
+   ┌─ ingots/basic_ingot/main.fe:28:16
    │
 28 │         assert bar::mee::Mee().rums() == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^    ^ u256
@@ -123,13 +124,13 @@ note:
    │                u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:28:16
+   ┌─ ingots/basic_ingot/main.fe:28:16
    │
 28 │         assert bar::mee::Mee().rums() == 1
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:31:5
+   ┌─ ingots/basic_ingot/main.fe:31:5
    │  
 31 │ ╭     pub fn get_my_dyng() -> dong::Dyng {
 32 │ │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
@@ -137,13 +138,13 @@ note:
    │ ╰─────^ params: [] -> Dyng
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:32:47
+   ┌─ ingots/basic_ingot/main.fe:32:47
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
    │                                               ^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:32:39
+   ┌─ ingots/basic_ingot/main.fe:32:39
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
    │                                       ^^^^^^^^^^           ^^          ^ u256
@@ -152,19 +153,19 @@ note:
    │                                       address
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:32:71
+   ┌─ ingots/basic_ingot/main.fe:32:71
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
    │                                                                       ^^ i8
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:32:16
+   ┌─ ingots/basic_ingot/main.fe:32:16
    │
 32 │         return dong::Dyng(my_address: address(8), my_u256: 42, my_i8: -1)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Dyng
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:35:5
+   ┌─ ingots/basic_ingot/main.fe:35:5
    │  
 35 │ ╭     pub fn create_bing_contract(mut ctx: Context) -> u256 {
 36 │ │         let bing_contract: BingContract = BingContract.create(ctx, 0)
@@ -173,13 +174,13 @@ note:
    │ ╰─────^ params: [{ label: None, name: ctx, typ: mut Context }] -> u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:36:13
+   ┌─ ingots/basic_ingot/main.fe:36:13
    │
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │             ^^^^^^^^^^^^^ BingContract
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:36:63
+   ┌─ ingots/basic_ingot/main.fe:36:63
    │
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                                                               ^^^  ^ u256
@@ -187,7 +188,7 @@ note:
    │                                                               mut Context
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:36:43
+   ┌─ ingots/basic_ingot/main.fe:36:43
    │
 36 │         let bing_contract: BingContract = BingContract.create(ctx, 0)
    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ BingContract
@@ -198,14 +199,190 @@ note:
    │                BingContract
 
 note: 
-   ┌─ ingots/basic_ingot/src/main.fe:37:16
+   ┌─ ingots/basic_ingot/main.fe:37:16
    │
 37 │         return bing_contract.add(40, 50)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u256
 
+note: 
+   ┌─ ingots/basic_ingot/main.fe:43:1
+   │  
+43 │ ╭ pub fn test_foo(mut ctx: Context) {
+44 │ │     let baz: Baz = Foo::get_my_baz()
+45 │ │     assert baz.my_bool
+46 │ │     assert baz.my_u256 == 26
+   · │
+55 │ │     assert Foo::create_bing_contract(ctx) == 90
+56 │ │ }
+   │ ╰─^ params: [{ label: None, name: ctx, typ: mut Context }] -> ()
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar.fe:1:1
+   ┌─ ingots/basic_ingot/main.fe:44:9
+   │
+44 │     let baz: Baz = Foo::get_my_baz()
+   │         ^^^ Baz
+   ·
+47 │     let bong: Bong = Foo::get_my_bing()
+   │         ^^^^ Bing
+   ·
+51 │     let dyng: dong::Dyng = Foo::get_my_dyng()
+   │         ^^^^ Dyng
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:44:20
+   │
+44 │     let baz: Baz = Foo::get_my_baz()
+   │                    ^^^^^^^^^^^^^^^^^ Baz
+45 │     assert baz.my_bool
+   │            ^^^ Baz
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:45:12
+   │
+45 │     assert baz.my_bool
+   │            ^^^^^^^^^^^ bool
+46 │     assert baz.my_u256 == 26
+   │            ^^^ Baz
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:46:12
+   │
+46 │     assert baz.my_u256 == 26
+   │            ^^^^^^^^^^^    ^^ u256
+   │            │               
+   │            u256
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:46:12
+   │
+46 │     assert baz.my_u256 == 26
+   │            ^^^^^^^^^^^^^^^^^ bool
+47 │     let bong: Bong = Foo::get_my_bing()
+   │                      ^^^^^^^^^^^^^^^^^^ Bing
+48 │     assert bong.my_address == address(42)
+   │            ^^^^ Bing
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:48:12
+   │
+48 │     assert bong.my_address == address(42)
+   │            ^^^^^^^^^^^^^^^            ^^ u256
+   │            │                           
+   │            address
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:48:31
+   │
+48 │     assert bong.my_address == address(42)
+   │                               ^^^^^^^^^^^ address
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:48:12
+   │
+48 │     assert bong.my_address == address(42)
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+49 │     assert Foo::get_42() == 42
+   │            ^^^^^^^^^^^^^    ^^ u256
+   │            │                 
+   │            u256
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:49:12
+   │
+49 │     assert Foo::get_42() == 42
+   │            ^^^^^^^^^^^^^^^^^^^ bool
+50 │     assert Foo::get_26() == 26
+   │            ^^^^^^^^^^^^^    ^^ u256
+   │            │                 
+   │            u256
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:50:12
+   │
+50 │     assert Foo::get_26() == 26
+   │            ^^^^^^^^^^^^^^^^^^^ bool
+51 │     let dyng: dong::Dyng = Foo::get_my_dyng()
+   │                            ^^^^^^^^^^^^^^^^^^ Dyng
+52 │     assert dyng.my_address == address(8)
+   │            ^^^^ Dyng
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:52:12
+   │
+52 │     assert dyng.my_address == address(8)
+   │            ^^^^^^^^^^^^^^^            ^ u256
+   │            │                           
+   │            address
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:52:31
+   │
+52 │     assert dyng.my_address == address(8)
+   │                               ^^^^^^^^^^ address
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:52:12
+   │
+52 │     assert dyng.my_address == address(8)
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+53 │     assert dyng.my_u256 == 42
+   │            ^^^^ Dyng
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:53:12
+   │
+53 │     assert dyng.my_u256 == 42
+   │            ^^^^^^^^^^^^    ^^ u256
+   │            │                
+   │            u256
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:53:12
+   │
+53 │     assert dyng.my_u256 == 42
+   │            ^^^^^^^^^^^^^^^^^^ bool
+54 │     assert dyng.my_i8 == -1
+   │            ^^^^ Dyng
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:54:12
+   │
+54 │     assert dyng.my_i8 == -1
+   │            ^^^^^^^^^^     ^ u256
+   │            │               
+   │            i8
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:54:26
+   │
+54 │     assert dyng.my_i8 == -1
+   │                          ^^ i8
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:54:12
+   │
+54 │     assert dyng.my_i8 == -1
+   │            ^^^^^^^^^^^^^^^^ bool
+55 │     assert Foo::create_bing_contract(ctx) == 90
+   │                                      ^^^ mut Context
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:55:12
+   │
+55 │     assert Foo::create_bing_contract(ctx) == 90
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    ^^ u256
+   │            │                                  
+   │            u256
+
+note: 
+   ┌─ ingots/basic_ingot/main.fe:55:12
+   │
+55 │     assert Foo::create_bing_contract(ctx) == 90
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+
+
+note: 
+  ┌─ ingots/basic_ingot/bar.fe:1:1
   │  
 1 │ ╭ pub fn file_items_work() -> bool {
 2 │ │     return true
@@ -213,20 +390,20 @@ note:
   │ ╰─^ params: [] -> bool
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar.fe:2:12
+  ┌─ ingots/basic_ingot/bar.fe:2:12
   │
 2 │     return true
   │            ^^^^ bool
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:5:5
+  ┌─ ingots/basic_ingot/bing.fe:5:5
   │
 5 │     pub my_address: address
   │     ^^^^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:8:1
+   ┌─ ingots/basic_ingot/bing.fe:8:1
    │  
  8 │ ╭ pub fn get_42_backend() -> u256 {
  9 │ │     return std::evm::add(21, 21)
@@ -234,7 +411,7 @@ note:
    │ ╰─^ params: [] -> u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:9:26
+  ┌─ ingots/basic_ingot/bing.fe:9:26
   │
 9 │     return std::evm::add(21, 21)
   │                          ^^  ^^ u256
@@ -242,13 +419,13 @@ note:
   │                          u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:9:12
+  ┌─ ingots/basic_ingot/bing.fe:9:12
   │
 9 │     return std::evm::add(21, 21)
   │            ^^^^^^^^^^^^^^^^^^^^^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:13:5
+   ┌─ ingots/basic_ingot/bing.fe:13:5
    │  
 13 │ ╭     pub fn add(self, _ x: u256, _ y: u256) -> u256 {
 14 │ │         return x + y
@@ -256,7 +433,7 @@ note:
    │ ╰─────^ params: [self, { label: Some("_"), name: x, typ: u256 }, { label: Some("_"), name: y, typ: u256 }] -> u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:14:16
+   ┌─ ingots/basic_ingot/bing.fe:14:16
    │
 14 │         return x + y
    │                ^   ^ u256
@@ -264,7 +441,7 @@ note:
    │                u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:14:16
+   ┌─ ingots/basic_ingot/bing.fe:14:16
    │
 14 │         return x + y
    │                ^^^^^ u256
@@ -272,7 +449,7 @@ note:
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar/baz.fe:2:5
+  ┌─ ingots/basic_ingot/bar/baz.fe:2:5
   │
 2 │     pub my_bool: bool
   │     ^^^^^^^^^^^^^^^^^ bool
@@ -281,7 +458,7 @@ note:
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar/mee.fe:2:5
+  ┌─ ingots/basic_ingot/bar/mee.fe:2:5
   │  
 2 │ ╭     pub fn kawum() -> u256 {
 3 │ │         return 1
@@ -289,13 +466,13 @@ note:
   │ ╰─────^ params: [] -> u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar/mee.fe:3:16
+  ┌─ ingots/basic_ingot/bar/mee.fe:3:16
   │
 3 │         return 1
   │                ^ u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar/mee.fe:6:5
+  ┌─ ingots/basic_ingot/bar/mee.fe:6:5
   │  
 6 │ ╭     pub fn rums(self) -> u256 {
 7 │ │         return 1
@@ -303,21 +480,21 @@ note:
   │ ╰─────^ params: [self] -> u256
 
 note: 
-  ┌─ ingots/basic_ingot/src/bar/mee.fe:7:16
+  ┌─ ingots/basic_ingot/bar/mee.fe:7:16
   │
 7 │         return 1
   │                ^ u256
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/ding/dang.fe:1:1
+  ┌─ ingots/basic_ingot/ding/dang.fe:1:1
   │
 1 │ pub type Dang = Array<u256, 42>
   │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 
 note: 
-  ┌─ ingots/basic_ingot/src/ding/dong.fe:4:5
+  ┌─ ingots/basic_ingot/ding/dong.fe:4:5
   │
 4 │     pub my_address: address
   │     ^^^^^^^^^^^^^^^^^^^^^^^ address
@@ -327,7 +504,7 @@ note:
   │     ^^^^^^^^^^^^^ i8
 
 note: 
-   ┌─ ingots/basic_ingot/src/ding/dong.fe:9:1
+   ┌─ ingots/basic_ingot/ding/dong.fe:9:1
    │  
  9 │ ╭ fn get_bing() -> Bing {
 10 │ │     return Bing(my_address: address(0))
@@ -335,19 +512,19 @@ note:
    │ ╰─^ params: [] -> Bing
 
 note: 
-   ┌─ ingots/basic_ingot/src/ding/dong.fe:10:37
+   ┌─ ingots/basic_ingot/ding/dong.fe:10:37
    │
 10 │     return Bing(my_address: address(0))
    │                                     ^ u256
 
 note: 
-   ┌─ ingots/basic_ingot/src/ding/dong.fe:10:29
+   ┌─ ingots/basic_ingot/ding/dong.fe:10:29
    │
 10 │     return Bing(my_address: address(0))
    │                             ^^^^^^^^^^ address
 
 note: 
-   ┌─ ingots/basic_ingot/src/ding/dong.fe:10:12
+   ┌─ ingots/basic_ingot/ding/dong.fe:10:12
    │
 10 │     return Bing(my_address: address(0))
    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Bing

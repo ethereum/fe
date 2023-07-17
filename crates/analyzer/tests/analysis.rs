@@ -113,7 +113,7 @@ macro_rules! test_analysis_ingot {
                 "test_ingot",
                 IngotMode::Main,
                 FileKind::Local,
-                &test_files::fixture_dir_files($path),
+                &tests::fixture_dir_files($path),
                 indexmap! { "std".into() => std },
             );
 
@@ -244,7 +244,7 @@ test_analysis! { type_aliases, "features/type_aliases.fe"}
 test_analysis! { const_generics, "features/const_generics.fe" }
 test_analysis! { const_local, "features/const_local.fe" }
 
-test_analysis_ingot! { basic_ingot, "ingots/basic_ingot/src"}
+test_analysis_ingot! { basic_ingot, "ingots/basic_ingot"}
 
 fn build_snapshot(db: &dyn AnalyzerDb, module: items::ModuleId) -> String {
     let diagnostics = module
