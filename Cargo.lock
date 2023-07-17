@@ -893,6 +893,7 @@ dependencies = [
 name = "fe-proof-service"
 version = "0.23.0"
 dependencies = [
+ "colored",
  "serde",
  "serde_json",
  "smol_str",

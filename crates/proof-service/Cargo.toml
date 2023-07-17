@@ -10,3 +10,4 @@ repository = "https://github.com/ethereum/fe"
 smol_str = "0.1.21"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
+colored = "2.0.0"

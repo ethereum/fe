@@ -57,7 +57,7 @@ impl Display for &Spec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "name: {} id: {} status: {}",
+            "name: {0: <20} id: {1: <20} status: {2: <10}",
             self.name, self.invariant_id, &self.status
         )
     }

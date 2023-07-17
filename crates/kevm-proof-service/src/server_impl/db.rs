@@ -18,7 +18,11 @@ impl DbEntry {
 
 impl Display for DbEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "name: {} complete: {}", self.name, self.complete)
+        write!(
+            f,
+            "name: {0: <20} complete: {1: <5}",
+            self.name, self.complete
+        )
     }
 }
 
@@ -30,7 +34,7 @@ pub struct Db {
 impl Display for &Db {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (id, entry) in self.entries.iter() {
-            writeln!(f, "id: {} entry: ({})", id, entry)?
+            writeln!(f, "id: {0: <20} -> {1: <40}", id, entry)?
         }
 
         Ok(())

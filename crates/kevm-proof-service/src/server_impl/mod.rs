@@ -83,6 +83,7 @@ pub struct ServerState {
 impl Display for ServerState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{:?}", time::SystemTime::now())?;
+        writeln!(f, "")?;
 
         writeln!(f, "queue:")?;
         writeln!(f, "{}", &self.queue)?;

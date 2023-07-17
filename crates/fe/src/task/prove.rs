@@ -53,11 +53,11 @@ pub fn prove(args: ProveArgs) {
         if let Some(match_name) = &args.name {
             if name.contains(match_name) {
                 let status = server.check_invariant(invariant, rerun);
-                println!("{} (status: {})", &name, &status)
+                println!("{0: <20} {1: <10}", &name, &status)
             }
         } else {
             let status = server.check_invariant(invariant, rerun);
-            println!("{} (status: {})", &name, &status)
+            println!("{0:.<20}{1: <10}", &name, &status)
         }
     }
 }
