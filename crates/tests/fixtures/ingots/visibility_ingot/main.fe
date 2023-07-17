@@ -9,3 +9,9 @@ contract Foo {
         return 18
     }
 }
+
+#test
+fn test_all() {
+    assert Foo::get_addr().my_address == address(24)
+    assert Foo::get_precision() == 18
+}
