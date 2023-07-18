@@ -336,10 +336,6 @@ impl<'db> ImportResolver<'db> {
 
         let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
         let mut bucket = resolver.resolve_query(query);
-        if !i_use.is_base_resolved(self.db) {
-            bucket.filter_by_domain(NameDomain::Type);
-        }
-
         // Filter out invisible resolutions.
         let mut invisible_span = None;
         bucket.bucket.retain(|_, res| {
@@ -359,11 +355,6 @@ impl<'db> ImportResolver<'db> {
                 false
             }
         });
-
-        // Filter out irrelevant resolutions if the segment is not the last one.
-        if !i_use.is_base_resolved(self.db) {
-            bucket.filter_by_domain(NameDomain::Type);
-        }
 
         for (_, err) in bucket.errors() {
             if !matches!(
@@ -401,8 +392,14 @@ impl<'db> ImportResolver<'db> {
         if i_use.is_base_resolved(self.db) {
             Some(IUseResolution::Full(bucket))
         } else {
-            let res = bucket.pick(NameDomain::Type).clone().unwrap();
-            let next_i_use = i_use.proceed(res);
+            let next_i_use = match i_use.proceed(self.db, bucket) {
+                Ok(next_i_use) => next_i_use,
+                Err(err) => {
+                    self.register_error(i_use, err);
+                    return None;
+                }
+            };
+
             if next_i_use.is_base_resolved(self.db) {
                 Some(IUseResolution::BasePath(next_i_use))
             } else {
@@ -553,6 +550,16 @@ impl<'db> ImportResolver<'db> {
                     i_use.current_segment_ident(self.db).unwrap(),
                     cands,
                 ));
+            }
+
+            NameResolutionError::InvalidUsePathSegment(res) => {
+                self.accumulated_errors
+                    .push(NameResDiag::invalid_use_path_segment(
+                        self.db,
+                        i_use.current_segment_span(),
+                        i_use.current_segment_ident(self.db).unwrap(),
+                        res,
+                    ))
             }
 
             NameResolutionError::Invisible(invisible_span) => {
@@ -792,13 +799,31 @@ impl IntermediateUse {
     }
 
     /// Proceed the resolution of the use path to the next segment.
-    /// The bucket must contain exactly one resolution.
-    fn proceed(&self, next_res: NameRes) -> Self {
-        Self {
-            use_: self.use_,
-            current_res: next_res.into(),
-            original_scope: self.original_scope,
-            unresolved_from: self.unresolved_from + 1,
+    /// Returns an error if the bucket doesn't contain appropriate resolution
+    /// for use path segment. # Panics
+    /// - Panics if the the base path is already resolved.
+    /// - Panics if the bucket is empty.
+    fn proceed(&self, db: &dyn HirAnalysisDb, bucket: NameResBucket) -> NameResolutionResult<Self> {
+        debug_assert!(!bucket.is_empty());
+        debug_assert!(!self.is_base_resolved(db));
+
+        let next_res = match bucket.pick(NameDomain::Type) {
+            Ok(res) => res.clone(),
+            Err(_) => {
+                let res = bucket.iter().next().unwrap();
+                return Err(NameResolutionError::InvalidUsePathSegment(res.clone()));
+            }
+        };
+
+        if next_res.is_mod() || next_res.is_enum() {
+            Ok(Self {
+                use_: self.use_,
+                current_res: next_res.into(),
+                original_scope: self.original_scope,
+                unresolved_from: self.unresolved_from + 1,
+            })
+        } else {
+            Err(NameResolutionError::InvalidUsePathSegment(next_res))
         }
     }
 

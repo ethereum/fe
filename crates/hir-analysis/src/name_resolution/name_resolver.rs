@@ -288,23 +288,37 @@ impl NameRes {
     }
 
     /// Returns `true` if the resolution is a type.
-    pub(crate) fn is_type(&self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_type(&self) -> bool {
         match self.kind {
             NameResKind::Prim(_) => true,
-            NameResKind::Scope(scope) => scope.is_type(db.as_hir_db()),
+            NameResKind::Scope(scope) => scope.is_type(),
         }
     }
 
     /// Returns `true` if the resolution is a trait.
-    pub(crate) fn is_trait(&self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_trait(&self) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.is_trait(db.as_hir_db()),
+            NameResKind::Scope(scope) => scope.is_trait(),
         }
     }
 
-    pub(crate) fn is_value(&self, db: &dyn HirAnalysisDb) -> bool {
-        !self.is_type(db) && !self.is_trait(db)
+    pub(crate) fn is_enum(&self) -> bool {
+        match self.kind {
+            NameResKind::Prim(_) => false,
+            NameResKind::Scope(scope) => scope.is_enum(),
+        }
+    }
+
+    pub(crate) fn is_mod(&self) -> bool {
+        match self.kind {
+            NameResKind::Prim(_) => false,
+            NameResKind::Scope(scope) => scope.is_mod(),
+        }
+    }
+
+    pub(crate) fn is_value(&self) -> bool {
+        !self.is_type() && !self.is_trait()
     }
 
     /// Returns the scope of the name resolution if the name is not a builtin
@@ -744,6 +758,9 @@ pub enum NameResolutionError {
 
     /// The name is found, but it's ambiguous.
     Ambiguous(Vec<NameRes>),
+
+    /// The name is found ,but it can't be used in the middle of a use path.
+    InvalidUsePathSegment(NameRes),
 }
 
 pub type NameResolutionResult<T> = Result<T, NameResolutionError>;
@@ -755,6 +772,10 @@ impl fmt::Display for NameResolutionError {
             NameResolutionError::Invalid => write!(f, "invalid name"),
             NameResolutionError::Invisible(_) => write!(f, "name is not visible"),
             NameResolutionError::Ambiguous(_) => write!(f, "name is ambiguous"),
+            NameResolutionError::InvalidUsePathSegment(_) => write!(
+                f,
+                "the found resolution can't be used in the middle of a use path"
+            ),
         }
     }
 }

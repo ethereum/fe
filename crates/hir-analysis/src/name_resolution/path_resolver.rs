@@ -246,7 +246,7 @@ impl<'a> IntermediatePath<'a> {
         debug_assert!(self.idx < self.path.len());
 
         let is_type_dependent =
-            (self.current_res.is_type(db) || self.current_res.is_trait(db)) && self.idx != 0;
+            (self.current_res.is_type() || self.current_res.is_trait()) && self.idx != 0;
 
         if (self.idx == self.path.len() - 1) && !is_type_dependent {
             IntermediatePathState::ReadyToFinalize

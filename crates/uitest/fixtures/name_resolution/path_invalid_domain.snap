@@ -3,25 +3,25 @@ source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/path_invalid_domain.fe
 ---
-error[2-0005]: expected type item here
+error[2-0006]: expected type item here
    ┌─ path_invalid_domain.fe:14:26
    │
 14 │       U: MyTWithGenerics<MyT>
    │                          ^^^ expected type here, but found trait `MyT`
 
-error[2-0005]: expected type item here
+error[2-0006]: expected type item here
    ┌─ path_invalid_domain.fe:16:13
    │
 16 │     Variant(MyC)
    │             ^^^ expected type here, but found const `MyC`
 
-error[2-0005]: expected type item here
+error[2-0006]: expected type item here
    ┌─ path_invalid_domain.fe:17:14
    │
 17 │     Variant2(Var)
    │              ^^^ expected type here, but found value `Var`
 
-error[2-0006]: expected trait item here
+error[2-0007]: expected trait item here
    ┌─ path_invalid_domain.fe:13:10
    │
 13 │ where T: MyE

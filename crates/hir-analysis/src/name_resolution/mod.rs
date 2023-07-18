@@ -255,7 +255,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             return;
         }
 
-        match path_kind.pick(self.db, bucket) {
+        match path_kind.pick(bucket) {
             // The path exists and belongs to the expected kind.
             Either::Left(res) => {
                 if !res.is_visible(self.db, scope) {
@@ -451,6 +451,15 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
                     NameResolutionError::Ambiguous(cands) => {
                         NameResDiag::ambiguous(self.db, span.into(), *ident.unwrap(), cands)
                     }
+
+                    NameResolutionError::InvalidUsePathSegment(res) => {
+                        NameResDiag::invalid_use_path_segment(
+                            self.db,
+                            span.into(),
+                            *ident.unwrap(),
+                            res,
+                        )
+                    }
                 };
 
                 self.diags.push(diag);
@@ -489,7 +498,7 @@ impl ExpectedPathKind {
         }
     }
 
-    fn pick(self, db: &dyn HirAnalysisDb, bucket: NameResBucket) -> Either<NameRes, NameRes> {
+    fn pick(self, bucket: NameResBucket) -> Either<NameRes, NameRes> {
         debug_assert!(!bucket.is_empty());
 
         let res = match bucket.pick(self.domain()).as_ref().ok() {
@@ -500,9 +509,9 @@ impl ExpectedPathKind {
         };
 
         match self {
-            Self::Type if !res.is_type(db) => Either::Right(res),
-            Self::Trait if !res.is_trait(db) => Either::Right(res),
-            Self::Value if !res.is_value(db) => Either::Right(res),
+            Self::Type if !res.is_type() => Either::Right(res),
+            Self::Trait if !res.is_trait() => Either::Right(res),
+            Self::Value if !res.is_value() => Either::Right(res),
             _ => Either::Left(res),
         }
     }

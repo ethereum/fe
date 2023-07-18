@@ -3,22 +3,28 @@ source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/import_unimpotable.fe
 ---
-error[2-0002]: `t` is not found
-  ┌─ import_unimpotable.fe:1:9
-  │
-1 │ use S::{t, T}
-  │         ^ `t` is not found
-
-error[2-0002]: `T` is not found
-  ┌─ import_unimpotable.fe:1:12
-  │
-1 │ use S::{t, T}
-  │            ^ `T` is not found
-
 error[2-0002]: `T` is not found
   ┌─ import_unimpotable.fe:2:8
   │
 2 │ use E::T
   │        ^ `T` is not found
+
+error[2-0005]: `S` can't be used as a middle segment of a use path
+  ┌─ import_unimpotable.fe:1:5
+  │
+1 │ use S::{t, T}
+  │     ^ `S` can't be used as a middle segment of a use path
+  ·
+5 │ struct S<T> {
+  │        - `S` is defined here
+
+error[2-0005]: `S` can't be used as a middle segment of a use path
+  ┌─ import_unimpotable.fe:1:5
+  │
+1 │ use S::{t, T}
+  │     ^ `S` can't be used as a middle segment of a use path
+  ·
+5 │ struct S<T> {
+  │        - `S` is defined here
 
 

@@ -218,12 +218,25 @@ impl ScopeId {
     }
 
     /// Returns `true` if the scope is a type.
-    pub fn is_type(self, db: &dyn HirDb) -> bool {
-        match self.data(db).id {
+    pub fn is_type(self) -> bool {
+        match self {
             ScopeId::Item(item) => item.is_type(),
             ScopeId::GenericParam(..) => true,
             _ => false,
         }
+    }
+
+    pub fn is_enum(self) -> bool {
+        matches!(self, ScopeId::Item(ItemKind::Enum(_)))
+    }
+
+    pub fn is_mod(self) -> bool {
+        matches!(self, ScopeId::Item(ItemKind::Mod(_) | ItemKind::TopMod(_)))
+    }
+
+    /// Returns `true` if the scope is a trait definition.
+    pub fn is_trait(self) -> bool {
+        matches!(self, ScopeId::Item(ItemKind::Trait(_)))
     }
 
     /// Returns the item that contains this scope.
@@ -236,14 +249,6 @@ impl ScopeId {
                     parent = parent.parent(db)?;
                 }
             }
-        }
-    }
-
-    /// Returns `true` if the scope is a trait definition.
-    pub fn is_trait(self, db: &dyn HirDb) -> bool {
-        match self.data(db).id {
-            ScopeId::Item(item) => item.is_trait(),
-            _ => false,
         }
     }
 
