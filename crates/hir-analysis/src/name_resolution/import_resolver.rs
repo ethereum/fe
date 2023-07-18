@@ -552,7 +552,7 @@ impl<'db> ImportResolver<'db> {
                 ));
             }
 
-            NameResolutionError::InvalidUsePathSegment(res) => {
+            NameResolutionError::InvalidPathSegment(res) => {
                 self.accumulated_errors
                     .push(NameResDiag::invalid_use_path_segment(
                         self.db,
@@ -811,7 +811,7 @@ impl IntermediateUse {
             Ok(res) => res.clone(),
             Err(_) => {
                 let res = bucket.iter().next().unwrap();
-                return Err(NameResolutionError::InvalidUsePathSegment(res.clone()));
+                return Err(NameResolutionError::InvalidPathSegment(res.clone()));
             }
         };
 
@@ -823,7 +823,7 @@ impl IntermediateUse {
                 unresolved_from: self.unresolved_from + 1,
             })
         } else {
-            Err(NameResolutionError::InvalidUsePathSegment(next_res))
+            Err(NameResolutionError::InvalidPathSegment(next_res))
         }
     }
 

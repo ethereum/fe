@@ -231,10 +231,23 @@ impl<'a> IntermediatePath<'a> {
     /// If the `bucket` doesn't contain proper resolution, then an error is
     /// returned.
     fn proceed(&mut self, bucket: NameResBucket) -> PathResolutionResult<()> {
-        let next_res = bucket
-            .pick(NameDomain::Type)
-            .clone()
-            .map_err(|err| PathResolutionError::new(err, self.idx))?;
+        let next_res = match bucket.pick(NameDomain::Type) {
+            Ok(res) => Ok(res.clone()),
+            Err(NameResolutionError::NotFound) => {
+                if let Some(res) = bucket.iter().next() {
+                    Err(PathResolutionError::new(
+                        NameResolutionError::InvalidPathSegment(res.clone()),
+                        self.idx,
+                    ))
+                } else {
+                    Err(PathResolutionError::new(
+                        NameResolutionError::NotFound,
+                        self.idx,
+                    ))
+                }
+            }
+            Err(err) => Err(PathResolutionError::new(err.clone(), self.idx)),
+        }?;
 
         let old_res = std::mem::replace(&mut self.current_res, next_res);
         self.idx += 1;

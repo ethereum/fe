@@ -3,6 +3,15 @@ source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/path_invalid_domain.fe
 ---
+error[2-0005]: `foo` can't be used as a middle segment of a path
+   ┌─ path_invalid_domain.fe:23:8
+   │
+20 │ fn foo<T>(t: T) {}
+   │    --- `foo` is defined here
+   ·
+23 │     s: foo::T
+   │        ^^^ `foo` can't be used as a middle segment of a path
+
 error[2-0006]: expected type item here
    ┌─ path_invalid_domain.fe:14:26
    │

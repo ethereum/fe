@@ -32,9 +32,8 @@ pub enum NameResDiag {
     /// The resolved name is ambiguous.
     Ambiguous(DynLazySpan, IdentId, Vec<DynLazySpan>),
 
-    /// The name is found, but it can't be used as a middle segment of a use
-    /// path.
-    InvalidUsePathSegment(DynLazySpan, IdentId, Option<DynLazySpan>),
+    /// The name is found, but it can't be used as a middle segment of a path.
+    InvalidPathSegment(DynLazySpan, IdentId, Option<DynLazySpan>),
 
     /// The name is found but belongs to a different name domain other than the
     /// Type.
@@ -61,7 +60,7 @@ impl NameResDiag {
             Self::NotFound(span, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::Invisible(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::Ambiguous(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::InvalidUsePathSegment(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::InvalidPathSegment(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedType(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedTrait(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedValue(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
@@ -104,7 +103,7 @@ impl NameResDiag {
         found: NameRes,
     ) -> Self {
         let found = found.kind.name_span(db);
-        Self::InvalidUsePathSegment(span, ident, found)
+        Self::InvalidPathSegment(span, ident, found)
     }
 
     fn local_code(&self) -> u16 {
@@ -113,7 +112,7 @@ impl NameResDiag {
             Self::NotFound(..) => 2,
             Self::Invisible(..) => 3,
             Self::Ambiguous(..) => 4,
-            Self::InvalidUsePathSegment(..) => 5,
+            Self::InvalidPathSegment(..) => 5,
             Self::ExpectedType(..) => 6,
             Self::ExpectedTrait(..) => 7,
             Self::ExpectedValue(..) => 8,
@@ -134,9 +133,9 @@ impl NameResDiag {
                 format!("`{}` is not visible", name.data(db),)
             }
             Self::Ambiguous(_, name, _) => format!("`{}` is ambiguous", name.data(db)),
-            Self::InvalidUsePathSegment(_, name, _) => {
+            Self::InvalidPathSegment(_, name, _) => {
                 format!(
-                    "`{}` can't be used as a middle segment of a use path",
+                    "`{}` can't be used as a middle segment of a path",
                     name.data(db)
                 )
             }
@@ -224,11 +223,11 @@ impl NameResDiag {
                 diags
             }
 
-            Self::InvalidUsePathSegment(prim_span, name, res_span) => {
+            Self::InvalidPathSegment(prim_span, name, res_span) => {
                 let name = name.data(db.as_hir_db());
                 let mut diag = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("`{}` can't be used as a middle segment of a use path", name,),
+                    format!("`{}` can't be used as a middle segment of a path", name,),
                     prim_span.resolve(db),
                 )];
 

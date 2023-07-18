@@ -16,3 +16,9 @@ where T: MyE
     Variant(MyC)
     Variant2(Var)
 }
+
+fn foo<T>(t: T) {}
+
+pub struct S {
+    s: foo::T
+}

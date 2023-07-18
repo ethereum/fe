@@ -452,7 +452,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
                         NameResDiag::ambiguous(self.db, span.into(), *ident.unwrap(), cands)
                     }
 
-                    NameResolutionError::InvalidUsePathSegment(res) => {
+                    NameResolutionError::InvalidPathSegment(res) => {
                         NameResDiag::invalid_use_path_segment(
                             self.db,
                             span.into(),

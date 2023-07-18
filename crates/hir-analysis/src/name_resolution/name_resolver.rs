@@ -378,10 +378,7 @@ impl NameRes {
     }
 
     pub(super) fn is_importable(&self) -> bool {
-        match self.kind {
-            NameResKind::Scope(scope) => matches!(scope, ScopeId::Item(_) | ScopeId::Variant(..)),
-            NameResKind::Prim(_) => true,
-        }
+        matches!(self.domain, NameDomain::Type | NameDomain::Value)
     }
 
     fn new_prim(prim: PrimTy) -> Self {
@@ -760,7 +757,7 @@ pub enum NameResolutionError {
     Ambiguous(Vec<NameRes>),
 
     /// The name is found ,but it can't be used in the middle of a use path.
-    InvalidUsePathSegment(NameRes),
+    InvalidPathSegment(NameRes),
 }
 
 pub type NameResolutionResult<T> = Result<T, NameResolutionError>;
@@ -772,9 +769,9 @@ impl fmt::Display for NameResolutionError {
             NameResolutionError::Invalid => write!(f, "invalid name"),
             NameResolutionError::Invisible(_) => write!(f, "name is not visible"),
             NameResolutionError::Ambiguous(_) => write!(f, "name is ambiguous"),
-            NameResolutionError::InvalidUsePathSegment(_) => write!(
+            NameResolutionError::InvalidPathSegment(_) => write!(
                 f,
-                "the found resolution can't be used in the middle of a use path"
+                "the found resolution can't be used in the middle of a path"
             ),
         }
     }
