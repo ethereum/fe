@@ -11,7 +11,7 @@ description = "An LSP language server for Fe lang"
 
 [dependencies]
 fe-analyzer = {path = "../analyzer", version = "^0.22.0"}
-fe-common = {path = "../common", version = "^0.22.0"}
+common = { path = "../common2", package = "fe-common2" }
 anyhow = "1.0.71"
 clap = "4.2.7"
 crossbeam-channel = "0.5.8"
