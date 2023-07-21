@@ -58,6 +58,24 @@ pub struct MemoryBuffer {
         return buf
     }
 
+    pub fn from_storage(offset: u256)  -> Self {
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+        let mut writer: MemoryBufferWriter = buf.writer();
+        unsafe{
+            let mut value: u256 = evm::mload(offset);
+            writer.write(value);
+        }
+        return buf;
+    }
+
+
+    pub fn to_storage(self, offset: u256) {
+        let mut reader: MemoryBufferReader = self.reader();
+        unsafe{
+            evm::sstore(offset, value: reader.read_u256())
+        }
+    }
+
     /// Length of the buffer in bytes.
     pub fn len(self) -> u256 {
         return self.len

@@ -1,0 +1,23 @@
+use std::buf::{
+    MemoryBuffer,
+    MemoryBufferReader,
+    MemoryBufferWriter
+}
+#test
+fn test_buf_sto() {
+    //create first buffer
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 42)
+    let mut writer:MemoryBufferWriter = buf.writer()
+    writer.write(value: 26)
+    let mut reader: MemoryBufferReader = buf.reader();
+
+    //store buffer in storage
+    buf.to_storage(offset: 0)
+ 
+    //read buffer from storage
+    let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
+    let mut other_reader: MemoryBufferReader = other_buf.reader();
+
+    //compare buffer
+    assert not other_reader.read_u256() == reader.read_u256()
+}
