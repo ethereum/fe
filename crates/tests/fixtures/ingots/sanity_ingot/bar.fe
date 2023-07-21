@@ -11,8 +11,3 @@ fn test_bar() {
 fn test_bar2() {
     assert 2 + 1 == 3
 }
-
-#test
-fn test_bar_broken() {
-    assert 1 + 1 == 3
-}

@@ -680,6 +680,7 @@ version = "0.23.0"
 dependencies = [
  "criterion",
  "fe-common",
+ "fe-compiler-tests",
  "fe-library",
  "fe-parser",
  "fe-test-files",
@@ -735,6 +736,7 @@ dependencies = [
  "serde",
  "smol_str",
  "tiny-keccak",
+ "walkdir",
 ]
 
 [[package]]

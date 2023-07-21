@@ -4,10 +4,9 @@ use std::path::Path;
 use clap::Args;
 use colored::Colorize;
 use fe_common::diagnostics::print_diagnostics;
+use fe_common::utils::files::load_fe_files_from_dir;
 use fe_driver::CompiledTest;
 use fe_test_runner::TestSink;
-
-use crate::task::utils::load_files_from_dir;
 
 #[derive(Args)]
 #[clap(about = "Execute tests in the current project")]
@@ -87,7 +86,7 @@ fn test_ingot(args: &TestArgs) -> TestSink {
         std::process::exit(1)
     }
 
-    let content = match load_files_from_dir(input_path) {
+    let content = match load_fe_files_from_dir(input_path) {
         Ok(files) if files.is_empty() => {
             eprintln!("Input directory is not an ingot: `{input_path}`");
             std::process::exit(1)
