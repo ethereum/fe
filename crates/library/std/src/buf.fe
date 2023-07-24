@@ -128,6 +128,10 @@ pub struct MemoryBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return MemoryBufferWriter::new(buf: self)
     }
+
+    pub fn compare<T: eq>(mut self, buf: T) -> bool{
+        return buf.compare_buf(buf: self)
+    }
 }
 
 /// Memory buffer writer abstraction.
@@ -347,4 +351,37 @@ pub struct RawCallBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return self.buf.writer()
     }
+}
+
+pub trait eq {
+    fn compare_buf(self, mut buf: MemoryBuffer) -> bool;
+}
+
+impl eq for MemoryBuffer {
+   fn compare_buf(self, mut buf: MemoryBuffer) -> bool {
+        if(self.len() != buf.len()){
+            return false
+        }
+        let mut reader: MemoryBufferReader = self.reader()
+        let mut reader2: MemoryBufferReader = buf.reader()
+        while true {
+            let bytes_remaining: u256 = reader.remainder() 
+            if bytes_remaining >= 32 {
+            if(reader.read_u256() != reader2.read_u256()){
+                 return false
+                }
+            } else if bytes_remaining == 0 {
+                return true
+            } else {
+            if(reader.read_u8() != reader2.read_u8()){
+                 return false
+                }
+            }
+        }
+        return true
+   }
+}
+
+impl eq for () { // missing impl in mir_lower_std_lib error
+      fn compare_buf(self, mut buf: MemoryBuffer) -> bool  {return false}
 }

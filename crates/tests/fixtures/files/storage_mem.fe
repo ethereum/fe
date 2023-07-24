@@ -48,16 +48,13 @@ unsafe fn test_buf_sto_len33() {
     let mut writer:MemoryBufferWriter = buf.writer()
     writer.write(value: 2147475455) 
     writer.write(value: u8(1))
-    let mut reader: MemoryBufferReader = buf.reader();
 
     //store buffer in storage
     buf.to_storage(offset: 0)
 
     //read buffer from storage
     let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
-    let mut other_reader: MemoryBufferReader = other_buf.reader();
-    
+
     //compare buffer
-   assert other_reader.read_u256() == reader.read_u256()
-   assert other_reader.read_u8() == reader.read_u8()
+   assert other_buf.compare(buf)
 }
