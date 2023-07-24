@@ -1,5 +1,4 @@
-use fe_common::diagnostics::{Severity, Diagnostic};
-use fe_common::Span;
+use common::diagnostics::{Severity, CompleteDiagnostic, Span};
 use lsp_types::Position;
 
 // TODO: these could potentially be moved into the common crate
@@ -19,15 +18,18 @@ pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
 
     // now we get the line and character offsets
     let start_line = line_offsets
-        .binary_search(&span.start)
+        .binary_search(&span.range.start().into())
         .unwrap_or_else(|x| x - 1);
 
     let end_line = line_offsets
-        .binary_search(&span.end)
+        .binary_search(&span.range.end().into())
         .unwrap_or_else(|x| x - 1);
 
-    let start_character = span.start - line_offsets[start_line];
-    let end_character = span.end - line_offsets[end_line];
+
+    
+    // except that we need a fully qualified path to use `into`...
+    let start_character: usize = span.range.start().into();
+    let end_character: usize = span.range.end().into();
 
     lsp_types::Range {
         start: Position::new(start_line as u32, start_character as u32),
@@ -36,19 +38,19 @@ pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
 }
 pub(crate) fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
-        Severity::Bug => lsp_types::DiagnosticSeverity::ERROR,
+        // Severity::Bug => lsp_types::DiagnosticSeverity::ERROR,
         Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
         Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
         Severity::Note => lsp_types::DiagnosticSeverity::HINT,
-        Severity::Help => lsp_types::DiagnosticSeverity::INFORMATION,
+        // Severity::Help => lsp_types::DiagnosticSeverity::INFORMATION,
     }
 }
 
-pub(crate) fn diag_to_lsp(diag: Diagnostic, text: &str) -> Vec<lsp_types::Diagnostic> {
-        diag.labels
+pub(crate) fn diag_to_lsp(diag: CompleteDiagnostic, text: &str) -> Vec<lsp_types::Diagnostic> {
+        diag.sub_diagnostics
             .into_iter()
-            .map(|label| {
-                let range = span_to_range(label.span, text);
+            .map(|sub| {
+                let range = span_to_range(sub.span.unwrap(), text);
                 lsp_types::Diagnostic {
                     range,
                     severity: Some(severity_to_lsp(diag.severity)),
