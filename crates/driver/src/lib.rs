@@ -7,7 +7,7 @@ use fe_common::db::Upcast;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::FileKind;
 use fe_parser::ast::SmolStr;
-use fe_proof_service::invariant::Invariant;
+use fe_proof_service::symbolic_test::SymbolicTest;
 use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};
 use serde_json::Value;
@@ -230,7 +230,7 @@ fn compile_module_tests(db: &mut Db, module_id: ModuleId, optimize: bool) -> Vec
 
 #[cfg(feature = "solc-backend")]
 fn compile_module_invariants(db: &mut Db, module_id: ModuleId, optimize: bool) -> Vec<Invariant> {
-    use fe_proof_service::invariant::Invariant;
+    use fe_proof_service::symbolic_test::Invariant;
 
     module_id
         .invariants(db)

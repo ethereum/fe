@@ -28,7 +28,7 @@ module INVARIANT-SPEC
 
                     <callValue> 0 </callValue>
                     <wordStack> .WordStack => ?_ </wordStack>
-                    <localMem> $MEM_ARGS </localMem>
+                    <localMem> $LOCAL_MEM </localMem>
                     <pc> 0 => ?_ </pc>
                     <gas> #gas(_VGAS) => ?_ </gas>
                     <memoryUsed> 0 => ?_ </memoryUsed>
@@ -47,7 +47,7 @@ module INVARIANT-SPEC
                 </substate>
 
                 <gasPrice> _ </gasPrice>
-                <origin> ORIGIN_ID </origin>
+                <origin> $ORIGIN </origin>
 
                 <blockhashes> _ </blockhashes>
                 <block>
@@ -74,17 +74,10 @@ module INVARIANT-SPEC
             <network>
                 <chainID> _ </chainID>
 
-                <activeAccounts> SetItem(ACCT_ID) _:Set </activeAccounts>
+                <activeAccounts> $ACTIVE_ACCOUNTS </activeAccounts>
 
                 <accounts>
-                    <account>
-                        <acctID> ACCT_ID </acctID>
-                        <balance> _ </balance>
-                        <code> #parseByteStack($CODE) </code>
-                        <storage> _ </storage>
-                        <origStorage> _ </origStorage>
-                        <nonce> _ </nonce>
-                    </account>
+                    $ACCOUNTS
                 </accounts>
 
                 <txOrder> _ </txOrder>
@@ -94,11 +87,7 @@ module INVARIANT-SPEC
         </ethereum>
     </kevm>
 
-    requires 0 <=Int ACCT_ID    andBool ACCT_ID    <Int (2 ^Int 160)
-        andBool 0  <=Int CALLER_ID  andBool CALLER_ID  <Int (2 ^Int 160)
-        andBool 0  <=Int ORIGIN_ID  andBool ORIGIN_ID  <Int (2 ^Int 160)
-        andBool 0  <=Int CALL_DEPTH andBool CALL_DEPTH <Int 1024
-        $REQUIREMENTS
+    requires $REQUIREMENTS
 
 endmodule
 

@@ -1,7 +1,7 @@
 #![cfg(feature = "solc-backend")]
 use clap::Args;
 use fe_common::diagnostics::print_diagnostics;
-use fe_proof_service::invariant::Invariant;
+use fe_proof_service::symbolic_test::Invariant;
 use fe_proof_service::ProofClient;
 
 // const DEFAULT_OUTPUT_DIR_NAME: &str = "prove";

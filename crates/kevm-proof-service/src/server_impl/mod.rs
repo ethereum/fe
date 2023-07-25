@@ -11,23 +11,21 @@ use crossterm::{
     execute,
     terminal::{Clear, ClearType},
 };
-use fe_proof_service::{invariant::Invariant, ProofStatus};
+use fe_proof_service::{symbolic_test::SymbolicTest, ProofStatus};
 use indexmap::{indexmap, IndexMap};
-use kevm::KSpecExecPool;
+use kevm::{KSpec, KSpecExecPool};
 use smol_str::SmolStr;
 
 mod db;
-mod queue;
 
-use self::{db::Db, queue::Spec};
-use self::{db::DbEntry, queue::Queue};
+use self::db::Db;
 
 pub struct Server {
     state: Arc<Mutex<ServerState>>,
 }
 
 impl Server {
-    pub fn new(db_path: &str) -> Self {
+    pub fn new(db_path: &str, max_proofs: usize) -> Self {
         let state = Arc::new(Mutex::new(ServerState::new(db_path)));
         let state_clone = Arc::clone(&state);
 
@@ -61,8 +59,6 @@ impl Server {
         let state_clone = Arc::clone(&self.state);
 
         thread::spawn(move || loop {
-            thread::sleep(Duration::from_millis(1000));
-
             let mut stdout = io::stdout();
             execute!(stdout, Clear(ClearType::All)).unwrap();
 
@@ -70,13 +66,16 @@ impl Server {
             print!("{content}");
 
             execute!(stdout, MoveTo(0, 0)).unwrap();
+            thread::sleep(Duration::from_millis(1000));
         });
     }
 }
 
 pub struct ServerState {
-    queue: Queue,
-    exec_pool: KSpecExecPool,
+    tests: IndexMap<u64, SymbolicTest>,
+    statuses: IndexMap<u64, ProofStatus>,
+    queue: Vec<u64>,
+    pool: KSpecExecPool,
     db: Db,
 }
 
@@ -105,7 +104,7 @@ impl ServerState {
         }
     }
 
-    pub fn add_spec(&mut self, spec: Spec) {
+    pub fn add_test(&mut self, test: SymbolicTest) {
         self.queue.push_spec(spec)
     }
 

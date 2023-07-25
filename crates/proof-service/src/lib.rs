@@ -1,12 +1,12 @@
-use invariant::Invariant;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::io::{BufReader, BufWriter, Write};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+use symbolic_test::SymbolicTest;
 
 pub use serde_json;
 
-pub mod invariant;
+pub mod symbolic_test;
 
 pub struct ProofClient(SocketAddr);
 
@@ -23,7 +23,7 @@ impl Display for &ProofStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ProofStatus::New => write!(f, "New"),
-            ProofStatus::Ready => write!(f, "Ready"),
+            ProofStatus::Ready => write!(f, "Queued"),
             ProofStatus::Proving => write!(f, "Proving"),
             ProofStatus::Complete => write!(f, "Complete"),
             ProofStatus::Incomplete => write!(f, "Incomplete"),
@@ -41,14 +41,14 @@ impl ProofClient {
 }
 
 impl ProofClient {
-    pub fn check_invariant(&self, invariant: Invariant, rerun: bool) -> ProofStatus {
+    pub fn prove_symbolic_test(&self, test: SymbolicTest, rerun: bool) -> ProofStatus {
         let mut stream = TcpStream::connect(self.0).expect("connection failed");
         let mut stream_clone = stream.try_clone().unwrap();
 
         let mut reader = BufReader::new(&mut stream);
         let mut writer = BufWriter::new(&mut stream_clone);
 
-        let encoded_invariant = serde_json::to_string(&invariant).unwrap();
+        let encoded_invariant = serde_json::to_string(&test).unwrap();
         writer.write(encoded_invariant.as_bytes()).unwrap();
         writer.write("\n".as_bytes()).unwrap();
         writer.flush().unwrap();

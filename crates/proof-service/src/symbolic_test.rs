@@ -6,28 +6,22 @@ use std::{
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Invariant {
+pub struct SymbolicTest {
     pub name: SmolStr,
-    pub body: InvariantBody,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct InvariantHeader {
-    pub name: SmolStr,
-    pub id: u64,
+    pub body: SymbolicTestBody,
 }
 
 #[derive(Hash, Debug, Serialize, Deserialize)]
-pub struct InvariantBody {
+pub struct SymbolicTestBody {
     pub args: Vec<SmolStr>,
     pub code: String,
 }
 
-impl Invariant {
+impl SymbolicTest {
     pub fn new(name: SmolStr, args: Vec<SmolStr>, code: String) -> Self {
         Self {
             name,
-            body: InvariantBody { args, code },
+            body: SymbolicTestBody { args, code },
         }
     }
 
@@ -35,12 +29,5 @@ impl Invariant {
         let mut s = DefaultHasher::new();
         self.body.hash(&mut s);
         s.finish()
-    }
-
-    pub fn header(&self) -> InvariantHeader {
-        InvariantHeader {
-            name: self.name.clone(),
-            id: self.id(),
-        }
     }
 }

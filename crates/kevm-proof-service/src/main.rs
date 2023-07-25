@@ -15,8 +15,12 @@ use clap::Parser;
 struct Args {
     #[clap(short, long, default_value = "127.0.0.1:7878")]
     bind_addrs: String,
-    #[clap(long, action)]
+    #[clap(short, long, action)]
     display: bool,
+    #[clap(short, long, default_value = "8")]
+    max_proofs: usize,
+    #[clap(short, long, default_value = "db.yaml")]
+    db_path: usize,
 }
 
 fn main() {

@@ -1,13 +1,14 @@
 use std::{fmt::Display, fs, io::Write};
 
 use indexmap::{indexmap, IndexMap};
+use kevm::KSpec;
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
 #[derive(Serialize, Deserialize)]
 pub struct DbEntry {
-    pub name: SmolStr,
-    pub complete: bool,
+    name: SmolStr,
+    is_success: bool,
 }
 
 impl DbEntry {

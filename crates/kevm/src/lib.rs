@@ -9,59 +9,193 @@ use std::{
 };
 
 use indexmap::{indexmap, IndexMap};
+use smol_str::SmolStr;
 
-const KSPEC_TEMPLATE: &str = include_str!("../template.k");
+const KSPEC_TEMPLATE: &str = include_str!("../templates/spec.k");
+const KACCT_TEMPLATE: &str = include_str!("../templates/account.k");
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum KSpecType {
-    U256,
-    U128,
-    U64,
-    U32,
-    U16,
-    U8,
-    Bool,
-    Context,
+#[derive(Clone)]
+pub enum KSymbol {
+    Name(SmolStr),
+    None,
 }
 
-impl KSpecType {
-    pub fn bounds(&self, arg_name: &str) -> String {
+impl Display for KSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KSpecType::U256 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 256)")
-            }
-            KSpecType::U128 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 128)")
-            }
-            KSpecType::U64 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 64)")
-            }
-            KSpecType::U32 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 32)")
-            }
-            KSpecType::U16 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 16)")
-            }
-            KSpecType::U8 => {
-                format!("andBool 0 <=Int {arg_name} andBool {arg_name} <Int (2 ^Int 8)")
-            }
-            KSpecType::Bool => format!("andBool (0 ==Int {arg_name} orBool {arg_name} ==Int 1)"),
-            KSpecType::Context => panic!("no bounds for ctx"),
+            KSymbol::Name(name) => write!(f, "{}", name),
+            KSymbol::None => write!(f, "_"),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct KSpec {
-    args: Vec<KSpecType>,
+pub enum KInt {
+    Literal(usize),
+    // a ^ b
+    Pow { base: Box<KInt>, exp: Box<KInt> },
+}
+
+impl KInt {
+    const TWO: Self = KInt::Literal(2);
+
+    pub fn literal(value: usize) -> Self {
+        Self::Literal(value)
+    }
+
+    pub fn pow_2(exp: usize) -> Self {
+        let exp = Self::Literal(exp);
+
+        Self::Pow {
+            base: Box::new(Self::TWO),
+            exp: Box::new(exp),
+        }
+    }
+}
+
+impl Display for KInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KInt::Literal(value) => write!(f, "{}", value),
+            KInt::Pow { base, exp } => write!(f, "{} ^Int {}", base, exp),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum KBuf {
+    Single { size: KInt, symbol: KSymbol },
+    Concatenated { inners: Vec<KBuf> },
+}
+
+impl Display for KBuf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KBuf::Single { size, symbol } => {
+                write!(f, "#buf({}, {})", size, symbol)
+            }
+            KBuf::Concatenated { inners } => {
+                let s = inners
+                    .iter()
+                    .map(|inner| inner.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" +Bytes ");
+                write!(f, "{}", s)
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum KBool {
+    And { a: Box<KBool>, b: Box<KBool> },
+    Or { a: Box<KBool>, b: Box<KBool> },
+    Gte { a: KInt, b: KInt },
+    Lt { a: KInt, b: KInt },
+}
+
+impl Display for KBool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KBool::And { a, b } => write!(f, "{} andBool {}", a, b),
+            KBool::Or { a, b } => write!(f, "{} orBool {}", a, b),
+            KBool::Gte { a, b } => write!(f, "{} >=Int {}", a, b),
+            KBool::Lt { a, b } => write!(f, "{} <Int {}", a, b),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct KSet {
+    members: Vec<KSymbol>,
+}
+
+impl KSet {
+    pub fn new() -> Self {
+        KSet { members: vec![] }
+    }
+
+    pub fn insert(&mut self, name: KSymbol) {
+        self.members.push(name)
+    }
+}
+
+impl Display for KSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} _:Set",
+            self.members
+                .iter()
+                .map(|symbol| format!("SetItem({})", symbol))
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
+    }
+}
+
+#[derive(Clone)]
+struct KAccount {
+    name: KSymbol,
     code: String,
 }
 
-impl KSpec {
-    pub fn new(args: Vec<KSpecType>, code: String) -> Self {
-        Self { args, code }
+impl Display for KAccount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            KACCT_TEMPLATE
+                .replace("$ACCT_ID", &format!("{}", self.name))
+                .replace("$CODE", &format!("\"0x{}\"", self.code))
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct KSpec {
+    local_mem: KBuf,
+    code: String,
+    origin: KSymbol,
+    accounts: Vec<KAccount>,
+    requirements: KBool,
+}
+
+fn account_symbol_set(accounts: &[KAccount]) -> KSet {
+    let mut set = KSet::new();
+
+    for account in accounts {
+        set.insert(account.name.clone())
     }
 
+    set
+}
+
+impl Display for KSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let active_accounts = account_symbol_set(&self.accounts);
+        let accounts = self
+            .accounts
+            .iter()
+            .map(|account| account.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        write!(
+            f,
+            "{}",
+            KSPEC_TEMPLATE
+                .replace("$LOCAL_MEM", &format!("{}", self.local_mem))
+                .replace("$CODE", &format!("\"0x{}\"", self.code))
+                .replace("$ORIGIN", &format!("{}", self.origin))
+                .replace("$ACTIVE_ACCOUNTS", &format!("{}", active_accounts))
+                .replace("$ACCOUNTS", &format!("{}", accounts))
+                .replace("$REQUIREMENTS", &format!("{}", self.requirements))
+        )
+    }
+}
+
+impl KSpec {
     pub fn execute(&self, fs_id: &str) -> bool {
         let kevm_dir_path = env::var("KEVM_DIR").unwrap();
         let spec_dir_path = format!("{kevm_dir_path}/tests/specs/fe/{fs_id}");
@@ -92,38 +226,6 @@ impl KSpec {
             .status()
             .unwrap()
             .success()
-    }
-}
-
-impl Display for KSpec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut mem_args = vec![];
-        let mut requirements = vec![];
-        let mut arg_num = 0;
-
-        for arg in &self.args {
-            if *arg != KSpecType::Context {
-                let arg_name = format!("ARG_{}", arg_num);
-                requirements.push(arg.bounds(&arg_name));
-                mem_args.push(format!("#buf(32, {})", arg_name));
-                arg_num += 1;
-            }
-        }
-
-        let mem_args = if mem_args.is_empty() {
-            "_".to_string()
-        } else {
-            mem_args.join(" +Bytes ")
-        };
-
-        write!(
-            f,
-            "{}",
-            KSPEC_TEMPLATE
-                .replace("$CODE", &format!("\"0x{}\"", &self.code))
-                .replace("$MEM_ARGS", &mem_args)
-                .replace("$REQUIREMENTS", &requirements.join("\n"))
-        )
     }
 }
 
