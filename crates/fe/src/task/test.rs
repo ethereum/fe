@@ -4,7 +4,7 @@ use std::path::Path;
 use clap::Args;
 use colored::Colorize;
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::utils::files::load_fe_files_from_dir;
+use fe_common::utils::files::BuildFiles;
 use fe_driver::CompiledTest;
 use fe_test_runner::TestSink;
 
@@ -86,21 +86,17 @@ fn test_ingot(args: &TestArgs) -> TestSink {
         std::process::exit(1)
     }
 
-    let content = match load_fe_files_from_dir(input_path) {
-        Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{input_path}`");
-            std::process::exit(1)
-        }
+    let build_files = match BuildFiles::load_fs(input_path) {
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {err}");
+            eprintln!("Failed to load project files.\nError: {err}");
             std::process::exit(1)
         }
     };
 
     let mut db = fe_driver::Db::default();
 
-    match fe_driver::compile_ingot_tests(&mut db, input_path, &content, optimize) {
+    match fe_driver::compile_ingot_tests(&mut db, &build_files, optimize) {
         Ok(test_batches) => {
             let mut sink = TestSink::default();
             for (module_name, tests) in test_batches {

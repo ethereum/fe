@@ -4,6 +4,7 @@ use bing::Bing as Bong
 use bing::get_42_backend
 use ding::{dang::Dang as Dung, dong}
 use bing::BingContract
+use basic_ingot_dep::Foo as ImportedFoo
 
 contract Foo {
     pub fn get_my_baz() -> Baz {

@@ -3,8 +3,9 @@ use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, Ty
 use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::{FileKind, Utf8Path};
+use fe_common::utils::files::BuildFiles;
 use fe_parser::node::{NodeId, Span};
-use indexmap::{indexmap, IndexMap};
+use indexmap::IndexMap;
 use insta::assert_snapshot;
 use smallvec::SmallVec;
 use std::collections::{HashMap, VecDeque};
@@ -19,6 +20,8 @@ fn analyze_std_lib() {
     let std_ingot = IngotId::std_lib(&mut db);
     let std_ingot_2 = IngotId::std_lib(&mut db);
     assert_eq!(std_ingot, std_ingot_2);
+
+    db.set_root_ingot(std_ingot);
 
     let diags = std_ingot.diagnostics(&db);
     if !diags.is_empty() {
@@ -43,7 +46,6 @@ fn ingot_files_to_modules() {
             ("x.fe", ""),
             ("a/b/c/d.fe", ""),
         ],
-        indexmap! {},
     );
 
     let submod_map = |module: ModuleId| {
@@ -107,15 +109,10 @@ macro_rules! test_analysis_ingot {
         fn $name() {
             let mut db = TestDb::default();
 
-            let std = IngotId::std_lib(&mut db);
-            let ingot = IngotId::from_files(
-                &mut db,
-                "test_ingot",
-                IngotMode::Main,
-                FileKind::Local,
-                &test_files::new_fixture_dir_files($path),
-                indexmap! { "std".into() => std },
-            );
+            let fixture_files = test_files::new_fixture_dir_files("ingots");
+            let build_files = BuildFiles::load_static(fixture_files, $path)
+                .expect("failed to statically load build files");
+            let ingot = IngotId::from_build_files(&mut db, &build_files);
 
             let diags = ingot.diagnostics(&db);
             if !diags.is_empty() {

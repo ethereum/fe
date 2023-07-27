@@ -1,0 +1,6 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: error_string_ingot(&path)
+---
+Unable to resolve my_lib at compile_errors/my_lib due to the following errors.
+Version mismatch: 1.0 =/= 13.0

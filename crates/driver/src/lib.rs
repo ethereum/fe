@@ -3,9 +3,9 @@
 pub use fe_codegen::db::{CodegenDb, Db};
 
 use fe_analyzer::namespace::items::{ContractId, FunctionId, IngotId, IngotMode, ModuleId};
-use fe_common::db::Upcast;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::FileKind;
+use fe_common::{db::Upcast, utils::files::BuildFiles};
 use fe_parser::ast::SmolStr;
 use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};
@@ -88,20 +88,8 @@ pub fn compile_single_file_tests(
 
 // Run analysis with ingot
 // Return vector error,waring...
-pub fn check_ingot(
-    db: &mut Db,
-    name: &str,
-    files: &[(impl AsRef<str>, impl AsRef<str>)],
-) -> Vec<Diagnostic> {
-    let std = IngotId::std_lib(db);
-    let ingot = IngotId::from_files(
-        db,
-        name,
-        IngotMode::Main,
-        FileKind::Local,
-        files,
-        indexmap! { "std".into() => std },
-    );
+pub fn check_ingot(db: &mut Db, build_files: &BuildFiles) -> Vec<Diagnostic> {
+    let ingot = IngotId::from_build_files(db, build_files);
 
     let mut diags = ingot.diagnostics(db);
     ingot.sink_external_ingot_diagnostics(db, &mut diags);
@@ -114,20 +102,11 @@ pub fn check_ingot(
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile_ingot(
     db: &mut Db,
-    name: &str,
-    files: &[(impl AsRef<str>, impl AsRef<str>)],
+    build_files: &BuildFiles,
     with_bytecode: bool,
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
-    let std = IngotId::std_lib(db);
-    let ingot = IngotId::from_files(
-        db,
-        name,
-        IngotMode::Main,
-        FileKind::Local,
-        files,
-        indexmap! { "std".into() => std },
-    );
+    let ingot = IngotId::from_build_files(db, build_files);
 
     let mut diags = ingot.diagnostics(db);
     ingot.sink_external_ingot_diagnostics(db, &mut diags);
@@ -143,19 +122,10 @@ pub fn compile_ingot(
 #[cfg(feature = "solc-backend")]
 pub fn compile_ingot_tests(
     db: &mut Db,
-    name: &str,
-    files: &[(impl AsRef<str>, impl AsRef<str>)],
+    build_files: &BuildFiles,
     optimize: bool,
 ) -> Result<Vec<(SmolStr, Vec<CompiledTest>)>, CompileError> {
-    let std = IngotId::std_lib(db);
-    let ingot = IngotId::from_files(
-        db,
-        name,
-        IngotMode::Main,
-        FileKind::Local,
-        files,
-        indexmap! { "std".into() => std },
-    );
+    let ingot = IngotId::from_build_files(db, build_files);
 
     let mut diags = ingot.diagnostics(db);
     ingot.sink_external_ingot_diagnostics(db, &mut diags);
