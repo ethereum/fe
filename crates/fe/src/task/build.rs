@@ -5,11 +5,10 @@ use std::path::Path;
 use clap::{ArgEnum, Args};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::SourceFileId;
-use fe_common::utils::files::load_fe_files_from_dir;
+use fe_common::utils::files::{BuildFiles, ProjectMode};
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
-const DEFAULT_INGOT: &str = "main";
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 enum Emit {
@@ -86,33 +85,30 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         std::process::exit(1)
     }
 
-    let files = match load_fe_files_from_dir(input_path) {
-        Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{input_path}`");
-            std::process::exit(1)
-        }
+    let build_files = match BuildFiles::load_fs(input_path) {
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {err}");
+            eprintln!("Failed to load project files.\nError: {err}");
             std::process::exit(1)
         }
     };
 
+    if build_files.root_project_mode() == ProjectMode::Lib {
+        eprintln!("Unable to compile {input_path}. No build targets in library mode.");
+        eprintln!("Consider replacing `src/lib.fe` with `src/main.fe`.");
+        std::process::exit(1)
+    }
+
     let mut db = fe_driver::Db::default();
-    let compiled_module = match fe_driver::compile_ingot(
-        &mut db,
-        DEFAULT_INGOT, // TODO: real ingot name
-        &files,
-        with_bytecode,
-        optimize,
-    ) {
-        Ok(module) => module,
-        Err(error) => {
-            eprintln!("Unable to compile {input_path}.");
-            print_diagnostics(&db, &error.0);
-            std::process::exit(1)
-        }
-    };
+    let compiled_module =
+        match fe_driver::compile_ingot(&mut db, &build_files, with_bytecode, optimize) {
+            Ok(module) => module,
+            Err(error) => {
+                eprintln!("Unable to compile {input_path}.");
+                print_diagnostics(&db, &error.0);
+                std::process::exit(1)
+            }
+        };
 
     // no file content for ingots
     ("".to_string(), compiled_module)

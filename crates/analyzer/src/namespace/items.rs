@@ -9,6 +9,7 @@ use crate::{builtins, errors::ConstEvalError};
 use fe_common::diagnostics::Diagnostic;
 use fe_common::diagnostics::Label;
 use fe_common::files::{common_prefix, Utf8Path};
+use fe_common::utils::files::{BuildFiles, ProjectMode};
 use fe_common::{impl_intern_key, FileKind, SourceFileId};
 use fe_parser::ast::GenericParameter;
 use fe_parser::node::{Node, Span};
@@ -327,14 +328,57 @@ pub struct IngotId(pub(crate) u32);
 impl_intern_key!(IngotId);
 impl IngotId {
     pub fn std_lib(db: &mut dyn AnalyzerDb) -> Self {
-        IngotId::from_files(
+        let ingot = IngotId::from_files(
             db,
             "std",
             IngotMode::Lib,
             FileKind::Std,
             &fe_library::std_src_files(),
-            indexmap!(),
-        )
+        );
+        db.set_ingot_external_ingots(ingot, Rc::new(indexmap! {}));
+        ingot
+    }
+
+    pub fn from_build_files(db: &mut dyn AnalyzerDb, build_files: &BuildFiles) -> Self {
+        let ingots: IndexMap<_, _> = build_files
+            .project_files
+            .iter()
+            .map(|(project_path, project_files)| {
+                let mode = match project_files.mode {
+                    ProjectMode::Main => IngotMode::Main,
+                    ProjectMode::Lib => IngotMode::Lib,
+                };
+                (
+                    project_path,
+                    IngotId::from_files(
+                        db,
+                        &project_files.name,
+                        mode,
+                        FileKind::Local,
+                        &project_files.src,
+                    ),
+                )
+            })
+            .collect();
+
+        for (project_path, project_files) in &build_files.project_files {
+            let mut deps = indexmap! {
+                "std".into() => IngotId::std_lib(db)
+            };
+
+            for dependency in &project_files.dependencies {
+                deps.insert(
+                    dependency.name.clone(),
+                    ingots[&dependency.canonicalized_path],
+                );
+            }
+
+            db.set_ingot_external_ingots(ingots[&project_path], Rc::new(deps));
+        }
+
+        let root_ingot = ingots[&build_files.root_project_path];
+        db.set_root_ingot(root_ingot);
+        root_ingot
     }
 
     pub fn from_files(
@@ -343,7 +387,6 @@ impl IngotId {
         mode: IngotMode,
         file_kind: FileKind,
         files: &[(impl AsRef<str>, impl AsRef<str>)],
-        deps: IndexMap<SmolStr, IngotId>,
     ) -> Self {
         // The common prefix of all file paths will be stored as the ingot
         // src dir path, and all module file paths will be considered to be
@@ -382,9 +425,7 @@ impl IngotId {
             })
             .collect();
 
-        db.set_root_ingot(ingot);
         db.set_ingot_files(ingot, file_ids);
-        db.set_ingot_external_ingots(ingot, Rc::new(deps));
         ingot
     }
 
@@ -479,8 +520,11 @@ impl ModuleId {
             IngotMode::StandaloneModule,
             FileKind::Local,
             &[(path, content)],
-            indexmap! { "std".into() => std },
         );
+
+        let deps = indexmap! { "std".into() => std };
+        db.set_ingot_external_ingots(ingot, Rc::new(deps));
+        db.set_root_ingot(ingot);
 
         ingot
             .root_module(db)

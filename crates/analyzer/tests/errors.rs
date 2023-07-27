@@ -1,10 +1,9 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::namespace::items::{IngotId, IngotMode, ModuleId};
+use fe_analyzer::namespace::items::{IngotId, ModuleId};
 use fe_analyzer::TestDb;
 use fe_common::diagnostics::diagnostics_string;
-use fe_common::files::FileKind;
-use indexmap::indexmap;
+use fe_common::utils::files::BuildFiles;
 use insta::assert_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -21,15 +20,13 @@ fn error_string(path: &str, src: &str) -> String {
 
 fn error_string_ingot(path: &str) -> String {
     let mut db = TestDb::default();
-    let std = IngotId::std_lib(&mut db);
-    let ingot = IngotId::from_files(
-        &mut db,
-        "test_ingot",
-        IngotMode::Main,
-        FileKind::Local,
-        &test_files::fixture_dir_files(path),
-        indexmap! { "std".into() => std },
-    );
+
+    let fixture_files = test_files::fixture_dir_files("compile_errors");
+    let build_files = match BuildFiles::load_static(fixture_files, path) {
+        Ok(files) => files,
+        Err(err) => return err,
+    };
+    let ingot = IngotId::from_build_files(&mut db, &build_files);
 
     let diags = ingot.diagnostics(&db);
     if diags.is_empty() {
@@ -43,7 +40,7 @@ macro_rules! test_ingot {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let path = concat!("compile_errors/", stringify!($name), "/src");
+            let path = concat!("compile_errors/", stringify!($name));
 
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
@@ -341,6 +338,10 @@ test_file! { unsafe_nesting }
 test_ingot! { bad_ingot }
 test_ingot! { mainless_ingot }
 test_ingot! { bad_visibility }
+test_ingot! { missing_dep }
+test_ingot! { name_mismatch }
+test_ingot! { version_mismatch }
+test_ingot! { main_dep }
 
 test_file! { ctx_not_first }
 test_file! { ctx_not_ctx_type }

@@ -180,7 +180,7 @@ dependencies = [
  "bitflags",
  "clap_derive",
  "clap_lex",
- "indexmap",
+ "indexmap 1.9.2",
  "once_cell",
  "strsim",
  "termcolor",
@@ -538,6 +538,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "equivalent"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
+
+[[package]]
 name = "ethabi"
 version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -661,7 +667,7 @@ dependencies = [
  "fe-test-runner",
  "fs_extra",
  "include_dir",
- "indexmap",
+ "indexmap 1.9.2",
  "walkdir",
 ]
 
@@ -686,7 +692,7 @@ dependencies = [
  "fe-test-files",
  "hex",
  "if_chain",
- "indexmap",
+ "indexmap 1.9.2",
  "insta",
  "num-bigint",
  "num-traits",
@@ -711,7 +717,7 @@ dependencies = [
  "fe-common",
  "fe-mir",
  "fxhash",
- "indexmap",
+ "indexmap 1.9.2",
  "num-bigint",
  "salsa",
  "smol_str",
@@ -727,15 +733,17 @@ dependencies = [
  "difference",
  "fe-library",
  "hex",
- "indexmap",
+ "indexmap 1.9.2",
  "num-bigint",
  "num-traits",
  "once_cell",
+ "path-clean",
  "ron",
  "salsa",
  "serde",
  "smol_str",
  "tiny-keccak",
+ "toml 0.7.6",
  "walkdir",
 ]
 
@@ -753,7 +761,7 @@ dependencies = [
  "fe-yulc",
  "getrandom",
  "hex",
- "indexmap",
+ "indexmap 1.9.2",
  "insta",
  "primitive-types",
  "serde_json",
@@ -809,10 +817,10 @@ dependencies = [
  "fe-parser",
  "fe-test-runner",
  "fe-yulc",
- "indexmap",
+ "indexmap 1.9.2",
  "serde_json",
  "smol_str",
- "toml",
+ "toml 0.5.11",
  "vfs",
 ]
 
@@ -821,6 +829,8 @@ name = "fe-library"
 version = "0.23.0"
 dependencies = [
  "include_dir",
+ "indexmap 1.9.2",
+ "smol_str",
 ]
 
 [[package]]
@@ -835,7 +845,7 @@ dependencies = [
  "fe-test-files",
  "fxhash",
  "id-arena",
- "indexmap",
+ "indexmap 1.9.2",
  "num-bigint",
  "num-integer",
  "num-traits",
@@ -870,6 +880,7 @@ version = "0.23.0"
 dependencies = [
  "fe-library",
  "include_dir",
+ "indexmap 1.9.2",
 ]
 
 [[package]]
@@ -887,7 +898,7 @@ dependencies = [
 name = "fe-yulc"
 version = "0.23.0"
 dependencies = [
- "indexmap",
+ "indexmap 1.9.2",
  "serde_json",
  "solc",
 ]
@@ -1022,6 +1033,12 @@ checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
  "ahash",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
 
 [[package]]
 name = "heck"
@@ -1160,6 +1177,16 @@ checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
+]
+
+[[package]]
+name = "indexmap"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.14.0",
 ]
 
 [[package]]
@@ -1480,13 +1507,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "path-clean"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
+
+[[package]]
 name = "petgraph"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4dd7d28ee937e54fe3080c91faa1c3a46c06de6252988a7f4592ba2310ef22a4"
 dependencies = [
  "fixedbitset",
- "indexmap",
+ "indexmap 1.9.2",
 ]
 
 [[package]]
@@ -1909,7 +1942,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b84d9f96071f3f3be0dc818eae3327625d8ebc95b58da37d6850724f31d3403"
 dependencies = [
  "crossbeam-utils",
- "indexmap",
+ "indexmap 1.9.2",
  "lock_api",
  "log",
  "oorandom",
@@ -2066,6 +2099,15 @@ checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96426c9936fd7a0124915f9185ea1d20aa9445cc9821142f0a73bc9207a2e186"
+dependencies = [
  "serde",
 ]
 
@@ -2288,18 +2330,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_datetime"
-version = "0.6.1"
+name = "toml"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
+checksum = "c17e963a819c331dcacd7ab957d80bc2b9a9c1e71c804826d2f283dd65306542"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cda73e2f1397b1262d6dfdcef8aafae14d1de7748d66822d3bfeeb6d03e5e4b"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "toml_edit"
-version = "0.19.4"
+version = "0.19.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a1eb0622d28f4b9c90adc4ea4b2b46b47663fde9ac5fafcb14a1369d5508825"
+checksum = "f8123f27e969974a3dfba720fdb560be359f57b44302d280ba72e76a74480e8a"
 dependencies = [
- "indexmap",
+ "indexmap 2.0.0",
+ "serde",
+ "serde_spanned",
  "toml_datetime",
  "winnow",
 ]
@@ -2536,9 +2595,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "winnow"
-version = "0.3.4"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c95fb4ff192527911dd18eb138ac30908e7165b8944e528b6af93aa4c842d345"
+checksum = "25b5872fa2e10bd067ae946f927e726d7d603eaeb6e02fa6a350e0722d2b8c11"
 dependencies = [
  "memchr",
 ]

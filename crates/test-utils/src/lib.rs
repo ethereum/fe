@@ -371,9 +371,12 @@ pub fn deploy_contract_from_ingot(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let files = test_files::fixture_dir_files(path);
+    use fe_common::utils::files::BuildFiles;
+
+    let files = test_files::fixture_dir_files("ingots");
+    let build_files = BuildFiles::load_static(files, path).expect("failed to load build files");
     let mut db = driver::Db::default();
-    let compiled_module = match driver::compile_ingot(&mut db, "test", &files, true, true) {
+    let compiled_module = match driver::compile_ingot(&mut db, &build_files, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&db, &error.0);
