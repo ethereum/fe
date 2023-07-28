@@ -2,4 +2,11 @@ use Foo as Bar
 use Bar as Baz
 use Baz as Foo
 
+pub mod mod1 {
+    pub use super::mod2::Foo
+    
+}
 
+pub mod mod2 {
+    pub use super::mod1::Foo
+}

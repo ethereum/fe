@@ -1,5 +1,5 @@
 ---
-source: crates/uitest/src/lib.rs
+source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: crates/uitest/fixtures/name_resolution/import_cycle.fe
 ---
@@ -20,5 +20,17 @@ error[2-0002]: `Baz` is not found
   │
 3 │ use Baz as Foo
   │     ^^^ `Baz` is not found
+
+error[2-0002]: `Foo` is not found
+  ┌─ import_cycle.fe:6:26
+  │
+6 │     pub use super::mod2::Foo
+  │                          ^^^ `Foo` is not found
+
+error[2-0002]: `Foo` is not found
+   ┌─ import_cycle.fe:11:26
+   │
+11 │     pub use super::mod1::Foo
+   │                          ^^^ `Foo` is not found
 
 

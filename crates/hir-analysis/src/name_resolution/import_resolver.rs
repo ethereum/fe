@@ -88,16 +88,16 @@ impl<'db> ImportResolver<'db> {
                         .unwrap();
 
                     match self.resolve_i_use(i_use) {
-                        (Some(updated_i_use), resolved) => {
-                            changed |= resolved;
+                        (Some(updated_i_use), i_use_changed) => {
+                            changed |= i_use_changed;
                             self.intermediate_uses
                                 .get_mut(&scope)
                                 .unwrap()
                                 .push_back(updated_i_use);
                         }
 
-                        (None, resolved) => {
-                            changed |= resolved;
+                        (None, i_use_changed) => {
+                            changed |= i_use_changed;
                         }
                     }
                 }
@@ -166,11 +166,11 @@ impl<'db> ImportResolver<'db> {
             IUseResolution::Full(_) => unreachable!(),
 
             IUseResolution::BasePath(base_path_resolved) => {
-                if self.try_finalize_named_use(base_path_resolved) {
+                if self.try_finalize_named_use(base_path_resolved.clone()) {
                     (None, true)
                 } else {
                     let changed = !i_use.is_base_resolved(self.db);
-                    (Some(i_use), changed)
+                    (Some(base_path_resolved), changed)
                 }
             }
 
@@ -280,7 +280,7 @@ impl<'db> ImportResolver<'db> {
     /// - `None` if the error happens during the resolution, the error is
     ///   accumulated in the function.
     fn resolve_base_path(&mut self, mut i_use: IntermediateUse) -> Option<IUseResolution> {
-        let mut changed = true;
+        let mut changed = false;
         if i_use.is_base_resolved(self.db) {
             return Some(IUseResolution::BasePath(i_use));
         }
