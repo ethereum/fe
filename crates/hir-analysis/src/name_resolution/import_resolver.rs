@@ -451,7 +451,8 @@ impl<'db> ImportResolver<'db> {
             .resolved_imports
             .set_named_bucket(self.db, &i_use, bucket)
         {
-            self.accumulated_errors.push(err);
+            self.register_error(&i_use, err);
+            return true;
         }
 
         is_decidable
@@ -530,6 +531,8 @@ impl<'db> ImportResolver<'db> {
     }
 
     fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
+        self.suspicious_imports.remove(&i_use.use_);
+
         match err {
             NameResolutionError::NotFound => {
                 self.accumulated_errors.push(NameResDiag::not_found(
@@ -568,6 +571,11 @@ impl<'db> ImportResolver<'db> {
                     i_use.current_segment_ident(self.db).unwrap(),
                     invisible_span,
                 ));
+            }
+
+            NameResolutionError::Conflict(ident, spans) => {
+                self.accumulated_errors
+                    .push(NameResDiag::Conflict(ident, spans));
             }
         }
     }
@@ -910,7 +918,7 @@ impl IntermediateResolvedImports {
         db: &dyn HirAnalysisDb,
         i_use: &IntermediateUse,
         mut bucket: NameResBucket,
-    ) -> Result<(), NameResDiag> {
+    ) -> NameResolutionResult<()> {
         let scope = i_use.original_scope;
         bucket.set_derivation(NameDerivation::NamedImported(i_use.use_));
 
@@ -942,7 +950,7 @@ impl IntermediateResolvedImports {
                         };
 
                         if i_use.use_ != use_ {
-                            return Err(NameResDiag::conflict(
+                            return Err(NameResolutionError::Conflict(
                                 imported_name,
                                 vec![
                                     i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),

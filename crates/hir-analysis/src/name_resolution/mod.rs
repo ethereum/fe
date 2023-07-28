@@ -460,6 +460,10 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
                             res,
                         )
                     }
+
+                    NameResolutionError::Conflict(name, spans) => {
+                        NameResDiag::Conflict(name, spans)
+                    }
                 };
 
                 self.diags.push(diag);

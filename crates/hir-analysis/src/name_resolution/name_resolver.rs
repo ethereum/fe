@@ -758,6 +758,9 @@ pub enum NameResolutionError {
 
     /// The name is found ,but it can't be used in the middle of a use path.
     InvalidPathSegment(NameRes),
+
+    /// The definition conflicts with other definitions.
+    Conflict(IdentId, Vec<DynLazySpan>),
 }
 
 pub type NameResolutionResult<T> = Result<T, NameResolutionError>;
@@ -773,6 +776,7 @@ impl fmt::Display for NameResolutionError {
                 f,
                 "the found resolution can't be used in the middle of a path"
             ),
+            NameResolutionError::Conflict(_, _) => write!(f, "name conflicts with other names"),
         }
     }
 }
