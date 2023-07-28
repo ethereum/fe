@@ -13,12 +13,12 @@ note:
   ┌─ test_file.fe:4:5
   │
 4 │     pub use super::mod2::*
-  │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo | test_file::mod2::Bar | test_file::mod2::Bar
+  │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo as Foo | test_file::mod2::Bar as Bar | test_file::mod2::Bar as BarImported
 
 note: 
    ┌─ test_file.fe:12:5
    │
 12 │     pub use super::mod1::*
-   │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo | test_file::mod2::Bar | test_file::mod2::Bar
+   │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo as Foo | test_file::mod2::Bar as Bar | test_file::mod2::Bar as BarImported
 
 

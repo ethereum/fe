@@ -50,12 +50,14 @@ fn format_imports(
     }
 
     for (_, glob_set) in imports.glob_resolved.iter() {
-        for (&use_, res_set) in glob_set.iter() {
-            for res in res_set.values().flatten() {
-                use_res_map
-                    .entry(use_)
-                    .or_default()
-                    .push(res.pretty_path(db).unwrap())
+        for (&use_, res_set_with_ident) in glob_set.iter() {
+            for (ident, res_set) in res_set_with_ident.iter() {
+                let ident = ident.data(db);
+                for res in res_set {
+                    let def_path = res.pretty_path(db).unwrap();
+                    let resolved = format!("{} as {}", def_path, ident);
+                    use_res_map.entry(use_).or_default().push(resolved)
+                }
             }
         }
     }

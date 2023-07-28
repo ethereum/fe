@@ -7,12 +7,12 @@ note:
   ┌─ test_file.fe:1:1
   │
 1 │ use foo::*
-  │ ^^^^^^^^^^ test_file::foo::MyEnum | test_file::foo::MyEnum::Variant2 | test_file::foo::Variant
+  │ ^^^^^^^^^^ test_file::foo::MyEnum as MyEnum | test_file::foo::MyEnum::Variant2 as Variant2 | test_file::foo::Variant as Variant
 
 note: 
   ┌─ test_file.fe:4:5
   │
 4 │     pub use MyEnum::*
-  │     ^^^^^^^^^^^^^^^^^ test_file::foo::MyEnum::Variant | test_file::foo::MyEnum::Variant2
+  │     ^^^^^^^^^^^^^^^^^ test_file::foo::MyEnum::Variant as Variant | test_file::foo::MyEnum::Variant2 as Variant2
 
 

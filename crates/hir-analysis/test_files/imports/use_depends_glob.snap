@@ -13,6 +13,6 @@ note:
   ┌─ test_file.fe:2:1
   │
 2 │ use foo::*
-  │ ^^^^^^^^^^ test_file::foo::bar
+  │ ^^^^^^^^^^ test_file::foo::bar as bar
 
 
