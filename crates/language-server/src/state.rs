@@ -1,20 +1,23 @@
-use fe_analyzer::db::TestDb;
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
-use lsp_server::{Message};
-use lsp_types::{notification::Notification, request::Request};
-// use super::db::LanguageServerDb;
+use lsp_server::Message;
+use lsp_types::notification::Notification;
+use lsp_types::request::Request;
+use crate::db::LanguageServerDataBase;
 
-use crate::handlers::{request::handle_hover, notifications::handle_document_did_open};
+use crate::handlers::{
+    request::handle_hover,
+    notifications::handle_document_did_open
+};
 
 pub struct ServerState {
     pub sender: Sender<Message>,
-    pub analyzer_db: TestDb,
+    pub db: LanguageServerDataBase,
 }
 
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
-        ServerState { sender, analyzer_db: TestDb::default() }
+        ServerState { sender, db: LanguageServerDataBase::default() }
     }
 
     pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
@@ -42,7 +45,7 @@ impl ServerState {
 
             match req.method.as_str() {
                 // TODO: implement actually useful hover handler
-                // lsp_types::request::HoverRequest::METHOD => handle_hover(self, req)?,
+                lsp_types::request::HoverRequest::METHOD => handle_hover(self, req)?,
                 _ => {}
             }
         

@@ -18,8 +18,10 @@ use hir_analysis::{
     HirAnalysisDb,
 };
 
+use crate::diagnostics::ToCsDiag;
+
 #[salsa::jar(db = LanguageServerDb)]
-pub struct Jar(diagnostics::file_line_starts);
+pub struct Jar(crate::diagnostics::file_line_starts);
 
 pub trait LanguageServerDb:
     salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
@@ -74,35 +76,8 @@ impl LanguageServerDataBase {
 
         map_file_to_mod(self, file)
     }
-    
 
-    /// Prints accumulated diagnostics to stderr.
-    pub fn emit_diags(&self) {
-        let writer = BufferWriter::stderr(ColorChoice::Auto);
-        let mut buffer = writer.buffer();
-        let config = term::Config::default();
-
-        for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
-        }
-
-        eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
-    }
-
-    /// Format the accumulated diagnostics to a string.
-    pub fn format_diags(&self) -> String {
-        let writer = BufferWriter::stderr(ColorChoice::Never);
-        let mut buffer = writer.buffer();
-        let config = term::Config::default();
-
-        for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
-        }
-
-        std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
-    }
-
-    fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
+    pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
