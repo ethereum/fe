@@ -382,10 +382,15 @@ impl<'db> ImportResolver<'db> {
         // If the resolution is derived from glob import or external crate, we have to
         // insert the use into the `suspicious_imports` set to verify the ambiguity
         // after the algorithm reaches the fixed point.
-        for res in bucket.iter() {
-            if res.is_builtin() || res.is_external(self.db, i_use) || res.is_derived_from_glob() {
-                self.suspicious_imports.insert(i_use.use_);
-                break;
+        if i_use.is_first_segment() {
+            for res in bucket.iter() {
+                if res.is_builtin()
+                    || res.is_external(self.db, self.ingot)
+                    || res.is_derived_from_glob()
+                {
+                    self.suspicious_imports.insert(i_use.use_);
+                    break;
+                }
             }
         }
 
@@ -462,72 +467,55 @@ impl<'db> ImportResolver<'db> {
     /// an error if it is ambiguous.
     /// An additional ambiguity check should be performed after the import
     /// resolution reaches a fixed point.
+    //
+    // The ambiguity in the first segment possibly occurs when the segment is
+    // resolved to either a glob imported derived resolution or an external ingot in
+    // the `i_use` resolution.
+    //
+    // This is because:
+    // 1. the resolution of the first segment changes depending on whether the
+    //    dependent glob is resolved or not at the time of `i_use` resolution,
+    // 2. the order in which uses are resolved is nondeterministic.
+    //
+    // In normal name resolution rules, the name brought in by a glob always shadows
+    // the external ingot, so this ambiguity is inherent in import resolution.
+    // As a result, we need to add additional verification to check this kind of
+    // ambiguity.
     fn verify_ambiguity(&mut self, use_: Use) {
         let i_use = IntermediateUse::new(self.db, use_);
         let first_segment_ident = i_use.current_segment_ident(self.db).unwrap();
-        let scope = i_use.original_scope;
-        let ingot = scope.ingot(self.db.as_hir_db());
 
-        // The ambiguity in the first segment possibly occurs when the segment is
-        // resolved to either a glob imported derived resolution or an external ingot in
-        // the `i_use` resolution.
-        //
-        // This is because:
-        // 1. the resolution of the first segment changes depending on whether the
-        //    dependent glob is resolved or not at the time of `i_use` resolution,
-        // 2. the order in which uses are resolved is nondeterministic.
-        //
-        // In normal name resolution rules, the name brought in by a glob always shadows
-        // the external ingot, so this ambiguity is inherent in import resolution.
-        // As a result, we need to add additional verification to check this kind of
-        // ambiguity.
-        match self.resolve_segment(&i_use) {
-            Some(IUseResolution::Full(_)) => {
-                // The ambiguity about the final segment of the path is already verified during
-                // the fixed point calculation, so verification is not
-                // necessary.
-                return;
-            }
-
-            Some(IUseResolution::BasePath(resolved) | IUseResolution::Partial(resolved)) => {
-                if matches!(
-                    resolved.current_res.unwrap().derivation,
-                    NameDerivation::GlobImported(_)
-                ) && (ingot
-                    .external_ingots(self.db.as_hir_db())
-                    .iter()
-                    .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
-                    || PrimTy::all_types()
-                        .iter()
-                        .any(|ty| ty.name() == first_segment_ident))
-                {
-                    // The resolved scope is shadowed by an glob imports while originally
-                    // the use might be resolved to an external ingot or builtin. This means there
-                    // is an ambiguity between the external ingot and the name
-                    // imported by the glob import.
-                    self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
+        let res = match self.resolve_segment(&i_use) {
+            Some(IUseResolution::Full(bucket)) => match bucket.pick(NameDomain::Type) {
+                Ok(res) => res.clone(),
+                _ => {
+                    return;
                 }
+            },
+
+            Some(IUseResolution::BasePath(i_use) | IUseResolution::Partial(i_use)) => {
+                i_use.current_res.unwrap()
             }
 
-            Some(IUseResolution::Unchanged(_)) => {}
+            Some(IUseResolution::Unchanged(_)) | None => return,
+        };
 
-            None => {
-                return;
-            }
+        // The resolved scope is shadowed by an glob imports while originally
+        // the use might be resolved to an external ingot or builtin. This means there
+        // is an ambiguity between the external ingot and the name
+        // imported by the glob import.
+        if !res.is_external(self.db, self.ingot)
+            && (self
+                .ingot
+                .external_ingots(self.db.as_hir_db())
+                .iter()
+                .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
+                || PrimTy::all_types()
+                    .iter()
+                    .any(|ty| ty.name() == first_segment_ident))
+        {
+            self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
         }
-
-        // The ambiguity in the base path arises when multiple items of the same name
-        // are glob imported into the same scope. It is necessary to verify this
-        // after the fixed point is reached, since it cannot be assumed that all
-        // globs in that scope have been resolved at the time of `i_use` name
-        // resolution.
-        //
-        // This ambiguity can be detected by the normal shadowing rules , so it can be
-        // verified by calling `resolve_base_path`.
-        //
-        // The ambiguity about the final segment of the path can be verified during the
-        // fixed point calculation, so verification is not necessary.
-        self.resolve_base_path(i_use);
     }
 
     fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
@@ -1039,16 +1027,9 @@ fn resolved_imports_for_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> &Resolv
 impl NameRes {
     /// Returns true if the bucket contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
-    fn is_external(&self, db: &dyn HirAnalysisDb, i_use: &IntermediateUse) -> bool {
-        let Some(current_ingot) = i_use
-            .current_scope()
-            .map(|scope| scope.ingot(db.as_hir_db()))
-        else {
-            return false;
-        };
-
+    fn is_external(&self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
         match self.kind {
-            NameResKind::Scope(scope) => scope.ingot(db.as_hir_db()) != current_ingot,
+            NameResKind::Scope(scope) => scope.ingot(db.as_hir_db()) != ingot,
             NameResKind::Prim(_) => true,
         }
     }
