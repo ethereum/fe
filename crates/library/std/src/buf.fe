@@ -63,21 +63,20 @@ pub struct MemoryBuffer {
         let mut len: u256 = evm::sload(offset);
         let mut buf: MemoryBuffer = MemoryBuffer::new(len)
         let mut writer: MemoryBufferWriter = buf.writer();
-        let mut flag: bool = false
+
         while true {
-            if not flag {
-                offs = offs + 1
-            }
-            let bytes_remaining: u256 = writer.remainder() 
+            offs = offs + 1
+            let mut bytes_remaining: u256 = writer.remainder()
             if bytes_remaining >= 32 {
                 writer.write(value: evm::sload(offset: offs))
                 len = len - 32
-            } else if bytes_remaining == 0 {
-                break 
             } else {
-                flag = true //couldn't nest while inside another while
-                writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value: evm::sload(offset: offs))))
-                len = len - 1
+                while bytes_remaining > 0 {
+                    writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value: evm::sload(offset: offs))))
+                    len = len - 1
+                    bytes_remaining = writer.remainder()
+                }
+                break
             }
         }
 
@@ -90,21 +89,20 @@ pub struct MemoryBuffer {
         let mut reader: MemoryBufferReader = self.reader();
         evm::sstore(offset: offs, value: self.len())
         let mut agg: u256 = 0
-        let mut flag: bool = false
+       
         while true {
-            if not flag {
-                offs = offs + 1
-            }
-            let bytes_remaining: u256 = reader.remainder() 
+            offs = offs + 1
+            let mut bytes_remaining: u256 = reader.remainder()
             if bytes_remaining >= 32 {
                 evm::sstore(offset: offs, value: reader.read_u256())
-            } else if bytes_remaining == 0 {
-                break 
             } else {
-                flag = true //couldn't nest while inside another while
-                agg = evm::shl(bits: 8, value: agg)
-                agg = agg + u256(reader.read_u8())
+                while bytes_remaining > 0 {
+                    agg = evm::shl(bits: 8, value: agg)
+                    agg = agg + u256(reader.read_u8())
+                    bytes_remaining = reader.remainder()
+                }
                 evm::sstore(offset: offs, value: agg)
+                break
             }
         }
     }

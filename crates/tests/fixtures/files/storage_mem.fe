@@ -36,7 +36,7 @@ unsafe fn test_buf_sto_u16() {
     //read buffer from storage
     let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
     let mut other_reader: MemoryBufferReader = other_buf.reader();
-    
+
     //compare buffer
     assert other_reader.read_u16() == reader.read_u16()
 }
