@@ -50,12 +50,12 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
                 None,
             )
         },
-        &[SyntaxKind::Lt, SyntaxKind::LParen],
+        &[SyntaxKind::Lt, SyntaxKind::LParen, SyntaxKind::LBrace],
     );
 
     parser.with_next_expected_tokens(
         |parser| parse_generic_params_opt(parser),
-        &[SyntaxKind::LParen],
+        &[SyntaxKind::LParen, SyntaxKind::LBrace],
     );
 
     parser.with_next_expected_tokens(
