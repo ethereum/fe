@@ -27,7 +27,7 @@ unsafe fn test_buf_sto_u16() {
     //create first buffer
     let mut buf: MemoryBuffer = MemoryBuffer::new(len: 2)
     let mut writer:MemoryBufferWriter = buf.writer()
-    writer.write(value: u16(6657)) // 0001101000000001 = 26 swapped and swapped the first bit
+    writer.write(value: u16(6657)) // 0001101000000001 = 26 inverted and swapped the first bit
     let mut reader: MemoryBufferReader = buf.reader();
 
     //store buffer in storage
