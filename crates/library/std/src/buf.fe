@@ -66,15 +66,14 @@ pub struct MemoryBuffer {
 
         while true {
             offs = offs + 1
-            let mut bytes_remaining: u256 = writer.remainder()
-            if bytes_remaining >= 32 {
+            if len >= 32 {
                 writer.write(value: evm::sload(offset: offs))
                 len = len - 32
             } else {
-                while bytes_remaining > 0 {
-                    writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value: evm::sload(offset: offs))))
+                let mut value: u256 = evm::sload(offset: offs)
+                while len > 0 {
+                    writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value)))
                     len = len - 1
-                    bytes_remaining = writer.remainder()
                 }
                 break
             }
@@ -89,17 +88,17 @@ pub struct MemoryBuffer {
         let mut reader: MemoryBufferReader = self.reader();
         evm::sstore(offset: offs, value: self.len())
         let mut agg: u256 = 0
-       
+        let mut bytes_remaining: u256 = reader.remainder()
         while true {
             offs = offs + 1
-            let mut bytes_remaining: u256 = reader.remainder()
             if bytes_remaining >= 32 {
                 evm::sstore(offset: offs, value: reader.read_u256())
+                bytes_remaining = bytes_remaining - 32
             } else {
                 while bytes_remaining > 0 {
                     agg = evm::shl(bits: 8, value: agg)
                     agg = agg + u256(reader.read_u8())
-                    bytes_remaining = reader.remainder()
+                    bytes_remaining = bytes_remaining - 1
                 }
                 evm::sstore(offset: offs, value: agg)
                 break
@@ -127,7 +126,7 @@ pub struct MemoryBuffer {
         return MemoryBufferWriter::new(buf: self)
     }
 
-    pub fn compare<T: eq>(mut self, buf: T) -> bool{
+    pub fn compare<T: Eq>(mut self, buf: T) -> bool{
         return buf.compare_buf(buf: self)
     }
 }
@@ -351,26 +350,28 @@ pub struct RawCallBuffer {
     }
 }
 
-pub trait eq {
+pub trait Eq {
     fn compare_buf(self, mut buf: MemoryBuffer) -> bool;
 }
 
-impl eq for MemoryBuffer {
+impl Eq for MemoryBuffer {
    fn compare_buf(self, mut buf: MemoryBuffer) -> bool {
         if(self.len() != buf.len()){
             return false
         }
         let mut reader: MemoryBufferReader = self.reader()
         let mut reader2: MemoryBufferReader = buf.reader()
+        let mut bytes_remaining: u256 = reader.remainder()
         while true {
-            let bytes_remaining: u256 = reader.remainder() 
             if bytes_remaining >= 32 {
+            bytes_remaining = bytes_remaining - 32
             if(reader.read_u256() != reader2.read_u256()){
                  return false
                 }
             } else if bytes_remaining == 0 {
                 return true
             } else {
+            bytes_remaining = bytes_remaining - 1
             if(reader.read_u8() != reader2.read_u8()){
                  return false
                 }
@@ -380,6 +381,6 @@ impl eq for MemoryBuffer {
    }
 }
 
-impl eq for () { // missing impl in mir_lower_std_lib error
+impl Eq for () { // missing impl in mir_lower_std_lib error
       fn compare_buf(self, mut buf: MemoryBuffer) -> bool  {return false}
 }
