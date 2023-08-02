@@ -1,12 +1,7 @@
 use common::diagnostics::{Severity, CompleteDiagnostic, Span};
 use lsp_types::Position;
 
-// TODO: these could potentially be moved into the common crate
-// for more idiomatic use in the analyzer and the language server
-
 pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
-    // we need to get line and character offsets from the text,
-    // first we get the line offsets
     let line_offsets: Vec<usize> = text
         .lines()
         .scan(0, |state, line| {
@@ -16,7 +11,6 @@ pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
         })
         .collect();
 
-    // now we get the line and character offsets
     let start_line = line_offsets
         .binary_search(&span.range.start().into())
         .unwrap_or_else(|x| x - 1);
@@ -25,17 +19,15 @@ pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
         .binary_search(&span.range.end().into())
         .unwrap_or_else(|x| x - 1);
 
-
-    
-    // except that we need a fully qualified path to use `into`...
-    let start_character: usize = span.range.start().into();
-    let end_character: usize = span.range.end().into();
+    let start_character: usize = usize::from(span.range.start()) - line_offsets[start_line];
+    let end_character: usize = usize::from(span.range.end()) - line_offsets[end_line];
 
     lsp_types::Range {
         start: Position::new(start_line as u32, start_character as u32),
         end: Position::new(end_line as u32, end_character as u32),
     }
 }
+
 pub(crate) fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
         // Severity::Bug => lsp_types::DiagnosticSeverity::ERROR,

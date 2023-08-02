@@ -1,9 +1,5 @@
 use std::{collections::BTreeSet, path};
 
-use codespan_reporting::term::{
-    self,
-    termcolor::{BufferWriter, ColorChoice},
-};
 use common::{
     diagnostics::CompleteDiagnostic,
     input::{IngotKind, Version},
@@ -17,8 +13,6 @@ use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
-
-use crate::diagnostics::ToCsDiag;
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::diagnostics::file_line_starts);
