@@ -27,6 +27,13 @@
           ".fe"
         ]
       }
+    ],
+    "grammars": [
+      {
+          "language": "fe",
+          "scopeName": "source.fe",
+          "path": "./fe.tmLanguage.json"
+      }
     ]
   },
   "scripts": {
