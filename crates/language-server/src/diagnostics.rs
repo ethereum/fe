@@ -10,18 +10,18 @@ use common::{
 };
 use hir::diagnostics::DiagnosticVoucher;
 
-use crate::db::{LanguageServerDataBase, LanguageServerDb};
+use crate::db::{LanguageServerDatabase, LanguageServerDb};
 
 
 pub trait ToCsDiag {
-    fn to_cs(&self, db: &LanguageServerDataBase) -> cs_diag::Diagnostic<InputFile>;
+    fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
 }
 
 impl<T> ToCsDiag for T
 where
     T: DiagnosticVoucher,
 {
-    fn to_cs(&self, db: &LanguageServerDataBase) -> cs_diag::Diagnostic<InputFile> {
+    fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db);
 
         let severity = convert_severity(complete.severity);
@@ -69,7 +69,7 @@ pub fn file_line_starts(db: &dyn LanguageServerDb, file: InputFile) -> Vec<usize
     cs::files::line_starts(file.text(db.as_input_db())).collect()
 }
 
-impl<'a> cs_files::Files<'a> for LanguageServerDataBase {
+impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
     type FileId = InputFile;
     type Name = &'a Utf8Path;
     type Source = &'a str;

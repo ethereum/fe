@@ -3,7 +3,7 @@ use crossbeam_channel::{Receiver, Sender};
 use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
-use crate::db::LanguageServerDataBase;
+use crate::db::LanguageServerDatabase;
 
 use crate::handlers::{
     request::handle_hover,
@@ -12,12 +12,12 @@ use crate::handlers::{
 
 pub struct ServerState {
     pub sender: Sender<Message>,
-    pub db: LanguageServerDataBase,
+    pub db: LanguageServerDatabase,
 }
 
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
-        ServerState { sender, db: LanguageServerDataBase::default() }
+        ServerState { sender, db: LanguageServerDatabase::default() }
     }
 
     pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {

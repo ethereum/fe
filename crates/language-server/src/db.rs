@@ -28,19 +28,19 @@ impl<DB> LanguageServerDb for DB where
 }
 
 #[salsa::db(common::Jar, hir::Jar, hir_analysis::Jar, Jar)]
-pub struct LanguageServerDataBase {
+pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
     diags: Vec<Box<dyn DiagnosticVoucher>>,
 }
 
-impl LanguageServerDataBase {
+impl LanguageServerDatabase {
     pub fn run_on_top_mod(&mut self, top_mod: TopLevelMod) {
         self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
     }
 
     pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
     where
-        F: FnOnce(&LanguageServerDataBase) -> AnalysisPassManager<'_>,
+        F: FnOnce(&LanguageServerDatabase) -> AnalysisPassManager<'_>,
     {
         self.diags.clear();
         self.diags = {
@@ -81,14 +81,14 @@ impl LanguageServerDataBase {
     }
 }
 
-impl HirDb for LanguageServerDataBase {}
-impl SpannedHirDb for LanguageServerDataBase {}
-impl LowerHirDb for LanguageServerDataBase {}
-impl salsa::Database for LanguageServerDataBase {
+impl HirDb for LanguageServerDatabase {}
+impl SpannedHirDb for LanguageServerDatabase {}
+impl LowerHirDb for LanguageServerDatabase {}
+impl salsa::Database for LanguageServerDatabase {
     fn salsa_event(&self, _: salsa::Event) {}
 }
 
-impl Default for LanguageServerDataBase {
+impl Default for LanguageServerDatabase {
     fn default() -> Self {
         let db = Self {
             storage: Default::default(),
@@ -99,7 +99,7 @@ impl Default for LanguageServerDataBase {
     }
 }
 
-fn initialize_analysis_pass(db: &LanguageServerDataBase) -> AnalysisPassManager<'_> {
+fn initialize_analysis_pass(db: &LanguageServerDatabase) -> AnalysisPassManager<'_> {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));

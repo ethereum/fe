@@ -1,9 +1,9 @@
 use anyhow::{Result, Error};
 use serde::Deserialize;
 
-use crate::{state::ServerState, util::diag_to_lsp, db::LanguageServerDataBase};
+use crate::{state::ServerState, util::diag_to_lsp, db::LanguageServerDatabase};
 
-fn string_diagnostics(db: &mut LanguageServerDataBase, path: &str, src: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
+fn string_diagnostics(db: &mut LanguageServerDatabase, path: &str, src: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let file_path = std::path::Path::new(path);
     let top_mod = db.top_mod_from_file(file_path, src);
     db.run_on_top_mod(top_mod);

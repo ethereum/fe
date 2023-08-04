@@ -1113,6 +1113,7 @@ dependencies = [
  "crossbeam-channel",
  "fe-analyzer",
  "fe-common2",
+ "fe-driver2",
  "fe-hir",
  "fe-hir-analysis",
  "fe-macros",
