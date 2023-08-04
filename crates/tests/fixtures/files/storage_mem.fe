@@ -1,7 +1,8 @@
 use std::buf::{
     MemoryBuffer,
     MemoryBufferReader,
-    MemoryBufferWriter
+    MemoryBufferWriter,
+    Eq
 }
 #test
 unsafe fn test_buf_sto_u256() {

@@ -126,9 +126,6 @@ pub struct MemoryBuffer {
         return MemoryBufferWriter::new(buf: self)
     }
 
-    pub fn compare<T: Eq>(mut self, buf: T) -> bool{
-        return buf.compare_buf(buf: self)
-    }
 }
 
 /// Memory buffer writer abstraction.
@@ -351,11 +348,11 @@ pub struct RawCallBuffer {
 }
 
 pub trait Eq {
-    fn compare_buf(self, mut buf: MemoryBuffer) -> bool;
+    fn compare(self, mut buf: MemoryBuffer) -> bool;
 }
 
 impl Eq for MemoryBuffer {
-   fn compare_buf(self, mut buf: MemoryBuffer) -> bool {
+   fn compare(self, mut buf: MemoryBuffer) -> bool {
         if(self.len() != buf.len()){
             return false
         }
@@ -382,5 +379,5 @@ impl Eq for MemoryBuffer {
 }
 
 impl Eq for () { // missing impl in mir_lower_std_lib error
-      fn compare_buf(self, mut buf: MemoryBuffer) -> bool  {return false}
+      fn compare(self, mut buf: MemoryBuffer) -> bool  {return false}
 }
