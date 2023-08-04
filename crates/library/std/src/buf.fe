@@ -58,6 +58,54 @@ pub struct MemoryBuffer {
         return buf
     }
 
+    pub unsafe fn from_storage(offset: u256)  -> Self {
+        let mut offs: u256 = offset
+        let mut len: u256 = evm::sload(offset);
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len)
+        let mut writer: MemoryBufferWriter = buf.writer();
+
+        while true {
+            offs = offs + 1
+            if len >= 32 {
+                writer.write(value: evm::sload(offset: offs))
+                len = len - 32
+            } else {
+                let mut value: u256 = evm::sload(offset: offs)
+                while len > 0 {
+                    writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value)))
+                    len = len - 1
+                }
+                break
+            }
+        }
+
+        return buf
+    }
+
+
+    pub unsafe fn to_storage(self, offset: u256) {
+        let mut offs: u256 = offset
+        let mut reader: MemoryBufferReader = self.reader();
+        evm::sstore(offset: offs, value: self.len())
+        let mut agg: u256 = 0
+        let mut bytes_remaining: u256 = reader.remainder()
+        while true {
+            offs = offs + 1
+            if bytes_remaining >= 32 {
+                evm::sstore(offset: offs, value: reader.read_u256())
+                bytes_remaining = bytes_remaining - 32
+            } else {
+                while bytes_remaining > 0 {
+                    agg = evm::shl(bits: 8, value: agg)
+                    agg = agg + u256(reader.read_u8())
+                    bytes_remaining = bytes_remaining - 1
+                }
+                evm::sstore(offset: offs, value: agg)
+                break
+            }
+        }
+    }
+
     /// Length of the buffer in bytes.
     pub fn len(self) -> u256 {
         return self.len
@@ -77,6 +125,7 @@ pub struct MemoryBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return MemoryBufferWriter::new(buf: self)
     }
+
 }
 
 /// Memory buffer writer abstraction.
@@ -296,4 +345,39 @@ pub struct RawCallBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return self.buf.writer()
     }
+}
+
+pub trait Eq {
+    fn compare(self, mut buf: MemoryBuffer) -> bool;
+}
+
+impl Eq for MemoryBuffer {
+   fn compare(self, mut buf: MemoryBuffer) -> bool {
+        if(self.len() != buf.len()){
+            return false
+        }
+        let mut reader: MemoryBufferReader = self.reader()
+        let mut reader2: MemoryBufferReader = buf.reader()
+        let mut bytes_remaining: u256 = reader.remainder()
+        while true {
+            if bytes_remaining >= 32 {
+            bytes_remaining = bytes_remaining - 32
+            if(reader.read_u256() != reader2.read_u256()){
+                 return false
+                }
+            } else if bytes_remaining == 0 {
+                return true
+            } else {
+            bytes_remaining = bytes_remaining - 1
+            if(reader.read_u8() != reader2.read_u8()){
+                 return false
+                }
+            }
+        }
+        return true
+   }
+}
+
+impl Eq for () { // missing impl in mir_lower_std_lib error
+      fn compare(self, mut buf: MemoryBuffer) -> bool  {return false}
 }
