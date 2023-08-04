@@ -31,11 +31,18 @@ pub trait DriverDb:
 }
 
 impl<DB> DriverDb for DB where
-    DB: Sized + salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
+    DB: salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
 {
 }
 
-#[salsa::db(common::Jar, hir::Jar, hir_analysis::Jar, Jar)]
+#[salsa::db(
+    common::Jar,
+    hir::Jar,
+    hir::LowerJar,
+    hir::SpannedJar,
+    hir_analysis::Jar,
+    Jar
+)]
 pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
     diags: Vec<Box<dyn DiagnosticVoucher>>,
@@ -116,9 +123,6 @@ impl DriverDataBase {
     }
 }
 
-impl HirDb for DriverDataBase {}
-impl SpannedHirDb for DriverDataBase {}
-impl LowerHirDb for DriverDataBase {}
 impl salsa::Database for DriverDataBase {
     fn salsa_event(&self, _: salsa::Event) {}
 }

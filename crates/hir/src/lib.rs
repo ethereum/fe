@@ -60,6 +60,12 @@ pub struct Jar(
     external_ingots_impl,
 );
 
+#[salsa::jar(db = SpannedHirDb)]
+pub struct SpannedJar();
+
+#[salsa::jar(db = LowerHirDb)]
+pub struct LowerJar();
+
 #[derive(Clone, Copy)]
 pub struct ParsingPass<'db> {
     db: &'db dyn HirDb,
@@ -119,20 +125,19 @@ pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {
         <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }
 }
+impl<DB> HirDb for DB where DB: salsa::DbWithJar<Jar> + InputDb {}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
 /// invalidate the cache in salsa when a revision is updated. Therefore,
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
-pub trait LowerHirDb: HirDb {
-    fn as_lower_hir_db(&self) -> &dyn LowerHirDb
-    where
-        Self: Sized,
-    {
-        self
+pub trait LowerHirDb: salsa::DbWithJar<LowerJar> + HirDb {
+    fn as_lower_hir_db(&self) -> &dyn LowerHirDb {
+        <Self as salsa::DbWithJar<LowerJar>>::as_jar_db::<'_>(self)
     }
 }
+impl<DB> LowerHirDb for DB where DB: salsa::DbWithJar<LowerJar> + HirDb {}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -145,14 +150,12 @@ pub trait LowerHirDb: HirDb {
 /// generate [CompleteDiagnostic](common::diagnostics::CompleteDiagnostic) from
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
-pub trait SpannedHirDb: HirDb {
-    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb
-    where
-        Self: Sized,
-    {
-        self
+pub trait SpannedHirDb: salsa::DbWithJar<SpannedJar> + HirDb {
+    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb {
+        <Self as salsa::DbWithJar<SpannedJar>>::as_jar_db::<'_>(self)
     }
 }
+impl<DB> SpannedHirDb for DB where DB: salsa::DbWithJar<SpannedJar> + HirDb {}
 
 #[cfg(test)]
 mod test_db {
@@ -168,10 +171,9 @@ mod test_db {
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
         lower::{map_file_to_mod, scope_graph},
         span::LazySpan,
-        LowerHirDb, SpannedHirDb,
     };
 
-    #[salsa::db(common::Jar, crate::Jar)]
+    #[salsa::db(common::Jar, crate::Jar, crate::LowerJar, crate::SpannedJar)]
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
@@ -185,9 +187,6 @@ mod test_db {
             db
         }
     }
-    impl HirDb for TestDb {}
-    impl SpannedHirDb for TestDb {}
-    impl LowerHirDb for TestDb {}
     impl salsa::Database for TestDb {
         fn salsa_event(&self, _: salsa::Event) {}
     }
