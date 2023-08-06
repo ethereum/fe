@@ -1,0 +1,122 @@
+use ingot::evm
+pub trait Eq {
+    fn compare(self, other: Self) -> bool;
+}
+
+impl Eq for u256 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for u128 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for u64 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for u32 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for u16 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for u8 {
+    fn compare(self, other: Self) -> bool {
+        return evm::eq(self, other)
+    }
+}
+
+impl Eq for i256 { //expected loss of information due to converting from signed to unsigned
+    fn compare(self, other: Self) -> bool {
+        if(self > 0 and other > 0){
+            return evm::eq(u256(self), u256(other))
+        }
+        else {
+            return evm::eq(u256(i256(-1) * self), u256(i256(-1) * other))
+        }
+    }
+}
+
+impl Eq for i128 {
+    fn compare(self, other: Self) -> bool {
+        if(self > 0 and other > 0){
+            return evm::eq(u128(self), u128(other))
+        }
+        else {
+            return evm::eq(u128(i128(-1) * self), u128(i128(-1) * other))
+        }
+    }
+}
+
+impl Eq for i64 {
+    fn compare(self, other: Self) -> bool {
+        if(self > 0 and other > 0){
+            return evm::eq(u64(self), u64(other))
+        }
+        else {
+            return evm::eq(u64(i64(-1) * self), u64(i64(-1) * other))
+        }
+    }
+}
+
+impl Eq for i32 {
+    fn compare(self, other: Self) -> bool {
+        if(self > 0 and other > 0){
+            return evm::eq(u32(self), u32(other))
+        }
+        else {
+            return evm::eq(u32(i32(-1) * self), u32(i32(-1) * other))
+        }
+    }
+}
+
+impl Eq for i16 {
+    fn compare(self, other: Self) -> bool {
+       if(self > 0 and other > 0){
+            return evm::eq(u16(self), u16(other))
+        }
+        else {
+            return evm::eq(u16(i16(-1) * self), u16(i16(-1) * other))
+        }
+    }
+}
+
+impl Eq for i8 {
+        fn compare(self, other: Self) -> bool {
+       if(self > 0 and other > 0){
+            return evm::eq(u8(self), u8(other))
+        }
+        else {
+            return evm::eq(u8(i8(-1) * self), u8(i8(-1) * other))
+        }
+    }
+}
+
+impl Eq for bool {
+    fn compare(self, other: Self) -> bool {
+        return (not self and not other) or (self and other) //xor inverse
+    }
+}
+
+impl Eq for address {
+    fn compare(self, other: Self) -> bool {
+        return u256(self) == u256(other)
+    }
+}
+
+impl Eq for () {
+    fn compare(self, other: Self) -> bool {return false}
+}

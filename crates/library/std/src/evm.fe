@@ -131,8 +131,8 @@ pub fn sgt(_ x: u256, _ y: u256) -> u256 {
   unsafe { return __sgt(x, y) }
 }
 
-pub fn eq(_ x: u256, _ y: u256) -> u256 {
-  unsafe { return __eq(x, y) }
+pub fn eq(_ x: u256, _ y: u256) -> bool {
+  unsafe { return __eq(x, y) == 1}
 }
 
 pub fn is_zero(_ x: u256) -> u256 {

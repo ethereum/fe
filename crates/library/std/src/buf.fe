@@ -1,6 +1,6 @@
 use ingot::evm
 use ingot::math
-
+use ingot::cmp::Eq
 unsafe fn avail() -> u256 {
     let ptr: u256 = evm::mload(offset: 64)
 
@@ -347,12 +347,9 @@ pub struct RawCallBuffer {
     }
 }
 
-pub trait Eq {
-    fn compare(self, mut buf: MemoryBuffer) -> bool;
-}
 
 impl Eq for MemoryBuffer {
-   fn compare(self, mut buf: MemoryBuffer) -> bool {
+   fn compare(self, buf: Self) -> bool {
         if(self.len() != buf.len()){
             return false
         }
@@ -376,8 +373,4 @@ impl Eq for MemoryBuffer {
         }
         return true
    }
-}
-
-impl Eq for () { // missing impl in mir_lower_std_lib error
-      fn compare(self, mut buf: MemoryBuffer) -> bool  {return false}
 }
