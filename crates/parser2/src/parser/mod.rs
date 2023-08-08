@@ -446,6 +446,7 @@ impl<S: TokenStream> Parser<S> {
 
     /// Add the `msg` to the error list.
     fn error(&mut self, msg: &str) -> ErrorScope {
+        self.bump_trivias();
         self.is_err = true;
         let start = self.current_pos;
         let end = if let Some(current_token) = self.current_token() {
