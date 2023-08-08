@@ -17,13 +17,19 @@ use hir::{
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, LowerHirDb, SpannedHirDb,
+    HirDb, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
 type CodeSpanFileId = usize;
 
-#[salsa::db(common::Jar, hir::Jar, fe_hir_analysis::Jar)]
+#[salsa::db(
+    common::Jar,
+    hir::Jar,
+    hir::SpannedJar,
+    hir::LowerJar,
+    fe_hir_analysis::Jar
+)]
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
 }
@@ -138,10 +144,6 @@ impl Default for HirPropertyFormatter {
         }
     }
 }
-
-impl HirDb for HirAnalysisTestDb {}
-impl SpannedHirDb for HirAnalysisTestDb {}
-impl LowerHirDb for HirAnalysisTestDb {}
 
 impl salsa::Database for HirAnalysisTestDb {
     fn salsa_event(&self, _: salsa::Event) {}
