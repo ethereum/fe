@@ -3,9 +3,9 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 ---
 error: `balance` expects 0 arguments, but 1 was provided
-   ┌─ src/evm.fe:54:15
+   ┌─ src/evm.fe:56:15
    │
-54 │ pub unsafe fn balance() -> u256 {
+56 │ pub unsafe fn balance() -> u256 {
    │               ^^^^^^^ expects 0 arguments
    │
    ┌─ [snippet]:3:30

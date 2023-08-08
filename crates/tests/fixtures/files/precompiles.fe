@@ -1,0 +1,147 @@
+use std::precompiles
+use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+
+#test
+fn test_ec_recover() {
+    let result: address = precompiles::ec_recover(
+        hash: 0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3,
+        v: 28,
+        r: 0x9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608,
+        s: 0x4f8ae3bd7535248d0bd448298cc2e2071e56992d0774dc340c368ae950852ada
+    )
+
+    assert result == address(0x7156526fbd7a3c72969b54f64e42c10fbb768c8a)
+}
+
+#test
+fn test_sha2_256() {
+    let buf: MemoryBuffer = MemoryBuffer::from_u8(value: 0xff) 
+    let result: u256 = precompiles::sha2_256(buf)
+    assert result == 0xa8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89
+}
+
+#test
+fn test_ripemd_160() {
+    let buf: MemoryBuffer = MemoryBuffer::from_u8(value: 0xff) 
+    // todo: report "not yet implemented" panic with extra ')'
+    let result: u256 = precompiles::ripemd_160(buf)
+    assert result == 0x2c0c45d3ecab80fe060e5f1d7057cd2f8de5e557
+}
+
+#test
+// todo: yulgen panic on `identity`
+// pub.reader() fn identity() {
+fn test_identity() {
+    let buf: MemoryBuffer = MemoryBuffer::from_u8(value: 0x42) 
+    let mut result: MemoryBufferReader = precompiles::identity(buf).reader()
+    assert result.read_u8() == 0x42
+}
+
+#test
+fn test_mod_exp() {
+    let mut result: MemoryBufferReader = precompiles::mod_exp(
+        b_size: 1, 
+        e_size: 1, 
+        m_size: 1, 
+        b: MemoryBuffer::from_u8(value: 8),
+        e: MemoryBuffer::from_u8(value: 9),
+        m: MemoryBuffer::from_u8(value: 10),
+    ).reader()
+
+    assert result.read_u8() == 8
+}
+
+#test
+fn test_ec_add() {
+    let (x, y): (u256, u256) = precompiles::ec_add(
+        x1: 1, 
+        y1: 2, 
+        x2: 1, 
+        y2: 2
+    )
+
+    assert x == 0x030644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd3
+    assert y == 0x15ed738c0e0a7c92e7845f96b2ae9c0a68a6a449e3538fc7ff3ebf7a5a18a2c4
+}
+
+#test
+fn test_ec_mul() {
+    let (x, y): (u256, u256) = precompiles::ec_mul(
+        x: 1, 
+        y: 2, 
+        s: 2
+    )
+
+    assert x == 0x030644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd3
+    assert y == 0x15ed738c0e0a7c92e7845f96b2ae9c0a68a6a449e3538fc7ff3ebf7a5a18a2c4
+}
+
+#test
+fn test_ec_pairing() {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 384)
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write(value: 0x2cf44499d5d27bb186308b7af7af02ac5bc9eeb6a3d147c186b21fb1b76e18da)
+    writer.write(value: 0x2c0f001f52110ccfe69108924926e45f0b0c868df0e7bde1fe16d3242dc715f6)
+    writer.write(value: 0x1fb19bb476f6b9e44e2a32234da8212f61cd63919354bc06aef31e3cfaff3ebc)
+    writer.write(value: 0x22606845ff186793914e03e21df544c34ffe2f2f3504de8a79d9159eca2d98d9)
+    writer.write(value: 0x2bd368e28381e8eccb5fa81fc26cf3f048eea9abfdd85d7ed3ab3698d63e4f90)
+    writer.write(value: 0x2fe02e47887507adf0ff1743cbac6ba291e66f59be6bd763950bb16041a0a85e)
+    writer.write(value: 0x0000000000000000000000000000000000000000000000000000000000000001)
+    writer.write(value: 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd45)
+    writer.write(value: 0x1971ff0471b09fa93caaf13cbf443c1aede09cc4328f5a62aad45f40ec133eb4)
+    writer.write(value: 0x091058a3141822985733cbdddfed0fd8d6c104e9e9eff40bf5abfef9ab163bc7)
+    writer.write(value: 0x2a23af9a5ce2ba2796c1f4e453a370eb0af8c212d9dc9acd8fc02c2e907baea2)
+    writer.write(value: 0x23a8eb0b0996252cb548a4487da97b02422ebc0e834613f954de6c7e0afdc1fc)
+
+    assert precompiles::ec_pairing(buf)
+}
+
+#test
+fn test_blake2f() {
+    let result: Array<u64, 8> = precompiles::blake_2f(
+        rounds: 12,
+        h: [
+            0x48c9bdf267e6096a, 
+            0x3ba7ca8485ae67bb, 
+            0x2bf894fe72f36e3c, 
+            0xf1361d5f3af54fa5,
+            0xd182e6ad7f520e51, 
+            0x1f6c3e2b8c68059b, 
+            0x6bbd41fbabd9831f, 
+            0x79217e1319cde05b
+        ],
+        m: [
+            0x6162630000000000,
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+            0x0000000000000000, 
+        ],
+        t: [
+            0x0300000000000000,
+            0x0000000000000000
+        ],
+        f: true
+    )
+ 
+    assert result[0] == 0xba80a53f981c4d0d
+    assert result[1] == 0x6a2797b69f12f6e9
+    assert result[2] == 0x4c212f14685ac4b7
+    assert result[3] == 0x4b12bb6fdbffa2d1
+    assert result[4] == 0x7d87c5392aab792d
+    assert result[5] == 0xc252d5de4533cc95
+    assert result[6] == 0x18d38aa8dbf1925a
+    assert result[7] == 0xb92386edd4009923
+}

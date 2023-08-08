@@ -220,6 +220,12 @@ pub enum SyntaxKind {
     /// `unsafe`
     #[token("unsafe")]
     UnsafeKw,
+    /// `ingot`
+    #[token("ingot")]
+    IngotKw,
+    /// `super`
+    #[token("super")]
+    SuperKw,
 
     /// `<<`
     LShift,
@@ -332,10 +338,11 @@ pub enum SyntaxKind {
     MatchArmList,
 
     // Items. These are non-leaf nodes.
+    Item,
     /// `mod s { .. }`
     Mod,
     /// `fn foo(x: i32) -> i32 { .. }`
-    Fn,
+    Func,
     /// `struct Foo { .. }`
     Struct,
     /// `contract Foo { .. }`
@@ -427,7 +434,7 @@ pub enum SyntaxKind {
     GenericParamList,
 
     /// `(x: i32, _ y: mut i32)`
-    FnParamList,
+    FuncParamList,
 
     /// `_ x: mut i32`
     FnParam,
@@ -479,6 +486,28 @@ impl SyntaxKind {
             SyntaxKind::Gt => Some(SyntaxKind::Lt),
             _ => None,
         }
+    }
+
+    pub(crate) fn is_modifier_head(self) -> bool {
+        matches!(self, SyntaxKind::PubKw | SyntaxKind::UnsafeKw)
+    }
+
+    pub(crate) fn is_item_head(self) -> bool {
+        self.is_modifier_head()
+            || matches!(
+                self,
+                SyntaxKind::ModKw
+                    | SyntaxKind::FnKw
+                    | SyntaxKind::StructKw
+                    | SyntaxKind::ContractKw
+                    | SyntaxKind::EnumKw
+                    | SyntaxKind::TypeKw
+                    | SyntaxKind::ImplKw
+                    | SyntaxKind::TraitKw
+                    | SyntaxKind::ConstKw
+                    | SyntaxKind::UseKw
+                    | SyntaxKind::ExternKw
+            )
     }
 }
 

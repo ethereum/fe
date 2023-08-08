@@ -1,13 +1,13 @@
 [package]
 name = "fe-abi"
-version = "0.22.0"
+version = "0.23.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-common = { path = "../common", version = "^0.22.0"}
+fe-common = { path = "../common", version = "^0.23.0"}
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]

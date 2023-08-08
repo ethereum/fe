@@ -1,0 +1,19 @@
+#test    
+fn foo() {
+    let mut my_array: Array<u256, 4> = [8; 4]
+    my_array[1] = 42
+    assert my_array[0] == 8
+    assert my_array[1] == 42
+    assert my_array[2] == 8
+    assert my_array[3] == 8
+}
+
+#test
+fn bar() {
+    let mut my_array: Array<(u256, u256), 2> = [(1, 0); 2]
+    my_array[0].item0 = 4
+    assert my_array[0].item0 == 4
+    assert my_array[0].item1 == 0
+    assert my_array[1].item0 == 1
+    assert my_array[2].item1 == 0
+}

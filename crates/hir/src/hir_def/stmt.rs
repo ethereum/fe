@@ -1,8 +1,8 @@
 use cranelift_entity::entity_impl;
 
-use crate::span::stmt::LazyStmtSpan;
+use crate::{span::stmt::LazyStmtSpan, HirDb};
 
-use super::{Body, ExprId, PatId, TypeId};
+use super::{Body, ExprId, Partial, PatId, TypeId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
@@ -36,6 +36,10 @@ entity_impl!(StmtId);
 
 impl StmtId {
     pub fn lazy_span(self, body: Body) -> LazyStmtSpan {
-        LazyStmtSpan::new(self, body)
+        LazyStmtSpan::new(body, self)
+    }
+
+    pub fn data(self, db: &dyn HirDb, body: Body) -> &Partial<Stmt> {
+        &body.stmts(db)[self]
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "fe-parser"
-version = "0.22.0"
+version = "0.23.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,7 +11,7 @@ description = "Parser lib for Fe."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-fe-common = { path = "../common", version = "^0.22.0" }
+fe-common = { path = "../common", version = "^0.23.0" }
 logos = { version = "0.12.0", default-features = false, features = [
     "export_derive",
 ] }
@@ -27,8 +27,8 @@ smol_str = "0.1.21"
 wasm-bindgen = "0.2"
 
 [dev-dependencies]
-fe-test-files = { path = "../test-files", version = "^0.22.0" }
-insta = { default-features = false, version = "1.26.0" }
+fe-test-files = { path = "../test-files", version = "^0.23.0" }
+insta = { default-features = false, version = "1.7.1" }
 wasm-bindgen-test = "0.3"
 pretty_assertions = "1.0.0"
 criterion = "0.3.5"

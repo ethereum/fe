@@ -1,6 +1,7 @@
 #![cfg(feature = "solc-backend")]
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
+use fe_compiler_test_utils::{
+    *, {self as test_utils},
+};
 
 pub fn deploy_ingot(
     executor: &mut Executor,

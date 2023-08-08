@@ -1,9 +1,13 @@
 pub use fe_common::diagnostics::Label;
-use fe_common::diagnostics::{Diagnostic, Severity};
-use fe_common::files::SourceFileId;
+use fe_common::{
+    diagnostics::{Diagnostic, Severity},
+    files::SourceFileId,
+};
 
-use crate::lexer::{Lexer, Token, TokenKind};
-use crate::node::Span;
+use crate::{
+    lexer::{Lexer, Token, TokenKind},
+    node::Span,
+};
 use std::{error, fmt};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]

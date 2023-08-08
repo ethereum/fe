@@ -1,3 +1,5 @@
+use std::fmt;
+
 use parser::TextRange;
 
 use crate::InputFile;
@@ -6,8 +8,8 @@ use crate::InputFile;
 pub struct CompleteDiagnostic {
     pub severity: Severity,
     pub message: String,
-    pub span: Span,
     pub sub_diagnostics: Vec<SubDiagnostic>,
+    pub notes: Vec<String>,
     pub error_code: GlobalErrorCode,
 }
 
@@ -15,37 +17,69 @@ impl CompleteDiagnostic {
     pub fn new(
         severity: Severity,
         message: String,
-        span: Span,
         sub_diagnostics: Vec<SubDiagnostic>,
+        notes: Vec<String>,
         error_code: GlobalErrorCode,
     ) -> Self {
         Self {
             severity,
             message,
-            span,
             sub_diagnostics,
+            notes,
             error_code,
         }
     }
+
+    pub fn primary_span(&self) -> Span {
+        self.sub_diagnostics
+            .iter()
+            .find_map(|sub| match sub.style {
+                LabelStyle::Primary => Some(sub.span.clone().unwrap()),
+                _ => None,
+            })
+            .unwrap()
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct GlobalErrorCode {
-    pub pass: AnalysisPass,
+    pub pass: DiagnosticPass,
     pub local_code: u16,
 }
 
 impl GlobalErrorCode {
-    pub fn new(pass: AnalysisPass, local_code: u16) -> Self {
+    pub fn new(pass: DiagnosticPass, local_code: u16) -> Self {
         Self { pass, local_code }
+    }
+}
+
+impl fmt::Display for GlobalErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{:04}", self.pass.code(), self.local_code)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubDiagnostic {
-    pub severity: Severity,
+    pub style: LabelStyle,
     pub message: String,
-    pub span: Span,
+    pub span: Option<Span>,
+}
+
+impl SubDiagnostic {
+    pub fn new(style: LabelStyle, message: String, span: Option<Span>) -> Self {
+        Self {
+            style,
+            message,
+            span,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LabelStyle {
+    Primary,
+    Secondary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -53,6 +87,21 @@ pub struct Span {
     pub file: InputFile,
     pub range: TextRange,
     pub kind: SpanKind,
+}
+
+impl PartialOrd for Span {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.file.cmp(&other.file) {
+            std::cmp::Ordering::Equal => self.range.start().partial_cmp(&other.range.start()),
+            ord => Some(ord),
+        }
+    }
+}
+
+impl Ord for Span {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -89,17 +138,31 @@ pub enum Severity {
     Note,
 }
 
-#[repr(u16)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AnalysisPass {
-    Parse = 1,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DiagnosticPass {
+    Parse,
+
     NameResolution,
+
     TyCheck,
 
-    ExternalAnalysis(ExternalAnalysisKey) = u16::MAX,
+    ExternalAnalysis(ExternalAnalysisKey),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+impl DiagnosticPass {
+    pub fn code(&self) -> u16 {
+        match self {
+            Self::Parse => 1,
+            Self::NameResolution => 2,
+
+            Self::TyCheck => 3,
+
+            Self::ExternalAnalysis(_) => std::u16::MAX,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ExternalAnalysisKey {
     name: String,
 }

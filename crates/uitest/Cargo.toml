@@ -1,0 +1,15 @@
+[package]
+name = "driver2"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides Fe driver"
+publish = false
+
+[dependencies]
+driver = { path = "../driver2", package = "fe-driver2" }
+fe-compiler-test-utils = { path = "../test-utils" }
+dir-test = "0.1"
+wasm-bindgen-test = "0.3"

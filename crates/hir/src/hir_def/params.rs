@@ -5,31 +5,39 @@ use super::{Body, IdentId, Partial, PathId};
 #[salsa::interned]
 pub struct GenericArgListId {
     #[return_ref]
-    pub args: Vec<GenericArg>,
+    pub data: Vec<GenericArg>,
 }
 
 #[salsa::interned]
 pub struct GenericParamListId {
     #[return_ref]
-    pub params: Vec<GenericParam>,
+    pub data: Vec<GenericParam>,
 }
 
 #[salsa::interned]
-pub struct FnParamListId {
+pub struct FuncParamListId {
     #[return_ref]
-    args: Vec<FnParam>,
+    pub data: Vec<FuncParam>,
 }
 
 #[salsa::interned]
 pub struct WhereClauseId {
     #[return_ref]
-    pub predicates: Vec<WherePredicate>,
+    pub data: Vec<WherePredicate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum GenericParam {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
+}
+impl GenericParam {
+    pub fn name(&self) -> Partial<IdentId> {
+        match self {
+            Self::Type(ty) => ty.name,
+            Self::Const(c) => c.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -61,11 +69,20 @@ pub struct ConstGenericArg {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FnParam {
+pub struct FuncParam {
     pub is_mut: bool,
-    pub label: Option<FnParamLabel>,
-    pub name: Partial<FnParamName>,
+    pub label: Option<FuncParamLabel>,
+    pub name: Partial<FuncParamName>,
     pub ty: Partial<TypeId>,
+}
+
+impl FuncParam {
+    pub fn name(&self) -> Option<IdentId> {
+        match self.name.to_opt()? {
+            FuncParamName::Ident(name) => Some(name),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -75,17 +92,25 @@ pub struct WherePredicate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FnParamLabel {
+pub enum FuncParamLabel {
     Ident(IdentId),
     Underscore,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FnParamName {
+pub enum FuncParamName {
     /// `self` parameter.
-    Self_,
     Ident(IdentId),
     Underscore,
+}
+
+impl FuncParamName {
+    pub fn as_name(&self) -> Option<IdentId> {
+        match self {
+            FuncParamName::Ident(name) => Some(*name),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

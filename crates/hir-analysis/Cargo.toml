@@ -1,0 +1,25 @@
+[package]
+name = "fe-hir-analysis"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR semantic analysis for Fe lang"
+
+[dependencies]
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+smallvec = "1.10"
+rustc-hash = "1.1.0"
+either = "1.8"
+derive_more = "0.99"
+itertools = "0.10"
+
+hir = { path = "../hir", package = "fe-hir" }
+common = { path = "../common2", package = "fe-common2" }
+macros = { path = "../macros", package = "fe-macros" }
+fe-compiler-test-utils = { path = "../test-utils" }
+
+[dev-dependencies]
+codespan-reporting = "0.11"
+dir-test = "0.1"

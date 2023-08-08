@@ -9,14 +9,27 @@ use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
 
-use crate::span::HirOrigin;
+use crate::{
+    span::{item::LazyBodySpan, HirOrigin},
+    visitor::prelude::*,
+    HirDb,
+};
 
-use super::{Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod, TrackedItemId};
+use super::{
+    scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
+    TrackedItemId,
+};
 
 #[salsa::tracked]
 pub struct Body {
     #[id]
-    id: TrackedBodyId,
+    id: TrackedItemId,
+
+    /// The expression that evaluates to the value of the body.
+    /// In case of a function body, this is always be the block expression.
+    pub expr: ExprId,
+
+    pub body_kind: BodyKind,
 
     #[return_ref]
     pub stmts: NodeStore<StmtId, Partial<Stmt>>,
@@ -32,11 +45,42 @@ pub struct Body {
     pub(crate) origin: HirOrigin<ast::Expr>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TrackedBodyId {
-    ItemBody(Box<TrackedItemId>),
-    NestedBody(Box<Self>),
-    NamelessBody,
+impl Body {
+    pub fn lazy_span(self) -> LazyBodySpan {
+        LazyBodySpan::new(self)
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ScopeId::from_item(self.into())
+    }
+
+    #[doc(hidden)]
+    /// Returns the order of the blocks in the body in lexical order.
+    /// e.g.,
+    /// ```fe
+    /// fn foo() { // 0
+    ///     ...
+    ///     { // 1
+    ///         ...
+    ///         { // 2
+    ///             ...
+    ///         }
+    ///     }
+    /// }
+    ///
+    ///
+    /// Currently, this is only used for testing.
+    /// When it turns out to be generally useful, we need to consider to let
+    /// salsa track this method.
+    pub fn block_order(self, db: &dyn HirDb) -> FxHashMap<ExprId, usize> {
+        BlockOrderCalculator::new(db, self).calculate()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BodyKind {
+    FuncBody,
+    Anonymous,
 }
 
 pub type NodeStore<K, V> = PrimaryMap<K, V>;
@@ -103,5 +147,50 @@ where
             source_to_node: FxHashMap::default(),
             node_to_source: SecondaryMap::new(),
         }
+    }
+}
+
+struct BlockOrderCalculator<'db> {
+    db: &'db dyn HirDb,
+    order: FxHashMap<ExprId, usize>,
+    body: Body,
+    fresh_number: usize,
+}
+
+impl<'db> Visitor for BlockOrderCalculator<'db> {
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut crate::visitor::VisitorCtxt<'_, crate::span::expr::LazyExprSpan>,
+        expr: ExprId,
+        expr_data: &Expr,
+    ) {
+        if ctxt.body() == self.body && matches!(expr_data, Expr::Block(..)) {
+            self.order.insert(expr, self.fresh_number);
+            self.fresh_number += 1;
+        }
+
+        walk_expr(self, ctxt, expr)
+    }
+}
+
+impl<'db> BlockOrderCalculator<'db> {
+    fn new(db: &'db dyn HirDb, body: Body) -> Self {
+        Self {
+            db,
+            order: FxHashMap::default(),
+            body,
+            fresh_number: 0,
+        }
+    }
+
+    fn calculate(mut self) -> FxHashMap<ExprId, usize> {
+        let expr = self.body.expr(self.db);
+        let Partial::Present(expr_data) = expr.data(self.db, self.body) else {
+            return self.order;
+        };
+
+        let mut ctxt = VisitorCtxt::with_expr(self.db, self.body.scope(), self.body, expr);
+        self.visit_expr(&mut ctxt, expr, expr_data);
+        self.order
     }
 }

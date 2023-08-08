@@ -1,0 +1,39 @@
+pub enum MyEnum {
+    Unit
+    UnitTuple()
+    Tuple(u32, u256)
+
+    pub fn tuple(x: u32, y: u256) -> MyEnum {
+        return MyEnum::Tuple(x, y)
+    }
+    
+    pub fn fold(self) -> u256 {
+        match self {
+            MyEnum::Unit => {
+               return 0
+            }
+            MyEnum::UnitTuple() => {
+                return 1
+            }
+            MyEnum::Tuple(a, b) => {
+                return u256(a) + b
+            }
+        }
+    }
+}
+
+#test
+fn test_construct_and_fold() {
+    let unit: MyEnum = MyEnum::Unit
+    let unit_tuple: MyEnum = MyEnum::UnitTuple()
+    let tuple: MyEnum = MyEnum::Tuple(1, 2)
+
+    assert unit.fold() == 0
+    assert unit_tuple.fold() == 1
+    assert tuple.fold() == 3
+}
+
+#test
+fn tested_associated_method() {
+    assert MyEnum::tuple(x: 1, y: 2).fold() == 3
+}

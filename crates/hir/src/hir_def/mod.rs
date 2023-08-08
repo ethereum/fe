@@ -1,22 +1,28 @@
 pub mod attr;
 pub mod body;
 pub mod expr;
+pub mod ident;
 pub mod item;
 pub mod params;
 pub mod pat;
 pub mod path;
+pub mod prim_ty;
+pub mod scope_graph;
 pub mod stmt;
 pub mod types;
 pub mod use_tree;
 
-pub(crate) mod item_tree;
+mod scope_graph_viz;
+
 pub(crate) mod module_tree;
 
 pub use attr::*;
 pub use body::*;
+use common::{input::IngotKind, InputIngot};
 pub use expr::*;
+pub use ident::*;
 pub use item::*;
-use num_bigint::BigUint;
+pub use module_tree::*;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
@@ -24,18 +30,29 @@ pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
 
-pub use item_tree::*;
-pub use module_tree::*;
+use num_bigint::BigUint;
 
-use crate::HirDb;
+use crate::{external_ingots_impl, HirDb};
 
-#[salsa::interned]
-pub struct IdentId {
-    data: String,
+#[salsa::tracked]
+pub struct IngotId {
+    inner: InputIngot,
 }
-impl IdentId {
-    pub fn is_self(&self, db: &dyn HirDb) -> bool {
-        self.data(db) == "self"
+impl IngotId {
+    pub fn module_tree(self, db: &dyn HirDb) -> &ModuleTree {
+        module_tree_impl(db, self.inner(db))
+    }
+
+    pub fn root_mod(self, db: &dyn HirDb) -> TopLevelMod {
+        self.module_tree(db).root_data().top_mod
+    }
+
+    pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, TopLevelMod)] {
+        external_ingots_impl(db, self.inner(db)).as_slice()
+    }
+
+    pub fn kind(self, db: &dyn HirDb) -> IngotKind {
+        self.inner(db).kind(db.as_input_db())
     }
 }
 
@@ -52,7 +69,7 @@ pub struct StringId {
     pub data: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
 pub enum LitKind {
     Int(IntegerId),
     String(StringId),
@@ -83,6 +100,17 @@ impl<T> Partial<T> {
             Self::Absent => panic!("unwrap called on absent value"),
         }
     }
+
+    pub fn to_opt(self) -> Option<T> {
+        match self {
+            Self::Present(value) => Some(value),
+            Self::Absent => None,
+        }
+    }
+
+    pub fn is_present(&self) -> bool {
+        matches!(self, Self::Present(_))
+    }
 }
 
 impl<T> Default for Partial<T> {
@@ -98,5 +126,11 @@ impl<T> From<Option<T>> for Partial<T> {
         } else {
             Self::Absent
         }
+    }
+}
+
+impl<T> From<Partial<T>> for Option<T> {
+    fn from(value: Partial<T>) -> Option<T> {
+        value.to_opt()
     }
 }

@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use fe_analyzer::display::Displayable;
-use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::items::Item;
-use fe_analyzer::namespace::types as analyzer_types;
+use fe_analyzer::{
+    display::Displayable,
+    namespace::{items as analyzer_items, items::Item, types as analyzer_types},
+};
 
 use smol_str::SmolStr;
 

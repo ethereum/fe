@@ -1,14 +1,20 @@
-use fe_analyzer::display::Displayable;
-use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::{AnalyzerDb, TestDb};
-use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
-use fe_common::files::{FileKind, Utf8Path};
+use fe_analyzer::{
+    display::Displayable,
+    namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef},
+    AnalyzerDb, TestDb,
+};
+use fe_common::{
+    diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity},
+    files::{FileKind, Utf8Path},
+};
 use fe_parser::node::{NodeId, Span};
 use indexmap::{indexmap, IndexMap};
 use insta::assert_snapshot;
 use smallvec::SmallVec;
-use std::collections::{HashMap, VecDeque};
-use std::fmt::Display;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Display,
+};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[test]
@@ -184,12 +190,9 @@ test_analysis! { erc20_token, "demos/erc20_token.fe"}
 test_analysis! { guest_book, "demos/guest_book.fe"}
 test_analysis! { simple_open_auction, "demos/simple_open_auction.fe"}
 test_analysis! { uniswap, "demos/uniswap.fe"}
-test_analysis! { address_bytes10_map, "features/address_bytes10_map.fe"}
 test_analysis! { abi_decode_complex, "features/abi_decode_complex.fe"}
 test_analysis! { assert, "features/assert.fe"}
-test_analysis! { associated_fns, "features/associated_fns.fe"}
 test_analysis! { aug_assign, "features/aug_assign.fe"}
-test_analysis! { base_tuple, "features/base_tuple.fe"}
 test_analysis! { call_statement_with_args, "features/call_statement_with_args.fe"}
 test_analysis! { call_statement_with_args_2, "features/call_statement_with_args_2.fe"}
 test_analysis! { call_statement_without_args, "features/call_statement_without_args.fe"}
@@ -199,7 +202,6 @@ test_analysis! { create2_contract, "features/create2_contract.fe"}
 test_analysis! { create_contract, "features/create_contract.fe"}
 test_analysis! { create_contract_from_init, "features/create_contract_from_init.fe"}
 test_analysis! { empty, "features/empty.fe"}
-test_analysis! { enums, "features/enums.fe"}
 test_analysis! { enum_match, "features/enum_match.fe"}
 test_analysis! { events, "features/events.fe"}
 test_analysis! { module_level_events, "features/module_level_events.fe"}
@@ -218,59 +220,6 @@ test_analysis! { nested_map, "features/nested_map.fe"}
 test_analysis! { numeric_sizes, "features/numeric_sizes.fe"}
 test_analysis! { ownable, "features/ownable.fe"}
 test_analysis! { pure_fn_standalone, "features/pure_fn_standalone.fe"}
-test_analysis! { return_addition_i256, "features/return_addition_i256.fe"}
-test_analysis! { return_addition_u128, "features/return_addition_u128.fe"}
-test_analysis! { return_addition_u256, "features/return_addition_u256.fe"}
-test_analysis! { return_array, "features/return_array.fe"}
-test_analysis! { return_bitwiseand_u128, "features/return_bitwiseand_u128.fe"}
-test_analysis! { return_bitwiseand_u256, "features/return_bitwiseand_u256.fe"}
-test_analysis! { return_bitwiseor_u256, "features/return_bitwiseor_u256.fe"}
-test_analysis! { return_bitwiseshl_u256, "features/return_bitwiseshl_u256.fe"}
-test_analysis! { return_bitwiseshr_i256, "features/return_bitwiseshr_i256.fe"}
-test_analysis! { return_bitwiseshr_u256, "features/return_bitwiseshr_u256.fe"}
-test_analysis! { return_bitwisexor_u256, "features/return_bitwisexor_u256.fe"}
-test_analysis! { return_bool_false, "features/return_bool_false.fe"}
-test_analysis! { return_bool_inverted, "features/return_bool_inverted.fe"}
-test_analysis! { return_bool_op_and, "features/return_bool_op_and.fe"}
-test_analysis! { return_bool_op_or, "features/return_bool_op_or.fe"}
-test_analysis! { return_bool_true, "features/return_bool_true.fe"}
-test_analysis! { return_builtin_attributes, "features/return_builtin_attributes.fe"}
-test_analysis! { return_complex_struct, "features/return_complex_struct.fe"}
-test_analysis! { return_division_i256, "features/return_division_i256.fe"}
-test_analysis! { return_division_u256, "features/return_division_u256.fe"}
-test_analysis! { return_empty_tuple, "features/return_unit.fe"}
-test_analysis! { return_eq_u256, "features/return_eq_u256.fe"}
-test_analysis! { return_gt_i256, "features/return_gt_i256.fe"}
-test_analysis! { return_gt_u256, "features/return_gt_u256.fe"}
-test_analysis! { return_gte_i256, "features/return_gte_i256.fe"}
-test_analysis! { return_gte_u256, "features/return_gte_u256.fe"}
-test_analysis! { return_i128_cast, "features/return_i128_cast.fe"}
-test_analysis! { return_i256, "features/return_i256.fe"}
-test_analysis! { return_identity_u8, "features/return_identity_u8.fe"}
-test_analysis! { return_identity_u16, "features/return_identity_u16.fe"}
-test_analysis! { return_identity_u32, "features/return_identity_u32.fe"}
-test_analysis! { return_identity_u64, "features/return_identity_u64.fe"}
-test_analysis! { return_identity_u128, "features/return_identity_u128.fe"}
-test_analysis! { return_identity_u256, "features/return_identity_u256.fe"}
-test_analysis! { return_lt_i256, "features/return_lt_i256.fe"}
-test_analysis! { return_lt_u128, "features/return_lt_u128.fe"}
-test_analysis! { return_lt_u256, "features/return_lt_u256.fe"}
-test_analysis! { return_lte_i256, "features/return_lte_i256.fe"}
-test_analysis! { return_lte_u256, "features/return_lte_u256.fe"}
-test_analysis! { return_mod_i256, "features/return_mod_i256.fe"}
-test_analysis! { return_mod_u256, "features/return_mod_u256.fe"}
-test_analysis! { return_msg_sig, "features/return_msg_sig.fe"}
-test_analysis! { return_multiplication_i256, "features/return_multiplication_i256.fe"}
-test_analysis! { return_multiplication_u256, "features/return_multiplication_u256.fe"}
-test_analysis! { return_noteq_u256, "features/return_noteq_u256.fe"}
-test_analysis! { return_pow_i256, "features/return_pow_i256.fe"}
-test_analysis! { return_pow_u256, "features/return_pow_u256.fe"}
-test_analysis! { return_subtraction_i256, "features/return_subtraction_i256.fe"}
-test_analysis! { return_subtraction_u256, "features/return_subtraction_u256.fe"}
-test_analysis! { return_u128_cast, "features/return_u128_cast.fe"}
-test_analysis! { return_u256, "features/return_u256.fe"}
-test_analysis! { return_u256_from_called_fn, "features/return_u256_from_called_fn.fe"}
-test_analysis! { return_u256_from_called_fn_with_args, "features/return_u256_from_called_fn_with_args.fe"}
 test_analysis! { revert, "features/revert.fe"}
 test_analysis! { self_address, "features/self_address.fe"}
 test_analysis! { send_value, "features/send_value.fe"}

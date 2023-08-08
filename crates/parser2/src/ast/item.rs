@@ -25,36 +25,23 @@ ast_node! {
     /// A single item in a module.
     /// Use `[Item::kind]` to get the specific type of item.
     pub struct Item,
-    SK::Mod
-    | SK::Fn
-    | SK::Struct
-    | SK::Contract
-    | SK::Enum
-    | SK::TypeAlias
-    | SK::Impl
-    | SK::Trait
-    | SK::ImplTrait
-    | SK::Const
-    | SK::Use
-    | SK::Extern,
+    SK::Item
 }
 impl Item {
-    pub fn kind(&self) -> ItemKind {
-        match self.syntax().kind() {
-            SK::Mod => ItemKind::Mod(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Fn => ItemKind::Fn(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Struct => ItemKind::Struct(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Contract => ItemKind::Contract(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Enum => ItemKind::Enum(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::TypeAlias => ItemKind::TypeAlias(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Impl => ItemKind::Impl(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Trait => ItemKind::Trait(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::ImplTrait => ItemKind::ImplTrait(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Const => ItemKind::Const(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Use => ItemKind::Use(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::Extern => ItemKind::Extern(AstNode::cast(self.syntax().clone()).unwrap()),
-            _ => unreachable!(),
-        }
+    pub fn kind(&self) -> Option<ItemKind> {
+        support::child(self.syntax())
+            .map(ItemKind::Mod)
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Func))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Struct))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Contract))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Enum))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::TypeAlias))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Impl))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Trait))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::ImplTrait))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Const))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Use))
+            .or_else(|| support::child(self.syntax()).map(ItemKind::Extern))
     }
 }
 
@@ -78,21 +65,21 @@ impl Mod {
 
 ast_node! {
     /// `pub fn foo<T, U: Trait>(_ x: T, from u: U) -> T where T: Trait2 { ... }`
-    pub struct Fn,
-    SK::Fn,
+    pub struct Func,
+    SK::Func,
 }
-impl super::GenericParamsOwner for Fn {}
-impl super::WhereClauseOwner for Fn {}
-impl super::AttrListOwner for Fn {}
-impl super::ItemModifierOwner for Fn {}
-impl Fn {
+impl super::GenericParamsOwner for Func {}
+impl super::WhereClauseOwner for Func {}
+impl super::AttrListOwner for Func {}
+impl super::ItemModifierOwner for Func {}
+impl Func {
     /// Returns the name of the function.
     pub fn name(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
     }
 
     /// Returns the function's parameter list.
-    pub fn params(&self) -> Option<super::FnParamList> {
+    pub fn params(&self) -> Option<super::FuncParamList> {
         support::child(self.syntax())
     }
 
@@ -160,7 +147,7 @@ impl Enum {
     }
 
     /// Returns the enum's variant def list.
-    pub fn variants(&self) -> Option<EnumVariantDefList> {
+    pub fn variants(&self) -> Option<VariantDefList> {
         support::child(self.syntax())
     }
 }
@@ -270,6 +257,7 @@ ast_node! {
     SK::Const,
 }
 impl super::AttrListOwner for Const {}
+impl ItemModifierOwner for Const {}
 impl Const {
     /// Returns the name of the const.
     /// `FOO` in `const FOO: u32 = 42;`
@@ -296,11 +284,16 @@ ast_node! {
     SK::Use,
 }
 impl super::AttrListOwner for Use {}
+impl ItemModifierOwner for Use {}
 impl Use {
     /// Returns the use tree.
     /// `foo::{bar, Baz::*}` in `use foo::{bar, Baz::*}`
     pub fn use_tree(&self) -> Option<super::UseTree> {
         support::child(self.syntax())
+    }
+
+    pub fn has_sub_tree(&self) -> bool {
+        self.use_tree().map_or(false, |it| it.has_subtree())
     }
 }
 
@@ -345,17 +338,17 @@ impl RecordFieldDef {
 }
 
 ast_node! {
-    pub struct EnumVariantDefList,
+    pub struct VariantDefList,
     SK::VariantDefList,
-    IntoIterator<Item=EnumVariantDef>
+    IntoIterator<Item=VariantDef>
 }
 
 ast_node! {
     /// `Foo(i32, u32)`
-    pub struct EnumVariantDef,
+    pub struct VariantDef,
     SK::VariantDef,
 }
-impl EnumVariantDef {
+impl VariantDef {
     /// Returns the name of the variant.
     /// `Foo` in `Foo(i32, u32)`
     pub fn name(&self) -> Option<SyntaxToken> {
@@ -373,25 +366,25 @@ impl EnumVariantDef {
 ast_node! {
     pub struct TraitItemList,
     SK::TraitItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ImplItemList,
     SK::ImplItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ImplTraitItemList,
     SK::ImplTraitItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
     pub struct ExternItemList,
     SK::ExternItemList,
-    IntoIterator<Item=Fn>,
+    IntoIterator<Item=Func>,
 }
 
 ast_node! {
@@ -419,7 +412,7 @@ pub trait ItemModifierOwner: AstNode<Language = FeLang> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ItemKind {
     Mod(Mod),
-    Fn(Fn),
+    Func(Func),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -455,7 +448,7 @@ mod tests {
         let item_list = ItemList::cast(parser.finish_to_node().0).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
-        items.pop().unwrap().kind().try_into().unwrap()
+        items.pop().unwrap().kind().unwrap().try_into().unwrap()
     }
 
     #[test]
@@ -473,13 +466,13 @@ mod tests {
         for item in mod_.items().unwrap().into_iter() {
             match i {
                 0 => {
-                    assert!(matches!(item.kind(), ItemKind::Fn(_)));
-                    let func: Fn = item.kind().try_into().unwrap();
+                    assert!(matches!(item.kind().unwrap(), ItemKind::Func(_)));
+                    let func: Func = item.kind().unwrap().try_into().unwrap();
                     assert_eq!(func.name().unwrap().text(), "bar");
                 }
                 1 => {
-                    assert!(matches!(item.kind(), ItemKind::Struct(_)));
-                    let struct_: Struct = item.kind().try_into().unwrap();
+                    assert!(matches!(item.kind().unwrap(), ItemKind::Struct(_)));
+                    let struct_: Struct = item.kind().unwrap().try_into().unwrap();
                     assert_eq!(struct_.name().unwrap().text(), "Baz");
                 }
                 _ => panic!(),
@@ -498,7 +491,7 @@ mod tests {
                 #evm
                 pub unsafe fn foo<T, U: Trait>(_ x: T, from u: U) -> (T, U) where T: Trait2 { return }
             "#;
-        let func: Fn = parse_item(source);
+        let func: Func = parse_item(source);
 
         assert_eq!(func.name().unwrap().text(), "foo");
         assert_eq!(func.attr_list().unwrap().iter().count(), 2);

@@ -1,20 +1,18 @@
-use crate::context::AnalyzerContext;
-use crate::display::DisplayWithDb;
-use crate::display::Displayable;
-use crate::errors::TypeError;
-use crate::namespace::items::{
-    ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+use crate::{
+    context::AnalyzerContext,
+    display::{DisplayWithDb, Displayable},
+    errors::TypeError,
+    namespace::items::{
+        ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+    },
+    AnalyzerDb,
 };
-use crate::AnalyzerDb;
 
-use fe_common::impl_intern_key;
-use fe_common::Span;
+use fe_common::{impl_intern_key, Span};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
-use std::fmt;
-use std::rc::Rc;
-use std::str::FromStr;
+use std::{fmt, rc::Rc, str::FromStr};
 use strum::{AsRefStr, EnumIter, EnumString};
 
 pub fn u256_min() -> BigInt {

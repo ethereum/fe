@@ -1,22 +1,25 @@
-use crate::builtins;
-use crate::constants::MAX_INDEXED_EVENT_FIELDS;
-use crate::context::AnalyzerContext;
-use crate::db::Analysis;
-use crate::errors::TypeError;
-use crate::namespace::items::{
-    self, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, StructField, StructFieldId,
-    StructId, TypeDef,
+use crate::{
+    builtins,
+    constants::MAX_INDEXED_EVENT_FIELDS,
+    context::AnalyzerContext,
+    db::Analysis,
+    errors::TypeError,
+    namespace::{
+        items::{
+            self, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, StructField,
+            StructFieldId, StructId, TypeDef,
+        },
+        scopes::ItemScope,
+        types::{Type, TypeId},
+    },
+    traversal::types::type_desc,
+    AnalyzerDb,
 };
-use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{Type, TypeId};
-use crate::traversal::types::type_desc;
-use crate::AnalyzerDb;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::{ast, Label};
 use indexmap::map::{Entry, IndexMap};
 use smol_str::SmolStr;
-use std::rc::Rc;
-use std::str::FromStr;
+use std::{rc::Rc, str::FromStr};
 
 pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<[StructFieldId]> {
     struct_

@@ -1,0 +1,33 @@
+use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+use std::traits::Max
+
+#test
+fn test_buf_rw() {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 161) 
+    let mut writer: MemoryBufferWriter = buf.writer()
+    let mut reader: MemoryBufferReader = buf.reader()
+
+    writer.write(value: 42)
+    writer.write(value: 42)
+    writer.write(value: 26)
+    writer.write(value: u8(26))
+    writer.write(value: u256::max())
+    writer.write(value: u128::max())
+    writer.write(value: u64::max())
+    writer.write(value: u32::max())
+    writer.write(value: u16::max())
+    writer.write(value: u8::max())
+    writer.write(value: u8(0))
+
+    assert reader.read_u256() == 42
+    assert reader.read_u256() == 42
+    assert reader.read_u256() == 26
+    assert reader.read_u8() == 26
+    assert reader.read_u256() == u256::max()
+    assert reader.read_u128() == u128::max()
+    assert reader.read_u64() == u64::max()
+    assert reader.read_u32() == u32::max()
+    assert reader.read_u16() == u16::max()
+    assert reader.read_u8() == u8::max()
+    assert reader.read_u8() == 0
+}

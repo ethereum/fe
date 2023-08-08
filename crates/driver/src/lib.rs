@@ -3,9 +3,7 @@
 pub use fe_codegen::db::{CodegenDb, Db};
 
 use fe_analyzer::namespace::items::{ContractId, FunctionId, IngotId, IngotMode, ModuleId};
-use fe_common::db::Upcast;
-use fe_common::diagnostics::Diagnostic;
-use fe_common::files::FileKind;
+use fe_common::{db::Upcast, diagnostics::Diagnostic, files::FileKind};
 use fe_parser::ast::SmolStr;
 use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};

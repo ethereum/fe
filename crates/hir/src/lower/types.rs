@@ -38,7 +38,7 @@ impl TypeId {
             }
         };
 
-        TypeId::new(ctxt.db, kind)
+        TypeId::new(ctxt.db(), kind)
     }
 
     pub(super) fn lower_ast_partial(

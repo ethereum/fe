@@ -1,6 +1,4 @@
-use parser::ast::{self, prelude::*};
-
-use crate::span::transition::ResolvedOrigin;
+use parser::ast;
 
 use super::define_lazy_span_node;
 
@@ -11,30 +9,27 @@ define_lazy_span_node!(
         (attr, LazyAttrSpan),
     }
 );
-impl LazyAttrListSpan {
-    pub fn normal_attr(&self, idx: usize) -> LazyNormalAttrSpan {
-        fn f(origin: ResolvedOrigin, arg: crate::span::transition::LazyArg) -> ResolvedOrigin {
-            let idx = match arg {
-                crate::span::transition::LazyArg::Idx(idx) => idx,
-                _ => unreachable!(),
-            };
-            origin.map(|node| {
-                ast::AttrList::cast(node)
-                    .and_then(|f| f.normal_attrs().nth(idx))
-                    .map(|n| n.syntax().clone().into())
-            })
-        }
+impl LazyAttrListSpan {}
 
-        let lazy_transition = crate::span::transition::LazyTransitionFn {
-            f,
-            arg: crate::span::transition::LazyArg::Idx(idx),
-        };
+define_lazy_span_node!(LazyAttrSpan);
+impl LazyAttrSpan {
+    pub fn into_normal_attr(&self) -> LazyNormalAttrSpan {
+        self.clone().into_normal_attr_moved()
+    }
 
-        LazyNormalAttrSpan(self.0.push_transition(lazy_transition))
+    pub fn into_normal_attr_moved(self) -> LazyNormalAttrSpan {
+        LazyNormalAttrSpan(self.0)
+    }
+
+    pub fn into_doc_comment_attr(&self) -> LazyDocCommentAttrSpan {
+        self.clone().into_doc_comment_attr_moved()
+    }
+
+    pub fn into_doc_comment_attr_moved(self) -> LazyDocCommentAttrSpan {
+        LazyDocCommentAttrSpan(self.0)
     }
 }
 
-define_lazy_span_node!(LazyAttrSpan);
 define_lazy_span_node!(
     LazyNormalAttrSpan,
     ast::NormalAttr,
@@ -43,6 +38,14 @@ define_lazy_span_node!(
     }
     @node {
         (args, args, LazyAttrArgListSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyDocCommentAttrSpan,
+    ast::DocCommentAttr,
+    @token {
+        (doc, doc),
     }
 );
 

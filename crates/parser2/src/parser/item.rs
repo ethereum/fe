@@ -1,11 +1,11 @@
 use std::{cell::Cell, rc::Rc};
 
-use crate::{parser::func::FnScope, SyntaxKind};
+use crate::{parser::func::FuncScope, SyntaxKind};
 
 use super::{
     attr, define_scope,
     expr::parse_expr,
-    func::FnDefScope,
+    func::FuncDefScope,
     param::{parse_generic_params_opt, parse_where_clause_opt},
     struct_::RecordFieldDefListScope,
     token_stream::{LexicalToken, TokenStream},
@@ -56,74 +56,88 @@ impl super::Parse for ItemListScope {
                 break;
             }
 
-            let mut checkpoint = attr::parse_attr_list(parser);
-            let modifier_scope = ItemModifierScope::default();
-            let modifier = match parser.current_kind() {
-                Some(kind) if is_modifier_head(kind) => {
-                    let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
-                    checkpoint.get_or_insert(modifier_checkpoint);
-                    modifier_scope.kind.get()
-                }
-                _ => ModifierKind::None,
-            };
+            parser.parse(ItemScope::default(), None);
+        }
+    }
+}
 
-            if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
-                parser.error("expected `fn` after `unsafe` keyword");
-            } else if modifier.is_pub() && matches!(parser.current_kind(), Some(ImplKw | ExternKw))
-            {
-                let error_msg = format!(
-                    "`pub` can't be used for `{}`",
-                    parser.current_token().unwrap().text()
-                );
-                parser.error(&error_msg);
-            }
+define_scope! {
+    #[doc(hidden)]
+    pub(super) ItemScope,
+    Item,
+    Inheritance
+}
+impl super::Parse for ItemScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        use crate::SyntaxKind::*;
 
-            match parser.current_kind() {
-                Some(ModKw) => {
-                    parser.parse(ModScope::default(), checkpoint);
-                }
-                Some(FnKw) => {
-                    parser.parse(FnScope::default(), checkpoint);
-                }
-                Some(StructKw) => {
-                    parser.parse(super::struct_::StructScope::default(), checkpoint);
-                }
-                Some(ContractKw) => {
-                    parser.parse(ContractScope::default(), checkpoint);
-                }
-                Some(EnumKw) => {
-                    parser.parse(EnumScope::default(), checkpoint);
-                }
-                Some(TraitKw) => {
-                    parser.parse(TraitScope::default(), checkpoint);
-                }
-                Some(ImplKw) => {
-                    parser.parse(ImplScope::default(), checkpoint);
-                }
-                Some(UseKw) => {
-                    parser.parse(UseScope::default(), checkpoint);
-                }
-                Some(ConstKw) => {
-                    parser.parse(ConstScope::default(), checkpoint);
-                }
-                Some(ExternKw) => {
-                    parser.parse(ExternScope::default(), checkpoint);
-                }
-                Some(TypeKw) => {
-                    parser.parse(TypeAliasScope::default(), checkpoint);
-                }
-                tok => parser
-                    .error_and_recover(&format! {"expected item: but got {tok:?}"}, checkpoint),
+        let mut checkpoint = attr::parse_attr_list(parser);
+        let modifier_scope = ItemModifierScope::default();
+        let modifier = match parser.current_kind() {
+            Some(kind) if kind.is_modifier_head() => {
+                let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
+                checkpoint.get_or_insert(modifier_checkpoint);
+                modifier_scope.kind.get()
             }
+            _ => ModifierKind::None,
+        };
 
-            parser.set_newline_as_trivia(false);
-            if parser.current_kind().is_some() && !parser.bump_if(SyntaxKind::Newline) {
-                parser.bump_or_recover(
-                    SyntaxKind::Newline,
-                    "expected newline after item definition",
-                    checkpoint,
-                )
+        if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
+            parser.error("expected `fn` after `unsafe` keyword");
+        } else if modifier.is_pub() && matches!(parser.current_kind(), Some(ImplKw | ExternKw)) {
+            let error_msg = format!(
+                "`pub` can't be used for `{}`",
+                parser.current_token().unwrap().text()
+            );
+            parser.error(&error_msg);
+        }
+
+        match parser.current_kind() {
+            Some(ModKw) => {
+                parser.parse(ModScope::default(), checkpoint);
             }
+            Some(FnKw) => {
+                parser.parse(FuncScope::default(), checkpoint);
+            }
+            Some(StructKw) => {
+                parser.parse(super::struct_::StructScope::default(), checkpoint);
+            }
+            Some(ContractKw) => {
+                parser.parse(ContractScope::default(), checkpoint);
+            }
+            Some(EnumKw) => {
+                parser.parse(EnumScope::default(), checkpoint);
+            }
+            Some(TraitKw) => {
+                parser.parse(TraitScope::default(), checkpoint);
+            }
+            Some(ImplKw) => {
+                parser.parse(ImplScope::default(), checkpoint);
+            }
+            Some(UseKw) => {
+                parser.parse(UseScope::default(), checkpoint);
+            }
+            Some(ConstKw) => {
+                parser.parse(ConstScope::default(), checkpoint);
+            }
+            Some(ExternKw) => {
+                parser.parse(ExternScope::default(), checkpoint);
+            }
+            Some(TypeKw) => {
+                parser.parse(TypeAliasScope::default(), checkpoint);
+            }
+            tok => {
+                parser.error_and_recover(&format! {"expected item: but got {tok:?}"}, checkpoint)
+            }
+        }
+
+        parser.set_newline_as_trivia(false);
+        if parser.current_kind().is_some() && !parser.bump_if(SyntaxKind::Newline) {
+            parser.bump_or_recover(
+                SyntaxKind::Newline,
+                "expected newline after item definition",
+                checkpoint,
+            )
         }
     }
 }
@@ -320,7 +334,7 @@ impl super::Parse for TraitScope {
 define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, false, FnDefScope::TraitDef)
+        parse_fn_item_block(parser, false, FuncDefScope::TraitDef)
     }
 }
 
@@ -382,14 +396,14 @@ impl super::Parse for ImplScope {
 define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, false, FnDefScope::Normal)
+        parse_fn_item_block(parser, false, FuncDefScope::Normal)
     }
 }
 
 define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, FnDefScope::Normal)
+        parse_fn_item_block(parser, true, FuncDefScope::Normal)
     }
 }
 
@@ -450,7 +464,7 @@ impl super::Parse for ExternScope {
 define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, FnKw) }
 impl super::Parse for ExternItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, FnDefScope::Extern);
+        parse_fn_item_block(parser, true, FuncDefScope::Extern);
     }
 }
 
@@ -495,7 +509,7 @@ impl super::Parse for TypeAliasScope {
 fn parse_fn_item_block<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_modifier: bool,
-    fn_def_scope: FnDefScope,
+    fn_def_scope: FuncDefScope,
 ) {
     parser.bump_expected(SyntaxKind::LBrace);
     loop {
@@ -507,7 +521,7 @@ fn parse_fn_item_block<S: TokenStream>(
         let mut checkpoint = attr::parse_attr_list(parser);
         let modifier_scope = ItemModifierScope::default();
         match parser.current_kind() {
-            Some(kind) if is_modifier_head(kind) && allow_modifier => {
+            Some(kind) if kind.is_modifier_head() && allow_modifier => {
                 if allow_modifier {
                     let (_, modifier_checkpoint) = parser.parse(modifier_scope, None);
                     checkpoint.get_or_insert(modifier_checkpoint);
@@ -520,7 +534,7 @@ fn parse_fn_item_block<S: TokenStream>(
 
         match parser.current_kind() {
             Some(SyntaxKind::FnKw) => {
-                parser.parse(FnScope::new(fn_def_scope), checkpoint);
+                parser.parse(FuncScope::new(fn_def_scope), checkpoint);
             }
             _ => {
                 parser.error_and_recover("only `fn` is allowed in the block", checkpoint);
@@ -537,8 +551,4 @@ fn parse_fn_item_block<S: TokenStream>(
     }
 
     parser.bump_or_recover(SyntaxKind::RBrace, "expected `}` to close the block", None);
-}
-
-fn is_modifier_head(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::PubKw | SyntaxKind::UnsafeKw)
 }

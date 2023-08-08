@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{Body, StmtId},
-    span::types::LazyTypeSpan,
+    span::types::LazyTySpan,
     SpannedHirDb,
 };
 
@@ -13,7 +13,7 @@ use super::{
 
 define_lazy_span_node!(LazyStmtSpan, ast::Stmt,);
 impl LazyStmtSpan {
-    pub fn new(stmt: StmtId, body: Body) -> Self {
+    pub fn new(body: Body, stmt: StmtId) -> Self {
         let root = StmtRoot { stmt, body };
         Self(SpanTransitionChain::new(root))
     }
@@ -27,35 +27,34 @@ define_lazy_span_node!(
     LazyLetStmtSpan,
     ast::LetStmt,
     @node {
-        (ty, type_annotation, LazyTypeSpan),
+        (ty, type_annotation, LazyTySpan),
     }
 );
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct StmtRoot {
     stmt: StmtId,
-    body: Body,
+    pub(crate) body: Body,
 }
 
 impl ChainInitiator for StmtRoot {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.stmt_map.node_to_source(self.stmt);
-        let top_mod = self.body.top_mod(db.upcast());
+        let top_mod = self.body.top_mod(db.as_hir_db());
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{hir_def::Body, test_db::TestDb};
-    use common::Upcast;
+    use crate::{hir_def::Body, test_db::TestDb, HirDb};
 
     #[test]
     fn aug_assign() {
         let mut db = TestDb::default();
 
-        let text = r#" {
+        let text = r#"
             fn foo() {
                 let mut x = 0
                 x += 1
@@ -63,8 +62,9 @@ mod tests {
         }"#;
 
         let body: Body = db.expect_item::<Body>(text);
-        let top_mod = body.top_mod(db.upcast());
-        for (i, stmt) in body.stmts(db.upcast()).keys().enumerate() {
+        let top_mod = body.top_mod(db.as_hir_db());
+        assert!(body.stmts(db.as_hir_db()).len() == 2);
+        for (i, stmt) in body.stmts(db.as_hir_db()).keys().enumerate() {
             match i {
                 0 => {
                     let span = stmt.lazy_span(body);

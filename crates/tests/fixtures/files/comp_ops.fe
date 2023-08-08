@@ -1,0 +1,44 @@
+#test
+fn test_comp_ops() {
+    assert (u256(1) == u256(1)) == true
+    assert (u256(1) == u256(2)) == false
+    assert (u256(1) != u256(1)) == false
+    assert (u256(1) != u256(2)) == true
+    assert (u256(1) < u256(2)) == true
+    assert (u256(1) < u256(1)) == false
+    assert (u256(2) < u256(1)) == false
+    assert (u128(1) < u128(2)) == true
+    assert (i256(1) < i256(2)) == true
+    assert (i256(1) < i256(1)) == false
+    assert (i256(2) < i256(1)) == false
+    assert (i256(-2) < i256(-1)) == true
+    assert (i256(-1) < i256(-1)) == false
+    assert (i256(-1) < i256(-2)) == false
+    assert (u256(1) <= u256(2)) == true
+    assert (u256(1) <= u256(1)) == true
+    assert (u256(2) <= u256(1)) == false
+    assert (i256(1) <= i256(2)) == true
+    assert (i256(1) <= i256(1)) == true
+    assert (i256(2) <= i256(1)) == false
+    assert (i256(-2) <= i256(-1)) == true
+    assert (i256(-1) <= i256(-1)) == true
+    assert (i256(-1) <= i256(-2)) == false
+    assert (u256(2) > u256(1)) == true
+    assert (u256(1) > u256(1)) == false
+    assert (u256(1) > u256(2)) == false
+    assert (i256(2) > i256(1)) == true
+    assert (i256(1) > i256(1)) == false
+    assert (i256(1) > i256(2)) == false
+    assert (i256(-1) > i256(-2)) == true
+    assert (i256(-1) > i256(-1)) == false
+    assert (i256(-2) > i256(-1)) == false
+    assert (u256(2) >= u256(1)) == true
+    assert (u256(1) >= u256(1)) == true
+    assert (u256(1) >= u256(2)) == false
+    assert (i256(2) >= i256(1)) == true
+    assert (i256(1) >= i256(1)) == true
+    assert (i256(1) >= i256(2)) == false
+    assert (i256(-1) >= i256(-2)) == true
+    assert (i256(-1) >= i256(-1)) == true
+    assert (i256(-2) >=i256(-1)) ==  false 
+}
