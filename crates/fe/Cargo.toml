@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 name = "fe"
 readme = "README.md"
 repository = "https://github.com/ethereum/fe"
-version = "0.23.0"
+version = "0.24.0"
 
 [features]
 solc-backend = ["fe-driver/solc-backend"]
@@ -20,7 +20,7 @@ walkdir = "2"
 indexmap = "1.6.2"
 include_dir = "0.7.2"
 colored = "2.0.0"
-fe-test-runner = {path = "../test-runner", version = "^0.23.0"}
-fe-common = {path = "../common", version = "^0.23.0"}
-fe-driver = {path = "../driver", version = "^0.23.0"}
-fe-parser = {path = "../parser", version = "^0.23.0"}
+fe-test-runner = {path = "../test-runner", version = "^0.24.0"}
+fe-common = {path = "../common", version = "^0.24.0"}
+fe-driver = {path = "../driver", version = "^0.24.0"}
+fe-parser = {path = "../parser", version = "^0.24.0"}
