@@ -4,13 +4,14 @@ use std::path::Path;
 use clap::Args;
 use colored::Colorize;
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::utils::files::BuildFiles;
+use fe_common::utils::files::{get_project_root, BuildFiles};
 use fe_driver::CompiledTest;
 use fe_test_runner::TestSink;
 
 #[derive(Args)]
 #[clap(about = "Execute tests in the current project")]
 pub struct TestArgs {
+    #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
     #[clap(long, takes_value(true))]
     optimize: Option<bool>,

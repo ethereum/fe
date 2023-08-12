@@ -7,6 +7,8 @@ use path_clean::PathClean;
 use smol_str::SmolStr;
 use walkdir::WalkDir;
 
+const FE_TOML: &str = "fe.toml";
+
 enum FileLoader {
     Static(Vec<(&'static str, &'static str)>),
     Fs,
@@ -141,7 +143,7 @@ pub struct ProjectFiles {
 impl ProjectFiles {
     fn load(loader: &FileLoader, path: &str) -> Result<Self, String> {
         let manifest_path = Path::new(path)
-            .join("fe.toml")
+            .join(FE_TOML)
             .to_str()
             .expect("unable to convert path to &str")
             .to_owned();
@@ -291,4 +293,25 @@ impl Manifest {
 
         Ok(manifest)
     }
+}
+
+/// Returns the root path of the current Fe project
+pub fn get_project_root() -> Option<String> {
+    let current_dir = std::env::current_dir().expect("Unable to get current directory");
+
+    let mut current_path = current_dir.clone();
+    loop {
+        let fe_toml_path = current_path.join(FE_TOML);
+        if fe_toml_path.is_file() {
+            return fe_toml_path
+                .parent()
+                .map(|val| val.to_string_lossy().to_string());
+        }
+
+        if !current_path.pop() {
+            break;
+        }
+    }
+
+    None
 }
