@@ -41,85 +41,37 @@ impl Eq for u8 {
 
 impl Eq for i256 { 
    fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){ // alternatively, use bitwise operations or shifting
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u256(self), u256(other))
-        }
+        return evm::eq(u256(self), u256(other))
     }
 }
 
 impl Eq for i128 {
     fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){ 
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u128(self), u128(other))
-        }
+        return evm::eq(u128(self), u128(other))
     }
 }
 
 impl Eq for i64 {
     fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){ 
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u64(self), u64(other))
-        }
+        return evm::eq(u64(self), u64(other))
     }
 }
 
 impl Eq for i32 {
     fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){ 
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u32(self), u32(other))
-        }
+        return evm::eq(u32(self), u32(other))
     }
 }
 
 impl Eq for i16 {
     fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){ 
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u16(self), u16(other))
-        }
+        return evm::eq(u16(self), u16(other))
     }
 }
 
 impl Eq for i8 {
     fn compare(self, other: Self) -> bool {
-        if(self > 0 and other < 0){
-            return false
-        }
-        else if(self < 0 and other > 0) {
-            return false
-        }
-        else {
-            return evm::eq(u8(self), u8(other))
-        }
+        return evm::eq(u8(self), u8(other))
     }
 }
 
