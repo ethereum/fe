@@ -4,6 +4,7 @@ use std::buf::{
     MemoryBufferWriter,
     Eq
 }
+
 #test
 unsafe fn test_buf_sto_u256() {
     //create first buffer

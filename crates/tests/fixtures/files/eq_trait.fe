@@ -1,0 +1,13 @@
+use std::cmp::Eq
+
+#test
+fn eq_trait() {
+    assert (u256(1).compare(other:u16(1))).compare(other: true)
+    assert (u256(1).compare(other: u256(2))).compare(other: false)
+    assert (u16(1).compare(other: u16(2))).compare(other: false)
+    assert (i256(-1).compare(other: i256(-1)))
+    assert (i8(-1).compare(other: i8(-1)))
+    assert (i16(-1).compare(other: i16(-2))).compare(other: false)
+    assert (false.compare(other:false)).compare(other: true)
+    assert (false.compare(other: true)).compare(other: false)
+}

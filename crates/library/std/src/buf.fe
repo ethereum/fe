@@ -1,6 +1,7 @@
 use ingot::evm
 use ingot::math
 use ingot::cmp::Eq
+
 unsafe fn avail() -> u256 {
     let ptr: u256 = evm::mload(offset: 64)
 

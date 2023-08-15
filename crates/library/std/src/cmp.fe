@@ -1,4 +1,5 @@
 use ingot::evm
+
 pub trait Eq {
     fn compare(self, other: Self) -> bool;
 }
