@@ -72,10 +72,14 @@ impl Server {
 }
 
 pub struct ServerState {
+    // contains all known tests
     tests: IndexMap<u64, SymbolicTest>,
-    statuses: IndexMap<u64, ProofStatus>,
-    queue: Vec<u64>,
+    // tests waiting to be added to the pool
+    // first in first out allows for easy test prioritization
+    stack: Vec<u64>,
+    // currently executing tests
     pool: KSpecExecPool,
+    // all tests that have been completed
     db: Db,
 }
 
@@ -85,10 +89,10 @@ impl Display for ServerState {
         writeln!(f, "")?;
 
         writeln!(f, "queue:")?;
-        writeln!(f, "{}", &self.queue)?;
+        writeln!(f, "{:?}", &self.queue)?;
 
         writeln!(f, "execution pool:")?;
-        writeln!(f, "{}", &self.exec_pool)?;
+        writeln!(f, "{:?}", &self.exec_pool)?;
 
         writeln!(f, "db:")?;
         writeln!(f, "{}", &self.db)
@@ -98,31 +102,26 @@ impl Display for ServerState {
 impl ServerState {
     pub fn new(db_path: &str) -> Self {
         ServerState {
-            queue: Queue::new(),
-            exec_pool: KSpecExecPool::new(),
+            tests: indexmap! {},
+            stack: vec![],
+            pool: KSpecExecPool::new(),
             db: Db::new(db_path),
         }
     }
 
     pub fn add_test(&mut self, test: SymbolicTest) {
-        self.queue.push_spec(spec)
+        let id = test.id();
+
+        if !self.stack.contains(id) && !self.db.contains(id) {}
     }
 
-    pub fn proof_status(&self, invariant_id: u64) -> ProofStatus {
-        if let Some(entry) = self.db.get(invariant_id) {
-            if entry.complete {
-                ProofStatus::Complete
-            } else {
-                ProofStatus::Incomplete
-            }
+    pub fn test_status(&self, id: u64) -> ProofStatus {
+        if self.queue.contains(id) {
+            // queued
+        } else if Some(result) = self.db.get(id) {
+            // valid or invalid
         } else {
-            for spec in &self.queue.specs {
-                if spec.invariant_id == invariant_id {
-                    return spec.status;
-                }
-            }
-
-            panic!("missing invariant")
+            // unknown
         }
     }
 
