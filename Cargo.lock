@@ -889,8 +889,10 @@ version = "0.24.0"
 dependencies = [
  "bytes",
  "colored",
+ "ethabi",
  "getrandom",
  "hex",
+ "indexmap 1.9.2",
  "revm",
 ]
 

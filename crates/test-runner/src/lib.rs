@@ -1,15 +1,30 @@
 use bytes::Bytes;
 use colored::Colorize;
+use ethabi::{Event, Hash, RawLog};
+use indexmap::IndexMap;
 use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, B160, U256};
 use std::fmt::Display;
 
-#[derive(Debug, Default)]
+pub use ethabi;
+
+#[derive(Debug)]
 pub struct TestSink {
     success_count: usize,
     failure_details: Vec<String>,
+    logs_details: Vec<String>,
+    collect_logs: bool,
 }
 
 impl TestSink {
+    pub fn new(collect_logs: bool) -> Self {
+        Self {
+            success_count: 0,
+            failure_details: vec![],
+            logs_details: vec![],
+            collect_logs,
+        }
+    }
+
     pub fn test_count(&self) -> usize {
         self.failure_count() + self.success_count()
     }
@@ -18,13 +33,27 @@ impl TestSink {
         self.failure_details.len()
     }
 
+    pub fn logs_count(&self) -> usize {
+        self.logs_details.len()
+    }
+
     pub fn success_count(&self) -> usize {
         self.success_count
     }
 
     pub fn insert_failure(&mut self, name: &str, reason: &str) {
         self.failure_details
-            .push(format!("{} ({})", name, reason.red()))
+            .push(format!("{}\n{}", name, reason.red()))
+    }
+
+    pub fn insert_logs(&mut self, name: &str, logs: &str) {
+        if self.collect_logs {
+            self.logs_details.push(format!(
+                "{} produced the following logs:\n{}\n",
+                name,
+                logs.bright_yellow()
+            ))
+        }
     }
 
     pub fn inc_success_count(&mut self) {
@@ -34,13 +63,26 @@ impl TestSink {
     pub fn failure_details(&self) -> String {
         self.failure_details.join("\n")
     }
+
+    pub fn logs_details(&self) -> String {
+        self.logs_details.join("\n")
+    }
 }
 
 impl Display for TestSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.logs_count() != 0 {
+            writeln!(f, "{}", self.logs_details())?;
+            writeln!(f)?;
+        }
+
         if self.failure_count() != 0 {
             writeln!(f, "{}", self.failure_details())?;
             writeln!(f)?;
+            if self.collect_logs {
+                writeln!(f, "note: failed tests do not produce logs")?;
+                writeln!(f)?;
+            }
         }
 
         let test_description = |n: usize, status: &dyn Display| -> String {
@@ -65,7 +107,11 @@ impl Display for TestSink {
     }
 }
 
-pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
+pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink) -> bool {
+    let events: IndexMap<_, _> = events
+        .iter()
+        .map(|event| (event.signature(), event))
+        .collect();
     let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
 
     let mut database = revm::InMemoryDB::default();
@@ -81,17 +127,60 @@ pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
     evm.database(&mut database);
     let result = evm.transact_commit().expect("evm failure");
 
-    if result.is_success() {
+    if let ExecutionResult::Success { logs, .. } = result {
+        let logs: Vec<_> = logs
+            .iter()
+            .map(|log| {
+                if let Some(Some(event)) = log
+                    .topics
+                    .get(0)
+                    .map(|sig| events.get(&Hash::from_slice(sig.as_bytes())))
+                {
+                    let topics = log
+                        .topics
+                        .iter()
+                        .map(|topic| Hash::from_slice(topic.as_bytes()))
+                        .collect();
+                    let data = log.data.clone().to_vec();
+                    let raw_log = RawLog { topics, data };
+                    if let Ok(parsed_event) = event.parse_log(raw_log) {
+                        format!(
+                            "  {} emitted by {} with the following parameters [{}]",
+                            event.name,
+                            log.address,
+                            parsed_event
+                                .params
+                                .iter()
+                                .map(|param| format!("{}: {}", param.name, param.value))
+                                .collect::<Vec<String>>()
+                                .join(", "),
+                        )
+                    } else {
+                        format!("  {:?}", log)
+                    }
+                } else {
+                    format!("  {:?}", log)
+                }
+            })
+            .collect();
+
+        if !logs.is_empty() {
+            sink.insert_logs(name, &logs.join("\n"))
+        }
+
         sink.inc_success_count();
         true
-    } else if let ExecutionResult::Revert { gas_used, output } = result {
+    } else if let ExecutionResult::Revert { output, .. } = result {
         sink.insert_failure(
             name,
-            &format!(
-                "Reverted gas used: {} output: {}",
-                gas_used,
-                hex::encode(output)
-            ),
+            &if output.is_empty() {
+                "  reverted".to_string()
+            } else {
+                format!(
+                    "  reverted with the following output: {}",
+                    hex::encode(output)
+                )
+            },
         );
         false
     } else {

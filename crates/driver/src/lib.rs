@@ -1,5 +1,7 @@
 #![allow(unused_imports, dead_code)]
 
+use fe_abi::event::AbiEvent;
+use fe_abi::types::{AbiTupleField, AbiType};
 pub use fe_codegen::db::{CodegenDb, Db};
 
 use fe_analyzer::namespace::items::{ContractId, FunctionId, IngotId, IngotMode, ModuleId};
@@ -7,6 +9,7 @@ use fe_common::diagnostics::Diagnostic;
 use fe_common::files::FileKind;
 use fe_common::{db::Upcast, utils::files::BuildFiles};
 use fe_parser::ast::SmolStr;
+use fe_test_runner::ethabi::{Event, EventParam, ParamType};
 use fe_test_runner::TestSink;
 use indexmap::{indexmap, IndexMap};
 use serde_json::Value;
@@ -31,18 +34,68 @@ pub struct CompiledContract {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledTest {
     pub name: SmolStr,
+    events: Vec<AbiEvent>,
     bytecode: String,
 }
 
 #[cfg(feature = "solc-backend")]
 impl CompiledTest {
-    pub fn new(name: SmolStr, bytecode: String) -> Self {
-        Self { name, bytecode }
+    pub fn new(name: SmolStr, events: Vec<AbiEvent>, bytecode: String) -> Self {
+        Self {
+            name,
+            events,
+            bytecode,
+        }
     }
 
     pub fn execute(&self, sink: &mut TestSink) -> bool {
-        fe_test_runner::execute(&self.name, &self.bytecode, sink)
+        let events = map_abi_events(&self.events);
+        fe_test_runner::execute(&self.name, &events, &self.bytecode, sink)
     }
+}
+
+fn map_abi_events(events: &[AbiEvent]) -> Vec<Event> {
+    events.iter().map(map_abi_event).collect()
+}
+
+fn map_abi_event(event: &AbiEvent) -> Event {
+    let inputs = event
+        .inputs
+        .iter()
+        .map(|input| {
+            let kind = map_abi_type(&input.ty);
+            EventParam {
+                name: input.name.to_owned(),
+                kind,
+                indexed: input.indexed,
+            }
+        })
+        .collect();
+    Event {
+        name: event.name.to_owned(),
+        inputs,
+        anonymous: event.anonymous,
+    }
+}
+
+fn map_abi_type(typ: &AbiType) -> ParamType {
+    match typ {
+        AbiType::UInt(value) => ParamType::Uint(*value),
+        AbiType::Int(value) => ParamType::Int(*value),
+        AbiType::Address => ParamType::Address,
+        AbiType::Bool => ParamType::Bool,
+        AbiType::Function => panic!("function cannot be mapped to an actual ABI value type"),
+        AbiType::Array { elem_ty, len } => {
+            ParamType::FixedArray(Box::new(map_abi_type(elem_ty)), *len)
+        }
+        AbiType::Tuple(params) => ParamType::Tuple(map_abi_types(params)),
+        AbiType::Bytes => ParamType::Bytes,
+        AbiType::String => ParamType::String,
+    }
+}
+
+fn map_abi_types(fields: &[AbiTupleField]) -> Vec<ParamType> {
+    fields.iter().map(|field| map_abi_type(&field.ty)).collect()
 }
 
 #[derive(Debug)]
@@ -168,7 +221,8 @@ fn compile_test(db: &mut Db, test: FunctionId, optimize: bool) -> CompiledTest {
         .to_string()
         .replace('"', "\\\"");
     let bytecode = compile_to_evm("test", &yul_test, optimize);
-    CompiledTest::new(test.name(db), bytecode)
+    let events = db.codegen_abi_module_events(test.module(db));
+    CompiledTest::new(test.name(db), events, bytecode)
 }
 
 #[cfg(feature = "solc-backend")]

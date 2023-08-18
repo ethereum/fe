@@ -17,6 +17,8 @@ pub struct TestArgs {
     filter: Option<String>,
     #[clap(long, takes_value(true))]
     optimize: Option<bool>,
+    #[clap(long)]
+    logs: bool,
 }
 
 pub fn test(args: TestArgs) {
@@ -29,36 +31,9 @@ pub fn test(args: TestArgs) {
     };
 
     println!("{test_sink}");
+
     if test_sink.failure_count() != 0 {
         std::process::exit(1)
-    }
-}
-
-fn test_single_file(args: &TestArgs) -> TestSink {
-    let input_path = &args.input_path;
-
-    let mut db = fe_driver::Db::default();
-    let content = match std::fs::read_to_string(input_path) {
-        Err(err) => {
-            eprintln!("Failed to load file: `{input_path}`. Error: {err}");
-            std::process::exit(1)
-        }
-        Ok(content) => content,
-    };
-
-    match fe_driver::compile_single_file_tests(&mut db, input_path, &content, true) {
-        Ok((name, tests)) => {
-            let tests = filter_tests(&tests, &args.filter);
-
-            let mut sink = TestSink::default();
-            execute_tests(&name, &tests, &mut sink);
-            sink
-        }
-        Err(error) => {
-            eprintln!("Unable to compile {input_path}.");
-            print_diagnostics(&db, &error.0);
-            std::process::exit(1)
-        }
     }
 }
 
@@ -82,9 +57,38 @@ pub fn execute_tests(module_name: &str, tests: &[CompiledTest], sink: &mut TestS
     println!();
 }
 
+fn test_single_file(args: &TestArgs) -> TestSink {
+    let input_path = &args.input_path;
+    let optimize = args.optimize.unwrap_or(true);
+    let logs = args.logs;
+
+    let mut db = fe_driver::Db::default();
+    let content = match std::fs::read_to_string(input_path) {
+        Err(err) => {
+            eprintln!("Failed to load file: `{input_path}`. Error: {err}");
+            std::process::exit(1)
+        }
+        Ok(content) => content,
+    };
+
+    match fe_driver::compile_single_file_tests(&mut db, input_path, &content, optimize) {
+        Ok((name, tests)) => {
+            let mut sink = TestSink::new(logs);
+            execute_tests(&name, &tests, &mut sink);
+            sink
+        }
+        Err(error) => {
+            eprintln!("Unable to compile {input_path}.");
+            print_diagnostics(&db, &error.0);
+            std::process::exit(1)
+        }
+    }
+}
+
 fn test_ingot(args: &TestArgs) -> TestSink {
     let input_path = &args.input_path;
     let optimize = args.optimize.unwrap_or(true);
+    let logs = args.logs;
 
     if !Path::new(input_path).exists() {
         eprintln!("Input directory does not exist: `{input_path}`.");
@@ -103,7 +107,7 @@ fn test_ingot(args: &TestArgs) -> TestSink {
 
     match fe_driver::compile_ingot_tests(&mut db, &build_files, optimize) {
         Ok(test_batches) => {
-            let mut sink = TestSink::default();
+            let mut sink = TestSink::new(logs);
             for (module_name, tests) in test_batches {
                 let tests = filter_tests(&tests, &args.filter);
                 execute_tests(&module_name, &tests, &mut sink);
