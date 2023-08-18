@@ -8,12 +8,12 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
     let test = db.mir_lowered_func_signature(test);
     context.function_dependency.insert(test);
 
-    let dep_constants = context.resolve_constant_dependency(db);
     let dep_functions: Vec<_> = context
         .resolve_function_dependency(db)
         .into_iter()
         .map(yul::Statement::FunctionDefinition)
         .collect();
+    let dep_constants = context.resolve_constant_dependency(db);
     let dep_contracts = context.resolve_contract_dependency(db);
     let runtime_funcs: Vec<_> = context
         .runtime
