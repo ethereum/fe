@@ -70,7 +70,7 @@ impl ScopeGraph {
 }
 
 /// An reference to a `[ScopeData]` in a `ScopeGraph`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::Display)]
 pub enum ScopeId {
     /// An item scope.
     Item(ItemKind),

@@ -7,7 +7,7 @@
         {
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}/crates/language-server/editors/vscode",
-                "${workspaceFolder}/crates/test-files/fixtures/"
+                "${workspaceFolder}/crates/"
             ],
             "name": "Launch Fe VSCode Extension",
             "outFiles": [

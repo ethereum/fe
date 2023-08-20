@@ -918,7 +918,7 @@ dependencies = [
  "semver 1.0.17",
  "smallvec",
  "smol_str",
- "strum",
+ "strum 0.23.0",
  "wasm-bindgen-test",
 ]
 
@@ -1078,6 +1078,8 @@ dependencies = [
  "rustc-hash",
  "salsa-2022",
  "smallvec",
+ "strum 0.25.0",
+ "strum_macros 0.25.2",
 ]
 
 [[package]]
@@ -1111,15 +1113,19 @@ dependencies = [
  "clap 4.3.12",
  "codespan-reporting",
  "crossbeam-channel",
+ "dir-test",
  "fe-analyzer",
  "fe-common2",
+ "fe-compiler-test-utils",
  "fe-driver2",
  "fe-hir",
  "fe-hir-analysis",
  "fe-macros",
+ "fxhash",
  "indexmap",
  "lsp-server",
  "lsp-types",
+ "rowan",
  "salsa-2022",
  "serde",
  "serde_json",
@@ -2719,7 +2725,16 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.23.1",
+]
+
+[[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+dependencies = [
+ "strum_macros 0.25.2",
 ]
 
 [[package]]
@@ -2733,6 +2748,19 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8d03b598d3d0fff69bf533ee3ef19b8eeb342729596df84bcc7e1f96ec4059"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.27",
 ]
 
 [[package]]

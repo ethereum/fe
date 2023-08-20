@@ -20,6 +20,8 @@ rustc-hash = "1.1.0"
 smallvec = "1.10.0"
 paste = "1.0"
 dot2 = "1.0"
+strum = { version = "0.25", features = ["derive"] }
+strum_macros = "0.25"
 
 common = { path = "../common2", package = "fe-common2" }
 parser = { path = "../parser2", package = "fe-parser2" }

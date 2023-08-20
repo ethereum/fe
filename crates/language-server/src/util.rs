@@ -1,6 +1,23 @@
 use common::diagnostics::{Severity, CompleteDiagnostic, Span};
 use lsp_types::Position;
 
+pub(crate) fn position_to_offset(position: Position, text: &str) -> rowan::TextSize {
+    let line_offsets: Vec<usize> = text
+        .lines()
+        .scan(0, |state, line| {
+            let offset = *state;
+            *state += line.len() + 1;
+            Some(offset)
+        })
+        .collect();
+
+    let line_offset = line_offsets[position.line as usize];
+    let character_offset = position.character as usize;
+
+    rowan::TextSize::from((line_offset + character_offset) as u32)
+}
+
+
 pub(crate) fn span_to_range(span: Span, text: &str) -> lsp_types::Range {
     let line_offsets: Vec<usize> = text
         .lines()

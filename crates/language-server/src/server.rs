@@ -55,6 +55,9 @@ pub fn run_server() -> Result<()> {
         })
     )?;
 
+    // print a message to the console
+    eprintln!("Fe language server started");
+
     let result = ServerState::new(connection.sender).run(connection.receiver)?;
     io_threads.join().unwrap();
     

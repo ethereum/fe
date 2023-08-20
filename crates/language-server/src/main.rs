@@ -3,6 +3,7 @@ mod state;
 mod db;
 mod util;
 mod diagnostics;
+mod goto;
 
 use db::Jar;
 mod handlers {
