@@ -31,3 +31,4 @@ rowan = "0.15.10"
 fxhash = "0.2.1"
 dir-test = "0.1"
 fe-compiler-test-utils = { path = "../test-utils" }
+log = "0.4"

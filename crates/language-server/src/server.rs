@@ -1,7 +1,7 @@
 use super::state::ServerState;
 use anyhow::Result;
 use lsp_server::{Connection, Notification};
-use lsp_types::{ServerCapabilities, HoverProviderCapability, GotoCapability};
+use lsp_types::{HoverProviderCapability, ServerCapabilities};
 
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
@@ -36,31 +36,21 @@ pub fn run_server() -> Result<()> {
 
     connection.initialize_finish(request_id, initialize_result)?;
     // send a "hello" message to the client
-    connection.sender.send(
-        lsp_server::Message::Notification(Notification {
+    connection
+        .sender
+        .send(lsp_server::Message::Notification(Notification {
             method: String::from("window/showMessage"),
             params: serde_json::to_value(lsp_types::ShowMessageParams {
                 typ: lsp_types::MessageType::INFO,
                 message: String::from("hello from the Fe language server"),
-            }).unwrap()
-        })
-    )?;
+            })
+            .unwrap(),
+        }))?;
+
+    let mut state = ServerState::new(connection.sender);
+    let _ = state.init_logger(log::Level::Info);
+    let result = state.run(connection.receiver)?;
     
-    // log a startup message
-    connection.sender.send(
-        lsp_server::Message::Notification(Notification {
-            method: String::from("window/logMessage"),
-            params: serde_json::to_value(lsp_types::LogMessageParams {
-                typ: lsp_types::MessageType::INFO,
-                message: String::from("Fe language server started"),
-            }).unwrap()
-        })
-    )?;
-
-    // print a message to the console
-    eprintln!("Fe language server started");
-
-    let result = ServerState::new(connection.sender).run(connection.receiver)?;
     io_threads.join().unwrap();
     
     Ok(result)

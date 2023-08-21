@@ -1123,6 +1123,7 @@ dependencies = [
  "fe-macros",
  "fxhash",
  "indexmap",
+ "log",
  "lsp-server",
  "lsp-types",
  "rowan",

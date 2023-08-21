@@ -63,7 +63,8 @@ fn send_diagnostics(
         params: serde_json::to_value(result).unwrap(),
     });
 
-    state.sender.send(response)?;
+    let sender = state.sender.lock().unwrap();
+    sender.send(response)?;
     
     Ok(())
 }

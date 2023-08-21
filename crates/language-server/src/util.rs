@@ -1,6 +1,6 @@
 use common::{diagnostics::{Severity, CompleteDiagnostic, Span}, InputDb};
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use lsp_types::{Position, Url};
+use lsp_types::Position;
 
 pub(crate) fn position_to_offset(position: Position, text: &str) -> rowan::TextSize {
     let line_offsets: Vec<usize> = text
