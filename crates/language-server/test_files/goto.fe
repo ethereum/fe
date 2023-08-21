@@ -2,8 +2,11 @@ struct Foo {}
 struct Bar {}
 
 fn main() {
-    struct Baz {}
     let x: Foo
     let y: Bar
-    let z: Baz
+    let z: baz::Baz
+}
+
+mod baz {
+   pub struct Baz {}
 }

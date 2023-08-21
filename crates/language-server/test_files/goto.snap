@@ -8,15 +8,18 @@ struct Foo {}
 struct Bar {}
 
 fn main() {
-    struct Baz {}
     let x: Foo
     let y: Bar
-    let z: Baz
+    let z: baz::Baz
+}
+
+mod baz {
+   pub struct Baz {}
 }
 ---
-cursor position: 85, path: goto::Bar
-cursor position: 82, path: 
-cursor position: 100, path: goto::main::{fn_body}::{block0}::Baz
-cursor position: 97, path: 
-cursor position: 70, path: goto::Foo
-cursor position: 67, path: 
+cursor position: 64, path: 
+cursor position: 82, path: goto::baz::Baz
+cursor position: 79, path: 
+cursor position: 52, path: goto::Foo
+cursor position: 49, path: 
+cursor position: 67, path: goto::Bar
