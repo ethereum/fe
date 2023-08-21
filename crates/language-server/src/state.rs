@@ -5,6 +5,7 @@ use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 use crate::db::LanguageServerDatabase;
 
+use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{
     request::handle_hover,
     notifications::handle_document_did_open
@@ -46,6 +47,11 @@ impl ServerState {
             match req.method.as_str() {
                 // TODO: implement actually useful hover handler
                 lsp_types::request::HoverRequest::METHOD => handle_hover(self, req)?,
+                // goto definition
+                lsp_types::request::GotoDefinition::METHOD => handle_goto_definition(self, req)?,
+                lsp_types::request::GotoTypeDefinition::METHOD => handle_goto_definition(self, req)?,
+                lsp_types::request::GotoImplementation::METHOD => handle_goto_definition(self, req)?,
+                lsp_types::request::GotoDeclaration::METHOD => handle_goto_definition(self, req)?,
                 _ => {}
             }
         

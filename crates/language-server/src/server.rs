@@ -1,7 +1,7 @@
 use super::state::ServerState;
 use anyhow::Result;
 use lsp_server::{Connection, Notification};
-use lsp_types::{ServerCapabilities, HoverProviderCapability};
+use lsp_types::{ServerCapabilities, HoverProviderCapability, GotoCapability};
 
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
@@ -10,6 +10,8 @@ fn server_capabilities() -> ServerCapabilities {
         text_document_sync: Some(lsp_types::TextDocumentSyncCapability::Kind(
             lsp_types::TextDocumentSyncKind::FULL,
         )),
+        // goto definition
+        definition_provider: Some(lsp_types::OneOf::Left(true)),
         ..Default::default()
     }
 }

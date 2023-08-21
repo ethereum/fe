@@ -1,10 +1,10 @@
 use std::io::BufRead;
 
-use hir_analysis::name_resolution::EarlyResolvedPath;
+use hir_analysis::name_resolution::{EarlyResolvedPath, NameDerivation};
 use lsp_server::Response;
 use serde::Deserialize;
 
-use crate::{state::ServerState, goto::{goto_enclosing_path, Cursor}, util::position_to_offset};
+use crate::{state::ServerState, goto::{goto_enclosing_path, Cursor}, util::{position_to_offset, scope_to_lsp_location}};
 
 pub(crate) fn handle_hover(
     state: &mut ServerState,
@@ -64,6 +64,49 @@ pub(crate) fn handle_hover(
     let response_message = Response {
         id: req.id,
         result: Some(serde_json::to_value(result)?),
+        error: None,
+    };
+
+    state.send_response(response_message)?;
+    Ok(())
+}
+
+use lsp_types::{request::GotoDefinition, TextDocumentPositionParams, Location};
+
+pub(crate) fn handle_goto_definition(
+    state: &mut ServerState,
+    req: lsp_server::Request,
+) -> Result<(), anyhow::Error> {
+    let params = TextDocumentPositionParams::deserialize(req.params)?;
+
+    // Convert the position to an offset in the file
+    let file_text = std::fs::read_to_string(params.text_document.uri.path())?;
+    let cursor: Cursor = position_to_offset(params.position, file_text.as_str());
+
+    // Get the module and the goto info
+    let file_path = std::path::Path::new(params.text_document.uri.path());
+    let top_mod = state.db.top_mod_from_file(file_path, file_text.as_str());
+    let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
+    
+    // Convert the goto info to a Location
+    let scope = match goto_info {
+        Some(EarlyResolvedPath::Full(bucket)) => {
+            bucket.iter().map(|x| x.scope()).last().unwrap()
+        },
+        Some(EarlyResolvedPath::Partial { res, unresolved_from }) => {
+            res.scope()
+        },
+        None => {
+            return Ok(())
+        }
+    };
+    
+    let location = scope_to_lsp_location(scope.unwrap(), &state.db);
+
+    // Send the response
+    let response_message = Response {
+        id: req.id,
+        result: Some(serde_json::to_value(lsp_types::GotoDefinitionResponse::Scalar(location))?),
         error: None,
     };
 

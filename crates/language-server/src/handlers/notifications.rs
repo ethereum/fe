@@ -32,7 +32,7 @@ pub(crate) fn handle_document_did_open(
     // send diagnostics using `state.send_response` for each diagnostic
     
     let diagnostics = diags.into_iter().flat_map(|diag| {
-        diag_to_lsp(diag, text.as_str()).iter().map(|x| x.clone()).collect::<Vec<_>>()
+        diag_to_lsp(diag, &state.db).iter().map(|x| x.clone()).collect::<Vec<_>>()
     });
     
     let result = lsp_types::PublishDiagnosticsParams {

@@ -75,9 +75,9 @@ pub fn goto_enclosing_path(db: &mut LanguageServerDatabase, top_mod: TopLevelMod
     let path_map = path_collector.path_map;
 
     // Find the path that encloses the cursor.
-    let goto_path = smallest_enclosing_path(cursor, &path_map)?;
+    let goto_starting_path = smallest_enclosing_path(cursor, &path_map)?;
 
-    let (path_id, scope_id) = goto_path;
+    let (path_id, scope_id) = goto_starting_path;
 
     // Resolve path.
     let resolved_path = hir_analysis::name_resolution::resolve_path_early(db, path_id, scope_id);
