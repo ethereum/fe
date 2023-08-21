@@ -6,16 +6,15 @@ use common::{
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::{TopLevelMod, ItemKind, PathId, scope_graph::ScopeId},
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::{TopLevelMod, ItemKind},
     lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb, span::{DynLazySpan, LazySpan},
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
-use salsa::DbWithJar;
 
-use crate::{goto::Cursor, util::span_to_lsp_range};
+use crate::goto::Cursor;
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::diagnostics::file_line_starts);
@@ -95,16 +94,6 @@ impl LanguageServerDatabase {
         return smallest_enclosing_item;
     }
     
-    // pub fn scope_to_location(&mut self, scope_id: ScopeId) -> Option<lsp_types::Location> {
-    //     scope_id.name_span(self).unwrap().resolve(SpannedHirDb::as_spanned_hir_db(self)).map(|span| {
-    //         // let span = lazy_span.resolve(SpannedHirDb::as_spanned_hir_db(self)).unwrap();
-    //         let file = span.file;
-    //         let uri = lsp_types::Url::from_file_path(file.path(self)).unwrap();
-    //         let location = lsp_types::Location::new(uri, span_to_lsp_range(span, self));
-    //         location
-    //     })
-    // }
-
     pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {

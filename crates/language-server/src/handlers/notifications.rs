@@ -10,9 +10,23 @@ fn string_diagnostics(db: &mut LanguageServerDatabase, path: &str, src: &str) ->
     db.finalize_diags()
 }
 
-// pub(crate) fn handle_document_did_change(state: &mut ServerState, req: lsp_server::Request) -> Result<(), Error> {
-// todo: incremental parsing and diagnostics
-// }
+pub(crate) fn get_diagnostics(
+    state: &mut ServerState,
+    text: String,
+    uri: lsp_types::Url,
+) -> Result<Vec<lsp_types::Diagnostic>, Error> {
+    let diags = string_diagnostics(
+        &mut state.db,
+        uri.to_file_path().unwrap().to_str().unwrap(),
+        text.as_str(),
+    );
+    
+    let diagnostics = diags.into_iter().flat_map(|diag| {
+        diag_to_lsp(diag, &state.db).iter().map(|x| x.clone()).collect::<Vec<_>>()
+    });
+    
+    Ok(diagnostics.collect())
+}
 
 pub(crate) fn handle_document_did_open(
     state: &mut ServerState,
@@ -20,24 +34,28 @@ pub(crate) fn handle_document_did_open(
 ) -> Result<(), Error> {
     let params = lsp_types::DidOpenTextDocumentParams::deserialize(note.params)?;
     let text = params.text_document.text;
+    let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
+    send_diagnostics(state, diagnostics, params.text_document.uri.clone())
+}
 
-    let diags = string_diagnostics(
-        &mut state.db,
-        params.text_document.uri.to_file_path().unwrap().to_str().unwrap(),
-        text.as_str(),
-    );
-    
-    state.log_info(format!("diagnostics: {:?}", diags))?;
-    
-    // send diagnostics using `state.send_response` for each diagnostic
-    
-    let diagnostics = diags.into_iter().flat_map(|diag| {
-        diag_to_lsp(diag, &state.db).iter().map(|x| x.clone()).collect::<Vec<_>>()
-    });
-    
+pub(crate) fn handle_document_did_change(
+    state: &mut ServerState,
+    note: lsp_server::Notification,
+) -> Result<(), Error> {
+    let params = lsp_types::DidChangeTextDocumentParams::deserialize(note.params)?;
+    let text = params.content_changes[0].text.clone();
+    let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
+    send_diagnostics(state, diagnostics, params.text_document.uri.clone())
+}
+
+fn send_diagnostics(
+    state: &mut ServerState,
+    diagnostics: Vec<lsp_types::Diagnostic>,
+    uri: lsp_types::Url,
+) -> Result<(), Error> {
     let result = lsp_types::PublishDiagnosticsParams {
-        uri: params.text_document.uri.clone(),
-        diagnostics: diagnostics.collect(),
+        uri: uri,
+        diagnostics: diagnostics,
         version: None,
     };
     let response = lsp_server::Message::Notification(lsp_server::Notification {

@@ -1,10 +1,14 @@
 use std::io::BufRead;
 
-use hir_analysis::name_resolution::{EarlyResolvedPath, NameDerivation};
+use hir_analysis::name_resolution::EarlyResolvedPath;
 use lsp_server::Response;
 use serde::Deserialize;
 
-use crate::{state::ServerState, goto::{goto_enclosing_path, Cursor}, util::{position_to_offset, scope_to_lsp_location}};
+use crate::{
+    goto::{goto_enclosing_path, Cursor},
+    state::ServerState,
+    util::{position_to_offset, scope_to_lsp_location},
+};
 
 pub(crate) fn handle_hover(
     state: &mut ServerState,
@@ -13,10 +17,10 @@ pub(crate) fn handle_hover(
     // TODO: get more relevant information for the hover
     let params = lsp_types::HoverParams::deserialize(req.params)?;
     let file_path = &params
-            .text_document_position_params
-            .text_document
-            .uri
-            .path();
+        .text_document_position_params
+        .text_document
+        .uri
+        .path();
     let file = std::fs::File::open(file_path)?;
     let reader = std::io::BufReader::new(file);
     let line = reader
@@ -28,23 +32,25 @@ pub(crate) fn handle_hover(
     let file_text = std::fs::read_to_string(file_path)?;
 
     // let cursor: Cursor = params.text_document_position_params.position.into();
-    let cursor: Cursor = position_to_offset(params.text_document_position_params.position, file_text.as_str());
+    let cursor: Cursor = position_to_offset(
+        params.text_document_position_params.position,
+        file_text.as_str(),
+    );
     let file_path = std::path::Path::new(file_path);
     let top_mod = state.db.top_mod_from_file(file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
-    
+
     let goto_info = match goto_info {
-        Some(EarlyResolvedPath::Full(bucket)) => {
-            bucket.iter().map(|x| x.pretty_path(&state.db).unwrap()).collect::<Vec<_>>()
-            .join("\n")
-            
-        },
-        Some(EarlyResolvedPath::Partial { res, unresolved_from }) => {
-            res.pretty_path(&state.db).unwrap()
-        },
-        None => {
-            String::from("No goto info available")
-        }
+        Some(EarlyResolvedPath::Full(bucket)) => bucket
+            .iter()
+            .map(|x| x.pretty_path(&state.db).unwrap())
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Some(EarlyResolvedPath::Partial {
+            res,
+            unresolved_from: _,
+        }) => res.pretty_path(&state.db).unwrap(),
+        None => String::from("No goto info available"),
     };
 
     let result = lsp_types::Hover {
@@ -71,7 +77,7 @@ pub(crate) fn handle_hover(
     Ok(())
 }
 
-use lsp_types::{request::GotoDefinition, TextDocumentPositionParams, Location};
+use lsp_types::TextDocumentPositionParams;
 
 pub(crate) fn handle_goto_definition(
     state: &mut ServerState,
@@ -87,26 +93,33 @@ pub(crate) fn handle_goto_definition(
     let file_path = std::path::Path::new(params.text_document.uri.path());
     let top_mod = state.db.top_mod_from_file(file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
-    
+
     // Convert the goto info to a Location
-    let scope = match goto_info {
+    let scopes = match goto_info {
         Some(EarlyResolvedPath::Full(bucket)) => {
-            bucket.iter().map(|x| x.scope()).last().unwrap()
-        },
-        Some(EarlyResolvedPath::Partial { res, unresolved_from }) => {
-            res.scope()
-        },
-        None => {
-            return Ok(())
+            bucket.iter().map(|x| x.scope()).collect::<Vec<_>>()
         }
+        Some(EarlyResolvedPath::Partial {
+            res,
+            unresolved_from: _,
+        }) => {
+            vec![res.scope()]
+        }
+        None => return Ok(()),
     };
-    
-    let location = scope_to_lsp_location(scope.unwrap(), &state.db);
+
+    let locations = scopes
+        .into_iter()
+        .filter_map(|scope| scope)
+        .map(|scope| scope_to_lsp_location(scope, &state.db))
+        .collect::<Vec<_>>();
 
     // Send the response
     let response_message = Response {
         id: req.id,
-        result: Some(serde_json::to_value(lsp_types::GotoDefinitionResponse::Scalar(location))?),
+        result: Some(serde_json::to_value(
+            lsp_types::GotoDefinitionResponse::Array(locations),
+        )?),
         error: None,
     };
 
