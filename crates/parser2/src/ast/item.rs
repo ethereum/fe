@@ -1,4 +1,4 @@
-use super::ast_node;
+use super::{ast_node, TupleType};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 use rowan::ast::{support, AstNode};
@@ -355,12 +355,29 @@ impl VariantDef {
         support::token(self.syntax(), SK::Ident)
     }
 
-    /// Returns the type of the variant.
-    /// `(i32, u32)` in `Foo(i32, u32)`
-    /// Currently only tuple variants are supported.
-    pub fn ty(&self) -> Option<super::Type> {
+    /// Returns the kind of the variant.
+    pub fn kind(&self) -> VariantKind {
+        support::child(self.syntax())
+            .map(VariantKind::Tuple)
+            .or_else(|| support::child(self.syntax()).map(VariantKind::Record))
+            .unwrap_or(VariantKind::Unit)
+    }
+
+    /// Returns the variant's field def list.
+    pub fn fields(&self) -> Option<RecordFieldDefList> {
         support::child(self.syntax())
     }
+
+    pub fn tuple_type(&self) -> Option<TupleType> {
+        support::child(self.syntax())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum VariantKind {
+    Unit,
+    Tuple(TupleType),
+    Record(RecordFieldDefList),
 }
 
 ast_node! {
@@ -486,7 +503,7 @@ mod tests {
     #[test]
     #[wasm_bindgen_test]
     fn func() {
-        let source = r#" 
+        let source = r#"
                 /// This is doc comment
                 #evm
                 pub unsafe fn foo<T, U: Trait>(_ x: T, from u: U) -> (T, U) where T: Trait2 { return }
@@ -573,6 +590,10 @@ mod tests {
                 pub enum Foo<T, U: Trait> where T: Trait2 {
                     Bar
                     Baz(T, U)
+                    Bux {
+                        x: i8
+                        y: i8
+                    }
                 }
             "#;
         let e: Enum = parse_item(source);
@@ -583,17 +604,21 @@ mod tests {
             match count {
                 0 => {
                     assert_eq!(variant.name().unwrap().text(), "Bar");
-                    assert!(variant.ty().is_none());
+                    assert_eq!(variant.kind(), VariantKind::Unit);
                 }
                 1 => {
                     assert_eq!(variant.name().unwrap().text(), "Baz");
-                    assert!(matches!(variant.ty().unwrap().kind(), TypeKind::Tuple(_)));
+                    assert!(matches!(variant.kind(), VariantKind::Tuple(_)));
+                }
+                2 => {
+                    assert_eq!(variant.name().unwrap().text(), "Bux");
+                    assert!(matches!(variant.kind(), VariantKind::Record(_)));
                 }
                 _ => unreachable!(),
             }
             count += 1;
         }
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
     }
 
     #[test]

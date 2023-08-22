@@ -17,7 +17,7 @@ use super::{
     define_lazy_span_node,
     params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     transition::SpanTransitionChain,
-    types::{LazyPathTypeSpan, LazyTySpan},
+    types::{LazyPathTypeSpan, LazyTupleTypeSpan, LazyTySpan},
     use_tree::LazyUseAliasSpan,
 };
 
@@ -286,7 +286,8 @@ define_lazy_span_node!(
         (name, name),
     }
     @node {
-        (ty, ty, LazyTySpan),
+        (fields, fields, LazyFieldDefListSpan),
+        (tuple_type, tuple_type, LazyTupleTypeSpan),
     }
 );
 
@@ -315,7 +316,7 @@ mod tests {
             mod foo {
                 fn bar() {}
             }
-        
+
             mod baz {
                 fn qux() {}
             }
@@ -332,7 +333,7 @@ mod tests {
         let mut db = TestDb::default();
 
         let text = r#"
-            
+
             mod foo {
                 fn bar() {}
             }
@@ -435,6 +436,10 @@ mod tests {
             enum Foo {
                 Bar
                 Baz(u32, i32)
+                Bux {
+                    x: i8
+                    y: u8
+                }
             }"#;
 
         let enum_ = db.expect_item::<Enum>(text);
@@ -445,10 +450,13 @@ mod tests {
         let variants = enum_span.variants();
         let variant_1 = variants.variant(0);
         let variant_2 = variants.variant(1);
+        let variant_3 = variants.variant(2);
 
         assert_eq!("Bar", db.text_at(top_mod, &variant_1.name()));
         assert_eq!("Baz", db.text_at(top_mod, &variant_2.name()));
-        assert_eq!("(u32, i32)", db.text_at(top_mod, &variant_2.ty()));
+        assert_eq!("(u32, i32)", db.text_at(top_mod, &variant_2.tuple_type()));
+        assert_eq!("Bux", db.text_at(top_mod, &variant_3.name()));
+        assert!(db.text_at(top_mod, &variant_3.fields()).contains("x: i8"));
     }
 
     #[test]

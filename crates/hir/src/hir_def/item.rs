@@ -23,8 +23,8 @@ use crate::{
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TypeId,
-    UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
+    TypeId, UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -687,7 +687,14 @@ pub struct VariantDefListId {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantDef {
     pub name: Partial<IdentId>,
-    pub ty: Option<TypeId>,
+    pub kind: VariantKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum VariantKind {
+    Unit,
+    Tuple(TupleTypeId),
+    Record(FieldDefListId),
 }
 
 #[salsa::interned]

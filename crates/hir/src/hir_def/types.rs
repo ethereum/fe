@@ -13,7 +13,7 @@ pub enum TypeKind {
     Path(Partial<PathId>, GenericArgListId),
     SelfType,
     /// The `Vec` contains the types of the tuple elements.
-    Tuple(Vec<Partial<TypeId>>),
+    Tuple(TupleTypeId),
     /// The first `TypeId` is the element type, the second `Body` is the length.
     Array(Partial<TypeId>, Partial<Body>),
 }
@@ -22,4 +22,10 @@ pub enum TypeKind {
 pub struct TraitRef {
     pub path: Partial<PathId>,
     pub generic_args: GenericArgListId,
+}
+
+#[salsa::interned]
+pub struct TupleTypeId {
+    #[return_ref]
+    pub data: Vec<Partial<TypeId>>,
 }
