@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::{
     goto::{goto_enclosing_path, Cursor},
     state::ServerState,
-    util::{position_to_offset, scope_to_lsp_location},
+    util::{to_offset_from_position, to_lsp_location_from_scope},
 };
 
 pub(crate) fn handle_hover(
@@ -32,7 +32,7 @@ pub(crate) fn handle_hover(
     let file_text = std::fs::read_to_string(file_path)?;
 
     // let cursor: Cursor = params.text_document_position_params.position.into();
-    let cursor: Cursor = position_to_offset(
+    let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
@@ -87,7 +87,7 @@ pub(crate) fn handle_goto_definition(
 
     // Convert the position to an offset in the file
     let file_text = std::fs::read_to_string(params.text_document.uri.path())?;
-    let cursor: Cursor = position_to_offset(params.position, file_text.as_str());
+    let cursor: Cursor = to_offset_from_position(params.position, file_text.as_str());
 
     // Get the module and the goto info
     let file_path = std::path::Path::new(params.text_document.uri.path());
@@ -111,7 +111,8 @@ pub(crate) fn handle_goto_definition(
     let locations = scopes
         .into_iter()
         .filter_map(|scope| scope)
-        .map(|scope| scope_to_lsp_location(scope, &state.db))
+        .map(|scope| to_lsp_location_from_scope(scope, &state.db))
+        .filter_map(|location| location.ok())
         .collect::<Vec<_>>();
 
     // Send the response

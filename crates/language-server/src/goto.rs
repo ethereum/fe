@@ -14,7 +14,6 @@ pub(crate) type GotoEnclosingPath = (PathId, ScopeId);
 pub(crate) type GotoPathMap = FxHashMap<Span, GotoEnclosingPath>;
 
 pub struct PathSpanCollector<'db> {
-    // You don't need to collect scope id basically.
     path_map: GotoPathMap,
     db: &'db dyn LanguageServerDb,
 }
