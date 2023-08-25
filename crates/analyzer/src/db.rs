@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 use crate::namespace::items::{
     self, AttributeId, ContractFieldId, ContractId, DepGraphWrapper, EnumVariantKind, FunctionId,
     FunctionSigId, ImplId, IngotId, Item, ModuleConstantId, ModuleId, StructFieldId, StructId,

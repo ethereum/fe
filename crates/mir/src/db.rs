@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 use std::{collections::BTreeMap, rc::Rc};
 
 use fe_analyzer::{

@@ -79,6 +79,7 @@ pub fn parse_struct_def(
     ))
 }
 
+#[allow(clippy::unnecessary_literal_unwrap)]
 /// Parse a [`ModuleStmt::Enum`].
 /// # Panics
 /// Panics if the next token isn't [`TokenKind::Enum`].
