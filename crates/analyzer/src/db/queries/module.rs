@@ -564,7 +564,7 @@ pub fn module_used_item_map(
         )
         .value;
 
-        items.extend(Rc::try_unwrap(prelude_items).unwrap().into_iter());
+        items.extend(Rc::try_unwrap(prelude_items).unwrap());
     }
 
     Analysis::new(Rc::new(items), diagnostics.into())

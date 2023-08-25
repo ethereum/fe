@@ -1082,7 +1082,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let enum_args = if data_ty.is_unit(self.db) {
                     vec![tag, self.make_unit()]
                 } else {
-                    std::iter::once(tag).chain(args.into_iter()).collect()
+                    std::iter::once(tag).chain(args).collect()
                 };
                 self.builder.aggregate_construct(ty, enum_args, source)
             }

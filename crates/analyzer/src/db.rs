@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 use crate::{
     context::{Analysis, Constant, FunctionBody},
     errors::{ConstEvalError, TypeError},

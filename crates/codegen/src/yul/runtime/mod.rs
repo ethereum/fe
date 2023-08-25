@@ -383,7 +383,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
         }
 
         let deref_ty = ptr_ty.deref(db.upcast());
-        let args = std::iter::once(ptr).chain(args.into_iter()).collect();
+        let args = std::iter::once(ptr).chain(args).collect();
         let legalized_ty = db.codegen_legalized_type(ptr_ty);
         if deref_ty.is_enum(db.upcast()) {
             let mut name = format!("enum_init_{}", ptr_ty.0);
