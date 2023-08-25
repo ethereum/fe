@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 use crate::files::{File, SourceFileId, Utf8Path};
 use codespan_reporting as cs;
 use salsa;
