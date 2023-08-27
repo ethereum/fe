@@ -4,7 +4,7 @@
 /// DocComment2
 pub struct StructAttr {
     /// This is `x`
-    x: foo::Bar
+    x: foo::Bar,
     /// This is `y`
     #cfg(target: evm)
     y: i32

@@ -6,10 +6,7 @@ enum Basic {
 }
 
 enum RecordVariants {
-     Rectangle {
-         w: u32
-         h: u32
-     }
+     Rectangle { w: u32, h: u32 }
      Circle { r: u32 }
 }
 

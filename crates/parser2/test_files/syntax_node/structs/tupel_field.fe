@@ -1,9 +1,9 @@
 struct StructWithTupleField {
-    x: (i32, u32)
+    x: (i32, u32),
     y: (
         i32,
         foo::Bar,
         u32
-    )
+    ),
     z: ()
 }

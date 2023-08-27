@@ -2,6 +2,6 @@ pub trait T {}
 pub struct MyS<T, U>
     where U: T
 {
-    t: T
+    t: T,
     u: U
 }

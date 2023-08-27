@@ -462,7 +462,11 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         parser.parse(ItemListScope::default(), None);
-        let item_list = ItemList::cast(parser.finish_to_node().0).unwrap();
+        let (node, errs) = parser.finish_to_node();
+        for e in errs {
+            eprintln!("{:?}", e);
+        }
+        let item_list = ItemList::cast(node).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
         assert_eq!(items.len(), 1);
         items.pop().unwrap().kind().unwrap().try_into().unwrap()
@@ -531,6 +535,7 @@ mod tests {
                 }
             "#;
         let s: Struct = parse_item(source);
+        dbg!(&s);
         assert_eq!(s.name().unwrap().text(), "Foo");
         let mut count = 0;
         for field in s.fields().unwrap() {
