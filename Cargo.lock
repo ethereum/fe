@@ -660,6 +660,7 @@ dependencies = [
  "dir-test",
  "fe-compiler-test-utils",
  "fe-driver2",
+ "fe-hir",
  "wasm-bindgen-test",
 ]
 
