@@ -48,6 +48,20 @@ pub(crate) fn handle_document_did_change(
     send_diagnostics(state, diagnostics, params.text_document.uri.clone())
 }
 
+pub(crate) fn handle_workspace_did_change_folders(
+    state: &mut ServerState,
+    note: lsp_server::Notification,
+) -> Result<(), Error> {
+    let params = lsp_types::DidChangeWorkspaceFoldersParams::deserialize(note.params)?;
+    // let response_message = lsp_server::Response {
+    //     id: lsp_server::RequestId::Num(0),
+    //     result: None,
+    //     error: None,
+    // };
+    // state.send_response(response_message)?;
+    Ok(())
+}
+
 fn send_diagnostics(
     state: &mut ServerState,
     diagnostics: Vec<lsp_types::Diagnostic>,

@@ -133,7 +133,7 @@ mod tests {
                         .join("\n");
                         cursor_path_map.insert(*cursor, path);
                     },
-                    EarlyResolvedPath::Partial { res, unresolved_from } => {
+                    EarlyResolvedPath::Partial { res, unresolved_from: _ } => {
                         let path = res.pretty_path(&db).unwrap();
                         cursor_path_map.insert(*cursor, path);
                     },
@@ -180,7 +180,7 @@ mod tests {
                     bucket.iter().map(|x| x.pretty_path(&db).unwrap()).collect::<Vec<_>>()
                     .join("\n")
                 },
-                EarlyResolvedPath::Partial { res, unresolved_from } => {
+                EarlyResolvedPath::Partial { res, unresolved_from: _ } => {
                     res.pretty_path(&db).unwrap()
                 },
             };

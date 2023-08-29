@@ -4,6 +4,7 @@ mod db;
 mod util;
 mod diagnostics;
 mod goto;
+mod workspace;
 
 use db::Jar;
 mod handlers {
