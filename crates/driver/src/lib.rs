@@ -28,6 +28,7 @@ pub struct CompiledContract {
 }
 
 #[cfg(feature = "solc-backend")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledTest {
     pub name: SmolStr,
     bytecode: String,
