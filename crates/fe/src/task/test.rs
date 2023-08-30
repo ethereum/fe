@@ -14,6 +14,8 @@ pub struct TestArgs {
     #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
     #[clap(long, takes_value(true))]
+    filter: Option<String>,
+    #[clap(long, takes_value(true))]
     optimize: Option<bool>,
 }
 
@@ -46,6 +48,8 @@ fn test_single_file(args: &TestArgs) -> TestSink {
 
     match fe_driver::compile_single_file_tests(&mut db, input_path, &content, true) {
         Ok((name, tests)) => {
+            let tests = filter_tests(&tests, &args.filter);
+
             let mut sink = TestSink::default();
             execute_tests(&name, &tests, &mut sink);
             sink
@@ -101,6 +105,7 @@ fn test_ingot(args: &TestArgs) -> TestSink {
         Ok(test_batches) => {
             let mut sink = TestSink::default();
             for (module_name, tests) in test_batches {
+                let tests = filter_tests(&tests, &args.filter);
                 execute_tests(&module_name, &tests, &mut sink);
             }
             sink
@@ -110,5 +115,16 @@ fn test_ingot(args: &TestArgs) -> TestSink {
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }
+    }
+}
+
+fn filter_tests(tests: &[CompiledTest], filter: &Option<String>) -> Vec<CompiledTest> {
+    match filter {
+        Some(word) if !word.is_empty() => tests
+            .iter()
+            .filter(|test| test.name.contains(word))
+            .cloned()
+            .collect(),
+        Some(_) | None => tests.to_vec(),
     }
 }
