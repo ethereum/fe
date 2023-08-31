@@ -1,0 +1,8 @@
+pub fn get_42() -> u256 {
+    return 42
+}
+
+#test
+fn test_get_42() {
+    assert get_42() == 42
+}

@@ -37,3 +37,11 @@ SUBCOMMANDS:
     help     Print this message or the help of the given subcommand(s)
     new      Create new fe project
 ```
+
+### Editor support & Syntax highlighting
+
+Fe is a new language and editor support is still in its early days. However, basic syntax highlighting is available for Visual Studio Code via this [VS Code extension](https://marketplace.visualstudio.com/items?itemName=fe-lang.code-ve).
+
+In Visual Studio Code open the extension sidebar (Ctrl-Shift-P / Cmd-Shift-P, then "Install Extension") and search for `fe-lang.code-ve`. Click on the extension and then click on the `Install` button.
+
+We are currently working on a Language Server Protocol (LSP), which in the future will enable more advanced editor features such as code completion, go-to definition and refactoring.

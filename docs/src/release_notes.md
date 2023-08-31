@@ -8,6 +8,48 @@
 Fe is moving fast. Read up on all the latest improvements.
 
 [//]: # (towncrier release notes start)
+## 0.24.0 "Xenotime" (2023-08-10)
+
+
+### Features
+
+
+- Added support for project manifests and project dependencies.
+
+  Example:
+
+  ```
+  my_project
+  ├── fe.toml
+  └── src
+      └── main.fe
+  ```
+
+  ```
+  # fe.toml
+  name = "my_project"
+  version = "1.0"
+
+  [dependencies]
+  my_lib = { path = "../path/to/my_lib", version = "1.0" }
+  my_other_lib = "../path/to/my_other_lib"
+  ```
+
+  Note: The current implementation supports circular dependencies. ([#908](https://github.com/ethereum/fe/issues/908))
+
+
+### Performance improvements
+
+
+- `MemoryBuffer` now allocates an extra 31 bytes. This removes the need for runtime checks and bitshifting needed to ensure safe writing to a `MemoryBuffer`'s region. ([#898](https://github.com/ethereum/fe/issues/898))
+
+
+### Improved Documentation
+
+
+- Link to vs-code extension in Quickstart Guide ([#910](https://github.com/ethereum/fe/issues/910))
+
+
 ## 0.23.0 "Wiluite" (2023-06-01)
 
 

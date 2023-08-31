@@ -1,0 +1,6 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: error_string_ingot(&path)
+---
+Unable to resolve my_libasdf at compile_errors/my_lib due to the following errors.
+Name mismatch: my_lib =/= my_libasdf

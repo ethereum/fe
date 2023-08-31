@@ -6,6 +6,7 @@ use ingot::error::{
 }
 use ingot::buf::{
     RawCallBuffer,
+    MemoryBuffer,
     MemoryBufferReader,
     MemoryBufferWriter
 }

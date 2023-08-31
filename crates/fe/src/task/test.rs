@@ -4,14 +4,17 @@ use std::path::Path;
 use clap::Args;
 use colored::Colorize;
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::utils::files::load_fe_files_from_dir;
+use fe_common::utils::files::{get_project_root, BuildFiles};
 use fe_driver::CompiledTest;
 use fe_test_runner::TestSink;
 
 #[derive(Args)]
 #[clap(about = "Execute tests in the current project")]
 pub struct TestArgs {
+    #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
+    #[clap(long, takes_value(true))]
+    filter: Option<String>,
     #[clap(long, takes_value(true))]
     optimize: Option<bool>,
 }
@@ -45,6 +48,8 @@ fn test_single_file(args: &TestArgs) -> TestSink {
 
     match fe_driver::compile_single_file_tests(&mut db, input_path, &content, true) {
         Ok((name, tests)) => {
+            let tests = filter_tests(&tests, &args.filter);
+
             let mut sink = TestSink::default();
             execute_tests(&name, &tests, &mut sink);
             sink
@@ -86,24 +91,21 @@ fn test_ingot(args: &TestArgs) -> TestSink {
         std::process::exit(1)
     }
 
-    let content = match load_fe_files_from_dir(input_path) {
-        Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{input_path}`");
-            std::process::exit(1)
-        }
+    let build_files = match BuildFiles::load_fs(input_path) {
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {err}");
+            eprintln!("Failed to load project files.\nError: {err}");
             std::process::exit(1)
         }
     };
 
     let mut db = fe_driver::Db::default();
 
-    match fe_driver::compile_ingot_tests(&mut db, input_path, &content, optimize) {
+    match fe_driver::compile_ingot_tests(&mut db, &build_files, optimize) {
         Ok(test_batches) => {
             let mut sink = TestSink::default();
             for (module_name, tests) in test_batches {
+                let tests = filter_tests(&tests, &args.filter);
                 execute_tests(&module_name, &tests, &mut sink);
             }
             sink
@@ -113,5 +115,16 @@ fn test_ingot(args: &TestArgs) -> TestSink {
             print_diagnostics(&db, &error.0);
             std::process::exit(1)
         }
+    }
+}
+
+fn filter_tests(tests: &[CompiledTest], filter: &Option<String>) -> Vec<CompiledTest> {
+    match filter {
+        Some(word) if !word.is_empty() => tests
+            .iter()
+            .filter(|test| test.name.contains(word))
+            .cloned()
+            .collect(),
+        Some(_) | None => tests.to_vec(),
     }
 }
