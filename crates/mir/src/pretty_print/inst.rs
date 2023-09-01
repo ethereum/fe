@@ -204,9 +204,8 @@ impl PrettyPrint for InstId {
 
             InstKind::EqTrait { lhs,rhs,func: _ } => {
                 lhs.pretty_print(db, store, w)?;
-                write!(w, ".compare(")?;
-                rhs.pretty_print(db, store, w)?;
-                write!(w, ")")
+                write!(w, " == ")?;
+                rhs.pretty_print(db, store, w)
             }
         }
     }
