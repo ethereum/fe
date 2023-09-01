@@ -4,87 +4,9 @@ pub trait Eq {
     fn compare(self, other: Self) -> bool;
 }
 
-impl Eq for u256 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for u128 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for u64 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for u32 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for u16 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for u8 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(self, other)
-    }
-}
-
-impl Eq for i256 { 
-   fn compare(self, other: Self) -> bool {
-        return evm::eq(u256(self), u256(other))
-    }
-}
-
-impl Eq for i128 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(u128(self), u128(other))
-    }
-}
-
-impl Eq for i64 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(u64(self), u64(other))
-    }
-}
-
-impl Eq for i32 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(u32(self), u32(other))
-    }
-}
-
-impl Eq for i16 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(u16(self), u16(other))
-    }
-}
-
-impl Eq for i8 {
-    fn compare(self, other: Self) -> bool {
-        return evm::eq(u8(self), u8(other))
-    }
-}
-
 impl Eq for bool {
     fn compare(self, other: Self) -> bool {
         return (not self and not other) or (self and other) //xor inverse
-    }
-}
-
-impl Eq for address {
-    fn compare(self, other: Self) -> bool {
-        return u256(self) == u256(other)
     }
 }
 
