@@ -38,6 +38,13 @@ pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplI
         .cloned()
 }
 
+pub fn impl_from_name(db: &dyn AnalyzerDb, ty: TypeId, treit: SmolStr) -> Option<ImplId> {
+    db.all_impls(ty)
+        .iter()
+        .find(|impl_| impl_.trait_id(db).name(db) == treit)
+        .cloned()
+}
+
 pub fn function_sigs(db: &dyn AnalyzerDb, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]> {
     db.all_impls(ty)
         .iter()

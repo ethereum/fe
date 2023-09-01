@@ -445,6 +445,13 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::Jump { .. } | InstKind::Branch { .. } | InstKind::Switch { .. } => {
                 unreachable!()
             }
+
+            InstKind::EqTrait { lhs, func, rhs} =>{
+                self.ctx.function_dependency.insert(*func);
+                let func_name = identifier! {(self.db.codegen_function_symbol_name(*func))};
+                let result = expression! {[func_name]([lhs,rhs])};
+                self.sink.push(Statement::Expression(result))
+            }
         }
     }
 

@@ -392,7 +392,31 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             ast::Expr::CompOperation { left, op, right } => {
                 let lhs = self.lower_expr_to_value(left);
                 let rhs = self.lower_expr_to_value(right);
-                self.lower_comp_op(op.kind, lhs, rhs, expr.into())
+                // convert to match statement ?? 
+                if op.kind == ast::CompOperator::Eq && !ty.is_primitive(self.db) && ty.eq_trait_implemented(self.db){ 
+                    //lower to proper impl of the trait 
+                    let concrete_type = self
+                    .func
+                    .signature(self.db)
+                    .resolved_generics
+                    .get(&SmolStr::new(ty.as_string(self.db)))
+                    .cloned()
+                    .expect("unresolved generic type");
+
+                    let impl_ = concrete_type
+                    .get_impl_of_eq_for(self.db.upcast(), SmolStr::new("Eq"))
+                    .expect("missing impl");
+
+                    let function = impl_
+                    .function(self.db.upcast(), "compare")
+                    .expect("missing function");
+
+                    let func = self.db.mir_lowered_func_signature(function);
+                    self.builder.lower_eq(lhs, rhs, expr.into(), func)
+                }
+                else {
+                    self.lower_comp_op(op.kind, lhs, rhs, expr.into())
+                }
             }
 
             ast::Expr::Attribute { .. } => {

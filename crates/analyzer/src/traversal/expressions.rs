@@ -2119,18 +2119,45 @@ fn expr_comp_operation(
     if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         // comparison operands should be moved to the stack
         let left_ty = value_expr_type(context, left, None)?;
-        if left_ty.is_primitive(context.db()) {
-            expect_expr_type(context, right, left_ty, false)?;
-        } else {
-            context.error(
-                &format!(
-                    "`{}` type can't be compared with the `{}` operator",
-                    left_ty.display(context.db()),
-                    op.kind
-                ),
-                exp.span,
-                "invalid comparison",
-            );
+
+        if  op.kind == fe::CompOperator::Eq {
+            if left_ty.is_primitive(context.db()) 
+            {
+                expect_expr_type(context, right, left_ty, false)?;
+            }
+            else
+            {
+                if !left_ty.eq_trait_implemented(context.db()) {
+                    context.error(
+                        &format!(
+                            "Eq trait not implemented for type `{}`",
+                            left_ty.display(context.db()),
+                        ),
+                        exp.span,
+                        "invalid comparison",
+                    );
+        
+                }
+                else {
+                    
+                }
+            }
+        }
+        else
+        {
+            if left_ty.is_primitive(context.db()) {
+                expect_expr_type(context, right, left_ty, false)?;
+            } else {
+                context.error(
+                    &format!(
+                        "`{}` type can't be compared with the `{}` operator",
+                        left_ty.display(context.db()),
+                        op.kind
+                    ),
+                    exp.span,
+                    "invalid comparison",
+                );
+            }
         }
         return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
     }

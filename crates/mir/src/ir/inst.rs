@@ -139,6 +139,12 @@ pub enum InstKind {
         op: YulIntrinsicOp,
         args: Vec<ValueId>,
     },
+
+    EqTrait {
+        func: FunctionId,
+        lhs: ValueId,
+        rhs: ValueId,
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -250,6 +256,8 @@ impl Inst {
                 ..
             } => ValueIter::one(*lhs).chain(ValueIter::one(*rhs)),
 
+            EqTrait { lhs, rhs, .. } => ValueIter::one(*lhs).chain(ValueIter::one(*rhs)),
+
             Revert { arg } | Return { arg } => ValueIter::One(*arg),
 
             Nop | Jump { .. } => ValueIter::Zero,
@@ -293,6 +301,8 @@ impl Inst {
                 salt: rhs,
                 ..
             } => ValueIterMut::one(lhs).chain(ValueIterMut::one(rhs)),
+
+            EqTrait { lhs, rhs, .. } => ValueIterMut::one(lhs).chain(ValueIterMut::one(rhs)),
 
             Revert { arg } | Return { arg } => ValueIterMut::One(arg.as_mut()),
 
