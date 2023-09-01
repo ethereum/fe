@@ -3,9 +3,11 @@ use serde::Deserialize;
 
 use crate::{state::ServerState, util::diag_to_lsp, db::LanguageServerDatabase};
 
-fn string_diagnostics(db: &mut LanguageServerDatabase, path: &str, src: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
+fn string_diagnostics(state: &mut ServerState, path: &str, src: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
+    let db = &mut state.db;
+    let workspace = &mut state.workspace;
     let file_path = std::path::Path::new(path);
-    let top_mod = db.top_mod_from_file(file_path, src);
+    let top_mod = workspace.top_mod_from_file(db, file_path, src);
     db.run_on_top_mod(top_mod);
     db.finalize_diags()
 }
@@ -16,7 +18,7 @@ pub(crate) fn get_diagnostics(
     uri: lsp_types::Url,
 ) -> Result<Vec<lsp_types::Diagnostic>, Error> {
     let diags = string_diagnostics(
-        &mut state.db,
+        state,
         uri.to_file_path().unwrap().to_str().unwrap(),
         text.as_str(),
     );
@@ -53,12 +55,7 @@ pub(crate) fn handle_workspace_did_change_folders(
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidChangeWorkspaceFoldersParams::deserialize(note.params)?;
-    // let response_message = lsp_server::Response {
-    //     id: lsp_server::RequestId::Num(0),
-    //     result: None,
-    //     error: None,
-    // };
-    // state.send_response(response_message)?;
+
     Ok(())
 }
 

@@ -1,4 +1,6 @@
-use std::{collections::BTreeSet, path};
+use std::{collections::BTreeSet, path, ops::DerefMut, borrow::BorrowMut};
+
+use super::workspace;
 
 use common::{
     diagnostics::CompleteDiagnostic,
@@ -13,8 +15,9 @@ use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
+use patricia_tree::StringPatriciaMap;
 
-use crate::goto::Cursor;
+use crate::{goto::Cursor, workspace::{LocalIngotContext, StandaloneIngotContext, IngotFileContext, get_containing_ingot}};
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::diagnostics::file_line_starts);
@@ -50,28 +53,6 @@ impl LanguageServerDatabase {
         };
     }
 
-    pub fn top_mod_from_file(&mut self, file_path: &path::Path, source: &str) -> TopLevelMod {
-        let kind = IngotKind::StandAlone;
-
-        // We set the ingot version to 0.0.0 for stand-alone file.
-        let version = Version::new(0, 0, 0);
-        let root_file = file_path;
-        let ingot = InputIngot::new(
-            self,
-            file_path.parent().unwrap().as_os_str().to_str().unwrap(),
-            kind,
-            version,
-            BTreeSet::new(),
-        );
-
-        let file_name = root_file.file_name().unwrap().to_str().unwrap();
-        let file = InputFile::new(self, ingot, file_name.into(), source.to_string());
-        ingot.set_root_file(self, file);
-        ingot.set_files(self, [file].into());
-
-        map_file_to_mod(self, file)
-    }
-
     pub fn find_enclosing_item(&mut self, top_mod: TopLevelMod, cursor: Cursor) -> Option<ItemKind> {
         let items = top_mod.scope_graph(self.as_hir_db()).items_dfs(self.as_hir_db());
 
@@ -102,6 +83,7 @@ impl LanguageServerDatabase {
         });
         diags
     }
+
 }
 
 impl salsa::Database for LanguageServerDatabase {

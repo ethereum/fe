@@ -86,6 +86,8 @@ pub fn goto_enclosing_path(db: &mut LanguageServerDatabase, top_mod: TopLevelMod
 
 #[cfg(test)]
 mod tests {
+    use crate::workspace::Workspace;
+
     use super::*;
     use fe_compiler_test_utils::snap_test;
     use dir_test::{dir_test, Fixture};
@@ -115,26 +117,27 @@ mod tests {
         glob: "goto*.fe"
     )]
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
-        let mut db = LanguageServerDatabase::default();
+        let mut db = &mut LanguageServerDatabase::default();
+        let workspace = &mut Workspace::default();
         let path = Path::new(fixture.path());
-        let top_mod = db.top_mod_from_file(path, fixture.content());
+        let top_mod = workspace.top_mod_from_file(&mut db, path, fixture.content());
 
         let cursors = extract_multiple_cursor_positions_from_spans(&mut db, top_mod);
         
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
         cursors.iter().for_each(|cursor| {
-            let resolved_path = goto_enclosing_path(&mut db, top_mod, *cursor);
+            let resolved_path = goto_enclosing_path(db, top_mod, *cursor);
 
             match resolved_path {
                 Some(path) => match path {
                     EarlyResolvedPath::Full(bucket) => {
-                        let path = bucket.iter().map(|x| x.pretty_path(&db).unwrap()).collect::<Vec<_>>()
+                        let path = bucket.iter().map(|x| x.pretty_path(db).unwrap()).collect::<Vec<_>>()
                         .join("\n");
                         cursor_path_map.insert(*cursor, path);
                     },
                     EarlyResolvedPath::Partial { res, unresolved_from: _ } => {
-                        let path = res.pretty_path(&db).unwrap();
+                        let path = res.pretty_path(db).unwrap();
                         cursor_path_map.insert(*cursor, path);
                     },
                 },
@@ -157,11 +160,12 @@ mod tests {
         glob: "smallest_enclosing*.fe"
     )]
     fn test_smallest_enclosing_path(fixture: Fixture<&str>) {
-        let mut db = LanguageServerDatabase::default();
+        let db = &mut LanguageServerDatabase::default();
+        let workspace = &mut Workspace::default();
         let path = Path::new(fixture.path());
-        let top_mod = db.top_mod_from_file(path, fixture.content());
+        let top_mod = workspace.top_mod_from_file(db, path, fixture.content());
 
-        let cursors = extract_multiple_cursor_positions_from_spans(&mut db, top_mod);
+        let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
         
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
@@ -173,15 +177,15 @@ mod tests {
             let path_map = path_collector.path_map;
             let enclosing_path = smallest_enclosing_path(*cursor, &path_map);
             
-            let resolved_enclosing_path = hir_analysis::name_resolution::resolve_path_early(&mut db, enclosing_path.unwrap().0, enclosing_path.unwrap().1);
+            let resolved_enclosing_path = hir_analysis::name_resolution::resolve_path_early(db, enclosing_path.unwrap().0, enclosing_path.unwrap().1);
             
             let res = match resolved_enclosing_path {
                 EarlyResolvedPath::Full(bucket) => {
-                    bucket.iter().map(|x| x.pretty_path(&db).unwrap()).collect::<Vec<_>>()
+                    bucket.iter().map(|x| x.pretty_path(db).unwrap()).collect::<Vec<_>>()
                     .join("\n")
                 },
                 EarlyResolvedPath::Partial { res, unresolved_from: _ } => {
-                    res.pretty_path(&db).unwrap()
+                    res.pretty_path(db).unwrap()
                 },
             };
             cursor_path_map.insert(*cursor, res);

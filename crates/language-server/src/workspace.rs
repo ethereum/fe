@@ -1,18 +1,19 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, path::Path};
 
 use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
+use hir::{hir_def::TopLevelMod, lower::map_file_to_mod};
 use patricia_tree::StringPatriciaMap;
 
 use crate::db::LanguageServerDatabase;
 
 const FE_CONFIG_SUFFIX: &str = "fe.toml";
 
-trait IngotFileContext {
-    fn get_input_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputFile>;
-    fn get_ingot_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputIngot>;
+pub(crate) trait IngotFileContext {
+    fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile>;
+    fn get_ingot_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot>;
 }
 
 struct Ingot {
@@ -20,11 +21,12 @@ struct Ingot {
     external: InputIngot,
 }
 
-pub struct LocalIngotContext {
-    ingot: InputIngot,
+// derive `Copy` for `Ingot` because `StringPatriciaMap` requires `Copy` for its value type.
+pub(crate) struct LocalIngotContext {
+    pub ingot: InputIngot,
     // external_ingots: StringPatriciaMap<InputIngot>,
     // cache `InputFile` for path
-    files: StringPatriciaMap<InputFile>,
+    pub files: StringPatriciaMap<InputFile>,
 }
 
 fn ingot_contains_file(ingot_path: &str, file_path: &str) -> bool {
@@ -34,17 +36,17 @@ fn ingot_contains_file(ingot_path: &str, file_path: &str) -> bool {
     file_path.starts_with(ingot_path)
 }
 
-fn get_containing_ingot<'a, T>(ingots: &'a StringPatriciaMap<T>, path: &'a str) -> Option<&'a T> {
+pub(crate) fn get_containing_ingot<'a, T>(ingots: &'a mut StringPatriciaMap<T>, path: &'a str) -> Option<&'a mut T> {
     ingots
-        .get_longest_common_prefix(path)
+        .get_longest_common_prefix_mut(path)
         .filter(|(ingot_path, _)| ingot_contains_file(ingot_path, path))
         .map(|(_, ingot)| ingot)
 }
 
 impl LocalIngotContext {
-    pub fn new(db: LanguageServerDatabase, config_path: &str) -> Option<Self> {
+    pub fn new(db: &LanguageServerDatabase, config_path: &str) -> Option<Self> {
         let ingot = InputIngot::new(
-            &db,
+            db,
             config_path,
             IngotKind::Local,
             Version::new(0, 0, 0),
@@ -59,7 +61,7 @@ impl LocalIngotContext {
 }
 
 impl IngotFileContext for LocalIngotContext {
-    fn get_input_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputFile> {
+    fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile> {
         let ingot = self.get_ingot_for_file_path(db, path)?;
         let input = self.files.get(path).map_or_else(
             || {
@@ -72,12 +74,12 @@ impl IngotFileContext for LocalIngotContext {
         input
     }
 
-    fn get_ingot_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputIngot> {
+    fn get_ingot_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot> {
         Some(self.ingot)
     }
 }
 
-struct StandaloneIngotContext {
+pub(crate) struct StandaloneIngotContext {
     ingots: StringPatriciaMap<InputIngot>,
     files: StringPatriciaMap<InputFile>,
 }
@@ -92,7 +94,7 @@ impl StandaloneIngotContext {
 }
 
 impl IngotFileContext for StandaloneIngotContext {
-    fn get_input_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputFile> {
+    fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile> {
         let ingot = self.get_ingot_for_file_path(db, path)?;
         let input = self.files.get(path).map_or_else(
             || {
@@ -105,25 +107,25 @@ impl IngotFileContext for StandaloneIngotContext {
         input
     }
 
-    fn get_ingot_for_file_path(&mut self, _db: &LanguageServerDatabase, path: &str) -> Option<InputIngot> {
-        get_containing_ingot(&self.ingots, path).as_deref().copied()
+    fn get_ingot_for_file_path(&mut self, _db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot> {
+        get_containing_ingot(&mut self.ingots, path).as_deref().copied()
     }
 }
 
 pub(crate) struct Workspace {
-    ingot_contexts: StringPatriciaMap<LocalIngotContext>,
-    standalone_ingot_contexts: StandaloneIngotContext,
+    pub(crate) ingot_contexts: StringPatriciaMap<LocalIngotContext>,
+    pub(crate) standalone_ingot_context: StandaloneIngotContext,
 }
 
 impl Workspace {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         Self {
             ingot_contexts: StringPatriciaMap::new(),
-            standalone_ingot_contexts: StandaloneIngotContext::new(),
+            standalone_ingot_context: StandaloneIngotContext::new(),
         }
     }
 
-    pub fn get_ingot_context(&mut self, db: LanguageServerDatabase, config_path: &str) -> Option<&LocalIngotContext> {
+    pub fn get_ingot_context(&mut self, db: &LanguageServerDatabase, config_path: &str) -> Option<&LocalIngotContext> {
         if self.ingot_contexts.contains_key(config_path) {
             return self.ingot_contexts.get(config_path);
         } else {
@@ -133,16 +135,37 @@ impl Workspace {
         }
     }
 
-    pub fn get_ingot_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputIngot> {
-        let ctx = get_containing_ingot(&self.ingot_contexts, path);
-        ctx.map_or_else(
-            || self.standalone_ingot_contexts.get_ingot_for_file_path(db, path),
-            |ingot_context| Some(ingot_context.ingot.clone()),
-        )
+    pub fn top_mod_from_file(&mut self, db: &mut LanguageServerDatabase, file_path: &Path, source: &str) -> TopLevelMod {
+        // let workspace = &mut self.workspace;
+        // create a new scope in which `self` is not mutable:
+        let file = self.get_input_for_file_path(db, file_path.to_str().unwrap()).unwrap();
+        file.set_text(db).to(source.to_string());
+        // use salsa2022 setter to set the file's `text` field
+        let ingot = file.ingot(db);
+        let mut files = ingot.files(db).clone();
+        files.insert(file);
+        ingot.set_files(db, files);
+        map_file_to_mod(db, file)
     }
 
-    pub fn get_input_file_for_file_path(&mut self, db: &LanguageServerDatabase, path: &str) -> Option<InputFile> {
-        self.get_ingot_for_file_path(db, path)
-            .map_or_else(|| None, |ingot| Some(ingot.root_file(db)))
+}
+
+impl IngotFileContext for Workspace {
+    fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile> {
+        let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
+        if ctx.is_some() {
+            Some(ctx.unwrap().get_input_for_file_path(db, path).unwrap())
+        } else {
+            (&mut self.standalone_ingot_context).get_input_for_file_path(db, path)
+        }
+    }
+
+    fn get_ingot_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot> {
+        let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
+        if ctx.is_some() {
+            Some(ctx.unwrap().get_ingot_for_file_path(db, path).unwrap())
+        } else {
+            (&mut self.standalone_ingot_context).get_ingot_for_file_path(db, path)
+        }
     }
 }

@@ -37,7 +37,7 @@ pub(crate) fn handle_hover(
         file_text.as_str(),
     );
     let file_path = std::path::Path::new(file_path);
-    let top_mod = state.db.top_mod_from_file(file_path, file_text.as_str());
+    let top_mod = state.workspace.top_mod_from_file(&mut state.db, file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match goto_info {
@@ -91,7 +91,7 @@ pub(crate) fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = std::path::Path::new(params.text_document.uri.path());
-    let top_mod = state.db.top_mod_from_file(file_path, file_text.as_str());
+    let top_mod = state.workspace.top_mod_from_file(&mut state.db, file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location

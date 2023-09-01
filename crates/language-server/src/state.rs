@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::db::LanguageServerDatabase;
+use crate::workspace::Workspace;
 use log::{ Record, Level, Metadata, info };
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
@@ -14,8 +15,9 @@ use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 
 pub struct ServerState {
-    pub sender: Arc<Mutex<Sender<Message>>>,
-    pub db: LanguageServerDatabase,
+    pub(crate) sender: Arc<Mutex<Sender<Message>>>,
+    pub(crate) db: LanguageServerDatabase,
+    pub(crate) workspace: Workspace,
 }
 
 impl ServerState {
@@ -24,6 +26,7 @@ impl ServerState {
         ServerState {
             sender,
             db: LanguageServerDatabase::default(),
+            workspace: Workspace::default(),
         }
     }
     
