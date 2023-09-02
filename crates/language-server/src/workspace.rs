@@ -16,16 +16,8 @@ pub(crate) trait IngotFileContext {
     fn get_ingot_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot>;
 }
 
-struct Ingot {
-    local: InputIngot,
-    external: InputIngot,
-}
-
-// derive `Copy` for `Ingot` because `StringPatriciaMap` requires `Copy` for its value type.
 pub(crate) struct LocalIngotContext {
     pub ingot: InputIngot,
-    // external_ingots: StringPatriciaMap<InputIngot>,
-    // cache `InputFile` for path
     pub files: StringPatriciaMap<InputFile>,
 }
 
@@ -54,7 +46,6 @@ impl LocalIngotContext {
         );
         Some(Self {
             ingot,
-            // external_ingots: StringPatriciaMap::new(),
             files: StringPatriciaMap::new(),
         })
     }
@@ -96,19 +87,34 @@ impl StandaloneIngotContext {
 impl IngotFileContext for StandaloneIngotContext {
     fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile> {
         let ingot = self.get_ingot_for_file_path(db, path)?;
-        let input = self.files.get(path).map_or_else(
+        let input_file = self.files.get(path).map_or_else(
             || {
                 let file = InputFile::new(db, ingot, path.into(), "".into());
                 Some(file)
             },
             |file| Some(*file),
         );
-        self.files.insert(path.to_string(), input.unwrap());
-        input
+        ingot.set_files(db, [input_file.unwrap()].into());
+        ingot.set_root_file(db, input_file.unwrap());
+        self.files.insert(path.to_string(), input_file.unwrap());
+        input_file
     }
 
     fn get_ingot_for_file_path(&mut self, _db: &mut LanguageServerDatabase, path: &str) -> Option<InputIngot> {
-        get_containing_ingot(&mut self.ingots, path).as_deref().copied()
+        get_containing_ingot(&mut self.ingots, path).as_deref().copied().map_or_else(
+            || {
+                let ingot = InputIngot::new(
+                    _db,
+                    path,
+                    IngotKind::StandAlone,
+                    Version::new(0, 0, 0),
+                    BTreeSet::new(),
+                );
+                self.ingots.insert(path.to_string(), ingot);
+                Some(ingot)
+            },
+            |ingot| Some(ingot),
+        )
     }
 }
 
@@ -136,11 +142,8 @@ impl Workspace {
     }
 
     pub fn top_mod_from_file(&mut self, db: &mut LanguageServerDatabase, file_path: &Path, source: &str) -> TopLevelMod {
-        // let workspace = &mut self.workspace;
-        // create a new scope in which `self` is not mutable:
         let file = self.get_input_for_file_path(db, file_path.to_str().unwrap()).unwrap();
         file.set_text(db).to(source.to_string());
-        // use salsa2022 setter to set the file's `text` field
         let ingot = file.ingot(db);
         let mut files = ingot.files(db).clone();
         files.insert(file);
@@ -153,8 +156,8 @@ impl Workspace {
 impl IngotFileContext for Workspace {
     fn get_input_for_file_path(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Option<InputFile> {
         let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
-        if ctx.is_some() {
-            Some(ctx.unwrap().get_input_for_file_path(db, path).unwrap())
+        if let Some(ctx) = ctx {
+            ctx.get_input_for_file_path(db, path)
         } else {
             (&mut self.standalone_ingot_context).get_input_for_file_path(db, path)
         }
@@ -167,5 +170,37 @@ impl IngotFileContext for Workspace {
         } else {
             (&mut self.standalone_ingot_context).get_ingot_for_file_path(db, path)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::workspace::{IngotFileContext, Workspace};
+
+    use super::StandaloneIngotContext;
+    
+    #[test]
+    fn test_standalone_context() {
+        let mut db = crate::db::LanguageServerDatabase::default();
+        let file_path = "tests/data/ingot1/src/main.fe";
+        
+        let ctx = &mut StandaloneIngotContext::new();
+        let file = ctx.get_input_for_file_path(&mut db, file_path);       
+                
+        assert!(file.is_some());
+        
+        let ingot = ctx.get_ingot_for_file_path(&mut db, file_path);
+        assert!(ingot.is_some());
+        assert_eq!(ingot.unwrap().kind(&mut db), common::input::IngotKind::StandAlone);
+        assert_eq!(ingot.unwrap(), file.unwrap().ingot(&mut db));
+    }
+
+    #[test]
+    fn test_workspace_standalone_ingot() {
+        let mut workspace = Workspace::default();
+        let mut db = crate::db::LanguageServerDatabase::default();
+        let file_path = "tests/data/ingot1/src/main.fe";
+        let file = workspace.get_input_for_file_path(&mut db, file_path);
+        assert!(file.is_some());
     }
 }

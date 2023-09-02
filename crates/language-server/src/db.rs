@@ -1,23 +1,17 @@
-use std::{collections::BTreeSet, path, ops::DerefMut, borrow::BorrowMut};
-
-use super::workspace;
-
 use common::{
     diagnostics::CompleteDiagnostic,
-    input::{IngotKind, Version},
-    InputDb, InputFile, InputIngot,
+    InputDb,
 };
 use hir::{
     analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::{TopLevelMod, ItemKind},
-    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb, span::{DynLazySpan, LazySpan},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb, span::{DynLazySpan, LazySpan},
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
-use patricia_tree::StringPatriciaMap;
 
-use crate::{goto::Cursor, workspace::{LocalIngotContext, StandaloneIngotContext, IngotFileContext, get_containing_ingot}};
+use crate::goto::Cursor;
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::diagnostics::file_line_starts);
