@@ -2120,13 +2120,10 @@ fn expr_comp_operation(
         // comparison operands should be moved to the stack
         let left_ty = value_expr_type(context, left, None)?;
 
-        if  op.kind == fe::CompOperator::Eq {
-            if left_ty.is_primitive(context.db()) 
-            {
+        if op.kind == fe::CompOperator::Eq {
+            if left_ty.is_primitive(context.db()) {
                 expect_expr_type(context, right, left_ty, false)?;
-            }
-            else
-            {
+            } else {
                 if !left_ty.eq_trait_implemented(context.db()) {
                     context.error(
                         &format!(
@@ -2136,15 +2133,10 @@ fn expr_comp_operation(
                         exp.span,
                         "invalid comparison",
                     );
-        
-                }
-                else {
-                    
+                } else {
                 }
             }
-        }
-        else
-        {
+        } else {
             if left_ty.is_primitive(context.db()) {
                 expect_expr_type(context, right, left_ty, false)?;
             } else {

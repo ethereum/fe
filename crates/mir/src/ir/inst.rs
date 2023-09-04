@@ -144,7 +144,7 @@ pub enum InstKind {
         func: FunctionId,
         lhs: ValueId,
         rhs: ValueId,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]

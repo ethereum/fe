@@ -319,8 +319,14 @@ impl BodyBuilder {
         self.insert_inst(inst)
     }
 
-    pub fn lower_eq(&mut self,lhs: ValueId, rhs: ValueId,source: SourceInfo, func: FunctionId ) -> InstId{
-        let kind = InstKind::EqTrait { lhs, rhs, func};
+    pub fn lower_eq(
+        &mut self,
+        lhs: ValueId,
+        rhs: ValueId,
+        source: SourceInfo,
+        func: FunctionId,
+    ) -> InstId {
+        let kind = InstKind::EqTrait { lhs, rhs, func };
         let inst = Inst::new(kind, source);
         self.insert_inst(inst)
     }
