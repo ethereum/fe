@@ -2123,33 +2123,29 @@ fn expr_comp_operation(
         if op.kind == fe::CompOperator::Eq {
             if left_ty.is_primitive(context.db()) {
                 expect_expr_type(context, right, left_ty, false)?;
-            } else {
-                if !left_ty.eq_trait_implemented(context.db()) {
-                    context.error(
-                        &format!(
-                            "Eq trait not implemented for type `{}`",
-                            left_ty.display(context.db()),
-                        ),
-                        exp.span,
-                        "invalid comparison",
-                    );
-                } else {
-                }
-            }
-        } else {
-            if left_ty.is_primitive(context.db()) {
-                expect_expr_type(context, right, left_ty, false)?;
-            } else {
+            } else if !left_ty.eq_trait_implemented(context.db()) {
                 context.error(
                     &format!(
-                        "`{}` type can't be compared with the `{}` operator",
+                        "Eq trait not implemented for type `{}`",
                         left_ty.display(context.db()),
-                        op.kind
                     ),
                     exp.span,
                     "invalid comparison",
                 );
+            } else {
             }
+        } else if left_ty.is_primitive(context.db()) {
+            expect_expr_type(context, right, left_ty, false)?;
+        } else {
+            context.error(
+                &format!(
+                    "`{}` type can't be compared with the `{}` operator",
+                    left_ty.display(context.db()),
+                    op.kind
+                ),
+                exp.span,
+                "invalid comparison",
+            );
         }
         return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
     }

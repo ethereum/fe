@@ -299,7 +299,7 @@ impl Manifest {
 pub fn get_project_root() -> Option<String> {
     let current_dir = std::env::current_dir().expect("Unable to get current directory");
 
-    let mut current_path = current_dir.clone();
+    let mut current_path = current_dir;
     loop {
         let fe_toml_path = current_path.join(FE_TOML);
         if fe_toml_path.is_file() {
