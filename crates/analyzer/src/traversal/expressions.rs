@@ -2132,7 +2132,7 @@ fn expr_comp_operation(
                     exp.span,
                     "invalid comparison",
                 );
-            } 
+            }
             // else {
             // }
         } else if left_ty.is_primitive(context.db()) {
