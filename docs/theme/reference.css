@@ -51,3 +51,14 @@ main .warning p::before {
 .ayu main .warning p a {
   color: #80d0d0
 }
+
+/* add consistent whitespace around code blocks*/
+.pre code {
+  white-space: pre;
+}
+
+pre {
+  display: block;
+  margin-top: 4rem;
+  margin-bottom: 4rem;
+}
