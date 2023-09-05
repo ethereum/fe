@@ -1122,6 +1122,7 @@ dependencies = [
  "fe-hir-analysis",
  "fe-macros",
  "fxhash",
+ "glob",
  "indexmap",
  "log",
  "lsp-server",
