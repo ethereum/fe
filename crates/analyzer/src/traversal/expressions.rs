@@ -2135,20 +2135,18 @@ fn expr_comp_operation(
             }
             // else {
             // }
+        } else if left_ty.is_primitive(context.db()) {
+            expect_expr_type(context, right, left_ty, false)?;
         } else {
-            if left_ty.is_primitive(context.db()) {
-                expect_expr_type(context, right, left_ty, false)?;
-            } else {
-                context.error(
-                    &format!(
-                        "`{}` type can't be compared with the `{}` operator",
-                        left_ty.display(context.db()),
-                        op.kind
-                    ),
-                    exp.span,
-                    "invalid comparison",
-                );
-            }
+            context.error(
+                &format!(
+                    "`{}` type can't be compared with the `{}` operator",
+                    left_ty.display(context.db()),
+                    op.kind
+                ),
+                exp.span,
+                "invalid comparison",
+            );
         }
         return Ok(ExpressionAttributes::new(TypeId::bool(context.db())));
     }

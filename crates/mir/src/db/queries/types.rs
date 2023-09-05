@@ -282,7 +282,7 @@ impl TypeId {
         if self.data(db).kind == TypeKind::Bool {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn align_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
