@@ -279,7 +279,10 @@ impl TypeId {
     }
 
     pub fn eq_trait_implemented(&self, db: &dyn MirDb) -> bool {
-        false
+        matches!(
+            &self.data(db).kind,
+            TypeKind::Array(_) | TypeKind::String(_) | TypeKind::Map(_) | TypeKind::Bool
+        )
     }
 
     pub fn align_of(self, db: &dyn MirDb, slot_size: usize) -> usize {

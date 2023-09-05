@@ -170,7 +170,10 @@ impl TypeId {
     }
 
     pub fn eq_trait_implemented(&self, db: &dyn AnalyzerDb) -> bool {
-        false
+        matches!(
+            self.typ(db),
+            Type::Array(_) | Type::Map(_) | Type::String(_)
+        )
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -195,8 +198,8 @@ impl TypeId {
 
     /// Return the `impl` for the given trait name. There can only ever be a single
     /// implementation per concrete type and trait.
-    pub fn get_impl_of_eq_for(&self, db: &dyn AnalyzerDb, trait_: SmolStr) -> Option<ImplId> {
-        db.impl_from_name(*self, trait_)
+    pub fn get_impl_of_eq_for(ti: SmolStr, db: &dyn AnalyzerDb, trait_: SmolStr) -> Option<ImplId> {
+        db.impl_from_name(ti, trait_)
     }
 
     /// Looks up all possible candidates of the given function name that are implemented via traits.

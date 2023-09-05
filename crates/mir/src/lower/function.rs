@@ -393,22 +393,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let lhs = self.lower_expr_to_value(left);
                 let rhs = self.lower_expr_to_value(right);
                 // convert to match statement ??
-                if op.kind == ast::CompOperator::Eq
-                    && !ty.is_primitive(self.db)
-                    && ty.eq_trait_implemented(self.db)
-                {
+                if op.kind == ast::CompOperator::Eq && ty.eq_trait_implemented(self.db) {
                     //lower to proper impl of the trait
-                    let concrete_type = self
-                        .func
-                        .signature(self.db)
-                        .resolved_generics
-                        .get(&SmolStr::new(ty.as_string(self.db)))
-                        .cloned()
-                        .expect("unresolved generic type");
 
-                    let impl_ = concrete_type
-                        .get_impl_of_eq_for(self.db.upcast(), SmolStr::new("Eq"))
-                        .expect("missing impl");
+                    let impl_ = analyzer_types::TypeId::get_impl_of_eq_for(
+                        SmolStr::new("bool"),
+                        self.db.upcast(),
+                        SmolStr::new("Eq"),
+                    )
+                    .expect("missing impl");
 
                     let function = impl_
                         .function(self.db.upcast(), "compare")
@@ -1048,7 +1041,6 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             } => {
                 let mut method_args = vec![self.lower_method_receiver(func)];
                 method_args.append(&mut args);
-
                 let concrete_type = self
                     .func
                     .signature(self.db)

@@ -449,8 +449,15 @@ impl<'db, 'a> FuncLowerHelper<'db, 'a> {
             InstKind::EqTrait { lhs, func, rhs } => {
                 self.ctx.function_dependency.insert(*func);
                 let func_name = identifier! {(self.db.codegen_function_symbol_name(*func))};
-                let result = expression! {[func_name]([lhs,rhs])};
-                self.sink.push(Statement::Expression(result))
+                let args: Vec<_> = Vec::from([lhs, rhs])
+                    .iter()
+                    .map(|arg| self.value_expr(**arg))
+                    .collect();
+                let result = expression! {[func_name]([args...])};
+                match self.db.codegen_legalized_signature(*func).return_type {
+                    Some(mut result_ty) => self.assign_inst_result(inst, result, result_ty),
+                    _ => self.sink.push(Statement::Expression(result)),
+                }
             }
         }
     }

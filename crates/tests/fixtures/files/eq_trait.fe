@@ -4,4 +4,5 @@ use std::cmp::Eq
 fn eq_trait() {
     assert (false.compare(other:false)).compare(other: true)
     assert (false.compare(other: true)).compare(other: false)
+    assert false == false
 }

@@ -31,6 +31,22 @@ pub fn all_impls(db: &dyn AnalyzerDb, ty: TypeId) -> Rc<[ImplId]> {
         .collect()
 }
 
+pub fn all_impls_of_name(db: &dyn AnalyzerDb, ty: SmolStr) -> Rc<[ImplId]> {
+    let ingot_modules = db
+        .root_ingot()
+        .all_modules(db)
+        .iter()
+        .flat_map(|module_id| module_id.all_impls(db).to_vec())
+        .collect::<Vec<_>>();
+    db.ingot_external_ingots(db.root_ingot())
+        .values()
+        .flat_map(|ingot| ingot.all_modules(db).to_vec())
+        .flat_map(|module_id| module_id.all_impls(db).to_vec())
+        .chain(ingot_modules)
+        .filter(|val| val.receiver(db).name(db) == ty)
+        .collect()
+}
+
 pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplId> {
     db.all_impls(ty)
         .iter()
@@ -38,8 +54,8 @@ pub fn impl_for(db: &dyn AnalyzerDb, ty: TypeId, treit: TraitId) -> Option<ImplI
         .cloned()
 }
 
-pub fn impl_from_name(db: &dyn AnalyzerDb, ty: TypeId, treit: SmolStr) -> Option<ImplId> {
-    db.all_impls(ty)
+pub fn impl_from_name(db: &dyn AnalyzerDb, ty: SmolStr, treit: SmolStr) -> Option<ImplId> {
+    db.all_impls_of_name(ty)
         .iter()
         .find(|impl_| impl_.trait_id(db).name(db) == treit)
         .cloned()
