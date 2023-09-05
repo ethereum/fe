@@ -172,7 +172,8 @@ impl TypeId {
     pub fn eq_trait_implemented(&self, db: &dyn AnalyzerDb) -> bool {
         matches!(
             self.typ(db),
-            Type::Array(_) | Type::Map(_) | Type::String(_)
+            //Type::Array(_) | Type::Map(_) | Type::String(_)
+            Type::Base(Base::Bool)
         )
     }
 

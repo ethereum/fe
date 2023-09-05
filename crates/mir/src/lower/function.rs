@@ -393,7 +393,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let lhs = self.lower_expr_to_value(left);
                 let rhs = self.lower_expr_to_value(right);
                 // convert to match statement ??
-                if op.kind == ast::CompOperator::Eq && ty.eq_trait_implemented(self.db) {
+                let sss = self.expr_ty(left);
+                if op.kind == ast::CompOperator::Eq && sss.eq_trait_implemented(self.db) {
                     //lower to proper impl of the trait
 
                     let impl_ = analyzer_types::TypeId::get_impl_of_eq_for(
