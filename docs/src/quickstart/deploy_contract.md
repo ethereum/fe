@@ -1,31 +1,38 @@
 ## Deploy your contract.
 
-Since we have written our first contract now, how about we bring it alive and use it on an actual chain?
+## Prerequisites 
 
-Deploying such a demo contract to the Ethereum mainnet would be a waste of money but fortunately we have a few other options to choose from. For instance, we can use our very own local blockchain instance which is great for local development. Alternatively we can use a test network that provides developers shared infrastructure to deploy code without spending actual money on it.
+You should have compiled the `GuestBook` contract and have both `Guestbook_abi.json` and `GuestBook.bin` available in your `outputs` folder.
+If you don't have any of these components, please revisit [Write your first contract](./first_contract.md).
 
-In this guide we will learn how to deploy and interact with our guest book on the [Sepolia testnet](https://sepolia.dev/). Sepolia is the recommended testnet for application development as the previously popular [Görli network is deprecated](https://ethereum.org/en/developers/docs/networks/#goerli) and planned to shut down soon.
+## Introduction
 
-### Setting the stage with foundry
+When you develop smart contracts it is common to test them on local blockchains first because they are quick and easy to create and it doesn't matter if you make mistakes - there is nothing of real value secured by the blockchain as it only exists on your computer. Later, you can deploy your contract on a public testnet to see how it behaves in a more realistic environment where other developers are also testing their code. Finally, when you are very confident that your contract is ready, you can deploy to Ethereum Mainnet (or one of its live Layer-2 networks). Once the contract is deployed on a "live" network, you are handling assets with real world value!
 
-The Ethereum ecosystem provides a rich set of tools to assist smart contract developers in various ways when it comes to developing, testing, deploying and upgrading smart contracts. Fe is still a very young language and there are no tools yet that are tailored to the Fe language. Having said that, most tooling should be flexible enough to work with Fe in some way but it might feel slightly less integrated. For this guide we choose to use foundry which is a very lightweight set of command line tools for managing smart contract development.
+In this guide you will deploy your contract to a **local blockchain**. This will be an "ephemeral" blockchain, meaning it is completely destroyed every time you shut it down and recreated from scratch every time you start it up - it won't save its state when you shut it down. The benefit of this is quick and easy development. Later in the tutorial you will learn how to deploy to a live public testnet too.
 
-To follow this guide, you will first need to head over to [getfoundry.sh](https://getfoundry.sh) and follow the installation steps.
+## Your developer environment
 
-> Note: If you are a seasoned smart contract developer who uses different tools, feel free to follow the tutorial using your own toolchain.
+Everything in this tutorial can be done by sending JSON data directly to an Ethereum node. However, this is often awkward and error-prone, so a rich ecosystem of tooling has been developed to allow developers to interact with Ethereum in familiar languages or using abstractions that simplify the process.  
 
+In this guide you will use [Foundry](https://book.getfoundry.sh/) which is a very lightweight set of command line tools for managing smart contract development. If you already have Foundry installed, head straight to the next section. If you need to install Foundry, head to [getfoundry.sh](https://getfoundry.sh) and follow the installation steps.
 
-### Setting up a Sepolia user account
+> Note: If you are a seasoned smart contract developer, feel free to follow the tutorial using your own toolchain.
 
-To deploy our contract to the Sepolia testnet we will need to have an Ethereum account that has some SepoliaETH. SepoliaETH has no real value but it is still a resource that is needed as a basic line of defense against spamming the testnet. If you don't have any SepoliaETH yet, you can [request some SepoliaETH](https://ethereum.org/en/developers/docs/networks/#sepolia) from one of the faucets that are listed on the ethereum.org website.
+## Starting a local network
 
+Foundry has its own local network called [Anvil](https://book.getfoundry.sh/reference/anvil/). You can use it to create a local blockchain on your computer. Open a terminal and run the following very simple command:
 
-> **IMPORTANT**: It is good practice to **never** use an Ethereum account for a testnet that is also used for the actual Ethereum mainnet.
+```sh
+anvil 
+```
+
+You will see some ASCII art and configuration details in the terminal. Anvil creates a set of accounts that you can use on this network. The account addresses and private keys are displayed in the console (**never** use these accounts to interact with any live network). You will also see a line reading `listening on 127.0.0.1:8545`. This indicates that your local node is listening for http traffic on your local network on port 8545 - this is important because this is how you will send the necessary information to your node so that it can be added to the blockchain, and how you will interact with the contract after it is deployed.
 
 
 ### Making the deployment transaction
 
-Let's recall that we finished our guest book in the previous chapter with the following code.
+In the previous guide you wrote the folloiwng contract, and compiled it using `./fe build guest_book.fe --overwrite` to obtain the contract bytecode. This compilation stage converts the human-readable Fe code into a format that can be efficiently executed by Ethereum's embedded computer, known as the Ethereum Virtual Machine (EVM). The bytecode is stored at an address on the blockchain. The contract functions are invoked by sending instructions in a transaction to that address.
 
 ```fe
 contract GuestBook {
@@ -41,7 +48,7 @@ contract GuestBook {
 }
 ```
 
-If you haven't already, run `./fe build guest_book.fe --overwrite` to obtain the bytecode that we want to deploy.
+If you haven't already, run  to obtain the bytecode that we want to deploy.
 
 To make the deployment, we will need to send a transaction to a node that participates in the Sepolia network. We can run our own node, sign up at [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/) to use one of their nodes or use an open public node such as `https://rpc.sepolia.org` which we will use to keep this tutorial as accessible as possible.
 
@@ -131,3 +138,15 @@ And the guestbook entry for address `0x4E14AaF86CF0759d6Ec8C7433acd66F07D093293`
 ```
 
 Congratulations! You've deployed real Fe code to a live network 🤖
+
+
+
+
+
+
+### Setting up a Sepolia user account
+
+To deploy our contract to the Sepolia testnet we will need to have an Ethereum account that has some SepoliaETH. SepoliaETH has no real value but it is still a resource that is needed as a basic line of defense against spamming the testnet. If you don't have any SepoliaETH yet, you can [request some SepoliaETH](https://ethereum.org/en/developers/docs/networks/#sepolia) from one of the faucets that are listed on the ethereum.org website.
+
+
+> **IMPORTANT**: It is good practice to **never** use an Ethereum account for a testnet that is also used for the actual Ethereum mainnet.
