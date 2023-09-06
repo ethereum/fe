@@ -7,15 +7,15 @@ If you don't have any of these components, please revisit [Write your first cont
 
 ## Introduction
 
-When you develop smart contracts it is common to test them on local blockchains first because they are quick and easy to create and it doesn't matter if you make mistakes - there is nothing of real value secured by the blockchain as it only exists on your computer. Later, you can deploy your contract on a public testnet to see how it behaves in a more realistic environment where other developers are also testing their code. Finally, when you are very confident that your contract is ready, you can deploy to Ethereum Mainnet (or one of its live Layer-2 networks). Once the contract is deployed on a "live" network, you are handling assets with real world value!
+When you develop smart contracts it is common to test them on local blockchains first because they are quick and easy to create and it doesn't matter if you make mistakes - there is nothing of real value secured by the blockchain as it only exists on your computer. Later, you can deploy your contract on a public test network to see how it behaves in a more realistic environment where other developers are also testing their code. Finally, when you are very confident that your contract is ready, you can deploy to Ethereum Mainnet (or one of its live Layer-2 networks). Once the contract is deployed on a "live" network, you are handling assets with real-world value!
 
-In this guide you will deploy your contract to a **local blockchain**. This will be an "ephemeral" blockchain, meaning it is completely destroyed every time you shut it down and recreated from scratch every time you start it up - it won't save its state when you shut it down. The benefit of this is quick and easy development, and you don't need to find testnet ETH to pay gas fees. Later in the tutorial you will learn how to deploy to a live public testnet too.
+In this guide, you will deploy your contract to a **local blockchain**. This will be an "ephemeral" blockchain, meaning it is completely destroyed every time you shut it down and recreated from scratch every time you start it up - it won't save its state when you shut it down. The benefit of this is quick and easy development, and you don't need to find test ETH to pay gas fees. Later in the guide, you will learn how to deploy to a live public test network too.
 
 ## Your developer environment
 
 Everything in this tutorial can be done by sending JSON data directly to an Ethereum node. However, this is often awkward and error-prone, so a rich ecosystem of tooling has been developed to allow developers to interact with Ethereum in familiar languages or using abstractions that simplify the process.  
 
-In this guide you will use [Foundry](https://book.getfoundry.sh/) which is a very lightweight set of command line tools for managing smart contract development. If you already have Foundry installed, head straight to the next section. If you need to install Foundry, head to [getfoundry.sh](https://getfoundry.sh) and follow the installation steps.
+In this guide, you will use [Foundry](https://book.getfoundry.sh/) which is a very lightweight set of command-line tools for managing smart contract development. If you already have Foundry installed, head straight to the next section. If you need to install Foundry, head to [getfoundry.sh](https://getfoundry.sh) and follow the installation steps.
 
 > Note: If you are a seasoned smart contract developer, feel free to follow the tutorial using your own toolchain.
 
@@ -27,7 +27,7 @@ Foundry has its own local network called [Anvil](https://book.getfoundry.sh/refe
 anvil 
 ```
 
-You will see some ASCII art and configuration details in the terminal. Anvil creates a set of accounts that you can use on this network. The account addresses and private keys are displayed in the console (**never** use these accounts to interact with any live network). You will also see a line reading `listening on 127.0.0.1:8545`. This indicates that your local node is listening for http traffic on your local network on port 8545 - this is important because this is how you will send the necessary information to your node so that it can be added to the blockchain, and how you will interact with the contract after it is deployed.
+You will see some ASCII art and configuration details in the terminal. Anvil creates a set of accounts that you can use on this network. The account addresses and private keys are displayed in the console (**never** use these accounts to interact with any live network). You will also see a line reading `listening on 127.0.0.1:8545`. This indicates that your local node is listening for HTTP traffic on your local network on port 8545 - this is important because this is how you will send the necessary information to your node so that it can be added to the blockchain, and how you will interact with the contract after it is deployed.
 
 > Note: Anvil needs to keep running throughout this tutorial - if you close the terminal your blockchain will cease to exist. Once Anvil has started, open a **new terminal** tab/window to run the rest of the commands in this guide.
 
@@ -51,7 +51,7 @@ contract GuestBook {
 
 To make the deployment, we will need to send a transaction to your node via its exposed HTTP port (`8545`). 
 
-The following command deploys the Guestbook contract to the your local network. Grab the private key of one of your accounts from the information displayed in the terminal running Anvil.
+The following command deploys the Guestbook contract to your local network. Grab the private key of one of your accounts from the information displayed in the terminal running Anvil.
 
 ```sh
 cast send --rpc-url localhost:8545 --private-key <your-private-key> --create $(cat output/GuestBook/GuestBook.bin)
@@ -75,14 +75,14 @@ transactionIndex        0
 type                    2
 ```
 
-This response tel you that your contract has been deployed to the blockchain. The transaction was included in block number 1, and the address it was deployed to is provided in the `contractAddress` field - you need this address to interact with the contract.
+This response tells you that your contract has been deployed to the blockchain. The transaction was included in block number 1, and the address it was deployed to is provided in the `contractAddress` field - you need this address to interact with the contract.
 
 > Note: Don't assume responses to be identical when following the tutorial. Due to the nature of the blockchain environment the content of the responses will always differ slightly.
 
 
 ### Signing the guest book
 
-Now that the contrat is deployed to the blockchain, you can send a transaction to sign it with a custom message. You will sign it from the same address that was used to deploy the contract, but there is nothing preventing you from using any account for which you have the private key (you could experiment by signing from all ten accounts created by Anvil, for example).
+Now that the contract is deployed to the blockchain, you can send a transaction to sign it with a custom message. You will sign it from the same address that was used to deploy the contract, but there is nothing preventing you from using any account for which you have the private key (you could experiment by signing from all ten accounts created by Anvil, for example).
 
 The following command will send a transaction to call `sign(string)` on our freshly deployed Guestbook contract sitting at address `0x810cbd4365396165874c054d01b1ede4cc249265` with the message *"We <3 Fe"*.
 
@@ -90,7 +90,7 @@ The following command will send a transaction to call `sign(string)` on our fres
 cast send --rpc-url http://localhost:8545 --private-key <your-private-key> <contract-address> "sign(string)" '"We <3 Fe"'
 ```
 
-The response will look approximatyely as follows:
+The response will look approximately as follows:
 
 ```sh
 blockHash               0xb286898484ae737d22838e27b29899b327804ec45309e47a75b18cfd7d595cc7
@@ -110,9 +110,9 @@ type                    2
 
 ### Reading the signatures
 
-The `get_msg(address)` API allows you to read the messages added to the guestbook for a given address. It will give us an response of 100 zero bytes for any address that hasn't yet signed the guestbook.
+The `get_msg(address)` API allows you to read the messages added to the guestbook for a given address. It will give us a response of 100 zero bytes for any address that hasn't yet signed the guestbook.
 
-Since reading the messages doesn't change any state within the blockchain, you don't have to send an actual transaction. Instead you can perform a *call* against the local state of the node that you are querying.
+Since reading the messages doesn't change any state within the blockchain, you don't have to send an actual transaction. Instead, you can perform a *call* against the local state of the node that you are querying.
 
 To do that run:
 
@@ -122,13 +122,13 @@ $ cast call --rpc-url https://rpc.sepolia.org <contract-address> "get_msg(addres
 
 Notice that the command doesn't need to provide a private key simply because we are not sending an actual transaction.
 
-The response arrives in the form of hex encoded bytes padded with zeroes: 
+The response arrives in the form of hex-encoded bytes padded with zeroes: 
 
 ```sh
 0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087765203c33204665000000000000000000000000000000000000000000000000
 ```
 
-Foundry provides a builtin method to convert this hex string into human-readable ASCII. You can do this as follows:
+Foundry provides a built-in method to convert this hex string into human-readable ASCII. You can do this as follows:
 
 ```sh
 cast to_ascii "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087765203c33204665000000000000000000000000000000000000000000000000"
@@ -149,10 +149,49 @@ Either way, the response will be the message you passed to the `sign(string)` fu
 Congratulations! You've deployed real Fe code to a local blockchain! 🤖
 
 
-## Deploying to a public testnet
+## Deploying to a public test network
 
-Now you have learned how to deploy your contract to a local blockchain, you can consider deploying it to a public testnet too. For more complex projects this can be very beneficial because it allows many users to interact with your contract, simulates real network conditions and allows you to interact with other existing contracts on the network. However, to use a public testnet you need to obtain some of that testnet's gas token. 
+Now you have learned how to deploy your contract to a local blockchain, you can consider deploying it to a public test network too. For more complex projects this can be very beneficial because it allows many users to interact with your contract, simulates real network conditions and allows you to interact with other existing contracts on the network. However, to use a public testnet you need to obtain some of that testnet's gas token. 
 
-In this guide you will use the Sepolia testnet, meaning you will need some SepoliaETH. SepoliaETH has no real world value - it is only required to pay gas fees on the network. If you don't have any SepoliaETH yet, you can [request some SepoliaETH](https://ethereum.org/en/developers/docs/networks/#sepolia) from one of the faucets that are listed on the ethereum.org website.
+In this guide you will use the Sepolia test network, meaning you will need some SepoliaETH. SepoliaETH has no real-world value - it is only required to pay gas fees on the network. If you don't have any SepoliaETH yet, you can [request some SepoliaETH](https://ethereum.org/en/developers/docs/networks/#sepolia) from one of the faucets that are listed on the ethereum.org website.
 
 > **IMPORTANT**: It is good practice to **never** use an Ethereum account for a testnet that is also used for the actual Ethereum mainnet.
+
+Assuming you have some SepoliaETH, you can repeat the steps from the local blockchain example, however, instead of pointing Foundry to the RPC endpoint for your Anvil node, you need to point it to a node connected to the Sepolia network. There are several options for this:
+
+- If you run your own node, connect it to the Sepolia network and let it sync. make sure you expose an http port or enable IPC transport.
+- You can use an RPC provider such as [Alchemy](https://www.alchemy.com/) or [Infura](https://infura.io/) 
+- You can use an open public node such as `https://rpc.sepolia.org`.
+
+Whichever method you choose, you will have an RPC endpoint for a node connected to Sepolia. You can replace the `http://localhost:8545` in the commands with your new endpoint. For example, to deploy the contract using the open public endpoint:
+
+```sh
+cast send --rpc-url https://rpc.sepolia.org --private-key <your-private-key> --create $(cat output/GuestBook/GuestBook.bin)
+```
+
+Now you have deployed the contract to a public network and anyone can interact with it. 
+
+To demonstrate, you can check out previous versions of this contract deployed on Sepolia in the past:
+
+|                  | address                                                            | link                                                                                                            |
+| ---------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| deploy tx hash   | 0x31b41a4177d7eb66f5ea814959b2c147366b6323f17b6f7060ecff424b58df76 | [etherscan](https://sepolia.etherscan.io/tx/0x31b41a4177d7eb66f5ea814959b2c147366b6323f17b6f7060ecff424b58df76) |
+| contract address | 0x810cbd4365396165874C054d01B1Ede4cc249265                         | [etherscan](https://sepolia.etherscan.io/address/0x810cbd4365396165874c054d01b1ede4cc249265)                    |
+
+
+Note that calling the `sign(string)` function will cost you some SepoliaETH because the function changes the state of the blockchain (it adds a message to the contract storage). However, `get_msg(address)` does not cost any gas because it is a simple lookup in the node's local database.
+
+Congratulations! You've deployed real Fe code to a live network 🤖
+
+## Summary
+
+Well done!
+
+You have now written and compiled a Fe contract and deployed it to both a local blockchain and a live public test network! You also learned how to interact with the deployed contract using transactions and calls.
+
+Here's some ideas for what you could do next:
+
+- Experiment with different developer tooling
+- Get more comfortable with Foundry by exploring the [documentation](https://book.getfoundry.sh/)
+- Repeat the steps in this guide but for a more complex contract - be creative!
+- Continue to the [projects](./projects.md) page to learn about how to set up more complicated Fe projects
