@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
@@ -176,10 +176,11 @@ impl Workspace {
     pub fn set_workspace_root(
         &mut self,
         db: &mut LanguageServerDatabase,
-        root_path: Option<PathBuf>,
-    ) {
+        root_path: &Option<PathBuf>,
+    ) -> Result<()> {
         let path = root_path.clone();
-        self.sync(db);
+        self.root_path = path;
+        self.sync(db)
     }
 
     pub fn ingot_context_from_config_path(
@@ -245,6 +246,7 @@ impl Workspace {
         let ingot_context = self
             .ingot_context_from_config_path(db, config_path)
             .unwrap();
+
         let ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
         ingot_context_file_keys.iter().for_each(|path| {
             if !paths.contains(&path) {
@@ -265,6 +267,7 @@ impl Workspace {
             .values()
             .map(|x| *x)
             .collect::<BTreeSet<InputFile>>();
+
         ingot_context.ingot.set_files(db, ingot_context_files);
 
         // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
@@ -277,6 +280,7 @@ impl Workspace {
             .map(|file| *file);
 
         if let Some(root_file) = root_file {
+            info!("Setting root file for ingot: {:?}", root_file.path(db));
             ingot_context.ingot.set_root_file(db, root_file);
         }
     }
@@ -468,6 +472,26 @@ mod tests {
             common::input::IngotKind::Local
         );
         assert_eq!(ingot_context_ingot.unwrap(), ingot.unwrap());
+    }
+    
+    #[test]
+    fn test_sync_single_ingot() {
+        let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let ingot_base_dir = std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot/");
+        let ingot_config_path = &ingot_base_dir.join("fe.toml");
+        
+        let mut workspace = Workspace::default();
+        let mut db = crate::db::LanguageServerDatabase::default();
+
+        let _ = workspace.set_workspace_root(&mut db, &Some(ingot_base_dir.clone()));
+        // panic!("wtf? {:?}", ingot_base_dir);
+
+        assert_eq!(workspace.ingot_contexts.len(), 1);
+
+        let fe_source_path = ingot_base_dir.join("src/main.fe");
+        let input = workspace.input_from_file_path(&mut db, fe_source_path.to_str().unwrap());
+        assert!(input.is_some());
+        assert!(input.unwrap().ingot(&mut db).kind(&mut db) == common::input::IngotKind::Local);
     }
 
     #[test]

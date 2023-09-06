@@ -53,7 +53,7 @@ pub fn run_server() -> Result<()> {
     let _ = state.init_logger(log::Level::Info);
     state.workspace.set_workspace_root(
         &mut state.db,
-        initialize_params.root_uri.unwrap().to_file_path().ok(),
+        &initialize_params.root_uri.unwrap().to_file_path().ok(),
     );
     let result = state.run(connection.receiver)?;
 

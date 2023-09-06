@@ -86,9 +86,10 @@ pub fn goto_enclosing_path(db: &mut LanguageServerDatabase, top_mod: TopLevelMod
 
 #[cfg(test)]
 mod tests {
-    use crate::workspace::Workspace;
+    use crate::workspace::{Workspace, IngotFileContext};
 
     use super::*;
+    use common::input::IngotKind;
     use fe_compiler_test_utils::snap_test;
     use dir_test::{dir_test, Fixture};
     use std::path::Path;
@@ -110,7 +111,64 @@ mod tests {
         cursors
     }
 
-    
+    #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/test_files/single_ingot",
+        glob: "**/lib.fe",
+    )]
+    fn test_goto_multiple_files(fixture: Fixture<&str>) {
+        let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let ingot_base_dir = Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
+
+        let db = &mut LanguageServerDatabase::default();
+        let workspace = &mut Workspace::default();
+        
+        let _ = workspace.set_workspace_root(db, &Some(ingot_base_dir.clone()));
+        
+        let fe_source_path = ingot_base_dir.join(fixture.path());
+        let input = workspace.input_from_file_path(db, fixture.path());
+        assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
+        
+        let top_mod = workspace.top_mod_from_file(db, &fe_source_path, fixture.content());        
+        
+        let ingot = workspace.ingot_from_file_path(db, fixture.path());
+        assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
+
+        let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
+        let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
+
+        cursors.iter().for_each(|cursor|{
+            let early_resolution = goto_enclosing_path(db, top_mod, *cursor);
+
+            let goto_info = match early_resolution {
+                Some(EarlyResolvedPath::Full(bucket)) => 
+                    if bucket.len() > 0 { 
+                        bucket
+                        .iter()
+                        .map(|x| x.pretty_path(db).unwrap())
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                    } else { 
+                        String::from("`NameResBucket` is empty") 
+                    },
+                Some(EarlyResolvedPath::Partial {
+                    res,
+                    unresolved_from: _,
+                }) => res.pretty_path(db).unwrap(),
+                None => String::from("No resolution available"),
+            };
+            
+            cursor_path_map.insert(*cursor, goto_info);
+        });
+        
+        let result = format!(
+            "{}\n---\n{}",
+            fixture.content(),
+            cursor_path_map.iter().map(|(cursor, path)| {
+                format!("cursor position: {:?}, path: {:?}", cursor, path)
+            }).collect::<Vec<_>>().join("\n")
+        );
+        snap_test!(result, fixture.path());
+    }
     
     #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/test_files",

@@ -77,9 +77,9 @@ pub(crate) fn handle_hover(
     let top_mod = state
         .workspace
         .top_mod_from_file(&mut state.db, file_path, file_text.as_str());
-    let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
+    let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
-    let goto_info = match goto_info {
+    let goto_info = match early_resolution {
         Some(EarlyResolvedPath::Full(bucket)) => bucket
             .iter()
             .map(|x| x.pretty_path(&state.db).unwrap())
