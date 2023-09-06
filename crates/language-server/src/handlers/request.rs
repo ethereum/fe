@@ -62,8 +62,8 @@ pub(crate) fn handle_hover(
         let ingot_path = ingot
             .unwrap()
             .path(&mut state.db)
-            .strip_prefix(&state.root_path.clone().unwrap_or("".into()))
-            .unwrap();
+            .strip_prefix(&state.workspace.root_path.clone().unwrap_or("".into()))
+            .ok();
 
         match ingot_type {
             Some(ingot_type) => Some(format!(

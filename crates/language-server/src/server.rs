@@ -1,7 +1,7 @@
 use super::state::ServerState;
 use anyhow::Result;
 use lsp_server::{Connection, Notification};
-use lsp_types::{HoverProviderCapability, ServerCapabilities, InitializeParams};
+use lsp_types::{HoverProviderCapability, InitializeParams, ServerCapabilities};
 
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
@@ -51,10 +51,13 @@ pub fn run_server() -> Result<()> {
 
     let mut state = ServerState::new(connection.sender);
     let _ = state.init_logger(log::Level::Info);
-    state.set_workspace_root(initialize_params.root_uri.unwrap().to_string())?;
+    state.workspace.set_workspace_root(
+        &mut state.db,
+        initialize_params.root_uri.unwrap().to_file_path().ok(),
+    );
     let result = state.run(connection.receiver)?;
-    
+
     io_threads.join().unwrap();
-    
+
     Ok(result)
 }

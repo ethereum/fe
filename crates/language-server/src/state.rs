@@ -22,7 +22,6 @@ pub struct ServerState {
     pub(crate) sender: Arc<Mutex<Sender<Message>>>,
     pub(crate) db: LanguageServerDatabase,
     pub(crate) workspace: Workspace,
-    pub(crate) root_path: Option<PathBuf>,
 }
 
 impl ServerState {
@@ -32,24 +31,9 @@ impl ServerState {
             sender,
             db: LanguageServerDatabase::default(),
             workspace: Workspace::default(),
-            root_path: None
         };
 
         state
-    }
-
-    pub fn set_workspace_root(&mut self, root_uri: String) -> anyhow::Result<()> {
-        let path = url::Url::parse(&root_uri)
-            .map(|url| url.to_file_path())
-            .context("Failed to parse root URL")?;
-        let path = path.unwrap_or(std::path::PathBuf::from(root_uri));
-
-        info!("Setting workspace root to {:?}", path);
-        self.workspace
-            .sync(&mut self.db, path.to_str().unwrap().into());
-        
-        self.root_path = Some(path);
-        Ok(())
     }
 
     fn send(&mut self, msg: Message) -> Result<()> {

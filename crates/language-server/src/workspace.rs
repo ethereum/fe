@@ -1,5 +1,9 @@
-use std::{collections::BTreeSet, path::Path};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
+use anyhow::{anyhow, Result};
 use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
@@ -157,6 +161,7 @@ impl IngotFileContext for StandaloneIngotContext {
 pub(crate) struct Workspace {
     pub(crate) ingot_contexts: StringPatriciaMap<LocalIngotContext>,
     pub(crate) standalone_ingot_context: StandaloneIngotContext,
+    pub(crate) root_path: Option<PathBuf>,
 }
 
 impl Workspace {
@@ -164,7 +169,17 @@ impl Workspace {
         Self {
             ingot_contexts: StringPatriciaMap::new(),
             standalone_ingot_context: StandaloneIngotContext::new(),
+            root_path: None,
         }
+    }
+
+    pub fn set_workspace_root(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        root_path: Option<PathBuf>,
+    ) {
+        let path = root_path.clone();
+        self.sync(db);
     }
 
     pub fn ingot_context_from_config_path(
@@ -223,7 +238,7 @@ impl Workspace {
             .unwrap()
             .map(|p| p.unwrap().to_str().unwrap().to_string())
             .collect::<Vec<String>>();
-        
+
         info!("Found {} files in ingot", paths.len());
         info!("Syncing ingot files: {:?}", paths);
 
@@ -251,7 +266,7 @@ impl Workspace {
             .map(|x| *x)
             .collect::<BTreeSet<InputFile>>();
         ingot_context.ingot.set_files(db, ingot_context_files);
-        
+
         // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
         let root_file = ingot_context
             .files
@@ -260,7 +275,7 @@ impl Workspace {
                 file.path(db).ends_with("src/main.fe") || file.path(db).ends_with("src/lib.fe")
             })
             .map(|file| *file);
-            
+
         if let Some(root_file) = root_file {
             ingot_context.ingot.set_root_file(db, root_file);
         }
@@ -313,35 +328,44 @@ impl IngotFileContext for Workspace {
 }
 
 pub(crate) trait SyncableIngotFileContext {
-    fn sync(&mut self, db: &mut LanguageServerDatabase, path: String) -> ();
+    fn sync(&mut self, db: &mut LanguageServerDatabase) -> Result<()>;
 }
 
 impl SyncableIngotFileContext for Workspace {
-    fn sync(&mut self, db: &mut LanguageServerDatabase, path: String) -> () {
-        info!("Syncing workspace at {}", path);
-        // first let's sync ingots
-        self.sync_local_ingots(db, &path);
-        // collect the ingot config paths
-        let ingot_paths = glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
-            .unwrap()
-            .map(|p| p.unwrap().to_str().unwrap().to_string())
-            .collect::<Vec<String>>();
+    fn sync(&mut self, db: &mut LanguageServerDatabase) -> Result<()> {
+        let path = {
+            let path = &self.root_path;
+            path.clone().unwrap()
+        };
         
+        let path = path.to_str().unwrap();
+
+        info!("Syncing workspace at {:?}", path);
+        self.sync_local_ingots(db, path);
+
+        let ingot_paths = glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
+            .ok()
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter_map(|p| p.to_str().map(|s| s.to_string()))
+            .collect::<Vec<String>>();
+
         info!("Found {} ingots", ingot_paths.len());
 
         for ingot_path in ingot_paths {
             self.sync_ingot_files(db, &ingot_path);
         }
 
-        // now let's sync all files
         let paths = glob::glob(&format!("{}/**/*.fe", path))
+            .ok()
             .unwrap()
-            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .filter_map(|p| p.ok().unwrap().to_str().map(|s| s.to_string()))
             .collect::<Vec<String>>();
 
         for path in paths {
             self.input_from_file_path(db, &path);
         }
+        Ok(())
     }
 }
 
@@ -432,7 +456,7 @@ mod tests {
 
         let ingot = workspace.ingot_from_file_path(&mut db, file_path);
         assert!(ingot.is_some());
-        
+
         assert_eq!(file.map(|f| f.ingot(&mut db)).unwrap(), ingot.unwrap());
 
         assert_eq!(
