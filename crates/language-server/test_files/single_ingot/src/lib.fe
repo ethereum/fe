@@ -1,0 +1,4 @@
+mod foo;
+use foo;
+
+let y: foo::Foo;

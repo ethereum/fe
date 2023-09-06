@@ -1,7 +1,7 @@
 use anyhow::{Result, Error};
 use serde::Deserialize;
 
-use crate::{state::ServerState, util::diag_to_lsp, db::LanguageServerDatabase};
+use crate::{state::ServerState, util::diag_to_lsp, db::LanguageServerDatabase, workspace::SyncableIngotFileContext};
 
 fn string_diagnostics(state: &mut ServerState, path: &str, src: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let db = &mut state.db;
@@ -50,14 +50,21 @@ pub(crate) fn handle_document_did_change(
     send_diagnostics(state, diagnostics, params.text_document.uri.clone())
 }
 
-pub(crate) fn handle_workspace_did_change_folders(
-    state: &mut ServerState,
-    note: lsp_server::Notification,
-) -> Result<(), Error> {
-    let params = lsp_types::DidChangeWorkspaceFoldersParams::deserialize(note.params)?;
+// pub(crate) fn handle_workspace_did_change_folders(
+//     state: &mut ServerState,
+//     note: lsp_server::Notification,
+// ) -> Result<(), Error> {
+//     let params = lsp_types::DidChangeWorkspaceFoldersParams::deserialize(note.params)?;
+    
+//     let mut workspace = &mut state.workspace;
+//     let mut db = &mut state.db;
 
-    Ok(())
-}
+//     let workspace_folder = params.event.added[0].uri.to_file_path().unwrap();
+    
+//     workspace.sync(&mut db, workspace_folder.as_path().to_str().unwrap().into());
+    
+//     Ok(())
+// }
 
 fn send_diagnostics(
     state: &mut ServerState,

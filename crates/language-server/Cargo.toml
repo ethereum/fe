@@ -34,3 +34,4 @@ fe-compiler-test-utils = { path = "../test-utils" }
 log = "0.4"
 patricia_tree = "0.6.2"
 glob = "0.3.1"
+url = "2.4.1"

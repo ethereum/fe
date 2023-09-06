@@ -1,7 +1,7 @@
 use super::state::ServerState;
 use anyhow::Result;
 use lsp_server::{Connection, Notification};
-use lsp_types::{HoverProviderCapability, ServerCapabilities};
+use lsp_types::{HoverProviderCapability, ServerCapabilities, InitializeParams};
 
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
@@ -12,6 +12,7 @@ fn server_capabilities() -> ServerCapabilities {
         )),
         // goto definition
         definition_provider: Some(lsp_types::OneOf::Left(true)),
+        // support for workspace add/remove changes
         ..Default::default()
     }
 }
@@ -20,6 +21,7 @@ pub fn run_server() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();
 
     let (request_id, _initialize_params) = connection.initialize_start()?;
+    let initialize_params: InitializeParams = serde_json::from_value(_initialize_params)?;
     // todo: actually use initialization params
 
     let capabilities = server_capabilities();
@@ -49,6 +51,7 @@ pub fn run_server() -> Result<()> {
 
     let mut state = ServerState::new(connection.sender);
     let _ = state.init_logger(log::Level::Info);
+    state.set_workspace_root(initialize_params.root_uri.unwrap().to_string())?;
     let result = state.run(connection.receiver)?;
     
     io_threads.join().unwrap();

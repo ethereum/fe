@@ -1,16 +1,19 @@
 use std::sync::{Arc, Mutex};
 
 use crate::db::LanguageServerDatabase;
-use crate::workspace::Workspace;
-use log::{ Record, Level, Metadata, info };
-use anyhow::Result;
+use crate::workspace::{SyncableIngotFileContext, Workspace};
+use anyhow::{Context, Result};
 use crossbeam_channel::{Receiver, Sender};
+use log::{info, Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 
-use crate::handlers::notifications::handle_document_did_change;
+use crate::handlers::notifications::{
+    handle_document_did_change,
+    // handle_workspace_did_change_folders,
+};
 use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 
@@ -23,14 +26,28 @@ pub struct ServerState {
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
         let sender = Arc::new(Mutex::new(sender));
-        ServerState {
+        let state = ServerState {
             sender,
             db: LanguageServerDatabase::default(),
             workspace: Workspace::default(),
-        }
+        };
+
+        state
     }
-    
-    fn send (&mut self, msg: Message) -> Result<()> {
+
+    pub fn set_workspace_root(&mut self, root_uri: String) -> anyhow::Result<()> {
+        let path = url::Url::parse(&root_uri)
+            .map(|url| url.to_file_path())
+            .context("Failed to parse root URL")?;
+        let path = path.unwrap_or(std::path::PathBuf::from(root_uri));
+
+        info!("Setting workspace root to {:?}", path);
+        self.workspace
+            .sync(&mut self.db, path.to_str().unwrap().into());
+        Ok(())
+    }
+
+    fn send(&mut self, msg: Message) -> Result<()> {
         let sender = self.sender.lock().unwrap();
         sender.send(msg)?;
         Ok(())
@@ -85,6 +102,9 @@ impl ServerState {
                 lsp_types::notification::DidChangeTextDocument::METHOD => {
                     handle_document_did_change(self, note)?
                 }
+                // lsp_types::notification::DidChangeWorkspaceFolders::METHOD => {
+                //     handle_workspace_did_change_folders(self, note)?
+                // }
                 _ => {}
             }
         }
@@ -97,8 +117,11 @@ impl ServerState {
         Ok(())
     }
 
-    pub fn init_logger(&self, level:Level) -> Result<(), SetLoggerError> {
-        let logger = LspLogger { level, sender: self.sender.clone() };
+    pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
+        let logger = LspLogger {
+            level,
+            sender: self.sender.clone(),
+        };
         let static_logger = Box::leak(Box::new(logger));
         log::set_logger(static_logger)?;
         log::set_max_level(LevelFilter::Debug);
@@ -106,14 +129,13 @@ impl ServerState {
     }
 }
 
-
 pub(crate) struct LspLogger {
     level: Level,
     sender: Arc<Mutex<Sender<Message>>>,
 }
 
 impl LspLogger {
-    fn send (&self, msg: Message) -> Result<()> {
+    fn send(&self, msg: Message) -> Result<()> {
         let sender = self.sender.lock().unwrap();
         sender.send(msg)?;
         Ok(())
