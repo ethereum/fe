@@ -1,13 +1,16 @@
 use std::io::BufRead;
 
+use common::{input::IngotKind, InputIngot};
 use hir_analysis::name_resolution::EarlyResolvedPath;
+use log::info;
 use lsp_server::Response;
 use serde::Deserialize;
 
 use crate::{
     goto::{goto_enclosing_path, Cursor},
     state::ServerState,
-    util::{to_offset_from_position, to_lsp_location_from_scope},
+    util::{to_lsp_location_from_scope, to_offset_from_position},
+    workspace::IngotFileContext,
 };
 
 pub(crate) fn handle_hover(
@@ -37,7 +40,43 @@ pub(crate) fn handle_hover(
         file_text.as_str(),
     );
     let file_path = std::path::Path::new(file_path);
-    let top_mod = state.workspace.top_mod_from_file(&mut state.db, file_path, file_text.as_str());
+    info!("getting hover info for file_path: {:?}", file_path);
+    let ingot = state
+        .workspace
+        .input_from_file_path(&mut state.db, file_path.to_str().unwrap())
+        .map(|input| input.ingot(&state.db));
+
+    // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
+
+    let ingot_info: Option<String> = {
+        let ingot_type = match ingot {
+            Some(ingot) => match ingot.kind(&mut state.db) {
+                IngotKind::StandAlone => None,
+                IngotKind::Local => Some("Local ingot"),
+                IngotKind::External => Some("External ingot"),
+                IngotKind::Std => Some("Standard library"),
+            },
+            None => Some("No ingot information available"),
+        };
+        let ingot_file_count = ingot.unwrap().files(&mut state.db).len();
+        let ingot_path = ingot
+            .unwrap()
+            .path(&mut state.db)
+            .strip_prefix(&state.root_path.clone().unwrap_or("".into()))
+            .unwrap();
+
+        match ingot_type {
+            Some(ingot_type) => Some(format!(
+                "{} with {} files at path: {:?}",
+                ingot_type, ingot_file_count, ingot_path
+            )),
+            None => None,
+        }
+    };
+
+    let top_mod = state
+        .workspace
+        .top_mod_from_file(&mut state.db, file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match goto_info {
@@ -58,10 +97,11 @@ pub(crate) fn handle_hover(
             lsp_types::MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
                 value: format!(
-                    "### Hovering over:\n```{}```\n\n{}\n\n### Goto Info: \n\n{}",
+                    "### Hovering over:\n```{}```\n\n{}\n\n### Goto Info: \n\n{}\n\n### Ingot info: \n\n{:?}",
                     &line,
                     serde_json::to_string_pretty(&params).unwrap(),
                     goto_info,
+                    ingot_info,
                 ),
             },
         )),
@@ -91,7 +131,9 @@ pub(crate) fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = std::path::Path::new(params.text_document.uri.path());
-    let top_mod = state.workspace.top_mod_from_file(&mut state.db, file_path, file_text.as_str());
+    let top_mod = state
+        .workspace
+        .top_mod_from_file(&mut state.db, file_path, file_text.as_str());
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location

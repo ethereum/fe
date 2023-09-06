@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::db::LanguageServerDatabase;
@@ -21,6 +22,7 @@ pub struct ServerState {
     pub(crate) sender: Arc<Mutex<Sender<Message>>>,
     pub(crate) db: LanguageServerDatabase,
     pub(crate) workspace: Workspace,
+    pub(crate) root_path: Option<PathBuf>,
 }
 
 impl ServerState {
@@ -30,6 +32,7 @@ impl ServerState {
             sender,
             db: LanguageServerDatabase::default(),
             workspace: Workspace::default(),
+            root_path: None
         };
 
         state
@@ -44,6 +47,8 @@ impl ServerState {
         info!("Setting workspace root to {:?}", path);
         self.workspace
             .sync(&mut self.db, path.to_str().unwrap().into());
+        
+        self.root_path = Some(path);
         Ok(())
     }
 
