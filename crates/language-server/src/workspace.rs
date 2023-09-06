@@ -185,14 +185,19 @@ impl Workspace {
     }
 
     fn sync_local_ingots(&mut self, db: &mut LanguageServerDatabase, path: &str) -> () {
-        let paths = &glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
+        let config_paths = &glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
             .unwrap()
             .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+
+        let paths = &config_paths
+            .into_iter()
+            .map(|path| path.to_string())
             .map(ingot_directory_key)
             .collect::<Vec<String>>();
 
         for path in paths {
-            self.ingot_context_from_config_path(db, path);
+            self.ingot_context_from_config_path(db, &path);
         }
 
         let existing_keys: Vec<String> = self.ingot_contexts.keys().collect();
@@ -282,9 +287,41 @@ impl IngotFileContext for Workspace {
     }
 }
 
+pub(crate) trait SyncableIngotFileContext {
+    fn sync(&mut self, db: &mut LanguageServerDatabase, path: String) -> ();
+}
+
+impl SyncableIngotFileContext for Workspace {
+    fn sync(&mut self, db: &mut LanguageServerDatabase, path: String) -> () {
+        // first let's sync ingots
+        self.sync_local_ingots(db, &path);
+        // collect the ingot config paths
+        let ingot_paths = glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
+            .unwrap()
+            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+        
+        for ingot_path in ingot_paths {
+            self.sync_ingot_files(db, &ingot_path);
+        }
+        
+        // now let's sync all files
+        let paths = glob::glob(&format!("{}/**/*.fe", path))
+            .unwrap()
+            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+
+        for path in paths {
+            self.input_from_file_path(db, &path);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace};
+    use glob::glob;
+
+    use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace, FE_CONFIG_SUFFIX};
 
     use super::StandaloneIngotContext;
 
@@ -428,11 +465,56 @@ mod tests {
         let foo_files = foo_context.files.keys().collect::<Vec<String>>();
         for file in foo_files {
             let contents = std::fs::read_to_string(&file).unwrap();
-            let file = foo_context
-                .input_from_file_path(&mut db, &file)
-                .unwrap();
+            let file = foo_context.input_from_file_path(&mut db, &file).unwrap();
 
             assert!(*file.text(&mut db) == contents);
         }
+    }
+
+    #[test]
+    fn test_dangling_fe_source() {
+        let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let messy_workspace_path = format!("{}/test_files/messy", crate_dir);
+        let dangling_path = format!("{}/test_files/messy/dangling.fe", crate_dir);
+
+        let mut workspace = Workspace::default();
+        let mut db = crate::db::LanguageServerDatabase::default();
+
+        workspace.sync_local_ingots(&mut db, &messy_workspace_path);
+        let dangling_file = workspace
+            .input_from_file_path(&mut db, &dangling_path)
+            .unwrap();
+
+        assert_eq!(
+            dangling_file.ingot(&db).kind(&mut db),
+            common::input::IngotKind::StandAlone
+        );
+
+        // TODO: make it easier to go both ways between an ingot root path and its config path
+        let ingot_paths = workspace
+            .ingot_contexts
+            .values()
+            .map(|ctx| {
+                format!(
+                    "{}{}",
+                    ctx.ingot.path(&mut db).to_string(),
+                    FE_CONFIG_SUFFIX
+                )
+            })
+            .collect::<Vec<String>>();
+
+        for ingot_path in ingot_paths {
+            workspace.sync_ingot_files(&mut db, &ingot_path);
+        }
+
+        let non_dangling_file_path = format!("{}/test_files/messy/foo/bar/src/main.fe", crate_dir);
+        let non_dangling_input = workspace
+            .input_from_file_path(&mut db, &non_dangling_file_path)
+            .unwrap();
+
+        assert_eq!(
+            non_dangling_input.ingot(&db).kind(&mut db),
+            common::input::IngotKind::Local
+        );
     }
 }
