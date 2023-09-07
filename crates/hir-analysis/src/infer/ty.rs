@@ -3,11 +3,11 @@ use hir::hir_def::{Contract, Enum, Struct};
 use crate::HirAnalysisDb;
 
 #[salsa::interned]
-pub struct Ty {
+pub struct TyId {
     data: TyData,
 }
 
-impl Ty {
+impl TyId {
     pub fn kind<'db>(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
         ty_kind(db, self)
     }
@@ -144,6 +144,6 @@ impl HasKind for AdtTy {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn ty_kind(db: &dyn HirAnalysisDb, ty: Ty) -> Kind {
+pub fn ty_kind(db: &dyn HirAnalysisDb, ty: TyId) -> Kind {
     ty.data(db).kind(db)
 }

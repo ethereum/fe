@@ -8,8 +8,10 @@ pub struct Jar(
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
     /// Type inference.
-    infer::ty::Ty,
+    infer::ty::TyId,
     infer::ty::ty_kind,
+    // Trait resolution.
+    infer::trait_::TraitInstId,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
