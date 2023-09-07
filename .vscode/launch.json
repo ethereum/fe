@@ -15,7 +15,11 @@
             ],
             "preLaunchTask": "compile-vscode-extension",
             "request": "launch",
-            "type": "extensionHost"
+            "type": "extensionHost",
+            // we need to enable backtrace on the extension host
+            "env": {
+                "RUST_BACKTRACE": "1"
+            }
         },
     ]
 }
