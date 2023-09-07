@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-use common::{input::IngotKind, InputIngot};
+use common::input::IngotKind;
 use hir_analysis::name_resolution::EarlyResolvedPath;
 use log::info;
 use lsp_server::{Response, ResponseError};
@@ -150,7 +150,7 @@ pub(crate) fn handle_goto_definition(
         }
         None => return Ok(()),
     };
-    
+
     // info!("scopes: {:?}", scopes);
 
     let locations = scopes
@@ -158,15 +158,16 @@ pub(crate) fn handle_goto_definition(
         .filter_map(|scope| scope.clone())
         .map(|scope| to_lsp_location_from_scope(scope, &state.db))
         .collect::<Vec<_>>();
-    
+
     let errors = scopes
         .iter()
         .filter_map(|scope| scope.clone())
         .map(|scope| to_lsp_location_from_scope(scope, &state.db))
         .filter_map(|scope| scope.err())
         .map(|err| err.to_string())
-        .collect::<Vec<_>>().join("\n");
-    
+        .collect::<Vec<_>>()
+        .join("\n");
+
     let error = if errors.len() > 0 {
         Some(ResponseError {
             code: lsp_types::error_codes::SERVER_CANCELLED as i32,
@@ -181,11 +182,13 @@ pub(crate) fn handle_goto_definition(
     let response_message = Response {
         id: req.id,
         result: Some(serde_json::to_value(
-            lsp_types::GotoDefinitionResponse::Array(locations.into_iter().filter_map(|x| x.ok()).collect()),
+            lsp_types::GotoDefinitionResponse::Array(
+                locations.into_iter().filter_map(|x| x.ok()).collect(),
+            ),
         )?),
-        error
-};
-    
+        error,
+    };
+
     info!("goto definition response: {:?}", response_message);
 
     state.send_response(response_message)?;

@@ -12,7 +12,6 @@ use hir::diagnostics::DiagnosticVoucher;
 
 use crate::db::{LanguageServerDatabase, LanguageServerDb};
 
-
 pub trait ToCsDiag {
     fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
 }

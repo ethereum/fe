@@ -1,8 +1,10 @@
-use common::{diagnostics::{Severity, CompleteDiagnostic, Span}, InputDb};
+use common::{
+    diagnostics::{CompleteDiagnostic, Severity, Span},
+    InputDb,
+};
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use log::{error, info};
+use log::error;
 use lsp_types::Position;
-
 
 pub(crate) fn calculate_line_offsets(text: &str) -> Vec<usize> {
     text.lines()
@@ -22,7 +24,10 @@ pub(crate) fn to_offset_from_position(position: Position, text: &str) -> rowan::
     rowan::TextSize::from((line_offset + character_offset) as u32)
 }
 
-pub(crate) fn to_lsp_range_from_span(span: Span, db: &dyn InputDb) -> Result<lsp_types::Range, Box<dyn std::error::Error>> {
+pub(crate) fn to_lsp_range_from_span(
+    span: Span,
+    db: &dyn InputDb,
+) -> Result<lsp_types::Range, Box<dyn std::error::Error>> {
     let text = span.file.text(db);
     let line_offsets = calculate_line_offsets(text);
     let start = span.range.start();
@@ -45,9 +50,16 @@ pub(crate) fn to_lsp_range_from_span(span: Span, db: &dyn InputDb) -> Result<lsp
     })
 }
 
-pub(crate) fn to_lsp_location_from_scope(scope: ScopeId, db: &dyn SpannedHirDb) -> Result<lsp_types::Location, Box<dyn std::error::Error>> {
-    let lazy_span = scope.name_span(db.as_hir_db()).ok_or("Failed to get name span")?;
-    let span = lazy_span.resolve(db.as_spanned_hir_db()).ok_or("Failed to resolve span")?;
+pub(crate) fn to_lsp_location_from_scope(
+    scope: ScopeId,
+    db: &dyn SpannedHirDb,
+) -> Result<lsp_types::Location, Box<dyn std::error::Error>> {
+    let lazy_span = scope
+        .name_span(db.as_hir_db())
+        .ok_or("Failed to get name span")?;
+    let span = lazy_span
+        .resolve(db.as_spanned_hir_db())
+        .ok_or("Failed to resolve span")?;
     let uri = span.file.abs_path(db.as_input_db());
     let range = to_lsp_range_from_span(span, db.as_input_db())?;
     let uri = lsp_types::Url::from_file_path(uri).map_err(|_| "Failed to convert path to URL")?;
@@ -62,31 +74,33 @@ pub(crate) fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeveri
     }
 }
 
-pub(crate) fn diag_to_lsp(diag: CompleteDiagnostic, db: &dyn InputDb) -> Vec<lsp_types::Diagnostic> {
+pub(crate) fn diag_to_lsp(
+    diag: CompleteDiagnostic,
+    db: &dyn InputDb,
+) -> Vec<lsp_types::Diagnostic> {
     diag.sub_diagnostics
         .into_iter()
         .map(|sub| {
             let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
-            
+
             match lsp_range {
-                Ok(range) => 
-                    Some(lsp_types::Diagnostic {
-                        range,
-                        severity: Some(severity_to_lsp(diag.severity)),
-                        code: None,
-                        source: None,
-                        message: sub.message.clone(),
-                        related_information: None,
-                        tags: None,
-                        code_description: None,
-                        data: None // for code actions
-                    }), 
+                Ok(range) => Some(lsp_types::Diagnostic {
+                    range,
+                    severity: Some(severity_to_lsp(diag.severity)),
+                    code: None,
+                    source: None,
+                    message: sub.message.clone(),
+                    related_information: None,
+                    tags: None,
+                    code_description: None,
+                    data: None, // for code actions
+                }),
                 Err(_) => {
                     error!("Failed to convert span to range");
-                    None 
+                    None
                 }
             }
         })
         .filter_map(|x| x)
         .collect()
-    }
+}

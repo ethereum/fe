@@ -1,10 +1,10 @@
-use common::{
-    diagnostics::CompleteDiagnostic,
-    InputDb,
-};
+use common::{diagnostics::CompleteDiagnostic, InputDb};
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::{TopLevelMod, ItemKind},
-    HirDb, LowerHirDb, ParsingPass, SpannedHirDb, span::{DynLazySpan, LazySpan},
+    analysis_pass::AnalysisPassManager,
+    diagnostics::DiagnosticVoucher,
+    hir_def::{ItemKind, TopLevelMod},
+    span::{DynLazySpan, LazySpan},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -18,14 +18,22 @@ pub struct Jar(crate::diagnostics::file_line_starts);
 
 pub trait LanguageServerDb:
     salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
-{ }
+{
+}
 
 impl<DB> LanguageServerDb for DB where
     DB: Sized + salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
-{ }
+{
+}
 
-
-#[salsa::db(common::Jar, hir::Jar, hir::LowerJar, hir::SpannedJar, hir_analysis::Jar, Jar)]
+#[salsa::db(
+    common::Jar,
+    hir::Jar,
+    hir::LowerJar,
+    hir::SpannedJar,
+    hir_analysis::Jar,
+    Jar
+)]
 pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
     diags: Vec<Box<dyn DiagnosticVoucher>>,
@@ -47,15 +55,23 @@ impl LanguageServerDatabase {
         };
     }
 
-    pub fn find_enclosing_item(&mut self, top_mod: TopLevelMod, cursor: Cursor) -> Option<ItemKind> {
-        let items = top_mod.scope_graph(self.as_hir_db()).items_dfs(self.as_hir_db());
+    pub fn find_enclosing_item(
+        &mut self,
+        top_mod: TopLevelMod,
+        cursor: Cursor,
+    ) -> Option<ItemKind> {
+        let items = top_mod
+            .scope_graph(self.as_hir_db())
+            .items_dfs(self.as_hir_db());
 
         let mut smallest_enclosing_item = None;
         let mut smallest_range_size = None;
 
         for item in items {
             let lazy_item_span = DynLazySpan::from(item.lazy_span());
-            let item_span = lazy_item_span.resolve(SpannedHirDb::as_spanned_hir_db(self)).unwrap();
+            let item_span = lazy_item_span
+                .resolve(SpannedHirDb::as_spanned_hir_db(self))
+                .unwrap();
 
             if item_span.range.contains(cursor) {
                 let range_size = item_span.range.end() - item_span.range.start();
@@ -68,7 +84,7 @@ impl LanguageServerDatabase {
 
         return smallest_enclosing_item;
     }
-    
+
     pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
@@ -77,7 +93,6 @@ impl LanguageServerDatabase {
         });
         diags
     }
-
 }
 
 impl salsa::Database for LanguageServerDatabase {

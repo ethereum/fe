@@ -1,9 +1,9 @@
-mod server;
-mod state;
 mod db;
-mod util;
 mod diagnostics;
 mod goto;
+mod server;
+mod state;
+mod util;
 mod workspace;
 
 use db::Jar;

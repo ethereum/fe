@@ -92,8 +92,8 @@ impl IngotFileContext for LocalIngotContext {
 
     fn ingot_from_file_path(
         &mut self,
-        db: &mut LanguageServerDatabase,
-        path: &str,
+        _db: &mut LanguageServerDatabase,
+        _path: &str,
     ) -> Option<InputIngot> {
         Some(self.ingot)
     }
@@ -341,7 +341,7 @@ impl SyncableIngotFileContext for Workspace {
             let path = &self.root_path;
             path.clone().unwrap()
         };
-        
+
         let path = path.to_str().unwrap();
 
         info!("Syncing workspace at {:?}", path);
@@ -375,7 +375,6 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
-    use glob::glob;
 
     use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace, FE_CONFIG_SUFFIX};
 
@@ -473,13 +472,14 @@ mod tests {
         );
         assert_eq!(ingot_context_ingot.unwrap(), ingot.unwrap());
     }
-    
+
     #[test]
     fn test_sync_single_ingot() {
         let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        let ingot_base_dir = std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot/");
-        let ingot_config_path = &ingot_base_dir.join("fe.toml");
-        
+        let ingot_base_dir =
+            std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot/");
+        let _ingot_config_path = &ingot_base_dir.join("fe.toml");
+
         let mut workspace = Workspace::default();
         let mut db = crate::db::LanguageServerDatabase::default();
 

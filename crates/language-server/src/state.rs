@@ -1,9 +1,8 @@
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::db::LanguageServerDatabase;
-use crate::workspace::{SyncableIngotFileContext, Workspace};
-use anyhow::{Context, Result};
+use crate::workspace::Workspace;
+use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
 use log::{info, Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
@@ -11,10 +10,7 @@ use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 
-use crate::handlers::notifications::{
-    handle_document_did_change,
-    // handle_workspace_did_change_folders,
-};
+use crate::handlers::notifications::handle_document_did_change;
 use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 
