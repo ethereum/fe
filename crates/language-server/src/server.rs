@@ -54,7 +54,7 @@ pub fn run_server() -> Result<()> {
     state.workspace.set_workspace_root(
         &mut state.db,
         &initialize_params.root_uri.unwrap().to_file_path().ok(),
-    );
+    )?;
     let result = state.run(connection.receiver)?;
 
     io_threads.join().unwrap();

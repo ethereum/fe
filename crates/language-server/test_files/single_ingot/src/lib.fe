@@ -1,18 +1,18 @@
-use foo::Foo;
+use foo::Foo
 
 mod baz {
-    use super::Foo;
+    use super::Foo
     
-    struct Bar {
+    pub struct Bar {
         x: Foo
     }
 
     fn bar() -> () {
-        let x: Foo;
+        let x: Foo
     }
 }
 
 fn bar() -> () {
-    let y: Foo;
-    let z: baz::Bar;
+    let y: Foo
+    let z: baz::Bar
 }

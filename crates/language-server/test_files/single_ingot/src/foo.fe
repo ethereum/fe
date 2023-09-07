@@ -1,8 +1,8 @@
 pub fn foo() {
-  let x = 5;
+  let x = 5
   x
 }
 
 pub struct Foo {
-  pub x: i32,
+  pub x: i32
 }

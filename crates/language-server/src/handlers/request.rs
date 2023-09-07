@@ -3,7 +3,7 @@ use std::io::BufRead;
 use common::{input::IngotKind, InputIngot};
 use hir_analysis::name_resolution::EarlyResolvedPath;
 use log::info;
-use lsp_server::Response;
+use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
 
 use crate::{
@@ -123,6 +123,7 @@ pub(crate) fn handle_goto_definition(
     state: &mut ServerState,
     req: lsp_server::Request,
 ) -> Result<(), anyhow::Error> {
+    info!("handling goto definition request: {:?}", req);
     let params = TextDocumentPositionParams::deserialize(req.params)?;
 
     // Convert the position to an offset in the file
@@ -149,22 +150,43 @@ pub(crate) fn handle_goto_definition(
         }
         None => return Ok(()),
     };
+    
+    // info!("scopes: {:?}", scopes);
 
     let locations = scopes
-        .into_iter()
-        .filter_map(|scope| scope)
+        .iter()
+        .filter_map(|scope| scope.clone())
         .map(|scope| to_lsp_location_from_scope(scope, &state.db))
-        .filter_map(|location| location.ok())
         .collect::<Vec<_>>();
+    
+    let errors = scopes
+        .iter()
+        .filter_map(|scope| scope.clone())
+        .map(|scope| to_lsp_location_from_scope(scope, &state.db))
+        .filter_map(|scope| scope.err())
+        .map(|err| err.to_string())
+        .collect::<Vec<_>>().join("\n");
+    
+    let error = if errors.len() > 0 {
+        Some(ResponseError {
+            code: lsp_types::error_codes::SERVER_CANCELLED as i32,
+            message: errors,
+            data: None,
+        })
+    } else {
+        None
+    };
 
     // Send the response
     let response_message = Response {
         id: req.id,
         result: Some(serde_json::to_value(
-            lsp_types::GotoDefinitionResponse::Array(locations),
+            lsp_types::GotoDefinitionResponse::Array(locations.into_iter().filter_map(|x| x.ok()).collect()),
         )?),
-        error: None,
-    };
+        error
+};
+    
+    info!("goto definition response: {:?}", response_message);
 
     state.send_response(response_message)?;
     Ok(())

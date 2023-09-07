@@ -1,6 +1,6 @@
 use common::{diagnostics::{Severity, CompleteDiagnostic, Span}, InputDb};
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use log::error;
+use log::{error, info};
 use lsp_types::Position;
 
 
@@ -25,14 +25,16 @@ pub(crate) fn to_offset_from_position(position: Position, text: &str) -> rowan::
 pub(crate) fn to_lsp_range_from_span(span: Span, db: &dyn InputDb) -> Result<lsp_types::Range, Box<dyn std::error::Error>> {
     let text = span.file.text(db);
     let line_offsets = calculate_line_offsets(text);
+    let start = span.range.start();
+    let end = span.range.end();
 
     let start_line = line_offsets
-        .binary_search(&span.range.start().into())
-        .map_err(|_| "Failed to find start line")?;
+        .binary_search(&start.into())
+        .unwrap_or_else(|x| x - 1);
 
     let end_line = line_offsets
-        .binary_search(&span.range.end().into())
-        .map_err(|_| "Failed to find end line")?;
+        .binary_search(&end.into())
+        .unwrap_or_else(|x| x - 1);
 
     let start_character: usize = usize::from(span.range.start()) - line_offsets[start_line];
     let end_character: usize = usize::from(span.range.end()) - line_offsets[end_line];
