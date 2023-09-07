@@ -290,16 +290,13 @@ impl Workspace {
         db: &mut LanguageServerDatabase,
         file_path: &Path,
         source: &str,
-    ) -> TopLevelMod {
+    ) -> Result<TopLevelMod> {
         let file = self
             .input_from_file_path(db, file_path.to_str().unwrap())
             .unwrap();
         file.set_text(db).to(source.to_string());
-        // let ingot = file.ingot(db);
-        // let mut files = ingot.files(db).clone();
-        // files.insert(file);
-        // ingot.set_files(db, files);
-        map_file_to_mod(db, file)
+        let top_mod = map_file_to_mod(db, file);
+        Ok(top_mod)
     }
 }
 

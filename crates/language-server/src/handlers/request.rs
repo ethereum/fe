@@ -76,7 +76,8 @@ pub(crate) fn handle_hover(
 
     let top_mod = state
         .workspace
-        .top_mod_from_file(&mut state.db, file_path, file_text.as_str());
+        .top_mod_from_file(&mut state.db, file_path, file_text.as_str())
+        .unwrap();
     let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -134,7 +135,8 @@ pub(crate) fn handle_goto_definition(
     let file_path = std::path::Path::new(params.text_document.uri.path());
     let top_mod = state
         .workspace
-        .top_mod_from_file(&mut state.db, file_path, file_text.as_str());
+        .top_mod_from_file(&mut state.db, file_path, file_text.as_str())
+        .unwrap();
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location
