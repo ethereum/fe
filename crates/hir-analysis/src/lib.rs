@@ -7,6 +7,9 @@ pub struct Jar(
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
+    /// Type inference.
+    infer::ty::Ty,
+    infer::ty::ty_kind,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
@@ -16,6 +19,7 @@ pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
 }
 impl<DB> HirAnalysisDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + HirDb {}
 
+pub mod infer;
 pub mod name_resolution;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,4 +1,4 @@
-use crate::hir_def::TypeId;
+use crate::{hir_def::TypeId, HirDb};
 
 use super::{Body, IdentId, Partial, PathId};
 
@@ -12,6 +12,12 @@ pub struct GenericArgListId {
 pub struct GenericParamListId {
     #[return_ref]
     pub data: Vec<GenericParam>,
+}
+
+impl GenericParamListId {
+    pub fn len(&self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
+    }
 }
 
 #[salsa::interned]
