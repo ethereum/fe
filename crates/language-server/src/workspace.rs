@@ -176,10 +176,10 @@ impl Workspace {
     pub fn set_workspace_root(
         &mut self,
         db: &mut LanguageServerDatabase,
-        root_path: &Option<PathBuf>,
+        root_path: PathBuf,
     ) -> Result<()> {
         let path = root_path.clone();
-        self.root_path = path;
+        self.root_path = Some(path);
         self.sync(db)
     }
 
@@ -235,7 +235,7 @@ impl Workspace {
         info!("Syncing ingot at {}", config_path);
 
         let ingot_root = config_path.strip_suffix(FE_CONFIG_SUFFIX).unwrap();
-        let paths = &glob::glob(&format!("{}/**/*.fe", ingot_root))
+        let paths = &glob::glob(&format!("{}/src/**/*.fe", ingot_root))
             .unwrap()
             .map(|p| p.unwrap().to_str().unwrap().to_string())
             .collect::<Vec<String>>();
@@ -289,17 +289,19 @@ impl Workspace {
         &mut self,
         db: &mut LanguageServerDatabase,
         file_path: &Path,
-        source: &str,
+        source: Option<&str>,
     ) -> TopLevelMod {
         let file = self
             .input_from_file_path(db, file_path.to_str().unwrap())
             .unwrap();
-        file.set_text(db).to(source.to_string());
-        // let ingot = file.ingot(db);
-        // let mut files = ingot.files(db).clone();
-        // files.insert(file);
-        // ingot.set_files(db, files);
-        map_file_to_mod(db, file)
+        if let Some(src) = source {
+            file.set_text(db).to(src.to_string());
+        }
+        let top_mod = map_file_to_mod(db, file);
+        
+        info!("top mod: {:?} from file: {:?}", top_mod, file);
+
+        top_mod
     }
 }
 
@@ -360,7 +362,7 @@ impl SyncableIngotFileContext for Workspace {
             self.sync_ingot_files(db, &ingot_path);
         }
 
-        let paths = glob::glob(&format!("{}/**/*.fe", path))
+        let paths = glob::glob(&format!("{}/src/**/*.fe", path))
             .ok()
             .unwrap()
             .filter_map(|p| p.ok().unwrap().to_str().map(|s| s.to_string()))
@@ -376,6 +378,7 @@ impl SyncableIngotFileContext for Workspace {
 #[cfg(test)]
 mod tests {
 
+    use std::path::{Path, PathBuf};
     use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace, FE_CONFIG_SUFFIX};
 
     use super::StandaloneIngotContext;
@@ -483,7 +486,7 @@ mod tests {
         let mut workspace = Workspace::default();
         let mut db = crate::db::LanguageServerDatabase::default();
 
-        let _ = workspace.set_workspace_root(&mut db, &Some(ingot_base_dir.clone()));
+        let _ = workspace.set_workspace_root(&mut db, ingot_base_dir.clone());
         // panic!("wtf? {:?}", ingot_base_dir);
 
         assert_eq!(workspace.ingot_contexts.len(), 1);
@@ -511,6 +514,23 @@ mod tests {
         workspace.sync_local_ingots(&mut db, &path);
 
         assert!(workspace.ingot_contexts.len() == 2);
+        
+        let _ = workspace.set_workspace_root(&mut db, PathBuf::from(&path));
+
+        // get all top level modules for .fe files in the workspace
+        let fe_files = glob::glob(&format!("{}/**/*.fe", path))
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|p| p.to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+        
+        for src_path in fe_files {
+            let _file = workspace.input_from_file_path(&mut db, &src_path).unwrap();
+            
+            // this would panic if a file has been added to multiple ingots
+            let _top_mod = workspace.top_mod_from_file(&mut db, Path::new(&src_path), None);
+        }
+
     }
 
     #[test]

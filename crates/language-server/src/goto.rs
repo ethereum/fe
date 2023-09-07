@@ -127,13 +127,13 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
 
-        let _ = workspace.set_workspace_root(db, &Some(ingot_base_dir.clone()));
+        let _ = workspace.set_workspace_root(db, ingot_base_dir.clone());
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let input = workspace.input_from_file_path(db, fixture.path());
         assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
 
-        let top_mod = workspace.top_mod_from_file(db, &fe_source_path, fixture.content());
+        let top_mod = workspace.top_mod_from_file(db, &fe_source_path, Some(fixture.content()));
 
         let ingot = workspace.ingot_from_file_path(db, fixture.path());
         assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
@@ -188,7 +188,7 @@ mod tests {
         let mut db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
         let path = Path::new(fixture.path());
-        let top_mod = workspace.top_mod_from_file(&mut db, path, fixture.content());
+        let top_mod = workspace.top_mod_from_file(&mut db, path, Some(fixture.content()));
 
         let cursors = extract_multiple_cursor_positions_from_spans(&mut db, top_mod);
 
@@ -239,7 +239,7 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
         let path = Path::new(fixture.path());
-        let top_mod = workspace.top_mod_from_file(db, path, fixture.content());
+        let top_mod = workspace.top_mod_from_file(db, path, Some(fixture.content()));
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 

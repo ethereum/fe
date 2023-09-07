@@ -11,7 +11,7 @@ fn string_diagnostics(
     let db = &mut state.db;
     let workspace = &mut state.workspace;
     let file_path = std::path::Path::new(path);
-    let top_mod = workspace.top_mod_from_file(db, file_path, src);
+    let top_mod = workspace.top_mod_from_file(db, file_path, Some(src));
     db.run_on_top_mod(top_mod);
     db.finalize_diags()
 }
