@@ -15,6 +15,29 @@ impl TyId {
     }
 }
 
+#[salsa::tracked]
+pub struct AdtDef {
+    pub adt: AdtId,
+    #[return_ref]
+    pub params: Vec<TyId>,
+    pub variants: Vec<AdtVariant>,
+    #[return_ref]
+    predicates: Vec<Predicate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AdtVariant {
+    ty: TyId,
+    /// Fields of the variant.
+    /// If the parent is an struct, the length of the vector is always 1.
+    fields: Vec<TyId>,
+}
+
+#[salsa::tracked(return_ref)]
+pub fn ty_kind(db: &dyn HirAnalysisDb, ty: TyId) -> Kind {
+    ty.data(db).kind(db)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyData {
     /// Type variable.
@@ -159,18 +182,4 @@ impl HasKind for AdtDef {
 
         kind
     }
-}
-
-#[salsa::tracked(return_ref)]
-pub fn ty_kind(db: &dyn HirAnalysisDb, ty: TyId) -> Kind {
-    ty.data(db).kind(db)
-}
-
-#[salsa::tracked]
-pub struct AdtDef {
-    pub adt: AdtId,
-    #[return_ref]
-    pub params: Vec<TyId>,
-    #[return_ref]
-    predicates: Vec<Predicate>,
 }
