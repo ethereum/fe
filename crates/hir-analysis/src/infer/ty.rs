@@ -1,8 +1,6 @@
-use hir::hir_def::{Contract, Enum, Struct};
+use hir::hir_def::{Contract, Enum, IdentId, Struct};
 
 use crate::HirAnalysisDb;
-
-use super::trait_::Predicate;
 
 #[salsa::interned]
 pub struct TyId {
@@ -21,8 +19,6 @@ pub struct AdtDef {
     #[return_ref]
     pub params: Vec<TyId>,
     pub variants: Vec<AdtVariant>,
-    #[return_ref]
-    predicates: Vec<Predicate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,15 +42,21 @@ pub enum TyData {
     /// Type Parameter.
     TyParam(TyParam),
 
-    /// Dependent type, e.g., [T; N: usize]
-    DependentTy(TyVar, TyId),
+    TyAll(TyAll),
 
-    // Type application, e.g., `Option<i32>` is represented as `TApp(TyConst(Option),
-    // TyConst(i32)`.
-    TApp(Box<TyId>, Box<TyId>),
+    // Type application,
+    // e.g.,`TApp(TyConst(Option), TyConst(i32))`.
+    TApp(TyId, TyId),
 
     TyConst(TyConst),
 
+    // TODO: DependentTy,
+    // TermTy(TermTy)
+    // DependentTyAll(TyAll, TyConst),
+    // DependentTyParam(TyVar, TyConst),
+
+    // Invalid type which means the type is not defined.
+    // This type can be unified with any other types.
     Invalid,
 }
 
@@ -67,6 +69,9 @@ pub enum Kind {
     /// e.g.,
     /// `* -> *` or `(* -> *) -> *`
     Abs(Box<Kind>, Box<Kind>),
+
+    /// `Any` kind is set to the type iff the type is `Invalid`.
+    Any,
 }
 
 impl Kind {
@@ -83,7 +88,19 @@ pub struct TyVar {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyParam {
-    name: usize,
+    name: IdentId,
+    kind: Kind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TyAll {
+    index: usize,
+    kind: Kind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TAll {
+    idx: usize,
     kind: Kind,
 }
 
@@ -131,13 +148,16 @@ impl HasKind for TyData {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
-            TyData::DependentTy(_, _) => Kind::Star,
-            TyData::TApp(lhs, _) => match lhs.kind(db) {
-                Kind::Abs(_, rhs) => *rhs.clone(),
+            TyData::TyAll(ty_all) => ty_all.kind.clone(),
+            TyData::TApp(lhs, rhs) => match lhs.kind(db) {
+                Kind::Abs(k_arg, k_ret) => {
+                    debug_assert!(rhs.kind(db) == k_arg.as_ref());
+                    k_ret.as_ref().clone()
+                }
                 _ => unreachable!(),
             },
             TyData::TyConst(ty_const) => ty_const.kind(db),
-            TyData::Invalid => Kind::Star,
+            TyData::Invalid => Kind::Any,
         }
     }
 }

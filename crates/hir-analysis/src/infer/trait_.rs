@@ -31,13 +31,11 @@ pub struct TraitImplTable {
 pub struct TraitInstId {
     pub trait_: TraitDef,
     pub substs: Vec<TyId>,
-    pub super_traits: Vec<TraitInstId>,
 }
 
 #[salsa::tracked]
 pub struct TraitDef {
     pub trait_: Trait,
-    pub args: TyId,
-    pub predicates: Vec<Predicate>,
+    pub args: Vec<TyId>,
     pub super_traits: Vec<TraitDef>,
 }
