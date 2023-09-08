@@ -6,7 +6,7 @@ use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
 use log::error;
 use lsp_types::Position;
 
-pub(crate) fn calculate_line_offsets(text: &str) -> Vec<usize> {
+pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
     text.lines()
         .scan(0, |state, line| {
             let offset = *state;
@@ -16,7 +16,7 @@ pub(crate) fn calculate_line_offsets(text: &str) -> Vec<usize> {
         .collect()
 }
 
-pub(crate) fn to_offset_from_position(position: Position, text: &str) -> rowan::TextSize {
+pub fn to_offset_from_position(position: Position, text: &str) -> rowan::TextSize {
     let line_offsets: Vec<usize> = calculate_line_offsets(text);
     let line_offset = line_offsets[position.line as usize];
     let character_offset = position.character as usize;
@@ -24,7 +24,7 @@ pub(crate) fn to_offset_from_position(position: Position, text: &str) -> rowan::
     rowan::TextSize::from((line_offset + character_offset) as u32)
 }
 
-pub(crate) fn to_lsp_range_from_span(
+pub fn to_lsp_range_from_span(
     span: Span,
     db: &dyn InputDb,
 ) -> Result<lsp_types::Range, Box<dyn std::error::Error>> {
@@ -50,7 +50,7 @@ pub(crate) fn to_lsp_range_from_span(
     })
 }
 
-pub(crate) fn to_lsp_location_from_scope(
+pub fn to_lsp_location_from_scope(
     scope: ScopeId,
     db: &dyn SpannedHirDb,
 ) -> Result<lsp_types::Location, Box<dyn std::error::Error>> {
@@ -66,7 +66,7 @@ pub(crate) fn to_lsp_location_from_scope(
     Ok(lsp_types::Location { uri, range })
 }
 
-pub(crate) fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
+pub fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
         Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
         Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
@@ -74,13 +74,10 @@ pub(crate) fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeveri
     }
 }
 
-pub(crate) fn diag_to_lsp(
-    diag: CompleteDiagnostic,
-    db: &dyn InputDb,
-) -> Vec<lsp_types::Diagnostic> {
+pub fn diag_to_lsp(diag: CompleteDiagnostic, db: &dyn InputDb) -> Vec<lsp_types::Diagnostic> {
     diag.sub_diagnostics
         .into_iter()
-        .map(|sub| {
+        .filter_map(|sub| {
             let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
 
             match lsp_range {
@@ -89,7 +86,7 @@ pub(crate) fn diag_to_lsp(
                     severity: Some(severity_to_lsp(diag.severity)),
                     code: None,
                     source: None,
-                    message: sub.message.clone(),
+                    message: sub.message,
                     related_information: None,
                     tags: None,
                     code_description: None,
@@ -101,6 +98,5 @@ pub(crate) fn diag_to_lsp(
                 }
             }
         })
-        .filter_map(|x| x)
         .collect()
 }

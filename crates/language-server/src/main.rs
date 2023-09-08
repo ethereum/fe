@@ -8,8 +8,8 @@ mod workspace;
 
 use db::Jar;
 mod handlers {
-    pub(crate) mod notifications;
-    pub(crate) mod request;
+    pub mod notifications;
+    pub mod request;
 }
 
 use server::run_server;

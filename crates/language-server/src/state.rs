@@ -23,13 +23,12 @@ pub struct ServerState {
 impl ServerState {
     pub fn new(sender: Sender<Message>) -> Self {
         let sender = Arc::new(Mutex::new(sender));
-        let state = ServerState {
+
+        Self {
             sender,
             db: LanguageServerDatabase::default(),
             workspace: Workspace::default(),
-        };
-
-        state
+        }
     }
 
     fn send(&mut self, msg: Message) -> Result<()> {
@@ -114,7 +113,7 @@ impl ServerState {
     }
 }
 
-pub(crate) struct LspLogger {
+pub struct LspLogger {
     level: Level,
     sender: Arc<Mutex<Sender<Message>>>,
 }
@@ -147,7 +146,7 @@ impl log::Log for LspLogger {
                             Level::Debug => lsp_types::MessageType::LOG,
                             Level::Trace => lsp_types::MessageType::LOG,
                         },
-                        message: message,
+                        message,
                     })
                     .unwrap(),
                 },

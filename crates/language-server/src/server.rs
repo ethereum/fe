@@ -27,7 +27,7 @@ pub fn run_server() -> Result<()> {
     let capabilities = server_capabilities();
 
     let initialize_result = lsp_types::InitializeResult {
-        capabilities: capabilities,
+        capabilities,
         server_info: Some(lsp_types::ServerInfo {
             name: String::from("fe-language-server"),
             version: Some(String::from(env!("CARGO_PKG_VERSION"))),
@@ -53,11 +53,16 @@ pub fn run_server() -> Result<()> {
     let _ = state.init_logger(log::Level::Info);
     state.workspace.set_workspace_root(
         &mut state.db,
-        initialize_params.root_uri.unwrap().to_file_path().ok().unwrap(),
+        initialize_params
+            .root_uri
+            .unwrap()
+            .to_file_path()
+            .ok()
+            .unwrap(),
     )?;
-    let result = state.run(connection.receiver)?;
+    let result = state.run(connection.receiver);
 
     io_threads.join().unwrap();
 
-    Ok(result)
+    result
 }

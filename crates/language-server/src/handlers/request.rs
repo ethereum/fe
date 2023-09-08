@@ -1,7 +1,7 @@
 use std::io::BufRead;
 
 use common::input::IngotKind;
-use hir_analysis::name_resolution::EarlyResolvedPath;
+use hir_analysis::name_resolution::{EarlyResolvedPath, NameRes};
 use log::info;
 use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
@@ -13,7 +13,7 @@ use crate::{
     workspace::IngotFileContext,
 };
 
-pub(crate) fn handle_hover(
+pub fn handle_hover(
     state: &mut ServerState,
     req: lsp_server::Request,
 ) -> Result<(), anyhow::Error> {
@@ -65,18 +65,15 @@ pub(crate) fn handle_hover(
             .strip_prefix(&state.workspace.root_path.clone().unwrap_or("".into()))
             .ok();
 
-        match ingot_type {
-            Some(ingot_type) => Some(format!(
-                "{} with {} files at path: {:?}",
-                ingot_type, ingot_file_count, ingot_path
-            )),
-            None => None,
-        }
+        ingot_type.map(|ingot_type| {
+            format!("{ingot_type} with {ingot_file_count} files at path: {ingot_path:?}")
+        })
     };
 
-    let top_mod = state
-        .workspace
-        .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
+    let top_mod =
+        state
+            .workspace
+            .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
     let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -93,8 +90,7 @@ pub(crate) fn handle_hover(
     };
 
     let result = lsp_types::Hover {
-        contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent::from(
-            lsp_types::MarkupContent {
+        contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
                 value: format!(
                     "### Hovering over:\n```{}```\n\n{}\n\n### Goto Info: \n\n{}\n\n### Ingot info: \n\n{:?}",
@@ -103,8 +99,7 @@ pub(crate) fn handle_hover(
                     goto_info,
                     ingot_info,
                 ),
-            },
-        )),
+            }),
         range: None,
     };
     let response_message = Response {
@@ -119,7 +114,7 @@ pub(crate) fn handle_hover(
 
 use lsp_types::TextDocumentPositionParams;
 
-pub(crate) fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &mut ServerState,
     req: lsp_server::Request,
 ) -> Result<(), anyhow::Error> {
@@ -132,15 +127,16 @@ pub(crate) fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = std::path::Path::new(params.text_document.uri.path());
-    let top_mod = state
-        .workspace
-        .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
+    let top_mod =
+        state
+            .workspace
+            .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location
     let scopes = match goto_info {
         Some(EarlyResolvedPath::Full(bucket)) => {
-            bucket.iter().map(|x| x.scope()).collect::<Vec<_>>()
+            bucket.iter().map(NameRes::scope).collect::<Vec<_>>()
         }
         Some(EarlyResolvedPath::Partial {
             res,
@@ -155,20 +151,20 @@ pub(crate) fn handle_goto_definition(
 
     let locations = scopes
         .iter()
-        .filter_map(|scope| scope.clone())
+        .filter_map(|scope| *scope)
         .map(|scope| to_lsp_location_from_scope(scope, &state.db))
         .collect::<Vec<_>>();
 
     let errors = scopes
         .iter()
-        .filter_map(|scope| scope.clone())
+        .filter_map(|scope| *scope)
         .map(|scope| to_lsp_location_from_scope(scope, &state.db))
-        .filter_map(|scope| scope.err())
+        .filter_map(std::result::Result::err)
         .map(|err| err.to_string())
         .collect::<Vec<_>>()
         .join("\n");
 
-    let error = if errors.len() > 0 {
+    let error = if !errors.is_empty() {
         Some(ResponseError {
             code: lsp_types::error_codes::SERVER_CANCELLED as i32,
             message: errors,
@@ -183,7 +179,10 @@ pub(crate) fn handle_goto_definition(
         id: req.id,
         result: Some(serde_json::to_value(
             lsp_types::GotoDefinitionResponse::Array(
-                locations.into_iter().filter_map(|x| x.ok()).collect(),
+                locations
+                    .into_iter()
+                    .filter_map(std::result::Result::ok)
+                    .collect(),
             ),
         )?),
         error,

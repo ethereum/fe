@@ -46,7 +46,7 @@ impl LanguageServerDatabase {
 
     pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
     where
-        F: FnOnce(&LanguageServerDatabase) -> AnalysisPassManager<'_>,
+        F: FnOnce(&Self) -> AnalysisPassManager<'_>,
     {
         self.diags.clear();
         self.diags = {
@@ -82,7 +82,7 @@ impl LanguageServerDatabase {
             }
         }
 
-        return smallest_enclosing_item;
+        smallest_enclosing_item
     }
 
     pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {

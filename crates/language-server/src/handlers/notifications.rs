@@ -16,7 +16,7 @@ fn string_diagnostics(
     db.finalize_diags()
 }
 
-pub(crate) fn get_diagnostics(
+pub fn get_diagnostics(
     state: &mut ServerState,
     text: String,
     uri: lsp_types::Url,
@@ -27,34 +27,31 @@ pub(crate) fn get_diagnostics(
         text.as_str(),
     );
 
-    let diagnostics = diags.into_iter().flat_map(|diag| {
-        diag_to_lsp(diag, &state.db)
-            .iter()
-            .map(|x| x.clone())
-            .collect::<Vec<_>>()
-    });
+    let diagnostics = diags
+        .into_iter()
+        .flat_map(|diag| diag_to_lsp(diag, &state.db).clone());
 
     Ok(diagnostics.collect())
 }
 
-pub(crate) fn handle_document_did_open(
+pub fn handle_document_did_open(
     state: &mut ServerState,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidOpenTextDocumentParams::deserialize(note.params)?;
     let text = params.text_document.text;
     let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
-    send_diagnostics(state, diagnostics, params.text_document.uri.clone())
+    send_diagnostics(state, diagnostics, params.text_document.uri)
 }
 
-pub(crate) fn handle_document_did_change(
+pub fn handle_document_did_change(
     state: &mut ServerState,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidChangeTextDocumentParams::deserialize(note.params)?;
     let text = params.content_changes[0].text.clone();
     let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
-    send_diagnostics(state, diagnostics, params.text_document.uri.clone())
+    send_diagnostics(state, diagnostics, params.text_document.uri)
 }
 
 // pub(crate) fn handle_workspace_did_change_folders(
@@ -79,8 +76,8 @@ fn send_diagnostics(
     uri: lsp_types::Url,
 ) -> Result<(), Error> {
     let result = lsp_types::PublishDiagnosticsParams {
-        uri: uri,
-        diagnostics: diagnostics,
+        uri,
+        diagnostics,
         version: None,
     };
     let response = lsp_server::Message::Notification(lsp_server::Notification {
