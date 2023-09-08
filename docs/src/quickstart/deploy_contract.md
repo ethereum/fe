@@ -35,7 +35,7 @@ You will see some ASCII art and configuration details in the terminal. Anvil cre
 
 In the previous guide you wrote the following contract, and compiled it using `./fe build guest_book.fe --overwrite` to obtain the contract bytecode. This compilation stage converts the human-readable Fe code into a format that can be efficiently executed by Ethereum's embedded computer, known as the Ethereum Virtual Machine (EVM). The bytecode is stored at an address on the blockchain. The contract functions are invoked by sending instructions in a transaction to that address.
 
-```rust
+```fe
 contract GuestBook {
   messages: Map<address, String<100>>
 
