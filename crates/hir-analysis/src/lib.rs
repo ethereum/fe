@@ -10,7 +10,9 @@ pub struct Jar(
     /// Type inference.
     infer::ty::TyId,
     infer::ty::ty_kind,
+    infer::ty::AdtDef,
     // Trait resolution.
+    infer::trait_::TraitDef,
     infer::trait_::TraitInstId,
 );
 

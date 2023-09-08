@@ -2,6 +2,8 @@ use hir::hir_def::{Contract, Enum, Struct};
 
 use crate::HirAnalysisDb;
 
+use super::trait_::Predicate;
+
 #[salsa::interned]
 pub struct TyId {
     data: TyData,
@@ -15,14 +17,22 @@ impl TyId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyData {
-    /// Type variables.
+    /// Type variable.
     TyVar(TyVar),
+
+    /// Type Parameter.
+    TyParam(TyParam),
+
+    /// Dependent type, e.g., [T; N: usize]
+    DependentTy(TyVar, TyId),
 
     // Type application, e.g., `Option<i32>` is represented as `TApp(TyConst(Option),
     // TyConst(i32)`.
-    TApp(Box<TyData>, Box<TyData>),
+    TApp(Box<TyId>, Box<TyId>),
 
     TyConst(TyConst),
+
+    Invalid,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,10 +59,16 @@ pub struct TyVar {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TyParam {
+    name: usize,
+    kind: Kind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyConst {
     Primitive(PrimTy),
     Abs,
-    Adt(AdtTy),
+    Adt(AdtDef),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -76,13 +92,7 @@ pub enum PrimTy {
     Ptr,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AdtTy {
-    id: AdtId,
-    kind: Kind,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum AdtId {
     Enum(Enum),
     Struct(Struct),
@@ -97,11 +107,14 @@ impl HasKind for TyData {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
+            TyData::TyParam(ty_param) => ty_param.kind.clone(),
+            TyData::DependentTy(_, _) => Kind::Star,
             TyData::TApp(lhs, _) => match lhs.kind(db) {
-                Kind::Abs(_, rhs) => *rhs,
+                Kind::Abs(_, rhs) => *rhs.clone(),
                 _ => unreachable!(),
             },
             TyData::TyConst(ty_const) => ty_const.kind(db),
+            TyData::Invalid => Kind::Star,
         }
     }
 }
@@ -137,13 +150,27 @@ impl HasKind for PrimTy {
     }
 }
 
-impl HasKind for AdtTy {
-    fn kind(&self, _: &dyn HirAnalysisDb) -> Kind {
-        self.kind.clone()
+impl HasKind for AdtDef {
+    fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
+        let mut kind = Kind::Star;
+        for param in self.params(db).iter().rev() {
+            kind = Kind::abs(ty_kind(db, *param).clone(), kind);
+        }
+
+        kind
     }
 }
 
 #[salsa::tracked(return_ref)]
 pub fn ty_kind(db: &dyn HirAnalysisDb, ty: TyId) -> Kind {
     ty.data(db).kind(db)
+}
+
+#[salsa::tracked]
+pub struct AdtDef {
+    pub adt: AdtId,
+    #[return_ref]
+    pub params: Vec<TyId>,
+    #[return_ref]
+    predicates: Vec<Predicate>,
 }
