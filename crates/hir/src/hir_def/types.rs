@@ -2,6 +2,7 @@ use super::{Body, GenericArgListId, Partial, PathId};
 
 #[salsa::interned]
 pub struct TypeId {
+    #[return_ref]
     pub data: TypeKind,
 }
 

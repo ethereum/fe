@@ -8,7 +8,7 @@ mod visibility_checker;
 use either::Either;
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, QueryDirective,
+    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
 };
 pub use path_resolver::EarlyResolvedPath;
 

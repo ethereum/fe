@@ -11,9 +11,18 @@ pub struct Jar(
     infer::ty::TyId,
     infer::ty::ty_kind,
     infer::ty::AdtDef,
+    /// Type lowering.
+    infer::lower::lower_enum,
+    infer::lower::lower_struct,
+    infer::lower::lower_contract,
+    infer::lower::lower_type_alias,
     // Trait resolution.
     infer::trait_::TraitDef,
     infer::trait_::TraitInstId,
+    infer::diagnostics::StructDefDiagAccumulator,
+    infer::diagnostics::EnumDefDiagAccumulator,
+    infer::diagnostics::TypeAliasDefDiagAccumulator,
+    infer::diagnostics::ContractDefDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

@@ -46,7 +46,7 @@ define_lazy_span_node!(
         (star, star),
     }
     @node {
-        (ty, inner, LazyTySpan),
+        (pointee, inner, LazyTySpan),
     }
 );
 

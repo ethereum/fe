@@ -14,7 +14,6 @@ rustc-hash = "1.1.0"
 either = "1.8"
 derive_more = "0.99"
 itertools = "0.10"
-lazy_static = "1.4"
 
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common2", package = "fe-common2" }

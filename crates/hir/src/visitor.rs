@@ -1626,7 +1626,7 @@ where
         TypeKind::Ptr(ty) => {
             if let Some(ty) = ty.to_opt() {
                 ctxt.with_new_ctxt(
-                    |ctxt| ctxt.into_ptr_type().ty(),
+                    |ctxt| ctxt.into_ptr_type().pointee(),
                     |ctxt| {
                         visitor.visit_ty(ctxt, ty);
                     },
@@ -1646,7 +1646,7 @@ where
                 ctxt.with_new_ctxt(
                     |span| span.generic_args_moved(),
                     |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, generic_args);
+                        visitor.visit_generic_arg_list(ctxt, *generic_args);
                     },
                 );
             },
