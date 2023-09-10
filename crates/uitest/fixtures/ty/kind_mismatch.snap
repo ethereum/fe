@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/kind_mismatch.fe
+---
+error[3-0002]: kind mismatch in type application
+  ┌─ kind_mismatch.fe:7:19
+  │
+7 │     foo: Foo<i32, Foo>
+  │                   ^^^ can't apply `(* -> (* -> (* -> (* -> *))))` kind to `(* -> (* -> (* -> *)))` kind
+
+

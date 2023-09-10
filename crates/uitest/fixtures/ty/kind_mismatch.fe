@@ -1,0 +1,8 @@
+pub struct Foo<T, U> {
+    t: T
+    u: U
+}
+
+pub struct Bar {
+    foo: Foo<i32, Foo>
+}
