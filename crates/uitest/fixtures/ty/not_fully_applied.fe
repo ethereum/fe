@@ -1,0 +1,12 @@
+pub struct Foo<T, U> {
+    t: T
+    u: U
+}
+
+pub struct Bar {
+    f: Foo<i32>
+}
+
+pub enum Baz {
+    Variant(Foo<i32>)
+}
