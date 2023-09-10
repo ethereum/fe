@@ -6,13 +6,19 @@ input_file: crates/uitest/fixtures/ty/not_fully_applied.fe
 error[3-0001]: expected fully applied type
   ┌─ not_fully_applied.fe:7:8
   │
-7 │     f: Foo<i32>
+7 │     f: Gen<i32>
   │        ^^^^^^^^ expected fully applied type here
 
-error[3-0002]: kind mismatch in type application
-   ┌─ not_fully_applied.fe:11:13
+error[3-0001]: expected fully applied type
+   ┌─ not_fully_applied.fe:12:13
    │
-11 │     Variant(Foo<i32>)
-   │             ^^^^^^^^ can't apply `(* -> (* -> (* -> *)))` kind to `(* -> *)` kind
+12 │     Variant(Gen<i32>)
+   │             ^^^^^^^^ expected fully applied type here
+
+error[3-0001]: expected fully applied type
+   ┌─ not_fully_applied.fe:16:8
+   │
+16 │     f: Gen<i32>
+   │        ^^^^^^^^ expected fully applied type here
 
 

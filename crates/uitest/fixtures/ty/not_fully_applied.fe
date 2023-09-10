@@ -1,12 +1,17 @@
-pub struct Foo<T, U> {
+pub struct Gen<T, U> {
     t: T
     u: U
 }
 
-pub struct Bar {
-    f: Foo<i32>
+pub struct MyS {
+    f: Gen<i32>
+    u: (i32, i32)
 }
 
-pub enum Baz {
-    Variant(Foo<i32>)
+pub enum MyE {
+    Variant(Gen<i32>)
+}
+
+pub contract MyC {
+    f: Gen<i32>
 }

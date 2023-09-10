@@ -49,7 +49,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
         for contract in top_mod.all_contracts(hir_db) {
             lower::lower_contract(self.db, *contract);
             diags.extend(
-                lower::lower_contract::accumulated::<diagnostics::EnumDefDiagAccumulator>(
+                lower::lower_contract::accumulated::<diagnostics::ContractDefDiagAccumulator>(
                     self.db, *contract,
                 )
                 .into_iter()

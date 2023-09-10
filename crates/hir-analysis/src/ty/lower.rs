@@ -159,12 +159,17 @@ impl<'db> TyBuilder<'db> {
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
         elems.iter().enumerate().fold(tuple, |acc, (idx, elem)| {
-            let elem = elem
+            let elem_ty = elem
                 .to_opt()
                 .map(|elem| self.lower_ty(elem, span.elem_ty(idx)))
                 .unwrap_or_else(|| TyId::invalid(self.db));
+            let (elem_ty, diag) =
+                verify_fully_applied_type(self.db, elem_ty, span.elem_ty(idx).into());
+            if let Some(diag) = diag {
+                self.diags.push(diag);
+            }
 
-            self.ty_app(acc, elem, span.elem_ty(idx).into())
+            self.ty_app(acc, elem_ty, span.elem_ty(idx).into())
         })
     }
 
@@ -280,10 +285,6 @@ impl<'db> AdtTyBuilder<'db> {
             let param = lower_generic_param(self.db, self.adt.into(), idx);
             self.params.push(param);
         }
-        for idx in 0..params.data(hir_db).len() {
-            let param_ty = lower_generic_param(self.db, self.adt.into(), idx);
-            self.params.push(param_ty);
-        }
     }
 
     fn collect_variants(&mut self) {
@@ -375,12 +376,26 @@ impl<'db> AdtTyBuilder<'db> {
     /// accumulated then returns `TyId::invalid()`, otherwise returns given
     /// `ty`.
     fn verify_fully_applied_type(&mut self, ty: TyId, span: DynLazySpan) -> TyId {
-        if ty.is_mono_type(self.db) {
-            ty
-        } else {
-            self.diags.push(TyLowerDiag::not_fully_applied_type(span));
-            TyId::invalid(self.db)
+        let (ty, diag) = verify_fully_applied_type(self.db, ty, span);
+        if let Some(diag) = diag {
+            self.diags.push(diag);
         }
+        ty
+    }
+}
+
+fn verify_fully_applied_type(
+    db: &dyn HirAnalysisDb,
+    ty: TyId,
+    span: DynLazySpan,
+) -> (TyId, Option<TyLowerDiag>) {
+    if ty.is_mono_type(db) {
+        (ty, None)
+    } else {
+        (
+            TyId::invalid(db),
+            TyLowerDiag::not_fully_applied_type(span).into(),
+        )
     }
 }
 
