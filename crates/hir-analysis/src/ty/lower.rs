@@ -13,11 +13,11 @@ use hir::{
 };
 
 use crate::{
-    infer::diagnostics::{
-        ContractDefDiagAccumulator, EnumDefDiagAccumulator, StructDefDiagAccumulator,
-    },
     name_resolution::{
         resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameResKind,
+    },
+    ty::diagnostics::{
+        ContractDefDiagAccumulator, EnumDefDiagAccumulator, StructDefDiagAccumulator,
     },
     HirAnalysisDb,
 };

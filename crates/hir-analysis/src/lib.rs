@@ -8,21 +8,21 @@ pub struct Jar(
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
     /// Type inference.
-    infer::ty::TyId,
-    infer::ty::ty_kind,
-    infer::ty::AdtDef,
+    ty::ty::TyId,
+    ty::ty::ty_kind,
+    ty::ty::AdtDef,
     /// Type lowering.
-    infer::lower::lower_enum,
-    infer::lower::lower_struct,
-    infer::lower::lower_contract,
-    infer::lower::lower_type_alias,
+    ty::lower::lower_enum,
+    ty::lower::lower_struct,
+    ty::lower::lower_contract,
+    ty::lower::lower_type_alias,
     // Trait resolution.
-    infer::trait_::TraitDef,
-    infer::trait_::TraitInstId,
-    infer::diagnostics::StructDefDiagAccumulator,
-    infer::diagnostics::EnumDefDiagAccumulator,
-    infer::diagnostics::TypeAliasDefDiagAccumulator,
-    infer::diagnostics::ContractDefDiagAccumulator,
+    ty::trait_::TraitDef,
+    ty::trait_::TraitInstId,
+    ty::diagnostics::StructDefDiagAccumulator,
+    ty::diagnostics::EnumDefDiagAccumulator,
+    ty::diagnostics::TypeAliasDefDiagAccumulator,
+    ty::diagnostics::ContractDefDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
@@ -32,8 +32,8 @@ pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
 }
 impl<DB> HirAnalysisDb for DB where DB: ?Sized + salsa::DbWithJar<Jar> + HirDb {}
 
-pub mod infer;
 pub mod name_resolution;
+pub mod ty;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Spanned<T> {
