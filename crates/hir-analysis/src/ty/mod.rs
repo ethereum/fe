@@ -11,6 +11,12 @@ pub struct TypeDefAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
 
+impl<'db> TypeDefAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
 impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
