@@ -144,7 +144,7 @@ pub enum DiagnosticPass {
 
     NameResolution,
 
-    TyCheck,
+    TypeDefinition,
 
     ExternalAnalysis(ExternalAnalysisKey),
 }
@@ -154,8 +154,7 @@ impl DiagnosticPass {
         match self {
             Self::Parse => 1,
             Self::NameResolution => 2,
-
-            Self::TyCheck => 3,
+            Self::TypeDefinition => 3,
 
             Self::ExternalAnalysis(_) => std::u16::MAX,
         }
