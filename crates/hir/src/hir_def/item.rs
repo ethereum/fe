@@ -283,6 +283,57 @@ impl TopLevelMod {
         // Please change here if we introduce it.
         Visibility::Public
     }
+
+    /// Returns all structs in the top level module including ones in nested
+    /// modules.
+    pub fn all_structs<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Struct> {
+        all_structs_in_top_mod(db, self)
+    }
+
+    /// Returns all enums in the top level module including ones in nested
+    /// modules.
+    pub fn all_enums<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Enum> {
+        all_enums_in_top_mod(db, self)
+    }
+
+    /// Returns all contracts in the top level module including ones in nested
+    /// modules.
+    pub fn all_contracts<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Contract> {
+        all_contracts_in_top_mod(db, self)
+    }
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_structs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Struct> {
+    top_mod
+        .children_nested(db)
+        .filter_map(|item| match item {
+            ItemKind::Struct(struct_) => Some(struct_),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
+    top_mod
+        .children_non_nested(db)
+        .filter_map(|item| match item {
+            ItemKind::Enum(enum_) => Some(enum_),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_contracts_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Contract> {
+    top_mod
+        .children_non_nested(db)
+        .filter_map(|item| match item {
+            ItemKind::Contract(contract) => Some(contract),
+            _ => None,
+        })
+        .collect()
 }
 
 #[salsa::tracked]
