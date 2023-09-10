@@ -6,6 +6,10 @@ use hir::{
     span::{DynLazySpan, LazySpan},
 };
 
+use crate::HirAnalysisDb;
+
+use super::ty::TyId;
+
 #[salsa::accumulator]
 pub struct StructDefDiagAccumulator(pub(super) TyLowerDiag);
 #[salsa::accumulator]
@@ -19,27 +23,37 @@ pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
 pub enum TyLowerDiag {
     InvalidType(DynLazySpan),
     NotFullyAppliedType(DynLazySpan),
+    KindMismatch(DynLazySpan, String),
     AssocTy(DynLazySpan),
 }
 
 impl TyLowerDiag {
-    pub(super) fn assoc_ty(span: impl Into<DynLazySpan>) -> Self {
-        Self::AssocTy(span.into())
+    pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
+        Self::AssocTy(span)
     }
 
-    pub(super) fn invalid_type(span: impl Into<DynLazySpan>) -> Self {
-        Self::InvalidType(span.into())
+    pub(super) fn invalid_type(span: DynLazySpan) -> Self {
+        Self::InvalidType(span)
     }
 
-    pub fn not_fully_applied_type(span: impl Into<DynLazySpan>) -> Self {
-        Self::NotFullyAppliedType(span.into())
+    pub fn not_fully_applied_type(span: DynLazySpan) -> Self {
+        Self::NotFullyAppliedType(span)
+    }
+
+    pub fn kind_mismatch(db: &dyn HirAnalysisDb, abs: TyId, arg: TyId, span: DynLazySpan) -> Self {
+        let k_abs = abs.kind(db);
+        let k_arg = arg.kind(db);
+
+        let msg = format!("can't apply `{}` kind to `{}` kind", k_arg, k_abs);
+        Self::KindMismatch(span, msg.into())
     }
 
     fn local_code(&self) -> u16 {
         match self {
             Self::InvalidType(_) => 0,
             Self::NotFullyAppliedType(_) => 1,
-            Self::AssocTy(_) => 2,
+            Self::KindMismatch(_, _) => 2,
+            Self::AssocTy(_) => 3,
         }
     }
 
@@ -47,6 +61,7 @@ impl TyLowerDiag {
         match self {
             Self::InvalidType(_) => "expected type".to_string(),
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
+            Self::KindMismatch(_, _) => "kind mismatch in type application".to_string(),
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
         }
     }
@@ -62,6 +77,12 @@ impl TyLowerDiag {
             Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "expected fully applied type here".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::KindMismatch(span, msg) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                msg.clone(),
                 span.resolve(db),
             )],
 

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use hir::hir_def::{
     prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
     scope_graph::ScopeId,
@@ -8,7 +10,7 @@ use crate::HirAnalysisDb;
 
 #[salsa::interned]
 pub struct TyId {
-    data: TyData,
+    pub data: TyData,
 }
 
 impl TyId {
@@ -28,8 +30,20 @@ impl TyId {
         Self::new(db, TyData::TyCon(TyConcrete::Adt(adt)))
     }
 
-    pub(super) fn apply(db: &dyn HirAnalysisDb, ty: Self, arg: Self) -> Self {
-        Self::new(db, TyData::TyApp(ty, arg))
+    /// Perform type level application.
+    /// If the kind is mismatched, return None.
+    pub(super) fn apply(db: &dyn HirAnalysisDb, ty: Self, arg: Self) -> Option<TyId> {
+        let k_ty = ty.kind(db);
+        let k_arg = arg.kind(db);
+        if k_ty.is_any() || k_arg.is_any() {
+            return Some(Self::new(db, TyData::Invalid));
+        }
+
+        if k_ty.is_applicable(&k_arg) {
+            Some(Self::new(db, TyData::TyApp(ty, arg)))
+        } else {
+            None
+        }
     }
 
     pub(super) fn invalid(db: &dyn HirAnalysisDb) -> Self {
@@ -134,6 +148,30 @@ impl Kind {
     fn abs(lhs: Kind, rhs: Kind) -> Self {
         Kind::Abs(Box::new(lhs), Box::new(rhs))
     }
+
+    fn is_applicable(&self, rhs: &Self) -> bool {
+        match self {
+            Self::Abs(k_arg, _) => k_arg.as_ref() == rhs,
+            _ => false,
+        }
+    }
+
+    fn is_any(&self) -> bool {
+        match self {
+            Self::Any => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Star => write!(f, "*"),
+            Self::Abs(lhs, rhs) => write!(f, "({} -> {})", lhs, rhs),
+            Self::Any => write!(f, "Any"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -220,9 +258,9 @@ impl HasKind for TyData {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
             TyData::TyCon(ty_const) => ty_const.kind(db),
-            TyData::TyApp(lhs, rhs) => match lhs.kind(db) {
+            TyData::TyApp(abs, arg) => match abs.kind(db) {
                 Kind::Abs(k_arg, k_ret) => {
-                    debug_assert!(rhs.kind(db) == k_arg.as_ref());
+                    debug_assert!(k_arg.as_ref() == arg.kind(db));
                     k_ret.as_ref().clone()
                 }
                 _ => unreachable!(),

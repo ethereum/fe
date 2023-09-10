@@ -132,9 +132,9 @@ impl<'db> TyBuilder<'db> {
             .collect();
 
         match path_ty {
-            Either::Left(ty) => arg_tys
-                .into_iter()
-                .fold(ty, |acc, arg| TyId::apply(self.db, acc, arg)),
+            Either::Left(ty) => arg_tys.into_iter().enumerate().fold(ty, |acc, (idx, arg)| {
+                self.ty_app(acc, arg, generic_arg_span.arg(idx).into())
+            }),
 
             Either::Right(alias) => alias.subst_with(self.db, &arg_tys),
         }
@@ -152,7 +152,7 @@ impl<'db> TyBuilder<'db> {
             .unwrap_or_else(|| TyId::invalid(self.db));
 
         let ptr = TyId::ptr(self.db);
-        TyId::apply(self.db, ptr, pointee)
+        self.ty_app(ptr, pointee, span.into())
     }
 
     fn lower_tuple(&mut self, elems: &[Partial<HirTyId>], span: LazyTupleTypeSpan) -> TyId {
@@ -164,8 +164,21 @@ impl<'db> TyBuilder<'db> {
                 .map(|elem| self.lower_ty(elem, span.elem_ty(idx)))
                 .unwrap_or_else(|| TyId::invalid(self.db));
 
-            TyId::apply(self.db, acc, elem)
+            self.ty_app(acc, elem, span.elem_ty(idx).into())
         })
+    }
+
+    /// Perform type level application.
+    /// If type application is not possible for the given `abs`/`arg` pair,
+    /// diagnostics are accumulated then returns` TyId::invalid()`.
+    fn ty_app(&mut self, abs: TyId, arg: TyId, span: DynLazySpan) -> TyId {
+        if let Some(ty) = TyId::apply(self.db, abs, arg) {
+            ty
+        } else {
+            self.diags
+                .push(TyLowerDiag::kind_mismatch(self.db, abs, arg, span));
+            TyId::invalid(self.db)
+        }
     }
 
     fn lower_resolved_path(
@@ -215,7 +228,7 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    pub(super) fn lower_generic_arg(&mut self, arg: &GenericArg, span: LazyGenericArgSpan) -> TyId {
+    fn lower_generic_arg(&mut self, arg: &GenericArg, span: LazyGenericArgSpan) -> TyId {
         match arg {
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
@@ -358,8 +371,9 @@ impl<'db> AdtTyBuilder<'db> {
     }
 
     /// Verifies that the type is fully applied type.
-    /// If the `ty` is not a fully applied type, error diagnostics are
-    /// accumulated and returns `TyId::invalid()`, otherwise returns given `ty`.
+    /// If the `ty` is not a fully applied type, diagnostics are
+    /// accumulated then returns `TyId::invalid()`, otherwise returns given
+    /// `ty`.
     fn verify_fully_applied_type(&mut self, ty: TyId, span: DynLazySpan) -> TyId {
         if ty.is_mono_type(self.db) {
             ty
