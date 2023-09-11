@@ -11,6 +11,8 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
+use super::lower::lower_hir_ty;
+
 #[salsa::interned]
 pub struct TyId {
     pub data: TyData,
@@ -117,6 +119,20 @@ pub struct AdtVariant {
     /// If the adt is an struct or contract, the length of the vector is always
     /// 1.
     pub tys: Vec<Partial<HirTyId>>,
+    scope: ScopeId,
+}
+impl AdtVariant {
+    pub fn ty(&self, db: &dyn HirAnalysisDb, i: usize) -> TyId {
+        if let Some(ty) = self.tys[i].to_opt() {
+            lower_hir_ty(db, ty, self.scope)
+        } else {
+            TyId::invalid(db, InvalidCause::Other)
+        }
+    }
+
+    pub(super) fn new(name: Partial<IdentId>, tys: Vec<Partial<HirTyId>>, scope: ScopeId) -> Self {
+        Self { name, tys, scope }
+    }
 }
 
 #[salsa::tracked(return_ref)]

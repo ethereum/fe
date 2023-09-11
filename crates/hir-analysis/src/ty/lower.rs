@@ -254,20 +254,25 @@ impl<'db> AdtTyBuilder<'db> {
     }
 
     fn collect_field_types(&mut self, fields: FieldDefListId) {
-        fields.data(self.db.as_hir_db()).iter().for_each(|field| {
-            let variant = AdtVariant {
-                name: field.name,
-                tys: vec![field.ty],
-            };
-            self.variants.push(variant);
-        })
+        fields
+            .data(self.db.as_hir_db())
+            .iter()
+            .enumerate()
+            .for_each(|(i, field)| {
+                let scope = ScopeId::Field(self.adt.as_item(self.db), i);
+                let variant = AdtVariant::new(field.name, vec![field.ty], scope);
+                self.variants.push(variant);
+            })
     }
 
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
         variants
             .data(self.db.as_hir_db())
             .iter()
-            .for_each(|variant| {
+            .enumerate()
+            .for_each(|(i, variant)| {
+                let scope = ScopeId::Variant(self.adt.as_item(self.db), i);
+
                 // TODO: FIX here when record variant is introduced.
                 let tys = match variant.ty {
                     Some(ty) => {
@@ -276,10 +281,7 @@ impl<'db> AdtTyBuilder<'db> {
                     None => vec![],
                 };
 
-                let variant = AdtVariant {
-                    name: variant.name,
-                    tys,
-                };
+                let variant = AdtVariant::new(variant.name, tys, scope);
                 self.variants.push(variant)
             })
     }
