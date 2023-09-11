@@ -1,12 +1,8 @@
 use either::Either;
-use hir::{
-    hir_def::{
-        kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
-        ItemKind, Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId,
-        TypeKind as HirTyKind, VariantDefListId,
-    },
-    span::{types::LazyTySpan, DynLazySpan},
-    visitor::prelude::{LazyGenericArgSpan, LazyPathTypeSpan, LazyPtrTypeSpan, LazyTupleTypeSpan},
+use hir::hir_def::{
+    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam, ItemKind,
+    Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
+    VariantDefListId,
 };
 
 use crate::{
@@ -21,6 +17,11 @@ use super::{
     diagnostics::TyLowerDiag,
     ty::{AdtDef, AdtRef, AdtRefId, AdtVariant, InvalidCause, Kind, TyData, TyId, TyParam},
 };
+
+#[salsa::tracked]
+pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
+    TyBuilder::new(db, scope).lower_ty(ty)
+}
 
 #[salsa::tracked]
 pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> TyId {
@@ -57,27 +58,22 @@ impl TyAlias {
 pub(crate) struct TyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId,
-    diags: Vec<TyLowerDiag>,
 }
 
 impl<'db> TyBuilder<'db> {
     pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId) -> Self {
-        Self {
-            db,
-            scope,
-            diags: Vec::new(),
-        }
+        Self { db, scope }
     }
 
-    pub(super) fn lower_ty(&mut self, ty: HirTyId, span: LazyTySpan) -> TyId {
+    pub(super) fn lower_ty(&mut self, ty: HirTyId) -> TyId {
         match ty.data(self.db.as_hir_db()) {
-            HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee, span.into_ptr_type()),
+            HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee),
 
-            HirTyKind::Path(path, args) => self.lower_path(*path, *args, span.into_path_type()),
+            HirTyKind::Path(path, args) => self.lower_path(*path, *args),
 
-            HirTyKind::SelfType => self.lower_self_ty(span),
+            HirTyKind::SelfType => self.lower_self_ty(),
 
-            HirTyKind::Tuple(elems) => self.lower_tuple(elems, span.into_tuple_type()),
+            HirTyKind::Tuple(elems) => self.lower_tuple(elems),
 
             HirTyKind::Array(_, _) => {
                 todo!()
@@ -85,79 +81,62 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    pub(super) fn lower_path(
-        &mut self,
-        path: Partial<PathId>,
-        args: GenericArgListId,
-        span: LazyPathTypeSpan,
-    ) -> TyId {
+    pub(super) fn lower_path(&mut self, path: Partial<PathId>, args: GenericArgListId) -> TyId {
         let path_ty = path
             .to_opt()
             .map(|path| {
                 let res = resolve_path_early(self.db, path, self.scope);
-                self.lower_resolved_path(&res, span.path().into())
+                self.lower_resolved_path(&res)
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
-
-        let generic_arg_span = span.generic_args();
 
         let arg_tys: Vec<_> = args
             .data(self.db.as_hir_db())
             .iter()
-            .enumerate()
-            .map(|(idx, arg)| self.lower_generic_arg(arg, generic_arg_span.arg(idx)))
+            .map(|arg| self.lower_generic_arg(arg))
             .collect();
 
         match path_ty {
-            Either::Left(ty) => arg_tys.into_iter().enumerate().fold(ty, |acc, (idx, arg)| {
-                self.ty_app(acc, arg, generic_arg_span.arg(idx).into())
-            }),
+            Either::Left(ty) => arg_tys
+                .into_iter()
+                .fold(ty, |acc, arg| TyId::app(self.db, acc, arg)),
 
             Either::Right(alias) => alias.subst_with(self.db, &arg_tys),
         }
     }
 
-    pub(super) fn lower_self_ty(&mut self, span: LazyTySpan) -> TyId {
+    pub(super) fn lower_self_ty(&mut self) -> TyId {
         let res = resolve_segments_early(self.db, &[Partial::Present(kw::SELF_TY)], self.scope);
-        self.lower_resolved_path(&res, span.into()).unwrap_left()
+        self.lower_resolved_path(&res).unwrap_left()
     }
 
-    fn lower_ptr(&mut self, pointee: Partial<HirTyId>, span: LazyPtrTypeSpan) -> TyId {
+    fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
         let pointee = pointee
             .to_opt()
-            .map(|pointee| self.lower_ty(pointee, span.pointee()))
+            .map(|pointee| self.lower_ty(pointee))
             .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
 
         let ptr = TyId::ptr(self.db);
-        self.ty_app(ptr, pointee, span.into())
+        TyId::app(self.db, ptr, pointee)
     }
 
-    fn lower_tuple(&mut self, elems: &[Partial<HirTyId>], span: LazyTupleTypeSpan) -> TyId {
+    fn lower_tuple(&mut self, elems: &[Partial<HirTyId>]) -> TyId {
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
-        elems.iter().enumerate().fold(tuple, |acc, (idx, elem)| {
+        elems.iter().fold(tuple, |acc, elem| {
             let elem_ty = elem
                 .to_opt()
-                .map(|elem| self.lower_ty(elem, span.elem_ty(idx)))
+                .map(|elem| self.lower_ty(elem))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
-            let elem_ty = verify_fully_applied_type(self.db, elem_ty, span.elem_ty(idx).into());
+            if !elem_ty.is_mono_type(self.db) {
+                return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
+            }
 
-            self.ty_app(acc, elem_ty, span.elem_ty(idx).into())
+            TyId::app(self.db, acc, elem_ty)
         })
     }
 
-    /// Perform type level application.
-    /// If type application is not possible for the given `abs`/`arg` pair,
-    /// diagnostics are accumulated then returns` TyId::invalid()`.
-    fn ty_app(&mut self, abs: TyId, arg: TyId, span: DynLazySpan) -> TyId {
-        TyId::apply(self.db, abs, arg)
-    }
-
-    fn lower_resolved_path(
-        &mut self,
-        path: &EarlyResolvedPath,
-        span: DynLazySpan,
-    ) -> Either<TyId, TyAlias> {
+    fn lower_resolved_path(&mut self, path: &EarlyResolvedPath) -> Either<TyId, TyAlias> {
         let res = match path {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
                 Ok(res) => res,
@@ -204,12 +183,12 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    fn lower_generic_arg(&mut self, arg: &GenericArg, span: LazyGenericArgSpan) -> TyId {
+    fn lower_generic_arg(&mut self, arg: &GenericArg) -> TyId {
         match arg {
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
                 .to_opt()
-                .map(|ty| self.lower_ty(ty, span.into_type_arg().ty()))
+                .map(|ty| self.lower_ty(ty))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
             GenericArg::Const(_) => todo!(),
@@ -261,17 +240,14 @@ impl<'db> AdtTyBuilder<'db> {
     fn collect_variants(&mut self) {
         match self.adt.data(self.db) {
             AdtRef::Struct(struct_) => {
-                let span = struct_.lazy_span();
                 self.collect_field_types(struct_.fields(self.db.as_hir_db()));
             }
 
             AdtRef::Contract(contract) => {
-                let span = contract.lazy_span();
                 self.collect_field_types(contract.fields(self.db.as_hir_db()))
             }
 
             AdtRef::Enum(enum_) => {
-                let span = enum_.lazy_span();
                 self.collect_enum_variant_types(enum_.variants(self.db.as_hir_db()))
             }
         };
@@ -291,8 +267,7 @@ impl<'db> AdtTyBuilder<'db> {
         variants
             .data(self.db.as_hir_db())
             .iter()
-            .enumerate()
-            .for_each(|(i, variant)| {
+            .for_each(|variant| {
                 // TODO: FIX here when record variant is introduced.
                 let tys = match variant.ty {
                     Some(ty) => {
@@ -334,13 +309,5 @@ fn lower_generic_param(db: &dyn HirAnalysisDb, item: ItemKind, idx: usize) -> Ty
         GenericParam::Const(_) => {
             todo!()
         }
-    }
-}
-
-fn verify_fully_applied_type(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> TyId {
-    if ty.is_mono_type(db) {
-        ty
-    } else {
-        TyId::invalid(db, InvalidCause::NotFullyApplied)
     }
 }

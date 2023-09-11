@@ -49,7 +49,7 @@ impl TyId {
 
     /// Perform type level application.
     /// If the kind is mismatched, return `TyData::Invalid`.
-    pub(super) fn apply(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
+    pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
         if abs.is_invalid(db) || arg.is_invalid(db) {
             return TyId::invalid(db, InvalidCause::Other);
         }
@@ -189,13 +189,6 @@ impl Kind {
     fn is_applicable(&self, rhs: &Self) -> bool {
         match self {
             Self::Abs(k_arg, _) => k_arg.as_ref() == rhs,
-            _ => false,
-        }
-    }
-
-    fn is_any(&self) -> bool {
-        match self {
-            Self::Any => true,
             _ => false,
         }
     }
