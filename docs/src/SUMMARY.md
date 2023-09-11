@@ -78,5 +78,6 @@
             * [Sequence types in memory](spec/data_layout/memory/sequence_types_in_memory.md)
     * [Function calls](spec/function_calls.md)
 
+* [Contributing](contributing.md)
 * [Release Notes](release_notes.md)
 * [Code of Conduct](code_of_conduct.md)
