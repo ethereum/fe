@@ -175,9 +175,6 @@ pub enum InvalidCause {
     /// Associated Type is not allowed at the moment.
     AssocTy,
 
-    /// Type is not defined even though the name resolution is succeeded.
-    ReferenceToNonType,
-
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.
     Other,

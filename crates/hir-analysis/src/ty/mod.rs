@@ -43,8 +43,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
             );
 
         adts.map(|adt| {
-            lower::lower_adt(self.db, adt);
-            lower::lower_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
+            lower::analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
                 .into_iter()
                 .map(|diag| Box::new(diag) as _)
         })

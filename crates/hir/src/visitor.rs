@@ -1803,6 +1803,18 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
+    pub fn new(db: &'db dyn HirDb, span: T) -> Self
+    where
+        T: Into<DynLazySpan>,
+    {
+        Self {
+            db,
+            span: span.into(),
+            scope_stack: Vec::new(),
+            _t: PhantomData,
+        }
+    }
+
     pub fn db(&self) -> &'db dyn HirDb {
         self.db
     }

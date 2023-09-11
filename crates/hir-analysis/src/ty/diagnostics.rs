@@ -17,7 +17,6 @@ pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
-    InvalidType(DynLazySpan),
     NotFullyAppliedType(DynLazySpan),
     KindMismatch(DynLazySpan, String),
     RecursiveType {
@@ -28,10 +27,6 @@ pub enum TyLowerDiag {
 }
 
 impl TyLowerDiag {
-    pub(super) fn invalid_type(span: DynLazySpan) -> Self {
-        Self::InvalidType(span)
-    }
-
     pub fn not_fully_applied_type(span: DynLazySpan) -> Self {
         Self::NotFullyAppliedType(span)
     }
@@ -63,18 +58,15 @@ impl TyLowerDiag {
 
     fn local_code(&self) -> u16 {
         match self {
-            Self::InvalidType(_) => 0,
-            Self::NotFullyAppliedType(_) => 1,
-            Self::KindMismatch(_, _) => 2,
-            Self::RecursiveType { .. } => 3,
-            Self::AssocTy(_) => 4,
+            Self::NotFullyAppliedType(_) => 0,
+            Self::KindMismatch(_, _) => 1,
+            Self::RecursiveType { .. } => 2,
+            Self::AssocTy(_) => 3,
         }
     }
 
     fn message(&self) -> String {
         match self {
-            Self::InvalidType(_) => "expected type".to_string(),
-
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
 
             Self::KindMismatch(_, _) => "kind mismatch in type application".to_string(),
@@ -87,12 +79,6 @@ impl TyLowerDiag {
 
     fn sub_diags(&self, db: &dyn hir::SpannedHirDb) -> Vec<SubDiagnostic> {
         match self {
-            Self::InvalidType(span) => vec![SubDiagnostic::new(
-                LabelStyle::Primary,
-                "expected type here".to_string(),
-                span.resolve(db),
-            )],
-
             Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "expected fully applied type here".to_string(),

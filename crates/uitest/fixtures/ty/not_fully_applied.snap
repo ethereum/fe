@@ -3,19 +3,19 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/not_fully_applied.fe
 ---
-error[3-0001]: expected fully applied type
+error[3-0000]: expected fully applied type
   ┌─ not_fully_applied.fe:7:8
   │
 7 │     f: Gen<i32>
   │        ^^^^^^^^ expected fully applied type here
 
-error[3-0001]: expected fully applied type
-   ┌─ not_fully_applied.fe:12:13
+error[3-0000]: expected fully applied type
+   ┌─ not_fully_applied.fe:12:12
    │
 12 │     Variant(Gen<i32>)
-   │             ^^^^^^^^ expected fully applied type here
+   │            ^^^^^^^^^^ expected fully applied type here
 
-error[3-0001]: expected fully applied type
+error[3-0000]: expected fully applied type
    ┌─ not_fully_applied.fe:16:8
    │
 16 │     f: Gen<i32>

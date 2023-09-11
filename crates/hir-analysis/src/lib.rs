@@ -15,6 +15,7 @@ pub struct Jar(
     /// Type lowering.
     ty::lower::lower_hir_ty,
     ty::lower::lower_adt,
+    ty::lower::analyze_adt,
     ty::lower::lower_type_alias,
     // Trait resolution.
     ty::trait_::TraitDef,

@@ -1,8 +1,11 @@
 use either::Either;
-use hir::hir_def::{
-    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam, ItemKind,
-    Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
-    VariantDefListId,
+use hir::{
+    hir_def::{
+        kw, scope_graph::ScopeId, FieldDef, FieldDefListId, GenericArg, GenericArgListId,
+        GenericParam, ItemKind, Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId,
+        TypeKind as HirTyKind, VariantDefListId,
+    },
+    visitor::prelude::*,
 };
 
 use crate::{
@@ -24,16 +27,29 @@ pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId
 }
 
 #[salsa::tracked]
-pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> TyId {
-    let (ty, diags) = AdtTyBuilder::new(db, adt).build();
-    for diag in diags {
-        AdtDefDiagAccumulator::push(db, diag)
-    }
-    ty
+pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
+    AdtTyBuilder::new(db, adt).build()
 }
 
 #[salsa::tracked]
-pub fn lower_type_alias(_db: &dyn HirAnalysisDb, _alias: HirTypeAlias) -> TyAlias {
+pub fn analyze_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) {
+    let mut analyzer = AdtDefAnalysisVisitor {
+        db,
+        accumulated: Vec::new(),
+        scope: adt.scope(db),
+    };
+    let item = adt.as_item(db);
+
+    let mut ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
+    analyzer.visit_item(&mut ctxt, item);
+
+    for diag in analyzer.accumulated {
+        AdtDefDiagAccumulator::push(db, diag);
+    }
+}
+
+#[salsa::tracked]
+pub(crate) fn lower_type_alias(_db: &dyn HirAnalysisDb, _alias: HirTypeAlias) -> TyAlias {
     todo!()
 }
 
@@ -44,9 +60,26 @@ pub fn lower_type_alias(_db: &dyn HirAnalysisDb, _alias: HirTypeAlias) -> TyAlia
 /// NOTE: `TyAlias` can't become an alias to partial applied types, i.e., the
 /// right hand side of the alias declaration must be a fully applied type.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TyAlias {
+pub(crate) struct TyAlias {
     alias_to: TyId,
     params: Vec<TyId>,
+}
+
+pub(super) fn collect_ty_lower_diags(
+    db: &dyn HirAnalysisDb,
+    ty: HirTyId,
+    span: LazyTySpan,
+    scope: ScopeId,
+) -> Vec<TyLowerDiag> {
+    let mut ctxt = VisitorCtxt::new(db.as_hir_db(), span);
+    let mut accumulator = TyDiagAccumulator {
+        db,
+        accumulated: Vec::new(),
+        scope,
+    };
+
+    accumulator.visit_ty(&mut ctxt, ty);
+    accumulator.accumulated
 }
 
 impl TyAlias {
@@ -55,7 +88,102 @@ impl TyAlias {
     }
 }
 
-pub(crate) struct TyBuilder<'db> {
+struct TyDiagAccumulator<'db> {
+    db: &'db dyn HirAnalysisDb,
+    accumulated: Vec<TyLowerDiag>,
+    scope: ScopeId,
+}
+
+impl<'db> TyDiagAccumulator<'db> {
+    fn accumulate(&mut self, cause: InvalidCause, span: LazyTySpan) {
+        let span: DynLazySpan = span.into();
+        match cause {
+            InvalidCause::NotFullyApplied => {
+                let diag = TyLowerDiag::not_fully_applied_type(span);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::KindMismatch { abs, arg } => {
+                let diag = TyLowerDiag::kind_mismatch(self.db, abs, arg, span);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::AssocTy => {
+                let diag = TyLowerDiag::assoc_ty(span);
+                self.accumulated.push(diag);
+            }
+
+            // NOTE: We can `InvalidCause::Other` because it's already reported by other passes.
+            InvalidCause::Other => {}
+        }
+    }
+}
+
+impl<'db> Visitor for TyDiagAccumulator<'db> {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        if let Some(cause) = ty.invalid_cause(self.db) {
+            self.accumulate(cause, ctxt.span().unwrap());
+        }
+
+        walk_ty(self, ctxt, hir_ty);
+    }
+}
+
+struct AdtDefAnalysisVisitor<'db> {
+    db: &'db dyn HirAnalysisDb,
+    accumulated: Vec<TyLowerDiag>,
+    scope: ScopeId,
+}
+
+impl<'db> AdtDefAnalysisVisitor<'db> {
+    // This method ensures that field/variant types are fully applied.
+    fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) {
+        let ty = lower_hir_ty(self.db, ty, self.scope);
+        if !ty.is_mono_type(self.db) {
+            self.accumulated
+                .push(TyLowerDiag::not_fully_applied_type(span));
+        }
+    }
+}
+
+impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
+        self.accumulated.extend(collect_ty_lower_diags(
+            self.db,
+            hir_ty,
+            ctxt.span().unwrap(),
+            self.scope,
+        ));
+
+        // We don't call `walk_ty` to make sure that we don't visit ty
+        // recursively, which is visited by `collect_ty_lower_diags`.
+    }
+
+    fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
+        if let Some(ty) = field.ty.to_opt() {
+            self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into());
+        }
+
+        walk_field_def(self, ctxt, field);
+    }
+
+    fn visit_variant_def(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
+        variant: &hir::hir_def::VariantDef,
+    ) {
+        if let Some(ty) = variant.ty {
+            self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into());
+        }
+
+        walk_variant_def(self, ctxt, variant);
+    }
+
+    // TODO: We need to check cycle type.
+}
+
+struct TyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId,
 }
@@ -113,7 +241,7 @@ impl<'db> TyBuilder<'db> {
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
         let pointee = pointee
             .to_opt()
-            .map(|pointee| self.lower_ty(pointee))
+            .map(|pointee| lower_hir_ty(self.db, pointee, self.scope))
             .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
 
         let ptr = TyId::ptr(self.db);
@@ -126,7 +254,7 @@ impl<'db> TyBuilder<'db> {
         elems.iter().fold(tuple, |acc, elem| {
             let elem_ty = elem
                 .to_opt()
-                .map(|elem| self.lower_ty(elem))
+                .map(|elem| lower_hir_ty(self.db, elem, self.scope))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
             if !elem_ty.is_mono_type(self.db) {
                 return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
@@ -168,18 +296,22 @@ impl<'db> TyBuilder<'db> {
         match item {
             ItemKind::Enum(enum_) => {
                 let adt_ref = AdtRefId::from_enum(self.db, enum_);
-                Either::Left(lower_adt(self.db, adt_ref))
+                let adt = lower_adt(self.db, adt_ref);
+                Either::Left(TyId::adt(self.db, adt))
             }
             ItemKind::Struct(struct_) => {
                 let adt_ref = AdtRefId::from_struct(self.db, struct_);
-                Either::Left(lower_adt(self.db, adt_ref))
+                let adt = lower_adt(self.db, adt_ref);
+                Either::Left(TyId::adt(self.db, adt))
             }
             ItemKind::Contract(contract) => {
                 let adt_ref = AdtRefId::from_contract(self.db, contract);
-                Either::Left(lower_adt(self.db, adt_ref))
+                let adt = lower_adt(self.db, adt_ref);
+                Either::Left(TyId::adt(self.db, adt))
             }
             ItemKind::TypeAlias(alias) => Either::Right(lower_type_alias(self.db, alias)),
-            _ => Either::Left(TyId::invalid(self.db, InvalidCause::ReferenceToNonType)),
+            // This should be handled in the name resolution.
+            _ => Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
         }
     }
 
@@ -188,7 +320,7 @@ impl<'db> TyBuilder<'db> {
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
                 .to_opt()
-                .map(|ty| self.lower_ty(ty))
+                .map(|ty| lower_hir_ty(self.db, ty, self.scope))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
             GenericArg::Const(_) => todo!(),
@@ -201,7 +333,6 @@ struct AdtTyBuilder<'db> {
     adt: AdtRefId,
     params: Vec<TyId>,
     variants: Vec<AdtVariant>,
-    diags: Vec<TyLowerDiag>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
@@ -211,16 +342,13 @@ impl<'db> AdtTyBuilder<'db> {
             adt,
             params: Vec::new(),
             variants: Vec::new(),
-            diags: Vec::new(),
         }
     }
 
-    fn build(mut self) -> (TyId, Vec<TyLowerDiag>) {
+    fn build(mut self) -> AdtDef {
         self.collect_params();
         self.collect_variants();
-
-        let adt_def = AdtDef::new(self.db, self.adt, self.params, self.variants);
-        (TyId::adt(self.db, adt_def), self.diags)
+        AdtDef::new(self.db, self.adt, self.params, self.variants)
     }
 
     fn collect_params(&mut self) {
@@ -254,25 +382,21 @@ impl<'db> AdtTyBuilder<'db> {
     }
 
     fn collect_field_types(&mut self, fields: FieldDefListId) {
-        fields
-            .data(self.db.as_hir_db())
-            .iter()
-            .enumerate()
-            .for_each(|(i, field)| {
-                let scope = ScopeId::Field(self.adt.as_item(self.db), i);
-                let variant = AdtVariant::new(field.name, vec![field.ty], scope);
-                self.variants.push(variant);
-            })
+        let scope = self.adt.scope(self.db);
+
+        fields.data(self.db.as_hir_db()).iter().for_each(|field| {
+            let variant = AdtVariant::new(field.name, vec![field.ty], scope);
+            self.variants.push(variant);
+        })
     }
 
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
+        let scope = self.adt.scope(self.db);
+
         variants
             .data(self.db.as_hir_db())
             .iter()
-            .enumerate()
-            .for_each(|(i, variant)| {
-                let scope = ScopeId::Variant(self.adt.as_item(self.db), i);
-
+            .for_each(|variant| {
                 // TODO: FIX here when record variant is introduced.
                 let tys = match variant.ty {
                     Some(ty) => {
