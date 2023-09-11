@@ -1,9 +1,12 @@
 use std::fmt;
 
-use hir::hir_def::{
-    prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
-    scope_graph::ScopeId,
-    Contract, Enum, IdentId, ItemKind, Partial, Struct,
+use hir::{
+    hir_def::{
+        prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
+        scope_graph::ScopeId,
+        Contract, Enum, IdentId, ItemKind, Partial, Struct, TypeId as HirTyId,
+    },
+    span::DynLazySpan,
 };
 
 use crate::HirAnalysisDb;
@@ -16,6 +19,20 @@ pub struct TyId {
 impl TyId {
     pub fn kind<'db>(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
         ty_kind(db, self)
+    }
+
+    pub fn is_invalid(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::Invalid(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn invalid_cause(self, db: &dyn HirAnalysisDb) -> Option<InvalidCause> {
+        match self.data(db) {
+            TyData::Invalid(cause) => Some(cause),
+            _ => None,
+        }
     }
 
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
@@ -31,23 +48,24 @@ impl TyId {
     }
 
     /// Perform type level application.
-    /// If the kind is mismatched, return None.
-    pub(super) fn apply(db: &dyn HirAnalysisDb, ty: Self, arg: Self) -> Option<TyId> {
-        let k_ty = ty.kind(db);
-        let k_arg = arg.kind(db);
-        if k_ty.is_any() || k_arg.is_any() {
-            return Some(Self::new(db, TyData::Invalid));
+    /// If the kind is mismatched, return `TyData::Invalid`.
+    pub(super) fn apply(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
+        if abs.is_invalid(db) || arg.is_invalid(db) {
+            return TyId::invalid(db, InvalidCause::Other);
         }
 
+        let k_ty = abs.kind(db);
+        let k_arg = arg.kind(db);
+
         if k_ty.is_applicable(&k_arg) {
-            Some(Self::new(db, TyData::TyApp(ty, arg)))
+            Self::new(db, TyData::TyApp(abs, arg))
         } else {
-            None
+            Self::invalid(db, InvalidCause::KindMismatch { abs, arg })
         }
     }
 
-    pub(super) fn invalid(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, TyData::Invalid)
+    pub(super) fn invalid(db: &dyn HirAnalysisDb, cause: InvalidCause) -> Self {
+        Self::new(db, TyData::Invalid(cause))
     }
 
     pub(super) fn from_hir_prim_ty(db: &dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
@@ -98,7 +116,7 @@ pub struct AdtVariant {
     /// Fields of the variant.
     /// If the adt is an struct or contract, the length of the vector is always
     /// 1.
-    pub tys: Vec<TyId>,
+    pub tys: Vec<Partial<HirTyId>>,
 }
 
 #[salsa::tracked(return_ref)]
@@ -127,7 +145,26 @@ pub enum TyData {
 
     // Invalid type which means the type is not defined.
     // This type can be unified with any other types.
-    Invalid,
+    Invalid(InvalidCause),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvalidCause {
+    /// Type is not fully applied where it is required.
+    NotFullyApplied,
+
+    /// Kind mismatch in type level application.
+    KindMismatch { abs: TyId, arg: TyId },
+
+    /// Associated Type is not allowed at the moment.
+    AssocTy,
+
+    /// Type is not defined even though the name resolution is succeeded.
+    ReferenceToNonType,
+
+    /// `Other` indicates the cause is already reported in other analysis
+    /// passes, e.g., parser or name resolution.
+    Other,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -239,6 +276,23 @@ impl AdtRefId {
         }
     }
 
+    pub fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
+        let hir_db = db.as_hir_db();
+        match self.data(db) {
+            AdtRef::Enum(e) => e.name(hir_db),
+            AdtRef::Struct(s) => s.name(hir_db),
+            AdtRef::Contract(c) => c.name(hir_db),
+        }
+        .to_opt()
+        .unwrap_or_else(|| IdentId::new(hir_db, "<unknown>".to_string()))
+    }
+
+    pub fn name_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {
+        self.scope(db)
+            .name_span(db.as_hir_db())
+            .unwrap_or_else(|| DynLazySpan::invalid())
+    }
+
     pub fn from_enum(db: &dyn HirAnalysisDb, enum_: Enum) -> Self {
         Self::new(db, AdtRef::Enum(enum_))
     }
@@ -286,7 +340,7 @@ impl HasKind for TyData {
                 }
                 _ => unreachable!(),
             },
-            TyData::Invalid => Kind::Any,
+            TyData::Invalid(_) => Kind::Any,
         }
     }
 }

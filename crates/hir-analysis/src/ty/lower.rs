@@ -6,10 +6,7 @@ use hir::{
         TypeKind as HirTyKind, VariantDefListId,
     },
     span::{types::LazyTySpan, DynLazySpan},
-    visitor::prelude::{
-        LazyFieldDefListSpan, LazyGenericArgSpan, LazyPathTypeSpan, LazyPtrTypeSpan,
-        LazyTupleTypeSpan, LazyVariantDefListSpan,
-    },
+    visitor::prelude::{LazyGenericArgSpan, LazyPathTypeSpan, LazyPtrTypeSpan, LazyTupleTypeSpan},
 };
 
 use crate::{
@@ -22,7 +19,7 @@ use crate::{
 
 use super::{
     diagnostics::TyLowerDiag,
-    ty::{AdtDef, AdtRef, AdtRefId, AdtVariant, Kind, TyData, TyId, TyParam},
+    ty::{AdtDef, AdtRef, AdtRefId, AdtVariant, InvalidCause, Kind, TyData, TyId, TyParam},
 };
 
 #[salsa::tracked]
@@ -100,7 +97,7 @@ impl<'db> TyBuilder<'db> {
                 let res = resolve_path_early(self.db, path, self.scope);
                 self.lower_resolved_path(&res, span.path().into())
             })
-            .unwrap_or_else(|| Either::Left(TyId::invalid(self.db)));
+            .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
 
         let generic_arg_span = span.generic_args();
 
@@ -129,7 +126,7 @@ impl<'db> TyBuilder<'db> {
         let pointee = pointee
             .to_opt()
             .map(|pointee| self.lower_ty(pointee, span.pointee()))
-            .unwrap_or_else(|| TyId::invalid(self.db));
+            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
 
         let ptr = TyId::ptr(self.db);
         self.ty_app(ptr, pointee, span.into())
@@ -142,12 +139,8 @@ impl<'db> TyBuilder<'db> {
             let elem_ty = elem
                 .to_opt()
                 .map(|elem| self.lower_ty(elem, span.elem_ty(idx)))
-                .unwrap_or_else(|| TyId::invalid(self.db));
-            let (elem_ty, diag) =
-                verify_fully_applied_type(self.db, elem_ty, span.elem_ty(idx).into());
-            if let Some(diag) = diag {
-                self.diags.push(diag);
-            }
+                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+            let elem_ty = verify_fully_applied_type(self.db, elem_ty, span.elem_ty(idx).into());
 
             self.ty_app(acc, elem_ty, span.elem_ty(idx).into())
         })
@@ -157,13 +150,7 @@ impl<'db> TyBuilder<'db> {
     /// If type application is not possible for the given `abs`/`arg` pair,
     /// diagnostics are accumulated then returns` TyId::invalid()`.
     fn ty_app(&mut self, abs: TyId, arg: TyId, span: DynLazySpan) -> TyId {
-        if let Some(ty) = TyId::apply(self.db, abs, arg) {
-            ty
-        } else {
-            self.diags
-                .push(TyLowerDiag::kind_mismatch(self.db, abs, arg, span));
-            TyId::invalid(self.db)
-        }
+        TyId::apply(self.db, abs, arg)
     }
 
     fn lower_resolved_path(
@@ -176,13 +163,11 @@ impl<'db> TyBuilder<'db> {
                 Ok(res) => res,
 
                 // This error is already handled by the name resolution.
-                Err(_) => return Either::Left(TyId::invalid(self.db)),
+                Err(_) => return Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
             },
 
             EarlyResolvedPath::Partial { .. } => {
-                // TODO: Fix here when we add an associated type.
-                self.diags.push(TyLowerDiag::assoc_ty(span));
-                return Either::Left(TyId::invalid(self.db));
+                return Either::Left(TyId::invalid(self.db, InvalidCause::AssocTy));
             }
         };
 
@@ -215,10 +200,7 @@ impl<'db> TyBuilder<'db> {
                 Either::Left(lower_adt(self.db, adt_ref))
             }
             ItemKind::TypeAlias(alias) => Either::Right(lower_type_alias(self.db, alias)),
-            _ => {
-                self.diags.push(TyLowerDiag::invalid_type(span));
-                Either::Left(TyId::invalid(self.db))
-            }
+            _ => Either::Left(TyId::invalid(self.db, InvalidCause::ReferenceToNonType)),
         }
     }
 
@@ -228,7 +210,7 @@ impl<'db> TyBuilder<'db> {
                 .ty
                 .to_opt()
                 .map(|ty| self.lower_ty(ty, span.into_type_arg().ty()))
-                .unwrap_or_else(|| TyId::invalid(self.db)),
+                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
             GenericArg::Const(_) => todo!(),
         }
@@ -280,75 +262,42 @@ impl<'db> AdtTyBuilder<'db> {
         match self.adt.data(self.db) {
             AdtRef::Struct(struct_) => {
                 let span = struct_.lazy_span();
-                self.collect_field_types(struct_.fields(self.db.as_hir_db()), span.fields());
+                self.collect_field_types(struct_.fields(self.db.as_hir_db()));
             }
 
             AdtRef::Contract(contract) => {
                 let span = contract.lazy_span();
-                self.collect_field_types(contract.fields(self.db.as_hir_db()), span.fields())
+                self.collect_field_types(contract.fields(self.db.as_hir_db()))
             }
 
             AdtRef::Enum(enum_) => {
                 let span = enum_.lazy_span();
-                self.collect_enum_variant_types(
-                    enum_.variants(self.db.as_hir_db()),
-                    span.variants(),
-                )
+                self.collect_enum_variant_types(enum_.variants(self.db.as_hir_db()))
             }
         };
     }
 
-    fn collect_field_types(&mut self, fields: FieldDefListId, span: LazyFieldDefListSpan) {
-        fields
-            .data(self.db.as_hir_db())
-            .iter()
-            .enumerate()
-            .for_each(|(i, field)| {
-                let ty = match field.ty.to_opt() {
-                    Some(ty) => {
-                        let mut builder = TyBuilder::new(self.db, self.adt.data(self.db).scope());
-                        let ty_span = span.field(i).ty();
-
-                        let ty = builder.lower_ty(ty, ty_span.clone());
-                        let ty = self.verify_fully_applied_type(ty, ty_span.into());
-
-                        self.diags.extend(builder.diags);
-                        ty
-                    }
-
-                    None => TyId::invalid(self.db),
-                };
-
-                let variant = AdtVariant {
-                    name: field.name,
-                    tys: vec![ty],
-                };
-                self.variants.push(variant);
-            })
+    fn collect_field_types(&mut self, fields: FieldDefListId) {
+        fields.data(self.db.as_hir_db()).iter().for_each(|field| {
+            let variant = AdtVariant {
+                name: field.name,
+                tys: vec![field.ty],
+            };
+            self.variants.push(variant);
+        })
     }
 
-    fn collect_enum_variant_types(
-        &mut self,
-        variants: VariantDefListId,
-        span: LazyVariantDefListSpan,
-    ) {
+    fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
         variants
             .data(self.db.as_hir_db())
             .iter()
             .enumerate()
             .for_each(|(i, variant)| {
+                // TODO: FIX here when record variant is introduced.
                 let tys = match variant.ty {
                     Some(ty) => {
-                        let mut builder = TyBuilder::new(self.db, self.adt.scope(self.db));
-                        let ty_span = span.variant(i).ty();
-
-                        let ty = builder.lower_ty(ty, ty_span.clone());
-                        let ty = self.verify_fully_applied_type(ty, ty_span.into());
-
-                        self.diags.extend(builder.diags);
-                        vec![ty]
+                        vec![Some(ty).into()]
                     }
-
                     None => vec![],
                 };
 
@@ -358,33 +307,6 @@ impl<'db> AdtTyBuilder<'db> {
                 };
                 self.variants.push(variant)
             })
-    }
-
-    /// Verifies that the type is fully applied type.
-    /// If the `ty` is not a fully applied type, diagnostics are
-    /// accumulated then returns `TyId::invalid()`, otherwise returns given
-    /// `ty`.
-    fn verify_fully_applied_type(&mut self, ty: TyId, span: DynLazySpan) -> TyId {
-        let (ty, diag) = verify_fully_applied_type(self.db, ty, span);
-        if let Some(diag) = diag {
-            self.diags.push(diag);
-        }
-        ty
-    }
-}
-
-fn verify_fully_applied_type(
-    db: &dyn HirAnalysisDb,
-    ty: TyId,
-    span: DynLazySpan,
-) -> (TyId, Option<TyLowerDiag>) {
-    if ty.is_mono_type(db) {
-        (ty, None)
-    } else {
-        (
-            TyId::invalid(db),
-            TyLowerDiag::not_fully_applied_type(span).into(),
-        )
     }
 }
 
@@ -406,11 +328,19 @@ fn lower_generic_param(db: &dyn HirAnalysisDb, item: ItemKind, idx: usize) -> Ty
                 };
                 TyId::new(db, TyData::TyParam(ty_param))
             } else {
-                TyId::new(db, TyData::Invalid)
+                TyId::invalid(db, InvalidCause::Other)
             }
         }
         GenericParam::Const(_) => {
             todo!()
         }
+    }
+}
+
+fn verify_fully_applied_type(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> TyId {
+    if ty.is_mono_type(db) {
+        ty
+    } else {
+        TyId::invalid(db, InvalidCause::NotFullyApplied)
     }
 }

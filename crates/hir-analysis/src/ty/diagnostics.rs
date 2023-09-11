@@ -8,7 +8,7 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
-use super::ty::TyId;
+use super::ty::{AdtRefId, TyId};
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
@@ -20,14 +20,14 @@ pub enum TyLowerDiag {
     InvalidType(DynLazySpan),
     NotFullyAppliedType(DynLazySpan),
     KindMismatch(DynLazySpan, String),
+    RecursiveType {
+        primary_span: DynLazySpan,
+        cycle_participants: Vec<DynLazySpan>,
+    },
     AssocTy(DynLazySpan),
 }
 
 impl TyLowerDiag {
-    pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
-        Self::AssocTy(span)
-    }
-
     pub(super) fn invalid_type(span: DynLazySpan) -> Self {
         Self::InvalidType(span)
     }
@@ -44,20 +44,43 @@ impl TyLowerDiag {
         Self::KindMismatch(span, msg.into())
     }
 
+    pub(super) fn recursive_type(
+        db: &dyn HirAnalysisDb,
+        primary_span: DynLazySpan,
+        participants: Vec<AdtRefId>,
+    ) -> Self {
+        let cycle_participants = participants.into_iter().map(|p| p.name_span(db)).collect();
+
+        Self::RecursiveType {
+            primary_span,
+            cycle_participants,
+        }
+    }
+
+    pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
+        Self::AssocTy(span)
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::InvalidType(_) => 0,
             Self::NotFullyAppliedType(_) => 1,
             Self::KindMismatch(_, _) => 2,
-            Self::AssocTy(_) => 3,
+            Self::RecursiveType { .. } => 3,
+            Self::AssocTy(_) => 4,
         }
     }
 
     fn message(&self) -> String {
         match self {
             Self::InvalidType(_) => "expected type".to_string(),
+
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
+
             Self::KindMismatch(_, _) => "kind mismatch in type application".to_string(),
+
+            Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
+
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
         }
     }
@@ -81,6 +104,27 @@ impl TyLowerDiag {
                 msg.clone(),
                 span.resolve(db),
             )],
+
+            Self::RecursiveType {
+                primary_span,
+                cycle_participants,
+            } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "causing cycle here".to_string(),
+                    primary_span.resolve(db),
+                )];
+
+                diags.extend(cycle_participants.iter().map(|span| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("this type is part of the cycle"),
+                        span.resolve(db),
+                    )
+                }));
+
+                diags
+            }
 
             Self::AssocTy(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
