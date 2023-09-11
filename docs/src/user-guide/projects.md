@@ -51,7 +51,7 @@ The mode of a project is determined automatically by the presence of either `src
 
 You can import code from external files with the following syntax:
 
-```rust
+```fe
 use utils::get_42
 ```
 
@@ -59,7 +59,7 @@ This will import the `get_42` function from the file `utils.fe`.
 
 You can also import using a custom name/alias:
 
-```rust
+```fe
 use utils::get_42 as get_42
 ```
 
@@ -71,7 +71,7 @@ To write a unit test, create a function with a name beginning with `test_`. The 
 
 For example, to test the `say_hello` function on `Contract` whioch is expected to return the string `"hello"`:
 
-```rust
+```fe
 fn test_contract(mut ctx: Context) {
     let contract: Contract = Contract.create(ctx, 0)
     assert main.say_hello() == "hello"
@@ -88,8 +88,5 @@ You will receive test results directly to the console.
 
 ## Running your project
 
-Once you have created a project, you can run the usual Fe CLI subcommands against the project path. For example, to build your entire project, overwriting anythign that currently exists in the `outputs` folder:
 
-```sh
-fe build project --overwrite
-```
+Once you have created a project, you can run the usual Fe CLI subcommands against the project path.
