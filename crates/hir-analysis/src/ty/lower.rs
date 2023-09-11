@@ -1,9 +1,9 @@
 use either::Either;
 use hir::{
     hir_def::{
-        kw, scope_graph::ScopeId, Contract, Enum, FieldDefListId, GenericArg, GenericArgListId,
-        GenericParam, ItemKind, Partial, PathId, Struct, TypeAlias as HirTypeAlias,
-        TypeId as HirTyId, TypeKind as HirTyKind, VariantDefListId,
+        kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+        ItemKind, Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId,
+        TypeKind as HirTyKind, VariantDefListId,
     },
     span::{types::LazyTySpan, DynLazySpan},
     visitor::prelude::{
@@ -16,40 +16,20 @@ use crate::{
     name_resolution::{
         resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameResKind,
     },
-    ty::diagnostics::{
-        ContractDefDiagAccumulator, EnumDefDiagAccumulator, StructDefDiagAccumulator,
-    },
+    ty::diagnostics::AdtDefDiagAccumulator,
     HirAnalysisDb,
 };
 
 use super::{
     diagnostics::TyLowerDiag,
-    ty::{AdtDef, AdtId, AdtVariant, Kind, TyData, TyId, TyParam},
+    ty::{AdtDef, AdtRef, AdtRefId, AdtVariant, Kind, TyData, TyId, TyParam},
 };
 
 #[salsa::tracked]
-pub fn lower_struct(db: &dyn HirAnalysisDb, struct_: Struct) -> TyId {
-    let (ty, diags) = AdtTyBuilder::new(db, struct_.into()).build();
+pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> TyId {
+    let (ty, diags) = AdtTyBuilder::new(db, adt).build();
     for diag in diags {
-        StructDefDiagAccumulator::push(db, diag)
-    }
-    ty
-}
-
-#[salsa::tracked]
-pub fn lower_enum(db: &dyn HirAnalysisDb, enum_: Enum) -> TyId {
-    let (ty, diags) = AdtTyBuilder::new(db, enum_.into()).build();
-    for diag in diags {
-        EnumDefDiagAccumulator::push(db, diag)
-    }
-    ty
-}
-
-#[salsa::tracked]
-pub fn lower_contract(db: &dyn HirAnalysisDb, contract: Contract) -> TyId {
-    let (ty, diags) = AdtTyBuilder::new(db, contract.into()).build();
-    for diag in diags {
-        ContractDefDiagAccumulator::push(db, diag)
+        AdtDefDiagAccumulator::push(db, diag)
     }
     ty
 }
@@ -222,9 +202,18 @@ impl<'db> TyBuilder<'db> {
         };
 
         match item {
-            ItemKind::Enum(enum_) => Either::Left(lower_enum(self.db, enum_)),
-            ItemKind::Struct(struct_) => Either::Left(lower_struct(self.db, struct_)),
-            ItemKind::Contract(contract) => Either::Left(lower_contract(self.db, contract)),
+            ItemKind::Enum(enum_) => {
+                let adt_ref = AdtRefId::from_enum(self.db, enum_);
+                Either::Left(lower_adt(self.db, adt_ref))
+            }
+            ItemKind::Struct(struct_) => {
+                let adt_ref = AdtRefId::from_struct(self.db, struct_);
+                Either::Left(lower_adt(self.db, adt_ref))
+            }
+            ItemKind::Contract(contract) => {
+                let adt_ref = AdtRefId::from_contract(self.db, contract);
+                Either::Left(lower_adt(self.db, adt_ref))
+            }
             ItemKind::TypeAlias(alias) => Either::Right(lower_type_alias(self.db, alias)),
             _ => {
                 self.diags.push(TyLowerDiag::invalid_type(span));
@@ -248,14 +237,14 @@ impl<'db> TyBuilder<'db> {
 
 struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
-    adt: AdtId,
+    adt: AdtRefId,
     params: Vec<TyId>,
     variants: Vec<AdtVariant>,
     diags: Vec<TyLowerDiag>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, adt: AdtId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
         Self {
             db,
             adt,
@@ -275,31 +264,31 @@ impl<'db> AdtTyBuilder<'db> {
 
     fn collect_params(&mut self) {
         let hir_db = self.db.as_hir_db();
-        let params = match self.adt {
-            AdtId::Struct(struct_) => struct_.generic_params(hir_db),
-            AdtId::Enum(enum_) => enum_.generic_params(hir_db),
-            AdtId::Contract(_) => return,
+        let params = match self.adt.data(self.db) {
+            AdtRef::Struct(struct_) => struct_.generic_params(hir_db),
+            AdtRef::Enum(enum_) => enum_.generic_params(hir_db),
+            AdtRef::Contract(_) => return,
         };
 
         for idx in 0..params.len(hir_db) {
-            let param = lower_generic_param(self.db, self.adt.into(), idx);
+            let param = lower_generic_param(self.db, self.adt.as_item(self.db), idx);
             self.params.push(param);
         }
     }
 
     fn collect_variants(&mut self) {
-        match self.adt {
-            AdtId::Struct(struct_) => {
+        match self.adt.data(self.db) {
+            AdtRef::Struct(struct_) => {
                 let span = struct_.lazy_span();
                 self.collect_field_types(struct_.fields(self.db.as_hir_db()), span.fields());
             }
 
-            AdtId::Contract(contract) => {
+            AdtRef::Contract(contract) => {
                 let span = contract.lazy_span();
                 self.collect_field_types(contract.fields(self.db.as_hir_db()), span.fields())
             }
 
-            AdtId::Enum(enum_) => {
+            AdtRef::Enum(enum_) => {
                 let span = enum_.lazy_span();
                 self.collect_enum_variant_types(
                     enum_.variants(self.db.as_hir_db()),
@@ -317,7 +306,7 @@ impl<'db> AdtTyBuilder<'db> {
             .for_each(|(i, field)| {
                 let ty = match field.ty.to_opt() {
                     Some(ty) => {
-                        let mut builder = TyBuilder::new(self.db, self.adt.scope());
+                        let mut builder = TyBuilder::new(self.db, self.adt.data(self.db).scope());
                         let ty_span = span.field(i).ty();
 
                         let ty = builder.lower_ty(ty, ty_span.clone());
@@ -350,7 +339,7 @@ impl<'db> AdtTyBuilder<'db> {
             .for_each(|(i, variant)| {
                 let tys = match variant.ty {
                     Some(ty) => {
-                        let mut builder = TyBuilder::new(self.db, self.adt.scope());
+                        let mut builder = TyBuilder::new(self.db, self.adt.scope(self.db));
                         let ty_span = span.variant(i).ty();
 
                         let ty = builder.lower_ty(ty, ty_span.clone());

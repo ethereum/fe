@@ -86,7 +86,7 @@ impl TyId {
 
 #[salsa::tracked]
 pub struct AdtDef {
-    pub adt: AdtId,
+    pub adt: AdtRefId,
     #[return_ref]
     pub params: Vec<TyId>,
     pub variants: Vec<AdtVariant>,
@@ -221,29 +221,50 @@ pub enum PrimTy {
     Ptr,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
-pub enum AdtId {
+#[salsa::interned]
+pub struct AdtRefId {
+    pub data: AdtRef,
+}
+
+impl AdtRefId {
+    pub fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        self.data(db).scope()
+    }
+
+    pub fn as_item(self, db: &dyn HirAnalysisDb) -> ItemKind {
+        match self.data(db) {
+            AdtRef::Enum(e) => e.into(),
+            AdtRef::Struct(s) => s.into(),
+            AdtRef::Contract(c) => c.into(),
+        }
+    }
+
+    pub fn from_enum(db: &dyn HirAnalysisDb, enum_: Enum) -> Self {
+        Self::new(db, AdtRef::Enum(enum_))
+    }
+
+    pub fn from_struct(db: &dyn HirAnalysisDb, struct_: Struct) -> Self {
+        Self::new(db, AdtRef::Struct(struct_))
+    }
+
+    pub fn from_contract(db: &dyn HirAnalysisDb, contract: Contract) -> Self {
+        Self::new(db, AdtRef::Contract(contract))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AdtRef {
     Enum(Enum),
     Struct(Struct),
     Contract(Contract),
 }
 
-impl Into<ItemKind> for AdtId {
-    fn into(self) -> ItemKind {
+impl AdtRef {
+    pub fn scope(self) -> ScopeId {
         match self {
-            Self::Enum(enum_) => ItemKind::Enum(enum_),
-            Self::Struct(struct_) => ItemKind::Struct(struct_),
-            Self::Contract(contract) => ItemKind::Contract(contract),
-        }
-    }
-}
-
-impl AdtId {
-    pub(super) fn scope(self) -> ScopeId {
-        match self {
-            Self::Enum(enum_) => enum_.scope(),
-            Self::Struct(struct_) => struct_.scope(),
-            Self::Contract(contract_) => contract_.scope(),
+            Self::Enum(e) => e.scope(),
+            Self::Struct(s) => s.scope(),
+            Self::Contract(c) => c.scope(),
         }
     }
 }

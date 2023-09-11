@@ -11,11 +11,7 @@ use crate::HirAnalysisDb;
 use super::ty::TyId;
 
 #[salsa::accumulator]
-pub struct StructDefDiagAccumulator(pub(super) TyLowerDiag);
-#[salsa::accumulator]
-pub struct EnumDefDiagAccumulator(pub(super) TyLowerDiag);
-#[salsa::accumulator]
-pub struct ContractDefDiagAccumulator(pub(super) TyLowerDiag);
+pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
 
