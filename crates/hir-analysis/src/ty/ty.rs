@@ -66,6 +66,20 @@ impl TyId {
         }
     }
 
+    /// Returns `true` if the type is a pointer or a pointer application.
+    pub(super) fn is_ptr(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyCon(TyConcrete::Prim(PrimTy::Ptr)) => true,
+            TyData::TyApp(abs, _) => abs.is_ptr(db),
+            _ => false,
+        }
+    }
+
+    pub(super) fn is_indirect(self, db: &dyn HirAnalysisDb) -> bool {
+        // TODO: FiX here when reference type is introduced.
+        self.is_ptr(db)
+    }
+
     pub(super) fn invalid(db: &dyn HirAnalysisDb, cause: InvalidCause) -> Self {
         Self::new(db, TyData::Invalid(cause))
     }
@@ -106,14 +120,42 @@ impl TyId {
 
 #[salsa::tracked]
 pub struct AdtDef {
-    pub adt: AdtRefId,
+    pub adt_ref: AdtRefId,
     #[return_ref]
     pub params: Vec<TyId>,
-    pub variants: Vec<AdtVariant>,
+    #[return_ref]
+    pub fields: Vec<AdtField>,
+}
+
+impl AdtDef {
+    pub fn variant_ty_span(self, db: &dyn HirAnalysisDb, idx: usize) -> DynLazySpan {
+        match self.adt_ref(db).data(db) {
+            AdtRef::Enum(e) => e
+                .lazy_span()
+                .variants_moved()
+                .variant_moved(idx)
+                .ty_moved()
+                .into(),
+
+            AdtRef::Struct(s) => s
+                .lazy_span()
+                .fields_moved()
+                .field_moved(idx)
+                .ty_moved()
+                .into(),
+
+            AdtRef::Contract(c) => c
+                .lazy_span()
+                .fields_moved()
+                .field_moved(idx)
+                .ty_moved()
+                .into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AdtVariant {
+pub struct AdtField {
     pub name: Partial<IdentId>,
     /// Fields of the variant.
     /// If the adt is an struct or contract, the length of the vector is always
@@ -121,13 +163,21 @@ pub struct AdtVariant {
     pub tys: Vec<Partial<HirTyId>>,
     scope: ScopeId,
 }
-impl AdtVariant {
+impl AdtField {
     pub fn ty(&self, db: &dyn HirAnalysisDb, i: usize) -> TyId {
         if let Some(ty) = self.tys[i].to_opt() {
             lower_hir_ty(db, ty, self.scope)
         } else {
             TyId::invalid(db, InvalidCause::Other)
         }
+    }
+
+    pub fn iter_types<'a>(&'a self, db: &'a dyn HirAnalysisDb) -> impl Iterator<Item = TyId> + 'a {
+        (0..self.num_types()).into_iter().map(|i| self.ty(db, i))
+    }
+
+    pub fn num_types(&self) -> usize {
+        self.tys.len()
     }
 
     pub(super) fn new(name: Partial<IdentId>, tys: Vec<Partial<HirTyId>>, scope: ScopeId) -> Self {

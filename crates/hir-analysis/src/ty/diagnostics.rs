@@ -8,7 +8,7 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
-use super::ty::{AdtRefId, TyId};
+use super::ty::TyId;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
@@ -21,7 +21,7 @@ pub enum TyLowerDiag {
     KindMismatch(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
-        cycle_participants: Vec<DynLazySpan>,
+        field_span: DynLazySpan,
     },
     AssocTy(DynLazySpan),
 }
@@ -39,16 +39,10 @@ impl TyLowerDiag {
         Self::KindMismatch(span, msg.into())
     }
 
-    pub(super) fn recursive_type(
-        db: &dyn HirAnalysisDb,
-        primary_span: DynLazySpan,
-        participants: Vec<AdtRefId>,
-    ) -> Self {
-        let cycle_participants = participants.into_iter().map(|p| p.name_span(db)).collect();
-
+    pub(super) fn recursive_type(primary_span: DynLazySpan, field_span: DynLazySpan) -> Self {
         Self::RecursiveType {
             primary_span,
-            cycle_participants,
+            field_span,
         }
     }
 
@@ -93,23 +87,20 @@ impl TyLowerDiag {
 
             Self::RecursiveType {
                 primary_span,
-                cycle_participants,
+                field_span,
             } => {
-                let mut diags = vec![SubDiagnostic::new(
-                    LabelStyle::Primary,
-                    "causing cycle here".to_string(),
-                    primary_span.resolve(db),
-                )];
-
-                diags.extend(cycle_participants.iter().map(|span| {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "recursive type definition".to_string(),
+                        primary_span.resolve(db),
+                    ),
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("this type is part of the cycle"),
-                        span.resolve(db),
-                    )
-                }));
-
-                diags
+                        "recursion occurs here".to_string(),
+                        field_span.resolve(db),
+                    ),
+                ]
             }
 
             Self::AssocTy(span) => vec![SubDiagnostic::new(

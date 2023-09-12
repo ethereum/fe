@@ -117,7 +117,8 @@ impl ScopeId {
         }
     }
 
-    /// Returns the nearest enclosing item.
+    /// Returns the nearest item that contains this scope.
+    /// If the scope is item itself, returns the item.
     pub fn item(self) -> ItemKind {
         match self {
             ScopeId::Item(item) => item,

@@ -1,0 +1,24 @@
+pub struct S1 {
+    s: S1
+}
+
+pub struct S2 {
+    s: S3
+}
+
+pub struct S3 {
+    s: S4
+}
+
+pub struct S4 {
+    s: S2
+}
+
+pub struct S5<T> {
+    s: S6
+    t: T
+}
+
+pub struct S6 {
+    s: S5<S6>
+}

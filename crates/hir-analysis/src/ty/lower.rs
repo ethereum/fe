@@ -5,8 +5,10 @@ use hir::{
         GenericParam, ItemKind, Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId,
         TypeKind as HirTyKind, VariantDefListId,
     },
-    visitor::prelude::*,
+    visitor::prelude::{walk_ty as hir_walk_ty, *},
 };
+use rustc_hash::FxHashSet;
+use salsa::function::Configuration;
 
 use crate::{
     name_resolution::{
@@ -18,7 +20,8 @@ use crate::{
 
 use super::{
     diagnostics::TyLowerDiag,
-    ty::{AdtDef, AdtRef, AdtRefId, AdtVariant, InvalidCause, Kind, TyData, TyId, TyParam},
+    ty::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
+    visitor::{walk_ty, TyVisitor},
 };
 
 #[salsa::tracked]
@@ -44,6 +47,10 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) {
     analyzer.visit_item(&mut ctxt, item);
 
     for diag in analyzer.accumulated {
+        AdtDefDiagAccumulator::push(db, diag);
+    }
+
+    if let Some(diag) = check_recursive_adt(db, adt) {
         AdtDefDiagAccumulator::push(db, diag);
     }
 }
@@ -126,7 +133,7 @@ impl<'db> Visitor for TyDiagAccumulator<'db> {
             self.accumulate(cause, ctxt.span().unwrap());
         }
 
-        walk_ty(self, ctxt, hir_ty);
+        hir_walk_ty(self, ctxt, hir_ty);
     }
 }
 
@@ -332,7 +339,7 @@ struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     adt: AdtRefId,
     params: Vec<TyId>,
-    variants: Vec<AdtVariant>,
+    variants: Vec<AdtField>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
@@ -385,7 +392,7 @@ impl<'db> AdtTyBuilder<'db> {
         let scope = self.adt.scope(self.db);
 
         fields.data(self.db.as_hir_db()).iter().for_each(|field| {
-            let variant = AdtVariant::new(field.name, vec![field.ty], scope);
+            let variant = AdtField::new(field.name, vec![field.ty], scope);
             self.variants.push(variant);
         })
     }
@@ -405,7 +412,7 @@ impl<'db> AdtTyBuilder<'db> {
                     None => vec![],
                 };
 
-                let variant = AdtVariant::new(variant.name, tys, scope);
+                let variant = AdtField::new(variant.name, tys, scope);
                 self.variants.push(variant)
             })
     }
@@ -435,5 +442,77 @@ fn lower_generic_param(db: &dyn HirAnalysisDb, item: ItemKind, idx: usize) -> Ty
         GenericParam::Const(_) => {
             todo!()
         }
+    }
+}
+
+#[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
+pub(crate) fn check_recursive_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> Option<TyLowerDiag> {
+    let adt_def = lower_adt(db, adt);
+
+    for field in adt_def.fields(db) {
+        for ty in field.iter_types(db) {
+            for adt_ref in ty.collect_direct_adts(db) {
+                check_recursive_adt(db, adt_ref);
+            }
+        }
+    }
+
+    None
+}
+
+fn check_recursive_adt_impl(
+    db: &dyn HirAnalysisDb,
+    cycle: &salsa::Cycle,
+    adt: AdtRefId,
+) -> Option<TyLowerDiag> {
+    let participants: FxHashSet<_> = cycle
+        .participant_keys()
+        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
+        .collect();
+
+    let adt_def = lower_adt(db, adt);
+    for (i, field) in adt_def.fields(db).iter().enumerate() {
+        for ty in field.iter_types(db) {
+            for field_adt_ref in ty.collect_direct_adts(db) {
+                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
+                    let diag = TyLowerDiag::recursive_type(
+                        adt.name_span(db),
+                        adt_def.variant_ty_span(db, i),
+                    );
+                    return Some(diag);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+impl TyId {
+    /// Collect all adts inside types which are not wrapped by indirect type
+    /// wrapper like pointer or reference.
+    fn collect_direct_adts(self, db: &dyn HirAnalysisDb) -> FxHashSet<AdtRefId> {
+        let mut collector = AdtCollector {
+            adts: FxHashSet::default(),
+        };
+
+        walk_ty(&mut collector, db, self);
+        collector.adts
+    }
+}
+
+struct AdtCollector {
+    adts: FxHashSet<AdtRefId>,
+}
+
+impl TyVisitor for AdtCollector {
+    fn visit_app(&mut self, db: &dyn HirAnalysisDb, abs: TyId, arg: TyId) {
+        if !abs.is_indirect(db) {
+            walk_ty(self, db, arg)
+        }
+    }
+
+    fn visit_adt(&mut self, db: &dyn HirAnalysisDb, adt: AdtDef) {
+        self.adts.insert(adt.adt_ref(db));
     }
 }
