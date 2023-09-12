@@ -194,4 +194,4 @@ Here's some ideas for what you could do next:
 - Experiment with different developer tooling
 - Get more comfortable with Foundry by exploring the [documentation](https://book.getfoundry.sh/)
 - Repeat the steps in this guide but for a more complex contract - be creative!
-- Continue to the [projects](./projects.md) page to learn about how to set up more complicated Fe projects
+- Continue to the [Using Fe](../user-guide/index.md) pages to explore Fe more deeply.
