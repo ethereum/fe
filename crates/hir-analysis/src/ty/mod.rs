@@ -8,6 +8,7 @@ pub mod diagnostics;
 pub mod lower;
 pub mod trait_;
 pub mod ty;
+pub mod visitor;
 
 pub struct TypeDefAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
