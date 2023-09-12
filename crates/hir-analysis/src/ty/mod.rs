@@ -4,6 +4,7 @@ use crate::HirAnalysisDb;
 
 use self::{diagnostics::AdtDefDiagAccumulator, ty::AdtRefId};
 
+pub mod adt_analysis;
 pub mod diagnostics;
 pub mod lower;
 pub mod trait_;
@@ -44,7 +45,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
             );
 
         adts.map(|adt| {
-            lower::analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
+            adt_analysis::analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
                 .into_iter()
                 .map(|diag| Box::new(diag) as _)
         })

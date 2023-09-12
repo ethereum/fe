@@ -15,9 +15,10 @@ pub struct Jar(
     /// Type lowering.
     ty::lower::lower_hir_ty,
     ty::lower::lower_adt,
-    ty::lower::analyze_adt,
     ty::lower::lower_type_alias,
-    ty::lower::check_recursive_adt,
+    /// ADT analysis.
+    ty::adt_analysis::check_recursive_adt,
+    ty::adt_analysis::analyze_adt,
     // Trait resolution.
     ty::trait_::TraitDef,
     ty::trait_::TraitInstId,
