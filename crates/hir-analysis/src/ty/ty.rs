@@ -8,6 +8,7 @@ use hir::{
     },
     span::DynLazySpan,
 };
+use rustc_hash::FxHashMap;
 
 use crate::HirAnalysisDb;
 
@@ -49,6 +50,14 @@ impl TyId {
         Self::new(db, TyData::TyCon(TyConcrete::Adt(adt)))
     }
 
+    pub(super) fn is_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyParam(_))
+    }
+
+    pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyVar(_))
+    }
+
     /// Perform type level application.
     /// If the kind is mismatched, return `TyData::Invalid`.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
@@ -63,6 +72,21 @@ impl TyId {
             Self::new(db, TyData::TyApp(abs, arg))
         } else {
             Self::invalid(db, InvalidCause::KindMismatch { abs, arg })
+        }
+    }
+
+    pub(crate) fn apply_subst(self, db: &dyn HirAnalysisDb, subst: &Subst) -> TyId {
+        if let Some(to) = subst.get(self) {
+            return to;
+        }
+
+        match self.data(db) {
+            TyData::TyApp(lhs, rhs) => {
+                let lhs = lhs.apply_subst(db, subst);
+                let rhs = rhs.apply_subst(db, subst);
+                TyId::app(db, lhs, rhs)
+            }
+            _ => self,
         }
     }
 
@@ -376,6 +400,31 @@ impl AdtRef {
             Self::Struct(s) => s.scope(),
             Self::Contract(c) => c.scope(),
         }
+    }
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct Subst {
+    inner: FxHashMap<TyId, TyId>,
+}
+
+impl Subst {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert a substitution mapping.
+    /// This method panics when
+    /// 1. `from` and `to` have different kinds.
+    /// 2. `from` is not a `TyVar` or `TyParam`.
+    pub(crate) fn insert(&mut self, db: &dyn HirAnalysisDb, from: TyId, to: TyId) {
+        debug_assert!(from.kind(db) == to.kind(db));
+        debug_assert!(from.is_ty_var(db,) || from.is_ty_param(db));
+        self.inner.insert(from, to);
+    }
+
+    pub(crate) fn get(&self, from: TyId) -> Option<TyId> {
+        self.inner.get(&from).copied()
     }
 }
 
