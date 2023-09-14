@@ -16,6 +16,7 @@ fn string_diagnostics(
     db.finalize_diags()
 }
 
+// todo: handle diagnostics referencing multiple files
 pub fn get_diagnostics(
     state: &mut ServerState,
     text: String,
@@ -53,22 +54,6 @@ pub fn handle_document_did_change(
     let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
     send_diagnostics(state, diagnostics, params.text_document.uri)
 }
-
-// pub(crate) fn handle_workspace_did_change_folders(
-//     state: &mut ServerState,
-//     note: lsp_server::Notification,
-// ) -> Result<(), Error> {
-//     let params = lsp_types::DidChangeWorkspaceFoldersParams::deserialize(note.params)?;
-
-//     let mut workspace = &mut state.workspace;
-//     let mut db = &mut state.db;
-
-//     let workspace_folder = params.event.added[0].uri.to_file_path().unwrap();
-
-//     workspace.sync(&mut db, workspace_folder.as_path().to_str().unwrap().into());
-
-//     Ok(())
-// }
 
 fn send_diagnostics(
     state: &mut ServerState,

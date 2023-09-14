@@ -193,10 +193,7 @@ impl Workspace {
             return self.ingot_contexts.get_mut(key);
         }
         let ingot_context = LocalIngotContext::new(db, config_path)?;
-        self.ingot_contexts
-            // .insert(config_path.to_string(), ingot_context);
-            // instead chop off the trailing fe.toml
-            .insert(key, ingot_context);
+        self.ingot_contexts.insert(key, ingot_context);
         return self.ingot_contexts.get_mut(key);
     }
 

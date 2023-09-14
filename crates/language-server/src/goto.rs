@@ -72,6 +72,7 @@ pub fn goto_enclosing_path(
     let mut path_collector = PathSpanCollector::new(db);
     path_collector.visit_item(&mut visitor_ctxt, item);
 
+    // can we do this without the cache?
     let path_map = path_collector.path_map;
 
     // Find the path that encloses the cursor.
