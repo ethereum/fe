@@ -37,6 +37,10 @@ impl LazyTySpan {
     pub fn into_array_type(self) -> LazyArrayTypeSpan {
         LazyArrayTypeSpan(self.0)
     }
+
+    pub fn into_self_type(self) -> LazySelfTypeSpan {
+        LazySelfTypeSpan(self.0)
+    }
 }
 
 define_lazy_span_node!(
@@ -82,5 +86,16 @@ define_lazy_span_node!(
     @node {
         (elem, elem_ty, LazyTySpan),
         (len, len, LazyBodySpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazySelfTypeSpan,
+    ast::SelfType,
+    @token {
+        (self_kw, self_kw),
+    }
+    @node {
+        (generic_args, generic_args, LazyGenericArgListSpan),
     }
 );

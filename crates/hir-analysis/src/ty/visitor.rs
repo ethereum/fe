@@ -201,10 +201,10 @@ fn ty_args_span(
             }
         }
 
-        HirTypeKind::SelfType => {
-            // TODO: Generic args.
-
-            DynLazySpan::invalid()
-        }
+        HirTypeKind::SelfType(_) => ty_span
+            .into_self_type()
+            .generic_args_moved()
+            .arg_moved(idx)
+            .into(),
     }
 }

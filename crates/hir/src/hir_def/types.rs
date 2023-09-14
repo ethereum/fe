@@ -12,7 +12,7 @@ pub enum TypeKind {
     /// The `PathId` is the path to the type, the `Option` is the generic
     /// arguments.
     Path(Partial<PathId>, GenericArgListId),
-    SelfType,
+    SelfType(GenericArgListId),
     /// The `Vec` contains the types of the tuple elements.
     Tuple(TupleTypeId),
     /// The first `TypeId` is the element type, the second `Body` is the length.

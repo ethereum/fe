@@ -20,7 +20,10 @@ impl TypeId {
                 TypeKind::Path(path, generic_args)
             }
 
-            ast::TypeKind::SelfType(_) => TypeKind::SelfType,
+            ast::TypeKind::SelfType(ty) => {
+                let generic_args = GenericArgListId::lower_ast_opt(ctxt, ty.generic_args());
+                TypeKind::SelfType(generic_args)
+            }
 
             ast::TypeKind::Tuple(ty) => TypeKind::Tuple(TupleTypeId::lower_ast(ctxt, ty)),
 

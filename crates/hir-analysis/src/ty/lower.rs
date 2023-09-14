@@ -144,7 +144,7 @@ impl<'db> TyBuilder<'db> {
 
             HirTyKind::Path(path, args) => self.lower_path(*path, *args),
 
-            HirTyKind::SelfType => self.lower_self_ty(),
+            HirTyKind::SelfType(args) => self.lower_self_ty(*args),
 
             HirTyKind::Tuple(elems) => self.lower_tuple(elems),
 
@@ -178,9 +178,18 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    pub(super) fn lower_self_ty(&mut self) -> TyId {
+    pub(super) fn lower_self_ty(&mut self, args: GenericArgListId) -> TyId {
         let res = resolve_segments_early(self.db, &[Partial::Present(kw::SELF_TY)], self.scope);
-        self.lower_resolved_path(&res).unwrap_left()
+        let self_ty = self.lower_resolved_path(&res).unwrap_left();
+        let arg_tys: Vec<_> = args
+            .data(self.db.as_hir_db())
+            .iter()
+            .map(|arg| self.lower_generic_arg(arg))
+            .collect();
+
+        arg_tys
+            .into_iter()
+            .fold(self_ty, |acc, arg| TyId::app(self.db, acc, arg))
     }
 
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
