@@ -1,0 +1,13 @@
+pub struct S0<T, U> {
+    t: T
+    u: U
+}
+
+type T1 = S0<i32, u32, i64>
+type T2 = S0<S0, i64>
+type T3<T, U> = S0<T, U>
+
+
+pub struct S1 {
+    t: T3<i32, S0>
+}

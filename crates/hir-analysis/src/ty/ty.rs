@@ -71,18 +71,20 @@ impl TyId {
     /// Perform type level application.
     /// If the kind is mismatched, return `TyData::Invalid`.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
-        if abs.is_invalid(db) || arg.is_invalid(db) {
-            return TyId::invalid(db, InvalidCause::Other);
-        }
-
-        let k_ty = abs.kind(db);
+        let k_abs = abs.kind(db);
         let k_arg = arg.kind(db);
 
-        if k_ty.is_applicable(&k_arg) {
-            Self::new(db, TyData::TyApp(abs, arg))
-        } else {
-            Self::invalid(db, InvalidCause::TyAppFailed { abs, arg })
-        }
+        let arg = match k_abs {
+            Kind::Abs(k_expected, _) if k_expected.as_ref() == k_arg => arg,
+            Kind::Abs(k_abs_arg, _) => Self::invalid(
+                db,
+                InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), k_arg),
+            ),
+            Kind::Star => Self::invalid(db, InvalidCause::kind_mismatch(None, k_arg)),
+            Kind::Any => arg,
+        };
+
+        Self::new(db, TyData::TyApp(abs, arg))
     }
 
     pub(crate) fn apply_subst(self, db: &dyn HirAnalysisDb, subst: &Subst) -> TyId {
@@ -244,11 +246,8 @@ pub enum InvalidCause {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
 
-    /// Type application faield due to Kind mismatch.
-    TyAppFailed { abs: TyId, arg: TyId },
-
     /// Kind mismatch between two types.
-    KindMismatch { expected: TyId, given: TyId },
+    KindMismatch { expected: Option<Kind>, given: Kind },
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
@@ -263,7 +262,16 @@ pub enum InvalidCause {
     Other,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+impl InvalidCause {
+    pub(super) fn kind_mismatch(expected: Option<&Kind>, given: &Kind) -> Self {
+        Self::KindMismatch {
+            expected: expected.cloned(),
+            given: given.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash)]
 pub enum Kind {
     /// Represents monotypes, `*`.
     Star,
@@ -277,16 +285,22 @@ pub enum Kind {
     Any,
 }
 
+impl PartialEq for Kind {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Star, Self::Star) => true,
+            (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => lhs1 == lhs2 && rhs1 == rhs2,
+            (Self::Any, _) => true,
+            (_, Self::Any) => true,
+            _ => false,
+        }
+    }
+}
+impl Eq for Kind {}
+
 impl Kind {
     fn abs(lhs: Kind, rhs: Kind) -> Self {
         Kind::Abs(Box::new(lhs), Box::new(rhs))
-    }
-
-    fn is_applicable(&self, rhs: &Self) -> bool {
-        match self {
-            Self::Abs(k_arg, _) => k_arg.as_ref() == rhs,
-            _ => false,
-        }
     }
 }
 
@@ -447,12 +461,11 @@ impl HasKind for TyData {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
             TyData::TyCon(ty_const) => ty_const.kind(db),
-            TyData::TyApp(abs, arg) => match abs.kind(db) {
-                Kind::Abs(k_arg, k_ret) => {
-                    debug_assert!(k_arg.as_ref() == arg.kind(db));
-                    k_ret.as_ref().clone()
-                }
-                _ => unreachable!(),
+            TyData::TyApp(abs, _) => match abs.kind(db) {
+                // `TyId::app` method handles the kind mismatch, so we don't need to verify it again
+                // here.
+                Kind::Abs(_, ret) => ret.as_ref().clone(),
+                _ => Kind::Any,
             },
             TyData::Invalid(_) => Kind::Any,
         }

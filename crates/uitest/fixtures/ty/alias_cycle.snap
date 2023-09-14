@@ -3,25 +3,25 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/alias_cycle.fe
 ---
-error[3-0005]: recursive type alias cycle is detected
+error[3-0004]: recursive type alias cycle is detected
   ┌─ alias_cycle.fe:1:11
   │
 1 │ type T1 = T1
   │           ^^ cycle happens here
 
-error[3-0005]: recursive type alias cycle is detected
+error[3-0004]: recursive type alias cycle is detected
   ┌─ alias_cycle.fe:3:11
   │
 3 │ type T2 = T3
   │           ^^ cycle happens here
 
-error[3-0005]: recursive type alias cycle is detected
+error[3-0004]: recursive type alias cycle is detected
   ┌─ alias_cycle.fe:4:11
   │
 4 │ type T3 = T4
   │           ^^ cycle happens here
 
-error[3-0005]: recursive type alias cycle is detected
+error[3-0004]: recursive type alias cycle is detected
   ┌─ alias_cycle.fe:5:11
   │
 5 │ type T4 = T2

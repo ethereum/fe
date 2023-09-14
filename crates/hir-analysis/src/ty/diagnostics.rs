@@ -8,9 +8,7 @@ use hir::{
     HirDb,
 };
 
-use crate::HirAnalysisDb;
-
-use super::ty::TyId;
+use super::ty::Kind;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
@@ -20,7 +18,6 @@ pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
     NotFullyAppliedType(DynLazySpan),
-    TyAppFailed(DynLazySpan, String),
     KindMismatch(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
@@ -42,27 +39,15 @@ impl TyLowerDiag {
         Self::NotFullyAppliedType(span)
     }
 
-    pub fn ty_app_failed(db: &dyn HirAnalysisDb, span: DynLazySpan, abs: TyId, arg: TyId) -> Self {
-        let k_abs = abs.kind(db);
-        let k_arg = arg.kind(db);
+    pub fn kind_mismatch(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
+        let msg = if let Some(expected) = expected {
+            debug_assert!(expected != actual);
 
-        let msg = format!("can't apply `{}` kind to `{}` kind", k_arg, k_abs);
-        Self::TyAppFailed(span, msg.into())
-    }
+            format!("expected `{}` kind, but found `{}` kind", expected, actual,)
+        } else {
+            "too many generic arguments".to_string()
+        };
 
-    pub fn kind_mismatch(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        expected: TyId,
-        actual: TyId,
-    ) -> Self {
-        debug_assert!(expected.kind(db) != actual.kind(db));
-
-        let msg = format!(
-            "expected `{}` kind, but found `{}` kind",
-            expected.kind(db),
-            actual.kind(db)
-        );
         Self::KindMismatch(span, msg)
     }
 
@@ -96,19 +81,17 @@ impl TyLowerDiag {
     fn local_code(&self) -> u16 {
         match self {
             Self::NotFullyAppliedType(_) => 0,
-            Self::TyAppFailed(_, _) => 1,
-            Self::KindMismatch(_, _) => 2,
-            Self::RecursiveType { .. } => 3,
-            Self::TypeAliasArgumentMismatch { .. } => 4,
-            Self::TypeAliasCycle(_) => 5,
-            Self::AssocTy(_) => 6,
+            Self::KindMismatch(_, _) => 1,
+            Self::RecursiveType { .. } => 2,
+            Self::TypeAliasArgumentMismatch { .. } => 3,
+            Self::TypeAliasCycle(_) => 4,
+            Self::AssocTy(_) => 5,
         }
     }
 
     fn message(&self, db: &dyn HirDb) -> String {
         match self {
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
-            Self::TyAppFailed(_, _) => "kind mismatch in type application".to_string(),
             Self::KindMismatch(_, _) => "kind mismatch between two types".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
@@ -132,12 +115,6 @@ impl TyLowerDiag {
             Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "expected fully applied type here".to_string(),
-                span.resolve(db),
-            )],
-
-            Self::TyAppFailed(span, msg) => vec![SubDiagnostic::new(
-                LabelStyle::Primary,
-                msg.clone(),
                 span.resolve(db),
             )],
 

@@ -73,7 +73,7 @@ where
 
 pub(super) struct TyDiagCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    accumulated: Vec<TyLowerDiag>,
+    diags: Vec<TyLowerDiag>,
     scope: ScopeId,
 }
 
@@ -81,7 +81,7 @@ impl<'db> TyDiagCollector<'db> {
     pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId) -> Self {
         Self {
             db,
-            accumulated: Vec::new(),
+            diags: Vec::new(),
             scope,
         }
     }
@@ -89,25 +89,19 @@ impl<'db> TyDiagCollector<'db> {
     pub(super) fn collect(mut self, hir_ty: HirTyId, span: LazyTySpan) -> Vec<TyLowerDiag> {
         let mut ctxt = VisitorCtxt::new(self.db.as_hir_db(), span);
         self.visit_ty(&mut ctxt, hir_ty);
-        self.accumulated
+        self.diags
     }
 
-    fn collect_impl(&mut self, cause: InvalidCause, span: LazyTySpan) {
-        let span: DynLazySpan = span.into();
+    fn store_diag(&mut self, cause: InvalidCause, span: DynLazySpan) {
         match cause {
             InvalidCause::NotFullyApplied => {
                 let diag = TyLowerDiag::not_fully_applied_type(span);
-                self.accumulated.push(diag);
-            }
-
-            InvalidCause::TyAppFailed { abs, arg } => {
-                let diag = TyLowerDiag::ty_app_failed(self.db, span, abs, arg);
-                self.accumulated.push(diag);
+                self.diags.push(diag);
             }
 
             InvalidCause::KindMismatch { expected, given } => {
-                let diag = TyLowerDiag::kind_mismatch(self.db, span, expected, given);
-                self.accumulated.push(diag);
+                let diag = TyLowerDiag::kind_mismatch(span, expected, given);
+                self.diags.push(diag);
             }
 
             InvalidCause::TypeAliasArgumentMismatch {
@@ -115,12 +109,12 @@ impl<'db> TyDiagCollector<'db> {
                 n_given_args: n_given_arg,
             } => {
                 let diag = TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg);
-                self.accumulated.push(diag);
+                self.diags.push(diag);
             }
 
             InvalidCause::AssocTy => {
                 let diag = TyLowerDiag::assoc_ty(span);
-                self.accumulated.push(diag);
+                self.diags.push(diag);
             }
 
             // NOTE: We can `InvalidCause::Other` because it's already reported by other passes.
@@ -132,10 +126,85 @@ impl<'db> TyDiagCollector<'db> {
 impl<'db> Visitor for TyDiagCollector<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-        if let Some(cause) = ty.invalid_cause(self.db) {
-            self.collect_impl(cause, ctxt.span().unwrap());
+        match ty.data(self.db) {
+            TyData::Invalid(cause) => {
+                self.store_diag(cause, ctxt.span().unwrap().into());
+            }
+
+            TyData::TyApp(lhs, arg) => {
+                let mut args = vec![];
+                ty_arg_lexical_order(self.db, &mut args, lhs, arg);
+                for (idx, arg) in args.into_iter().enumerate() {
+                    match arg.data(self.db) {
+                        TyData::Invalid(cause @ InvalidCause::KindMismatch { .. }) => {
+                            let span = ty_args_span(self.db, hir_ty, ctxt.span().unwrap(), idx);
+                            self.store_diag(cause, span);
+                            return;
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+
+            _ => {}
         }
 
         hir_walk_ty(self, ctxt, hir_ty);
+    }
+}
+
+/// Returns `TyApp` arguments in recursive order.
+/// e.g.,
+/// `TyApp(TyApp(T, A1), TyApp(U, A2))` returns `[A1, TyApp(U, A2]`.
+fn ty_arg_lexical_order(db: &dyn HirAnalysisDb, args: &mut Vec<TyId>, lhs: TyId, arg: TyId) {
+    match lhs.data(db) {
+        TyData::TyApp(deep_lhs, deep_arg) => ty_arg_lexical_order(db, args, deep_lhs, deep_arg),
+        _ => {}
+    }
+
+    args.push(arg)
+}
+
+fn ty_args_span(
+    db: &dyn HirAnalysisDb,
+    ty: HirTyId,
+    ty_span: LazyTySpan,
+    idx: usize,
+) -> DynLazySpan {
+    use hir::hir_def::TypeKind as HirTypeKind;
+    match ty.data(db.as_hir_db()) {
+        HirTypeKind::Ptr(_) => {
+            if idx == 0 {
+                ty_span.into_ptr_type().pointee().into()
+            } else {
+                DynLazySpan::invalid()
+            }
+        }
+
+        HirTypeKind::Path(..) => ty_span
+            .into_path_type()
+            .generic_args_moved()
+            .arg_moved(idx)
+            .into(),
+
+        HirTypeKind::Tuple(_) => ty_span.into_tuple_type().elem_ty_moved(idx).into(),
+
+        HirTypeKind::Array(..) => {
+            let span = ty_span.into_array_type();
+            if idx == 0 {
+                span.elem_moved().into()
+            } else if idx == 1 {
+                span.len_moved().into()
+            } else {
+                DynLazySpan::invalid()
+            }
+        }
+
+        HirTypeKind::SelfType => {
+            // TODO: Generic args.
+
+            DynLazySpan::invalid()
+        }
     }
 }

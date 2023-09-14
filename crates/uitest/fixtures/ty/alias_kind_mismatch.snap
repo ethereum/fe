@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/alias_kind_mismatch.fe
+---
+error[3-0001]: kind mismatch between two types
+  ┌─ alias_kind_mismatch.fe:6:24
+  │
+6 │ type T1 = S0<i32, u32, i64>
+  │                        ^^^ too many generic arguments
+
+error[3-0001]: kind mismatch between two types
+  ┌─ alias_kind_mismatch.fe:7:14
+  │
+7 │ type T2 = S0<S0, i64>
+  │              ^^ expected `*` kind, but found `(* -> (* -> *))` kind
+
+error[3-0001]: kind mismatch between two types
+   ┌─ alias_kind_mismatch.fe:12:16
+   │
+12 │     t: T3<i32, S0>
+   │                ^^ expected `*` kind, but found `(* -> (* -> *))` kind
+
+
