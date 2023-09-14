@@ -1,0 +1,14 @@
+struct S2 {
+    t: T1<i32>
+    t2: T1<i32, u32>
+    u: T2<i32, u32>
+    u2: T2<i32>
+}
+
+pub struct S<T, U> {
+    t: T
+    u: U
+}
+type T1<T, K> = S<T, K>
+type T2<T> = T1<T>
+

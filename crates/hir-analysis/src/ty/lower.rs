@@ -1,18 +1,24 @@
 use either::Either;
 use hir::hir_def::{
-    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam, ItemKind,
-    Partial, PathId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
-    VariantDefListId,
+    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+    GenericParam as HirGenericParam, GenericParamOwner, ItemKind, Partial, PathId,
+    TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind, VariantDefListId,
 };
 
 use crate::{
     name_resolution::{
         resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameResKind,
     },
+    ty::{
+        diagnostics::{TyLowerDiag, TypeAliasDefDiagAccumulator},
+        visitor::TyDiagCollector,
+    },
     HirAnalysisDb,
 };
 
-use super::ty::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam};
+use super::ty::{
+    AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, Subst, TyData, TyId, TyParam,
+};
 
 #[salsa::tracked]
 pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
@@ -24,9 +30,60 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
 }
 
-#[salsa::tracked]
-pub(crate) fn lower_type_alias(_db: &dyn HirAnalysisDb, _alias: HirTypeAlias) -> TyAlias {
-    todo!()
+#[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
+pub(crate) fn lower_type_alias(db: &dyn HirAnalysisDb, alias: HirTypeAlias) -> TyAlias {
+    let params = lower_generic_param_list(db, alias.into());
+
+    let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
+        return TyAlias {
+            alias,
+            alias_to: TyId::invalid(db, InvalidCause::Other),
+            params,
+        };
+    };
+
+    let ty = lower_hir_ty(db, hir_ty, alias.scope());
+    let alias_to = if ty.is_mono_type(db) {
+        let collector = TyDiagCollector::new(db, alias.scope());
+        let diags = collector.collect(hir_ty, alias.lazy_span().ty());
+        if diags.is_empty() {
+            ty
+        } else {
+            diags.into_iter().for_each(|diag| {
+                TypeAliasDefDiagAccumulator::push(db, diag);
+            });
+            TyId::invalid(db, InvalidCause::Other)
+        }
+    } else {
+        TypeAliasDefDiagAccumulator::push(
+            db,
+            TyLowerDiag::not_fully_applied_type(alias.lazy_span().ty().into()),
+        );
+        TyId::invalid(db, InvalidCause::Other)
+    };
+
+    TyAlias {
+        alias,
+        alias_to,
+        params,
+    }
+}
+
+fn recover_lower_type_alias_cycle(
+    db: &dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
+    alias: HirTypeAlias,
+) -> TyAlias {
+    let diag = TyLowerDiag::type_alias_cycle(alias.lazy_span().ty().into());
+    TypeAliasDefDiagAccumulator::push(db, diag);
+
+    let alias_to = TyId::invalid(db, InvalidCause::Other);
+    let params = lower_generic_param_list(db, alias.into());
+    TyAlias {
+        alias,
+        alias_to,
+        params,
+    }
 }
 
 /// Represents a lowered type alias. `TyAlias` itself isn't a type, but
@@ -37,13 +94,40 @@ pub(crate) fn lower_type_alias(_db: &dyn HirAnalysisDb, _alias: HirTypeAlias) ->
 /// right hand side of the alias declaration must be a fully applied type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TyAlias {
+    alias: HirTypeAlias,
     alias_to: TyId,
     params: Vec<TyId>,
 }
 
 impl TyAlias {
-    fn subst_with(&self, _db: &dyn HirAnalysisDb, _substs: &[TyId]) -> TyId {
-        todo!()
+    fn apply_subst(&self, db: &dyn HirAnalysisDb, arg_tys: &[TyId]) -> TyId {
+        if arg_tys.len() != self.params.len() {
+            return TyId::invalid(
+                db,
+                InvalidCause::TypeAliasArgumentMismatch {
+                    alias: self.alias,
+                    n_given_args: arg_tys.len(),
+                },
+            );
+        }
+        let mut subst = Subst::new();
+
+        for (&param, &arg) in self.params.iter().zip(arg_tys.iter()) {
+            let arg = if param.kind(db) != arg.kind(db) {
+                TyId::invalid(
+                    db,
+                    InvalidCause::KindMismatch {
+                        expected: param,
+                        given: arg,
+                    },
+                )
+            } else {
+                arg
+            };
+            subst.insert(db, param, arg);
+        }
+
+        self.alias_to.apply_subst(db, &subst)
     }
 }
 
@@ -93,7 +177,7 @@ impl<'db> TyBuilder<'db> {
                 .into_iter()
                 .fold(ty, |acc, arg| TyId::app(self.db, acc, arg)),
 
-            Either::Right(alias) => alias.subst_with(self.db, &arg_tys),
+            Either::Right(alias) => alias.apply_subst(self.db, &arg_tys),
         }
     }
 
@@ -128,7 +212,7 @@ impl<'db> TyBuilder<'db> {
         })
     }
 
-    fn lower_resolved_path(&mut self, path: &EarlyResolvedPath) -> Either<TyId, TyAlias> {
+    fn lower_resolved_path(&mut self, path: &EarlyResolvedPath) -> Either<TyId, &'db TyAlias> {
         let res = match path {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
                 Ok(res) => res,
@@ -152,7 +236,11 @@ impl<'db> TyBuilder<'db> {
         let item = match scope {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, idx) => {
-                return Either::Left(lower_generic_param(self.db, item, idx));
+                let params = GenericParamOwner::from_item_opt(item)
+                    .unwrap()
+                    .params(self.db.as_hir_db());
+                let ty = lower_generic_param(self.db, &params.data(self.db.as_hir_db())[idx], idx);
+                return Either::Left(ty);
             }
             _ => unreachable!(),
         };
@@ -210,23 +298,13 @@ impl<'db> AdtTyBuilder<'db> {
     }
 
     fn build(mut self) -> AdtDef {
-        self.collect_params();
+        self.collect_generic_params();
         self.collect_variants();
         AdtDef::new(self.db, self.adt, self.params, self.variants)
     }
 
-    fn collect_params(&mut self) {
-        let hir_db = self.db.as_hir_db();
-        let params = match self.adt.data(self.db) {
-            AdtRef::Struct(struct_) => struct_.generic_params(hir_db),
-            AdtRef::Enum(enum_) => enum_.generic_params(hir_db),
-            AdtRef::Contract(_) => return,
-        };
-
-        for idx in 0..params.len(hir_db) {
-            let param = lower_generic_param(self.db, self.adt.as_item(self.db), idx);
-            self.params.push(param);
-        }
+    fn collect_generic_params(&mut self) {
+        self.params = lower_generic_param_list(self.db, self.adt.as_item(self.db));
     }
 
     fn collect_variants(&mut self) {
@@ -275,14 +353,21 @@ impl<'db> AdtTyBuilder<'db> {
     }
 }
 
-fn lower_generic_param(db: &dyn HirAnalysisDb, item: ItemKind, idx: usize) -> TyId {
-    let params = match item {
-        ItemKind::Struct(struct_) => struct_.generic_params(db.as_hir_db()),
-        ItemKind::Enum(enum_) => enum_.generic_params(db.as_hir_db()),
-        _ => unreachable!(),
+fn lower_generic_param_list(db: &dyn HirAnalysisDb, item: ItemKind) -> Vec<TyId> {
+    let Some(params_owner) = GenericParamOwner::from_item_opt(item) else {
+        return Vec::new();
     };
 
-    let param = &params.data(db.as_hir_db())[idx];
+    params_owner
+        .params(db.as_hir_db())
+        .data(db.as_hir_db())
+        .iter()
+        .enumerate()
+        .map(|(idx, param)| lower_generic_param(db, param, idx))
+        .collect()
+}
+
+fn lower_generic_param(db: &dyn HirAnalysisDb, param: &HirGenericParam, idx: usize) -> TyId {
     match param {
         GenericParam::Type(param) => {
             if let Some(name) = param.name.to_opt() {

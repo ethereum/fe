@@ -301,6 +301,12 @@ impl TopLevelMod {
     pub fn all_contracts<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Contract> {
         all_contracts_in_top_mod(db, self)
     }
+
+    /// Returns all type aliases in the top level module including ones in
+    /// nested
+    pub fn all_type_aliases<'db>(self, db: &'db dyn HirDb) -> &'db Vec<TypeAlias> {
+        all_type_aliases_in_top_mod(db, self)
+    }
 }
 
 #[salsa::tracked(return_ref)]
@@ -325,6 +331,16 @@ pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
         .collect()
 }
 
+#[salsa::tracked(return_ref)]
+pub fn all_type_aliases_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<TypeAlias> {
+    top_mod
+        .children_non_nested(db)
+        .filter_map(|item| match item {
+            ItemKind::TypeAlias(alias) => Some(alias),
+            _ => None,
+        })
+        .collect()
+}
 #[salsa::tracked(return_ref)]
 pub fn all_contracts_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Contract> {
     top_mod

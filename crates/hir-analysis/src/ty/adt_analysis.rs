@@ -1,6 +1,6 @@
 use hir::{
     hir_def::{scope_graph::ScopeId, FieldDef, TypeId as HirTyId},
-    visitor::prelude::{walk_ty as hir_walk_ty, *},
+    visitor::prelude::*,
 };
 use rustc_hash::FxHashSet;
 use salsa::function::Configuration;
@@ -10,8 +10,8 @@ use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 use super::{
     diagnostics::TyLowerDiag,
     lower::{lower_adt, lower_hir_ty},
-    ty::{AdtDef, AdtRefId, InvalidCause, TyId},
-    visitor::{walk_ty, TyVisitor},
+    ty::{AdtDef, AdtRefId, TyId},
+    visitor::{walk_ty, TyDiagCollector, TyVisitor},
 };
 
 #[salsa::tracked]
@@ -102,61 +102,12 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
 
 pub(super) fn collect_ty_lower_diags(
     db: &dyn HirAnalysisDb,
-    ty: HirTyId,
+    hir_ty: HirTyId,
     span: LazyTySpan,
     scope: ScopeId,
 ) -> Vec<TyLowerDiag> {
-    let mut ctxt = VisitorCtxt::new(db.as_hir_db(), span);
-    let mut accumulator = TyDiagAccumulator {
-        db,
-        accumulated: Vec::new(),
-        scope,
-    };
-
-    accumulator.visit_ty(&mut ctxt, ty);
-    accumulator.accumulated
-}
-
-struct TyDiagAccumulator<'db> {
-    db: &'db dyn HirAnalysisDb,
-    accumulated: Vec<TyLowerDiag>,
-    scope: ScopeId,
-}
-
-impl<'db> TyDiagAccumulator<'db> {
-    fn accumulate(&mut self, cause: InvalidCause, span: LazyTySpan) {
-        let span: DynLazySpan = span.into();
-        match cause {
-            InvalidCause::NotFullyApplied => {
-                let diag = TyLowerDiag::not_fully_applied_type(span);
-                self.accumulated.push(diag);
-            }
-
-            InvalidCause::KindMismatch { abs, arg } => {
-                let diag = TyLowerDiag::kind_mismatch(self.db, abs, arg, span);
-                self.accumulated.push(diag);
-            }
-
-            InvalidCause::AssocTy => {
-                let diag = TyLowerDiag::assoc_ty(span);
-                self.accumulated.push(diag);
-            }
-
-            // NOTE: We can `InvalidCause::Other` because it's already reported by other passes.
-            InvalidCause::Other => {}
-        }
-    }
-}
-
-impl<'db> Visitor for TyDiagAccumulator<'db> {
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-        if let Some(cause) = ty.invalid_cause(self.db) {
-            self.accumulate(cause, ctxt.span().unwrap());
-        }
-
-        hir_walk_ty(self, ctxt, hir_ty);
-    }
+    let collector = TyDiagCollector::new(db, scope);
+    collector.collect(hir_ty, span)
 }
 
 fn check_recursive_adt_impl(

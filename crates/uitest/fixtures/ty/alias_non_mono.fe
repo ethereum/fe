@@ -1,0 +1,7 @@
+pub struct Foo<T, U> {
+    t: T
+    u: U
+}
+
+pub type T = Foo<i32, u32>
+pub type T2 = Foo<i32>

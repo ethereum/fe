@@ -1,6 +1,16 @@
+use hir::{
+    hir_def::{scope_graph::ScopeId, TypeId as HirTyId},
+    span::DynLazySpan,
+    visitor::prelude::{walk_ty as hir_walk_ty, *},
+};
+
 use crate::HirAnalysisDb;
 
-use super::ty::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar};
+use super::{
+    diagnostics::TyLowerDiag,
+    lower::lower_hir_ty,
+    ty::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar},
+};
 
 pub trait TyVisitor {
     fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
@@ -58,5 +68,74 @@ where
         TyConcrete::Prim(prim) => visitor.visit_prim(db, prim),
         TyConcrete::Adt(adt) => visitor.visit_adt(db, *adt),
         TyConcrete::Abs => {}
+    }
+}
+
+pub(super) struct TyDiagCollector<'db> {
+    db: &'db dyn HirAnalysisDb,
+    accumulated: Vec<TyLowerDiag>,
+    scope: ScopeId,
+}
+
+impl<'db> TyDiagCollector<'db> {
+    pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId) -> Self {
+        Self {
+            db,
+            accumulated: Vec::new(),
+            scope,
+        }
+    }
+
+    pub(super) fn collect(mut self, hir_ty: HirTyId, span: LazyTySpan) -> Vec<TyLowerDiag> {
+        let mut ctxt = VisitorCtxt::new(self.db.as_hir_db(), span);
+        self.visit_ty(&mut ctxt, hir_ty);
+        self.accumulated
+    }
+
+    fn collect_impl(&mut self, cause: InvalidCause, span: LazyTySpan) {
+        let span: DynLazySpan = span.into();
+        match cause {
+            InvalidCause::NotFullyApplied => {
+                let diag = TyLowerDiag::not_fully_applied_type(span);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::TyAppFailed { abs, arg } => {
+                let diag = TyLowerDiag::ty_app_failed(self.db, span, abs, arg);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::KindMismatch { expected, given } => {
+                let diag = TyLowerDiag::kind_mismatch(self.db, span, expected, given);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::TypeAliasArgumentMismatch {
+                alias,
+                n_given_args: n_given_arg,
+            } => {
+                let diag = TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg);
+                self.accumulated.push(diag);
+            }
+
+            InvalidCause::AssocTy => {
+                let diag = TyLowerDiag::assoc_ty(span);
+                self.accumulated.push(diag);
+            }
+
+            // NOTE: We can `InvalidCause::Other` because it's already reported by other passes.
+            InvalidCause::Other => {}
+        }
+    }
+}
+
+impl<'db> Visitor for TyDiagCollector<'db> {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        if let Some(cause) = ty.invalid_cause(self.db) {
+            self.collect_impl(cause, ctxt.span().unwrap());
+        }
+
+        hir_walk_ty(self, ctxt, hir_ty);
     }
 }

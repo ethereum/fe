@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/alias_non_mono.fe
+---
+error[3-0000]: expected fully applied type
+  ┌─ alias_non_mono.fe:7:15
+  │
+7 │ pub type T2 = Foo<i32>
+  │               ^^^^^^^^ expected fully applied type here
+
+

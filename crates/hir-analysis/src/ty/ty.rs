@@ -4,7 +4,8 @@ use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, IdentId, ItemKind, Partial, Struct, TypeId as HirTyId,
+        Contract, Enum, IdentId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
+        TypeId as HirTyId,
     },
     span::DynLazySpan,
 };
@@ -35,6 +36,15 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(cause) => Some(cause),
             _ => None,
+        }
+    }
+
+    /// Returns `true` if the type is declared as a monotype or fully applied
+    /// type.
+    pub fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.kind(db) {
+            Kind::Abs(_, _) => false,
+            _ => true,
         }
     }
 
@@ -71,7 +81,7 @@ impl TyId {
         if k_ty.is_applicable(&k_arg) {
             Self::new(db, TyData::TyApp(abs, arg))
         } else {
-            Self::invalid(db, InvalidCause::KindMismatch { abs, arg })
+            Self::invalid(db, InvalidCause::TyAppFailed { abs, arg })
         }
     }
 
@@ -129,15 +139,6 @@ impl TyId {
                 HirUintTy::U128 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U128))),
                 HirUintTy::U256 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U256))),
             },
-        }
-    }
-
-    /// Returns true if the type is declared as a monotype or fully applied
-    /// type.
-    pub(super) fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.kind(db) {
-            Kind::Abs(_, _) => false,
-            _ => true,
         }
     }
 }
@@ -243,11 +244,19 @@ pub enum InvalidCause {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
 
-    /// Kind mismatch in type level application.
-    KindMismatch { abs: TyId, arg: TyId },
+    /// Type application faield due to Kind mismatch.
+    TyAppFailed { abs: TyId, arg: TyId },
+
+    /// Kind mismatch between two types.
+    KindMismatch { expected: TyId, given: TyId },
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
+
+    TypeAliasArgumentMismatch {
+        alias: HirTypeAlias,
+        n_given_args: usize,
+    },
 
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.

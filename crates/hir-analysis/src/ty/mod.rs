@@ -1,8 +1,11 @@
-use hir::analysis_pass::ModuleAnalysisPass;
-
 use crate::HirAnalysisDb;
+use hir::analysis_pass::ModuleAnalysisPass;
+use rustc_hash::FxHashSet;
 
-use self::{diagnostics::AdtDefDiagAccumulator, ty::AdtRefId};
+use self::{
+    diagnostics::{AdtDefDiagAccumulator, TyLowerDiag, TypeAliasDefDiagAccumulator},
+    ty::AdtRefId,
+};
 
 pub mod adt_analysis;
 pub mod diagnostics;
@@ -51,5 +54,33 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
         })
         .flatten()
         .collect()
+    }
+}
+
+pub struct TypeAliasAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> TypeAliasAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: hir::hir_def::TopLevelMod,
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
+        let diags: FxHashSet<TyLowerDiag> = top_mod
+            .all_type_aliases(self.db.as_hir_db())
+            .iter()
+            .map(|&alias| {
+                lower::lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, alias)
+                    .into_iter()
+            })
+            .flatten()
+            .collect();
+
+        diags.into_iter().map(|diag| Box::new(diag) as _).collect()
     }
 }
