@@ -500,7 +500,6 @@ pub struct TypeAlias {
     pub attributes: AttrListId,
     pub vis: Visibility,
     pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
     pub ty: Partial<TypeId>,
     pub top_mod: TopLevelMod,
 

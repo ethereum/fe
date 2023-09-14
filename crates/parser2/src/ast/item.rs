@@ -158,7 +158,6 @@ ast_node! {
     SK::TypeAlias,
 }
 impl super::GenericParamsOwner for TypeAlias {}
-impl super::WhereClauseOwner for TypeAlias {}
 impl super::AttrListOwner for TypeAlias {}
 impl super::ItemModifierOwner for TypeAlias {}
 impl TypeAlias {

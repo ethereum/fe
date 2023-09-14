@@ -248,7 +248,7 @@ impl super::Parse for EnumScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser),
+            |parser| parse_generic_params_opt(parser, false),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -318,7 +318,7 @@ impl super::Parse for TraitScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser),
+            |parser| parse_generic_params_opt(parser, false),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 
@@ -345,7 +345,7 @@ impl super::Parse for ImplScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ImplKw);
         parser.with_recovery_tokens(
-            |parser| parse_generic_params_opt(parser),
+            |parser| parse_generic_params_opt(parser, false),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
         );
 
@@ -489,7 +489,7 @@ impl super::Parse for TypeAliasScope {
 
         parser.with_next_expected_tokens(
             |parser| {
-                parse_generic_params_opt(parser);
+                parse_generic_params_opt(parser, true);
             },
             &[SyntaxKind::Eq],
         );

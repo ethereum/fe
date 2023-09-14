@@ -81,7 +81,7 @@ impl super::Parse for FnParamScope {
 }
 
 define_scope! {
-    pub(crate) GenericParamListScope,
+    pub(crate) GenericParamListScope {disallow_type_bound: bool},
     GenericParamList,
     Override(Gt)
 }
@@ -92,9 +92,9 @@ impl super::Parse for GenericParamListScope {
             return;
         }
 
-        parser.parse(GenericParamScope::default(), None);
+        parser.parse(GenericParamScope::new(self.disallow_type_bound), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericParamScope::default(), None);
+            parser.parse(GenericParamScope::new(self.disallow_type_bound), None);
         }
 
         parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
@@ -102,7 +102,7 @@ impl super::Parse for GenericParamListScope {
 }
 
 define_scope! {
-    GenericParamScope,
+    GenericParamScope {disallow_type_bound: bool},
     TypeGenericParam,
     Inheritance(Comma)
 }
@@ -138,7 +138,9 @@ impl super::Parse for GenericParamScope {
                     }
 
                     if parser.current_kind() == Some(SyntaxKind::Colon) {
-                        {
+                        if self.disallow_type_bound {
+                            parser.error_and_recover("type bounds are not allowed here", None);
+                        } else {
                             parser.parse(TypeBoundListScope::default(), None);
                         }
                     }
@@ -320,8 +322,11 @@ pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
     parser.set_newline_as_trivia(newline_as_trivia);
 }
 
-pub(crate) fn parse_generic_params_opt<S: TokenStream>(parser: &mut Parser<S>) {
+pub(crate) fn parse_generic_params_opt<S: TokenStream>(
+    parser: &mut Parser<S>,
+    disallow_type_bound: bool,
+) {
     if parser.current_kind() == Some(SyntaxKind::Lt) {
-        parser.parse(GenericParamListScope::default(), None);
+        parser.parse(GenericParamListScope::new(disallow_type_bound), None);
     }
 }

@@ -609,14 +609,6 @@ pub fn walk_type_alias<V>(
         },
     );
 
-    ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
-        |ctxt| {
-            let id = alias.where_clause(ctxt.db);
-            visitor.visit_where_clause(ctxt, id);
-        },
-    );
-
     if let Some(ty) = alias.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
             |span| span.ty_moved(),

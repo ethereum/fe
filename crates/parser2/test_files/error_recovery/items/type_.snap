@@ -3,9 +3,9 @@ source: crates/parser2/tests/error_recovery.rs
 expression: node
 input_file: crates/parser2/test_files/error_recovery/items/type_.fe
 ---
-Root@0..29
-  ItemList@0..29
-    Item@0..29
+Root@0..72
+  ItemList@0..72
+    Item@0..31
       TypeAlias@0..29
         TypeKw@0..4 "type"
         WhiteSpace@4..5 " "
@@ -41,4 +41,50 @@ Root@0..29
                   PathSegment@27..28
                     Ident@27..28 "E"
             Gt@28..29 ">"
+      Newline@29..31 "\n\n"
+    Item@31..72
+      TypeAlias@31..70
+        TypeKw@31..35 "type"
+        WhiteSpace@35..36 " "
+        Ident@36..39 "Foo"
+        GenericParamList@39..55
+          Lt@39..40 "<"
+          TypeGenericParam@40..46
+            Ident@40..41 "T"
+            Error@41..46
+              Colon@41..42 ":"
+              WhiteSpace@42..43 " "
+              Ident@43..46 "i32"
+          Comma@46..47 ","
+          WhiteSpace@47..48 " "
+          TypeGenericParam@48..54
+            Ident@48..49 "U"
+            Error@49..54
+              Colon@49..50 ":"
+              WhiteSpace@50..51 " "
+              Ident@51..54 "i32"
+          Gt@54..55 ">"
+        WhiteSpace@55..56 " "
+        Eq@56..57 "="
+        WhiteSpace@57..58 " "
+        PathType@58..70
+          Path@58..64
+            PathSegment@58..64
+              Ident@58..64 "Result"
+          GenericArgList@64..70
+            Lt@64..65 "<"
+            TypeGenericArg@65..66
+              PathType@65..66
+                Path@65..66
+                  PathSegment@65..66
+                    Ident@65..66 "T"
+            Comma@66..67 ","
+            WhiteSpace@67..68 " "
+            TypeGenericArg@68..69
+              PathType@68..69
+                Path@68..69
+                  PathSegment@68..69
+                    Ident@68..69 "U"
+            Gt@69..70 ">"
+      Newline@70..72 "\n\n"
 

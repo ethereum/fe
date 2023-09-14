@@ -3,8 +3,8 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/items/type.fe
 ---
-Root@0..98
-  ItemList@0..98
+Root@0..54
+  ItemList@0..54
     Item@0..21
       TypeAlias@0..18
         ItemModifier@0..3
@@ -22,7 +22,7 @@ Root@0..98
               Ident@15..18 "i32"
       WhiteSpace@18..19 " "
       Newline@19..21 "\n\n"
-    Item@21..56
+    Item@21..54
       TypeAlias@21..54
         TypeKw@21..25 "type"
         WhiteSpace@25..26 " "
@@ -54,37 +54,4 @@ Root@0..98
                   PathSegment@48..53
                     Ident@48..53 "Error"
             Gt@53..54 ">"
-      Newline@54..56 "\n\n"
-    Item@56..98
-      TypeAlias@56..98
-        TypeKw@56..60 "type"
-        WhiteSpace@60..61 " "
-        Ident@61..70 "WithBound"
-        GenericParamList@70..85
-          Lt@70..71 "<"
-          TypeGenericParam@71..84
-            Ident@71..72 "T"
-            TypeBoundList@72..84
-              Colon@72..73 ":"
-              WhiteSpace@73..74 " "
-              TypeBound@74..84
-                Path@74..84
-                  PathSegment@74..84
-                    Ident@74..84 "TraitBound"
-          Gt@84..85 ">"
-        WhiteSpace@85..86 " "
-        Eq@86..87 "="
-        WhiteSpace@87..88 " "
-        PathType@88..98
-          Path@88..95
-            PathSegment@88..95
-              Ident@88..95 "NoBound"
-          GenericArgList@95..98
-            Lt@95..96 "<"
-            TypeGenericArg@96..97
-              PathType@96..97
-                Path@96..97
-                  PathSegment@96..97
-                    Ident@96..97 "T"
-            Gt@97..98 ">"
 

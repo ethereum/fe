@@ -216,7 +216,6 @@ impl TypeAlias {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
-        let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(&ast);
 
@@ -227,7 +226,6 @@ impl TypeAlias {
             attributes,
             vis,
             generic_params,
-            where_clause,
             ty,
             ctxt.top_mod(),
             origin,
