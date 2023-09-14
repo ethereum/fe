@@ -2,6 +2,7 @@ use std::fmt;
 
 use hir::{
     hir_def::{
+        kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
         Contract, Enum, IdentId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
@@ -320,11 +321,25 @@ pub struct TyVar {
     pub kind: Kind,
 }
 
+/// Type generics parameter. We also treat `Self` type in a trait definition as
+/// a special type parameter.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyParam {
     pub name: IdentId,
-    pub idx: usize,
+    /// If the type parameter is not a`Self` type in a trait definition, this
+    /// field is always `Some`.
+    pub idx: Option<usize>,
     pub kind: Kind,
+}
+
+impl TyParam {
+    pub fn self_ty_param(kind: Kind) -> Self {
+        Self {
+            name: kw::SELF_TY,
+            idx: None,
+            kind,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

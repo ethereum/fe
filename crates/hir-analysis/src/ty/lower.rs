@@ -1,14 +1,12 @@
 use either::Either;
 use hir::hir_def::{
-    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+    scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
     GenericParam as HirGenericParam, GenericParamOwner, ItemKind, Partial, PathId,
     TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind, VariantDefListId,
 };
 
 use crate::{
-    name_resolution::{
-        resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameResKind,
-    },
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
         diagnostics::{TyLowerDiag, TypeAliasDefDiagAccumulator},
         visitor::TyDiagCollector,
@@ -157,9 +155,9 @@ impl<'db> TyBuilder<'db> {
     pub(super) fn lower_path(&mut self, path: Partial<PathId>, args: GenericArgListId) -> TyId {
         let path_ty = path
             .to_opt()
-            .map(|path| {
-                let res = resolve_path_early(self.db, path, self.scope);
-                self.lower_resolved_path(&res)
+            .map(|path| match self.resolve_path(path) {
+                Either::Left(res) => self.lower_resolved_path(res),
+                Either::Right(ty) => Either::Left(ty),
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
 
@@ -179,17 +177,44 @@ impl<'db> TyBuilder<'db> {
     }
 
     pub(super) fn lower_self_ty(&mut self, args: GenericArgListId) -> TyId {
-        let res = resolve_segments_early(self.db, &[Partial::Present(kw::SELF_TY)], self.scope);
-        let self_ty = self.lower_resolved_path(&res).unwrap_left();
-        let arg_tys: Vec<_> = args
-            .data(self.db.as_hir_db())
+        let res = self.resolve_path(PathId::self_ty(self.db.as_hir_db()));
+        let (scope, res) = match res {
+            Either::Left(res @ NameResKind::Scope(scope)) => (scope, res),
+            Either::Left(NameResKind::Prim(prim)) => return TyId::from_hir_prim_ty(self.db, prim),
+            Either::Right(ty) => return ty,
+        };
+
+        let (target_hir_ty, target_scope) = match scope {
+            ScopeId::Item(item) => match item {
+                ItemKind::Enum(_) | ItemKind::Struct(_) | ItemKind::Contract(_) => {
+                    return self.lower_resolved_path(res).unwrap_left()
+                }
+
+                ItemKind::Trait(_) => {
+                    let self_param = TyParam::self_ty_param(Kind::Star);
+                    return TyId::new(self.db, TyData::TyParam(self_param));
+                }
+
+                ItemKind::Impl(impl_) => (impl_.ty(self.db.as_hir_db()), impl_.scope()),
+                ItemKind::ImplTrait(impl_trait) => {
+                    (impl_trait.ty(self.db.as_hir_db()), impl_trait.scope())
+                }
+                _ => return TyId::invalid(self.db, InvalidCause::Other),
+            },
+
+            _ => unreachable!(),
+        };
+
+        let target_ty = target_hir_ty
+            .to_opt()
+            .map(|hir_ty| lower_hir_ty(self.db, hir_ty, target_scope))
+            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+
+        let db = self.db;
+        args.data(self.db.as_hir_db())
             .iter()
             .map(|arg| self.lower_generic_arg(arg))
-            .collect();
-
-        arg_tys
-            .into_iter()
-            .fold(self_ty, |acc, arg| TyId::app(self.db, acc, arg))
+            .fold(target_ty, |acc, arg| TyId::app(db, acc, arg))
     }
 
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
@@ -218,21 +243,8 @@ impl<'db> TyBuilder<'db> {
         })
     }
 
-    fn lower_resolved_path(&mut self, path: &EarlyResolvedPath) -> Either<TyId, &'db TyAlias> {
-        let res = match path {
-            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
-                Ok(res) => res,
-
-                // This error is already handled by the name resolution.
-                Err(_) => return Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
-            },
-
-            EarlyResolvedPath::Partial { .. } => {
-                return Either::Left(TyId::invalid(self.db, InvalidCause::AssocTy));
-            }
-        };
-
-        let scope = match res.kind {
+    fn lower_resolved_path(&mut self, kind: NameResKind) -> Either<TyId, &'db TyAlias> {
+        let scope = match kind {
             NameResKind::Scope(scope) => scope,
             NameResKind::Prim(prim_ty) => {
                 return Either::Left(TyId::from_hir_prim_ty(self.db, prim_ty))
@@ -282,6 +294,23 @@ impl<'db> TyBuilder<'db> {
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
             GenericArg::Const(_) => todo!(),
+        }
+    }
+
+    /// If the path is resolved to a type, return the resolution. Otherwise,
+    /// returns the `TyId::Invalid` with proper `InvalidCause`.
+    fn resolve_path(&mut self, path: PathId) -> Either<NameResKind, TyId> {
+        match resolve_path_early(self.db, path, self.scope) {
+            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
+                Ok(res) => Either::Left(res.kind),
+
+                // This error is already handled by the name resolution.
+                Err(_) => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
+            },
+
+            EarlyResolvedPath::Partial { .. } => {
+                Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
+            }
         }
     }
 }
@@ -375,11 +404,12 @@ fn lower_generic_param_list(db: &dyn HirAnalysisDb, item: ItemKind) -> Vec<TyId>
 
 fn lower_generic_param(db: &dyn HirAnalysisDb, param: &HirGenericParam, idx: usize) -> TyId {
     match param {
+        // TODO: we need to handle kinds of generic params.
         GenericParam::Type(param) => {
             if let Some(name) = param.name.to_opt() {
                 let ty_param = TyParam {
                     name,
-                    idx,
+                    idx: Some(idx),
                     kind: Kind::Star,
                 };
                 TyId::new(db, TyData::TyParam(ty_param))
