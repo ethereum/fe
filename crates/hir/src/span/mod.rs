@@ -49,8 +49,8 @@ pub mod lazy_spans {
     pub use super::params::{
         LazyConstGenericParamSpan, LazyFuncParamListSpan, LazyFuncParamSpan,
         LazyGenericArgListSpan, LazyGenericArgSpan, LazyGenericParamListSpan, LazyGenericParamSpan,
-        LazyTypeBoundListSpan, LazyTypeBoundSpan, LazyTypeGenericArgSpan, LazyWhereClauseSpan,
-        LazyWherePredicateSpan,
+        LazyKindBoundSpan, LazyTraitBoundSpan, LazyTypeBoundListSpan, LazyTypeBoundSpan,
+        LazyTypeGenericArgSpan, LazyWhereClauseSpan, LazyWherePredicateSpan,
     };
 
     pub use super::pat::{

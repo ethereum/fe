@@ -287,7 +287,23 @@ impl TypeBound {
         support::child(self.syntax())
     }
 
-    pub fn kind_constraint(&self) -> Option<KindBound> {
+    pub fn kind_bound(&self) -> Option<KindBound> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct TraitBound,
+    SK::TraitBound
+}
+impl TraitBound {
+    /// A path to the trait.
+    pub fn path(&self) -> Option<super::Path> {
+        support::child(self.syntax())
+    }
+
+    /// A generic argument list for the trait.
+    pub fn generic_args(&self) -> Option<GenericArgList> {
         support::child(self.syntax())
     }
 }
@@ -311,6 +327,27 @@ impl KindBound {
             child.map(|child| child.variant()).flatten()
         }
     }
+
+    pub fn arrow(&self) -> Option<SyntaxToken> {
+        match self.variant()? {
+            KindBoundVariant::Abs(_, tok, _) => Some(tok),
+            KindBoundVariant::Mono(_) => None,
+        }
+    }
+
+    pub fn lhs(&self) -> Option<KindBound> {
+        match self.variant()? {
+            KindBoundVariant::Abs(lhs, _, _) => lhs,
+            KindBoundVariant::Mono(_) => None,
+        }
+    }
+
+    pub fn rhs(&self) -> Option<KindBound> {
+        match self.variant()? {
+            KindBoundVariant::Abs(_, _, rhs) => rhs,
+            KindBoundVariant::Mono(_) => None,
+        }
+    }
 }
 
 pub enum KindBoundVariant {
@@ -318,22 +355,6 @@ pub enum KindBoundVariant {
     Mono(SyntaxToken),
     /// `KindBound -> KindBound`
     Abs(Option<KindBound>, SyntaxToken, Option<KindBound>),
-}
-
-ast_node! {
-    pub struct TraitBound,
-    SK::TraitBound
-}
-impl TraitBound {
-    /// A path to the trait.
-    pub fn path(&self) -> Option<super::Path> {
-        support::child(self.syntax())
-    }
-
-    /// A generic argument list for the trait.
-    pub fn generic_args(&self) -> Option<GenericArgList> {
-        support::child(self.syntax())
-    }
 }
 
 /// A trait for AST nodes that can have generic parameters.

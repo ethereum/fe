@@ -37,6 +37,7 @@ pub enum GenericParam {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
 }
+
 impl GenericParam {
     pub fn name(&self) -> Partial<IdentId> {
         match self {
@@ -120,9 +121,23 @@ impl FuncParamName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBound {
+pub enum TypeBound {
+    Trait(TraitBound),
+    Kind(Partial<KindBound>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitBound {
     /// The path to the trait.
     pub path: Partial<PathId>,
     /// The type arguments of the trait.
     pub generic_args: Option<GenericArgListId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum KindBound {
+    /// `*`
+    Mono,
+    /// `* -> *`
+    Abs(Partial<Box<KindBound>>, Partial<Box<KindBound>>),
 }

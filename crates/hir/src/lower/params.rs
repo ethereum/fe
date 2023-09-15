@@ -1,6 +1,6 @@
-use parser::ast::{self};
+use parser::ast::{self, KindBoundVariant};
 
-use crate::hir_def::{kw, params::*, Body, IdentId, PathId, TypeId};
+use crate::hir_def::{kw, params::*, Body, IdentId, Partial, PathId, TypeId};
 
 use super::FileLowerCtxt;
 
@@ -174,11 +174,46 @@ impl WherePredicate {
 
 impl TypeBound {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
+        if let Some(trait_bound) = ast.trait_bound() {
+            Self::Trait(TraitBound::lower_ast(ctxt, trait_bound))
+        } else {
+            Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
+        }
+    }
+}
+
+impl TraitBound {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TraitBound) -> Self {
         let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
         let generic_args = ast
             .generic_args()
             .map(|args| GenericArgListId::lower_ast(ctxt, args));
         Self { path, generic_args }
+    }
+}
+
+impl KindBound {
+    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
+        let Some(kind_variant) = ast.map(|ast| ast.variant()).flatten() else {
+            return Partial::Absent;
+        };
+
+        match kind_variant {
+            KindBoundVariant::Mono(_) => Partial::Present(KindBound::Mono),
+            KindBoundVariant::Abs(lhs, _, rhs) => {
+                let lhs = KindBound::lower_ast_opt(ctxt, lhs)
+                    .to_opt()
+                    .map(|kind| Box::new(kind))
+                    .into();
+
+                let rhs = KindBound::lower_ast_opt(ctxt, rhs)
+                    .to_opt()
+                    .map(|kind| Box::new(kind))
+                    .into();
+
+                Partial::Present(KindBound::Abs(lhs, rhs))
+            }
+        }
     }
 }
 

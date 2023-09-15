@@ -7,11 +7,12 @@ use crate::{
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
         FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
         GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
-        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
-        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
+        KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct,
+        TopLevelMod, Trait, TraitBound, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
+        UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
+        WhereClauseId, WherePredicate,
     },
-    span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
+    span::{lazy_spans::*, params::LazyTraitBoundSpan, transition::ChainRoot, SpanDowncast},
     HirDb,
 };
 
@@ -166,6 +167,22 @@ pub trait Visitor {
         bound: &TypeBound,
     ) {
         walk_type_bound(self, ctxt, bound);
+    }
+
+    fn visit_trait_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitBoundSpan>,
+        bound: &TraitBound,
+    ) {
+        walk_trait_bound(self, ctxt, bound);
+    }
+
+    fn visit_kind_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        bound: &KindBound,
+    ) {
+        walk_kind_bound(self, ctxt, bound);
     }
 
     fn visit_where_clause(
@@ -1646,7 +1663,7 @@ where
 
         TypeKind::Tuple(t) => ctxt.with_new_ctxt(
             |span| span.into_tuple_type(),
-            |ctxt| walk_tuple_type(visitor, ctxt, t),
+            |ctxt| walk_tuple_type(visitor, ctxt, *t),
         ),
 
         TypeKind::Array(elem, body) => ctxt.with_new_ctxt(
@@ -1724,6 +1741,28 @@ pub fn walk_type_bound<V>(
 ) where
     V: Visitor + ?Sized,
 {
+    match bound {
+        TypeBound::Trait(trait_bound) => ctxt.with_new_ctxt(
+            |span| span.trait_bound_moved(),
+            |ctxt| visitor.visit_trait_bound(ctxt, trait_bound),
+        ),
+        TypeBound::Kind(Partial::Present(kind_bound)) => ctxt.with_new_ctxt(
+            |span| span.kind_bound_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, kind_bound);
+            },
+        ),
+        _ => {}
+    }
+}
+
+pub fn walk_trait_bound<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazyTraitBoundSpan>,
+    bound: &TraitBound,
+) where
+    V: Visitor + ?Sized,
+{
     if let Some(path) = bound.path.to_opt() {
         ctxt.with_new_ctxt(
             |span| span.path_moved(),
@@ -1738,6 +1777,36 @@ pub fn walk_type_bound<V>(
             |span| span.generic_args_moved(),
             |ctxt| {
                 visitor.visit_generic_arg_list(ctxt, args);
+            },
+        )
+    }
+}
+
+pub fn walk_kind_bound<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+    bound: &KindBound,
+) where
+    V: Visitor + ?Sized,
+{
+    let KindBound::Abs(lhs, rhs) = bound else {
+        return;
+    };
+
+    if let Partial::Present(lhs) = lhs {
+        ctxt.with_new_ctxt(
+            |span| span.lhs_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, lhs.as_ref());
+            },
+        )
+    }
+
+    if let Partial::Present(rhs) = rhs {
+        ctxt.with_new_ctxt(
+            |span| span.lhs_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, rhs.as_ref());
             },
         )
     }

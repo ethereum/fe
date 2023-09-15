@@ -122,7 +122,28 @@ define_lazy_span_node!(
     LazyTypeBoundSpan,
     ast::TypeBound,
     @node {
+        (trait_bound, trait_bound, LazyTraitBoundSpan),
+        (kind_bound, kind_bound, LazyKindBoundSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyTraitBoundSpan,
+    ast::TraitBound,
+    @node {
         (path, path, LazyPathSpan),
         (generic_args, generic_args, LazyGenericArgListSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyKindBoundSpan,
+    ast::KindBound,
+    @token {
+        (arrow, arrow),
+    }
+    @node {
+       (lhs, lhs, LazyKindBoundSpan),
+       (rhs, rhs, LazyKindBoundSpan ),
     }
 );
