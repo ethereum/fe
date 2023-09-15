@@ -1,4 +1,7 @@
+
+
 use anyhow::{Error, Result};
+use fxhash::FxHashMap;
 use serde::Deserialize;
 
 use crate::{state::ServerState, util::diag_to_lsp};
@@ -21,7 +24,7 @@ pub fn get_diagnostics(
     state: &mut ServerState,
     text: String,
     uri: lsp_types::Url,
-) -> Result<Vec<lsp_types::Diagnostic>, Error> {
+) -> Result<FxHashMap<lsp_types::Url, lsp_types::Diagnostic>, Error> {
     let diags = string_diagnostics(
         state,
         uri.to_file_path().unwrap().to_str().unwrap(),
@@ -42,7 +45,7 @@ pub fn handle_document_did_open(
     let params = lsp_types::DidOpenTextDocumentParams::deserialize(note.params)?;
     let text = params.text_document.text;
     let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
-    send_diagnostics(state, diagnostics, params.text_document.uri)
+    send_diagnostics(state, diagnostics)
 }
 
 pub fn handle_document_did_change(
@@ -52,26 +55,29 @@ pub fn handle_document_did_change(
     let params = lsp_types::DidChangeTextDocumentParams::deserialize(note.params)?;
     let text = params.content_changes[0].text.clone();
     let diagnostics = get_diagnostics(state, text, params.text_document.uri.clone())?;
-    send_diagnostics(state, diagnostics, params.text_document.uri)
+    send_diagnostics(state, diagnostics)
 }
 
 fn send_diagnostics(
     state: &mut ServerState,
-    diagnostics: Vec<lsp_types::Diagnostic>,
-    uri: lsp_types::Url,
+    diagnostics: FxHashMap<lsp_types::Url, lsp_types::Diagnostic>
 ) -> Result<(), Error> {
-    let result = lsp_types::PublishDiagnosticsParams {
-        uri,
-        diagnostics,
-        version: None,
-    };
-    let response = lsp_server::Message::Notification(lsp_server::Notification {
-        method: String::from("textDocument/publishDiagnostics"),
-        params: serde_json::to_value(result).unwrap(),
+    let results = diagnostics.into_iter().map(|(uri, diag)| {
+        let result = lsp_types::PublishDiagnosticsParams {
+            uri,
+            diagnostics: vec![diag],
+            version: None,
+        };
+        lsp_server::Message::Notification(lsp_server::Notification {
+            method: String::from("textDocument/publishDiagnostics"),
+            params: serde_json::to_value(result).unwrap(),
+        })
     });
-
-    let sender = state.sender.lock().unwrap();
-    sender.send(response)?;
+    
+    results.for_each(|result| {
+        let sender = state.sender.lock().unwrap();
+        sender.send(result);
+    });
 
     Ok(())
 }

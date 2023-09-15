@@ -164,15 +164,12 @@ pub fn handle_goto_definition(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let error = if !errors.is_empty() {
-        Some(ResponseError {
+    let error = (!errors.is_empty()).then_some(
+        ResponseError {
             code: lsp_types::error_codes::SERVER_CANCELLED as i32,
             message: errors,
             data: None,
-        })
-    } else {
-        None
-    };
+    });
 
     // Send the response
     let response_message = Response {

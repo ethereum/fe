@@ -141,7 +141,7 @@ mod tests {
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
-        for cursor in cursors.iter() {
+        for cursor in &cursors {
             let early_resolution = goto_enclosing_path(db, top_mod, *cursor);
 
             let goto_info = match early_resolution {
@@ -192,7 +192,7 @@ mod tests {
 
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
-        for cursor in cursors.iter() {
+        for cursor in &cursors {
             let resolved_path = goto_enclosing_path(db, top_mod, *cursor);
 
             match resolved_path {
@@ -243,7 +243,7 @@ mod tests {
 
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
-        for cursor in cursors.iter() {
+        for cursor in &cursors {
             let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
             let mut path_collector = PathSpanCollector::new(db);
             path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);

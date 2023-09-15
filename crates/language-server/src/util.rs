@@ -2,9 +2,11 @@ use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
     InputDb,
 };
+use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
 use log::error;
 use lsp_types::Position;
+use url::Url;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
     text.lines()
@@ -74,29 +76,39 @@ pub fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
     }
 }
 
-pub fn diag_to_lsp(diag: CompleteDiagnostic, db: &dyn InputDb) -> Vec<lsp_types::Diagnostic> {
-    diag.sub_diagnostics
-        .into_iter()
-        .filter_map(|sub| {
-            let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
+pub fn diag_to_lsp(
+    diag: CompleteDiagnostic,
+    db: &dyn InputDb,
+) -> FxHashMap<lsp_types::Url, lsp_types::Diagnostic> {
+    let mut result = FxHashMap::<lsp_types::Url, lsp_types::Diagnostic>::default();
+    diag.sub_diagnostics.into_iter().for_each(|sub| {
+        let uri = sub.span.as_ref().unwrap().file.abs_path(db);
+        let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
+        
+        // todo: generalize this to handle other kinds of URLs besides file URLs
+        let uri = Url::from_file_path(uri).unwrap();
 
-            match lsp_range {
-                Ok(range) => Some(lsp_types::Diagnostic {
-                    range,
-                    severity: Some(severity_to_lsp(diag.severity)),
-                    code: None,
-                    source: None,
-                    message: sub.message,
-                    related_information: None,
-                    tags: None,
-                    code_description: None,
-                    data: None, // for code actions
-                }),
-                Err(_) => {
-                    error!("Failed to convert span to range");
-                    None
-                }
+        match lsp_range {
+            Ok(range) => {
+                result.insert(
+                    uri,
+                    lsp_types::Diagnostic {
+                        range,
+                        severity: Some(severity_to_lsp(diag.severity)),
+                        code: None,
+                        source: None,
+                        message: sub.message,
+                        related_information: None,
+                        tags: None,
+                        code_description: None,
+                        data: None, // for code actions
+                    },
+                );
             }
-        })
-        .collect()
+            Err(_) => {
+                error!("Failed to convert span to range");
+            }
+        }
+    });
+    result
 }
