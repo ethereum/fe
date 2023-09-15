@@ -13,7 +13,7 @@ Depending on your operating system, the file that you download is either named `
 
 > Note: We will rename the file to `fe` and assume that name for the rest of the guide. In the future when Fe can be installed via other mechanisms we can assume `fe` to become the canonical command name.
 
-## Add permission to execute
+### Add permission to execute
 
 In order to be able to execute the Fe compiler we will have to make the file *executable*. This can be done by navigating to the directory where the file is located and executing `chmod + x <filename>` (e.g. `chmod +x fe`).
 
@@ -38,7 +38,16 @@ SUBCOMMANDS:
     new      Create new fe project
 ```
 
-# Building from source
+## Package managers
+
+Mac users can also get Fe from [Homebrew](https://brew.sh/). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
+
+```sh
+brew install fe-lang/tap/fe
+```
+
+
+## Building from source
 
 You can also build Fe from the source code provided in our Github [repository](https://github.com/ethereum/fe). To do this you will need to have [Rust](https://www.rust-lang.org/tools/install) installed. Then, cloen the github repository using:
 
