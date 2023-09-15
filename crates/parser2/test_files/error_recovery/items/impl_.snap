@@ -43,9 +43,10 @@ Root@0..56
               Colon@24..25 ":"
               WhiteSpace@25..26 " "
               TypeBound@26..33
-                Path@26..33
-                  PathSegment@26..33
-                    Ident@26..33 "Integer"
+                TraitBound@26..33
+                  Path@26..33
+                    PathSegment@26..33
+                      Ident@26..33 "Integer"
             Newline@33..34 "\n"
         ImplItemList@34..37
           LBrace@34..35 "{"

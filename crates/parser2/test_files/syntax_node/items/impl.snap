@@ -16,9 +16,10 @@ Root@0..272
               Colon@6..7 ":"
               WhiteSpace@7..8 " "
               TypeBound@8..11
-                Path@8..11
-                  PathSegment@8..11
-                    Ident@8..11 "Add"
+                TraitBound@8..11
+                  Path@8..11
+                    PathSegment@8..11
+                      Ident@8..11 "Add"
           Gt@11..12 ">"
         WhiteSpace@12..13 " "
         PathType@13..24
@@ -155,9 +156,10 @@ Root@0..272
               Colon@167..168 ":"
               WhiteSpace@168..169 " "
               TypeBound@169..174
-                Path@169..174
-                  PathSegment@169..174
-                    Ident@169..174 "Clone"
+                TraitBound@169..174
+                  Path@169..174
+                    PathSegment@169..174
+                      Ident@169..174 "Clone"
             Newline@174..175 "\n"
         ImplItemList@175..272
           LBrace@175..176 "{"
@@ -175,17 +177,18 @@ Root@0..272
                   Colon@189..190 ":"
                   WhiteSpace@190..191 " "
                   TypeBound@191..197
-                    Path@191..194
-                      PathSegment@191..194
-                        Ident@191..194 "Add"
-                    GenericArgList@194..197
-                      Lt@194..195 "<"
-                      TypeGenericArg@195..196
-                        PathType@195..196
-                          Path@195..196
-                            PathSegment@195..196
-                              Ident@195..196 "T"
-                      Gt@196..197 ">"
+                    TraitBound@191..197
+                      Path@191..194
+                        PathSegment@191..194
+                          Ident@191..194 "Add"
+                      GenericArgList@194..197
+                        Lt@194..195 "<"
+                        TypeGenericArg@195..196
+                          PathType@195..196
+                            Path@195..196
+                              PathSegment@195..196
+                                Ident@195..196 "T"
+                        Gt@196..197 ">"
               Gt@197..198 ">"
             FuncParamList@198..212
               LParen@198..199 "("
@@ -217,9 +220,10 @@ Root@0..272
                   Colon@229..230 ":"
                   WhiteSpace@230..231 " "
                   TypeBound@231..235
-                    Path@231..235
-                      PathSegment@231..235
-                        Ident@231..235 "Copy"
+                    TraitBound@231..235
+                      Path@231..235
+                        PathSegment@231..235
+                          Ident@231..235 "Copy"
                 Newline@235..236 "\n"
             WhiteSpace@236..240 "    "
             BlockExpr@240..270

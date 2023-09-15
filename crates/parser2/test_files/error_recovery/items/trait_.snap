@@ -94,9 +94,10 @@ Root@0..133
               Colon@77..78 ":"
               WhiteSpace@78..79 " "
               TypeBound@79..82
-                Path@79..82
-                  PathSegment@79..82
-                    Ident@79..82 "Add"
+                TraitBound@79..82
+                  Path@79..82
+                    PathSegment@79..82
+                      Ident@79..82 "Add"
             WhiteSpace@82..83 " "
             Error@83..83
         TraitItemList@83..85
@@ -122,9 +123,10 @@ Root@0..133
               Colon@102..103 ":"
               WhiteSpace@103..104 " "
               TypeBound@104..107
-                Path@104..107
-                  PathSegment@104..107
-                    Ident@104..107 "Sub"
+                TraitBound@104..107
+                  Path@104..107
+                    PathSegment@104..107
+                      Ident@104..107 "Sub"
           Gt@107..108 ">"
         WhiteSpace@108..110 "  "
         Newline@110..111 "\n"
@@ -141,9 +143,10 @@ Root@0..133
               Colon@122..123 ":"
               WhiteSpace@123..124 " "
               TypeBound@124..127
-                Path@124..127
-                  PathSegment@124..127
-                    Ident@124..127 "Add"
+                TraitBound@124..127
+                  Path@124..127
+                    PathSegment@124..127
+                      Ident@124..127 "Add"
             WhiteSpace@127..128 " "
             Newline@128..129 "\n"
         TraitItemList@129..133

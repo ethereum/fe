@@ -441,8 +441,12 @@ pub enum SyntaxKind {
 
     /// `foo::Trait1 + Trait2`
     TypeBoundList,
-    /// `Trait1`
+    /// `TraitBound` or `TypeKind`.
     TypeBound,
+    /// `Trait1`
+    TraitBound,
+    /// `*` or `(* -> *) -> *`
+    KindBound,
     /// `where Option<T>: Trait1 + Trait2`
     WhereClause,
     /// `Option<T>: Trait1 + Trait2`

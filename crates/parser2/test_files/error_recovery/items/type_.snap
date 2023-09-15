@@ -51,18 +51,22 @@ Root@0..72
           Lt@39..40 "<"
           TypeGenericParam@40..46
             Ident@40..41 "T"
-            Error@41..46
+            TypeBoundList@41..46
               Colon@41..42 ":"
               WhiteSpace@42..43 " "
-              Ident@43..46 "i32"
+              TypeBound@43..46
+                Error@43..46
+                  Ident@43..46 "i32"
           Comma@46..47 ","
           WhiteSpace@47..48 " "
           TypeGenericParam@48..54
             Ident@48..49 "U"
-            Error@49..54
+            TypeBoundList@49..54
               Colon@49..50 ":"
               WhiteSpace@50..51 " "
-              Ident@51..54 "i32"
+              TypeBound@51..54
+                Error@51..54
+                  Ident@51..54 "i32"
           Gt@54..55 ">"
         WhiteSpace@55..56 " "
         Eq@56..57 "="

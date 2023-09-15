@@ -277,16 +277,60 @@ ast_node! {
     /// A type bound.
     /// `Trait`
     /// `Trait<T, U>`
+    /// `(* -> *) -> *`
     pub struct TypeBound,
     SK::TypeBound,
 }
 impl TypeBound {
     /// A path of the type bound.
+    pub fn trait_bound(&self) -> Option<TraitBound> {
+        support::child(self.syntax())
+    }
+
+    pub fn kind_constraint(&self) -> Option<KindBound> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct KindBound,
+    SK::KindBound
+}
+impl KindBound {
+    pub fn variant(&self) -> Option<KindBoundVariant> {
+        if let Some(tok) = support::token(self.syntax(), SK::Arrow) {
+            let mut children = support::children(self.syntax());
+            let lhs = children.next();
+            let rhs = children.next();
+            Some(KindBoundVariant::Abs(lhs, tok, rhs))
+        } else if let Some(tok) = support::token(self.syntax(), SK::Star) {
+            Some(KindBoundVariant::Mono(tok))
+        } else {
+            // Case where kind is wrapped in parens, we need to unwrap the outer parens.
+            let child: Option<Self> = support::child(self.syntax());
+            child.map(|child| child.variant()).flatten()
+        }
+    }
+}
+
+pub enum KindBoundVariant {
+    /// `*`
+    Mono(SyntaxToken),
+    /// `KindBound -> KindBound`
+    Abs(Option<KindBound>, SyntaxToken, Option<KindBound>),
+}
+
+ast_node! {
+    pub struct TraitBound,
+    SK::TraitBound
+}
+impl TraitBound {
+    /// A path to the trait.
     pub fn path(&self) -> Option<super::Path> {
         support::child(self.syntax())
     }
 
-    /// A generic argument list of the type bound.
+    /// A generic argument list for the trait.
     pub fn generic_args(&self) -> Option<GenericArgList> {
         support::child(self.syntax())
     }
@@ -421,6 +465,8 @@ mod tests {
             p1_bounds
                 .next()
                 .unwrap()
+                .trait_bound()
+                .unwrap()
                 .path()
                 .unwrap()
                 .segments()
@@ -435,6 +481,8 @@ mod tests {
 
         assert_eq!(
             p1_bounds_trait2
+                .trait_bound()
+                .unwrap()
                 .path()
                 .unwrap()
                 .segments()

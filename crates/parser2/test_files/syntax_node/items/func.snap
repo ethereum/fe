@@ -172,9 +172,10 @@ Root@0..361
               Colon@194..195 ":"
               WhiteSpace@195..196 " "
               TypeBound@196..201
-                Path@196..201
-                  PathSegment@196..201
-                    Ident@196..201 "Trait"
+                TraitBound@196..201
+                  Path@196..201
+                    PathSegment@196..201
+                      Ident@196..201 "Trait"
           Comma@201..202 ","
           WhiteSpace@202..203 " "
           TypeGenericParam@203..204
@@ -238,9 +239,10 @@ Root@0..361
               Colon@250..251 ":"
               WhiteSpace@251..252 " "
               TypeBound@252..257
-                Path@252..257
-                  PathSegment@252..257
-                    Ident@252..257 "Trait"
+                TraitBound@252..257
+                  Path@252..257
+                    PathSegment@252..257
+                      Ident@252..257 "Trait"
             WhiteSpace@257..258 " "
             Newline@258..259 "\n"
           WhiteSpace@259..269 "          "
@@ -261,9 +263,10 @@ Root@0..361
               Colon@278..279 ":"
               WhiteSpace@279..280 " "
               TypeBound@280..285
-                Path@280..285
-                  PathSegment@280..285
-                    Ident@280..285 "Clone"
+                TraitBound@280..285
+                  Path@280..285
+                    PathSegment@280..285
+                      Ident@280..285 "Clone"
             Newline@285..286 "\n"
         WhiteSpace@286..296 "          "
         Newline@296..297 "\n"

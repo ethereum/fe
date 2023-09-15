@@ -60,9 +60,10 @@ Root@0..90
               Colon@30..31 ":"
               WhiteSpace@31..32 " "
               TypeBound@32..33
-                Path@32..33
-                  PathSegment@32..33
-                    Ident@32..33 "X"
+                TraitBound@32..33
+                  Path@32..33
+                    PathSegment@32..33
+                      Ident@32..33 "X"
             WhiteSpace@33..34 " "
             Error@34..34
         ImplTraitItemList@34..36
@@ -122,9 +123,10 @@ Root@0..90
               Colon@65..66 ":"
               WhiteSpace@66..67 " "
               TypeBound@67..68
-                Path@67..68
-                  PathSegment@67..68
-                    Ident@67..68 "X"
+                TraitBound@67..68
+                  Path@67..68
+                    PathSegment@67..68
+                      Ident@67..68 "X"
             WhiteSpace@68..69 " "
             Error@69..69
         ImplTraitItemList@69..71

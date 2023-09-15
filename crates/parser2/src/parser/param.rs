@@ -81,7 +81,7 @@ impl super::Parse for FnParamScope {
 }
 
 define_scope! {
-    pub(crate) GenericParamListScope {disallow_type_bound: bool},
+    pub(crate) GenericParamListScope {disallow_trait_bound: bool},
     GenericParamList,
     Override(Gt)
 }
@@ -92,9 +92,9 @@ impl super::Parse for GenericParamListScope {
             return;
         }
 
-        parser.parse(GenericParamScope::new(self.disallow_type_bound), None);
+        parser.parse(GenericParamScope::new(self.disallow_trait_bound), None);
         while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericParamScope::new(self.disallow_type_bound), None);
+            parser.parse(GenericParamScope::new(self.disallow_trait_bound), None);
         }
 
         parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
@@ -102,7 +102,7 @@ impl super::Parse for GenericParamListScope {
 }
 
 define_scope! {
-    GenericParamScope {disallow_type_bound: bool},
+    GenericParamScope {disallow_trait_bound: bool},
     TypeGenericParam,
     Inheritance(Comma)
 }
@@ -138,11 +138,7 @@ impl super::Parse for GenericParamScope {
                     }
 
                     if parser.current_kind() == Some(SyntaxKind::Colon) {
-                        if self.disallow_type_bound {
-                            parser.error_and_recover("type bounds are not allowed here", None);
-                        } else {
-                            parser.parse(TypeBoundListScope::default(), None);
-                        }
+                        parser.parse(TypeBoundListScope::new(self.disallow_trait_bound), None);
                     }
 
                     parser.set_newline_as_trivia(true);
@@ -154,7 +150,7 @@ impl super::Parse for GenericParamScope {
 }
 
 define_scope! {
-    TypeBoundListScope,
+    TypeBoundListScope{disallow_trait_bound: bool},
     TypeBoundList,
     Inheritance(Plus)
 }
@@ -162,20 +158,64 @@ impl super::Parse for TypeBoundListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::Colon);
 
-        parser.parse(TypeBoundScope::default(), None);
+        parser.parse(TypeBoundScope::new(self.disallow_trait_bound), None);
         while parser.current_kind() == Some(SyntaxKind::Plus) {
             parser.bump_expected(SyntaxKind::Plus);
-            parser.parse(TypeBoundScope::default(), None);
+            parser.parse(TypeBoundScope::new(self.disallow_trait_bound), None);
         }
     }
 }
 
 define_scope! {
-    TypeBoundScope,
+    TypeBoundScope{disallow_trait_bound: bool},
     TypeBound,
     Inheritance
 }
 impl super::Parse for TypeBoundScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        let is_type_kind = matches!(
+            parser.current_kind(),
+            Some(SyntaxKind::LParen | SyntaxKind::Star)
+        );
+
+        if is_type_kind {
+            parser.parse(KindBoundScope::default(), None);
+        } else {
+            if self.disallow_trait_bound {
+                parser.error_and_recover("trait bounds are not allowed here", None);
+                return;
+            }
+            parser.parse(TraitBoundScope::default(), None);
+        }
+    }
+}
+define_scope! {
+    KindBoundScope,
+    KindBound,
+    Inheritance
+}
+impl super::Parse for KindBoundScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if parser.bump_if(SyntaxKind::Star) {
+        } else if parser.bump_if(SyntaxKind::LParen) {
+            parser.parse(KindBoundScope::default(), None);
+            parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
+        } else {
+            parser.error_and_recover("expected `*` or `(`", None);
+        }
+
+        if parser.bump_if(SyntaxKind::Arrow) {
+            parser.parse(KindBoundScope::default(), None);
+        }
+    }
+}
+
+define_scope! {
+    TraitBoundScope,
+    TraitBound,
+    Inheritance
+}
+impl super::Parse for TraitBoundScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(PathScope::default(), None);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
@@ -324,9 +364,9 @@ pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
 
 pub(crate) fn parse_generic_params_opt<S: TokenStream>(
     parser: &mut Parser<S>,
-    disallow_type_bound: bool,
+    disallow_trait_bound: bool,
 ) {
     if parser.current_kind() == Some(SyntaxKind::Lt) {
-        parser.parse(GenericParamListScope::new(disallow_type_bound), None);
+        parser.parse(GenericParamListScope::new(disallow_trait_bound), None);
     }
 }
