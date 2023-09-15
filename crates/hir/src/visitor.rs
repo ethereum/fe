@@ -22,10 +22,11 @@ pub mod prelude {
         walk_call_arg_list, walk_const, walk_contract, walk_enum, walk_expr, walk_field,
         walk_field_def, walk_field_def_list, walk_field_list, walk_func, walk_func_param,
         walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
-        walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_mod, walk_pat,
-        walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_ty, walk_type_alias,
-        walk_type_bound, walk_type_bound_list, walk_use, walk_use_path, walk_variant_def,
-        walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
+        walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_kind_bound, walk_mod,
+        walk_pat, walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_trait_bound,
+        walk_ty, walk_type_alias, walk_type_bound, walk_type_bound_list, walk_use, walk_use_path,
+        walk_variant_def, walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor,
+        VisitorCtxt,
     };
 
     pub use crate::span::lazy_spans::*;
@@ -1874,14 +1875,14 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
-    pub fn new(db: &'db dyn HirDb, span: T) -> Self
+    pub fn new(db: &'db dyn HirDb, scope: ScopeId, span: T) -> Self
     where
         T: Into<DynLazySpan>,
     {
         Self {
             db,
             span: span.into(),
-            scope_stack: Vec::new(),
+            scope_stack: vec![scope],
             _t: PhantomData,
         }
     }

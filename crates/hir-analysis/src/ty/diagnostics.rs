@@ -14,6 +14,8 @@ use super::ty::Kind;
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
+#[salsa::accumulator]
+pub struct GenericParamDiagAccumulator(pub(super) TyLowerDiag);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
@@ -30,6 +32,10 @@ pub enum TyLowerDiag {
         n_given_arg: usize,
     },
     TypeAliasCycle(DynLazySpan),
+
+    DuplicateKindBound(DynLazySpan, DynLazySpan),
+
+    KindBoundNotAllowed(DynLazySpan),
 
     AssocTy(DynLazySpan),
 }
@@ -85,7 +91,9 @@ impl TyLowerDiag {
             Self::RecursiveType { .. } => 2,
             Self::TypeAliasArgumentMismatch { .. } => 3,
             Self::TypeAliasCycle(_) => 4,
-            Self::AssocTy(_) => 5,
+            Self::DuplicateKindBound(_, _) => 5,
+            Self::KindBoundNotAllowed(_) => 6,
+            Self::AssocTy(_) => 7,
         }
     }
 
@@ -105,6 +113,9 @@ impl TyLowerDiag {
                 n_given_arg
             ),
             Self::TypeAliasCycle(_) => "recursive type alias cycle is detected".to_string(),
+
+            Self::DuplicateKindBound(_, _) => "duplicate type bound is not allowed.".to_string(),
+            Self::KindBoundNotAllowed(_) => "kind bound is not allowed".to_string(),
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
         }
@@ -169,6 +180,26 @@ impl TyLowerDiag {
             Self::TypeAliasCycle(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "cycle happens here".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::DuplicateKindBound(primary, first_defined) => {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "duplicate type bound here".to_string(),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "first defined here".to_string(),
+                        first_defined.resolve(db),
+                    ),
+                ]
+            }
+            Self::KindBoundNotAllowed(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "kind bound is not allowed here".to_string(),
                 span.resolve(db),
             )],
 

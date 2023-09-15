@@ -8,6 +8,16 @@ pub struct GenericArgListId {
     pub data: Vec<GenericArg>,
 }
 
+impl GenericArgListId {
+    pub fn len(self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
+    }
+
+    pub fn is_empty(self, db: &dyn HirDb) -> bool {
+        self.data(db).is_empty()
+    }
+}
+
 #[salsa::interned]
 pub struct GenericParamListId {
     #[return_ref]

@@ -87,7 +87,7 @@ impl<'db> TyDiagCollector<'db> {
     }
 
     pub(super) fn collect(mut self, hir_ty: HirTyId, span: LazyTySpan) -> Vec<TyLowerDiag> {
-        let mut ctxt = VisitorCtxt::new(self.db.as_hir_db(), span);
+        let mut ctxt = VisitorCtxt::new(self.db.as_hir_db(), self.scope, span);
         self.visit_ty(&mut ctxt, hir_ty);
         self.diags
     }

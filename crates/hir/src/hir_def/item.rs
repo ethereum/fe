@@ -15,7 +15,7 @@ use crate::{
             LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
             LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
         },
-        params::LazyGenericParamListSpan,
+        params::{LazyGenericParamListSpan, LazyWhereClauseSpan},
         DynLazySpan, HirOrigin,
     },
     HirDb,
@@ -168,6 +168,33 @@ impl ItemKind {
     }
 }
 
+impl From<GenericParamOwner> for ItemKind {
+    fn from(owner: GenericParamOwner) -> Self {
+        match owner {
+            GenericParamOwner::Func(func) => ItemKind::Func(func),
+            GenericParamOwner::Struct(struct_) => ItemKind::Struct(struct_),
+            GenericParamOwner::Enum(enum_) => ItemKind::Enum(enum_),
+            GenericParamOwner::TypeAlias(type_alias) => ItemKind::TypeAlias(type_alias),
+            GenericParamOwner::Impl(impl_) => ItemKind::Impl(impl_),
+            GenericParamOwner::Trait(trait_) => ItemKind::Trait(trait_),
+            GenericParamOwner::ImplTrait(impl_trait) => ItemKind::ImplTrait(impl_trait),
+        }
+    }
+}
+
+impl From<WhereClauseOwner> for ItemKind {
+    fn from(owner: WhereClauseOwner) -> Self {
+        match owner {
+            WhereClauseOwner::Func(func) => ItemKind::Func(func),
+            WhereClauseOwner::Struct(struct_) => ItemKind::Struct(struct_),
+            WhereClauseOwner::Enum(enum_) => ItemKind::Enum(enum_),
+            WhereClauseOwner::Impl(impl_) => ItemKind::Impl(impl_),
+            WhereClauseOwner::Trait(trait_) => ItemKind::Trait(trait_),
+            WhereClauseOwner::ImplTrait(impl_trait) => ItemKind::ImplTrait(impl_trait),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
 pub enum GenericParamOwner {
     Func(Func),
@@ -180,19 +207,11 @@ pub enum GenericParamOwner {
 }
 
 impl GenericParamOwner {
-    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
-        match self {
-            GenericParamOwner::Func(func) => func.top_mod(db),
-            GenericParamOwner::Struct(struct_) => struct_.top_mod(db),
-            GenericParamOwner::Enum(enum_) => enum_.top_mod(db),
-            GenericParamOwner::TypeAlias(type_alias) => type_alias.top_mod(db),
-            GenericParamOwner::Impl(impl_) => impl_.top_mod(db),
-            GenericParamOwner::Trait(trait_) => trait_.top_mod(db),
-            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.top_mod(db),
-        }
+    pub fn top_mod(self, db: &dyn HirDb) -> TopLevelMod {
+        ItemKind::from(self).top_mod(db)
     }
 
-    pub fn params(&self, db: &dyn HirDb) -> GenericParamListId {
+    pub fn params(self, db: &dyn HirDb) -> GenericParamListId {
         match self {
             GenericParamOwner::Func(func) => func.generic_params(db),
             GenericParamOwner::Struct(struct_) => struct_.generic_params(db),
@@ -204,16 +223,24 @@ impl GenericParamOwner {
         }
     }
 
-    pub fn params_span(&self) -> LazyGenericParamListSpan {
+    pub fn params_span(self) -> LazyGenericParamListSpan {
         match self {
-            GenericParamOwner::Func(func) => func.lazy_span().generic_params(),
-            GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params(),
-            GenericParamOwner::Enum(enum_) => enum_.lazy_span().generic_params(),
-            GenericParamOwner::TypeAlias(type_alias) => type_alias.lazy_span().generic_params(),
-            GenericParamOwner::Impl(impl_) => impl_.lazy_span().generic_params(),
-            GenericParamOwner::Trait(trait_) => trait_.lazy_span().generic_params(),
-            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.lazy_span().generic_params(),
+            GenericParamOwner::Func(func) => func.lazy_span().generic_params_moved(),
+            GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params_moved(),
+            GenericParamOwner::Enum(enum_) => enum_.lazy_span().generic_params_moved(),
+            GenericParamOwner::TypeAlias(type_alias) => {
+                type_alias.lazy_span().generic_params_moved()
+            }
+            GenericParamOwner::Impl(impl_) => impl_.lazy_span().generic_params_moved(),
+            GenericParamOwner::Trait(trait_) => trait_.lazy_span().generic_params_moved(),
+            GenericParamOwner::ImplTrait(impl_trait) => {
+                impl_trait.lazy_span().generic_params_moved()
+            }
         }
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ItemKind::from(self).scope()
     }
 
     pub fn from_item_opt(item: ItemKind) -> Option<Self> {
@@ -225,6 +252,65 @@ impl GenericParamOwner {
             ItemKind::Impl(impl_) => Some(GenericParamOwner::Impl(impl_)),
             ItemKind::Trait(trait_) => Some(GenericParamOwner::Trait(trait_)),
             ItemKind::ImplTrait(impl_trait) => Some(GenericParamOwner::ImplTrait(impl_trait)),
+            _ => None,
+        }
+    }
+
+    pub fn where_clause_owner(self) -> Option<WhereClauseOwner> {
+        let item = ItemKind::from(self);
+        WhereClauseOwner::from_item_opt(item)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
+pub enum WhereClauseOwner {
+    Func(Func),
+    Struct(Struct),
+    Enum(Enum),
+    Impl(Impl),
+    Trait(Trait),
+    ImplTrait(ImplTrait),
+}
+
+impl WhereClauseOwner {
+    pub fn top_mod(self, db: &dyn HirDb) -> TopLevelMod {
+        ItemKind::from(self).top_mod(db)
+    }
+
+    pub fn where_clause(self, db: &dyn HirDb) -> WhereClauseId {
+        match self {
+            Self::Func(func) => func.where_clause(db),
+            Self::Struct(struct_) => struct_.where_clause(db),
+            Self::Enum(enum_) => enum_.where_clause(db),
+            Self::Impl(impl_) => impl_.where_clause(db),
+            Self::Trait(trait_) => trait_.where_clause(db),
+            Self::ImplTrait(impl_trait) => impl_trait.where_clause(db),
+        }
+    }
+
+    pub fn where_clause_span(self) -> LazyWhereClauseSpan {
+        match self {
+            Self::Func(func) => func.lazy_span().where_clause_moved(),
+            Self::Struct(struct_) => struct_.lazy_span().where_clause_moved(),
+            Self::Enum(enum_) => enum_.lazy_span().where_clause_moved(),
+            Self::Impl(impl_) => impl_.lazy_span().where_clause_moved(),
+            Self::Trait(trait_) => trait_.lazy_span().where_clause_moved(),
+            Self::ImplTrait(impl_trait) => impl_trait.lazy_span().where_clause_moved(),
+        }
+    }
+
+    pub fn scope(self) -> ScopeId {
+        ItemKind::from(self).scope()
+    }
+
+    pub fn from_item_opt(item: ItemKind) -> Option<Self> {
+        match item {
+            ItemKind::Func(func) => Some(Self::Func(func)),
+            ItemKind::Struct(struct_) => Some(Self::Struct(struct_)),
+            ItemKind::Enum(enum_) => Some(Self::Enum(enum_)),
+            ItemKind::Impl(impl_) => Some(Self::Impl(impl_)),
+            ItemKind::Trait(trait_) => Some(Self::Trait(trait_)),
+            ItemKind::ImplTrait(impl_trait) => Some(Self::ImplTrait(impl_trait)),
             _ => None,
         }
     }

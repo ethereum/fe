@@ -1,0 +1,14 @@
+pub struct PtrWrapper<T, U>
+where T: * -> *
+{
+    ptr: T<U>
+}
+
+pub struct Foo {
+    x: PtrWrapper<Arc, i32>
+    y: PtrWrapper<i32, i32>
+}
+
+pub struct Arc<T> {
+    inner: T
+}

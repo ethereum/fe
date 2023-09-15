@@ -3,7 +3,10 @@ use hir::analysis_pass::ModuleAnalysisPass;
 use rustc_hash::FxHashSet;
 
 use self::{
-    diagnostics::{AdtDefDiagAccumulator, TyLowerDiag, TypeAliasDefDiagAccumulator},
+    diagnostics::{
+        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TyLowerDiag,
+        TypeAliasDefDiagAccumulator,
+    },
     ty::AdtRefId,
 };
 
@@ -50,9 +53,15 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
         adts.map(|adt| {
             adt_analysis::analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
                 .into_iter()
-                .map(|diag| Box::new(diag) as _)
+                .chain(
+                    adt_analysis::analyze_adt::accumulated::<GenericParamDiagAccumulator>(
+                        self.db, adt,
+                    )
+                    .into_iter(),
+                )
         })
         .flatten()
+        .map(|diag| Box::new(diag) as _)
         .collect()
     }
 }
@@ -77,6 +86,12 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
             .map(|&alias| {
                 lower::lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, alias)
                     .into_iter()
+                    .chain(
+                        lower::lower_type_alias::accumulated::<GenericParamDiagAccumulator>(
+                            self.db, alias,
+                        )
+                        .into_iter(),
+                    )
             })
             .flatten()
             .collect();
