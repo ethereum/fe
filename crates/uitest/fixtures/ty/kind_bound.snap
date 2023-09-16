@@ -1,0 +1,50 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/kind_bound.fe
+---
+error[2-0002]: `wrapper3` is not found
+   ┌─ kind_bound.fe:34:15
+   │
+34 │     bar_err3: wrapper3<Wrapper1, Wrapper1>
+   │               ^^^^^^^^ `wrapper3` is not found
+
+error[3-0001]: kind mismatch between two types
+   ┌─ kind_bound.fe:25:23
+   │
+25 │     foo_err: Wrapper2<i32, i32>
+   │                       ^^^ expected `(* -> *)` kind, but found `*` kind
+
+error[3-0001]: kind mismatch between two types
+   ┌─ kind_bound.fe:32:24
+   │
+32 │     bar_err1: Wrapper3<i32, u32>
+   │                        ^^^ expected `((* -> *) -> (* -> *))` kind, but found `*` kind
+
+error[3-0001]: kind mismatch between two types
+   ┌─ kind_bound.fe:33:34
+   │
+33 │     bar_err2: Wrapper3<Wrapper2, u32>
+   │                                  ^^^ expected `(* -> *)` kind, but found `*` kind
+
+error[3-0005]: duplicate type bound is not allowed.
+   ┌─ kind_bound.fe:38:10
+   │
+37 │ pub struct InvalidBound<T: * -> *>
+   │                            ------ first defined here
+38 │ where T: (* -> *) -> *
+   │          ^^^^^^^^^^^^^ duplicate type bound here
+
+error[3-0006]: kind bound is not allowed
+   ┌─ kind_bound.fe:44:13
+   │
+44 │ where Self: *
+   │             ^ kind bound is not allowed here
+
+error[3-0006]: kind bound is not allowed
+   ┌─ kind_bound.fe:50:22
+   │
+50 │ where Wrapper1<i32>: *
+   │                      ^ kind bound is not allowed here
+
+

@@ -14,7 +14,7 @@ use rustc_hash::FxHashMap;
 
 use crate::HirAnalysisDb;
 
-use super::lower::lower_hir_ty;
+use super::lower::{lower_hir_ty, GenericParamOwnerId};
 
 #[salsa::interned]
 pub struct TyId {
@@ -421,6 +421,14 @@ impl AdtRefId {
 
     pub fn from_contract(db: &dyn HirAnalysisDb, contract: Contract) -> Self {
         Self::new(db, AdtRef::Contract(contract))
+    }
+
+    pub(crate) fn generic_owner_id(self, db: &dyn HirAnalysisDb) -> Option<GenericParamOwnerId> {
+        match self.data(db) {
+            AdtRef::Enum(e) => Some(GenericParamOwnerId::new(db, e.into())),
+            AdtRef::Struct(s) => Some(GenericParamOwnerId::new(db, s.into())),
+            AdtRef::Contract(_) => None,
+        }
     }
 }
 

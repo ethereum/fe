@@ -54,9 +54,13 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
             adt_analysis::analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
                 .into_iter()
                 .chain(
-                    adt_analysis::analyze_adt::accumulated::<GenericParamDiagAccumulator>(
-                        self.db, adt,
-                    )
+                    if let Some(owner_id) = adt.generic_owner_id(self.db) {
+                        lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                            self.db, owner_id,
+                        )
+                    } else {
+                        Vec::new()
+                    }
                     .into_iter(),
                 )
         })

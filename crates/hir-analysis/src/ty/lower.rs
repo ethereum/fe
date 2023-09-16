@@ -656,7 +656,7 @@ impl ParamLoc {
     }
 }
 
-#[salsa::tracked]
+#[salsa::interned]
 pub(crate) struct GenericParamOwnerId {
     data: GenericParamOwner,
 }

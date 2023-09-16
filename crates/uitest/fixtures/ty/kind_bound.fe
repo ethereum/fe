@@ -1,14 +1,53 @@
-pub struct PtrWrapper<T, U>
+// * -> *
+pub struct Wrapper1<T>
+{
+    value: T
+}
+
+// (* -> *) -> * -> * 
+pub struct Wrapper2<T, U>
 where T: * -> *
 {
-    ptr: T<U>
+    val: T<U>
+}
+
+
+// ((* -> *) -> *) -> (* -> *) -> *
+pub struct Wrapper3<T, U>
+where T: (* -> *) -> * -> *
+      U: * -> *
+{
+    value: T<U, i32>
 }
 
 pub struct Foo {
-    x: PtrWrapper<Arc, i32>
-    y: PtrWrapper<i32, i32>
+    foo_x: Wrapper2<Wrapper1, i32>
+    foo_err: Wrapper2<i32, i32>
 }
 
-pub struct Arc<T> {
-    inner: T
+
+pub struct Bar {
+    bar_x: Wrapper3<Wrapper2, Wrapper1>
+    bar_y: Wrapper1<Wrapper3<Wrapper2, Wrapper1>>
+    bar_err1: Wrapper3<i32, u32>
+    bar_err2: Wrapper3<Wrapper2, u32>
+    bar_err3: wrapper3<Wrapper1, Wrapper1>
+}
+
+pub struct InvalidBound<T: * -> *>
+where T: (* -> *) -> *
+{
+    val: T<i32>
+}
+
+pub struct InvalidBound2
+where Self: *
+{
+    val: i32
+}
+
+pub struct InvalidBound3
+where Wrapper1<i32>: *
+{
+    val: Wrapper1<i32>
 }
