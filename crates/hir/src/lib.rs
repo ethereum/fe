@@ -50,8 +50,10 @@ pub struct Jar(
     hir_def::TupleTypeId,
     hir_def::UsePathId,
     /// Utility methods for analysis.
+    hir_def::all_items_in_top_mod,
     hir_def::all_structs_in_top_mod,
     hir_def::all_enums_in_top_mod,
+    hir_def::all_traits_in_top_mod,
     hir_def::all_contracts_in_top_mod,
     hir_def::all_type_aliases_in_top_mod,
     /// Accumulated diagnostics.

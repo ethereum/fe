@@ -370,6 +370,12 @@ impl TopLevelMod {
         Visibility::Public
     }
 
+    /// Returns all items in the top level module including ones in nested
+    /// modules.
+    pub fn all_items<'db>(self, db: &'db dyn HirDb) -> &'db Vec<ItemKind> {
+        all_items_in_top_mod(db, self)
+    }
+
     /// Returns all structs in the top level module including ones in nested
     /// modules.
     pub fn all_structs<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Struct> {
@@ -389,18 +395,29 @@ impl TopLevelMod {
     }
 
     /// Returns all type aliases in the top level module including ones in
-    /// nested
+    /// nested modules.
     pub fn all_type_aliases<'db>(self, db: &'db dyn HirDb) -> &'db Vec<TypeAlias> {
         all_type_aliases_in_top_mod(db, self)
+    }
+
+    /// Returns all traits in the top level module including ones in nested
+    /// modules.
+    pub fn all_traits<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Trait> {
+        all_traits_in_top_mod(db, self)
     }
 }
 
 #[salsa::tracked(return_ref)]
+pub fn all_items_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<ItemKind> {
+    top_mod.children_nested(db).collect()
+}
+
+#[salsa::tracked(return_ref)]
 pub fn all_structs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Struct> {
-    top_mod
-        .children_nested(db)
+    all_items_in_top_mod(db, top_mod)
+        .iter()
         .filter_map(|item| match item {
-            ItemKind::Struct(struct_) => Some(struct_),
+            ItemKind::Struct(struct_) => Some(*struct_),
             _ => None,
         })
         .collect()
@@ -408,10 +425,10 @@ pub fn all_structs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Struc
 
 #[salsa::tracked(return_ref)]
 pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
-    top_mod
-        .children_non_nested(db)
+    all_items_in_top_mod(db, top_mod)
+        .iter()
         .filter_map(|item| match item {
-            ItemKind::Enum(enum_) => Some(enum_),
+            ItemKind::Enum(enum_) => Some(*enum_),
             _ => None,
         })
         .collect()
@@ -419,20 +436,32 @@ pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
 
 #[salsa::tracked(return_ref)]
 pub fn all_type_aliases_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<TypeAlias> {
-    top_mod
-        .children_non_nested(db)
+    all_items_in_top_mod(db, top_mod)
+        .iter()
         .filter_map(|item| match item {
-            ItemKind::TypeAlias(alias) => Some(alias),
+            ItemKind::TypeAlias(alias) => Some(*alias),
             _ => None,
         })
         .collect()
 }
+
 #[salsa::tracked(return_ref)]
 pub fn all_contracts_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Contract> {
-    top_mod
-        .children_non_nested(db)
+    all_items_in_top_mod(db, top_mod)
+        .iter()
         .filter_map(|item| match item {
-            ItemKind::Contract(contract) => Some(contract),
+            ItemKind::Contract(contract) => Some(*contract),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait> {
+    all_items_in_top_mod(db, top_mod)
+        .iter()
+        .filter_map(|item| match item {
+            ItemKind::Trait(trait_) => Some(*trait_),
             _ => None,
         })
         .collect()

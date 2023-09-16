@@ -17,7 +17,7 @@ use hir::{
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
-    ty::{TypeAliasAnalysisPass, TypeDefAnalysisPass},
+    ty::{TraitAnalysisPass, TypeAliasAnalysisPass, TypeDefAnalysisPass},
     HirAnalysisDb,
 };
 
@@ -147,5 +147,6 @@ fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(TypeDefAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
     pass_manager
 }

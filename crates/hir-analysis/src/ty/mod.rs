@@ -7,6 +7,7 @@ use self::{
         AdtDefDiagAccumulator, GenericParamDiagAccumulator, TyLowerDiag,
         TypeAliasDefDiagAccumulator,
     },
+    lower::GenericParamOwnerId,
     ty::AdtRefId,
 };
 
@@ -79,6 +80,7 @@ impl<'db> TypeAliasAnalysisPass<'db> {
         Self { db }
     }
 }
+
 impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
@@ -101,5 +103,34 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
             .collect();
 
         diags.into_iter().map(|diag| Box::new(diag) as _).collect()
+    }
+}
+
+pub struct TraitAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+impl<'db> TraitAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: hir::hir_def::TopLevelMod,
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
+        top_mod
+            .all_traits(self.db.as_hir_db())
+            .iter()
+            .map(|&trait_| {
+                let owner_id = GenericParamOwnerId::new(self.db, trait_.into());
+                lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                    self.db, owner_id,
+                )
+            })
+            .flatten()
+            .map(|diag| Box::new(diag) as _)
+            .collect()
     }
 }

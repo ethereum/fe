@@ -1,0 +1,14 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_def.fe
+---
+error[3-0005]: duplicate type bound is not allowed.
+  ┌─ trait_def.fe:4:10
+  │
+3 │ where T: * -> *
+  │          ------ first defined here
+4 │       T: (* -> *) -> *
+  │          ^^^^^^^^^^^^^ duplicate type bound here
+
+

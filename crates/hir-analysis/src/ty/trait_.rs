@@ -37,5 +37,7 @@ pub struct TraitInstId {
 pub struct TraitDef {
     pub trait_: Trait,
     pub args: Vec<TyId>,
-    pub super_traits: Vec<TraitDef>,
+    pub self_arg: TyId,
+    // TODO: we need to collect associated method types here.
+    // methods: Vec<FuncInst>
 }

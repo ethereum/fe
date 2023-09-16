@@ -15,6 +15,7 @@ pub struct Jar(
     /// Type lowering.
     ty::lower::lower_hir_ty,
     ty::lower::lower_adt,
+    ty::lower::lower_trait,
     ty::lower::lower_type_alias,
     ty::lower::collect_generic_params,
     ty::lower::GenericParamOwnerId,
