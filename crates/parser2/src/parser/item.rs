@@ -319,8 +319,17 @@ impl super::Parse for TraitScope {
 
         parser.with_next_expected_tokens(
             |parser| parse_generic_params_opt(parser, false),
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::Colon],
         );
+
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
+            parser.with_next_expected_tokens(
+                |parser| {
+                    parser.parse(SuperTraitListScope::default(), None);
+                },
+                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
+            );
+        }
 
         parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
 
@@ -330,6 +339,17 @@ impl super::Parse for TraitScope {
         }
 
         parser.parse(TraitItemListScope::default(), None);
+    }
+}
+
+define_scope! {SuperTraitListScope, SuperTraitList, Inheritance(Plus)}
+impl super::Parse for SuperTraitListScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::Colon);
+        parser.parse(PathTypeScope::default(), None);
+        while parser.bump_if(SyntaxKind::Plus) {
+            parser.parse(PathTypeScope::default(), None);
+        }
     }
 }
 

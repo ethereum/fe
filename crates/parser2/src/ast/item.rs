@@ -1,4 +1,4 @@
-use super::{ast_node, TupleType};
+use super::{ast_node, PathType, TupleType};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 use rowan::ast::{support, AstNode};
@@ -195,6 +195,21 @@ impl Trait {
     /// NOTE: Currently only supports `fn` items.
     pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
+    }
+
+    pub fn super_trait_list(&self) -> Option<SuperTraitList> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct SuperTraitList,
+    SK::SuperTraitList,
+    IntoIterator<Item=PathType>
+}
+impl SuperTraitList {
+    pub fn colon(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Colon)
     }
 }
 

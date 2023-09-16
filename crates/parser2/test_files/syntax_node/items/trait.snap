@@ -3,8 +3,8 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/items/trait.fe
 ---
-Root@0..593
-  ItemList@0..593
+Root@0..652
+  ItemList@0..652
     Item@0..17
       Trait@0..15
         TraitKw@0..5 "trait"
@@ -309,7 +309,7 @@ Root@0..593
           Newline@353..354 "\n"
           RBrace@354..355 "}"
       Newline@355..357 "\n\n"
-    Item@357..593
+    Item@357..595
       Impl@357..592
         ImplKw@357..361 "impl"
         GenericParamList@361..364
@@ -483,5 +483,70 @@ Root@0..593
               RBrace@589..590 "}"
           Newline@590..591 "\n"
           RBrace@591..592 "}"
-      Newline@592..593 "\n"
+      Newline@592..595 "\n\n\n"
+    Item@595..652
+      Trait@595..652
+        ItemModifier@595..598
+          PubKw@595..598 "pub"
+        WhiteSpace@598..599 " "
+        TraitKw@599..604 "trait"
+        WhiteSpace@604..605 " "
+        Ident@605..613 "SubTrait"
+        GenericParamList@613..616
+          Lt@613..614 "<"
+          TypeGenericParam@614..615
+            Ident@614..615 "T"
+          Gt@615..616 ">"
+        SuperTraitList@616..632
+          Colon@616..617 ":"
+          WhiteSpace@617..618 " "
+          PathType@618..623
+            Path@618..623
+              PathSegment@618..623
+                Ident@618..623 "Parse"
+          WhiteSpace@623..624 " "
+          Plus@624..625 "+"
+          WhiteSpace@625..626 " "
+          PathType@626..632
+            Path@626..629
+              PathSegment@626..629
+                Ident@626..629 "Add"
+            GenericArgList@629..632
+              Lt@629..630 "<"
+              TypeGenericArg@630..631
+                PathType@630..631
+                  Path@630..631
+                    PathSegment@630..631
+                      Ident@630..631 "T"
+              Gt@631..632 ">"
+        WhiteSpace@632..633 " "
+        Newline@633..634 "\n"
+        WhereClause@634..650
+          WhereKw@634..639 "where"
+          WhiteSpace@639..640 " "
+          WherePredicate@640..650
+            PathType@640..641
+              Path@640..641
+                PathSegment@640..641
+                  Ident@640..641 "T"
+            TypeBoundList@641..649
+              Colon@641..642 ":"
+              WhiteSpace@642..643 " "
+              TypeBound@643..649
+                TraitBound@643..649
+                  Path@643..646
+                    PathSegment@643..646
+                      Ident@643..646 "Add"
+                  GenericArgList@646..649
+                    Lt@646..647 "<"
+                    TypeGenericArg@647..648
+                      PathType@647..648
+                        Path@647..648
+                          PathSegment@647..648
+                            Ident@647..648 "T"
+                    Gt@648..649 ">"
+            Newline@649..650 "\n"
+        TraitItemList@650..652
+          LBrace@650..651 "{"
+          RBrace@651..652 "}"
 

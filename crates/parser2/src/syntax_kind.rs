@@ -357,6 +357,8 @@ pub enum SyntaxKind {
     ImplItemList,
     /// `trait Foo {..}`
     Trait,
+    /// `: Trait + Trait2`
+    SuperTraitList,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
