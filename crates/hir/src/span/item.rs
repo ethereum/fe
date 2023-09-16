@@ -144,8 +144,17 @@ define_lazy_span_node!(
     @node {
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
+        (super_traits, super_trait_list, LazySuperTraitListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazySuperTraitListSpan,
+    ast::SuperTraitList,
+    @idx {
+        (super_trait, LazyPathTypeSpan),
     }
 );
 

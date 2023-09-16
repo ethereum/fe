@@ -709,6 +709,34 @@ where
     );
 
     ctxt.with_new_ctxt(
+        |span| span.super_traits(),
+        |ctxt| {
+            for (i, trait_ref) in trait_.super_traits(ctxt.db).iter().enumerate() {
+                ctxt.with_new_ctxt(
+                    |span| span.super_trait(i),
+                    |ctxt| {
+                        if let Some(path) = trait_ref.path.to_opt() {
+                            ctxt.with_new_ctxt(
+                                |span| span.path_moved(),
+                                |ctxt| {
+                                    visitor.visit_path(ctxt, path);
+                                },
+                            )
+                        };
+
+                        ctxt.with_new_ctxt(
+                            |span| span.generic_args_moved(),
+                            |ctxt| {
+                                visitor.visit_generic_arg_list(ctxt, trait_ref.generic_args);
+                            },
+                        );
+                    },
+                );
+            }
+        },
+    );
+
+    ctxt.with_new_ctxt(
         |span| span.where_clause_moved(),
         |ctxt| {
             let id = trait_.where_clause(ctxt.db);

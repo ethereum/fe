@@ -275,6 +275,14 @@ impl Trait {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
+        let super_traits = if let Some(super_traits) = ast.super_trait_list() {
+            super_traits
+                .into_iter()
+                .map(|trait_ref| TraitRef::lower_ast(ctxt, trait_ref))
+                .collect()
+        } else {
+            vec![]
+        };
         let origin = HirOrigin::raw(&ast);
 
         if let Some(item_list) = ast.item_list() {
@@ -290,6 +298,7 @@ impl Trait {
             attributes,
             vis,
             generic_params,
+            super_traits,
             where_clause,
             ctxt.top_mod(),
             origin,
