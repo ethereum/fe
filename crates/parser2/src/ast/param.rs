@@ -310,51 +310,53 @@ impl TraitBound {
 
 ast_node! {
     pub struct KindBound,
-    SK::KindBound
+     SK::KindBoundAbs | SK::KindBoundMono
 }
 impl KindBound {
-    pub fn variant(&self) -> Option<KindBoundVariant> {
-        if let Some(tok) = support::token(self.syntax(), SK::Arrow) {
-            let mut children = support::children(self.syntax());
-            let lhs = children.next();
-            let rhs = children.next();
-            Some(KindBoundVariant::Abs(lhs, tok, rhs))
-        } else if let Some(tok) = support::token(self.syntax(), SK::Star) {
-            Some(KindBoundVariant::Mono(tok))
-        } else {
-            // Case where kind is wrapped in parens, we need to unwrap the outer parens.
-            let child: Option<Self> = support::child(self.syntax());
-            child.map(|child| child.variant()).flatten()
+    pub fn mono(&self) -> Option<KindBoundMono> {
+        match self.syntax().kind() {
+            SK::KindBoundMono => Some(KindBoundMono::cast(self.syntax().clone()).unwrap()),
+            _ => None,
         }
     }
 
-    pub fn arrow(&self) -> Option<SyntaxToken> {
-        match self.variant()? {
-            KindBoundVariant::Abs(_, tok, _) => Some(tok),
-            KindBoundVariant::Mono(_) => None,
+    pub fn abs(&self) -> Option<KindBoundAbs> {
+        match self.syntax().kind() {
+            SK::KindBoundAbs => Some(KindBoundAbs::cast(self.syntax().clone()).unwrap()),
+            _ => None,
         }
     }
+}
 
+ast_node! {
+    pub struct KindBoundMono,
+    SK::KindBoundMono,
+}
+
+ast_node! {
+    pub struct KindBoundAbs,
+    SK::KindBoundAbs,
+}
+impl KindBoundAbs {
     pub fn lhs(&self) -> Option<KindBound> {
-        match self.variant()? {
-            KindBoundVariant::Abs(lhs, _, _) => lhs,
-            KindBoundVariant::Mono(_) => None,
-        }
+        support::child(self.syntax())
     }
 
     pub fn rhs(&self) -> Option<KindBound> {
-        match self.variant()? {
-            KindBoundVariant::Abs(_, _, rhs) => rhs,
-            KindBoundVariant::Mono(_) => None,
-        }
+        support::children(self.syntax()).nth(1)
+    }
+
+    pub fn arrow(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Arrow)
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum KindBoundVariant {
     /// `*`
-    Mono(SyntaxToken),
+    Mono(KindBoundMono),
     /// `KindBound -> KindBound`
-    Abs(Option<KindBound>, SyntaxToken, Option<KindBound>),
+    Abs(KindBoundAbs),
 }
 
 /// A trait for AST nodes that can have generic parameters.

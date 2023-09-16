@@ -24,9 +24,11 @@ where Foo::Bar<T>: Trait
     SubDiv(U)
 }
 
-enum HKTEnum<T: * -> *, U>
+enum HKTEnum<T: * -> *, U, V, W>
 where 
    U: (* -> *) -> *
+   V: * -> * -> (* -> *)
+   W: * -> * -> * -> *
 {
     Foo(U<T>)
 }

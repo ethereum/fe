@@ -139,11 +139,22 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyKindBoundSpan,
     ast::KindBound,
+    @node {
+        (abs, abs, LazyKindBoundAbsSpan),
+        (mono, mono, LazyKindBoundMonoSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyKindBoundAbsSpan,
+    ast::KindBoundAbs,
     @token {
         (arrow, arrow),
     }
     @node {
-       (lhs, lhs, LazyKindBoundSpan),
-       (rhs, rhs, LazyKindBoundSpan ),
+        (lhs, lhs, LazyKindBoundSpan),
+        (rhs, rhs, LazyKindBoundSpan),
     }
 );
+
+define_lazy_span_node! {LazyKindBoundMonoSpan, ast::LazyKindBoundMono}

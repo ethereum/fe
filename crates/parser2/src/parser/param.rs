@@ -179,7 +179,7 @@ impl super::Parse for TypeBoundScope {
         );
 
         if is_type_kind {
-            parser.parse(KindBoundScope::default(), None);
+            parse_kind_bound(parser);
         } else {
             if self.disallow_trait_bound {
                 parser.error_and_recover("trait bounds are not allowed here", None);
@@ -189,24 +189,46 @@ impl super::Parse for TypeBoundScope {
         }
     }
 }
+
+fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) {
+    let checkpoint = parser.checkpoint();
+    let is_newline_trivia = parser.set_newline_as_trivia(false);
+
+    if parser.bump_if(SyntaxKind::LParen) {
+        parse_kind_bound(parser);
+        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
+    } else if parser.current_kind() == Some(SyntaxKind::Star) {
+        parser.parse(KindBoundMonoScope::default(), None);
+    } else {
+        parser.error_and_recover("expected `*` or `(`", None);
+    }
+
+    if parser.current_kind() == Some(SyntaxKind::Arrow) {
+        parser.parse(KindBoundAbsScope::default(), checkpoint.into());
+    }
+    parser.set_newline_as_trivia(is_newline_trivia);
+}
+
 define_scope! {
-    KindBoundScope,
-    KindBound,
+    KindBoundMonoScope,
+    KindBoundMono,
     Inheritance
 }
-impl super::Parse for KindBoundScope {
+impl super::Parse for KindBoundMonoScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if parser.bump_if(SyntaxKind::Star) {
-        } else if parser.bump_if(SyntaxKind::LParen) {
-            parser.parse(KindBoundScope::default(), None);
-            parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
-        } else {
-            parser.error_and_recover("expected `*` or `(`", None);
-        }
+        parser.bump_expected(SyntaxKind::Star);
+    }
+}
 
-        if parser.bump_if(SyntaxKind::Arrow) {
-            parser.parse(KindBoundScope::default(), None);
-        }
+define_scope! {
+    KindBoundAbsScope,
+    KindBoundAbs,
+    Inheritance
+}
+impl super::Parse for KindBoundAbsScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.bump_expected(SyntaxKind::Arrow);
+        parse_kind_bound(parser);
     }
 }
 

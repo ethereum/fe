@@ -1796,7 +1796,7 @@ pub fn walk_kind_bound<V>(
 
     if let Partial::Present(lhs) = lhs {
         ctxt.with_new_ctxt(
-            |span| span.lhs_moved(),
+            |span| span.abs_moved().lhs_moved(),
             |ctxt| {
                 visitor.visit_kind_bound(ctxt, lhs.as_ref());
             },
@@ -1805,7 +1805,7 @@ pub fn walk_kind_bound<V>(
 
     if let Partial::Present(rhs) = rhs {
         ctxt.with_new_ctxt(
-            |span| span.lhs_moved(),
+            |span| span.abs_moved().rhs_moved(),
             |ctxt| {
                 visitor.visit_kind_bound(ctxt, rhs.as_ref());
             },

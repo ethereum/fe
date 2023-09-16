@@ -1,4 +1,4 @@
-use parser::ast::{self, KindBoundVariant};
+use parser::ast::{self};
 
 use crate::hir_def::{kw, params::*, Body, IdentId, Partial, PathId, TypeId};
 
@@ -194,25 +194,26 @@ impl TraitBound {
 
 impl KindBound {
     fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
-        let Some(kind_variant) = ast.map(|ast| ast.variant()).flatten() else {
+        let Some(ast) = ast else {
             return Partial::Absent;
         };
 
-        match kind_variant {
-            KindBoundVariant::Mono(_) => Partial::Present(KindBound::Mono),
-            KindBoundVariant::Abs(lhs, _, rhs) => {
-                let lhs = KindBound::lower_ast_opt(ctxt, lhs)
-                    .to_opt()
-                    .map(|kind| Box::new(kind))
-                    .into();
+        if let Some(abs) = ast.abs() {
+            let lhs = KindBound::lower_ast_opt(ctxt, abs.lhs())
+                .to_opt()
+                .map(|kind| Box::new(kind))
+                .into();
 
-                let rhs = KindBound::lower_ast_opt(ctxt, rhs)
-                    .to_opt()
-                    .map(|kind| Box::new(kind))
-                    .into();
+            let rhs = KindBound::lower_ast_opt(ctxt, abs.rhs())
+                .to_opt()
+                .map(|kind| Box::new(kind))
+                .into();
 
-                Partial::Present(KindBound::Abs(lhs, rhs))
-            }
+            Partial::Present(KindBound::Abs(lhs, rhs))
+        } else if let Some(_) = ast.mono() {
+            Partial::Present(KindBound::Mono)
+        } else {
+            Partial::Absent
         }
     }
 }
