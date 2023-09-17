@@ -8,6 +8,7 @@ use hir::{
     },
     visitor::prelude::*,
 };
+use rustc_hash::FxHashMap;
 
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -20,7 +21,7 @@ use crate::{
 
 use super::{
     trait_::TraitDef,
-    ty::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, Subst, TyData, TyId, TyParam},
+    ty::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
 };
 
 #[salsa::tracked]
@@ -131,7 +132,7 @@ impl TyAlias {
                 },
             );
         }
-        let mut subst = Subst::new();
+        let mut subst = FxHashMap::default();
 
         for (&param, &arg) in self.params.iter().zip(arg_tys.iter()) {
             let arg = if param.kind(db) != arg.kind(db) {
@@ -142,10 +143,10 @@ impl TyAlias {
             } else {
                 arg
             };
-            subst.insert(db, param, arg);
+            subst.insert(param, arg);
         }
 
-        self.alias_to.apply_subst(db, &subst)
+        self.alias_to.apply_subst(db, &mut subst)
     }
 }
 

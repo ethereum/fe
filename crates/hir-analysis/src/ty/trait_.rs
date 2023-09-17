@@ -9,7 +9,6 @@ use super::ty::TyId;
 pub struct Predicate {
     pub trait_: TraitInstId,
     pub ty: TyId,
-    pub trait_args: Vec<TyId>,
 }
 
 /// Represents an each type which implements a trait.

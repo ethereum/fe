@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 use hir::{
     hir_def::{
@@ -14,7 +14,11 @@ use rustc_hash::FxHashMap;
 
 use crate::HirAnalysisDb;
 
-use super::lower::{lower_hir_ty, GenericParamOwnerId};
+use super::{
+    lower::{lower_hir_ty, GenericParamOwnerId},
+    unify::InferenceKey,
+    visitor::TyVisitor,
+};
 
 #[salsa::interned]
 pub struct TyId {
@@ -69,6 +73,13 @@ impl TyId {
         matches!(self.data(db), TyData::TyVar(_))
     }
 
+    pub(super) fn free_inference_keys<'db>(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> &'db BTreeSet<InferenceKey> {
+        free_inference_keys(db, self)
+    }
+
     /// Perform type level application.
     /// If the kind is mismatched, return `TyData::Invalid`.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
@@ -88,7 +99,10 @@ impl TyId {
         Self::new(db, TyData::TyApp(abs, arg))
     }
 
-    pub(crate) fn apply_subst(self, db: &dyn HirAnalysisDb, subst: &Subst) -> TyId {
+    pub(crate) fn apply_subst<S>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> TyId
+    where
+        S: Subst + ?Sized,
+    {
         if let Some(to) = subst.get(self) {
             return to;
         }
@@ -317,8 +331,8 @@ impl fmt::Display for Kind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar {
-    pub id: u32,
     pub kind: Kind,
+    pub(super) key: InferenceKey,
 }
 
 /// Type generics parameter. We also treat `Self` type in a trait definition as
@@ -449,28 +463,17 @@ impl AdtRef {
     }
 }
 
-#[derive(Default, Clone)]
-pub(crate) struct Subst {
-    inner: FxHashMap<TyId, TyId>,
+pub trait Subst {
+    fn get(&mut self, from: TyId) -> Option<TyId>;
+
+    fn apply(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
+        ty.apply_subst(db, self)
+    }
 }
 
-impl Subst {
-    pub(crate) fn new() -> Self {
-        Self::default()
-    }
-
-    /// Insert a substitution mapping.
-    /// This method panics when
-    /// 1. `from` and `to` have different kinds.
-    /// 2. `from` is not a `TyVar` or `TyParam`.
-    pub(crate) fn insert(&mut self, db: &dyn HirAnalysisDb, from: TyId, to: TyId) {
-        debug_assert!(from.kind(db) == to.kind(db));
-        debug_assert!(from.is_ty_var(db,) || from.is_ty_param(db));
-        self.inner.insert(from, to);
-    }
-
-    pub(crate) fn get(&self, from: TyId) -> Option<TyId> {
-        self.inner.get(&from).copied()
+impl Subst for FxHashMap<TyId, TyId> {
+    fn get(&mut self, from: TyId) -> Option<TyId> {
+        FxHashMap::get(self, &from).copied()
     }
 }
 
@@ -535,4 +538,18 @@ impl HasKind for AdtDef {
 
         kind
     }
+}
+
+#[salsa::tracked(return_ref)]
+pub(crate) fn free_inference_keys(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<InferenceKey> {
+    struct FreeInferenceKeyCollector(BTreeSet<InferenceKey>);
+    impl TyVisitor for FreeInferenceKeyCollector {
+        fn visit_var(&mut self, _db: &dyn HirAnalysisDb, var: &TyVar) {
+            self.0.insert(var.key);
+        }
+    }
+
+    let mut collector = FreeInferenceKeyCollector(BTreeSet::new());
+    collector.visit_ty(db, ty);
+    collector.0
 }

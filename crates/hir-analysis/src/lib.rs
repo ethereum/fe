@@ -10,6 +10,7 @@ pub struct Jar(
     /// Type inference.
     ty::ty::TyId,
     ty::ty::ty_kind,
+    ty::ty::free_inference_keys,
     ty::ty::AdtDef,
     ty::ty::AdtRefId,
     /// Type lowering.

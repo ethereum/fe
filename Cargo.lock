@@ -702,6 +702,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ena"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c533630cf40e9caa44bd91aadc88a75d75a4c3a12b4cfde353cbed41daa1e1f1"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "enumn"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,6 +1082,7 @@ dependencies = [
  "derive_more",
  "dir-test",
  "either",
+ "ena",
  "fe-common2",
  "fe-compiler-test-utils",
  "fe-hir",

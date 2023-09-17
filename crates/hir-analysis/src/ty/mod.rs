@@ -18,6 +18,8 @@ pub mod trait_;
 pub mod ty;
 pub mod visitor;
 
+mod unify;
+
 pub struct TypeDefAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
