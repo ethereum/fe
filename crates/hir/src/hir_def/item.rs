@@ -405,6 +405,27 @@ impl TopLevelMod {
     pub fn all_traits<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Trait> {
         all_traits_in_top_mod(db, self)
     }
+
+    /// Returns all traits in the top level module including ones in nested
+    /// modules.
+    pub fn all_impl_traits<'db>(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait> {
+        all_impl_trait_in_top_mod(db, self)
+    }
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_top_mod_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<TopLevelMod> {
+    let tree = ingot.module_tree(db);
+    tree.all_modules().collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_impl_trait_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait> {
+    ingot
+        .all_modules(db)
+        .iter()
+        .flat_map(|top_mod| top_mod.all_impl_traits(db).iter().copied())
+        .collect()
 }
 
 #[salsa::tracked(return_ref)]
@@ -462,6 +483,17 @@ pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait>
         .iter()
         .filter_map(|item| match item {
             ItemKind::Trait(trait_) => Some(*trait_),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_impl_trait_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<ImplTrait> {
+    all_items_in_top_mod(db, top_mod)
+        .iter()
+        .filter_map(|item| match item {
+            ItemKind::ImplTrait(impl_trait) => Some(*impl_trait),
             _ => None,
         })
         .collect()

@@ -3,9 +3,9 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{Trait, TypeAlias as HirTypeAlias},
+    hir_def::{ImplTrait, Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
-    HirDb,
+    HirDb, SpannedHirDb,
 };
 
 use super::ty::Kind;
@@ -121,7 +121,7 @@ impl TyLowerDiag {
         }
     }
 
-    fn sub_diags(&self, db: &dyn hir::SpannedHirDb) -> Vec<SubDiagnostic> {
+    fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
         match self {
             Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
@@ -221,7 +221,7 @@ impl DiagnosticVoucher for TyLowerDiag {
         GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message(db.as_hir_db());
@@ -232,33 +232,31 @@ impl DiagnosticVoucher for TyLowerDiag {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TraitLowerDiag {
+pub enum ImplTraitLowerDiag {
     ExternalTraitForExternalType(DynLazySpan),
 
     ConflictTraitImpl {
-        primary: DynLazySpan,
-        conflict_with: DynLazySpan,
-    },
-
-    KindMismatch {
-        primary: DynLazySpan,
-        trait_def: Trait,
-    },
-
-    TraitArgumentMismatch {
-        span: DynLazySpan,
-        trait_: Trait,
-        n_given_arg: usize,
+        primary: ImplTrait,
+        conflict_with: ImplTrait,
     },
 }
 
-impl TraitLowerDiag {
+impl ImplTraitLowerDiag {
+    pub fn external_trait_for_external_type(impl_trait: ImplTrait) -> Self {
+        Self::ExternalTraitForExternalType(impl_trait.lazy_span().trait_ref().into())
+    }
+
+    pub(super) fn conflict_impl(primary: ImplTrait, conflict_with: ImplTrait) -> Self {
+        Self::ConflictTraitImpl {
+            primary,
+            conflict_with,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
-            Self::KindMismatch { .. } => 2,
-            Self::TraitArgumentMismatch { .. } => 3,
         }
     }
 
@@ -269,12 +267,6 @@ impl TraitLowerDiag {
             }
 
             Self::ConflictTraitImpl { .. } => "conflict trait implementation".to_string(),
-
-            Self::KindMismatch { .. } => "type doesn't satisfy required kind bound".to_string(),
-
-            Self::TraitArgumentMismatch { .. } => {
-                "given trait argument number mismatch".to_string()
-            }
         }
     }
 
@@ -293,15 +285,71 @@ impl TraitLowerDiag {
                 SubDiagnostic::new(
                     LabelStyle::Primary,
                     "conflict trait implementation".to_string(),
-                    primary.resolve(db),
+                    primary.lazy_span().ty().resolve(db),
                 ),
                 SubDiagnostic::new(
                     LabelStyle::Secondary,
                     "conflict with this trait implementation".to_string(),
-                    conflict_with.resolve(db),
+                    conflict_with.lazy_span().ty().resolve(db),
                 ),
             ],
+        }
+    }
 
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+}
+
+impl DiagnosticVoucher for ImplTraitLowerDiag {
+    fn error_code(&self) -> GlobalErrorCode {
+        GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
+    }
+
+    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+        let severity = self.severity();
+        let error_code = self.error_code();
+        let message = self.message(db.as_hir_db());
+        let sub_diags = self.sub_diags(db);
+
+        CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TraitSatisfactionDiag {
+    KindMismatch {
+        primary: DynLazySpan,
+        trait_def: Trait,
+    },
+
+    TraitArgumentMismatch {
+        span: DynLazySpan,
+        trait_: Trait,
+        n_given_arg: usize,
+    },
+}
+
+impl TraitSatisfactionDiag {
+    fn local_code(&self) -> u16 {
+        match self {
+            Self::KindMismatch { .. } => 0,
+            Self::TraitArgumentMismatch { .. } => 1,
+        }
+    }
+
+    fn message(&self, db: &dyn HirDb) -> String {
+        match self {
+            Self::KindMismatch { .. } => "type doesn't satisfy required kind bound".to_string(),
+
+            Self::TraitArgumentMismatch { .. } => {
+                "given trait argument number mismatch".to_string()
+            }
+        }
+    }
+
+    fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
+        match self {
             Self::KindMismatch { primary, trait_def } => vec![
                 SubDiagnostic::new(
                     LabelStyle::Primary,
@@ -345,12 +393,12 @@ impl TraitLowerDiag {
     }
 }
 
-impl DiagnosticVoucher for TraitLowerDiag {
+impl DiagnosticVoucher for TraitSatisfactionDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message(db.as_hir_db());

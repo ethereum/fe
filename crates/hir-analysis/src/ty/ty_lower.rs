@@ -29,6 +29,17 @@ pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId
     TyBuilder::new(db, scope).lower_ty(ty)
 }
 
+pub(crate) fn lower_hir_ty_with_diag(
+    db: &dyn HirAnalysisDb,
+    hir_ty: HirTyId,
+    hir_ty_span: LazyTySpan,
+    scope: ScopeId,
+) -> (TyId, Vec<TyLowerDiag>) {
+    let mut collector = TyDiagCollector::new(db, scope);
+    let diags = collector.collect(hir_ty, hir_ty_span);
+    (lower_hir_ty(db, hir_ty, scope), diags)
+}
+
 #[salsa::tracked]
 pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
@@ -183,7 +194,7 @@ impl<'db> TyBuilder<'db> {
         let arg_tys: Vec<_> = args
             .data(self.db.as_hir_db())
             .iter()
-            .map(|arg| self.lower_generic_arg(arg))
+            .map(|arg| lower_generic_arg(self.db, arg, self.scope))
             .collect();
 
         match path_ty {
@@ -235,7 +246,7 @@ impl<'db> TyBuilder<'db> {
         let db = self.db;
         args.data(self.db.as_hir_db())
             .iter()
-            .map(|arg| self.lower_generic_arg(arg))
+            .map(|arg| lower_generic_arg(self.db, arg, self.scope))
             .fold(target_ty, |acc, arg| TyId::app(db, acc, arg))
     }
 
@@ -307,18 +318,6 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    fn lower_generic_arg(&mut self, arg: &GenericArg) -> TyId {
-        match arg {
-            GenericArg::Type(ty_arg) => ty_arg
-                .ty
-                .to_opt()
-                .map(|ty| lower_hir_ty(self.db, ty, self.scope))
-                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
-
-            GenericArg::Const(_) => todo!(),
-        }
-    }
-
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId) -> Either<NameResKind, TyId> {
@@ -334,6 +333,52 @@ impl<'db> TyBuilder<'db> {
                 Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
             }
         }
+    }
+}
+
+pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope: ScopeId) -> TyId {
+    match arg {
+        GenericArg::Type(ty_arg) => ty_arg
+            .ty
+            .to_opt()
+            .map(|ty| lower_hir_ty(db, ty, scope))
+            .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
+
+        GenericArg::Const(_) => todo!(),
+    }
+}
+
+pub(super) fn lower_generic_arg_list_with_diag(
+    db: &dyn HirAnalysisDb,
+    generic_args: GenericArgListId,
+    args_span: LazyGenericArgListSpan,
+    scope: ScopeId,
+) -> (Vec<TyId>, Vec<TyLowerDiag>) {
+    let mut diags = vec![];
+    let mut args = vec![];
+    for (i, arg) in generic_args.data(db.as_hir_db()).iter().enumerate() {
+        let (ty, arg_diags) = lower_generic_arg_with_diag(db, arg, args_span.arg(i), scope);
+        args.push(ty);
+        diags.extend(arg_diags);
+    }
+
+    (args, diags)
+}
+
+pub(super) fn lower_generic_arg_with_diag(
+    db: &dyn HirAnalysisDb,
+    arg: &GenericArg,
+    arg_span: LazyGenericArgSpan,
+    scope: ScopeId,
+) -> (TyId, Vec<TyLowerDiag>) {
+    match arg {
+        GenericArg::Type(ty_arg) => ty_arg
+            .ty
+            .to_opt()
+            .map(|ty| lower_hir_ty_with_diag(db, ty, arg_span.into_type_arg().ty_moved(), scope))
+            .unwrap_or_else(|| (TyId::invalid(db, InvalidCause::Other), vec![])),
+
+        GenericArg::Const(_) => todo!(),
     }
 }
 

@@ -10,7 +10,7 @@ use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 use super::{
     diagnostics::TyLowerDiag,
     ty::{AdtDef, AdtRefId, TyId},
-    ty_lower::{lower_adt, lower_hir_ty},
+    ty_lower::{lower_adt, lower_hir_ty, lower_hir_ty_with_diag},
     visitor::{walk_ty, TyDiagCollector, TyVisitor},
 };
 
@@ -68,15 +68,8 @@ impl<'db> AdtDefAnalysisVisitor<'db> {
 
 impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        self.accumulated.extend(collect_ty_lower_diags(
-            self.db,
-            hir_ty,
-            ctxt.span().unwrap(),
-            self.scope,
-        ));
-
-        // We don't call `walk_ty` to make sure that we don't visit ty
-        // recursively, which is visited by `collect_ty_lower_diags`.
+        self.accumulated
+            .extend(lower_hir_ty_with_diag(self.db, hir_ty, ctxt.span().unwrap(), self.scope).1);
     }
 
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {

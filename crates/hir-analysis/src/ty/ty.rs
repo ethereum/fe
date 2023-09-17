@@ -5,7 +5,7 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, IdentId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
+        Contract, Enum, IdentId, IngotId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
         TypeId as HirTyId,
     },
     span::DynLazySpan,
@@ -34,6 +34,13 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
+        match self.data(db) {
+            TyData::TyCon(TyConcrete::Adt(adt)) => adt.ingot(db).into(),
+            _ => None,
         }
     }
 
@@ -192,6 +199,15 @@ impl AdtDef {
                 .field_moved(idx)
                 .ty_moved()
                 .into(),
+        }
+    }
+
+    pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        let hir_db = db.as_hir_db();
+        match self.adt_ref(db).data(db) {
+            AdtRef::Enum(e) => e.top_mod(hir_db).ingot(hir_db),
+            AdtRef::Struct(s) => s.top_mod(hir_db).ingot(hir_db),
+            AdtRef::Contract(c) => c.top_mod(hir_db).ingot(hir_db),
         }
     }
 }

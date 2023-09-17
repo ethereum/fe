@@ -1,10 +1,13 @@
 /// This module contains the logic for solving trait bounds.
-use hir::hir_def::{ImplTrait, Trait};
+use hir::hir_def::{ImplTrait, IngotId, Trait};
 use rustc_hash::FxHashMap;
 
 use crate::HirAnalysisDb;
 
-use super::ty::{Subst, TyId};
+use super::{
+    diagnostics::TraitSatisfactionDiag,
+    ty::{Kind, Subst, TyId},
+};
 
 #[salsa::interned]
 pub(crate) struct Implementor {
@@ -24,6 +27,19 @@ impl Implementor {
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) struct TraitImplTable {
     pub(crate) impls: FxHashMap<TraitDef, Vec<Implementor>>,
+}
+
+impl TraitImplTable {
+    pub(crate) fn insert(&mut self, db: &dyn HirAnalysisDb, implementor: Implementor) {
+        self.impls
+            .entry(implementor.trait_def(db))
+            .or_default()
+            .push(implementor);
+    }
+
+    pub(crate) fn get(&self, trait_def: TraitDef) -> Option<&Vec<Implementor>> {
+        self.impls.get(&trait_def)
+    }
 }
 
 /// Represents an instantiated trait which is implemented to types.
@@ -59,4 +75,15 @@ pub(crate) struct TraitDef {
     pub self_arg: TyId,
     // TODO: we need to collect associated method types here.
     // methods: Vec<FuncInst>
+}
+
+impl TraitDef {
+    pub(crate) fn expected_implementor_kind(self, db: &dyn HirAnalysisDb) -> &Kind {
+        self.self_arg(db).kind(db)
+    }
+
+    pub(crate) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        let hir_db = db.as_hir_db();
+        self.trait_(db).top_mod(hir_db).ingot(hir_db)
+    }
 }

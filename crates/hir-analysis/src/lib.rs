@@ -21,6 +21,7 @@ pub struct Jar(
     ty::ty_lower::GenericParamOwnerId,
     /// Trait lowering.
     ty::trait_lower::lower_trait,
+    ty::trait_lower::collect_trait_impl,
     /// ADT analysis.
     ty::adt_analysis::check_recursive_adt,
     ty::adt_analysis::analyze_adt,
