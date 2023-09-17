@@ -3,7 +3,7 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::TypeAlias as HirTypeAlias,
+    hir_def::{Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
     HirDb,
 };
@@ -217,6 +217,135 @@ impl TyLowerDiag {
 }
 
 impl DiagnosticVoucher for TyLowerDiag {
+    fn error_code(&self) -> GlobalErrorCode {
+        GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
+    }
+
+    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+        let severity = self.severity();
+        let error_code = self.error_code();
+        let message = self.message(db.as_hir_db());
+        let sub_diags = self.sub_diags(db);
+
+        CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TraitLowerDiag {
+    ExternalTraitForExternalType(DynLazySpan),
+
+    ConflictTraitImpl {
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+    },
+
+    KindMismatch {
+        primary: DynLazySpan,
+        trait_def: Trait,
+    },
+
+    TraitArgumentMismatch {
+        span: DynLazySpan,
+        trait_: Trait,
+        n_given_arg: usize,
+    },
+}
+
+impl TraitLowerDiag {
+    fn local_code(&self) -> u16 {
+        match self {
+            Self::ExternalTraitForExternalType(_) => 0,
+            Self::ConflictTraitImpl { .. } => 1,
+            Self::KindMismatch { .. } => 2,
+            Self::TraitArgumentMismatch { .. } => 3,
+        }
+    }
+
+    fn message(&self, db: &dyn HirDb) -> String {
+        match self {
+            Self::ExternalTraitForExternalType(_) => {
+                "external trait cannot be implemented for external type".to_string()
+            }
+
+            Self::ConflictTraitImpl { .. } => "conflict trait implementation".to_string(),
+
+            Self::KindMismatch { .. } => "type doesn't satisfy required kind bound".to_string(),
+
+            Self::TraitArgumentMismatch { .. } => {
+                "given trait argument number mismatch".to_string()
+            }
+        }
+    }
+
+    fn sub_diags(&self, db: &dyn hir::SpannedHirDb) -> Vec<SubDiagnostic> {
+        match self {
+            Self::ExternalTraitForExternalType(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "external trait cannot be implemented for external type".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::ConflictTraitImpl {
+                primary,
+                conflict_with,
+            } => vec![
+                SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "conflict trait implementation".to_string(),
+                    primary.resolve(db),
+                ),
+                SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "conflict with this trait implementation".to_string(),
+                    conflict_with.resolve(db),
+                ),
+            ],
+
+            Self::KindMismatch { primary, trait_def } => vec![
+                SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "type doesn't satisfy required kind bound here".to_string(),
+                    primary.resolve(db),
+                ),
+                SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "trait is defined here".to_string(),
+                    trait_def.lazy_span().name().resolve(db),
+                ),
+            ],
+
+            Self::TraitArgumentMismatch {
+                span,
+                trait_,
+                n_given_arg,
+            } => {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected {} arguments here, but {} given",
+                            trait_.generic_params(db.as_hir_db()).len(db.as_hir_db()),
+                            n_given_arg,
+                        ),
+                        span.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("trait defined here"),
+                        trait_.lazy_span().name().resolve(db),
+                    ),
+                ]
+            }
+        }
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+}
+
+impl DiagnosticVoucher for TraitLowerDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
     }
