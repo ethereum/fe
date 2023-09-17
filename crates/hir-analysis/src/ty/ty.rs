@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 use crate::HirAnalysisDb;
 
 use super::{
-    lower::{lower_hir_ty, GenericParamOwnerId},
+    ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::InferenceKey,
     visitor::TyVisitor,
 };

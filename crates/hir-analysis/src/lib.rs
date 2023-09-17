@@ -14,18 +14,21 @@ pub struct Jar(
     ty::ty::AdtDef,
     ty::ty::AdtRefId,
     /// Type lowering.
-    ty::lower::lower_hir_ty,
-    ty::lower::lower_adt,
-    ty::lower::lower_trait,
-    ty::lower::lower_type_alias,
-    ty::lower::collect_generic_params,
-    ty::lower::GenericParamOwnerId,
+    ty::ty_lower::lower_hir_ty,
+    ty::ty_lower::lower_adt,
+    ty::ty_lower::lower_type_alias,
+    ty::ty_lower::collect_generic_params,
+    ty::ty_lower::GenericParamOwnerId,
+    /// Trait lowering.
+    ty::trait_lower::lower_trait,
     /// ADT analysis.
     ty::adt_analysis::check_recursive_adt,
     ty::adt_analysis::analyze_adt,
-    // Trait resolution.
+    /// Trait resolution.
     ty::trait_::TraitDef,
     ty::trait_::TraitInstId,
+    ty::trait_::Implementor,
+    /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
     ty::diagnostics::GenericParamDiagAccumulator,

@@ -2,7 +2,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use crate::HirAnalysisDb;
 
-use super::ty::{Kind, Subst, TyData, TyId};
+use super::ty::{Kind, Subst, TyData, TyId, TyVar};
 
 pub struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -10,6 +10,13 @@ pub struct UnificationTable<'db> {
 }
 
 impl<'db> UnificationTable<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self {
+            db,
+            table: InPlaceUnificationTable::new(),
+        }
+    }
+
     /// Returns true if the two types were unified.
     pub fn unify(&mut self, ty1: TyId, ty2: TyId) -> bool {
         let snapshot = self.table.snapshot();
@@ -23,7 +30,17 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    pub fn new_key(&mut self, kind: Kind) -> InferenceKey {
+    pub fn new_var(&mut self, kind: &Kind) -> TyId {
+        let key = self.new_key(kind);
+        let ty_var = TyVar {
+            kind: kind.clone(),
+            key,
+        };
+
+        TyId::new(self.db, TyData::TyVar(ty_var))
+    }
+
+    pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
         self.table.new_key(InferenceValue::Unbounded(kind.clone()))
     }
 

@@ -9,8 +9,8 @@ use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 
 use super::{
     diagnostics::TyLowerDiag,
-    lower::{lower_adt, lower_hir_ty},
     ty::{AdtDef, AdtRefId, TyId},
+    ty_lower::{lower_adt, lower_hir_ty},
     visitor::{walk_ty, TyDiagCollector, TyVisitor},
 };
 

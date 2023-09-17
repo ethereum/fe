@@ -7,15 +7,16 @@ use self::{
         AdtDefDiagAccumulator, GenericParamDiagAccumulator, TyLowerDiag,
         TypeAliasDefDiagAccumulator,
     },
-    lower::GenericParamOwnerId,
     ty::AdtRefId,
+    ty_lower::GenericParamOwnerId,
 };
 
 pub mod adt_analysis;
 pub mod diagnostics;
-pub mod lower;
 pub mod trait_;
+pub mod trait_lower;
 pub mod ty;
+pub mod ty_lower;
 pub mod visitor;
 
 mod unify;
@@ -58,7 +59,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
                 .into_iter()
                 .chain(
                     if let Some(owner_id) = adt.generic_owner_id(self.db) {
-                        lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                        ty_lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
                             self.db, owner_id,
                         )
                     } else {
@@ -92,14 +93,16 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
             .all_type_aliases(self.db.as_hir_db())
             .iter()
             .map(|&alias| {
-                lower::lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, alias)
-                    .into_iter()
-                    .chain(
-                        lower::lower_type_alias::accumulated::<GenericParamDiagAccumulator>(
-                            self.db, alias,
-                        )
-                        .into_iter(),
+                ty_lower::lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(
+                    self.db, alias,
+                )
+                .into_iter()
+                .chain(
+                    ty_lower::lower_type_alias::accumulated::<GenericParamDiagAccumulator>(
+                        self.db, alias,
                     )
+                    .into_iter(),
+                )
             })
             .flatten()
             .collect();
@@ -127,7 +130,7 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
             .iter()
             .map(|&trait_| {
                 let owner_id = GenericParamOwnerId::new(self.db, trait_.into());
-                lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                ty_lower::collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
                     self.db, owner_id,
                 )
             })

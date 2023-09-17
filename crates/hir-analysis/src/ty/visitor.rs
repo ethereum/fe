@@ -8,8 +8,8 @@ use crate::HirAnalysisDb;
 
 use super::{
     diagnostics::TyLowerDiag,
-    lower::lower_hir_ty,
     ty::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar},
+    ty_lower::lower_hir_ty,
 };
 
 pub trait TyVisitor {

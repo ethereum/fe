@@ -34,11 +34,6 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
 }
 
-#[salsa::tracked]
-pub fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
-    TraitBuilder::new(db, trait_).build()
-}
-
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_generic_params(
     db: &dyn HirAnalysisDb,
@@ -419,32 +414,6 @@ impl<'db> AdtTyBuilder<'db> {
                 let variant = AdtField::new(variant.name, tys, scope);
                 self.variants.push(variant)
             })
-    }
-}
-
-struct TraitBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: Trait,
-    params: Vec<TyId>,
-    self_args: TyId,
-    // TODO: We need to lower associated methods here.
-    // methods: Vec
-}
-
-impl<'db> TraitBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
-        let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
-        let params_set = collect_generic_params(db, params_owner_id);
-        Self {
-            db,
-            trait_,
-            params: params_set.params.clone(),
-            self_args: params_set.trait_self.unwrap(),
-        }
-    }
-
-    fn build(self) -> TraitDef {
-        TraitDef::new(self.db, self.trait_, self.params, self.self_args)
     }
 }
 
