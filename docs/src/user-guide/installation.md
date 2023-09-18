@@ -49,7 +49,7 @@ brew install fe-lang/tap/fe
 
 ## Building from source
 
-You can also build Fe from the source code provided in our Github [repository](https://github.com/ethereum/fe). To do this you will need to have [Rust](https://www.rust-lang.org/tools/install) installed. Then, cloen the github repository using:
+You can also build Fe from the source code provided in our Github [repository](https://github.com/ethereum/fe). To do this you will need to have [Rust](https://www.rust-lang.org/tools/install) installed. Then, clone the github repository using:
 
 ```sh
 git clone https://github.com/ethereum/fe.git
