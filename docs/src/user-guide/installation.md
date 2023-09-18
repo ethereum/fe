@@ -40,7 +40,7 @@ SUBCOMMANDS:
 
 ## Package managers
 
-Mac users can also get Fe from [Homebrew](https://brew.sh/). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
+Fe can also be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
 
 ```sh
 brew install fe-lang/tap/fe
