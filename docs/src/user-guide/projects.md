@@ -1,6 +1,6 @@
 # Fe projects
 
-A project is a collection of files containing Fe code and configuration data. Often, smart contract development can become too complex to contain all the necessary code inside a single file. In these cases, it is useful to organize your work into multiple files and directories. This allows you to group thematically linked code and seletively import the code you need when you need it.
+A project is a collection of files containing Fe code and configuration data. Often, smart contract development can become too complex to contain all the necessary code inside a single file. In these cases, it is useful to organize your work into multiple files and directories. This allows you to group thematically linked code and selectively import the code you need when you need it.
 
 ## Creating a project
 
@@ -69,7 +69,7 @@ The templates created using `fe new` include a simple test demonstrating the tes
 
 To write a unit test, create a function with a name beginning with `test_`. The function should instantiate your contract and call the contract function you want to test. You can use `assert` to check that the returned value matches an expected value.
 
-For example, to test the `say_hello` function on `Contract` whioch is expected to return the string `"hello"`:
+For example, to test the `say_hello` function on `Contract` which is expected to return the string `"hello"`:
 
 ```rust
 fn test_contract(mut ctx: Context) {
