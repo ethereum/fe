@@ -25,7 +25,7 @@ struct AuctionEnded {
     pub amount: u256
 }
 
-contract SimpleOpenAuction {
+contract Auction {
     // states
     auction_end_time: u256
     beneficiary: address
@@ -70,7 +70,7 @@ contract SimpleOpenAuction {
         return true
     }
 
-    pub fn action_end(mut self, mut ctx: Context) {
+    pub fn auction_end(mut self, mut ctx: Context) {
         if ctx.block_timestamp() <= self.auction_end_time {
             revert AuctionNotYetEnded()
         }
@@ -81,6 +81,18 @@ contract SimpleOpenAuction {
         ctx.emit(AuctionEnded(winner: self.highest_bidder, amount: self.highest_bid))
 
         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
+    }
+
+    pub fn check_highest_bidder(mut self, ctx: Context) -> address {
+        return self.highest_bidder;
+    }
+
+    pub fn check_highest_bid(mut self, ctx: Context) -> u256 {
+        return self.highest_bid;
+    }
+
+    pub fn check_ended(mut self, ctx: Context) -> bool {
+        return self.ended;
     }
 }
 ```
