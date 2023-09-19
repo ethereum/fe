@@ -2,13 +2,14 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     hir_def::{
-        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field,
-        FieldDef, FieldDefListId, FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId,
-        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
-        Impl, ImplTrait, ItemKind, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt,
-        StmtId, Struct, TopLevelMod, Trait, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind,
-        Use, UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
-        WhereClauseId, WherePredicate,
+        attr,
+        scope_graph::{FieldParent, ScopeId},
+        Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
+        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
+        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
+        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
+        Trait, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
     HirDb,
@@ -1491,10 +1492,14 @@ pub fn walk_field_def_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    let parent_item = ctxt.scope().item();
+    let parent = match ctxt.scope() {
+        ScopeId::Item(item) => FieldParent::Item(item),
+        ScopeId::Variant(item, idx) => FieldParent::Variant(item, idx),
+        _ => unreachable!(),
+    };
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::Field(parent_item, idx),
+            ScopeId::Field(parent, idx),
             |span| span.field_moved(idx),
             |ctxt| {
                 visitor.visit_field_def(ctxt, field);

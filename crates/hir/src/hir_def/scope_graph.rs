@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamLabel, IdentId,
-    IngotId, ItemKind, TopLevelMod, Use, Visibility,
+    IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
 };
 
 /// Represents a scope relation graph in a top-level module.
@@ -82,7 +82,7 @@ pub enum ScopeId {
     FuncParam(ItemKind, usize),
 
     /// A field scope.
-    Field(ItemKind, usize),
+    Field(FieldParent, usize),
 
     /// A variant scope.
     Variant(ItemKind, usize),
@@ -97,7 +97,8 @@ impl ScopeId {
             ScopeId::Item(item) => item.top_mod(db),
             ScopeId::GenericParam(item, _) => item.top_mod(db),
             ScopeId::FuncParam(item, _) => item.top_mod(db),
-            ScopeId::Field(item, _) => item.top_mod(db),
+            ScopeId::Field(FieldParent::Item(item), _) => item.top_mod(db),
+            ScopeId::Field(FieldParent::Variant(item, _), _) => item.top_mod(db),
             ScopeId::Variant(item, _) => item.top_mod(db),
             ScopeId::Block(body, _) => body.top_mod(db),
         }
@@ -122,7 +123,8 @@ impl ScopeId {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, _) => item,
             ScopeId::FuncParam(item, _) => item,
-            ScopeId::Field(item, _) => item,
+            ScopeId::Field(FieldParent::Item(item), _) => item,
+            ScopeId::Field(FieldParent::Variant(item, _), _) => item,
             ScopeId::Variant(item, _) => item,
             ScopeId::Block(body, _) => body.into(),
         }
@@ -261,11 +263,18 @@ impl ScopeId {
                 enum_.variants(db).data(db)[idx].name.to_opt()
             }
 
-            ScopeId::Field(parent, idx) => match parent {
+            ScopeId::Field(FieldParent::Item(parent), idx) => match parent {
                 ItemKind::Struct(s) => s.fields(db).data(db)[idx].name.to_opt(),
                 ItemKind::Contract(c) => c.fields(db).data(db)[idx].name.to_opt(),
                 _ => unreachable!(),
             },
+            ScopeId::Field(FieldParent::Variant(parent, vidx), fidx) => {
+                let enum_: Enum = parent.try_into().unwrap();
+                match enum_.variants(db).data(db)[vidx].kind {
+                    VariantKind::Record(fields) => fields.data(db)[fidx].name.to_opt(),
+                    _ => unreachable!(),
+                }
+            }
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
@@ -297,11 +306,24 @@ impl ScopeId {
                 Some(enum_.lazy_span().variants().variant(idx).name().into())
             }
 
-            ScopeId::Field(parent, idx) => match parent {
+            ScopeId::Field(FieldParent::Item(parent), idx) => match parent {
                 ItemKind::Struct(s) => Some(s.lazy_span().fields().field(idx).name().into()),
                 ItemKind::Contract(c) => Some(c.lazy_span().fields().field(idx).name().into()),
                 _ => unreachable!(),
             },
+            ScopeId::Field(FieldParent::Variant(parent, vidx), fidx) => {
+                let enum_: Enum = parent.try_into().unwrap();
+                Some(
+                    enum_
+                        .lazy_span()
+                        .variants()
+                        .variant(vidx)
+                        .fields()
+                        .field(fidx)
+                        .name()
+                        .into(),
+                )
+            }
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
@@ -351,6 +373,12 @@ impl ScopeId {
             Some(name)
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FieldParent {
+    Item(ItemKind),
+    Variant(ItemKind, usize),
 }
 
 struct ScopeGraphItemIterDfs<'a> {
@@ -542,7 +570,13 @@ pub struct AnonEdge();
 #[cfg(test)]
 mod tests {
 
-    use crate::{hir_def::ItemKind, test_db::TestDb};
+    use crate::{
+        hir_def::{
+            scope_graph::{FieldParent, ScopeId},
+            ItemKind,
+        },
+        test_db::TestDb,
+    };
 
     #[test]
     fn item_tree() {
@@ -555,7 +589,7 @@ mod tests {
                     fn baz()
                 }
             }
-        
+
             enum MyEnum {}
 
             mod baz {
@@ -580,5 +614,31 @@ mod tests {
                 _ => unreachable!(),
             }
         }
+    }
+
+    #[test]
+    fn enum_record_fields() {
+        let mut db = TestDb::default();
+
+        let text = r#"
+            enum Foo {
+                X { a: i8, b: i8 },
+            }
+        "#;
+
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
+        let root = scope_graph.top_mod.scope();
+        let enum_ = scope_graph.children(root).next().unwrap();
+        assert!(matches!(enum_.item(), ItemKind::Enum(_)));
+
+        let variant = scope_graph.children(enum_).next().unwrap();
+        assert!(matches!(variant, ScopeId::Variant(_, _)));
+
+        let field = scope_graph.children(variant).next().unwrap();
+        assert!(matches!(
+            field,
+            ScopeId::Field(FieldParent::Variant(_, _), _)
+        ));
     }
 }
