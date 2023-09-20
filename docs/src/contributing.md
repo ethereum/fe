@@ -20,7 +20,11 @@ To add to the docs you can fork the Fe Github repository and make updates in the
 
 You are also welcome to work on Fe itself. There are many opportunities to help build the language, for example working on the compiler or the language specification, adding tests or developing tooling. 
 
-It is a good idea to connect with the existign Fe community to find out what are the priority areas that need attention and to discuss your idea in context before putting time into it. You can find Fe developers on the [Discord](https://discord.gg/yCT6NYBb) or you can use the [Github issue board](https://github.com/ethereum/fe/issues).
+It is a good idea to connect with the existing Fe community to find out what are the priority areas that need attention and to discuss your idea in context before putting time into it. You can find Fe developers on the [Discord](https://discord.gg/yCT6NYBb) or you can use the [Github issue board](https://github.com/ethereum/fe/issues).
+
+> **Please note** that there has been a substantial amount of work done on the `fe-v2` branch of the repository that includes breaking changes. When merged `fe-v2` will revert new contributions based on `master`. 
+> 
+> To make your work v2 ready you can build off the `fe-v2` branch. It is recommended to seek out issues tagged `v2` in the Github Issue board.
 
 ### 4. Community engagement
 
