@@ -88,7 +88,7 @@ Root@0..560
               Colon@126..127 ":"
               WhiteSpace@127..128 " "
               TypeBound@128..138
-                TraitBound@128..138
+                TraitRef@128..138
                   Path@128..138
                     PathSegment@128..131
                       Ident@128..131 "foo"
@@ -172,7 +172,7 @@ Root@0..560
               Colon@233..234 ":"
               WhiteSpace@234..235 " "
               TypeBound@235..245
-                TraitBound@235..245
+                TraitRef@235..245
                   Path@235..245
                     PathSegment@235..238
                       Ident@235..238 "foo"
@@ -183,7 +183,7 @@ Root@0..560
               Plus@246..247 "+"
               WhiteSpace@247..248 " "
               TypeBound@248..258
-                TraitBound@248..258
+                TraitRef@248..258
                   Path@248..258
                     PathSegment@248..251
                       Ident@248..251 "bar"
@@ -204,7 +204,7 @@ Root@0..560
               Colon@272..273 ":"
               WhiteSpace@273..274 " "
               TypeBound@274..284
-                TraitBound@274..284
+                TraitRef@274..284
                   Path@274..284
                     PathSegment@274..277
                       Ident@274..277 "bar"
@@ -227,7 +227,7 @@ Root@0..560
               Colon@298..299 ":"
               WhiteSpace@299..300 " "
               TypeBound@300..306
-                TraitBound@300..306
+                TraitRef@300..306
                   Path@300..306
                     PathSegment@300..306
                       Ident@300..306 "Trait1"
@@ -235,7 +235,7 @@ Root@0..560
               Plus@307..308 "+"
               WhiteSpace@308..309 " "
               TypeBound@309..315
-                TraitBound@309..315
+                TraitRef@309..315
                   Path@309..315
                     PathSegment@309..315
                       Ident@309..315 "Trait2"
@@ -258,7 +258,7 @@ Root@0..560
               Colon@329..330 ":"
               WhiteSpace@330..331 " "
               TypeBound@331..337
-                TraitBound@331..337
+                TraitRef@331..337
                   Path@331..337
                     PathSegment@331..337
                       Ident@331..337 "Trait1"
@@ -266,7 +266,7 @@ Root@0..560
               Plus@338..339 "+"
               WhiteSpace@339..340 " "
               TypeBound@340..346
-                TraitBound@340..346
+                TraitRef@340..346
                   Path@340..346
                     PathSegment@340..346
                       Ident@340..346 "Trait2"
@@ -289,7 +289,7 @@ Root@0..560
               Colon@360..361 ":"
               WhiteSpace@361..362 " "
               TypeBound@362..368
-                TraitBound@362..368
+                TraitRef@362..368
                   Path@362..368
                     PathSegment@362..368
                       Ident@362..368 "Trait2"
@@ -297,7 +297,7 @@ Root@0..560
               Plus@369..370 "+"
               WhiteSpace@370..371 " "
               TypeBound@371..377
-                TraitBound@371..377
+                TraitRef@371..377
                   Path@371..377
                     PathSegment@371..377
                       Ident@371..377 "Trait3"
@@ -356,7 +356,7 @@ Root@0..560
               Colon@431..432 ":"
               WhiteSpace@432..433 " "
               TypeBound@433..446
-                TraitBound@433..446
+                TraitRef@433..446
                   Path@433..446
                     PathSegment@433..436
                       Ident@433..436 "std"
@@ -407,7 +407,7 @@ Root@0..560
               Colon@491..492 ":"
               WhiteSpace@492..493 " "
               TypeBound@493..498
-                TraitBound@493..498
+                TraitRef@493..498
                   Path@493..498
                     PathSegment@493..498
                       Ident@493..498 "Trait"
@@ -415,7 +415,7 @@ Root@0..560
               Plus@499..500 "+"
               WhiteSpace@500..501 " "
               TypeBound@501..514
-                TraitBound@501..514
+                TraitRef@501..514
                   Path@501..506
                     PathSegment@501..506
                       Ident@501..506 "Trait"

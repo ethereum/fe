@@ -1,6 +1,6 @@
 use parser::ast::{self};
 
-use crate::hir_def::{kw, params::*, Body, IdentId, Partial, PathId, TypeId};
+use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
 
 use super::FileLowerCtxt;
 
@@ -175,20 +175,10 @@ impl WherePredicate {
 impl TypeBound {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
         if let Some(trait_bound) = ast.trait_bound() {
-            Self::Trait(TraitBound::lower_ast(ctxt, trait_bound))
+            Self::Trait(TraitRef::lower_ast(ctxt, trait_bound))
         } else {
             Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
         }
-    }
-}
-
-impl TraitBound {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TraitBound) -> Self {
-        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
-        let generic_args = ast
-            .generic_args()
-            .map(|args| GenericArgListId::lower_ast(ctxt, args));
-        Self { path, generic_args }
     }
 }
 

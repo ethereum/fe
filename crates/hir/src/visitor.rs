@@ -8,11 +8,11 @@ use crate::{
         FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
         GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
         KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct,
-        TopLevelMod, Trait, TraitBound, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
+        TopLevelMod, Trait, TraitRef, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
         UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
         WhereClauseId, WherePredicate,
     },
-    span::{lazy_spans::*, params::LazyTraitBoundSpan, transition::ChainRoot, SpanDowncast},
+    span::{lazy_spans::*, params::LazyTraitRefSpan, transition::ChainRoot, SpanDowncast},
     HirDb,
 };
 
@@ -23,7 +23,7 @@ pub mod prelude {
         walk_field_def, walk_field_def_list, walk_field_list, walk_func, walk_func_param,
         walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
         walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_kind_bound, walk_mod,
-        walk_pat, walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_trait_bound,
+        walk_pat, walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_trait_ref,
         walk_ty, walk_type_alias, walk_type_bound, walk_type_bound_list, walk_use, walk_use_path,
         walk_variant_def, walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor,
         VisitorCtxt,
@@ -170,12 +170,12 @@ pub trait Visitor {
         walk_type_bound(self, ctxt, bound);
     }
 
-    fn visit_trait_bound(
+    fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitBoundSpan>,
-        bound: &TraitBound,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        trait_ref: TraitRef,
     ) {
-        walk_trait_bound(self, ctxt, bound);
+        walk_trait_ref(self, ctxt, trait_ref);
     }
 
     fn visit_kind_bound(
@@ -711,25 +711,11 @@ where
     ctxt.with_new_ctxt(
         |span| span.super_traits(),
         |ctxt| {
-            for (i, trait_ref) in trait_.super_traits(ctxt.db).iter().enumerate() {
+            for (i, &trait_ref) in trait_.super_traits(ctxt.db).iter().enumerate() {
                 ctxt.with_new_ctxt(
                     |span| span.super_trait(i),
                     |ctxt| {
-                        if let Some(path) = trait_ref.path.to_opt() {
-                            ctxt.with_new_ctxt(
-                                |span| span.path_moved(),
-                                |ctxt| {
-                                    visitor.visit_path(ctxt, path);
-                                },
-                            )
-                        };
-
-                        ctxt.with_new_ctxt(
-                            |span| span.generic_args_moved(),
-                            |ctxt| {
-                                visitor.visit_generic_arg_list(ctxt, trait_ref.generic_args);
-                            },
-                        );
+                        visitor.visit_trait_ref(ctxt, trait_ref);
                     },
                 );
             }
@@ -760,21 +746,7 @@ pub fn walk_impl_trait<V>(
         ctxt.with_new_ctxt(
             |span| span.trait_ref_moved(),
             |ctxt| {
-                if let Some(path) = trait_ref.path.to_opt() {
-                    ctxt.with_new_ctxt(
-                        |span| span.path_moved(),
-                        |ctxt| {
-                            visitor.visit_path(ctxt, path);
-                        },
-                    )
-                };
-
-                ctxt.with_new_ctxt(
-                    |span| span.generic_args_moved(),
-                    |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, trait_ref.generic_args);
-                    },
-                );
+                visitor.visit_trait_ref(ctxt, trait_ref);
             },
         )
     }
@@ -1771,9 +1743,9 @@ pub fn walk_type_bound<V>(
     V: Visitor + ?Sized,
 {
     match bound {
-        TypeBound::Trait(trait_bound) => ctxt.with_new_ctxt(
+        TypeBound::Trait(trait_ref) => ctxt.with_new_ctxt(
             |span| span.trait_bound_moved(),
-            |ctxt| visitor.visit_trait_bound(ctxt, trait_bound),
+            |ctxt| visitor.visit_trait_ref(ctxt, *trait_ref),
         ),
         TypeBound::Kind(Partial::Present(kind_bound)) => ctxt.with_new_ctxt(
             |span| span.kind_bound_moved(),
@@ -1785,14 +1757,14 @@ pub fn walk_type_bound<V>(
     }
 }
 
-pub fn walk_trait_bound<V>(
+pub fn walk_trait_ref<V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTraitBoundSpan>,
-    bound: &TraitBound,
+    ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+    trait_ref: TraitRef,
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(path) = bound.path.to_opt() {
+    if let Some(path) = trait_ref.path.to_opt() {
         ctxt.with_new_ctxt(
             |span| span.path_moved(),
             |ctxt| {
@@ -1801,7 +1773,7 @@ pub fn walk_trait_bound<V>(
         )
     }
 
-    if let Some(args) = bound.generic_args {
+    if let Some(args) = trait_ref.generic_args {
         ctxt.with_new_ctxt(
             |span| span.generic_args_moved(),
             |ctxt| {

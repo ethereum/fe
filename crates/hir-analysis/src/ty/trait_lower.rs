@@ -4,7 +4,7 @@ use hir::{
     hir_def::{
         scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, TopLevelMod, Trait, TraitRef,
     },
-    visitor::prelude::LazyPathTypeSpan,
+    visitor::prelude::{LazyPathTypeSpan, LazyTraitRefSpan},
 };
 use rustc_hash::FxHashMap;
 
@@ -47,16 +47,15 @@ pub(crate) fn collect_trait_impl(
 pub(super) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
     trait_ref: TraitRef,
-    ref_span: LazyPathTypeSpan,
+    ref_span: LazyTraitRefSpan,
     scope: ScopeId,
 ) -> (Option<TraitInstId>, Vec<TyLowerDiag>) {
     let hir_db = db.as_hir_db();
-    let (args, mut diags) = lower_generic_arg_list_with_diag(
-        db,
-        trait_ref.generic_args,
-        ref_span.generic_args(),
-        scope,
-    );
+    let (args, mut diags) = if let Some(args) = trait_ref.generic_args {
+        lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
+    } else {
+        (vec![], vec![])
+    };
 
     let Partial::Present(path) = trait_ref.path else {
         return (None, diags);

@@ -132,12 +132,12 @@ impl FuncParamName {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeBound {
-    Trait(TraitBound),
+    Trait(TraitRef),
     Kind(Partial<KindBound>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitBound {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TraitRef {
     /// The path to the trait.
     pub path: Partial<PathId>,
     /// The type arguments of the trait.

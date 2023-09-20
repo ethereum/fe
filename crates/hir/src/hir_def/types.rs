@@ -1,3 +1,5 @@
+use crate::HirDb;
+
 use super::{Body, GenericArgListId, Partial, PathId};
 
 #[salsa::interned]
@@ -19,14 +21,14 @@ pub enum TypeKind {
     Array(Partial<TypeId>, Partial<Body>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitRef {
-    pub path: Partial<PathId>,
-    pub generic_args: GenericArgListId,
-}
-
 #[salsa::interned]
 pub struct TupleTypeId {
     #[return_ref]
     pub data: Vec<Partial<TypeId>>,
+}
+
+impl TupleTypeId {
+    pub fn to_ty(self, db: &dyn HirDb) -> TypeId {
+        TypeId::new(db, TypeKind::Tuple(self))
+    }
 }

@@ -6,10 +6,10 @@ use super::{
     attr, define_scope,
     expr::parse_expr,
     func::FuncDefScope,
-    param::{parse_generic_params_opt, parse_where_clause_opt},
+    param::{parse_generic_params_opt, parse_where_clause_opt, TraitRefScope},
     struct_::RecordFieldDefListScope,
     token_stream::{LexicalToken, TokenStream},
-    type_::{parse_type, PathTypeScope, TupleTypeScope},
+    type_::{parse_type, TupleTypeScope},
     use_tree::UseTreeScope,
     Parser,
 };
@@ -346,9 +346,9 @@ define_scope! {SuperTraitListScope, SuperTraitList, Inheritance(Plus)}
 impl super::Parse for SuperTraitListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::Colon);
-        parser.parse(PathTypeScope::default(), None);
+        parser.parse(TraitRefScope::default(), None);
         while parser.bump_if(SyntaxKind::Plus) {
-            parser.parse(PathTypeScope::default(), None);
+            parser.parse(TraitRefScope::default(), None);
         }
     }
 }
@@ -381,7 +381,7 @@ impl super::Parse for ImplScope {
             self.set_kind(SyntaxKind::ImplTrait);
             parser.with_next_expected_tokens(
                 |parser| {
-                    parser.parse(PathTypeScope::default(), None);
+                    parser.parse(TraitRefScope::default(), None);
                 },
                 &[SyntaxKind::ForKw],
             );

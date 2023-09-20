@@ -6,7 +6,7 @@ use hir::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
         Contract, Enum, IdentId, IngotId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
-        TypeId as HirTyId,
+        TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -177,26 +177,38 @@ pub struct AdtDef {
 }
 
 impl AdtDef {
-    pub fn variant_ty_span(self, db: &dyn HirAnalysisDb, idx: usize) -> DynLazySpan {
+    pub fn variant_ty_span(
+        self,
+        db: &dyn HirAnalysisDb,
+        field_idx: usize,
+        ty_idx: usize,
+    ) -> DynLazySpan {
         match self.adt_ref(db).data(db) {
-            AdtRef::Enum(e) => e
-                .lazy_span()
-                .variants_moved()
-                .variant_moved(idx)
-                .ty_moved()
-                .into(),
+            AdtRef::Enum(e) => {
+                let span = e.lazy_span().variants_moved().variant_moved(field_idx);
+                match e.variants(db.as_hir_db()).data(db.as_hir_db())[field_idx].kind {
+                    VariantKind::Tuple(_) => {
+                        debug_assert!(ty_idx == 0);
+                        span.tuple_type_moved().into()
+                    }
+                    VariantKind::Record(_) => {
+                        span.fields_moved().field_moved(ty_idx).ty_moved().into()
+                    }
+                    VariantKind::Unit => unreachable!(),
+                }
+            }
 
             AdtRef::Struct(s) => s
                 .lazy_span()
                 .fields_moved()
-                .field_moved(idx)
+                .field_moved(field_idx)
                 .ty_moved()
                 .into(),
 
             AdtRef::Contract(c) => c
                 .lazy_span()
                 .fields_moved()
-                .field_moved(idx)
+                .field_moved(field_idx)
                 .ty_moved()
                 .into(),
         }

@@ -6,6 +6,7 @@ use crate::{
         Trait, TypeAlias, Use,
     },
     span::{
+        params::LazyTraitRefSpan,
         transition::{LazyArg, LazyTransitionFn, ResolvedOrigin, ResolvedOriginKind},
         use_tree::LazyUsePathSpan,
         DesugaredOrigin, DesugaredUseFocus,
@@ -17,7 +18,7 @@ use super::{
     define_lazy_span_node,
     params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
     transition::SpanTransitionChain,
-    types::{LazyPathTypeSpan, LazyTupleTypeSpan, LazyTySpan},
+    types::{LazyTupleTypeSpan, LazyTySpan},
     use_tree::LazyUseAliasSpan,
 };
 
@@ -154,7 +155,7 @@ define_lazy_span_node!(
     LazySuperTraitListSpan,
     ast::SuperTraitList,
     @idx {
-        (super_trait, LazyPathTypeSpan),
+        (super_trait, LazyTraitRefSpan),
     }
 );
 
@@ -166,7 +167,7 @@ define_lazy_span_node!(
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
-        (trait_ref, trait_ref, LazyPathTypeSpan),
+        (trait_ref, trait_ref, LazyTraitRefSpan),
         (ty, ty, LazyTySpan),
     }
 );

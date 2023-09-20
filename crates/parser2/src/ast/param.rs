@@ -283,7 +283,7 @@ ast_node! {
 }
 impl TypeBound {
     /// A path of the type bound.
-    pub fn trait_bound(&self) -> Option<TraitBound> {
+    pub fn trait_bound(&self) -> Option<TraitRef> {
         support::child(self.syntax())
     }
 
@@ -293,10 +293,10 @@ impl TypeBound {
 }
 
 ast_node! {
-    pub struct TraitBound,
-    SK::TraitBound
+    pub struct TraitRef,
+    SK::TraitRef
 }
-impl TraitBound {
+impl TraitRef {
     /// A path to the trait.
     pub fn path(&self) -> Option<super::Path> {
         support::child(self.syntax())

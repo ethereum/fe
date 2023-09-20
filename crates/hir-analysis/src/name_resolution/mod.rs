@@ -16,8 +16,8 @@ use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, IdentId, IngotId, ItemKind, Partial, Pat, PatId,
-        PathId, TopLevelMod, TypeBound, TypeId,
+        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IdentId, IngotId, ItemKind, Partial,
+        Pat, PatId, PathId, TopLevelMod, TraitRef, TypeId,
     },
     visitor::prelude::*,
 };
@@ -361,13 +361,13 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_type_bound(
+    fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTypeBoundSpan>,
-        bound: &TypeBound,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        trait_ref: TraitRef,
     ) {
         self.path_ctxt.push(ExpectedPathKind::Trait);
-        walk_type_bound(self, ctxt, bound);
+        walk_trait_ref(self, ctxt, trait_ref);
         self.path_ctxt.pop();
     }
 
@@ -399,6 +399,16 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         let scope = ctxt.scope();
         self.check_conflict(scope);
         walk_generic_param(self, ctxt, param);
+    }
+
+    fn visit_generic_arg_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyGenericArgListSpan>,
+        args: GenericArgListId,
+    ) {
+        self.path_ctxt.push(ExpectedPathKind::Type);
+        walk_generic_arg_list(self, ctxt, args);
+        self.path_ctxt.pop();
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {

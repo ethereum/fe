@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{scope_graph::ScopeId, FieldDef, TypeId as HirTyId},
+    hir_def::{scope_graph::ScopeId, FieldDef, TypeId as HirTyId, VariantKind},
     visitor::prelude::*,
 };
 use rustc_hash::FxHashSet;
@@ -85,8 +85,9 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
         variant: &hir::hir_def::VariantDef,
     ) {
-        if let Some(ty) = variant.ty {
-            self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into());
+        if let VariantKind::Tuple(tuple_id) = variant.kind {
+            let ty = tuple_id.to_ty(self.db.as_hir_db());
+            self.verify_fully_applied(ty, ctxt.span().unwrap().tuple_type().into());
         }
 
         walk_variant_def(self, ctxt, variant);
@@ -114,13 +115,13 @@ fn check_recursive_adt_impl(
         .collect();
 
     let adt_def = lower_adt(db, adt);
-    for (i, field) in adt_def.fields(db).iter().enumerate() {
-        for ty in field.iter_types(db) {
+    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
+        for (ty_idx, ty) in field.iter_types(db).enumerate() {
             for field_adt_ref in ty.collect_direct_adts(db) {
                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
                     let diag = TyLowerDiag::recursive_type(
                         adt.name_span(db),
-                        adt_def.variant_ty_span(db, i),
+                        adt_def.variant_ty_span(db, field_idx, ty_idx),
                     );
                     return Some(diag);
                 }

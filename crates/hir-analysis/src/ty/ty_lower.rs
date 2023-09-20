@@ -3,8 +3,8 @@ use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
         GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, Trait,
-        TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind, VariantDefListId,
-        WherePredicate,
+        TupleTypeId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
+        VariantDefListId, VariantKind, WherePredicate,
     },
     visitor::prelude::*,
 };
@@ -174,7 +174,7 @@ impl<'db> TyBuilder<'db> {
 
             HirTyKind::SelfType(args) => self.lower_self_ty(*args),
 
-            HirTyKind::Tuple(elems) => self.lower_tuple(elems),
+            HirTyKind::Tuple(tuple_id) => self.lower_tuple(*tuple_id),
 
             HirTyKind::Array(_, _) => {
                 todo!()
@@ -260,7 +260,8 @@ impl<'db> TyBuilder<'db> {
         TyId::app(self.db, ptr, pointee)
     }
 
-    fn lower_tuple(&mut self, elems: &[Partial<HirTyId>]) -> TyId {
+    fn lower_tuple(&mut self, tuple_id: TupleTypeId) -> TyId {
+        let elems = tuple_id.data(self.db.as_hir_db());
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
         elems.iter().fold(tuple, |acc, elem| {
@@ -449,11 +450,18 @@ impl<'db> AdtTyBuilder<'db> {
             .iter()
             .for_each(|variant| {
                 // TODO: FIX here when record variant is introduced.
-                let tys = match variant.ty {
-                    Some(ty) => {
-                        vec![Some(ty).into()]
+                let tys = match variant.kind {
+                    VariantKind::Tuple(tuple_id) => {
+                        vec![Partial::Present(tuple_id.to_ty(self.db.as_hir_db()))]
                     }
-                    None => vec![],
+
+                    VariantKind::Record(fields) => fields
+                        .data(self.db.as_hir_db())
+                        .iter()
+                        .map(|field| field.ty)
+                        .collect(),
+
+                    VariantKind::Unit => vec![],
                 };
 
                 let variant = AdtField::new(variant.name, tys, scope);

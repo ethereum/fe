@@ -16,7 +16,7 @@ Root@0..272
               Colon@6..7 ":"
               WhiteSpace@7..8 " "
               TypeBound@8..11
-                TraitBound@8..11
+                TraitRef@8..11
                   Path@8..11
                     PathSegment@8..11
                       Ident@8..11 "Add"
@@ -156,7 +156,7 @@ Root@0..272
               Colon@167..168 ":"
               WhiteSpace@168..169 " "
               TypeBound@169..174
-                TraitBound@169..174
+                TraitRef@169..174
                   Path@169..174
                     PathSegment@169..174
                       Ident@169..174 "Clone"
@@ -177,7 +177,7 @@ Root@0..272
                   Colon@189..190 ":"
                   WhiteSpace@190..191 " "
                   TypeBound@191..197
-                    TraitBound@191..197
+                    TraitRef@191..197
                       Path@191..194
                         PathSegment@191..194
                           Ident@191..194 "Add"
@@ -220,7 +220,7 @@ Root@0..272
                   Colon@229..230 ":"
                   WhiteSpace@230..231 " "
                   TypeBound@231..235
-                    TraitBound@231..235
+                    TraitRef@231..235
                       Path@231..235
                         PathSegment@231..235
                           Ident@231..235 "Copy"

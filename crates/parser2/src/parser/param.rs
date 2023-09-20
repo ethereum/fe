@@ -185,7 +185,7 @@ impl super::Parse for TypeBoundScope {
                 parser.error_and_recover("trait bounds are not allowed here", None);
                 return;
             }
-            parser.parse(TraitBoundScope::default(), None);
+            parser.parse(TraitRefScope::default(), None);
         }
     }
 }
@@ -233,11 +233,11 @@ impl super::Parse for KindBoundAbsScope {
 }
 
 define_scope! {
-    TraitBoundScope,
-    TraitBound,
+    pub(super) TraitRefScope,
+    TraitRef,
     Inheritance
 }
-impl super::Parse for TraitBoundScope {
+impl super::Parse for TraitRefScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.parse(PathScope::default(), None);
         if parser.current_kind() == Some(SyntaxKind::Lt) {

@@ -44,7 +44,7 @@ Root@0..160
               Colon@32..33 ":"
               WhiteSpace@33..34 " "
               TypeBound@34..39
-                TraitBound@34..39
+                TraitRef@34..39
                   Path@34..39
                     PathSegment@34..39
                       Ident@34..39 "Trait"

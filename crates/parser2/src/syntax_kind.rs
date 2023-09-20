@@ -445,8 +445,8 @@ pub enum SyntaxKind {
     TypeBoundList,
     /// `TraitBound` or `TypeKind`.
     TypeBound,
-    /// `Trait1`
-    TraitBound,
+    /// `Trait1<Arg, ...>`
+    TraitRef,
     /// `* -> *` or `(*-> *) -> *`
     KindBoundAbs,
     /// `*`.

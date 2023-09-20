@@ -59,15 +59,17 @@ impl TupleTypeId {
 }
 
 impl TraitRef {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::PathType) -> Self {
-        let path = PathId::lower_ast_partial(ctxt, ast.path());
-        let generic_args = GenericArgListId::lower_ast_opt(ctxt, ast.generic_args());
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TraitRef) -> Self {
+        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
+        let generic_args = ast
+            .generic_args()
+            .map(|args| GenericArgListId::lower_ast(ctxt, args));
         Self { path, generic_args }
     }
 
     pub(super) fn lower_ast_partial(
         ctxt: &mut FileLowerCtxt<'_>,
-        ast: Option<ast::PathType>,
+        ast: Option<ast::TraitRef>,
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
