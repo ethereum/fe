@@ -36,13 +36,13 @@ contract Auction {
 To run the auction you will need several state variables, some of which can be initialized at the time the contract is instantiated.
 You will need to track the address of the beneficiary so you know who to pay out to. You will also need to keep track of the highest bidder, and the amount they have bid. You will also need to keep track of how much each specific address has sent into the contract, so you can refund them the right amount if they decide to withdraw. You will also need a flag that tracks whether or not the auction has ended. The following list of variables will suffice:
 
-```fe
+```sh
 auction_end_time: u256
 beneficiary: address
 highest_bidder: address
 highest_bid: u256
 pending_returns: Map<address, u256>
-ended bool
+ended: bool
 ```
 
 Notice that variables are named using camel case (lower case, underscore separated, `like_this`). 
