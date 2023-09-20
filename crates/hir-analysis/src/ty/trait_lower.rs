@@ -49,35 +49,71 @@ pub(super) fn lower_trait_ref(
     trait_ref: TraitRef,
     ref_span: LazyTraitRefSpan,
     scope: ScopeId,
-) -> (Option<TraitInstId>, Vec<TyLowerDiag>) {
+) -> (Option<TraitInstId>, Vec<TraitRefLowerDiag>) {
     let hir_db = db.as_hir_db();
-    let (args, mut diags) = if let Some(args) = trait_ref.generic_args {
+    let (args, diags) = if let Some(args) = trait_ref.generic_args {
         lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
     } else {
         (vec![], vec![])
     };
 
+    let mut diags = diags
+        .into_iter()
+        .map(TraitRefLowerDiag::Ty)
+        .collect::<Vec<_>>();
+
     let Partial::Present(path) = trait_ref.path else {
         return (None, diags);
     };
 
-    match resolve_path_early(db, path, scope) {
+    let trait_def = match resolve_path_early(db, path, scope) {
         EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
                     return (None, diags);
                 };
-                let trait_def = lower_trait(db, trait_);
-                (Some(TraitInstId::new(db, trait_def, args)), diags)
+                lower_trait(db, trait_)
             }
 
-            Err(_) => (None, diags),
+            Err(_) => return (None, diags),
         },
 
         EarlyResolvedPath::Partial { .. } => {
-            diags.push(TyLowerDiag::AssocTy(ref_span.path_moved().into()).into());
-            (None, diags)
+            diags.push(TyLowerDiag::AssocTy(ref_span.path().into()).into());
+            return (None, diags);
         }
+    };
+
+    if trait_def.args(db).len() != args.len() {
+        diags.push(
+            TraitSatisfactionDiag::TraitArgNumMismatch {
+                span: ref_span.into(),
+                trait_: trait_def.trait_(db),
+                n_given_arg: args.len(),
+            }
+            .into(),
+        );
+        return (None, diags);
+    }
+
+    let mut has_error = false;
+    for (i, (expected, given)) in trait_def.args(db).iter().zip(&args).enumerate() {
+        if expected.kind(db) != given.kind(db) {
+            let span = ref_span.generic_args().arg_moved(i).into();
+            let diag = TraitSatisfactionDiag::trait_arg_kind_mismatch(
+                span,
+                expected.kind(db),
+                given.kind(db),
+            );
+            diags.push(diag.into());
+            has_error = true;
+        }
+    }
+
+    if !has_error {
+        (Some(TraitInstId::new(db, trait_def, args)), diags)
+    } else {
+        (None, diags)
     }
 }
 
@@ -85,7 +121,7 @@ struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: Trait,
     params: Vec<TyId>,
-    self_args: TyId,
+    self_arg: TyId,
     // TODO: We need to lower associated methods here.
     // methods: Vec
 }
@@ -98,12 +134,12 @@ impl<'db> TraitBuilder<'db> {
             db,
             trait_,
             params: params_set.params.clone(),
-            self_args: params_set.trait_self.unwrap(),
+            self_arg: params_set.trait_self.unwrap(),
         }
     }
 
     fn build(self) -> TraitDef {
-        TraitDef::new(self.db, self.trait_, self.params, self.self_args)
+        TraitDef::new(self.db, self.trait_, self.params, self.self_arg)
     }
 }
 
@@ -276,14 +312,19 @@ impl Implementor {
             return false;
         }
 
-        let generalized = self.generalize(db, table);
-        for (&self_param, &other_param) in generalized.params(db).iter().zip(other.params(db)) {
-            if !table.unify(self_param, other_param) {
+        let generalized_self = self.generalize(db, table);
+        let generalized_other = other.generalize(db, table);
+        for (&self_arg, &other_arg) in generalized_self
+            .substs(db)
+            .iter()
+            .zip(generalized_other.substs(db))
+        {
+            if !table.unify(self_arg, other_arg) {
                 return false;
             }
         }
 
-        table.unify(generalized.ty(db), other.ty(db))
+        table.unify(generalized_self.ty(db), generalized_other.ty(db))
     }
 }
 

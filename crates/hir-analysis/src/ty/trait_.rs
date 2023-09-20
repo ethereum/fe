@@ -22,6 +22,10 @@ impl Implementor {
     pub(crate) fn trait_def(self, db: &dyn HirAnalysisDb) -> TraitDef {
         self.trait_(db).def(db)
     }
+
+    pub(crate) fn substs(self, db: &dyn HirAnalysisDb) -> &Vec<TyId> {
+        self.trait_(db).substs(db)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]

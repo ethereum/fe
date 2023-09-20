@@ -100,7 +100,7 @@ impl<'db> TyDiagCollector<'db> {
             }
 
             InvalidCause::KindMismatch { expected, given } => {
-                let diag = TyLowerDiag::kind_mismatch(span, expected, given);
+                let diag = TyLowerDiag::invalid_type_arg(span, expected, given);
                 self.diags.push(diag);
             }
 

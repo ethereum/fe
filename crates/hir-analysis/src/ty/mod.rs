@@ -169,6 +169,20 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
                 TraitImplDiag::Satisfaction(diag) => Box::new(diag.clone()) as _,
                 TraitImplDiag::TraitImplLower(diag) => Box::new(diag.clone()) as _,
             })
+            .chain(
+                top_mod
+                    .all_impl_traits(self.db.as_hir_db())
+                    .iter()
+                    .copied()
+                    .map(|impl_trait| {
+                        let owner_id = GenericParamOwnerId::new(self.db, impl_trait.into());
+                        collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                            self.db, owner_id,
+                        )
+                    })
+                    .flatten()
+                    .map(|diag| Box::new(diag) as _),
+            )
             .collect()
     }
 }

@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+        kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
         GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, Trait,
         TupleTypeId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
         VariantDefListId, VariantKind, WherePredicate,
@@ -489,7 +489,7 @@ struct GenericParamCollector<'db> {
 impl<'db> GenericParamCollector<'db> {
     fn new(db: &'db dyn HirAnalysisDb, parent: GenericParamOwner) -> Self {
         let trait_self = TyParamPrecursor {
-            name: Partial::Absent,
+            name: Partial::Present(kw::SELF_TY),
             idx: None,
             kind: Kind::Star,
             kind_span: None,
@@ -652,6 +652,7 @@ impl<'db> Visitor for GenericParamCollector<'db> {
     }
 }
 
+#[derive(Debug)]
 struct TyParamPrecursor {
     name: Partial<IdentId>,
     idx: Option<usize>,

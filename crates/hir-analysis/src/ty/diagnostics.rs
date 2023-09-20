@@ -20,7 +20,7 @@ pub struct GenericParamDiagAccumulator(pub(super) TyLowerDiag);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
     NotFullyAppliedType(DynLazySpan),
-    KindMismatch(DynLazySpan, String),
+    InvalidTypeArg(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
         field_span: DynLazySpan,
@@ -45,7 +45,7 @@ impl TyLowerDiag {
         Self::NotFullyAppliedType(span)
     }
 
-    pub fn kind_mismatch(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
+    pub fn invalid_type_arg(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
         let msg = if let Some(expected) = expected {
             debug_assert!(expected != actual);
 
@@ -54,7 +54,7 @@ impl TyLowerDiag {
             "too many generic arguments".to_string()
         };
 
-        Self::KindMismatch(span, msg)
+        Self::InvalidTypeArg(span, msg)
     }
 
     pub(super) fn recursive_type(primary_span: DynLazySpan, field_span: DynLazySpan) -> Self {
@@ -87,7 +87,7 @@ impl TyLowerDiag {
     fn local_code(&self) -> u16 {
         match self {
             Self::NotFullyAppliedType(_) => 0,
-            Self::KindMismatch(_, _) => 1,
+            Self::InvalidTypeArg(_, _) => 1,
             Self::RecursiveType { .. } => 2,
             Self::TypeAliasArgumentMismatch { .. } => 3,
             Self::TypeAliasCycle(_) => 4,
@@ -100,7 +100,7 @@ impl TyLowerDiag {
     fn message(&self, db: &dyn HirDb) -> String {
         match self {
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
-            Self::KindMismatch(_, _) => "kind mismatch between two types".to_string(),
+            Self::InvalidTypeArg(_, _) => "invalid type argument given".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
             Self::TypeAliasArgumentMismatch {
@@ -129,7 +129,7 @@ impl TyLowerDiag {
                 span.resolve(db),
             )],
 
-            Self::KindMismatch(span, msg) => vec![SubDiagnostic::new(
+            Self::InvalidTypeArg(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
                 span.resolve(db),
@@ -323,18 +323,26 @@ pub enum TraitSatisfactionDiag {
         trait_def: Trait,
     },
 
-    TraitArgumentMismatch {
+    TraitArgNumMismatch {
         span: DynLazySpan,
         trait_: Trait,
         n_given_arg: usize,
     },
+
+    TraitArgKindMismatch(DynLazySpan, String),
 }
 
 impl TraitSatisfactionDiag {
+    pub fn trait_arg_kind_mismatch(span: DynLazySpan, expected: &Kind, actual: &Kind) -> Self {
+        let msg = format!("expected `{}` kind, but found `{}` kind", expected, actual);
+        Self::TraitArgKindMismatch(span, msg)
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::KindMismatch { .. } => 0,
-            Self::TraitArgumentMismatch { .. } => 1,
+            Self::TraitArgNumMismatch { .. } => 1,
+            Self::TraitArgKindMismatch(_, _) => 2,
         }
     }
 
@@ -342,9 +350,9 @@ impl TraitSatisfactionDiag {
         match self {
             Self::KindMismatch { .. } => "type doesn't satisfy required kind bound".to_string(),
 
-            Self::TraitArgumentMismatch { .. } => {
-                "given trait argument number mismatch".to_string()
-            }
+            Self::TraitArgNumMismatch { .. } => "given trait argument number mismatch".to_string(),
+
+            Self::TraitArgKindMismatch(_, _) => "given trait argument kind mismatch".to_string(),
         }
     }
 
@@ -363,7 +371,7 @@ impl TraitSatisfactionDiag {
                 ),
             ],
 
-            Self::TraitArgumentMismatch {
+            Self::TraitArgNumMismatch {
                 span,
                 trait_,
                 n_given_arg,
@@ -385,6 +393,12 @@ impl TraitSatisfactionDiag {
                     ),
                 ]
             }
+
+            Self::TraitArgKindMismatch(span, msg) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                msg.clone(),
+                span.resolve(db),
+            )],
         }
     }
 

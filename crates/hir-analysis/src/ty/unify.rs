@@ -59,21 +59,19 @@ impl<'db> UnificationTable<'db> {
         let ty2 = self.apply(self.db, ty2);
 
         match (ty1.data(self.db), ty2.data(self.db)) {
-            (TyData::TyVar(var), _) if !ty2.free_inference_keys(self.db).contains(&var.key) => {
-                self.table
-                    .union_value(var.key, InferenceValue::Bounded(ty2));
-                true
+            (TyData::TyVar(var1), TyData::TyVar(var2)) => {
+                self.table.unify_var_var(var1.key, var2.key).is_ok()
             }
 
-            (_, TyData::TyVar(var)) if !ty1.free_inference_keys(self.db).contains(&var.key) => {
-                self.table
-                    .union_value(var.key, InferenceValue::Bounded(ty2));
-                true
-            }
-            (TyData::TyVar(var1), TyData::TyVar(var2)) => {
-                self.table.union(var1.key, var2.key);
-                true
-            }
+            (TyData::TyVar(var), _) if !ty2.free_inference_keys(self.db).contains(&var.key) => self
+                .table
+                .unify_var_value(var.key, InferenceValue::Bounded(ty2))
+                .is_ok(),
+
+            (_, TyData::TyVar(var)) if !ty1.free_inference_keys(self.db).contains(&var.key) => self
+                .table
+                .unify_var_value(var.key, InferenceValue::Bounded(ty1))
+                .is_ok(),
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 let ok = self.unify_impl(ty1_1, ty2_1);
@@ -132,7 +130,7 @@ impl UnifyKey for InferenceKey {
 }
 
 impl UnifyValue for InferenceValue {
-    type Error = NoError;
+    type Error = ();
 
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
         match (v1, v2) {
@@ -147,7 +145,11 @@ impl UnifyValue for InferenceValue {
             }
 
             (InferenceValue::Bounded(ty1), InferenceValue::Bounded(ty2)) => {
-                panic!("trying to unify two bounded types {:?} and {:?}", ty1, ty2)
+                if ty1 != ty2 {
+                    Err(())
+                } else {
+                    Ok(InferenceValue::Bounded(*ty1))
+                }
             }
         }
     }
