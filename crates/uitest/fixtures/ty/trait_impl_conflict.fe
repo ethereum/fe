@@ -1,0 +1,17 @@
+pub trait Foo<T, U> {}
+
+/// Conflict
+impl<T, U> Foo<T, U> for (i32, i32) {}
+/// Ok
+impl<T, U> Foo<T, U> for (i32, u32) {} 
+
+impl<T, U> Foo<T, U> for (T, T) {}
+
+pub struct S<T, U> {
+    t: T
+    u: U
+}
+
+impl<T, U> Foo<T, U> for S<i32, u32> {}
+impl<T, U> Foo<T, i32> for S<T, T> {}
+impl<T, U> Foo<T, i32> for S<i32, i32> {}
