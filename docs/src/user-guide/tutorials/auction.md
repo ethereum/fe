@@ -2,11 +2,11 @@
 
 This tutorial aims to implement a simple auction contract in Fe. Along the way you will learn some foundational Fe concepts.
 
-An open auction is one where prices are determined in real time by live bidding. The winner is the participant who has made the highest bid at the time the auction ends.
+An open auction is one where prices are determined in real-time by live bidding. The winner is the participant who has made the highest bid at the time the auction ends.
 
 ## The auction rules
 
-To run an open auction, you need an item for sale, a seller, a pool of buyers and a deadlien after which no more bids will be recognized. In this tutorial we will not have an item per se, the buyers are simply bidding to win! The highest bidder is provably crowned the winner, and the value of their bid is passed to the beneficiary. Bidders can also withdraw their bids at any time.
+To run an open auction, you need an item for sale, a seller, a pool of buyers and a deadline after which no more bids will be recognized. In this tutorial we will not have an item per se, the buyers are simply bidding to win! The highest bidder is provably crowned the winner, and the value of their bid is passed to the beneficiary. Bidders can also withdraw their bids at any time.
 
 
 ## Get Started
@@ -21,7 +21,7 @@ You will also need [Foundry](https://getfoundry.sh) installed to follow the depl
 
 ## Writing the Contract
 
-You can see the entire contract [here](../example_contracts/auction_contract.md). You can refer back to this any time to check implementation details.
+You can see the entire contract [here](../example_contracts/auction_contract.md). You can refer back to this at any time to check implementation details.
 
 ### Defining the `Contract` and initializing variables 
 
@@ -52,15 +52,15 @@ The variables that expect numbers are given the `u256` type. This is an unsigned
 
 The `ended` variable will be used to check whether the auction is live or not. If it has finished `ended` will be set to `true`. There are only two possible states for this, so it makes sense to declare it as a `bool` - i.e. true/false.
 
-The `pending returns` variable is a mapping between N keys and N values, with user addresses as the keys and their bids as values. For this, a `Map` type is used. In Fe, you define the types for the key and value in the Map definition - in this case it is `Map<address, u256>`. Keys can be any `numeric` type, `address`, `boolean` or `unit`.
+The `pending returns` variable is a mapping between N keys and N values, with user addresses as the keys and their bids as values. For this, a `Map` type is used. In Fe, you define the types for the key and value in the Map definition - in this case, it is `Map<address, u256>`. Keys can be any `numeric` type, `address`, `boolean` or `unit`.
 
-Now you should decide which of these variable will have values that are known at the time the contract is instantiated. It makes sense to set the `beneficiary` right away, so you can add that to the constructor arguments.
+Now you should decide which of these variables will have values that are known at the time the contract is instantiated. It makes sense to set the `beneficiary` right away, so you can add that to the constructor arguments.
 
-The other thing to consider here is *how* the contract will keep track of time. On its own, the contract has no concept of time. However, the contract does have access to the current block timestamp which is measured in seconds since the Unix epoch (Jan 1st 1970). This can be used to measure the time elapsed in a smart contract. In this contract you can use this concept to set a deadline on the auction. By passing a length of time in seconds to the constructor, you can then add that value to the current block timestamp and create a deadline for bidding to end. Therefore, you should add a `bidding_time` argument to the constructor. Its type can be `u256`.
+The other thing to consider here is *how* the contract will keep track of time. On its own, the contract has no concept of time. However, the contract does have access to the current block timestamp which is measured in seconds since the Unix epoch (Jan 1st 1970). This can be used to measure the time elapsed in a smart contract. In this contract, you can use this concept to set a deadline on the auction. By passing a length of time in seconds to the constructor, you can then add that value to the current block timestamp and create a deadline for bidding to end. Therefore, you should add a `bidding_time` argument to the constructor. Its type can be `u256`.
 
 When you have implemented all this, your contract should look like this:
 
-```fe
+```rust
 contract Auction {
     // states
     auction_end_time: u256
@@ -78,7 +78,7 @@ contract Auction {
 }
 ```
 
-Notice that the constructor receive values for `bidding_time` and `beneficiary_addr` and uses the to initialize the contract's `auction_end_time` and `beneficiary` variables.
+Notice that the constructor receives values for `bidding_time` and `beneficiary_addr` and uses them to initialize the contract's `auction_end_time` and `beneficiary` variables.
 
 The other thing to notice about the constructor is that there are two additional arguments passed to the constructor: `must self` and `ctx: Context`.
 
@@ -91,7 +91,7 @@ Here, you are not only using `self` but you are prepending it with `mut`. `mut` 
 
 #### Context
 
-Context is used to track deadlines for requests. It gives the contract the ability to cancel functions that have taken too long to run, and they provide a structure for storing values that are scoped to a particular request so that they can be accessed anywhere in the call chain. This will be familiar to Go and Rust developers, as Context is often used in the same way in those languages and is frequently employed when working with external API calls. It is conventional to name the context object `ctx`. 
+Context is used to track deadlines for requests. It gives the contract the ability to cancel functions that have taken too long to run, and provides a structure for storing values that are scoped to a particular request so that they can be accessed anywhere in the call chain. This will be familiar to Go and Rust developers, as Context is often used in the same way in those languages and is frequently employed when working with external API calls. It is conventional to name the context object `ctx`. 
 
 Read more on [Context in Go](https://www.makeuseof.com/go-contexts/)
 Read more on [Context in Rust](https://docs.rs/ctx/latest/ctx/)
@@ -105,7 +105,7 @@ Now that you have your contract constructor and state variables, you can impleme
 
 This logic can be implemented as follows:
 
-```fe
+```rust
 pub fn bid(mut self, mut ctx: Context) {
     if ctx.block_timestamp() > self.auction_end_time {
         revert AuctionAlreadyEnded()
@@ -123,16 +123,16 @@ pub fn bid(mut self, mut ctx: Context) {
 }
 ```
 
-The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the []`revert`](../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somehwere in `Auction.fe` outside the main contract definition:
+The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the []`revert`](../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
 
-```fe
+```rust
 struct AuctionAlreadyEnded {
 }
 ```
 
-The next check is whether the incoming bid exceeds the current highest bid. If not, the bid has failed and it may as well revert. We can repeat the same logic as for `AuctionAlreadyEnded`. We can also report the current highest bid in the revert message to help the user to reprice if they want to. Add the following to `auction.fe`:
+The next check is whether the incoming bid exceeds the current highest bid. If not, the bid has failed and it may as well revert. We can repeat the same logic as for `AuctionAlreadyEnded`. We can also report the current highest bid in the revert message to help the user reprice if they want to. Add the following to `auction.fe`:
 
-```
+```rust
 struct BidNotHighEnough {
     pub highest_bid: u256
 }
@@ -140,11 +140,11 @@ struct BidNotHighEnough {
 
 > Notice that the value being checked is `msg.value` which is included in the `ctx` object. `ctx` is where you can access incoming transaction data.
 
-Next, if the incoming transaction *is* the highest bid, you need to track how much the sender shoudl receive as a payout if their bid ends up being exceeded by another user (i.e. if they get outbid, they get their ETH back). To do this, you add a key-value pair to the `pending_returns` mapping, with the user address as the key and the transaction amount as the value. Both of these come from `ctx` in the form of `msg.sender` and `msg.value`.
+Next, if the incoming transaction *is* the highest bid, you need to track how much the sender should receive as a payout if their bid ends up being exceeded by another user (i.e. if they get outbid, they get their ETH back). To do this, you add a key-value pair to the `pending_returns` mapping, with the user address as the key and the transaction amount as the value. Both of these come from `ctx` in the form of `msg.sender` and `msg.value`.
 
-Finally, if the incoming bid *is* the highest, you can emit an event. Events are useful because they provide a cheap way to return data from a  contract as they use logs instead of contract storage. Unlike other smart contract languages there is no `emit` keyword or `Event` type. Instead, you trigger an event by calling the `emit` method on the `ctx` object. You can pass this method a struct that defines the emitted message. You can add the following struct for this event:
+Finally, if the incoming bid *is* the highest, you can emit an event. Events are useful because they provide a cheap way to return data from a  contract as they use logs instead of contract storage. Unlike other smart contract languages, there is no `emit` keyword or `Event` type. Instead, you trigger an event by calling the `emit` method on the `ctx` object. You can pass this method a struct that defines the emitted message. You can add the following struct for this event:
 
-```fe
+```rust
 struct HighestBidIncreased {
     #indexed
     pub bidder: address
@@ -156,11 +156,11 @@ You have now implemented all the logic to handle a bid!
 
 ### Withdrawing
 
-A previous high-bidder will want to retrieve their ETH from the contract so they can either walk-away for bid again. You therefore need to create a `withdraw` methodn that the user can call. The function will lookup the user address in `pending_returns`. if there is a non-zero value associated with the user's address, the contract should send that amount back to the sender's address. It is important to first update the value in `pending_returns` and *then* send the ETH to the user, otherwise you are exposing a [re-entrancy](https://www.certik.com/resources/blog/3K7ZUAKpOr1GW75J2i0VHh-what-is-a-reentracy-attack) vulnerability (where a user can repeatedlyt call the contract and receibve the ETH multiple times).
+A previous high-bidder will want to retrieve their ETH from the contract so they can either walk away or bid again. You therefore need to create a `withdraw` method that the user can call. The function will lookup the user address in `pending_returns`. If there is a non-zero value associated with the user's address, the contract should send that amount back to the sender's address. It is important to first update the value in `pending_returns` and *then* send the ETH to the user, otherwise you are exposing a [re-entrancy](https://www.certik.com/resources/blog/3K7ZUAKpOr1GW75J2i0VHh-what-is-a-reentracy-attack) vulnerability (where a user can repeatedly call the contract and receive the ETH multiple times).
 
 Add the following to the contract to implement the `withdraw` method:
 
-```fe
+```rust
 pub fn withdraw(mut self, mut ctx: Context) -> bool {
     let amount: u256 = self.pending_returns[ctx.msg_sender()]
 
@@ -174,25 +174,25 @@ pub fn withdraw(mut self, mut ctx: Context) -> bool {
 
 ### End the auction
 
-Fianlly, you need to add a way to end the auction. This will check whether the biddign period is over, and if it is, automaticaly trigger the payment to the beneficiary and emit the address of the winner in an event. 
+Finally, you need to add a way to end the auction. This will check whether the bidding period is over, and if it is, automatically trigger the payment to the beneficiary and emit the address of the winner in an event. 
 
-First, check the auction is not still live - if the auction is live you cannot end it early. If an attempt to end the auction early is made, it shoudl revert using a `AuctionNotYetEnded` struct, which can look as follows:
+First, check the auction is not still live - if the auction is live you cannot end it early. If an attempt to end the auction early is made, it should revert using a `AuctionNotYetEnded` struct, which can look as follows:
 
-```fe
+```rust
 struct AuctionNotYetEnded {
 }
 ```
 
 You should also check whether the auction was *already* ended by a previous valid call to this method. In this case, revert with a `AuctionEndAlreadyCalled` struct:
 
-```fe
+```rust
 struct AuctionEndAlreadyCalled {}
 ```
 
 If the auction is still live, you can end it. First set `self.ended` to `true` to update the contract state. Then emit the event using `ctx.emit()`. Then, send the ETH to the beneficiary. Again, the order is important - you should always send value last to protect against re-entrancy.
 Your method can look as follows:
 
-```fe
+```rust
 pub fn action_end(mut self, mut ctx: Context) {
     if ctx.block_timestamp() <= self.auction_end_time {
         revert AuctionNotYetEnded()
@@ -207,16 +207,16 @@ pub fn action_end(mut self, mut ctx: Context) {
 }
 ```
 
-Congratulations! You just write an open auction contract in Fe!
+Congratulations! You just wrote an open auction contract in Fe!
 
 
 ## View functions
 
-To help us test the copntract without having to decode transaction logs, we can add some simple functions to the contract that simply report the current values for some key state variables (specifically, `highest_bidder`, `highest_bid` and `ended`). This will allow a user to use `eth_call` to query these values in the contract. `eth_call` is used for functions that do not update the state of the blockchain and costs no gas because the queries can be performed on local data.
+To help test the contract without having to decode transaction logs, you can add some simple functions to the contract that simply report the current values for some key state variables (specifically, `highest_bidder`, `highest_bid` and `ended`). This will allow a user to use `eth_call` to query these values in the contract. `eth_call` is used for functions that do not update the state of the blockchain and costs no gas because the queries can be performed on local data.
 
 You can add the following functions to the contract:
 
-```fe
+```rust
 pub fn check_highest_bidder(mut self, ctx: Context) -> address {
     return self.highest_bidder;
 }
@@ -234,7 +234,7 @@ pub fn check_ended(mut self, ctx: Context) -> bool {
 
 Your contract is now ready to use! Compile it using
 
-```fe
+```sh
 fe build auction.fe
 ```
 
@@ -246,7 +246,7 @@ Start a local blockchain to deploy your contract to:
 anvil
 ```
 
-There are constructor arguments (`bidding_time: u256`, `beneficiary_addr: address`) that have to be added to the contract bytecode so that the contract is instantiated with your desired values. To add constructor arguments you can encode them intoi bytecode and append them to the contract bytecode.
+There are constructor arguments (`bidding_time: u256`, `beneficiary_addr: address`) that have to be added to the contract bytecode so that the contract is instantiated with your desired values. To add constructor arguments you can encode them into bytecode and append them to the contract bytecode.
 
 First, hex encode the value you want to pass to `bidding_time`. In this case, we will use a value of 10:
 
@@ -308,7 +308,7 @@ This returns:
 0x0000000000000000000000000000000000000000000000056bc75e2d63100000
 ```
 
-Converting the non zero characters to binary gives the decimal value of your bid (in wei - divide by 1e18 to get the value in ETH):
+Converting the non-zero characters to binary gives the decimal value of your bid (in wei - divide by 1e18 to get the value in ETH):
 
 ```sh
 cast --to-dec 56bc75e2d63100000
@@ -316,13 +316,13 @@ cast --to-dec 56bc75e2d63100000
 >> 100000000000000000000 // 100 ETH in wei
 ```
 
-Now you can repeat this process, outbidding the initial bid from another address and check the `higyhest_bidder()` and `highest_bid()` to confirm. Do this a few times, then call `end_auction()` to see the value of the highest bid get transferred tot he `beneficiary_addr`. You can always check the balance of each address using:
+Now you can repeat this process, outbidding the initial bid from another address and check the `higyhest_bidder()` and `highest_bid()` to confirm. Do this a few times, then call `end_auction()` to see the value of the highest bid get transferred to the `beneficiary_addr`. You can always check the balance of each address using:
 
 ```sh
 cast balance <address>
 ```
 
-Ands check whether the auction open time has expired using
+And check whether the auction open time has expired using
 
 ```sh
 cast <contract-address> "check_ended()"
@@ -344,6 +344,6 @@ By following this tutorial, you learned:
 - how to handle state variables
 - how to avoid reentrancy
 - how to use `ctx` to handle transaction data
-- how to emit events usign `ctx.emit`
+- how to emit events using `ctx.emit`
 - how to deploy a contract with constructor arguments using Foundry
 - how to interact with your contract
