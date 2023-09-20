@@ -145,6 +145,9 @@ pub enum DiagnosticPass {
     NameResolution,
 
     TypeDefinition,
+    TraitDefinition,
+    ImplTraitDefinition,
+    TraitSatisfaction,
 
     ExternalAnalysis(ExternalAnalysisKey),
 }
@@ -155,6 +158,9 @@ impl DiagnosticPass {
             Self::Parse => 1,
             Self::NameResolution => 2,
             Self::TypeDefinition => 3,
+            Self::TraitDefinition => 4,
+            Self::ImplTraitDefinition => 5,
+            Self::TraitSatisfaction => 6,
 
             Self::ExternalAnalysis(_) => std::u16::MAX,
         }

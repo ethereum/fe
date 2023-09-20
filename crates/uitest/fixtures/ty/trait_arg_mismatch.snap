@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/trait_arg_mismatch.fe
 ---
-error[3-0001]: given trait argument number mismatch
+error[6-0001]: given trait argument number mismatch
    ┌─ trait_arg_mismatch.fe:11:6
    │
  1 │ pub trait Foo<T: * -> *> {}
@@ -12,13 +12,13 @@ error[3-0001]: given trait argument number mismatch
 11 │ impl Foo for u32 {}
    │      ^^^ expected 1 arguments here, but 0 given
 
-error[3-0002]: given trait argument kind mismatch
+error[6-0002]: given trait argument kind mismatch
   ┌─ trait_arg_mismatch.fe:8:10
   │
 8 │ impl Foo<i32> for i32 {}
   │          ^^^ expected `(* -> *)` kind, but found `*` kind
 
-error[3-0002]: given trait argument kind mismatch
+error[6-0002]: given trait argument kind mismatch
   ┌─ trait_arg_mismatch.fe:9:10
   │
 9 │ impl Foo<Option<i32>> for i32 {}

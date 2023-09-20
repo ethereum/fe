@@ -303,7 +303,7 @@ impl ImplTraitLowerDiag {
 
 impl DiagnosticVoucher for ImplTraitLowerDiag {
     fn error_code(&self) -> GlobalErrorCode {
-        GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
+        GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code())
     }
 
     fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
@@ -409,7 +409,7 @@ impl TraitSatisfactionDiag {
 
 impl DiagnosticVoucher for TraitSatisfactionDiag {
     fn error_code(&self) -> GlobalErrorCode {
-        GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
+        GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
     }
 
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
