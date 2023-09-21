@@ -8,7 +8,7 @@ use crate::HirAnalysisDb;
 
 use super::{
     diagnostics::TyLowerDiag,
-    ty::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar},
+    ty_def::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar},
     ty_lower::lower_hir_ty,
 };
 
@@ -135,14 +135,12 @@ impl<'db> Visitor for TyDiagCollector<'db> {
                 let mut args = vec![];
                 ty_arg_lexical_order(self.db, &mut args, lhs, arg);
                 for (idx, arg) in args.into_iter().enumerate() {
-                    match arg.data(self.db) {
-                        TyData::Invalid(cause @ InvalidCause::KindMismatch { .. }) => {
-                            let span = ty_args_span(self.db, hir_ty, ctxt.span().unwrap(), idx);
-                            self.store_diag(cause, span);
-                            return;
-                        }
-
-                        _ => {}
+                    if let TyData::Invalid(cause @ InvalidCause::KindMismatch { .. }) =
+                        arg.data(self.db)
+                    {
+                        let span = ty_args_span(self.db, hir_ty, ctxt.span().unwrap(), idx);
+                        self.store_diag(cause, span);
+                        return;
                     }
                 }
             }
@@ -158,9 +156,8 @@ impl<'db> Visitor for TyDiagCollector<'db> {
 /// e.g.,
 /// `TyApp(TyApp(T, A1), TyApp(U, A2))` returns `[A1, TyApp(U, A2]`.
 fn ty_arg_lexical_order(db: &dyn HirAnalysisDb, args: &mut Vec<TyId>, lhs: TyId, arg: TyId) {
-    match lhs.data(db) {
-        TyData::TyApp(deep_lhs, deep_arg) => ty_arg_lexical_order(db, args, deep_lhs, deep_arg),
-        _ => {}
+    if let TyData::TyApp(deep_lhs, deep_arg) = lhs.data(db) {
+        ty_arg_lexical_order(db, args, deep_lhs, deep_arg)
     }
 
     args.push(arg)

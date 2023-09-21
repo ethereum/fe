@@ -9,7 +9,7 @@ use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 
 use super::{
     diagnostics::TyLowerDiag,
-    ty::{AdtDef, AdtRefId, TyId},
+    ty_def::{AdtDef, AdtRefId, TyId},
     ty_lower::{lower_adt, lower_hir_ty, lower_hir_ty_with_diag},
     visitor::{walk_ty, TyDiagCollector, TyVisitor},
 };
@@ -85,18 +85,15 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
         variant: &hir::hir_def::VariantDef,
     ) {
-        match variant.kind {
-            VariantKind::Tuple(tuple_id) => {
-                let span = ctxt.span().unwrap().tuple_type_moved();
-                for (i, elem_ty) in tuple_id.data(self.db.as_hir_db()).iter().enumerate() {
-                    let Some(elem_ty) = elem_ty.to_opt() else {
-                        continue;
-                    };
+        if let VariantKind::Tuple(tuple_id) = variant.kind {
+            let span = ctxt.span().unwrap().tuple_type_moved();
+            for (i, elem_ty) in tuple_id.data(self.db.as_hir_db()).iter().enumerate() {
+                let Some(elem_ty) = elem_ty.to_opt() else {
+                    continue;
+                };
 
-                    self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
-                }
+                self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
             }
-            _ => {}
         }
         walk_variant_def(self, ctxt, variant);
     }

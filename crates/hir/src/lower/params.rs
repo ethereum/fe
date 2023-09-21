@@ -183,24 +183,24 @@ impl TypeBound {
 }
 
 impl KindBound {
-    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
+    fn lower_ast_opt(_ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
         let Some(ast) = ast else {
             return Partial::Absent;
         };
 
         if let Some(abs) = ast.abs() {
-            let lhs = KindBound::lower_ast_opt(ctxt, abs.lhs())
+            let lhs = KindBound::lower_ast_opt(_ctxt, abs.lhs())
                 .to_opt()
-                .map(|kind| Box::new(kind))
+                .map(Box::new)
                 .into();
 
-            let rhs = KindBound::lower_ast_opt(ctxt, abs.rhs())
+            let rhs = KindBound::lower_ast_opt(_ctxt, abs.rhs())
                 .to_opt()
-                .map(|kind| Box::new(kind))
+                .map(Box::new)
                 .into();
 
             Partial::Present(KindBound::Abs(lhs, rhs))
-        } else if let Some(_) = ast.mono() {
+        } else if ast.mono().is_some() {
             Partial::Present(KindBound::Mono)
         } else {
             Partial::Absent

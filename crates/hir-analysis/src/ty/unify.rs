@@ -2,7 +2,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use crate::HirAnalysisDb;
 
-use super::ty::{Kind, Subst, TyData, TyId, TyVar};
+use super::ty_def::{Kind, Subst, TyData, TyId, TyVar};
 
 pub struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -52,7 +52,7 @@ impl<'db> UnificationTable<'db> {
     }
 
     fn unify_impl(&mut self, ty1: TyId, ty2: TyId) -> bool {
-        if ty1.kind(self.db) != ty2.kind(self.db) {
+        if !ty1.kind(self.db).can_unify(ty2.kind(self.db)) {
             return false;
         }
         let ty1 = self.apply(self.db, ty1);
@@ -135,7 +135,7 @@ impl UnifyValue for InferenceValue {
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
         match (v1, v2) {
             (InferenceValue::Unbounded(k1), InferenceValue::Unbounded(k2)) => {
-                assert!(k1 == k2);
+                assert!(k1.can_unify(k2));
                 Ok(InferenceValue::Unbounded(k1.clone()))
             }
 

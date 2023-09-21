@@ -8,7 +8,7 @@ use hir::{
     HirDb, SpannedHirDb,
 };
 
-use super::ty::Kind;
+use super::ty_def::Kind;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
@@ -47,7 +47,7 @@ impl TyLowerDiag {
 
     pub fn invalid_type_arg(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
         let msg = if let Some(expected) = expected {
-            debug_assert!(expected != actual);
+            debug_assert!(!expected.can_unify(&actual));
 
             format!("expected `{}` kind, but found `{}` kind", expected, actual,)
         } else {
@@ -171,7 +171,7 @@ impl TyLowerDiag {
                     ),
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("type alias defined here"),
+                        "type alias defined here".to_string(),
                         type_alias.lazy_span().resolve(db),
                     ),
                 ]
@@ -388,7 +388,7 @@ impl TraitSatisfactionDiag {
                     ),
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("trait defined here"),
+                        "trait defined here".to_string(),
                         trait_.lazy_span().name().resolve(db),
                     ),
                 ]

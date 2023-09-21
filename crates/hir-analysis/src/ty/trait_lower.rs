@@ -17,7 +17,7 @@ use crate::{
 use super::{
     diagnostics::{ImplTraitLowerDiag, TraitSatisfactionDiag, TyLowerDiag},
     trait_::{Implementor, TraitDef, TraitImplTable, TraitInstId},
-    ty::TyId,
+    ty_def::TyId,
     ty_lower::{collect_generic_params, lower_hir_ty_with_diag, GenericParamOwnerId},
     unify::UnificationTable,
     visitor::TyDiagCollector,
@@ -98,7 +98,7 @@ pub(super) fn lower_trait_ref(
 
     let mut has_error = false;
     for (i, (expected, given)) in trait_def.args(db).iter().zip(&args).enumerate() {
-        if expected.kind(db) != given.kind(db) {
+        if !expected.kind(db).can_unify(given.kind(db)) {
             let span = ref_span.generic_args().arg_moved(i).into();
             let diag = TraitSatisfactionDiag::trait_arg_kind_mismatch(
                 span,
@@ -240,8 +240,9 @@ impl<'db> ImplementorCollector<'db> {
         }
 
         let trait_inst = trait_inst?;
-        if implementor_ty.kind(self.db)
-            == trait_inst.def(self.db).expected_implementor_kind(self.db)
+        if implementor_ty
+            .kind(self.db)
+            .can_unify(trait_inst.def(self.db).expected_implementor_kind(self.db))
         {
             Some(trait_inst)
         } else {
@@ -281,7 +282,7 @@ impl<'db> ImplementorCollector<'db> {
 }
 
 impl Implementor {
-    fn generalize<'db>(self, db: &'db dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
+    fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
         let mut subst = FxHashMap::default();
         for param in self.params(db) {
             let var = table.new_var(param.kind(db));
@@ -297,9 +298,7 @@ impl Implementor {
             .map(|param| subst[param])
             .collect::<Vec<_>>();
 
-        let implementor = Implementor::new(db, impl_def, trait_, ty, params);
-
-        implementor
+        Implementor::new(db, impl_def, trait_, ty, params)
     }
 
     fn does_conflict(

@@ -26,15 +26,12 @@ pub struct TyId {
 }
 
 impl TyId {
-    pub fn kind<'db>(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
+    pub fn kind(self, db: &dyn HirAnalysisDb) -> &Kind {
         ty_kind(db, self)
     }
 
     pub fn is_invalid(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.data(db) {
-            TyData::Invalid(_) => true,
-            _ => false,
-        }
+        matches!(self.data(db), TyData::Invalid(_))
     }
 
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
@@ -54,10 +51,7 @@ impl TyId {
     /// Returns `true` if the type is declared as a monotype or fully applied
     /// type.
     pub fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.kind(db) {
-            Kind::Abs(_, _) => false,
-            _ => true,
-        }
+        !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
@@ -80,10 +74,7 @@ impl TyId {
         matches!(self.data(db), TyData::TyVar(_))
     }
 
-    pub(super) fn free_inference_keys<'db>(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> &'db BTreeSet<InferenceKey> {
+    pub(super) fn free_inference_keys(self, db: &dyn HirAnalysisDb) -> &BTreeSet<InferenceKey> {
         free_inference_keys(db, self)
     }
 
@@ -94,7 +85,7 @@ impl TyId {
         let k_arg = arg.kind(db);
 
         let arg = match k_abs {
-            Kind::Abs(k_expected, _) if k_expected.as_ref() == k_arg => arg,
+            Kind::Abs(k_expected, _) if k_expected.as_ref().can_unify(k_arg) => arg,
             Kind::Abs(k_abs_arg, _) => Self::invalid(
                 db,
                 InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), k_arg),
@@ -240,7 +231,7 @@ impl AdtField {
     }
 
     pub fn iter_types<'a>(&'a self, db: &'a dyn HirAnalysisDb) -> impl Iterator<Item = TyId> + 'a {
-        (0..self.num_types()).into_iter().map(|i| self.ty(db, i))
+        (0..self.num_types()).map(|i| self.ty(db, i))
     }
 
     pub fn num_types(&self) -> usize {
@@ -311,7 +302,7 @@ impl InvalidCause {
     }
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
     /// Represents monotypes, `*`.
     Star,
@@ -325,22 +316,21 @@ pub enum Kind {
     Any,
 }
 
-impl PartialEq for Kind {
-    fn eq(&self, other: &Self) -> bool {
+impl Kind {
+    fn abs(lhs: Kind, rhs: Kind) -> Self {
+        Kind::Abs(Box::new(lhs), Box::new(rhs))
+    }
+
+    pub(super) fn can_unify(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Star, Self::Star) => true,
-            (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => lhs1 == lhs2 && rhs1 == rhs2,
+            (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => {
+                lhs1.can_unify(lhs2) && rhs1.can_unify(rhs2)
+            }
             (Self::Any, _) => true,
             (_, Self::Any) => true,
             _ => false,
         }
-    }
-}
-impl Eq for Kind {}
-
-impl Kind {
-    fn abs(lhs: Kind, rhs: Kind) -> Self {
-        Kind::Abs(Box::new(lhs), Box::new(rhs))
     }
 }
 
@@ -447,7 +437,7 @@ impl AdtRefId {
     pub fn name_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {
         self.scope(db)
             .name_span(db.as_hir_db())
-            .unwrap_or_else(|| DynLazySpan::invalid())
+            .unwrap_or_else(DynLazySpan::invalid)
     }
 
     pub fn from_enum(db: &dyn HirAnalysisDb, enum_: Enum) -> Self {
@@ -542,12 +532,8 @@ impl HasKind for TyConcrete {
 impl HasKind for PrimTy {
     fn kind(&self, _: &dyn HirAnalysisDb) -> Kind {
         match self {
-            Self::Array => (0..2)
-                .into_iter()
-                .fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
-            Self::Tuple(n) => (0..*n)
-                .into_iter()
-                .fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
+            Self::Array => (0..2).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
+            Self::Tuple(n) => (0..*n).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
             Self::Ptr => Kind::abs(Kind::Star, Kind::Star),
             _ => Kind::Star,
         }

@@ -6,7 +6,7 @@ use crate::HirAnalysisDb;
 
 use super::{
     diagnostics::TraitSatisfactionDiag,
-    ty::{Kind, Subst, TyId},
+    ty_def::{Kind, Subst, TyId},
 };
 
 #[salsa::interned]

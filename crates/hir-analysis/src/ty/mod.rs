@@ -10,7 +10,7 @@ use self::{
         TypeAliasDefDiagAccumulator,
     },
     trait_lower::{collect_trait_impl, TraitImplDiag},
-    ty::AdtRefId,
+    ty_def::AdtRefId,
     ty_lower::{collect_generic_params, lower_type_alias, GenericParamOwnerId},
 };
 
@@ -18,7 +18,7 @@ pub mod adt_analysis;
 pub mod diagnostics;
 pub mod trait_;
 pub mod trait_lower;
-pub mod ty;
+pub mod ty_def;
 pub mod ty_lower;
 pub mod visitor;
 
@@ -57,21 +57,17 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
                     .map(|c| AdtRefId::from_contract(self.db, *c)),
             );
 
-        adts.map(|adt| {
+        adts.flat_map(|adt| {
             analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
                 .into_iter()
-                .chain(
-                    if let Some(owner_id) = adt.generic_owner_id(self.db) {
-                        collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
-                            self.db, owner_id,
-                        )
-                    } else {
-                        Vec::new()
-                    }
-                    .into_iter(),
-                )
+                .chain(if let Some(owner_id) = adt.generic_owner_id(self.db) {
+                    collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
+                        self.db, owner_id,
+                    )
+                } else {
+                    Vec::new()
+                })
         })
-        .flatten()
         .map(|diag| Box::new(diag) as _)
         .collect()
     }
@@ -95,17 +91,15 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
         let diags: FxHashSet<TyLowerDiag> = top_mod
             .all_type_aliases(self.db.as_hir_db())
             .iter()
-            .map(|&alias| {
+            .flat_map(|&alias| {
                 lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, alias)
                     .into_iter()
                     .chain(
                         lower_type_alias::accumulated::<GenericParamDiagAccumulator>(
                             self.db, alias,
-                        )
-                        .into_iter(),
+                        ),
                     )
             })
-            .flatten()
             .collect();
 
         diags.into_iter().map(|diag| Box::new(diag) as _).collect()
@@ -129,13 +123,12 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
         top_mod
             .all_traits(self.db.as_hir_db())
             .iter()
-            .map(|&trait_| {
+            .flat_map(|&trait_| {
                 let owner_id = GenericParamOwnerId::new(self.db, trait_.into());
                 collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
                     self.db, owner_id,
                 )
             })
-            .flatten()
             .map(|diag| Box::new(diag) as _)
             .collect()
     }
@@ -174,13 +167,12 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
                     .all_impl_traits(self.db.as_hir_db())
                     .iter()
                     .copied()
-                    .map(|impl_trait| {
+                    .flat_map(|impl_trait| {
                         let owner_id = GenericParamOwnerId::new(self.db, impl_trait.into());
                         collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
                             self.db, owner_id,
                         )
                     })
-                    .flatten()
                     .map(|diag| Box::new(diag) as _),
             )
             .collect()

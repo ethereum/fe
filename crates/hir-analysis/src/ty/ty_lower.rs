@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     trait_::TraitDef,
-    ty::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
+    ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
 };
 
 #[salsa::tracked]
@@ -497,7 +497,7 @@ impl<'db> GenericParamCollector<'db> {
             db,
             parent,
             params: Vec::new(),
-            trait_self: trait_self,
+            trait_self,
             current_idx: ParamLoc::Idx(0),
             diags: Vec::new(),
         }
@@ -645,7 +645,7 @@ impl<'db> Visitor for GenericParamCollector<'db> {
             }
         } else {
             param.kind = kind;
-            param.kind_span = Some(ctxt.span().unwrap().into());
+            param.kind_span = Some(ctxt.span().unwrap());
         }
     }
 }

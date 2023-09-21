@@ -8,11 +8,11 @@ pub struct Jar(
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
     /// Type inference.
-    ty::ty::TyId,
-    ty::ty::ty_kind,
-    ty::ty::free_inference_keys,
-    ty::ty::AdtDef,
-    ty::ty::AdtRefId,
+    ty::ty_def::TyId,
+    ty::ty_def::ty_kind,
+    ty::ty_def::free_inference_keys,
+    ty::ty_def::AdtDef,
+    ty::ty_def::AdtRefId,
     /// Type lowering.
     ty::ty_lower::lower_hir_ty,
     ty::ty_lower::lower_adt,

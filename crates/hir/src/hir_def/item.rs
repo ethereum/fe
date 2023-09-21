@@ -372,43 +372,43 @@ impl TopLevelMod {
 
     /// Returns all items in the top level module including ones in nested
     /// modules.
-    pub fn all_items<'db>(self, db: &'db dyn HirDb) -> &'db Vec<ItemKind> {
+    pub fn all_items(self, db: &dyn HirDb) -> &Vec<ItemKind> {
         all_items_in_top_mod(db, self)
     }
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
-    pub fn all_structs<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Struct> {
+    pub fn all_structs(self, db: &dyn HirDb) -> &Vec<Struct> {
         all_structs_in_top_mod(db, self)
     }
 
     /// Returns all enums in the top level module including ones in nested
     /// modules.
-    pub fn all_enums<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Enum> {
+    pub fn all_enums(self, db: &dyn HirDb) -> &Vec<Enum> {
         all_enums_in_top_mod(db, self)
     }
 
     /// Returns all contracts in the top level module including ones in nested
     /// modules.
-    pub fn all_contracts<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Contract> {
+    pub fn all_contracts(self, db: &dyn HirDb) -> &Vec<Contract> {
         all_contracts_in_top_mod(db, self)
     }
 
     /// Returns all type aliases in the top level module including ones in
     /// nested modules.
-    pub fn all_type_aliases<'db>(self, db: &'db dyn HirDb) -> &'db Vec<TypeAlias> {
+    pub fn all_type_aliases(self, db: &dyn HirDb) -> &Vec<TypeAlias> {
         all_type_aliases_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_traits<'db>(self, db: &'db dyn HirDb) -> &'db Vec<Trait> {
+    pub fn all_traits(self, db: &dyn HirDb) -> &Vec<Trait> {
         all_traits_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_impl_traits<'db>(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait> {
+    pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
         all_impl_trait_in_top_mod(db, self)
     }
 }
