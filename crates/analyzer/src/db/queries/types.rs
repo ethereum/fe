@@ -1,4 +1,3 @@
-use core::panic;
 use std::rc::Rc;
 
 use smol_str::SmolStr;
@@ -6,7 +5,7 @@ use smol_str::SmolStr;
 use crate::context::{AnalyzerContext, TempContext};
 use crate::db::Analysis;
 use crate::errors::TypeError;
-use crate::namespace::items::{FunctionSigId, ImplId, Trait, TraitId, TypeAliasId};
+use crate::namespace::items::{FunctionSigId, ImplId, TraitId, TypeAliasId};
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, TypeId};
 use crate::traversal::types::type_desc;
@@ -63,7 +62,7 @@ pub fn get_eq_trait(db: &dyn AnalyzerDb, ty: TypeId) -> TraitId {
         .trait_id(db)
 }
 
-pub fn impl_from_name(db: &dyn AnalyzerDb, ty: SmolStr, treit: SmolStr) -> Option<ImplId> {
+pub fn impl_from_name(db: &dyn AnalyzerDb, ty: SmolStr, _treit: SmolStr) -> Option<ImplId> {
     db.all_impls_of_name(ty)
         .iter()
         .find(|impl_| impl_.trait_id(db).name(db) == "Eq")

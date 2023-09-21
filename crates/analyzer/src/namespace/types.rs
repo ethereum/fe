@@ -7,7 +7,6 @@ use crate::namespace::items::{
 };
 use crate::AnalyzerDb;
 
-use core::panic;
 use fe_common::impl_intern_key;
 use fe_common::Span;
 use num_bigint::BigInt;
@@ -172,11 +171,7 @@ impl TypeId {
 
     pub fn eq_trait_implemented(&self, db: &dyn AnalyzerDb) -> bool {
         if let Type::Struct(id) = self.typ(db) {
-            if id.name(db) == "MemoryBuffer" {
-                true
-            } else {
-                false
-            }
+            id.name(db) == "MemoryBuffer"
         } else {
             false
         }
