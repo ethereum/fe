@@ -2132,9 +2132,9 @@ fn expr_comp_operation(
                     exp.span,
                     "invalid comparison",
                 );
+            } else {
+                expect_expr_type(context, right, left_ty, false)?;
             }
-            // else {
-            // }
         } else if left_ty.is_primitive(context.db()) {
             expect_expr_type(context, right, left_ty, false)?;
         } else {

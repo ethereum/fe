@@ -378,6 +378,5 @@ impl Eq for MemoryBuffer {
                 }
             }
         }
-        return true
    }
 }

@@ -279,10 +279,7 @@ impl TypeId {
     }
 
     pub fn eq_trait_implemented(&self, db: &dyn MirDb) -> bool {
-        if self.data(db).kind == TypeKind::Bool {
-            return true;
-        }
-        false
+        self.is_mptr(db)
     }
 
     pub fn align_of(self, db: &dyn MirDb, slot_size: usize) -> usize {

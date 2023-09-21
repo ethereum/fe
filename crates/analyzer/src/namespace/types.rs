@@ -7,6 +7,7 @@ use crate::namespace::items::{
 };
 use crate::AnalyzerDb;
 
+use core::panic;
 use fe_common::impl_intern_key;
 use fe_common::Span;
 use num_bigint::BigInt;
@@ -170,11 +171,15 @@ impl TypeId {
     }
 
     pub fn eq_trait_implemented(&self, db: &dyn AnalyzerDb) -> bool {
-        matches!(
-            self.typ(db),
-            //Type::Array(_) | Type::Map(_) | Type::String(_)
-            Type::Base(Base::Bool)
-        )
+        if let Type::Struct(id) = self.typ(db) {
+            if id.name(db) == "MemoryBuffer" {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
     }
 
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
@@ -195,6 +200,10 @@ impl TypeId {
     /// implementation per concrete type and trait.
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         db.impl_for(*self, trait_)
+    }
+
+    pub fn get_eq_trait(&self, db: &dyn AnalyzerDb) -> TraitId {
+        db.get_eq_trait(*self)
     }
 
     /// Return the `impl` for the given trait name. There can only ever be a single

@@ -390,19 +390,19 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             }
 
             ast::Expr::CompOperation { left, op, right } => {
-                let lhs = self.lower_expr_to_value(left);
-                let rhs = self.lower_expr_to_value(right);
-                // convert to match statement ??
-                let sss = self.expr_ty(left);
-                if op.kind == ast::CompOperator::Eq && sss.eq_trait_implemented(self.db) {
-                    //lower to proper impl of the trait
+                let left_ty = self.expr_ty(left);
 
-                    let impl_ = analyzer_types::TypeId::get_impl_of_eq_for(
-                        SmolStr::new("bool"),
-                        self.db.upcast(),
-                        SmolStr::new("Eq"),
-                    )
-                    .expect("missing impl");
+                if op.kind == ast::CompOperator::Eq && left_ty.eq_trait_implemented(self.db) {
+                    let lhs = self.lower_expr_to_value(left);
+                    let rhs = self.lower_expr_to_value(right);
+                    let concrete_type = self.analyzer_body.expressions[&left.id].typ;
+                    let trait_id = concrete_type.get_eq_trait(self.db.upcast());
+                    //panic!("{:#?}", self.db.upcast());
+
+                    // could be shortened
+                    let impl_ = concrete_type
+                        .get_impl_for(self.db.upcast(), trait_id)
+                        .expect("missing impl");
 
                     let function = impl_
                         .function(self.db.upcast(), "compare")
@@ -411,6 +411,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     let func = self.db.mir_lowered_func_signature(function);
                     self.builder.lower_eq(lhs, rhs, expr.into(), func)
                 } else {
+                    let lhs = self.lower_expr_to_value(left);
+                    let rhs = self.lower_expr_to_value(right);
                     self.lower_comp_op(op.kind, lhs, rhs, expr.into())
                 }
             }
