@@ -8,8 +8,8 @@ impl<T, U> Foo<T, U> for (i32, u32) {}
 impl<T, U> Foo<T, U> for (T, T) {}
 
 pub struct S<T, U> {
-    t: T
-    u: U
+    t: T,
+    u: U,
 }
 
 impl<T, U> Foo<T, U> for S<i32, u32> {}

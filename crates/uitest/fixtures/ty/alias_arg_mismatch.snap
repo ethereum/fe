@@ -6,7 +6,7 @@ input_file: crates/uitest/fixtures/ty/alias_arg_mismatch.fe
 error[3-0003]: type alias expects 2 generic arguments, but 1 given
    ┌─ alias_arg_mismatch.fe:2:8
    │
- 2 │     t: T1<i32>
+ 2 │     t: T1<i32>,
    │        ^^^^^^^ expected 2 arguments here
    ·
 12 │ type T1<T, K> = S<T, K>
@@ -15,7 +15,7 @@ error[3-0003]: type alias expects 2 generic arguments, but 1 given
 error[3-0003]: type alias expects 1 generic arguments, but 2 given
    ┌─ alias_arg_mismatch.fe:4:8
    │
- 4 │     u: T2<i32, u32>
+ 4 │     u: T2<i32, u32>,
    │        ^^^^^^^^^^^^ expected 1 arguments here
    ·
 13 │ type T2<T> = T1<T>

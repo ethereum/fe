@@ -18,7 +18,7 @@ error[3-0001]: invalid type argument given
 error[3-0001]: invalid type argument given
    ┌─ alias_kind_mismatch.fe:12:16
    │
-12 │     t: T3<i32, S0>
+12 │     t: T3<i32, S0>,
    │                ^^ expected `*` kind, but found `(* -> (* -> *))` kind
 
 

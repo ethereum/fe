@@ -451,9 +451,7 @@ impl<'db> AdtTyBuilder<'db> {
             .for_each(|variant| {
                 // TODO: FIX here when record variant is introduced.
                 let tys = match variant.kind {
-                    VariantKind::Tuple(tuple_id) => {
-                        vec![Partial::Present(tuple_id.to_ty(self.db.as_hir_db()))]
-                    }
+                    VariantKind::Tuple(tuple_id) => tuple_id.data(self.db.as_hir_db()).clone(),
 
                     VariantKind::Record(fields) => fields
                         .data(self.db.as_hir_db())

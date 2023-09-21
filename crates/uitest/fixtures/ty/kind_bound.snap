@@ -6,25 +6,25 @@ input_file: crates/uitest/fixtures/ty/kind_bound.fe
 error[2-0002]: `wrapper3` is not found
    ┌─ kind_bound.fe:34:15
    │
-34 │     bar_err3: wrapper3<Wrapper1, Wrapper1>
+34 │     bar_err3: wrapper3<Wrapper1, Wrapper1>,
    │               ^^^^^^^^ `wrapper3` is not found
 
 error[3-0001]: invalid type argument given
    ┌─ kind_bound.fe:25:23
    │
-25 │     foo_err: Wrapper2<i32, i32>
+25 │     foo_err: Wrapper2<i32, i32>,
    │                       ^^^ expected `(* -> *)` kind, but found `*` kind
 
 error[3-0001]: invalid type argument given
    ┌─ kind_bound.fe:32:24
    │
-32 │     bar_err1: Wrapper3<i32, u32>
+32 │     bar_err1: Wrapper3<i32, u32>,
    │                        ^^^ expected `((* -> *) -> (* -> *))` kind, but found `*` kind
 
 error[3-0001]: invalid type argument given
    ┌─ kind_bound.fe:33:34
    │
-33 │     bar_err2: Wrapper3<Wrapper2, u32>
+33 │     bar_err2: Wrapper3<Wrapper2, u32>,
    │                                  ^^^ expected `(* -> *)` kind, but found `*` kind
 
 error[3-0005]: duplicate type bound is not allowed.

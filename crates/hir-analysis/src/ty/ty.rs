@@ -187,10 +187,7 @@ impl AdtDef {
             AdtRef::Enum(e) => {
                 let span = e.lazy_span().variants_moved().variant_moved(field_idx);
                 match e.variants(db.as_hir_db()).data(db.as_hir_db())[field_idx].kind {
-                    VariantKind::Tuple(_) => {
-                        debug_assert!(ty_idx == 0);
-                        span.tuple_type_moved().into()
-                    }
+                    VariantKind::Tuple(_) => span.tuple_type_moved().elem_ty_moved(ty_idx).into(),
                     VariantKind::Record(_) => {
                         span.fields_moved().field_moved(ty_idx).ty_moved().into()
                     }

@@ -15,8 +15,8 @@ pub struct S4 {
 }
 
 pub struct S5<T> {
-    s: S6
-    t: T
+    s: S6,
+    t: T,
 }
 
 pub struct S6 {

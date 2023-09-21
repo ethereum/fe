@@ -85,11 +85,19 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
         variant: &hir::hir_def::VariantDef,
     ) {
-        if let VariantKind::Tuple(tuple_id) = variant.kind {
-            let ty = tuple_id.to_ty(self.db.as_hir_db());
-            self.verify_fully_applied(ty, ctxt.span().unwrap().tuple_type().into());
-        }
+        match variant.kind {
+            VariantKind::Tuple(tuple_id) => {
+                let span = ctxt.span().unwrap().tuple_type_moved();
+                for (i, elem_ty) in tuple_id.data(self.db.as_hir_db()).iter().enumerate() {
+                    let Some(elem_ty) = elem_ty.to_opt() else {
+                        continue;
+                    };
 
+                    self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
+                }
+            }
+            _ => {}
+        }
         walk_variant_def(self, ctxt, variant);
     }
 }

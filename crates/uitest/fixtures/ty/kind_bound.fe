@@ -21,17 +21,17 @@ where T: (* -> *) -> * -> *
 }
 
 pub struct Foo {
-    foo_x: Wrapper2<Wrapper1, i32>
-    foo_err: Wrapper2<i32, i32>
+    foo_x: Wrapper2<Wrapper1, i32>,
+    foo_err: Wrapper2<i32, i32>,
 }
 
 
 pub struct Bar {
-    bar_x: Wrapper3<Wrapper2, Wrapper1>
-    bar_y: Wrapper1<Wrapper3<Wrapper2, Wrapper1>>
-    bar_err1: Wrapper3<i32, u32>
-    bar_err2: Wrapper3<Wrapper2, u32>
-    bar_err3: wrapper3<Wrapper1, Wrapper1>
+    bar_x: Wrapper3<Wrapper2, Wrapper1>,
+    bar_y: Wrapper1<Wrapper3<Wrapper2, Wrapper1>>,
+    bar_err1: Wrapper3<i32, u32>,
+    bar_err2: Wrapper3<Wrapper2, u32>,
+    bar_err3: wrapper3<Wrapper1, Wrapper1>,
 }
 
 pub struct InvalidBound<T: * -> *>
