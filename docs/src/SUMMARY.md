@@ -1,12 +1,12 @@
 # Summary
 
 [Introduction](index.md)
-
 * [Quickstart](quickstart/index.md)
-    * [Installation](quickstart/installation.md)
     * [Write your first contract](quickstart/first_contract.md)
     * [Deploying a contract to a testnet](quickstart/deploy_contract.md)
-    * [Using projects](quickstart/projects.md)
+* [Using Fe](user-guide/index.md)
+  * [Installation](user-guide/installation.md)
+  * [Using projects](user-guide/projects.md)
 * [Development](development/index.md)
     * [Build & Test](development/build.md)
     * [Release](development/release.md)
@@ -78,5 +78,6 @@
             * [Sequence types in memory](spec/data_layout/memory/sequence_types_in_memory.md)
     * [Function calls](spec/function_calls.md)
 
+* [Contributing](contributing.md)
 * [Release Notes](release_notes.md)
 * [Code of Conduct](code_of_conduct.md)
