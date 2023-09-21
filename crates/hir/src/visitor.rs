@@ -1575,9 +1575,11 @@ pub fn walk_variant_def<V>(
             |span| span.tuple_type_moved(),
             |ctxt| visitor.visit_tuple_type(ctxt, t),
         ),
-        VariantKind::Record(_) => {
-            todo!()
-        }
+
+        VariantKind::Record(fields) => ctxt.with_new_ctxt(
+            |span| span.fields_moved(),
+            |ctxt| visitor.visit_field_def_list(ctxt, fields),
+        ),
     }
 }
 
