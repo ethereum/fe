@@ -1,18 +1,18 @@
-pub struct StructWithGenericParam<S, T, U> 
+pub struct StructWithGenericParam<S, T, U>
 {
-    x: S
-    y: T
-    z: U
+    x: S,
+    y: T,
+    z: U,
 }
- 
+
 pub struct StructWithGenericParam2<
     S,
     T: foo::Trait,
     U
 > {
-    x: *(S, *i32)
-    y: T
-    z: U
+    x: *(S, *i32),
+    y: T,
+    z: U,
 }
 
 pub struct StructWithGenericParam3<
@@ -24,15 +24,15 @@ pub struct StructWithGenericParam3<
     Option<T>: Trait1 + Trait2
     Result<U>: Trait2 + Trait3
 {
-    x: S
-    y: T
-    z: U
+    x: S,
+    y: T,
+    z: U,
 }
 
-pub struct MyArr<T: std::ops::Add, U, const N: usize> 
+pub struct MyArr<T: std::ops::Add, U, const N: usize>
     where
         (T, U): Trait + Trait<i32, Y>
 {
-    __inner: [T; N]
+    __inner: [T; N],
     __inner2: (T, U)
 }

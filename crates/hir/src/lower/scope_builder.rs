@@ -3,9 +3,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     hir_def::{
-        scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
+        scope_graph::{EdgeKind, FieldParent, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
-        TopLevelMod, TrackedItemId, Use, VariantDefListId, Visibility,
+        TopLevelMod, TrackedItemId, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,
 };
@@ -141,7 +141,11 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Struct(inner) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                self.add_field_scope(item_node, inner.into(), inner.fields(self.db));
+                self.add_field_scope(
+                    item_node,
+                    FieldParent::Item(inner.into()),
+                    inner.fields(self.db),
+                );
                 self.add_generic_param_scope(
                     item_node,
                     inner.into(),
@@ -156,7 +160,11 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Contract(inner) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                self.add_field_scope(item_node, inner.into(), inner.fields(self.db));
+                self.add_field_scope(
+                    item_node,
+                    FieldParent::Item(inner.into()),
+                    inner.fields(self.db),
+                );
                 inner
                     .name(self.db)
                     .to_opt()
@@ -310,11 +318,11 @@ impl<'db> ScopeGraphBuilder<'db> {
     fn add_field_scope(
         &mut self,
         parent_node: NodeId,
-        parent_item: ItemKind,
+        parent: FieldParent,
         fields: FieldDefListId,
     ) {
         for (i, field) in fields.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::Field(parent_item, i);
+            let scope_id = ScopeId::Field(parent, i);
             let scope_data = Scope::new(scope_id, field.vis);
 
             let field_node = self.graph.push(scope_id, scope_data);
@@ -336,17 +344,22 @@ impl<'db> ScopeGraphBuilder<'db> {
     ) {
         let parent_vis = parent_item.vis(self.db);
 
-        for (i, field) in variants.data(self.db).iter().enumerate() {
+        for (i, variant) in variants.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::Variant(parent_item, i);
             let scope_data = Scope::new(scope_id, parent_vis);
 
             let variant_node = self.graph.push(scope_id, scope_data);
             self.graph.add_lex_edge(variant_node, parent_node);
-            let kind = field
+            let kind = variant
                 .name
                 .to_opt()
                 .map(EdgeKind::variant)
                 .unwrap_or_else(EdgeKind::anon);
+
+            if let VariantKind::Record(fields) = variant.kind {
+                self.add_field_scope(variant_node, FieldParent::Variant(parent_item, i), fields)
+            }
+
             self.graph.add_edge(parent_node, variant_node, kind)
         }
     }

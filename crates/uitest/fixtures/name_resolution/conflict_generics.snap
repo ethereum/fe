@@ -18,7 +18,7 @@ error[2-0004]: `T` is ambiguous
   │                -     - candidate `#1`
   │                │      
   │                candidate `#0`
-2 │     x: T
+2 │     x: T,
   │        ^ `T` is ambiguous
 
 

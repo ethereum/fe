@@ -54,19 +54,20 @@ define_scope! {
 impl super::Parse for RecordFieldDefListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
+        parser.set_newline_as_trivia(true);
 
         loop {
-            parser.set_newline_as_trivia(true);
             if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
             {
                 break;
             }
+
             parser.parse(RecordFieldDefScope::default(), None);
-            parser.set_newline_as_trivia(false);
-            if !parser.bump_if(SyntaxKind::Newline)
+
+            if !parser.bump_if(SyntaxKind::Comma)
                 && parser.current_kind() != Some(SyntaxKind::RBrace)
             {
-                parser.error_and_recover("expected newline after field definition", None);
+                parser.error_at_current_pos("expected comma after field definition");
             }
         }
 
@@ -118,7 +119,7 @@ impl super::Parse for RecordFieldDefScope {
         if parser.bump_if(SyntaxKind::Colon) {
             parser.with_next_expected_tokens(
                 |parser| parse_type(parser, None),
-                &[SyntaxKind::Newline, SyntaxKind::RBrace],
+                &[SyntaxKind::Comma, SyntaxKind::Newline, SyntaxKind::RBrace],
             );
         } else {
             parser.error_and_recover("expected `name: type` for the field definition", None);

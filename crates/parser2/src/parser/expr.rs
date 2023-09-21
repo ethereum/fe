@@ -35,7 +35,7 @@ fn parse_expr_with_min_bp<S: TokenStream>(
 
     loop {
         let Some(kind) = parser.current_kind() else {
-            break
+            break;
         };
 
         // Parse postfix operators.

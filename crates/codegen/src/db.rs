@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 use std::rc::Rc;
 
 use fe_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};

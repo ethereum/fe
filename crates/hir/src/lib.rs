@@ -47,6 +47,7 @@ pub struct Jar(
     hir_def::VariantDefListId,
     hir_def::ImplItemListId,
     hir_def::TypeId,
+    hir_def::TupleTypeId,
     hir_def::UsePathId,
     /// Accumulated diagnostics.
     ParseErrorAccumulator,

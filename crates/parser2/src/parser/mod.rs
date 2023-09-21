@@ -463,6 +463,16 @@ impl<S: TokenStream> Parser<S> {
         ErrorScope::default()
     }
 
+    fn error_at_current_pos(&mut self, msg: &str) -> ErrorScope {
+        let pos = self.current_pos;
+        let range = TextRange::new(pos, pos);
+        self.errors.push(ParseError {
+            range,
+            msg: msg.to_string(),
+        });
+        ErrorScope::default()
+    }
+
     /// Returns `true` if the parser is in the dry run mode.
     fn is_dry_run(&self) -> bool {
         !self.dry_run_states.is_empty()

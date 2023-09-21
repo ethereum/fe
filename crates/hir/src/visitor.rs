@@ -2,12 +2,14 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     hir_def::{
-        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field,
-        FieldDef, FieldDefListId, FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId,
-        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
-        Impl, ImplTrait, ItemKind, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt,
-        StmtId, Struct, TopLevelMod, Trait, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
-        UsePathId, UsePathSegment, VariantDef, VariantDefListId, WhereClauseId, WherePredicate,
+        attr,
+        scope_graph::{FieldParent, ScopeId},
+        Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
+        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
+        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
+        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
+        Trait, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
     HirDb,
@@ -279,6 +281,10 @@ pub trait Visitor {
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
         walk_ty(self, ctxt, ty)
+    }
+
+    fn visit_tuple_type(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTupleTypeSpan>, ty: TupleTypeId) {
+        walk_tuple_type(self, ctxt, ty)
     }
 
     #[allow(unused_variables)]
@@ -1486,10 +1492,14 @@ pub fn walk_field_def_list<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    let parent_item = ctxt.scope().item();
+    let parent = match ctxt.scope() {
+        ScopeId::Item(item) => FieldParent::Item(item),
+        ScopeId::Variant(item, idx) => FieldParent::Variant(item, idx),
+        _ => unreachable!(),
+    };
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::Field(parent_item, idx),
+            ScopeId::Field(parent, idx),
             |span| span.field_moved(idx),
             |ctxt| {
                 visitor.visit_field_def(ctxt, field);
@@ -1559,13 +1569,17 @@ pub fn walk_variant_def<V>(
         )
     }
 
-    if let Some(ty) = variant.ty {
-        ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
-            |ctxt| {
-                visitor.visit_ty(ctxt, ty);
-            },
-        )
+    match variant.kind {
+        VariantKind::Unit => {}
+        VariantKind::Tuple(t) => ctxt.with_new_ctxt(
+            |span| span.tuple_type_moved(),
+            |ctxt| visitor.visit_tuple_type(ctxt, t),
+        ),
+
+        VariantKind::Record(fields) => ctxt.with_new_ctxt(
+            |span| span.fields_moved(),
+            |ctxt| visitor.visit_field_def_list(ctxt, fields),
+        ),
     }
 }
 
@@ -1638,21 +1652,9 @@ where
             },
         ),
 
-        TypeKind::Tuple(elems) => ctxt.with_new_ctxt(
+        TypeKind::Tuple(t) => ctxt.with_new_ctxt(
             |span| span.into_tuple_type(),
-            |ctxt| {
-                for (i, elem) in elems.iter().enumerate() {
-                    let Some(elem) = elem.to_opt() else {
-                        continue;
-                    };
-                    ctxt.with_new_ctxt(
-                        |span| span.elem_ty_moved(i),
-                        |ctxt| {
-                            visitor.visit_ty(ctxt, elem);
-                        },
-                    )
-                }
-            },
+            |ctxt| walk_tuple_type(visitor, ctxt, t),
         ),
 
         TypeKind::Array(elem, body) => ctxt.with_new_ctxt(
@@ -1673,6 +1675,26 @@ where
         ),
 
         TypeKind::SelfType => {}
+    }
+}
+
+pub fn walk_tuple_type<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazyTupleTypeSpan>,
+    ty: TupleTypeId,
+) where
+    V: Visitor + ?Sized,
+{
+    for (i, elem) in ty.data(ctxt.db()).iter().enumerate() {
+        let Some(elem) = elem.to_opt() else {
+            continue;
+        };
+        ctxt.with_new_ctxt(
+            |span| span.elem_ty_moved(i),
+            |ctxt| {
+                visitor.visit_ty(ctxt, elem);
+            },
+        )
     }
 }
 

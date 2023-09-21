@@ -300,6 +300,8 @@ impl super::Parse for VariantDefScope {
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
             parser.parse(TupleTypeScope::default(), None);
+        } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            parser.parse(RecordFieldDefListScope::default(), None);
         }
     }
 }

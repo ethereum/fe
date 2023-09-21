@@ -2,8 +2,8 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRef, TypeId,
-        WhereClauseId,
+        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRef,
+        TupleTypeId, TypeId, WhereClauseId,
     },
     span::HirOrigin,
 };
@@ -412,8 +412,11 @@ impl VariantDefListId {
 impl VariantDef {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::VariantDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let ty = ast.ty().map(|ty| TypeId::lower_ast(ctxt, ty));
-
-        Self { name, ty }
+        let kind = match ast.kind() {
+            ast::VariantKind::Unit => VariantKind::Unit,
+            ast::VariantKind::Tuple(t) => VariantKind::Tuple(TupleTypeId::lower_ast(ctxt, t)),
+            ast::VariantKind::Record(r) => VariantKind::Record(FieldDefListId::lower_ast(ctxt, r)),
+        };
+        Self { name, kind }
     }
 }

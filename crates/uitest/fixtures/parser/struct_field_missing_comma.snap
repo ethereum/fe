@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/struct_field_missing_comma.fe
+---
+error[1-0001]: expected comma after field definition
+  ┌─ struct_field_missing_comma.fe:2:10
+  │
+2 │     x: u8
+  │          ^ expected comma after field definition
+
+
