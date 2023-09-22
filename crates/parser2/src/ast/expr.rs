@@ -65,6 +65,11 @@ impl BlockExpr {
     pub fn stmts(&self) -> impl Iterator<Item = super::Stmt> {
         self.iter()
     }
+
+    /// Returns items declared in the block.
+    pub fn items(&self) -> impl Iterator<Item = super::Item> {
+        support::children(self.syntax())
+    }
 }
 
 ast_node! {
@@ -176,7 +181,7 @@ impl RecordInitExpr {
     }
 
     /// Returns the fields of the record init expression.
-    pub fn fields(&self) -> Option<RecordFieldList> {
+    pub fn fields(&self) -> Option<FieldList> {
         support::child(self.syntax())
     }
 }
@@ -351,7 +356,7 @@ pub enum ExprKind {
 
 ast_node! {
     /// `{ label1: expr1, expr2 }`
-    pub struct RecordFieldList,
+    pub struct FieldList,
     SK::RecordFieldList,
     IntoIterator<Item=RecordField>
 }

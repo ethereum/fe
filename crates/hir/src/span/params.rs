@@ -2,13 +2,13 @@ use parser::ast;
 
 use crate::span::{path::LazyPathSpan, LazySpanAtom};
 
-use super::{define_lazy_span_node, types::LazyTypeSpan};
+use super::{define_lazy_span_node, types::LazyTySpan};
 
 define_lazy_span_node!(
-    LazyFnParamListSpan,
-    ast::FnParamList,
+    LazyFuncParamListSpan,
+    ast::FuncParamList,
     @idx {
-        (param, LazyFnParamSpan),
+        (param, LazyFuncParamSpan),
     }
 );
 
@@ -24,7 +24,7 @@ define_lazy_span_node!(
     LazyGenericArgListSpan,
     ast::GenericArgList,
     @idx {
-        (param, LazyGenericArgParamSpan),
+        (arg, LazyGenericArgSpan),
     }
 
 );
@@ -40,15 +40,15 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyFnParamSpan,
-    ast::FnParam,
+    LazyFuncParamSpan,
+    ast::FuncParam,
     @token {
        (mut_kw, mut_token),
     }
     @node {
        (label, label, LazySpanAtom),
        (name, name, LazySpanAtom),
-       (ty, ty, LazyTypeSpan),
+       (ty, ty, LazyTySpan),
     }
 );
 
@@ -82,17 +82,30 @@ define_lazy_span_node!(
         (name, name),
     }
     @node {
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
     }
 );
 
-define_lazy_span_node!(LazyGenericArgParamSpan);
+define_lazy_span_node!(LazyGenericArgSpan);
+impl LazyGenericArgSpan {
+    pub fn into_type_arg(self) -> LazyTypeGenericArgSpan {
+        LazyTypeGenericArgSpan(self.0)
+    }
+}
+
+define_lazy_span_node!(
+    LazyTypeGenericArgSpan,
+    ast::TypeGenericArg,
+    @node {
+        (ty, ty, LazyTySpan),
+    }
+);
 
 define_lazy_span_node!(
     LazyWherePredicateSpan,
     ast::WherePredicate,
     @node {
-        (ty, ty, LazyTypeSpan),
+        (ty, ty, LazyTySpan),
         (bounds, bounds, LazyTypeBoundListSpan),
     }
 );

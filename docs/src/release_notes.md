@@ -8,6 +8,197 @@
 Fe is moving fast. Read up on all the latest improvements.
 
 [//]: # (towncrier release notes start)
+## 0.23.0 "Wiluite" (2023-06-01)
+
+
+### Features
+
+
+- Fixed an issue where generic parameters that were `mut` could not be satisfied at callsite.
+
+  For instance, the following code would previously cause a compile error but now works as expected:
+
+  ```rust
+  struct Runner {
+    pub fn run<T: Computable>(self, mut _ val: T) -> u256 {
+      return val.compute(val: 1000)
+    }
+  }
+
+  contract Example {
+    pub fn run_test(self) {
+      let runner: Runner = Runner();
+      let mut mac: Mac = Mac();
+
+      assert runner.run(mac) == 1001
+    }
+  }
+  ```
+  ([#865](https://github.com/ethereum/fe/issues/865))
+- The `ctx` parameter can now be passed into test functions.
+
+  example:
+
+  ```
+  #test
+  fn my_test(ctx: Context) {
+      assert ctx.block_number() == 0
+  }
+  ```
+  ([#880](https://github.com/ethereum/fe/issues/880))
+- The following has been added to the standard library:
+
+  **Memory buffer abstraction**
+
+  example:
+
+  ```
+  use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+  use std::traits::Max
+
+  #test
+  fn test_buf_rw() {
+      let mut buf: MemoryBuffer = MemoryBuffer::new(len: 161) 
+      let mut writer: MemoryBufferWriter = buf.writer()
+      let mut reader: MemoryBufferReader = buf.reader()
+
+      writer.write(value: 42)
+      writer.write(value: 42)
+      writer.write(value: 26)
+      writer.write(value: u8(26))
+      writer.write(value: u256::max())
+      writer.write(value: u128::max())
+      writer.write(value: u64::max())
+      writer.write(value: u32::max())
+      writer.write(value: u16::max())
+      writer.write(value: u8::max())
+      writer.write(value: u8(0))
+
+      assert reader.read_u256() == 42
+      assert reader.read_u256() == 42
+      assert reader.read_u256() == 26
+      assert reader.read_u8() == 26
+      assert reader.read_u256() == u256::max()
+      assert reader.read_u128() == u128::max()
+      assert reader.read_u64() == u64::max()
+      assert reader.read_u32() == u32::max()
+      assert reader.read_u16() == u16::max()
+      assert reader.read_u8() == u8::max()
+      assert reader.read_u8() == 0
+  }
+  ```
+
+  **Precompiles**
+
+  example:
+
+  ```
+  use std::precompiles
+  use std::buf::{MemoryBuffer, MemoryBufferReader, MemoryBufferWriter}
+
+  #test
+  fn test_ec_recover() {
+      let result: address = precompiles::ec_recover(
+          hash: 0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3,
+          v: 28,
+          r: 0x9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608,
+          s: 0x4f8ae3bd7535248d0bd448298cc2e2071e56992d0774dc340c368ae950852ada
+      )
+
+      assert result == address(0x7156526fbd7a3c72969b54f64e42c10fbb768c8a)
+  }
+  ```
+
+  **`ctx.raw_call()`**
+
+  example:
+
+  ```
+  use std::buf::{
+      RawCallBuffer,
+      MemoryBufferReader, 
+      MemoryBufferWriter
+  }
+  use std::evm
+
+  contract Foo {
+      pub unsafe fn __call__() {
+          if evm::call_data_load(offset: 0) == 42 {
+              evm::mstore(offset: 0, value: 26)
+              evm::return_mem(offset: 0, len: 32)
+          } else if evm::call_data_load(offset: 0) == 26 {
+              revert
+          }
+      }
+  }
+
+  #test
+  fn test_raw_call(mut ctx: Context) {
+      let foo: Foo = Foo.create(ctx, 0)
+
+      let mut buf: RawCallBuffer = RawCallBuffer::new(
+          input_len: 32, 
+          output_len: 32
+      )
+      let mut writer: MemoryBufferWriter = buf.writer()
+
+      writer.write(value: 42)
+      assert ctx.raw_call(addr: address(foo), value: 0, buf)
+    
+      let mut reader: MemoryBufferReader = buf.reader()
+      assert reader.read_u256() == 26
+
+      assert not ctx.raw_call(addr: address(foo), value: 0, buf)
+  }
+  ```
+  ([#885](https://github.com/ethereum/fe/issues/885))
+
+
+### Bugfixes
+
+
+- Fixed an ICE when using aggregate types with aggregate type fields in public functions
+
+  This code would previously cause an ICE:
+
+  ```fe
+  struct Tx {
+    pub data: Array<u8, 320>
+  }
+
+  contract Foo {
+    pub fn bar(mut tx: Tx) {}
+  }
+  ```
+  ([#867](https://github.com/ethereum/fe/issues/867))
+- Fixed a regression where the compiler would not reject a method call on a struct in storage.
+
+  E.g. the follwing code should be rejected as it is missing a `to_mem()` call:
+
+  ```
+  struct Bar {
+      pub x: u256
+
+      pub fn get_x(self) -> u256{
+          return self.x
+      }
+  }
+
+  contract Foo {
+      bar: Bar
+
+      pub fn __init__(mut self) {
+          self.bar = Bar( x: 2 )
+      }
+      fn yay(self) {
+          self.bar.get_x()
+      }
+  }
+  ```
+
+  The compiler will now reject the code and suggest a `to_mem()` before calling`get_x()`. ([#881](https://github.com/ethereum/fe/issues/881))
+
+
 ## 0.22.0 "Vulcanite" (2023-04-05)
 
 This is the first non-alpha release of Fe. Read our [announcement](https://blog.fe-lang.org/posts/beyond-alpha-preparing-fe-for-the-future/) for more details.

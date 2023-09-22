@@ -1,0 +1,18 @@
+---
+source: crates/hir-analysis/tests/early_path_resolution.rs
+expression: res
+input_file: crates/hir-analysis/test_files/early_path_resolution/partial.fe
+---
+note: 
+  ┌─ test_file.fe:7:8
+  │
+7 │     x: MyE::Variant1
+  │        ^^^ test_file::MyE
+
+note: 
+  ┌─ test_file.fe:8:14
+  │
+8 │     z: mod1::MyE::Variant1
+  │              ^^^ test_file::mod1::MyE
+
+

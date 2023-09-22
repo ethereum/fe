@@ -5,65 +5,66 @@ input_file: crates/parser2/test_files/error_recovery/items/enum_.fe
 ---
 Root@0..63
   ItemList@0..63
-    Enum@0..63
-      ItemModifier@0..3
-        PubKw@0..3 "pub"
-      WhiteSpace@3..4 " "
-      EnumKw@4..8 "enum"
-      WhiteSpace@8..9 " "
-      Ident@9..15 "MyEnum"
-      GenericParamList@15..18
-        Lt@15..16 "<"
-        TypeGenericParam@16..17
-          Ident@16..17 "T"
-        Gt@17..18 ">"
-      WhiteSpace@18..19 " "
-      VariantDefList@19..63
-        LBrace@19..20 "{"
-        Newline@20..21 "\n"
-        WhiteSpace@21..25 "    "
-        VariantDef@25..39
-          Ident@25..26 "X"
-          TupleType@26..39
-            LParen@26..27 "("
-            PathType@27..30
-              Path@27..30
-                PathSegment@27..30
-                  Ident@27..30 "u32"
-            Comma@30..31 ","
-            WhiteSpace@31..32 " "
-            PathType@32..33
-              Path@32..33
-                PathSegment@32..33
-                  Ident@32..33 "T"
-            Newline@33..34 "\n"
-            WhiteSpace@34..38 "    "
-            Error@38..39
-              Ident@38..39 "A"
-        Newline@39..40 "\n"
-        WhiteSpace@40..44 "    "
-        VariantDef@44..53
-          Ident@44..45 "Y"
-          TupleType@45..53
-            LParen@45..46 "("
-            PathType@46..47
-              Path@46..47
-                PathSegment@46..47
-                  Ident@46..47 "T"
-            Comma@47..48 ","
-            WhiteSpace@48..49 " "
-            PathType@49..52
-              Path@49..52
-                PathSegment@49..52
-                  Ident@49..52 "u32"
-            RParen@52..53 ")"
-        WhiteSpace@53..54 " "
-        Error@54..55
-          Ident@54..55 "A"
-        Newline@55..56 "\n"
-        WhiteSpace@56..60 "    "
-        VariantDef@60..61
-          Ident@60..61 "Z"
-        Newline@61..62 "\n"
-        RBrace@62..63 "}"
+    Item@0..63
+      Enum@0..63
+        ItemModifier@0..3
+          PubKw@0..3 "pub"
+        WhiteSpace@3..4 " "
+        EnumKw@4..8 "enum"
+        WhiteSpace@8..9 " "
+        Ident@9..15 "MyEnum"
+        GenericParamList@15..18
+          Lt@15..16 "<"
+          TypeGenericParam@16..17
+            Ident@16..17 "T"
+          Gt@17..18 ">"
+        WhiteSpace@18..19 " "
+        VariantDefList@19..63
+          LBrace@19..20 "{"
+          Newline@20..21 "\n"
+          WhiteSpace@21..25 "    "
+          VariantDef@25..39
+            Ident@25..26 "X"
+            TupleType@26..39
+              LParen@26..27 "("
+              PathType@27..30
+                Path@27..30
+                  PathSegment@27..30
+                    Ident@27..30 "u32"
+              Comma@30..31 ","
+              WhiteSpace@31..32 " "
+              PathType@32..33
+                Path@32..33
+                  PathSegment@32..33
+                    Ident@32..33 "T"
+              Newline@33..34 "\n"
+              WhiteSpace@34..38 "    "
+              Error@38..39
+                Ident@38..39 "A"
+          Newline@39..40 "\n"
+          WhiteSpace@40..44 "    "
+          VariantDef@44..53
+            Ident@44..45 "Y"
+            TupleType@45..53
+              LParen@45..46 "("
+              PathType@46..47
+                Path@46..47
+                  PathSegment@46..47
+                    Ident@46..47 "T"
+              Comma@47..48 ","
+              WhiteSpace@48..49 " "
+              PathType@49..52
+                Path@49..52
+                  PathSegment@49..52
+                    Ident@49..52 "u32"
+              RParen@52..53 ")"
+          WhiteSpace@53..54 " "
+          Error@54..55
+            Ident@54..55 "A"
+          Newline@55..56 "\n"
+          WhiteSpace@56..60 "    "
+          VariantDef@60..61
+            Ident@60..61 "Z"
+          Newline@61..62 "\n"
+          RBrace@62..63 "}"
 

@@ -1,21 +1,25 @@
-use crate::builtins::ValueMethod;
-use crate::context::{
-    Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
-    NamedThing,
+use crate::{
+    builtins::ValueMethod,
+    context::{
+        Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
+        NamedThing,
+    },
+    display::Displayable,
+    errors::{TypeCoercionError, TypeError},
+    namespace::{
+        items::{Item, TraitId},
+        types::{
+            Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple,
+            Type, TypeId,
+        },
+    },
+    traversal::call_args::validate_arg_count,
 };
-use crate::display::Displayable;
-use crate::errors::{TypeCoercionError, TypeError};
-use crate::namespace::items::{Item, TraitId};
-use crate::namespace::types::{
-    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple, Type,
-    TypeId,
+use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally, Spanned};
+use fe_parser::{
+    ast,
+    node::{Node, Span},
 };
-use crate::traversal::call_args::validate_arg_count;
-use fe_common::diagnostics::Label;
-use fe_common::utils::humanize::pluralize_conditionally;
-use fe_common::Spanned;
-use fe_parser::ast;
-use fe_parser::node::{Node, Span};
 use std::cmp::Ordering;
 
 /// Try to perform an explicit type cast, eg `u256(my_address)` or

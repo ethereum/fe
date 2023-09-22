@@ -23,6 +23,19 @@ ast_node! {
     SK::PathSegment
 }
 impl PathSegment {
+    pub fn kind(&self) -> Option<PathSegmentKind> {
+        match self.syntax().first_child_or_token() {
+            Some(node) => match node.kind() {
+                SK::IngotKw => Some(PathSegmentKind::Ingot(node.into_token().unwrap())),
+                SK::SuperKw => Some(PathSegmentKind::Super(node.into_token().unwrap())),
+                SK::SelfTypeKw => Some(PathSegmentKind::SelfTy(node.into_token().unwrap())),
+                SK::SelfKw => Some(PathSegmentKind::Self_(node.into_token().unwrap())),
+                SK::Ident => Some(PathSegmentKind::Ident(node.into_token().unwrap())),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
     /// Returns the identifier of the segment.
     pub fn ident(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
@@ -37,6 +50,20 @@ impl PathSegment {
     pub fn is_self_ty(&self) -> bool {
         support::token(self.syntax(), SK::SelfTypeKw).is_some()
     }
+}
+
+/// A path segment kind.
+pub enum PathSegmentKind {
+    /// `ingot`
+    Ingot(SyntaxToken),
+    /// `super`
+    Super(SyntaxToken),
+    /// `Self`
+    SelfTy(SyntaxToken),
+    /// `self`
+    Self_(SyntaxToken),
+    /// `foo`
+    Ident(SyntaxToken),
 }
 
 #[cfg(test)]

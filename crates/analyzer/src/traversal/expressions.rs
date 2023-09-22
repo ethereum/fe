@@ -1,33 +1,34 @@
 use super::borrowck;
-use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
-use crate::context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, NamedThing};
-use crate::display::Displayable;
-use crate::errors::{self, FatalError, IndexingError, TypeCoercionError};
-use crate::namespace::items::{
-    EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef,
+use crate::{
+    builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
+    context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, NamedThing},
+    display::Displayable,
+    errors::{self, FatalError, IndexingError, TypeCoercionError},
+    namespace::{
+        items::{
+            EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId,
+            TypeDef,
+        },
+        scopes::{check_visibility, BlockScopeType},
+        types::{
+            self, Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
+        },
+    },
+    operations,
+    traversal::{
+        call_args::{validate_arg_count, validate_named_args},
+        const_expr::eval_expr,
+        types::{apply_generic_type_args, deref_type, try_cast_type, try_coerce_type},
+        utils::add_bin_operations_errors,
+    },
 };
-use crate::namespace::scopes::{check_visibility, BlockScopeType};
-use crate::namespace::types::{
-    self, Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
-};
-use crate::operations;
-use crate::traversal::call_args::{validate_arg_count, validate_named_args};
-use crate::traversal::const_expr::eval_expr;
-use crate::traversal::types::{
-    apply_generic_type_args, deref_type, try_cast_type, try_coerce_type,
-};
-use crate::traversal::utils::add_bin_operations_errors;
 
-use fe_common::diagnostics::Label;
-use fe_common::{numeric, Span};
-use fe_parser::ast as fe;
-use fe_parser::ast::GenericArg;
-use fe_parser::node::Node;
+use fe_common::{diagnostics::Label, numeric, Span};
+use fe_parser::{ast as fe, ast::GenericArg, node::Node};
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use smol_str::SmolStr;
-use std::ops::RangeInclusive;
-use std::str::FromStr;
+use std::{ops::RangeInclusive, str::FromStr};
 
 // TODO: don't fail fatally if expected type is provided
 
@@ -1656,10 +1657,9 @@ fn expr_call_method(
                     method: *method,
                     generic_type: inner,
                 },
-                ty => {
+                _ => {
                     let method = method.function(context.db()).unwrap();
-
-                    if let Type::SPtr(inner) = ty {
+                    if let Type::SPtr(inner) = target_attributes.typ.typ(context.db()) {
                         if matches!(
                             inner.typ(context.db()),
                             Type::Struct(_) | Type::Tuple(_) | Type::Array(_)

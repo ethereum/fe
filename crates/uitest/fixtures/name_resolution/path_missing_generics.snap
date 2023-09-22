@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/path_missing_generics.fe
+---
+error[2-0002]: `Z` is not found
+  ┌─ path_missing_generics.fe:6:11
+  │
+6 │           Z: Trait
+  │           ^ `Z` is not found
+
+error[2-0002]: `Z` is not found
+   ┌─ path_missing_generics.fe:10:8
+   │
+10 │     z: Z
+   │        ^ `Z` is not found
+
+error[2-0002]: `V` is not found
+   ┌─ path_missing_generics.fe:13:22
+   │
+13 │ impl<T, U> MyS<T, U, V> {}
+   │                      ^ `V` is not found
+
+

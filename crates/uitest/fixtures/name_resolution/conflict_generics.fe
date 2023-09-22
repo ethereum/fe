@@ -1,0 +1,4 @@
+pub struct MyS<T, U, T> {
+    x: T,
+    y: U
+}

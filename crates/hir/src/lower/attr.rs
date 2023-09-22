@@ -9,12 +9,12 @@ impl AttrListId {
             .into_iter()
             .map(|attr| Attr::lower_ast(ctxt, attr))
             .collect();
-        Self::new(ctxt.db, attrs)
+        Self::new(ctxt.db(), attrs)
     }
 
     pub(super) fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::AttrList>) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db, vec![]))
+            .unwrap_or_else(|| Self::new(ctxt.db(), vec![]))
     }
 }
 
@@ -50,7 +50,7 @@ impl DocCommentAttr {
             .map(|doc| doc.text()[3..].to_string())
             .unwrap_or_default();
         Self {
-            text: StringId::new(ctxt.db, text),
+            text: StringId::new(ctxt.db(), text),
         }
     }
 }

@@ -1,7 +1,9 @@
 use parser::ast::{self, prelude::*};
 
 use crate::{
-    hir_def::{expr::*, Body, GenericArgListId, IdentId, IntegerId, LitKind, Pat, PathId, Stmt},
+    hir_def::{
+        expr::*, Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt,
+    },
     span::HirOrigin,
 };
 
@@ -20,12 +22,21 @@ impl Expr {
             }
 
             ast::ExprKind::Block(block) => {
+                ctxt.f_ctxt.enter_block_scope();
                 let mut stmts = vec![];
+
                 for stmt in block.stmts() {
                     let stmt = Stmt::push_to_body(ctxt, stmt);
                     stmts.push(stmt);
                 }
-                Self::Block(stmts)
+                let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+
+                for item in block.items() {
+                    ItemKind::lower_ast(ctxt.f_ctxt, item);
+                }
+
+                ctxt.f_ctxt.leave_block_scope(expr_id);
+                return expr_id;
             }
 
             ast::ExprKind::Bin(bin) => {
@@ -85,7 +96,7 @@ impl Expr {
                     .map(|fields| {
                         fields
                             .into_iter()
-                            .map(|field| RecordField::lower_ast(ctxt, field))
+                            .map(|field| Field::lower_ast(ctxt, field))
                             .collect()
                     })
                     .unwrap_or_default();
@@ -131,7 +142,7 @@ impl Expr {
                 let val = Self::push_to_body_opt(ctxt, array_rep.val());
                 let len = array_rep
                     .len()
-                    .map(|ast| Body::lower_ast_nested(ctxt.f_ctxt, ctxt.bid.clone(), ast))
+                    .map(|ast| Body::lower_ast_nameless(ctxt.f_ctxt, ast))
                     .into();
                 Self::ArrayRep(val, len)
             }
@@ -257,7 +268,7 @@ impl CallArg {
     }
 }
 
-impl RecordField {
+impl Field {
     fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::RecordField) -> Self {
         let label = ast
             .label()

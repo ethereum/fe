@@ -2,7 +2,7 @@ use parser::ast;
 
 use crate::{
     hir_def::{Body, ExprId},
-    span::{params::LazyGenericArgListSpan, path::LazyPathSpan, LazySpanAtom},
+    span::{params::LazyGenericArgListSpan, path::LazyPathSpan, LazyLitSpan, LazySpanAtom},
     SpannedHirDb,
 };
 
@@ -13,9 +13,13 @@ use super::{
 
 define_lazy_span_node!(LazyExprSpan, ast::Expr,);
 impl LazyExprSpan {
-    pub fn new(expr: ExprId, body: Body) -> Self {
+    pub fn new(body: Body, expr: ExprId) -> Self {
         let root = ExprRoot { expr, body };
         Self(SpanTransitionChain::new(root))
+    }
+
+    pub fn into_lit_expr(self) -> LazyLitExprSpan {
+        LazyLitExprSpan(self.0)
     }
 
     pub fn into_bin_expr(self) -> LazyBinExprSpan {
@@ -48,6 +52,14 @@ impl LazyExprSpan {
 
     pub fn into_match_expr(self) -> LazyMatchExprSpan {
         LazyMatchExprSpan(self.0)
+    }
+}
+
+define_lazy_span_node! {
+    LazyLitExprSpan,
+    ast::LitExpr,
+    @node {
+        (lit, lit, LazyLitSpan),
     }
 }
 
@@ -101,7 +113,7 @@ define_lazy_span_node!(
     ast::RecordInitExpr,
     @node {
         (path, path, LazyPathSpan),
-        (fields, fields, LazyRecordFieldListSpan),
+        (fields, fields, LazyFieldListSpan),
     }
 );
 
@@ -138,15 +150,15 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
-    LazyRecordFieldListSpan,
-    ast::RecordFieldList,
+    LazyFieldListSpan,
+    ast::FieldList,
     @idx {
-        (field, LazyRecordFieldSpan),
+        (field, LazyFieldSpan),
     }
 );
 
 define_lazy_span_node!(
-    LazyRecordFieldSpan,
+    LazyFieldSpan,
     ast::RecordField,
     @token {
         (label, label),
@@ -157,21 +169,23 @@ define_lazy_span_node!(
     LazyMatchArmListSpan,
     ast::MatchArmList,
     @idx {
-        (arm, LazySpanAtom),
+        (arm, LazyMatchArmSpan),
     }
 );
+
+define_lazy_span_node!(LazyMatchArmSpan);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct ExprRoot {
     expr: ExprId,
-    body: Body,
+    pub(crate) body: Body,
 }
 
 impl ChainInitiator for ExprRoot {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.expr_map.node_to_source(self.expr);
-        let top_mod = self.body.top_mod(db.upcast());
+        let top_mod = self.body.top_mod(db.as_hir_db());
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
@@ -181,30 +195,30 @@ mod tests {
     use crate::{
         hir_def::{Body, Expr, Stmt},
         test_db::TestDb,
+        HirDb,
     };
-    use common::Upcast;
 
     #[test]
     fn aug_assign() {
         let mut db = TestDb::default();
 
-        let text = r#" {
+        let text = r#"
             fn foo(mut x: i32) {
                 x += 1
             }
         }"#;
 
         let body: Body = db.expect_item::<Body>(text);
-        let bin_expr = match body.stmts(db.upcast()).values().next().unwrap().unwrap() {
+        let bin_expr = match body.stmts(db.as_hir_db()).values().next().unwrap().unwrap() {
             Stmt::Assign(_, rhs) => *rhs,
             _ => unreachable!(),
         };
-        let (lhs, rhs) = match body.exprs(db.upcast())[bin_expr].unwrap() {
+        let (lhs, rhs) = match body.exprs(db.as_hir_db())[bin_expr].unwrap() {
             Expr::Bin(lhs, rhs, _) => (lhs, rhs),
             _ => unreachable!(),
         };
 
-        let top_mod = body.top_mod(db.upcast());
+        let top_mod = body.top_mod(db.as_hir_db());
         assert_eq!("x += 1", db.text_at(top_mod, &bin_expr.lazy_span(body)));
         assert_eq!("x", db.text_at(top_mod, &lhs.lazy_span(body)));
         assert_eq!("1", db.text_at(top_mod, &rhs.lazy_span(body)));

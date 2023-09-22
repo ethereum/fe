@@ -1,6 +1,8 @@
 use parser::ast::{self, prelude::*};
 
-use crate::hir_def::{Body, GenericArgListId, Partial, PathId, TraitRef, TypeId, TypeKind};
+use crate::hir_def::{
+    Body, GenericArgListId, Partial, PathId, TraitRef, TupleTypeId, TypeId, TypeKind,
+};
 
 use super::FileLowerCtxt;
 
@@ -20,13 +22,7 @@ impl TypeId {
 
             ast::TypeKind::SelfType(_) => TypeKind::SelfType,
 
-            ast::TypeKind::Tuple(ty) => {
-                let mut elem_tys = Vec::new();
-                for elem in ty {
-                    elem_tys.push(Some(TypeId::lower_ast(ctxt, elem)).into());
-                }
-                TypeKind::Tuple(elem_tys)
-            }
+            ast::TypeKind::Tuple(ty) => TypeKind::Tuple(TupleTypeId::lower_ast(ctxt, ty)),
 
             ast::TypeKind::Array(ty) => {
                 let elem_ty = Self::lower_ast_partial(ctxt, ty.elem_ty());
@@ -38,7 +34,7 @@ impl TypeId {
             }
         };
 
-        TypeId::new(ctxt.db, kind)
+        TypeId::new(ctxt.db(), kind)
     }
 
     pub(super) fn lower_ast_partial(
@@ -46,6 +42,16 @@ impl TypeId {
         ast: Option<ast::Type>,
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
+    }
+}
+
+impl TupleTypeId {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TupleType) -> Self {
+        let mut elem_tys = Vec::new();
+        for elem in ast {
+            elem_tys.push(Some(TypeId::lower_ast(ctxt, elem)).into());
+        }
+        TupleTypeId::new(ctxt.db(), elem_tys)
     }
 }
 

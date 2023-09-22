@@ -14,6 +14,7 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
         .into_iter()
         .map(yul::Statement::FunctionDefinition)
         .collect();
+    let dep_contracts = context.resolve_contract_dependency(db);
     let runtime_funcs: Vec<_> = context
         .runtime
         .collect_definitions()
@@ -34,7 +35,7 @@ pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
     let object = yul::Object {
         name,
         code,
-        objects: vec![],
+        objects: dep_contracts,
         data: dep_constants,
     };
 

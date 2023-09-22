@@ -11,11 +11,11 @@ use super::{
 };
 
 define_scope! {
-    pub(crate) FnParamListScope,
-    FnParamList,
+    pub(crate) FuncParamListScope,
+    FuncParamList,
     Override(RParen, Comma)
 }
-impl super::Parse for FnParamListScope {
+impl super::Parse for FuncParamListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
         if parser.bump_if(SyntaxKind::RParen) {

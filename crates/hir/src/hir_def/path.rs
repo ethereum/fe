@@ -1,18 +1,19 @@
-use crate::hir_def::Partial;
+use crate::{hir_def::Partial, HirDb};
 
 use super::IdentId;
 
 #[salsa::interned]
 pub struct PathId {
-    segments: Vec<Partial<PathSegment>>,
+    #[return_ref]
+    pub segments: Vec<Partial<IdentId>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PathSegment {
-    /// `Normal Path` segment.
-    Ident(IdentId),
-    /// `Self` segment.
-    SelfTy,
-    /// `self` segment.
-    Self_,
+impl PathId {
+    pub fn last_segment(self, db: &dyn HirDb) -> Partial<IdentId> {
+        self.segments(db).last().copied().unwrap_or_default()
+    }
+
+    pub fn len(self, db: &dyn HirDb) -> usize {
+        self.segments(db).len()
+    }
 }

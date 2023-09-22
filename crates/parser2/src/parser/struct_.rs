@@ -3,6 +3,7 @@ use crate::SyntaxKind;
 use super::{
     attr::parse_attr_list,
     define_scope,
+    func::FuncScope,
     param::{parse_generic_params_opt, parse_where_clause_opt},
     token_stream::TokenStream,
     type_::parse_type,
@@ -53,19 +54,20 @@ define_scope! {
 impl super::Parse for RecordFieldDefListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
+        parser.set_newline_as_trivia(true);
 
         loop {
-            parser.set_newline_as_trivia(true);
             if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
             {
                 break;
             }
+
             parser.parse(RecordFieldDefScope::default(), None);
-            parser.set_newline_as_trivia(false);
-            if !parser.bump_if(SyntaxKind::Newline)
+
+            if !parser.bump_if(SyntaxKind::Comma)
                 && parser.current_kind() != Some(SyntaxKind::RBrace)
             {
-                parser.error_and_recover("expected newline after field definition", None);
+                parser.error_at_current_pos("expected comma after field definition");
             }
         }
 
@@ -90,6 +92,22 @@ impl super::Parse for RecordFieldDefScope {
         parse_attr_list(parser);
 
         parser.bump_if(SyntaxKind::PubKw);
+        // Since the Fe-V2 doesn't support method definition in a struct, we add an
+        // ad-hoc check for the method definition in a struct to avoid the confusing
+        // error message.
+        // The reason that justifies this ad-hoc check is
+        // 1. This error is difficult to recover properly with the current parser
+        //    design, and the emitted error message is confusing.
+        // 2. We anticipate that this error would happen often in the transition period
+        //    to Fe-V2.
+        if parser.current_kind() == Some(SyntaxKind::FnKw) {
+            let err_scope = parser.error("function definition in struct is not allowed");
+            let checkpoint = parser.enter(err_scope, None);
+            parser.parse(FuncScope::default(), None);
+            parser.leave(checkpoint);
+            return;
+        }
+
         parser.with_next_expected_tokens(
             |parser| {
                 if !parser.bump_if(SyntaxKind::Ident) {
@@ -101,7 +119,7 @@ impl super::Parse for RecordFieldDefScope {
         if parser.bump_if(SyntaxKind::Colon) {
             parser.with_next_expected_tokens(
                 |parser| parse_type(parser, None),
-                &[SyntaxKind::Newline, SyntaxKind::RBrace],
+                &[SyntaxKind::Comma, SyntaxKind::Newline, SyntaxKind::RBrace],
             );
         } else {
             parser.error_and_recover("expected `name: type` for the field definition", None);

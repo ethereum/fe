@@ -3,7 +3,6 @@ mod check;
 mod new;
 #[cfg(feature = "solc-backend")]
 mod test;
-mod utils;
 
 pub use build::{build, BuildArgs};
 pub use check::{check, CheckArgs};

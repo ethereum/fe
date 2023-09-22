@@ -181,23 +181,33 @@ pub fn module_item_map(
             if function.is_test(db) {
                 if !sig_ast.generic_params.kind.is_empty() {
                     diagnostics.push(errors::fancy_error(
-                        "generic function parameters are not supported on test functions",
+                        "generic parameters are not supported on test functions",
                         vec![Label::primary(
                             sig_ast.generic_params.span,
-                            "this cannot appear here",
+                            "invalid generic parameters",
                         )],
                         vec!["Hint: remove the generic parameters".into()],
                     ));
                 }
 
-                if !sig_ast.args.is_empty() {
-                    let span =
-                        sig_ast.args.first().unwrap().span + sig_ast.args.last().unwrap().span;
-                    diagnostics.push(errors::fancy_error(
-                        "function parameters are not supported on test functions",
-                        vec![Label::primary(span, "this cannot appear here")],
-                        vec!["Hint: remove the parameters".into()],
-                    ));
+                if let Some(arg) = sig_ast.args.first() {
+                    if arg.name() != "ctx" {
+                        diagnostics.push(errors::fancy_error(
+                            "function parameters other than `ctx` are not supported on test functions",
+                            vec![Label::primary(arg.span, "invalid function parameter")],
+                            vec!["Hint: remove the parameter".into()],
+                        ));
+                    }
+                }
+
+                for arg in sig_ast.args.iter().skip(1) {
+                    if arg.name() != "ctx" {
+                        diagnostics.push(errors::fancy_error(
+                            "function parameters other than `ctx` are not supported on test functions",
+                            vec![Label::primary(arg.span, "invalid function parameter")],
+                            vec!["Hint: remove the parameter".into()],
+                        ));
+                    }
                 }
             }
         }
@@ -554,7 +564,7 @@ pub fn module_used_item_map(
         )
         .value;
 
-        items.extend(Rc::try_unwrap(prelude_items).unwrap().into_iter());
+        items.extend(Rc::try_unwrap(prelude_items).unwrap());
     }
 
     Analysis::new(Rc::new(items), diagnostics.into())

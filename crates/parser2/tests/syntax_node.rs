@@ -38,6 +38,7 @@ fn test_stmt(fixture: Fixture<&str>) {
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/syntax_node/exprs",
     glob: "*.fe"
+    postfix: "expr"
 )]
 fn test_expr(fixture: Fixture<&str>) {
     let runner = TestRunner::expr_list(true);

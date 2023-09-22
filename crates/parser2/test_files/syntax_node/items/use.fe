@@ -11,3 +11,6 @@ use Foo::{self as self_, Bar::{Bar as _, Baz}, *}
 
 use {Foo::Bar as Bar1, Bar::Bar as Bar2, Baz::Bar as Bar3, Trait::T}
 use *
+
+use super::*
+use ingot::Foo

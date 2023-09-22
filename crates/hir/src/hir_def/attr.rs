@@ -3,7 +3,7 @@ use super::{IdentId, Partial, StringId};
 #[salsa::interned]
 pub struct AttrListId {
     #[return_ref]
-    attrs: Vec<Attr>,
+    pub data: Vec<Attr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]

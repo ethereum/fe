@@ -1,0 +1,16 @@
+pub enum MyE {
+    Variant1
+    Variant2
+}
+
+pub struct MyS  {
+    x: MyE::Variant1
+    z: mod1::MyE::Variant1
+}
+
+mod mod1 {
+    pub enum MyE {
+        Variant1
+        Variant2
+    }
+}

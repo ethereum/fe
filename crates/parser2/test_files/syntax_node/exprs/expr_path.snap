@@ -1,0 +1,30 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/expr_path.fe
+---
+Root@0..31
+  PathExpr@0..10
+    Path@0..10
+      PathSegment@0..5
+        SuperKw@0..5 "super"
+      Colon2@5..7 "::"
+      PathSegment@7..10
+        Ident@7..10 "Foo"
+  Newline@10..11 "\n"
+  PathExpr@11..21
+    Path@11..21
+      PathSegment@11..16
+        IngotKw@11..16 "ingot"
+      Colon2@16..18 "::"
+      PathSegment@18..21
+        Ident@18..21 "Bar"
+  Newline@21..22 "\n"
+  PathExpr@22..31
+    Path@22..31
+      PathSegment@22..26
+        SelfTypeKw@22..26 "Self"
+      Colon2@26..28 "::"
+      PathSegment@28..31
+        Ident@28..31 "Foo"
+

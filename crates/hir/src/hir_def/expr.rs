@@ -1,6 +1,6 @@
 use cranelift_entity::entity_impl;
 
-use crate::span::expr::LazyExprSpan;
+use crate::{span::expr::LazyExprSpan, HirDb};
 
 use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
 
@@ -22,7 +22,7 @@ pub enum Expr {
     Path(Partial<PathId>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
-    RecordInit(Partial<PathId>, Vec<RecordField>),
+    RecordInit(Partial<PathId>, Vec<Field>),
     Field(ExprId, Partial<FieldIndex>),
     Tuple(Vec<ExprId>),
     /// The first `ExprId` is the indexed expression, the second is the index.
@@ -42,13 +42,17 @@ pub enum Expr {
     Match(ExprId, Partial<Vec<MatchArm>>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(u32);
 entity_impl!(ExprId);
 
 impl ExprId {
     pub fn lazy_span(self, body: Body) -> LazyExprSpan {
-        LazyExprSpan::new(self, body)
+        LazyExprSpan::new(body, self)
+    }
+
+    pub fn data(self, db: &dyn HirDb, body: Body) -> &Partial<Expr> {
+        &body.exprs(db)[self]
     }
 }
 
@@ -144,7 +148,7 @@ pub struct CallArg {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RecordField {
+pub struct Field {
     pub label: Option<IdentId>,
     pub expr: ExprId,
 }

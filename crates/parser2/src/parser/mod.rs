@@ -446,6 +446,7 @@ impl<S: TokenStream> Parser<S> {
 
     /// Add the `msg` to the error list.
     fn error(&mut self, msg: &str) -> ErrorScope {
+        self.bump_trivias();
         self.is_err = true;
         let start = self.current_pos;
         let end = if let Some(current_token) = self.current_token() {
@@ -455,6 +456,16 @@ impl<S: TokenStream> Parser<S> {
         };
         let range = TextRange::new(start, end);
 
+        self.errors.push(ParseError {
+            range,
+            msg: msg.to_string(),
+        });
+        ErrorScope::default()
+    }
+
+    fn error_at_current_pos(&mut self, msg: &str) -> ErrorScope {
+        let pos = self.current_pos;
+        let range = TextRange::new(pos, pos);
         self.errors.push(ParseError {
             range,
             msg: msg.to_string(),

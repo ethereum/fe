@@ -1,8 +1,10 @@
 //! Semantic errors.
 
 use crate::context::{DiagnosticVoucher, NamedThing};
-use fe_common::diagnostics::{Diagnostic, Label, Severity};
-use fe_common::Span;
+use fe_common::{
+    diagnostics::{Diagnostic, Label, Severity},
+    Span,
+};
 use std::fmt::Display;
 
 /// Error indicating that a type is invalid.

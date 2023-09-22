@@ -8,17 +8,18 @@ use parser::{
 
 use crate::{
     hir_def::{
-        Body, Const, Contract, Enum, ExternFunc, Func, Impl, ImplTrait, Mod, Struct, TopLevelMod,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
         Trait, TypeAlias, Use,
     },
-    lower::{map_file_to_mod_impl, top_mod_ast},
-    SpannedHirDb,
+    lower::top_mod_ast,
+    HirDb, SpannedHirDb,
 };
 
 use super::{
-    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, extern_func_ast, func_ast,
-    impl_ast, impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast,
-    type_alias_ast, use_ast, AugAssignDesugared, DesugaredOrigin, HirOrigin, LazySpan,
+    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
+    impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
+    use_ast, AugAssignDesugared, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan,
+    UseDesugared,
 };
 
 /// This type represents function from the hir origin to another hir origin to
@@ -42,16 +43,59 @@ pub(crate) enum LazyArg {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct SpanTransitionChain {
-    root: ChainRoot,
-    chain: Vec<LazyTransitionFn>,
+    pub(crate) root: ChainRoot,
+    pub(super) chain: Vec<LazyTransitionFn>,
+}
+
+impl SpanTransitionChain {
+    pub(crate) fn pop_transition(&mut self) {
+        self.chain.pop();
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.chain.len()
+    }
+
+    pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
+        Self {
+            root: root.into(),
+            chain: Vec::new(),
+        }
+    }
+
+    pub(super) fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+        match self.root {
+            ChainRoot::ItemKind(item) => item.top_mod(db),
+            ChainRoot::TopMod(top_mod) => top_mod,
+            ChainRoot::Mod(m) => m.top_mod(db),
+            ChainRoot::Func(f) => f.top_mod(db),
+            ChainRoot::Struct(s) => s.top_mod(db),
+            ChainRoot::Contract(c) => c.top_mod(db),
+            ChainRoot::Enum(e) => e.top_mod(db),
+            ChainRoot::TypeAlias(t) => t.top_mod(db),
+            ChainRoot::Impl(i) => i.top_mod(db),
+            ChainRoot::Trait(t) => t.top_mod(db),
+            ChainRoot::ImplTrait(i) => i.top_mod(db),
+            ChainRoot::Const(c) => c.top_mod(db),
+            ChainRoot::Use(u) => u.top_mod(db),
+            ChainRoot::Body(b) => b.top_mod(db),
+            ChainRoot::Stmt(s) => s.body.top_mod(db),
+            ChainRoot::Expr(e) => e.body.top_mod(db),
+            ChainRoot::Pat(p) => p.body.top_mod(db),
+        }
+    }
+
+    pub(super) fn push(&mut self, transition: LazyTransitionFn) {
+        self.chain.push(transition);
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
 pub(crate) enum ChainRoot {
+    ItemKind(ItemKind),
     TopMod(TopLevelMod),
     Mod(Mod),
     Func(Func),
-    ExternFunc(ExternFunc),
     Struct(Struct),
     Contract(Contract),
     Enum(Enum),
@@ -67,10 +111,12 @@ pub(crate) enum ChainRoot {
     Pat(PatRoot),
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct ResolvedOrigin {
     pub(crate) file: InputFile,
     pub(crate) kind: ResolvedOriginKind,
 }
+
 impl ResolvedOrigin {
     pub(crate) fn new(file: InputFile, kind: ResolvedOriginKind) -> Self {
         Self { file, kind }
@@ -84,27 +130,19 @@ impl ResolvedOrigin {
     where
         T: AstNode<Language = FeLang>,
     {
-        let root = top_mod_ast(db.upcast(), top_mod).syntax().clone();
+        let root = top_mod_ast(db.as_hir_db(), top_mod).syntax().clone();
         let kind = match origin {
             HirOrigin::Raw(ptr) => ResolvedOriginKind::Node(ptr.syntax_node_ptr().to_node(&root)),
             HirOrigin::Expanded(ptr) => ResolvedOriginKind::Expanded(ptr.to_node(&root)),
-            HirOrigin::Desugared(desugared) => ResolvedOriginKind::Desugared(desugared.clone()),
+            HirOrigin::Desugared(desugared) => {
+                ResolvedOriginKind::Desugared(root, desugared.clone())
+            }
             HirOrigin::None => ResolvedOriginKind::None,
         };
 
-        ResolvedOrigin::new(top_mod.file(db.upcast()), kind)
+        ResolvedOrigin::new(top_mod.file(db.as_hir_db()), kind)
     }
-}
 
-pub(crate) enum ResolvedOriginKind {
-    Node(SyntaxNode),
-    Token(SyntaxToken),
-    Expanded(SyntaxNode),
-    Desugared(DesugaredOrigin),
-    None,
-}
-
-impl ResolvedOrigin {
     pub(crate) fn map<F>(self, f: F) -> Self
     where
         F: FnOnce(SyntaxNode) -> Option<NodeOrToken>,
@@ -123,15 +161,53 @@ impl ResolvedOrigin {
             kind,
         }
     }
+
+    pub(crate) fn map_desugared<F>(self, f: F) -> Self
+    where
+        F: FnOnce(SyntaxNode, DesugaredOrigin) -> ResolvedOriginKind,
+    {
+        let kind = match self.kind {
+            ResolvedOriginKind::Desugared(root, desugared) => f(root, desugared),
+            kind => kind,
+        };
+
+        ResolvedOrigin {
+            file: self.file,
+            kind,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum ResolvedOriginKind {
+    Node(SyntaxNode),
+    Token(SyntaxToken),
+    Expanded(SyntaxNode),
+    Desugared(SyntaxNode, DesugaredOrigin),
+    None,
 }
 
 impl ChainInitiator for ChainRoot {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
         match self {
+            Self::ItemKind(kind) => match kind {
+                ItemKind::TopMod(top_mod) => top_mod.init(db),
+                ItemKind::Mod(mod_) => mod_.init(db),
+                ItemKind::Func(func) => func.init(db),
+                ItemKind::Struct(struct_) => struct_.init(db),
+                ItemKind::Contract(contract) => contract.init(db),
+                ItemKind::Enum(enum_) => enum_.init(db),
+                ItemKind::TypeAlias(type_alias) => type_alias.init(db),
+                ItemKind::Impl(impl_) => impl_.init(db),
+                ItemKind::Trait(trait_) => trait_.init(db),
+                ItemKind::ImplTrait(impl_trait) => impl_trait.init(db),
+                ItemKind::Const(const_) => const_.init(db),
+                ItemKind::Use(use_) => use_.init(db),
+                ItemKind::Body(body) => body.init(db),
+            },
             Self::TopMod(top_mod) => top_mod.init(db),
             Self::Mod(mod_) => mod_.init(db),
             Self::Func(func) => func.init(db),
-            Self::ExternFunc(extern_func) => extern_func.init(db),
             Self::Struct(struct_) => struct_.init(db),
             Self::Contract(contract) => contract.init(db),
             Self::Enum(enum_) => enum_.init(db),
@@ -149,30 +225,15 @@ impl ChainInitiator for ChainRoot {
     }
 }
 
-impl SpanTransitionChain {
-    pub(super) fn new(root: impl Into<ChainRoot>) -> Self {
-        Self {
-            root: root.into(),
-            chain: Vec::new(),
-        }
-    }
-
-    pub(super) fn push_transition(&self, transition: LazyTransitionFn) -> Self {
-        let mut new_state = self.clone();
-        new_state.chain.push(transition);
-        new_state
-    }
-}
-
 impl LazySpan for SpanTransitionChain {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Span {
+    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
         let mut resolved = self.root.init(db);
 
         for LazyTransitionFn { f, arg } in &self.chain {
             resolved = f(resolved, *arg);
         }
 
-        match resolved.kind {
+        Some(match resolved.kind {
             ResolvedOriginKind::Node(node) => {
                 Span::new(resolved.file, node.text_range(), SpanKind::Original)
             }
@@ -182,13 +243,11 @@ impl LazySpan for SpanTransitionChain {
             ResolvedOriginKind::Expanded(node) => {
                 Span::new(resolved.file, node.text_range(), SpanKind::Expanded)
             }
-            ResolvedOriginKind::Desugared(desugared) => desugared.resolve(db, resolved.file),
-            ResolvedOriginKind::None => Span::new(
-                resolved.file,
-                TextRange::new(0.into(), 0.into()),
-                SpanKind::NotFound,
-            ),
-        }
+            ResolvedOriginKind::Desugared(root, desugared) => {
+                desugared.resolve(db, root, resolved.file)
+            }
+            ResolvedOriginKind::None => return None,
+        })
     }
 }
 
@@ -200,8 +259,8 @@ pub(crate) trait ChainInitiator {
 
 impl ChainInitiator for TopLevelMod {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-        let file = self.file(db.upcast());
-        let ast = top_mod_ast(db.upcast(), *self);
+        let file = self.file(db.as_hir_db());
+        let ast = top_mod_ast(db.as_hir_db(), *self);
         ResolvedOrigin::new(file, ResolvedOriginKind::Node(ast.syntax().clone()))
     }
 }
@@ -211,7 +270,7 @@ macro_rules! impl_chain_root {
         $(
         impl ChainInitiator for $ty {
             fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-                let top_mod = self.top_mod(db.upcast());
+                let top_mod = self.top_mod(db.as_hir_db());
                 let origin = $fn(db, *self);
                 ResolvedOrigin::resolve(db, top_mod, origin)
             }
@@ -222,7 +281,6 @@ macro_rules! impl_chain_root {
 impl_chain_root! {
     (Mod, mod_ast),
     (Func, func_ast),
-    (ExternFunc, extern_func_ast),
     (Struct, struct_ast),
     (Contract, contract_ast),
     (Enum, enum_ast),
@@ -259,103 +317,171 @@ macro_rules! define_lazy_span_node {
                 Self(crate::span::transition::SpanTransitionChain::new(hir))
             })?
 
+            pub fn top_mod(&self, db: &dyn crate::HirDb) -> Option<crate::hir_def::TopLevelMod> {
+                Some(self.0.top_mod(db))
+            }
+
             $($(
                 pub fn $name_token(&self) -> crate::span::LazySpanAtom {
-                    use parser::ast::prelude::*;
-                    fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|n| n.$getter_token())
-                            .map(|n| n.into()))
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_token _moved>]()
                     }
+                }
 
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::None,
-                    };
-                    crate::span::LazySpanAtom(
-                        self.0.push_transition(lazy_transition)
-                    )
+                paste::paste! {
+                    pub fn [<$name_token _moved>](mut self) -> crate::span::LazySpanAtom {
+                        use parser::ast::prelude::*;
+                        fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|n| n.$getter_token())
+                                .map(|n| n.into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::None,
+                        };
+
+                        self.0.push(lazy_transition);
+                        crate::span::LazySpanAtom(self.0)
+                    }
                 }
             )*)?
 
             $($(
                 pub fn $name_node(&self) -> $result {
-                    use parser::ast::prelude::*;
-
-                    fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|n| n.$getter_node())
-                            .map(|n| n.syntax().clone().into()))
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_node _moved>]()
                     }
+                }
 
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::None,
-                    };
-                    $result(self.0.push_transition(lazy_transition))
+                paste::paste! {
+                        pub fn [<$name_node _moved>](mut self) -> $result {
+                        use parser::ast::prelude::*;
+
+                        fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|n| n.$getter_node())
+                                .map(|n| n.syntax().clone().into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::None,
+                        };
+                        self.0.push(lazy_transition);
+                        $result(self.0)
+                    }
                 }
             )*)?
 
             $($(
 
                 pub fn $name_iter(&self, idx: usize) -> $result_iter {
-                    use parser::ast::prelude::*;
-                    fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
-                        let idx = match arg {
-                            crate::span::transition::LazyArg::Idx(idx) => idx,
-                            _ => unreachable!(),
+                    let cloned = self.clone();
+                    paste::paste! {
+                        cloned.[<$name_iter _moved>](idx)
+                    }
+                }
+
+                paste::paste! {
+                    pub fn [<$name_iter _moved>](mut self, idx: usize) -> $result_iter {
+                        use parser::ast::prelude::*;
+                        fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
+                            let idx = match arg {
+                                crate::span::transition::LazyArg::Idx(idx) => idx,
+                                _ => unreachable!(),
+                            };
+
+                            origin.map(|node| <$sk_node as AstNode>::cast(node)
+                                .and_then(|f| f.into_iter().nth(idx))
+                                .map(|n| n.syntax().clone().into()))
+                        }
+
+                        let lazy_transition = crate::span::transition::LazyTransitionFn {
+                            f,
+                            arg: crate::span::transition::LazyArg::Idx(idx),
                         };
 
-                        origin.map(|node| <$sk_node as AstNode>::cast(node)
-                            .and_then(|f| f.into_iter().nth(idx))
-                            .map(|n| n.syntax().clone().into()))
+                        self.0.push(lazy_transition);
+                        $result_iter(self.0)
                     }
-
-                    let lazy_transition = crate::span::transition::LazyTransitionFn {
-                        f,
-                        arg: crate::span::transition::LazyArg::Idx(idx),
-                    };
-
-                    $result_iter(self.0.push_transition(lazy_transition))
                 }
             )*)?
         })?)?
 
 
         impl crate::span::LazySpan for $name {
-            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> common::diagnostics::Span {
+            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<common::diagnostics::Span> {
                 self.0.resolve(db)
             }
         }
 
         impl From<$name> for crate::span::DynLazySpan {
             fn from(val: $name) -> Self {
-                Self(val.0)
+                Self(val.0.into())
+            }
+        }
+
+        impl crate::span::SpanDowncast for $name  {
+            fn downcast(val: crate::span::DynLazySpan) -> Option<Self> {
+                val.0.map(|inner| Self(inner))
             }
         }
     };
 }
 
 impl DesugaredOrigin {
-    fn resolve(self, db: &dyn SpannedHirDb, file: InputFile) -> Span {
+    fn resolve(self, _db: &dyn SpannedHirDb, root: SyntaxNode, file: InputFile) -> Span {
         let range = match self {
             Self::AugAssign(AugAssignDesugared::Stmt(ptr)) => {
-                let top_mod = map_file_to_mod_impl(db.upcast(), file);
-                let top_mod_ast = top_mod_ast(db.upcast(), top_mod);
-                ptr.syntax_node_ptr()
-                    .to_node(top_mod_ast.syntax())
-                    .text_range()
+                ptr.syntax_node_ptr().to_node(&root).text_range()
             }
-
             Self::AugAssign(AugAssignDesugared::Lhs(range)) => range,
-
             Self::AugAssign(AugAssignDesugared::Rhs(ptr)) => {
-                let top_mod = map_file_to_mod_impl(db.upcast(), file);
-                let top_mod_ast = top_mod_ast(db.upcast(), top_mod);
-                ptr.syntax_node_ptr()
-                    .to_node(top_mod_ast.syntax())
-                    .text_range()
+                ptr.syntax_node_ptr().to_node(&root).text_range()
             }
+
+            Self::Use(UseDesugared {
+                root: use_root,
+                path,
+                alias,
+                focus,
+            }) => match focus {
+                DesugaredUseFocus::Root => use_root.syntax_node_ptr().to_node(&root).text_range(),
+                DesugaredUseFocus::Path => {
+                    if let Some(first_seg) = path.first() {
+                        let last_seg = path.last().unwrap();
+                        TextRange::new(
+                            first_seg
+                                .syntax_node_ptr()
+                                .to_node(&root)
+                                .text_range()
+                                .start(),
+                            last_seg.syntax_node_ptr().to_node(&root).text_range().end(),
+                        )
+                    } else {
+                        return Span::new(
+                            file,
+                            TextRange::new(0.into(), 0.into()),
+                            SpanKind::NotFound,
+                        );
+                    }
+                }
+                DesugaredUseFocus::Alias => {
+                    if let Some(alias) = alias {
+                        alias.syntax_node_ptr().to_node(&root).text_range()
+                    } else {
+                        return Span::new(
+                            file,
+                            TextRange::new(0.into(), 0.into()),
+                            SpanKind::NotFound,
+                        );
+                    }
+                }
+            },
         };
 
         Span::new(file, range, SpanKind::Original)

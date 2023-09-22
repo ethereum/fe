@@ -27,9 +27,14 @@ impl UseTree {
         support::child(self.syntax())
     }
 
+    /// Returns `true` if this use tree has children tree.
+    pub fn has_subtree(&self) -> bool {
+        self.children().is_some()
+    }
+
     //// Returns the alias of this use tree.
     /// `Bar` in `Foo as Bar;`
-    pub fn alias(&self) -> Option<UseTreeAlias> {
+    pub fn alias(&self) -> Option<UseAlias> {
         support::child(self.syntax())
     }
 }
@@ -54,7 +59,9 @@ impl UsePathSegment {
     pub fn kind(&self) -> Option<UsePathSegmentKind> {
         match self.syntax().first_child_or_token() {
             Some(node) => match node.kind() {
-                SK::SelfKw => Some(UsePathSegmentKind::SelfPath(node.into_token().unwrap())),
+                SK::IngotKw => Some(UsePathSegmentKind::Ingot(node.into_token().unwrap())),
+                SK::SuperKw => Some(UsePathSegmentKind::Super(node.into_token().unwrap())),
+                SK::SelfKw => Some(UsePathSegmentKind::Self_(node.into_token().unwrap())),
                 SK::Ident => Some(UsePathSegmentKind::Ident(node.into_token().unwrap())),
                 SK::Star => Some(UsePathSegmentKind::Glob(node.into_token().unwrap())),
                 _ => None,
@@ -67,6 +74,14 @@ impl UsePathSegment {
         support::token(self.syntax(), SK::Ident)
     }
 
+    pub fn ingot_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::IngotKw)
+    }
+
+    pub fn super_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::SuperKw)
+    }
+
     pub fn self_token(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::SelfKw)
     }
@@ -77,10 +92,10 @@ impl UsePathSegment {
 }
 
 ast_node! {
-    pub struct UseTreeAlias,
+    pub struct UseAlias,
     SK::UseTreeRename,
 }
-impl UseTreeAlias {
+impl UseAlias {
     //// Returns `Some` if the alias is specified as an ident.
     pub fn ident(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)
@@ -91,15 +106,20 @@ impl UseTreeAlias {
         support::token(self.syntax(), SK::Underscore)
     }
 
-    pub fn alias_syntax(&self) -> Option<SyntaxToken> {
+    /// Returns `Some` if the alias has a name or `_`.
+    pub fn alias(&self) -> Option<SyntaxToken> {
         self.ident().or_else(|| self.underscore())
     }
 }
 
 /// A path segment in a use tree.
 pub enum UsePathSegmentKind {
+    /// `ingot`
+    Ingot(SyntaxToken),
+    /// `super`
+    Super(SyntaxToken),
     /// `self`
-    SelfPath(SyntaxToken),
+    Self_(SyntaxToken),
     /// `foo`
     Ident(SyntaxToken),
     /// `*`
