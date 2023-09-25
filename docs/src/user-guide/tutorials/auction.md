@@ -122,7 +122,7 @@ pub fn bid(mut self, mut ctx: Context) {
 }
 ```
 
-The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the [`revert`](../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
+The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the [`revert`](../../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
 
 ```rust
 struct AuctionAlreadyEnded {
