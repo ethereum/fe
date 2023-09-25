@@ -13,7 +13,7 @@ pub enum MyE2<T, U>
 where T: MyE
       U: MyTWithGenerics<MyT>
 {
-    Variant(MyC)
+    Variant(MyC),
     Variant2(Var)
 }
 

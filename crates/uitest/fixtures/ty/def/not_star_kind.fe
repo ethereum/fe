@@ -9,8 +9,8 @@ pub struct MyS {
 }
 
 pub enum MyE {
-    Variant(Gen<i32>, Gen<u32>)
-    Variant2{ x: Gen<i32, u32>, y: Gen<u32> }
+    Variant(Gen<i32>, Gen<u32>),
+    Variant2{ x: Gen<i32, u32>, y: Gen<u32> },
 }
 
 pub contract MyC {
@@ -20,7 +20,7 @@ pub contract MyC {
 
 impl Gen<T> {
     fn foo(self) {}
-    
+
     fn bar(self: Self) {}
 }
 

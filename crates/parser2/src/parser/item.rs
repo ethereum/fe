@@ -267,25 +267,27 @@ define_scope! { VariantDefListScope, VariantDefList, Override(RBrace, Newline) }
 impl super::Parse for VariantDefListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
+        parser.set_newline_as_trivia(true);
 
         loop {
-            parser.set_newline_as_trivia(true);
             if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
             {
                 break;
             }
             parser.parse(VariantDefScope::default(), None);
-            parser.set_newline_as_trivia(false);
-            if parser.current_kind() != Some(SyntaxKind::RBrace) {
-                parser.bump_or_recover(
-                    SyntaxKind::Newline,
-                    "expected newline after variant definition",
-                    None,
-                );
+
+            if !parser.bump_if(SyntaxKind::Comma)
+                && parser.current_kind() != Some(SyntaxKind::RBrace)
+            {
+                parser.error_at_current_pos("expected comma after enum variant definition");
             }
         }
 
-        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
+        parser.bump_or_recover(
+            SyntaxKind::RBrace,
+            "expected the closing brace of the enum definition",
+            None,
+        );
     }
 }
 

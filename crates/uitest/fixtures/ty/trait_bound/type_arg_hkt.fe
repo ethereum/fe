@@ -1,22 +1,22 @@
-pub trait Wrapper 
+pub trait Wrapper
 where Self: * -> *
 {}
 
 enum Option<T> {
-    Some(T)
-    None
+    Some(T),
+    None,
 }
 impl Wrapper for Option {}
 impl Wrapper for Result<u256> {}
 
 enum Result<E, T> {
-    Ok(T)
-    Err(E)
+    Ok(T),
+    Err(E),
 }
 
 
 pub struct I32Wrapper<W: * -> *>
-where W: Wrapper 
+where W: Wrapper
 {
     w: W<i32>
 }

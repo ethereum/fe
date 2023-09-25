@@ -21,7 +21,7 @@ error[2-0006]: expected type item here
 error[2-0006]: expected type item here
    ┌─ path_invalid_domain.fe:16:13
    │
-16 │     Variant(MyC)
+16 │     Variant(MyC),
    │             ^^^ expected type here, but found const `MyC`
 
 error[2-0006]: expected type item here

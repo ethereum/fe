@@ -1,34 +1,36 @@
 enum Empty {}
 
 enum Basic {
-    Unit
+    Unit,
     Tup(i32, u32)
 }
 
 enum RecordVariants {
-     Rectangle { w: u32, h: u32 }
+     Rectangle { w: u32, h: u32 },
      Circle { r: u32 }
 }
 
 enum Option<T>
     where T: Clone
 {
-    Some(T)
-    None
+    Some(T),
+    None,
 }
 
 enum BoundEnum<T: Add + Mul , U: Sub + Div>
 where Foo::Bar<T>: Trait
 {
-    AddMul(T)
-    SubDiv(U)
+    AddMul(T),
+    SubDiv(U),
 }
 
 enum HKTEnum<T: * -> *, U, V, W>
-where 
+where
    U: (* -> *) -> *
    V: * -> * -> (* -> *)
    W: * -> * -> * -> *
 {
     Foo(U<T>)
 }
+
+enum SingleLine { A, B, C { x: i32, y: u8 }, D(i8, i8) }

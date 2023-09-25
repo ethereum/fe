@@ -59,7 +59,7 @@ Root@0..151
                     Ident@49..52 "u32"
               RParen@52..53 ")"
           WhiteSpace@53..54 " "
-          Error@54..55
+          VariantDef@54..55
             Ident@54..55 "A"
           Newline@55..56 "\n"
           WhiteSpace@56..60 "    "
