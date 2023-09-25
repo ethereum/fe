@@ -80,7 +80,7 @@ contract Auction {
 
 Notice that the constructor receives values for `bidding_time` and `beneficiary_addr` and uses them to initialize the contract's `auction_end_time` and `beneficiary` variables.
 
-The other thing to notice about the constructor is that there are two additional arguments passed to the constructor: `must self` and `ctx: Context`.
+The other thing to notice about the constructor is that there are two additional arguments passed to the constructor: `mut self` and `ctx: Context`.
 
 #### self
 
@@ -91,12 +91,11 @@ Here, you are not only using `self` but you are prepending it with `mut`. `mut` 
 
 #### Context
 
-Context is used to track deadlines for requests. It gives the contract the ability to cancel functions that have taken too long to run, and provides a structure for storing values that are scoped to a particular request so that they can be accessed anywhere in the call chain. This will be familiar to Go and Rust developers, as Context is often used in the same way in those languages and is frequently employed when working with external API calls. It is conventional to name the context object `ctx`. 
+Context is used to gate access to certain features including emitting logs, creating contracts, reading messages and transferring ETH. It is conventional to name the context object `ctx`. The `Context` object needs to be passed as the *first* parameter to a function unless the function also takes `self`, in which case the `Context` object should be passed as the second parameter. `Context` must be expicitly made mutable if it will invoke functions that changes the blockchain data, whereas an immutable reference to `Context` can be used where read-only access to the blockchain is needed.
 
-Read more on [Context in Go](https://www.makeuseof.com/go-contexts/)
-Read more on [Context in Rust](https://docs.rs/ctx/latest/ctx/)
+Read more on [Context in Fe](https://github.com/ethereum/fe/issues/558)
 
-In Fe contracts `ctx` will also be used to track transaction and blockchain data including `msg.sender`, `msg.value`, `block.timestamp` etc.
+In Fe contracts `ctx` is where you can find transaction data such as `msg.sender`, `msg.value`, `block.timestamp` etc.
 
 
 ### Bidding
@@ -123,7 +122,7 @@ pub fn bid(mut self, mut ctx: Context) {
 }
 ```
 
-The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the []`revert`](../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
+The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the [`revert`](../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
 
 ```rust
 struct AuctionAlreadyEnded {
@@ -172,6 +171,9 @@ pub fn withdraw(mut self, mut ctx: Context) -> bool {
 }
 ```
 
+>**Note** that in this case `mut` is used with `ctx` because `send_value` is making changes to the blockchain (it is moving ETH from one address to another).
+
+
 ### End the auction
 
 Finally, you need to add a way to end the auction. This will check whether the bidding period is over, and if it is, automatically trigger the payment to the beneficiary and emit the address of the winner in an event. 
@@ -217,15 +219,15 @@ To help test the contract without having to decode transaction logs, you can add
 You can add the following functions to the contract:
 
 ```rust
-pub fn check_highest_bidder(mut self, ctx: Context) -> address {
+pub fn check_highest_bidder(mut self) -> address {
     return self.highest_bidder;
 }
 
-pub fn check_highest_bid(mut self, ctx: Context) -> u256 {
+pub fn check_highest_bid(mut self) -> u256 {
     return self.highest_bid;
 }
 
-pub fn check_ended(mut self, ctx: Context) -> bool {
+pub fn check_ended(mut self) -> bool {
     return self.ended;
 }
 ```
