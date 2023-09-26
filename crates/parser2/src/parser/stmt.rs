@@ -156,7 +156,7 @@ impl super::Parse for AssignStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
 
-        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::Eq]);
+        parser.with_recovery_tokens(parse_expr, &[SyntaxKind::Eq]);
         if !parser.bump_if(SyntaxKind::Eq) {
             parser.error_and_recover("expected `=`", None);
             return;
