@@ -20,9 +20,9 @@ impl Stmt {
             }
             ast::StmtKind::Assign(assign) => {
                 let lhs = assign
-                    .pat()
-                    .map(|pat| Pat::lower_ast(ctxt, pat))
-                    .unwrap_or_else(|| ctxt.push_missing_pat());
+                    .expr()
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
 
                 let rhs = assign
                     .expr()
@@ -88,13 +88,13 @@ fn desugar_aug_assign(
         .map(|ident| PathId::from_ident(ctxt.f_ctxt, ident));
 
     let lhs_origin: AugAssignDesugared = lhs_ident.unwrap().text_range().into();
-    let lhs_pat = if let Some(path) = path {
-        ctxt.push_pat(
-            Pat::Path(Some(path).into()),
+    let lhs_expr = if let Some(path) = path {
+        ctxt.push_expr(
+            Expr::Path(Some(path).into()),
             HirOrigin::desugared(lhs_origin.clone()),
         )
     } else {
-        ctxt.push_missing_pat()
+        ctxt.push_missing_expr()
     };
 
     let binop_lhs = if let Some(path) = path {
@@ -118,7 +118,7 @@ fn desugar_aug_assign(
     );
 
     (
-        Stmt::Assign(lhs_pat, expr),
+        Stmt::Assign(lhs_expr, expr),
         HirOrigin::desugared(AugAssignDesugared::stmt(ast)),
     )
 }

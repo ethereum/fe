@@ -24,7 +24,7 @@ Root@0..96
       Newline@14..15 "\n"
       WhiteSpace@15..19 "    "
       AssignStmt@19..32
-        PathPat@19..22
+        PathExpr@19..22
           Path@19..22
             PathSegment@19..22
               Ident@19..22 "sum"
@@ -88,7 +88,7 @@ Root@0..96
       Newline@72..73 "\n"
       WhiteSpace@73..77 "    "
       AssignStmt@77..94
-        PathPat@77..80
+        PathExpr@77..80
           Path@77..80
             PathSegment@77..80
               Ident@77..80 "sum"

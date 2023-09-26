@@ -63,12 +63,7 @@ ast_node! {
     SK::AssignStmt,
 }
 impl AssignStmt {
-    /// Returns the pattern of the lhs of the assignment.
-    pub fn pat(&self) -> Option<super::Pat> {
-        support::child(self.syntax())
-    }
-
-    /// Returns the expression of the rhs of the assignment.
+    /// Returns the expression of the lhs and rhs of the assignment.
     pub fn expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
     }
@@ -202,7 +197,7 @@ pub enum StmtKind {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{PatKind, TypeKind},
+        ast::{ExprKind, PatKind, TypeKind},
         lexer::Lexer,
         parser::Parser,
     };
@@ -248,8 +243,8 @@ mod tests {
     fn assign() {
         let assign_stmt: AssignStmt = parse_stmt(r#"Foo{x, y} = foo"#);
         assert!(matches!(
-            assign_stmt.pat().unwrap().kind(),
-            PatKind::Record(_)
+            assign_stmt.expr().unwrap().kind(),
+            ExprKind::RecordInit(_)
         ));
         assert!(assign_stmt.expr().is_some());
     }
