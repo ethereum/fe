@@ -60,7 +60,7 @@ The other thing to consider here is *how* the contract will keep track of time. 
 
 When you have implemented all this, your contract should look like this:
 
-```rust
+```fe
 contract Auction {
     // states
     auction_end_time: u256
@@ -124,14 +124,14 @@ pub fn bid(mut self, mut ctx: Context) {
 
 The method first checks that the current block timestamp is not later than the contract's `aution_end_time` variable. If it *is* later, then the contract reverts. This is triggered using the [`revert`](../../spec/statements/revert.md) keyword. The `revert` can accept a struct that becomes encoded as [revert data](https://github.com/ethereum/EIPs/issues/838). Here you can just revert without any arguments. Add the following definition somewhere in `Auction.fe` outside the main contract definition:
 
-```rust
+```fe
 struct AuctionAlreadyEnded {
 }
 ```
 
 The next check is whether the incoming bid exceeds the current highest bid. If not, the bid has failed and it may as well revert. We can repeat the same logic as for `AuctionAlreadyEnded`. We can also report the current highest bid in the revert message to help the user reprice if they want to. Add the following to `auction.fe`:
 
-```rust
+```fe
 struct BidNotHighEnough {
     pub highest_bid: u256
 }
@@ -143,7 +143,7 @@ Next, if the incoming transaction *is* the highest bid, you need to track how mu
 
 Finally, if the incoming bid *is* the highest, you can emit an event. Events are useful because they provide a cheap way to return data from a  contract as they use logs instead of contract storage. Unlike other smart contract languages, there is no `emit` keyword or `Event` type. Instead, you trigger an event by calling the `emit` method on the `ctx` object. You can pass this method a struct that defines the emitted message. You can add the following struct for this event:
 
-```rust
+```fe
 struct HighestBidIncreased {
     #indexed
     pub bidder: address
@@ -180,14 +180,14 @@ Finally, you need to add a way to end the auction. This will check whether the b
 
 First, check the auction is not still live - if the auction is live you cannot end it early. If an attempt to end the auction early is made, it should revert using a `AuctionNotYetEnded` struct, which can look as follows:
 
-```rust
+```fe
 struct AuctionNotYetEnded {
 }
 ```
 
 You should also check whether the auction was *already* ended by a previous valid call to this method. In this case, revert with a `AuctionEndAlreadyCalled` struct:
 
-```rust
+```fe
 struct AuctionEndAlreadyCalled {}
 ```
 
