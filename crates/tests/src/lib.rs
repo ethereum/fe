@@ -24,7 +24,7 @@ fn single_file_test_run(fixture: Fixture<&str>) {
         }
     };
 
-    let mut test_sink = TestSink::default();
+    let mut test_sink = TestSink::new(true);
 
     for test in tests {
         test.execute(&mut test_sink);
@@ -50,7 +50,7 @@ fn ingot_test_run(fixture: Fixture<&str>) {
     let mut db = fe_driver::Db::default();
     match fe_driver::compile_ingot_tests(&mut db, &build_files, optimize) {
         Ok(test_batches) => {
-            let mut sink = TestSink::default();
+            let mut sink = TestSink::new(true);
             for (_, tests) in test_batches {
                 for test in tests {
                     test.execute(&mut sink);
