@@ -83,15 +83,15 @@ contract Auction {
         ctx.send_value(to: self.beneficiary, wei: self.highest_bid)
     }
 
-    pub fn check_highest_bidder(mut self) -> address {
+    pub fn check_highest_bidder(self) -> address {
         return self.highest_bidder;
     }
 
-    pub fn check_highest_bid(mut self) -> u256 {
+    pub fn check_highest_bid(self) -> u256 {
         return self.highest_bid;
     }
 
-    pub fn check_ended(mut self) -> bool {
+    pub fn check_ended(self) -> bool {
         return self.ended;
     }
 }
