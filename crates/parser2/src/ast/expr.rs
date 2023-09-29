@@ -366,9 +366,16 @@ impl AugAssignExpr {
     }
 
     pub fn op(&self) -> Option<super::ArithBinOp> {
+<<<<<<< HEAD
         self.syntax()
             .children_with_tokens()
             .find_map(ArithBinOp::from_node_or_token)
+=======
+        self.syntax().children_with_tokens().find_map(|c| match c {
+            rowan::NodeOrToken::Token(token) => ArithBinOp::from_token(token),
+            rowan::NodeOrToken::Node(token) => ArithBinOp::from_node(token),
+        })
+>>>>>>> 8e95c982 (Assign and Aug Assign)
     }
 
     /// Returns the expression of the rhs of the assignment.
@@ -552,14 +559,14 @@ impl ArithBinOp {
         }
     }
 
-    pub(super) fn from_node_or_token(
-        node_or_token: rowan::NodeOrToken<SyntaxNode, SyntaxToken>,
-    ) -> Option<Self> {
-        match node_or_token {
-            rowan::NodeOrToken::Token(token) => Self::from_token(token),
-            rowan::NodeOrToken::Node(node) => Self::from_node(node),
-        }
-    }
+    // pub(super) fn from_node_or_token(
+    //     node_or_token: rowan::NodeOrToken<SyntaxNode, SyntaxToken>,
+    // ) -> Option<Self> {
+    //     match node_or_token {
+    //         rowan::NodeOrToken::Token(token) => Self::from_token(token),
+    //         rowan::NodeOrToken::Node(node) => Self::from_node(node),
+    //     }
+    // }
 
     // NOTE: We need to have `from_node` because `<<` and `>>` are not primitive
     // tokens in our lexer.

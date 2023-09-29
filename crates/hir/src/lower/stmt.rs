@@ -62,6 +62,7 @@ impl Stmt {
         ctxt.push_stmt(stmt, origin_kind)
     }
 }
+<<<<<<< HEAD
 
 fn desugar_aug_assign(
     ctxt: &mut BodyCtxt<'_, '_>,
@@ -107,3 +108,5 @@ fn desugar_aug_assign(
         HirOrigin::desugared(AugAssignDesugared::stmt(ast)),
     )
 }
+=======
+>>>>>>> 8e95c982 (Assign and Aug Assign)

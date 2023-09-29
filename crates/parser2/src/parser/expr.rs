@@ -7,6 +7,10 @@ use super::{
     Checkpoint, Parser,
 };
 
+pub fn parse_lhs_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    //include Lp and Lb ?
+    parse_expr_with_min_bp(parser, 146, true)
+}
 /// Parses expression.
 pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parse_expr_with_min_bp(parser, 0, true)
@@ -179,7 +183,11 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Dot => (151, 150),
         Eq => {
             // `Assign` and `AugAssign` have the same binding power
+<<<<<<< HEAD
             (11, 10)
+=======
+            (40, 41)
+>>>>>>> 8e95c982 (Assign and Aug Assign)
         }
         _ => return None,
     };
@@ -207,12 +215,22 @@ impl super::Parse for BinExprScope {
         if is_aug(parser) {
             self.set_kind(SyntaxKind::AugAssignExpr);
             bump_aug_assign_op(parser);
+<<<<<<< HEAD
             parser.bump_expected(SyntaxKind::Eq);
+=======
+            let (_, rbp) = infix_binding_power(parser).unwrap();
+            parser.bump_or_recover(SyntaxKind::Eq, "expected `=`", None);
+>>>>>>> 8e95c982 (Assign and Aug Assign)
             parse_expr_with_min_bp(parser, rbp, true);
         } else if is_asn(parser) {
             self.set_kind(SyntaxKind::AssignExpr);
             parser.set_newline_as_trivia(false);
+<<<<<<< HEAD
             parser.bump_expected(SyntaxKind::Eq);
+=======
+            let (_, rbp) = infix_binding_power(parser).unwrap();
+            parser.bump_or_recover(SyntaxKind::Eq, "expected `=`", None);
+>>>>>>> 8e95c982 (Assign and Aug Assign)
             parse_expr_with_min_bp(parser, rbp, true);
         } else {
             bump_bin_op(parser);

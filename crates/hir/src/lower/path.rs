@@ -29,10 +29,13 @@ impl PathId {
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
+<<<<<<< HEAD
 
     pub(super) fn from_token(ctxt: &mut FileLowerCtxt<'_>, ast: SyntaxToken) -> Self {
         let ident_id = IdentId::new(ctxt.db(), ast.text().to_string());
         let seg = vec![Partial::Present(ident_id)];
         Self::new(ctxt.db(), seg)
     }
+=======
+>>>>>>> 8e95c982 (Assign and Aug Assign)
 }

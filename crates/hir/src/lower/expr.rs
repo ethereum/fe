@@ -190,19 +190,33 @@ impl Expr {
             }
 
             ast::ExprKind::AugAssign(aug_assign) => {
+<<<<<<< HEAD
                 let lhs = aug_assign
                     .lhs_expr()
                     .map(|expr| Expr::lower_ast(ctxt, expr))
                     .unwrap_or_else(|| ctxt.push_missing_expr());
 
                 let rhs = aug_assign
+=======
+                let lhs_expr = aug_assign.lhs_expr();
+
+                let binop_lhs = lhs_expr
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
+
+                let binop_rhs = aug_assign
+>>>>>>> 8e95c982 (Assign and Aug Assign)
                     .rhs_expr()
                     .map(|expr| Expr::lower_ast(ctxt, expr))
                     .unwrap_or_else(|| ctxt.push_missing_expr());
 
                 let binop = aug_assign.op().map(ArithBinOp::lower_ast).unwrap();
 
+<<<<<<< HEAD
                 Self::AugAssign(lhs, rhs, binop)
+=======
+                Self::AugAssign(binop_lhs, binop_rhs, binop)
+>>>>>>> 8e95c982 (Assign and Aug Assign)
             }
         };
 
