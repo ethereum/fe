@@ -175,6 +175,36 @@ impl Expr {
             ast::ExprKind::Paren(paren) => {
                 return Self::push_to_body_opt(ctxt, paren.expr());
             }
+
+            ast::ExprKind::Assign(assign) => {
+                let lhs = assign
+                    .lhs_expr()
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
+
+                let rhs = assign
+                    .rhs_expr()
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
+                Self::Assign(lhs, rhs)
+            }
+
+            ast::ExprKind::AugAssign(aug_assign) => {
+                let lhs_expr = aug_assign.lhs_expr();
+
+                let binop_lhs = lhs_expr
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
+
+                let binop_rhs = aug_assign
+                    .rhs_expr()
+                    .map(|expr| Expr::lower_ast(ctxt, expr))
+                    .unwrap_or_else(|| ctxt.push_missing_expr());
+
+                let binop = aug_assign.op().map(ArithBinOp::lower_ast).unwrap();
+
+                Self::AugAssign(binop_lhs, binop_rhs, binop)
+            }
         };
 
         ctxt.push_expr(expr, HirOrigin::raw(&ast))

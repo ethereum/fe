@@ -204,7 +204,6 @@ impl LazyUseSpan {
                         use_.focus = DesugaredUseFocus::Path;
                         ResolvedOriginKind::Desugared(root, DesugaredOrigin::Use(use_))
                     }
-                    _ => ResolvedOriginKind::None,
                 })
         }
 
@@ -235,7 +234,6 @@ impl LazyUseSpan {
                         use_.focus = DesugaredUseFocus::Alias;
                         ResolvedOriginKind::Desugared(root, DesugaredOrigin::Use(use_))
                     }
-                    _ => ResolvedOriginKind::None,
                 })
         }
 

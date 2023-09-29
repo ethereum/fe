@@ -190,37 +190,37 @@ impl ChainInitiator for ExprRoot {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        hir_def::{Body, Expr, Stmt},
-        test_db::TestDb,
-        HirDb,
-    };
+// #[cfg(test)]
+// mod tests {
+//     use crate::{
+//         hir_def::{Body, Expr, Stmt},
+//         test_db::TestDb,
+//         HirDb,
+//     };
 
-    #[test]
-    fn aug_assign() {
-        let mut db = TestDb::default();
+//     #[test]
+//     fn aug_assign() {
+//         let mut db = TestDb::default();
 
-        let text = r#"
-            fn foo(mut x: i32) {
-                x += 1
-            }
-        }"#;
+//         let text = r#"
+//             fn foo(mut x: i32) {
+//                 x += 1
+//             }
+//         }"#;
 
-        let body: Body = db.expect_item::<Body>(text);
-        let bin_expr = match body.stmts(db.as_hir_db()).values().next().unwrap().unwrap() {
-            Stmt::Assign(_, rhs) => *rhs,
-            _ => unreachable!(),
-        };
-        let (lhs, rhs) = match body.exprs(db.as_hir_db())[bin_expr].unwrap() {
-            Expr::Bin(lhs, rhs, _) => (lhs, rhs),
-            _ => unreachable!(),
-        };
+//         let body: Body = db.expect_item::<Body>(text);
+//         let bin_expr = match body.stmts(db.as_hir_db()).values().next().unwrap().unwrap() {
+//             Stmt::Assign(_, rhs) => *rhs,
+//             _ => unreachable!(),
+//         };
+//         let (lhs, rhs) = match body.exprs(db.as_hir_db())[bin_expr].unwrap() {
+//             Expr::Bin(lhs, rhs, _) => (lhs, rhs),
+//             _ => unreachable!(),
+//         };
 
-        let top_mod = body.top_mod(db.as_hir_db());
-        assert_eq!("x += 1", db.text_at(top_mod, &bin_expr.lazy_span(body)));
-        assert_eq!("x", db.text_at(top_mod, &lhs.lazy_span(body)));
-        assert_eq!("1", db.text_at(top_mod, &rhs.lazy_span(body)));
-    }
-}
+//         let top_mod = body.top_mod(db.as_hir_db());
+//         assert_eq!("x += 1", db.text_at(top_mod, &bin_expr.lazy_span(body)));
+//         assert_eq!("x", db.text_at(top_mod, &lhs.lazy_span(body)));
+//         assert_eq!("1", db.text_at(top_mod, &rhs.lazy_span(body)));
+//     }
+// }

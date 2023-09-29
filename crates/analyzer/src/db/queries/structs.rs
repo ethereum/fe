@@ -84,11 +84,8 @@ pub fn struct_field_map(
 
         let mut labels = fields
             .iter()
-            .filter_map(|(_, field)| {
-                field
-                    .is_indexed(db)
-                    .then(|| Label::primary(field.span(db), String::new()))
-            })
+            .filter(|(_, field)| field.is_indexed(db))
+            .map(|(_, field)| Label::primary(field.span(db), String::new()))
             .collect::<Vec<Label>>();
         labels.last_mut().unwrap().message = format!("{indexed_count} indexed fields");
 

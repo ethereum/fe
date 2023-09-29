@@ -1,4 +1,4 @@
-use parser::{ast, SyntaxToken};
+use parser::ast;
 
 use crate::hir_def::{kw, IdentId, Partial, PathId};
 
@@ -28,11 +28,5 @@ impl PathId {
         ast: Option<ast::Path>,
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
-    }
-
-    pub(super) fn from_ident(ctxt: &mut FileLowerCtxt<'_>, ast: SyntaxToken) -> Self {
-        let ident_id = IdentId::new(ctxt.db(), ast.text().to_string());
-        let seg = vec![Partial::Present(ident_id)];
-        Self::new(ctxt.db(), seg)
     }
 }
