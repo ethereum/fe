@@ -232,16 +232,18 @@ impl DiagnosticVoucher for TyLowerDiag {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImplTraitLowerDiag {
+pub enum TraitLowerDiag {
     ExternalTraitForExternalType(DynLazySpan),
 
     ConflictTraitImpl {
         primary: ImplTrait,
         conflict_with: ImplTrait,
     },
+
+    CyclicSuperTraits(DynLazySpan),
 }
 
-impl ImplTraitLowerDiag {
+impl TraitLowerDiag {
     pub fn external_trait_for_external_type(impl_trait: ImplTrait) -> Self {
         Self::ExternalTraitForExternalType(impl_trait.lazy_span().trait_ref().into())
     }
@@ -257,6 +259,7 @@ impl ImplTraitLowerDiag {
         match self {
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
+            Self::CyclicSuperTraits { .. } => 2,
         }
     }
 
@@ -267,6 +270,8 @@ impl ImplTraitLowerDiag {
             }
 
             Self::ConflictTraitImpl { .. } => "conflict trait implementation".to_string(),
+
+            Self::CyclicSuperTraits { .. } => "cyclic super traits are not allowed".to_string(),
         }
     }
 
@@ -293,6 +298,14 @@ impl ImplTraitLowerDiag {
                     conflict_with.lazy_span().ty().resolve(db),
                 ),
             ],
+
+            Self::CyclicSuperTraits(span) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "super traits cycle is detected here".to_string(),
+                    span.resolve(db),
+                )]
+            }
         }
     }
 
@@ -301,7 +314,7 @@ impl ImplTraitLowerDiag {
     }
 }
 
-impl DiagnosticVoucher for ImplTraitLowerDiag {
+impl DiagnosticVoucher for TraitLowerDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code())
     }
@@ -317,7 +330,7 @@ impl DiagnosticVoucher for ImplTraitLowerDiag {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TraitSatisfactionDiag {
+pub enum TraitConstraintDiag {
     KindMismatch {
         primary: DynLazySpan,
         trait_def: Trait,
@@ -332,7 +345,7 @@ pub enum TraitSatisfactionDiag {
     TraitArgKindMismatch(DynLazySpan, String),
 }
 
-impl TraitSatisfactionDiag {
+impl TraitConstraintDiag {
     pub fn trait_arg_kind_mismatch(span: DynLazySpan, expected: &Kind, actual: &Kind) -> Self {
         let msg = format!("expected `{}` kind, but found `{}` kind", expected, actual);
         Self::TraitArgKindMismatch(span, msg)
@@ -407,7 +420,7 @@ impl TraitSatisfactionDiag {
     }
 }
 
-impl DiagnosticVoucher for TraitSatisfactionDiag {
+impl DiagnosticVoucher for TraitConstraintDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
     }

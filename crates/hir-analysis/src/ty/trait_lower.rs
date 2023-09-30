@@ -15,13 +15,15 @@ use crate::{
 };
 
 use super::{
-    diagnostics::{ImplTraitLowerDiag, TraitSatisfactionDiag, TyLowerDiag},
-    trait_::{Implementor, TraitDef, TraitImplTable, TraitInstId},
+    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyLowerDiag},
+    trait_::{Implementor, TraitDef, TraitEnv, TraitInstId},
     ty_def::TyId,
     ty_lower::{collect_generic_params, lower_hir_ty_with_diag, GenericParamOwnerId},
     unify::UnificationTable,
     visitor::TyDiagCollector,
 };
+
+type TraitImplMap = FxHashMap<TraitDef, Vec<Implementor>>;
 
 #[salsa::tracked]
 pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
@@ -29,14 +31,17 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn collect_trait_impl(
+pub(crate) fn collect_trait_impls(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
-) -> (TraitImplTable, BTreeMap<TopLevelMod, Vec<TraitImplDiag>>) {
+) -> (
+    TraitImplMap,
+    FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
+) {
     let dependent_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
-        .map(|(_, external)| &collect_trait_impl(db, *external).0)
+        .map(|(_, external)| &collect_trait_impls(db, *external).0)
         .collect();
 
     let mut collector = ImplementorCollector::new(db, dependent_impls);
@@ -49,7 +54,7 @@ pub(super) fn lower_trait_ref(
     trait_ref: TraitRef,
     ref_span: LazyTraitRefSpan,
     scope: ScopeId,
-) -> (Option<TraitInstId>, Vec<TraitRefLowerDiag>) {
+) -> (Option<TraitInstId>, Vec<LowerDiagCollection>) {
     let hir_db = db.as_hir_db();
     let (args, diags) = if let Some(args) = trait_ref.generic_args {
         lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
@@ -59,7 +64,7 @@ pub(super) fn lower_trait_ref(
 
     let mut diags = diags
         .into_iter()
-        .map(TraitRefLowerDiag::Ty)
+        .map(LowerDiagCollection::Ty)
         .collect::<Vec<_>>();
 
     let Partial::Present(path) = trait_ref.path else {
@@ -86,7 +91,7 @@ pub(super) fn lower_trait_ref(
 
     if trait_def.args(db).len() != args.len() {
         diags.push(
-            TraitSatisfactionDiag::TraitArgNumMismatch {
+            TraitConstraintDiag::TraitArgNumMismatch {
                 span: ref_span.into(),
                 trait_: trait_def.trait_(db),
                 n_given_arg: args.len(),
@@ -100,7 +105,7 @@ pub(super) fn lower_trait_ref(
     for (i, (expected, given)) in trait_def.args(db).iter().zip(&args).enumerate() {
         if !expected.kind(db).can_unify(given.kind(db)) {
             let span = ref_span.generic_args().arg_moved(i).into();
-            let diag = TraitSatisfactionDiag::trait_arg_kind_mismatch(
+            let diag = TraitConstraintDiag::trait_arg_kind_mismatch(
                 span,
                 expected.kind(db),
                 given.kind(db),
@@ -111,7 +116,8 @@ pub(super) fn lower_trait_ref(
     }
 
     if !has_error {
-        (Some(TraitInstId::new(db, trait_def, args)), diags)
+        let ingot = scope.ingot(hir_db);
+        (Some(TraitInstId::new(db, trait_def, args, ingot)), diags)
     } else {
         (None, diags)
     }
@@ -146,22 +152,27 @@ impl<'db> TraitBuilder<'db> {
 /// Collect all implementors in an ingot.
 struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    impl_table: TraitImplTable,
-    dependent_impl_tables: Vec<&'db TraitImplTable>,
-    diags: BTreeMap<TopLevelMod, Vec<TraitImplDiag>>,
+    impl_table: TraitImplMap,
+    dependent_impl_maps: Vec<&'db TraitImplMap>,
+    diags: FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
 }
 
 impl<'db> ImplementorCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_tables: Vec<&'db TraitImplTable>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_maps: Vec<&'db TraitImplMap>) -> Self {
         Self {
             db,
-            impl_table: TraitImplTable::default(),
-            dependent_impl_tables,
-            diags: BTreeMap::new(),
+            impl_table: TraitImplMap::default(),
+            dependent_impl_maps,
+            diags: FxHashMap::default(),
         }
     }
 
-    fn finalize(self) -> (TraitImplTable, BTreeMap<TopLevelMod, Vec<TraitImplDiag>>) {
+    fn finalize(
+        self,
+    ) -> (
+        TraitImplMap,
+        FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
+    ) {
         (self.impl_table, self.diags)
     }
 
@@ -172,13 +183,16 @@ impl<'db> ImplementorCollector<'db> {
             };
 
             if let Some(conflict_with) = self.does_conflict(implementor) {
-                let diag = ImplTraitLowerDiag::conflict_impl(
+                let diag = TraitLowerDiag::conflict_impl(
                     implementor.impl_def(self.db),
                     conflict_with.impl_def(self.db),
                 );
                 self.push_diag(impl_, diag);
             } else {
-                self.impl_table.insert(self.db, implementor);
+                self.impl_table
+                    .entry(implementor.trait_def(self.db))
+                    .or_default()
+                    .push(implementor);
             }
         }
     }
@@ -193,7 +207,7 @@ impl<'db> ImplementorCollector<'db> {
         if Some(impl_trait_ingot) != ty.ingot(self.db)
             && impl_trait_ingot != trait_.def(self.db).ingot(self.db)
         {
-            let diag = ImplTraitLowerDiag::external_trait_for_external_type(impl_);
+            let diag = TraitLowerDiag::external_trait_for_external_type(impl_);
             self.push_diag(impl_, diag);
             return None;
         }
@@ -246,7 +260,7 @@ impl<'db> ImplementorCollector<'db> {
         {
             Some(trait_inst)
         } else {
-            let diag = TraitSatisfactionDiag::KindMismatch {
+            let diag = TraitConstraintDiag::KindMismatch {
                 primary: impl_trait.lazy_span().ty_moved().into(),
                 trait_def: trait_inst.def(self.db).trait_(self.db),
             };
@@ -257,7 +271,7 @@ impl<'db> ImplementorCollector<'db> {
 
     fn does_conflict(&mut self, implementor: Implementor) -> Option<Implementor> {
         let def = implementor.trait_def(self.db);
-        for &already_implemented in self.impl_table.get(def)? {
+        for &already_implemented in self.impl_table.get(&def)? {
             let mut table = UnificationTable::new(self.db);
             if already_implemented.does_conflict(self.db, implementor, &mut table) {
                 return Some(already_implemented);
@@ -268,59 +282,33 @@ impl<'db> ImplementorCollector<'db> {
     }
 
     fn get_implementors_for(&mut self, def: TraitDef) -> impl Iterator<Item = Implementor> + '_ {
-        self.dependent_impl_tables
+        self.dependent_impl_maps
             .iter()
-            .filter_map(move |table| table.get(def).map(|impls| impls.iter().copied()))
+            .filter_map(move |table| table.get(&def).map(|impls| impls.iter().copied()))
             .flatten()
-            .chain(self.impl_table.get(def).into_iter().flatten().copied())
+            .chain(self.impl_table.get(&def).into_iter().flatten().copied())
     }
 
-    fn push_diag(&mut self, impl_: ImplTrait, diag: impl Into<TraitImplDiag>) {
+    fn push_diag(&mut self, impl_: ImplTrait, diag: impl Into<LowerDiagCollection>) {
         let top_mod = impl_.top_mod(self.db.as_hir_db());
         self.diags.entry(top_mod).or_default().push(diag.into());
     }
 }
 
 impl Implementor {
-    fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
-        let mut subst = FxHashMap::default();
-        for param in self.params(db) {
-            let var = table.new_var(param.kind(db));
-            subst.insert(*param, var);
-        }
-
-        let impl_def = self.impl_def(db);
-        let trait_ = self.trait_(db).apply_subst(db, &mut subst);
-        let ty = self.ty(db).apply_subst(db, &mut subst);
-        let params = self
-            .params(db)
-            .iter()
-            .map(|param| subst[param])
-            .collect::<Vec<_>>();
-
-        Implementor::new(db, impl_def, trait_, ty, params)
-    }
-
     fn does_conflict(
         self,
         db: &dyn HirAnalysisDb,
         other: Self,
         table: &mut UnificationTable,
     ) -> bool {
-        if self.trait_def(db) != other.trait_def(db) {
-            return false;
-        }
-
         let generalized_self = self.generalize(db, table);
         let generalized_other = other.generalize(db, table);
-        for (&self_arg, &other_arg) in generalized_self
-            .substs(db)
-            .iter()
-            .zip(generalized_other.substs(db))
+        if !generalized_self
+            .trait_(db)
+            .can_unify(db, generalized_other.trait_(db), table)
         {
-            if !table.unify(self_arg, other_arg) {
-                return false;
-            }
+            return false;
         }
 
         table.unify(generalized_self.ty(db), generalized_other.ty(db))
@@ -328,23 +316,18 @@ impl Implementor {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
-pub(crate) enum TraitImplDiag {
+pub(crate) enum LowerDiagCollection {
     Ty(TyLowerDiag),
-    Satisfaction(TraitSatisfactionDiag),
-    TraitImplLower(ImplTraitLowerDiag),
+    Satisfaction(TraitConstraintDiag),
+    TraitLower(TraitLowerDiag),
 }
 
-impl From<TraitRefLowerDiag> for TraitImplDiag {
-    fn from(diag: TraitRefLowerDiag) -> Self {
-        match diag {
-            TraitRefLowerDiag::Ty(diag) => TraitImplDiag::Ty(diag),
-            TraitRefLowerDiag::TraitSatisfactionDiag(diag) => TraitImplDiag::Satisfaction(diag),
+impl LowerDiagCollection {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
+        match self.clone() {
+            LowerDiagCollection::Ty(diag) => Box::new(diag) as _,
+            LowerDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
+            LowerDiagCollection::TraitLower(diag) => Box::new(diag) as _,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
-pub(super) enum TraitRefLowerDiag {
-    Ty(TyLowerDiag),
-    TraitSatisfactionDiag(TraitSatisfactionDiag),
 }

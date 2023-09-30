@@ -7,7 +7,7 @@ pub struct Jar(
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
-    /// Type inference.
+    /// Type system.
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,
     ty::ty_def::free_inference_keys,
@@ -21,14 +21,18 @@ pub struct Jar(
     ty::ty_lower::GenericParamOwnerId,
     /// Trait lowering.
     ty::trait_lower::lower_trait,
-    ty::trait_lower::collect_trait_impl,
+    ty::trait_lower::collect_trait_impls,
     /// ADT analysis.
     ty::adt_analysis::check_recursive_adt,
     ty::adt_analysis::analyze_adt,
-    /// Trait resolution.
+    /// Trait system.
     ty::trait_::TraitDef,
     ty::trait_::TraitInstId,
     ty::trait_::Implementor,
+    ty::trait_::ingot_trait_env,
+    ty::trait_::trait_implementors,
+    ty::constraint::collect_super_traits,
+    ty::constraint::ConstraintId,
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
