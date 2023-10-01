@@ -1,11 +1,13 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use hir::{
-    hir_def::{scope_graph::ScopeId, Trait, TraitRef, TypeId, TypeKind, WherePredicate},
+    hir_def::{scope_graph::ScopeId, IngotId, Trait, TraitRef, TypeId, TypeKind, WherePredicate},
     visitor::prelude::*,
 };
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
-use crate::HirAnalysisDb;
+use crate::{ty::trait_::TraitEnv, HirAnalysisDb};
 
 use super::{
     diagnostics::{TraitLowerDiag, TyDiagCollection},
@@ -13,20 +15,6 @@ use super::{
     trait_lower::lower_trait_ref,
     ty_def::{Subst, TyId},
 };
-
-#[salsa::interned]
-pub(crate) struct ConstraintId {
-    ty: TyId,
-    trait_: TraitInstId,
-}
-
-impl ConstraintId {
-    pub fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> Self {
-        let ty = self.ty(db).apply_subst(db, subst);
-        let trait_ = self.trait_(db).apply_subst(db, subst);
-        Self::new(db, ty, trait_)
-    }
-}
 
 /// Collects super traits, and verify there are no cyclic in
 /// the super traits relationship.
@@ -54,6 +42,77 @@ pub(crate) fn collect_super_traits(
     }
 
     (insts, diags)
+}
+
+#[salsa::tracked(return_ref)]
+pub(crate) fn super_trait_insts(
+    db: &dyn HirAnalysisDb,
+    trait_inst: TraitInstId,
+) -> Vec<TraitInstId> {
+    let trait_def = trait_inst.def(db);
+    let (super_traits, _) = collect_super_traits(db, trait_def);
+    let mut subst = trait_inst.subst_table(db);
+
+    super_traits
+        .iter()
+        .map(|trait_| trait_.apply_subst(db, &mut subst))
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub(crate) fn compute_super_assumptions(
+    db: &dyn HirAnalysisDb,
+    assumptions: AssumptionListId,
+) -> AssumptionListId {
+    let ingot = assumptions.ingot(db);
+    let trait_env = TraitEnv::new(db, ingot);
+    let mut super_assumptions = BTreeMap::new();
+
+    for (ty, insts) in assumptions.predicates(db) {
+        let super_insts = insts
+            .iter()
+            .flat_map(|inst| super_trait_insts(db, *inst).iter().copied());
+        super_assumptions.insert(*ty, super_insts.collect());
+    }
+
+    AssumptionListId::new(db, super_assumptions, ingot)
+}
+
+#[salsa::interned]
+pub(crate) struct PredicateId {
+    pub(super) ty: TyId,
+    pub(super) trait_: TraitInstId,
+}
+
+#[salsa::interned]
+pub(crate) struct PredicateListId {
+    #[return_ref]
+    pub(super) predicates: BTreeMap<TyId, BTreeSet<TraitInstId>>,
+    pub(super) ingot: IngotId,
+}
+
+pub(super) type AssumptionListId = PredicateListId;
+pub(super) type ConstraintListId = PredicateListId;
+
+impl PredicateListId {
+    pub(super) fn does_satisfy(self, db: &dyn HirAnalysisDb, predicate: PredicateId) -> bool {
+        let trait_ = predicate.trait_(db);
+        let ty = predicate.ty(db);
+
+        let Some(insts) = self.predicates(db).get(&ty) else {
+            return false;
+        };
+
+        insts.contains(&trait_)
+    }
+}
+
+impl PredicateId {
+    pub fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> Self {
+        let ty = self.ty(db).apply_subst(db, subst);
+        let trait_ = self.trait_(db).apply_subst(db, subst);
+        Self::new(db, ty, trait_)
+    }
 }
 
 pub(crate) fn recover_collect_super_traits(
@@ -143,7 +202,7 @@ impl<'db> Visitor for SuperTraitCollector<'db> {
             Some(TypeKind::SelfType(args)) if args.is_empty(self.db.as_hir_db()) => {
                 walk_where_predicate(self, ctxt, pred);
             }
-            _ => return,
+            _ => (),
         }
     }
 

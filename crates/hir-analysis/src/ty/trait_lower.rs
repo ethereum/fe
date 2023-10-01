@@ -176,8 +176,8 @@ impl<'db> ImplementorCollector<'db> {
 
             if let Some(conflict_with) = self.does_conflict(implementor) {
                 let diag = TraitLowerDiag::conflict_impl(
-                    implementor.impl_def(self.db),
-                    conflict_with.impl_def(self.db),
+                    implementor.hir_impl(self.db),
+                    conflict_with.hir_impl(self.db),
                 );
                 self.push_diag(impl_, diag);
             } else {
@@ -189,29 +189,29 @@ impl<'db> ImplementorCollector<'db> {
         }
     }
 
-    fn lower_impl(&mut self, impl_: ImplTrait) -> Option<Implementor> {
-        let ty = self.lower_implementor_ty(impl_)?;
-        let trait_ = self.instantiate_trait(impl_, ty)?;
-        let impl_trait_ingot = impl_
+    fn lower_impl(&mut self, hir_impl: ImplTrait) -> Option<Implementor> {
+        let ty = self.lower_implementor_ty(hir_impl)?;
+        let trait_ = self.instantiate_trait(hir_impl, ty)?;
+        let impl_trait_ingot = hir_impl
             .top_mod(self.db.as_hir_db())
             .ingot(self.db.as_hir_db());
 
         if Some(impl_trait_ingot) != ty.ingot(self.db)
             && impl_trait_ingot != trait_.def(self.db).ingot(self.db)
         {
-            let diag = TraitLowerDiag::external_trait_for_external_type(impl_);
-            self.push_diag(impl_, diag);
+            let diag = TraitLowerDiag::external_trait_for_external_type(hir_impl);
+            self.push_diag(hir_impl, diag);
             return None;
         }
 
-        let param_owner = GenericParamOwnerId::new(self.db, impl_.into());
+        let param_owner = GenericParamOwnerId::new(self.db, hir_impl.into());
         let params = collect_generic_params(self.db, param_owner);
         Some(Implementor::new(
             self.db,
-            impl_,
             trait_,
             ty,
             params.params.clone(),
+            hir_impl,
         ))
     }
 
@@ -296,13 +296,7 @@ impl Implementor {
     ) -> bool {
         let generalized_self = self.generalize(db, table);
         let generalized_other = other.generalize(db, table);
-        if !generalized_self
-            .trait_(db)
-            .can_unify(db, generalized_other.trait_(db), table)
-        {
-            return false;
-        }
 
-        table.unify(generalized_self.ty(db), generalized_other.ty(db))
+        generalized_self.unify(db, table, generalized_other)
     }
 }

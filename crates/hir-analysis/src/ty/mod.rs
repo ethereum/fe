@@ -16,6 +16,7 @@ use self::{
 };
 
 pub mod adt_analysis;
+pub mod constraint_solver;
 pub mod diagnostics;
 pub mod trait_;
 pub mod trait_lower;

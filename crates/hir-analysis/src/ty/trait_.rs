@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
 
 use super::{
-    constraint::{collect_super_traits, ConstraintId},
+    constraint::{collect_super_traits, ConstraintListId, PredicateId},
     diagnostics::TraitConstraintDiag,
     ty_def::{Kind, Subst, TyId},
     unify::UnificationTable,
@@ -13,7 +13,7 @@ use super::{
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEnv {
-    TraitEnv::new(db, ingot)
+    TraitEnv::collect(db, ingot)
 }
 
 #[salsa::tracked(return_ref)]
@@ -28,7 +28,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .filter(|impl_| {
             let mut table = UnificationTable::new(db);
             impl_.generalize(db, &mut table);
-            impl_.trait_(db).can_unify(db, trait_, &mut table)
+            impl_.trait_(db).unify(db, &mut table, trait_)
         })
         .cloned()
         .collect()
@@ -43,7 +43,11 @@ pub(crate) struct TraitEnv {
 }
 
 impl TraitEnv {
-    pub(super) fn new(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
+    pub(super) fn new(db: &dyn HirAnalysisDb, ingot: IngotId) -> &Self {
+        ingot_trait_env(db, ingot)
+    }
+
+    fn collect(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
         let mut impls: FxHashMap<_, Vec<Implementor>> = FxHashMap::default();
 
         for impl_map in ingot
@@ -78,11 +82,12 @@ impl TraitEnv {
 /// Represents an implementor of a trait.
 #[salsa::interned]
 pub(crate) struct Implementor {
-    pub(crate) impl_def: ImplTrait,
     pub(crate) trait_: TraitInstId,
     pub(crate) ty: TyId,
     #[return_ref]
     pub(crate) params: Vec<TyId>,
+
+    pub(crate) hir_impl: ImplTrait,
 }
 
 impl Implementor {
@@ -100,7 +105,7 @@ impl Implementor {
             subst.insert(*param, var);
         }
 
-        let impl_def = self.impl_def(db);
+        let hir_impl = self.hir_impl(db);
         let trait_ = self.trait_(db).apply_subst(db, &mut subst);
         let ty = self.ty(db).apply_subst(db, &mut subst);
         let params = self
@@ -109,7 +114,41 @@ impl Implementor {
             .map(|param| subst[param])
             .collect::<Vec<_>>();
 
-        Implementor::new(db, impl_def, trait_, ty, params)
+        Implementor::new(db, trait_, ty, params, hir_impl)
+    }
+
+    pub(super) fn apply_subst<S: Subst>(
+        self,
+        db: &dyn HirAnalysisDb,
+        subst: &mut S,
+    ) -> Implementor {
+        Implementor::new(
+            db,
+            self.trait_(db).apply_subst(db, subst),
+            self.ty(db).apply_subst(db, subst),
+            self.params(db)
+                .iter()
+                .map(|param| param.apply_subst(db, subst))
+                .collect(),
+            self.hir_impl(db),
+        )
+    }
+
+    pub(super) fn unify(
+        self,
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
+        other: Self,
+    ) -> bool {
+        if !self.trait_(db).unify(db, table, other.trait_(db)) {
+            return false;
+        }
+
+        table.unify(self.ty(db), other.ty(db))
+    }
+
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+        todo!()
     }
 }
 
@@ -121,7 +160,7 @@ pub(crate) struct TraitInstId {
     #[return_ref]
     pub substs: Vec<TyId>,
 
-    ingot: IngotId,
+    pub(super) ingot: IngotId,
 }
 
 impl TraitInstId {
@@ -145,11 +184,11 @@ impl TraitInstId {
     }
 
     /// Returns `true` if this trait can be unified with the other trait.
-    pub(super) fn can_unify(
+    pub(super) fn unify(
         self,
         db: &dyn HirAnalysisDb,
-        other: TraitInstId,
         table: &mut UnificationTable,
+        other: TraitInstId,
     ) -> bool {
         if self.def(db) != other.def(db) {
             return false;
@@ -162,6 +201,15 @@ impl TraitInstId {
         }
 
         true
+    }
+
+    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> impl Subst {
+        let mut table = FxHashMap::default();
+        for (param, subst) in self.def(db).args(db).iter().zip(self.substs(db)) {
+            table.insert(*param, *subst);
+        }
+
+        table
     }
 }
 
@@ -190,7 +238,7 @@ impl TraitDef {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits<'db>(self, db: &'db dyn HirAnalysisDb) -> &'db [TraitInstId] {
+    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &[TraitInstId] {
         &collect_super_traits(db, self).0
     }
 }
