@@ -36,7 +36,7 @@ The Context object gates access to features such as:
 
 - emitting logs
 - creating contracts
-- transferring Ether
+- transferring ether
 - reading message info
 - reading block info
 
@@ -91,18 +91,45 @@ This means Fe has nine different categories that can be derived from the functio
 
 ## Examples
 
-## create/create2
+### msg_sender and msg_value
 
-Creating a contract via `create`/`create2` requires access to the Context object because it modifies the blockchain state data:
+`Context` includes information about inbound transactions. For example, the following function receives ether and adds the sender's address and the
+transaction value to a mapping.
+
+
+```
+// assumes existence of state variable named 'ledger' with type Map<address, u256>
+pub fn add_to_ledger(mut self, ctx: Context) {
+    self.ledger[ctx.msg_sender()] = ctx.msg_value();
+}
+```
+
+
+### Transferring ether
+
+Transferring ether modifies the blockchain state, so it requires access to a mutable `Context` object.
+
+```fe
+pub fn send_ether(mut ctx: Context, _addr: address, amount: u256) {
+    ctx.send_value(to: _addr, wei: amount)
+}
+```
+
+### create/create2
+
+Creating a contract via `create`/`create2` requires access to a mutable `Context` object because it modifies the blockchain state data:
 
 ```
 pub fn creates_contract(ctx: mut Context):
   ctx.create2(...)
 ```
 
-Reading block chain information such as the current block number.
+### block number 
 
-pub fn retrieves_blocknumber(ctx: Context):
-  ctx.blocknumber()
-There are a few special rules about the context object:
+Reading block chain information such as the current block number requires `Context` (but does not require it to be mutable). 
 
+```fe
+pub fn retrieves_blocknumber(ctx: Context) {
+  ctx.block_number()
+}
+```
