@@ -58,6 +58,9 @@
         * [Comparision Operators](spec/expressions/comparison_operators.md)
         * [Boolean Operators](spec/expressions/boolean_operators.md)
         * [Unary Operators](spec/expressions/unary_operators.md)
+    * [Functions](spec/functions/index.md)
+      * [Context](spec/functions/context.md)
+      * [Self](spec/functions/self.md)
     * [Type System](spec/type_system/index.md)
         * [Types](spec/type_system/types/index.md)
             * [Boolean Type](spec/type_system/types/boolean.md)
@@ -80,7 +83,6 @@
             * [`to_mem()` function](spec/data_layout/storage/to_mem_function.md)
         * [Memory](spec/data_layout/memory/index.md)
             * [Sequence types in memory](spec/data_layout/memory/sequence_types_in_memory.md)
-    * [Function calls](spec/function_calls.md)
 
 * [Contributing](contributing.md)
 * [Release Notes](release_notes.md)
