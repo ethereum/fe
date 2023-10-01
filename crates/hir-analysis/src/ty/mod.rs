@@ -10,7 +10,7 @@ use self::{
         AdtDefDiagAccumulator, GenericParamDiagAccumulator, TraitConstraintDiag, TyLowerDiag,
         TypeAliasDefDiagAccumulator,
     },
-    trait_lower::{collect_trait_impls, lower_trait, LowerDiagCollection},
+    trait_lower::{collect_trait_impls, lower_trait},
     ty_def::AdtRefId,
     ty_lower::{collect_generic_params, lower_type_alias, GenericParamOwnerId},
 };

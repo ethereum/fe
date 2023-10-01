@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{
-    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyLowerDiag},
+    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_::{Implementor, TraitDef, TraitEnv, TraitInstId},
     ty_def::TyId,
     ty_lower::{collect_generic_params, lower_hir_ty_with_diag, GenericParamOwnerId},
@@ -34,10 +34,7 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 pub(crate) fn collect_trait_impls(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
-) -> (
-    TraitImplMap,
-    FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
-) {
+) -> (TraitImplMap, FxHashMap<TopLevelMod, Vec<TyDiagCollection>>) {
     let dependent_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
@@ -54,7 +51,7 @@ pub(super) fn lower_trait_ref(
     trait_ref: TraitRef,
     ref_span: LazyTraitRefSpan,
     scope: ScopeId,
-) -> (Option<TraitInstId>, Vec<LowerDiagCollection>) {
+) -> (Option<TraitInstId>, Vec<TyDiagCollection>) {
     let hir_db = db.as_hir_db();
     let (args, diags) = if let Some(args) = trait_ref.generic_args {
         lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
@@ -64,7 +61,7 @@ pub(super) fn lower_trait_ref(
 
     let mut diags = diags
         .into_iter()
-        .map(LowerDiagCollection::Ty)
+        .map(TyDiagCollection::Ty)
         .collect::<Vec<_>>();
 
     let Partial::Present(path) = trait_ref.path else {
@@ -154,7 +151,7 @@ struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     impl_table: TraitImplMap,
     dependent_impl_maps: Vec<&'db TraitImplMap>,
-    diags: FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
+    diags: FxHashMap<TopLevelMod, Vec<TyDiagCollection>>,
 }
 
 impl<'db> ImplementorCollector<'db> {
@@ -167,12 +164,7 @@ impl<'db> ImplementorCollector<'db> {
         }
     }
 
-    fn finalize(
-        self,
-    ) -> (
-        TraitImplMap,
-        FxHashMap<TopLevelMod, Vec<LowerDiagCollection>>,
-    ) {
+    fn finalize(self) -> (TraitImplMap, FxHashMap<TopLevelMod, Vec<TyDiagCollection>>) {
         (self.impl_table, self.diags)
     }
 
@@ -289,7 +281,7 @@ impl<'db> ImplementorCollector<'db> {
             .chain(self.impl_table.get(&def).into_iter().flatten().copied())
     }
 
-    fn push_diag(&mut self, impl_: ImplTrait, diag: impl Into<LowerDiagCollection>) {
+    fn push_diag(&mut self, impl_: ImplTrait, diag: impl Into<TyDiagCollection>) {
         let top_mod = impl_.top_mod(self.db.as_hir_db());
         self.diags.entry(top_mod).or_default().push(diag.into());
     }
@@ -312,22 +304,5 @@ impl Implementor {
         }
 
         table.unify(generalized_self.ty(db), generalized_other.ty(db))
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
-pub(crate) enum LowerDiagCollection {
-    Ty(TyLowerDiag),
-    Satisfaction(TraitConstraintDiag),
-    TraitLower(TraitLowerDiag),
-}
-
-impl LowerDiagCollection {
-    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
-        match self.clone() {
-            LowerDiagCollection::Ty(diag) => Box::new(diag) as _,
-            LowerDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
-            LowerDiagCollection::TraitLower(diag) => Box::new(diag) as _,
-        }
     }
 }

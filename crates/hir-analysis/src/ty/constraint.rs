@@ -8,9 +8,9 @@ use salsa::function::Configuration;
 use crate::HirAnalysisDb;
 
 use super::{
-    diagnostics::TraitLowerDiag,
+    diagnostics::{TraitLowerDiag, TyDiagCollection},
     trait_::{TraitDef, TraitInstId},
-    trait_lower::{lower_trait_ref, LowerDiagCollection},
+    trait_lower::lower_trait_ref,
     ty_def::{Subst, TyId},
 };
 
@@ -44,7 +44,7 @@ impl ConstraintId {
 pub(crate) fn collect_super_traits(
     db: &dyn HirAnalysisDb,
     trait_: TraitDef,
-) -> (Vec<TraitInstId>, Vec<LowerDiagCollection>) {
+) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
     let mut collector = SuperTraitCollector::new(db, trait_, FxHashSet::default());
     let (insts, diags) = collector.finalize();
 
@@ -60,7 +60,7 @@ pub(crate) fn recover_collect_super_traits(
     db: &dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     trait_: TraitDef,
-) -> (Vec<TraitInstId>, Vec<LowerDiagCollection>) {
+) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
     let participants: FxHashSet<_> = cycle
         .participant_keys()
         .map(|key| {
@@ -77,7 +77,7 @@ struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef,
     super_traits: Vec<TraitInstId>,
-    diags: Vec<LowerDiagCollection>,
+    diags: Vec<TyDiagCollection>,
     cycle: FxHashSet<Trait>,
     scope: ScopeId,
 }
@@ -94,7 +94,7 @@ impl<'db> SuperTraitCollector<'db> {
         }
     }
 
-    fn finalize(mut self) -> (Vec<TraitInstId>, Vec<LowerDiagCollection>) {
+    fn finalize(mut self) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
         let hir_trait = self.trait_.trait_(self.db);
         let mut visitor_ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), hir_trait);
         self.visit_trait(&mut visitor_ctxt, hir_trait);

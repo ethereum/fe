@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
 
 use super::{
-    constraint::ConstraintId,
+    constraint::{collect_super_traits, ConstraintId},
     diagnostics::TraitConstraintDiag,
     ty_def::{Kind, Subst, TyId},
     unify::UnificationTable,
@@ -188,5 +188,9 @@ impl TraitDef {
     pub(crate) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
         let hir_db = db.as_hir_db();
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
+    }
+
+    pub(super) fn super_traits<'db>(self, db: &'db dyn HirAnalysisDb) -> &'db [TraitInstId] {
+        &collect_super_traits(db, self).0
     }
 }

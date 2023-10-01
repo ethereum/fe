@@ -17,6 +17,23 @@ pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
 #[salsa::accumulator]
 pub struct GenericParamDiagAccumulator(pub(super) TyLowerDiag);
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
+pub(crate) enum TyDiagCollection {
+    Ty(TyLowerDiag),
+    Satisfaction(TraitConstraintDiag),
+    TraitLower(TraitLowerDiag),
+}
+
+impl TyDiagCollection {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
+        match self.clone() {
+            TyDiagCollection::Ty(diag) => Box::new(diag) as _,
+            TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
+            TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
     NotFullyAppliedType(DynLazySpan),
