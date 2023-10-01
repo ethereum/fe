@@ -15,7 +15,7 @@ struct SomeEvent{
 }
 
 pub fn looks_pure_but_isnt() {
-  emit SomeEvent()
+  emit(SomeEvent())
 }
 ```
 
@@ -44,15 +44,15 @@ The `Context` object needs to be passed as a parameter to the function. The `Con
 
 The Context object is automatically injected when a function is called externally but it has to be passed explicitly when the function is called from another Fe function e.g.
 
-```
+```fe
 // The context object is automatically injected when this is called externally
-pub fn amplified_block(ctx: Context) -> u256 {
+pub fn multiply_block_number(ctx: Context) -> u256 {
   // but it has to be passed along in this function call
   return retrieves_blocknumber(ctx) * 1000
-    }
+}
 
 fn retrieves_blocknumber(ctx: Context) -> u256 {
-  return ctx.blocknumber()
+  return ctx.block_number()
 }
 ```
 
@@ -72,7 +72,7 @@ pub fn mutable(mut ctx: Context) {
 
 ## ABI conformity
 
-The proposed system works nicely with the existing function categories in the ABI but offers even tighter rules for added clarity.
+The use of `Context` enables tighter rules and extra clarity compared wth the existing function categories in the ABI, especially when paired with [`self`](self.md). The following table shows how combinations of `self`, `mut self`, `Context` and `mut Context` map to ABI function types.
 
 | Category                          | Characteristics                                                                                                                                                                 | Fe Syntax                         | ABI                   |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | --------------------- |
@@ -86,7 +86,7 @@ The proposed system works nicely with the existing function categories in the AB
 | Storage Writing & read `Context`  | Writing to contract storage and read from `Context`                                                                                                                             | `foo(mut self, ctx: Context)`     | payable or nonpayable |
 | Storage Writing & write `Context` | Writing to contract storage and `Context`                                                                                                                                       | `foo(mut self, ctx: mut Context)` | payable or nonpayable |
 
-This means Fe has nine different categories that can be derived from the function signatures that map to four different ABI types.
+This means Fe has nine different categories of function that can be derived from the function signatures that map to four different ABI types.
 
 
 ## Examples
@@ -94,10 +94,10 @@ This means Fe has nine different categories that can be derived from the functio
 ### msg_sender and msg_value
 
 `Context` includes information about inbound transactions. For example, the following function receives ether and adds the sender's address and the
-transaction value to a mapping.
+transaction value to a mapping. No blockchain data is being changed, so `Context` does not need to be mutable.
 
 
-```
+```rust
 // assumes existence of state variable named 'ledger' with type Map<address, u256>
 pub fn add_to_ledger(mut self, ctx: Context) {
     self.ledger[ctx.msg_sender()] = ctx.msg_value();
@@ -119,7 +119,7 @@ pub fn send_ether(mut ctx: Context, _addr: address, amount: u256) {
 
 Creating a contract via `create`/`create2` requires access to a mutable `Context` object because it modifies the blockchain state data:
 
-```
+```rust
 pub fn creates_contract(ctx: mut Context):
   ctx.create2(...)
 ```
