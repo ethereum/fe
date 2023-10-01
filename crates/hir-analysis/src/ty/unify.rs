@@ -4,7 +4,7 @@ use crate::HirAnalysisDb;
 
 use super::ty_def::{Kind, Subst, TyData, TyId, TyVar};
 
-pub struct UnificationTable<'db> {
+pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
     table: InPlaceUnificationTable<InferenceKey>,
 }
@@ -18,10 +18,11 @@ impl<'db> UnificationTable<'db> {
     }
 
     /// Returns true if the two types were unified.
+    /// If unify fails, the unification table is rolled back.
     pub fn unify(&mut self, ty1: TyId, ty2: TyId) -> bool {
         let snapshot = self.table.snapshot();
 
-        if self.unify_impl(ty1, ty2) {
+        if self.unify_raw(ty1, ty2) {
             self.table.commit(snapshot);
             true
         } else {
@@ -30,28 +31,11 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    pub fn new_var(&mut self, kind: &Kind) -> TyId {
-        let key = self.new_key(kind);
-        let ty_var = TyVar {
-            kind: kind.clone(),
-            key,
-        };
-
-        TyId::new(self.db, TyData::TyVar(ty_var))
-    }
-
-    pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
-        self.table.new_key(InferenceValue::Unbounded(kind.clone()))
-    }
-
-    pub fn probe(&mut self, key: InferenceKey) -> Option<TyId> {
-        match self.table.probe_value(key) {
-            InferenceValue::Bounded(ty) => Some(ty),
-            InferenceValue::Unbounded(_) => None,
-        }
-    }
-
-    fn unify_impl(&mut self, ty1: TyId, ty2: TyId) -> bool {
+    /// Returns true if the two types were unified.
+    /// This method doesn't roll back the unification table. Please refer to
+    /// `unify`[Self::unify] if you need to roll back the table automatically
+    /// when unification fails.
+    pub fn unify_raw(&mut self, ty1: TyId, ty2: TyId) -> bool {
         if !ty1.kind(self.db).can_unify(ty2.kind(self.db)) {
             return false;
         }
@@ -74,11 +58,11 @@ impl<'db> UnificationTable<'db> {
                 .is_ok(),
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
-                let ok = self.unify_impl(ty1_1, ty2_1);
+                let ok = self.unify_raw(ty1_1, ty2_1);
                 if ok {
                     let ty1_2 = self.apply(self.db, ty1_2);
                     let ty2_2 = self.apply(self.db, ty2_2);
-                    self.unify_impl(ty1_2, ty2_2)
+                    self.unify_raw(ty1_2, ty2_2)
                 } else {
                     false
                 }
@@ -91,6 +75,27 @@ impl<'db> UnificationTable<'db> {
             (TyData::Invalid(_), _) | (_, TyData::Invalid(_)) => true,
 
             _ => false,
+        }
+    }
+
+    pub fn new_var(&mut self, kind: &Kind) -> TyId {
+        let key = self.new_key(kind);
+        let ty_var = TyVar {
+            kind: kind.clone(),
+            key,
+        };
+
+        TyId::new(self.db, TyData::TyVar(ty_var))
+    }
+
+    pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
+        self.table.new_key(InferenceValue::Unbounded(kind.clone()))
+    }
+
+    pub fn probe(&mut self, key: InferenceKey) -> Option<TyId> {
+        match self.table.probe_value(key) {
+            InferenceValue::Bounded(ty) => Some(ty),
+            InferenceValue::Unbounded(_) => None,
         }
     }
 }
