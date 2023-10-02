@@ -86,7 +86,7 @@ pub(super) fn lower_trait_ref(
         }
     };
 
-    if trait_def.args(db).len() != args.len() {
+    if trait_def.params(db).len() != args.len() {
         diags.push(
             TraitConstraintDiag::TraitArgNumMismatch {
                 span: ref_span.into(),
@@ -99,7 +99,7 @@ pub(super) fn lower_trait_ref(
     }
 
     let mut has_error = false;
-    for (i, (expected, given)) in trait_def.args(db).iter().zip(&args).enumerate() {
+    for (i, (expected, given)) in trait_def.params(db).iter().zip(&args).enumerate() {
         if !expected.kind(db).can_unify(given.kind(db)) {
             let span = ref_span.generic_args().arg_moved(i).into();
             let diag = TraitConstraintDiag::trait_arg_kind_mismatch(

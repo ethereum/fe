@@ -32,6 +32,7 @@ pub struct Jar(
     ty::trait_::ingot_trait_env,
     ty::trait_::trait_implementors,
     ty::constraint::collect_super_traits,
+    ty::constraint::collect_trait_constraints,
     ty::constraint::super_trait_insts,
     ty::constraint::compute_super_assumptions,
     ty::constraint::PredicateId,

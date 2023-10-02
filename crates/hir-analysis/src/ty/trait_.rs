@@ -151,6 +151,10 @@ pub(crate) struct TraitInstId {
 }
 
 impl TraitInstId {
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
+        todo!()
+    }
+
     /// Apply substitutions to this trait.
     /// Which is to say, replace all type parameters with their corresponding
     /// type in the substitution.
@@ -172,7 +176,7 @@ impl TraitInstId {
 
     pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> impl Subst {
         let mut table = FxHashMap::default();
-        for (param, subst) in self.def(db).args(db).iter().zip(self.substs(db)) {
+        for (param, subst) in self.def(db).params(db).iter().zip(self.substs(db)) {
             table.insert(*param, *subst);
         }
 
@@ -185,10 +189,10 @@ impl TraitInstId {
 pub(crate) struct TraitDef {
     pub trait_: Trait,
     #[return_ref]
-    pub args: Vec<TyId>,
+    pub params: Vec<TyId>,
     /// We collects self type here to know the expected kind of implementor
     /// type in `Implementor` lowering phase.
-    pub self_arg: TyId,
+    pub self_param: TyId,
     // TODO: we need to collect associated method types here.
     // methods: Vec<FuncInst>
 }
@@ -196,7 +200,7 @@ pub(crate) struct TraitDef {
 impl TraitDef {
     /// Returns the type kind that implementor type must have.
     pub(crate) fn expected_implementor_kind(self, db: &dyn HirAnalysisDb) -> &Kind {
-        self.self_arg(db).kind(db)
+        self.self_param(db).kind(db)
     }
 
     /// Returns `ingot` in which this trait is defined.

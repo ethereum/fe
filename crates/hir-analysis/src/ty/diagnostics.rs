@@ -8,7 +8,9 @@ use hir::{
     HirDb, SpannedHirDb,
 };
 
-use super::ty_def::Kind;
+use crate::HirAnalysisDb;
+
+use super::{constraint::PredicateId, ty_def::Kind};
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
@@ -360,12 +362,35 @@ pub enum TraitConstraintDiag {
     },
 
     TraitArgKindMismatch(DynLazySpan, String),
+
+    TraitBoundNotSat(DynLazySpan, String),
+
+    InfiniteBoundRecursion(DynLazySpan),
 }
 
 impl TraitConstraintDiag {
-    pub fn trait_arg_kind_mismatch(span: DynLazySpan, expected: &Kind, actual: &Kind) -> Self {
+    pub(super) fn trait_arg_kind_mismatch(
+        span: DynLazySpan,
+        expected: &Kind,
+        actual: &Kind,
+    ) -> Self {
         let msg = format!("expected `{}` kind, but found `{}` kind", expected, actual);
         Self::TraitArgKindMismatch(span, msg)
+    }
+
+    pub(super) fn trait_bound_not_satisfied(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        pred: PredicateId,
+    ) -> Self {
+        let ty = pred.ty(db);
+        let goal = pred.trait_inst(db);
+        let msg = format!(
+            "`{}` doesn't implement {}",
+            ty.pretty_print(db),
+            goal.pretty_print(db)
+        );
+        Self::TraitBoundNotSat(span, msg)
     }
 
     fn local_code(&self) -> u16 {
@@ -373,6 +398,8 @@ impl TraitConstraintDiag {
             Self::KindMismatch { .. } => 0,
             Self::TraitArgNumMismatch { .. } => 1,
             Self::TraitArgKindMismatch(_, _) => 2,
+            Self::TraitBoundNotSat(_, _) => 3,
+            Self::InfiniteBoundRecursion(_) => 4,
         }
     }
 
@@ -383,6 +410,10 @@ impl TraitConstraintDiag {
             Self::TraitArgNumMismatch { .. } => "given trait argument number mismatch".to_string(),
 
             Self::TraitArgKindMismatch(_, _) => "given trait argument kind mismatch".to_string(),
+
+            Self::TraitBoundNotSat(_, _) => "trait bound is not satisfied".to_string(),
+
+            Self::InfiniteBoundRecursion(_) => "infinite trait bound recursion".to_string(),
         }
     }
 
@@ -427,6 +458,18 @@ impl TraitConstraintDiag {
             Self::TraitArgKindMismatch(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
+                span.resolve(db),
+            )],
+
+            Self::TraitBoundNotSat(span, msg) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                msg.clone(),
+                span.resolve(db),
+            )],
+
+            Self::InfiniteBoundRecursion(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "infinite trait bound recursion occurs here".to_string(),
                 span.resolve(db),
             )],
         }

@@ -2,8 +2,8 @@ use either::Either;
 use hir::{
     hir_def::{
         kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
-        GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, Trait,
-        TupleTypeId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
+        GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
+        Trait, TupleTypeId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
         VariantDefListId, VariantKind, WherePredicate,
     },
     visitor::prelude::*,
@@ -712,5 +712,15 @@ impl ParamLoc {
 
 #[salsa::interned]
 pub(crate) struct GenericParamOwnerId {
-    data: GenericParamOwner,
+    pub(super) data: GenericParamOwner,
+}
+
+impl GenericParamOwnerId {
+    pub(super) fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        self.data(db).scope()
+    }
+
+    pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        self.data(db).top_mod(db.as_hir_db()).ingot(db.as_hir_db())
+    }
 }

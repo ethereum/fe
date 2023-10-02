@@ -54,6 +54,10 @@ impl TyId {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
+        todo!()
+    }
+
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
         Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::Ptr)))
     }
@@ -68,6 +72,18 @@ impl TyId {
 
     pub(super) fn is_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::TyParam(_))
+    }
+
+    pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
+    }
+
+    pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyParam(_) => true,
+            TyData::TyApp(lhs, rhs) => lhs.contains_ty_param(db) || rhs.contains_ty_param(db),
+            _ => false,
+        }
     }
 
     pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
@@ -368,6 +384,10 @@ impl TyParam {
             idx: None,
             kind,
         }
+    }
+
+    pub fn is_trait_self(&self) -> bool {
+        self.idx.is_none()
     }
 }
 

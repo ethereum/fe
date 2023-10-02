@@ -13,12 +13,17 @@ use super::{
 
 type Goal = PredicateId;
 
+/// Checks if the given goal is satisfiable under the given assumptions(i.e.,
+/// context of the goal).
 #[salsa::tracked(recovery_fn= recover_is_goal_satisfiable)]
 pub(crate) fn is_goal_satisfiable(
     db: &dyn HirAnalysisDb,
     goal: Goal,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
+    if goal.ty(db).is_invalid(db) {
+        return GoalSatisfiability::Satisfied;
+    }
     ConstraintSolver::new(db, goal, assumptions).solve()
 }
 
@@ -47,16 +52,8 @@ struct ConstraintSolver<'db> {
 
 impl<'db> ConstraintSolver<'db> {
     fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: AssumptionListId) -> Self {
-        let ingot = goal.trait_(db).ingot(db);
+        let ingot = goal.trait_inst(db).ingot(db);
         let env = TraitEnv::new(db, ingot);
-
-        let mut assumptions_by_super: FxHashMap<_, FxHashSet<_>> = FxHashMap::default();
-        for (ty, insts) in assumptions.predicates(db) {
-            let super_insts = insts
-                .iter()
-                .flat_map(|inst| super_trait_insts(db, *inst).iter().copied());
-            assumptions_by_super.insert(ty, super_insts.collect());
-        }
 
         Self {
             db,
@@ -68,7 +65,7 @@ impl<'db> ConstraintSolver<'db> {
 
     fn solve(mut self) -> GoalSatisfiability {
         let goal_ty = self.goal.ty(self.db);
-        let goal_trait = self.goal.trait_(self.db);
+        let goal_trait = self.goal.trait_inst(self.db);
 
         let super_assumptions = compute_super_assumptions(self.db, self.assumptions);
         if self.assumptions.does_satisfy(self.db, self.goal)
@@ -92,6 +89,7 @@ impl<'db> ConstraintSolver<'db> {
                 if table.unify(gen_impl.ty(self.db), goal_ty)
                     && table.unify(gen_impl.trait_(self.db), goal_trait)
                 {
+                    // Specialize the implementor and obtains constraints for it.
                     let spec_impl = gen_impl.apply_subst(self.db, &mut table);
                     Some(spec_impl.constraints(self.db))
                 } else {
@@ -102,13 +100,10 @@ impl<'db> ConstraintSolver<'db> {
             return GoalSatisfiability::NonSatisfied;
         };
 
-        for (ty, insts) in sub_goals.predicates(self.db).iter() {
-            for inst in insts {
-                let sub_goal = PredicateId::new(self.db, *ty, *inst);
-                match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
-                    GoalSatisfiability::Satisfied => {}
-                    failed => return failed,
-                }
+        for &sub_goal in sub_goals.predicates(self.db) {
+            match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
+                GoalSatisfiability::Satisfied => {}
+                failed => return failed,
             }
         }
 
@@ -119,13 +114,8 @@ impl<'db> ConstraintSolver<'db> {
 impl PredicateListId {
     /// Returns `true` if the given predicate list satisfies the given goal.
     fn does_satisfy(self, db: &dyn HirAnalysisDb, goal: Goal) -> bool {
-        let trait_ = goal.trait_(db);
+        let trait_ = goal.trait_inst(db);
         let ty = goal.ty(db);
-
-        let Some(insts) = self.predicates(db).get(&ty) else {
-            return false;
-        };
-
-        insts.contains(&trait_)
+        self.predicates(db).contains(&goal)
     }
 }

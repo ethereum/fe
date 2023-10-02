@@ -8,6 +8,15 @@ pub struct TypeId {
     pub data: TypeKind,
 }
 
+impl TypeId {
+    pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
+        match self.data(db) {
+            TypeKind::SelfType(_) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeKind {
     Ptr(Partial<TypeId>),
