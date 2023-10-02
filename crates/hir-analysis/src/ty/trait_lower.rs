@@ -297,6 +297,6 @@ impl Implementor {
         let generalized_self = self.generalize(db, table);
         let generalized_other = other.generalize(db, table);
 
-        generalized_self.unify(db, table, generalized_other)
+        table.unify(generalized_self, generalized_other)
     }
 }

@@ -94,19 +94,6 @@ pub(crate) struct PredicateListId {
 pub(super) type AssumptionListId = PredicateListId;
 pub(super) type ConstraintListId = PredicateListId;
 
-impl PredicateListId {
-    pub(super) fn does_satisfy(self, db: &dyn HirAnalysisDb, predicate: PredicateId) -> bool {
-        let trait_ = predicate.trait_(db);
-        let ty = predicate.ty(db);
-
-        let Some(insts) = self.predicates(db).get(&ty) else {
-            return false;
-        };
-
-        insts.contains(&trait_)
-    }
-}
-
 impl PredicateId {
     pub fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> Self {
         let ty = self.ty(db).apply_subst(db, subst);

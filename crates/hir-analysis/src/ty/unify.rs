@@ -2,7 +2,10 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use crate::HirAnalysisDb;
 
-use super::ty_def::{Kind, Subst, TyData, TyId, TyVar};
+use super::{
+    trait_::{Implementor, TraitInstId},
+    ty_def::{Kind, Subst, TyData, TyId, TyVar},
+};
 
 pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -17,12 +20,12 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    /// Returns true if the two types were unified.
-    /// If unify fails, the unification table is rolled back.
-    pub fn unify(&mut self, ty1: TyId, ty2: TyId) -> bool {
+    pub fn unify<T>(&mut self, lhs: T, rhs: T) -> bool
+    where
+        T: Unifiable,
+    {
         let snapshot = self.table.snapshot();
-
-        if self.unify_raw(ty1, ty2) {
+        if lhs.unify(self, rhs) {
             self.table.commit(snapshot);
             true
         } else {
@@ -35,7 +38,7 @@ impl<'db> UnificationTable<'db> {
     /// This method doesn't roll back the unification table. Please refer to
     /// `unify`[Self::unify] if you need to roll back the table automatically
     /// when unification fails.
-    pub fn unify_raw(&mut self, ty1: TyId, ty2: TyId) -> bool {
+    fn unify_ty(&mut self, ty1: TyId, ty2: TyId) -> bool {
         if !ty1.kind(self.db).can_unify(ty2.kind(self.db)) {
             return false;
         }
@@ -58,11 +61,11 @@ impl<'db> UnificationTable<'db> {
                 .is_ok(),
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
-                let ok = self.unify_raw(ty1_1, ty2_1);
+                let ok = self.unify_ty(ty1_1, ty2_1);
                 if ok {
                     let ty1_2 = self.apply(self.db, ty1_2);
                     let ty2_2 = self.apply(self.db, ty2_2);
-                    self.unify_raw(ty1_2, ty2_2)
+                    self.unify_ty(ty1_2, ty2_2)
                 } else {
                     false
                 }
@@ -157,5 +160,43 @@ impl UnifyValue for InferenceValue {
                 }
             }
         }
+    }
+}
+
+pub(crate) trait Unifiable {
+    fn unify(self, table: &mut UnificationTable, other: Self) -> bool;
+}
+
+impl Unifiable for TyId {
+    fn unify(self, table: &mut UnificationTable, other: Self) -> bool {
+        table.unify_ty(self, other)
+    }
+}
+
+impl Unifiable for TraitInstId {
+    fn unify(self, table: &mut UnificationTable, other: Self) -> bool {
+        let db = table.db;
+        if self.def(db) != other.def(db) {
+            return false;
+        }
+
+        for (&self_arg, &other_arg) in self.substs(db).iter().zip(other.substs(db)) {
+            if !table.unify_ty(self_arg, other_arg) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl Unifiable for Implementor {
+    fn unify(self, table: &mut UnificationTable, other: Self) -> bool {
+        let db = table.db;
+        if !table.unify(self.trait_(db), other.trait_(db)) {
+            return false;
+        }
+
+        table.unify(self.ty(db), other.ty(db))
     }
 }

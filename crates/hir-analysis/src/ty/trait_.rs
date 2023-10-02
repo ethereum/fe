@@ -27,8 +27,8 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .iter()
         .filter(|impl_| {
             let mut table = UnificationTable::new(db);
-            impl_.generalize(db, &mut table);
-            impl_.trait_(db).unify(db, &mut table, trait_)
+            let gen_impl = impl_.generalize(db, &mut table);
+            table.unify(gen_impl.trait_(db), trait_)
         })
         .cloned()
         .collect()
@@ -134,19 +134,6 @@ impl Implementor {
         )
     }
 
-    pub(super) fn unify(
-        self,
-        db: &dyn HirAnalysisDb,
-        table: &mut UnificationTable,
-        other: Self,
-    ) -> bool {
-        if !self.trait_(db).unify(db, table, other.trait_(db)) {
-            return false;
-        }
-
-        table.unify(self.ty(db), other.ty(db))
-    }
-
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         todo!()
     }
@@ -181,26 +168,6 @@ impl TraitInstId {
                 .collect(),
             self.ingot(db),
         )
-    }
-
-    /// Returns `true` if this trait can be unified with the other trait.
-    pub(super) fn unify(
-        self,
-        db: &dyn HirAnalysisDb,
-        table: &mut UnificationTable,
-        other: TraitInstId,
-    ) -> bool {
-        if self.def(db) != other.def(db) {
-            return false;
-        }
-
-        for (&self_arg, &other_arg) in self.substs(db).iter().zip(other.substs(db)) {
-            if !table.unify(self_arg, other_arg) {
-                return false;
-            }
-        }
-
-        true
     }
 
     pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> impl Subst {

@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{ty::constraint::super_trait_insts, HirAnalysisDb};
 
 use super::{
-    constraint::{compute_super_assumptions, AssumptionListId, PredicateId},
+    constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
     trait_::{TraitEnv, TraitInstId},
     ty_def::TyId,
     unify::UnificationTable,
@@ -90,9 +90,7 @@ impl<'db> ConstraintSolver<'db> {
                 let gen_impl = impl_.generalize(self.db, &mut table);
 
                 if table.unify(gen_impl.ty(self.db), goal_ty)
-                    && gen_impl
-                        .trait_(self.db)
-                        .unify(self.db, &mut table, goal_trait)
+                    && table.unify(gen_impl.trait_(self.db), goal_trait)
                 {
                     let spec_impl = gen_impl.apply_subst(self.db, &mut table);
                     Some(spec_impl.constraints(self.db))
@@ -115,5 +113,19 @@ impl<'db> ConstraintSolver<'db> {
         }
 
         GoalSatisfiability::Satisfied
+    }
+}
+
+impl PredicateListId {
+    /// Returns `true` if the given predicate list satisfies the given goal.
+    fn does_satisfy(self, db: &dyn HirAnalysisDb, goal: Goal) -> bool {
+        let trait_ = goal.trait_(db);
+        let ty = goal.ty(db);
+
+        let Some(insts) = self.predicates(db).get(&ty) else {
+            return false;
+        };
+
+        insts.contains(&trait_)
     }
 }
