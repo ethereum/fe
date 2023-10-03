@@ -12,7 +12,6 @@
 * [Comments](comments.md)
 * [Items](items/index.md)
     * [Visibility and Privacy](items/visibility_and_privacy.md)
-    * [Functions](items/functions.md)
     * [Structs](items/structs.md)
     * [Traits](items/traits.md)
     * [Enums](items/enums.md)

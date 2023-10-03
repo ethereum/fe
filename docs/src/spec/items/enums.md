@@ -63,6 +63,6 @@ fn f() {
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [_IDENTIFIER_]: ../lexical_structure/identifiers.md
-[_Function_]: ./functions.md
+[_Function_]: ../functions/index.md
 [_Type_]: ../type_system/types/index.md
 [Enum type]: ../type_system/types/enum.md
