@@ -1,4 +1,7 @@
-use std::{collections::BTreeSet, fmt};
+use std::{
+    collections::{BTreeSet, VecDeque},
+    fmt,
+};
 
 use hir::{
     hir_def::{
@@ -55,7 +58,7 @@ impl TyId {
     }
 
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        todo!()
+        self.data(db).pretty_print(db)
     }
 
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
@@ -184,7 +187,11 @@ pub struct AdtDef {
 }
 
 impl AdtDef {
-    pub fn variant_ty_span(
+    pub(crate) fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
+        self.adt_ref(db).name(db)
+    }
+
+    pub(crate) fn variant_ty_span(
         self,
         db: &dyn HirAnalysisDb,
         field_idx: usize,
@@ -218,7 +225,7 @@ impl AdtDef {
         }
     }
 
-    pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+    pub(crate) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
         let hir_db = db.as_hir_db();
         match self.adt_ref(db).data(db) {
             AdtRef::Enum(e) => e.top_mod(hir_db).ingot(hir_db),
@@ -286,6 +293,18 @@ pub enum TyData {
     // Invalid type which means the type is not defined.
     // This type can be unified with any other types.
     Invalid(InvalidCause),
+}
+
+impl TyData {
+    fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
+        match self {
+            Self::TyVar(var) => format!("%{}", var.key.0),
+            Self::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
+            Self::TyApp(lhs, rhs) => TyAppPrinter::print(db, *lhs, *rhs),
+            Self::TyCon(ty_con) => ty_con.pretty_print(db),
+            Self::Invalid(_) => "<invalid>".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -394,13 +413,39 @@ impl TyParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyConcrete {
     Prim(PrimTy),
-    Abs,
     Adt(AdtDef),
 }
 
 impl TyConcrete {
     pub(super) fn tuple(n: usize) -> Self {
         Self::Prim(PrimTy::Tuple(n))
+    }
+
+    fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
+        match self {
+            Self::Prim(prim) => match prim {
+                PrimTy::Bool => "bool",
+                PrimTy::U8 => "u8",
+                PrimTy::U16 => "u16",
+                PrimTy::U32 => "u32",
+                PrimTy::U64 => "u64",
+                PrimTy::U128 => "u128",
+                PrimTy::U256 => "u256",
+                PrimTy::I8 => "i8",
+                PrimTy::I16 => "i16",
+                PrimTy::I32 => "i32",
+                PrimTy::I64 => "i64",
+                PrimTy::I128 => "i128",
+                PrimTy::I256 => "i256",
+                PrimTy::String => "String",
+                PrimTy::Array => "[]",
+                PrimTy::Tuple(_) => "()",
+                PrimTy::Ptr => "*",
+            }
+            .to_string(),
+
+            Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
+        }
     }
 }
 
@@ -543,7 +588,6 @@ impl HasKind for TyConcrete {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyConcrete::Prim(prim) => prim.kind(db),
-            TyConcrete::Abs => Kind::abs(Kind::Star, Kind::abs(Kind::Star, Kind::Star)),
             TyConcrete::Adt(adt) => adt.kind(db),
         }
     }
@@ -583,4 +627,77 @@ pub(crate) fn free_inference_keys(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
     let mut collector = FreeInferenceKeyCollector(BTreeSet::new());
     collector.visit_ty(db, ty);
     collector.0
+}
+
+struct TyAppPrinter {
+    base: Option<TyId>,
+    args: VecDeque<TyId>,
+}
+
+impl TyAppPrinter {
+    fn print(db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) -> String {
+        impl TyVisitor for TyAppPrinter {
+            fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
+                match ty.data(db) {
+                    TyData::TyApp(lhs, rhs) => {
+                        self.visit_ty(db, lhs);
+                        self.args.push_front(rhs);
+                    }
+                    _ => self.base = Some(ty),
+                }
+            }
+
+            fn visit_app(&mut self, db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) {
+                self.visit_ty(db, lhs);
+                self.args.push_front(rhs);
+            }
+        }
+
+        use PrimTy::*;
+        use TyConcrete::*;
+        use TyData::*;
+
+        let mut printer = Self {
+            base: None,
+            args: VecDeque::new(),
+        };
+        printer.visit_app(db, lhs, rhs);
+
+        match printer.base.unwrap().data(db) {
+            TyCon(Prim(Array)) => {
+                let elem_ty = printer.args[0].pretty_print(db);
+                let len = printer.args[1].pretty_print(db);
+                format!("[{}; {}]", elem_ty, len)
+            }
+
+            TyCon(Prim(Tuple(_))) => {
+                let mut args = printer.args.into_iter();
+                let mut s = ("(").to_string();
+                if let Some(first) = args.next() {
+                    s.push_str(&first.pretty_print(db));
+                    for arg in args {
+                        s.push_str(", ");
+                        s.push_str(&arg.pretty_print(db));
+                    }
+                }
+                s.push(')');
+                s
+            }
+
+            base => {
+                let mut args = printer.args.into_iter();
+                let mut s = (base.pretty_print(db));
+                if let Some(first) = args.next() {
+                    s.push('<');
+                    s.push_str(&first.pretty_print(db));
+                    for arg in args {
+                        s.push_str(", ");
+                        s.push_str(&arg.pretty_print(db));
+                    }
+                    s.push('>');
+                }
+                s
+            }
+        }
+    }
 }

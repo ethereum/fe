@@ -67,7 +67,6 @@ where
     match ty_con {
         TyConcrete::Prim(prim) => visitor.visit_prim(db, prim),
         TyConcrete::Adt(adt) => visitor.visit_adt(db, *adt),
-        TyConcrete::Abs => {}
     }
 }
 

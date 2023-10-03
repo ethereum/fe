@@ -113,7 +113,7 @@ impl<'db> Subst for UnificationTable<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InferenceKey(u32);
+pub struct InferenceKey(pub(super) u32);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InferenceValue {
