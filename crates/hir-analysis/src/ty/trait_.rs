@@ -1,5 +1,5 @@
 /// This module contains the logic for solving trait bounds.
-use hir::hir_def::{ImplTrait, IngotId, Trait};
+use hir::hir_def::{IdentId, ImplTrait, IngotId, Trait};
 use rustc_hash::FxHashMap;
 
 use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
@@ -152,7 +152,20 @@ pub(crate) struct TraitInstId {
 
 impl TraitInstId {
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        todo!()
+        let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
+
+        let mut args = self.substs(db).iter().map(|ty| ty.pretty_print(db));
+        if let Some(first) = args.next() {
+            s.push('<');
+            s.push_str(&first);
+            for arg in args {
+                s.push_str(", ");
+                s.push_str(&arg);
+            }
+            s.push('>');
+        }
+
+        s
     }
 
     /// Apply substitutions to this trait.
@@ -211,5 +224,12 @@ impl TraitDef {
 
     pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &[TraitInstId] {
         &collect_super_traits(db, self).0
+    }
+
+    fn name(self, db: &dyn HirAnalysisDb) -> Option<&str> {
+        self.trait_(db)
+            .name(db.as_hir_db())
+            .to_opt()
+            .map(|name| name.data(db.as_hir_db()).as_str())
     }
 }
