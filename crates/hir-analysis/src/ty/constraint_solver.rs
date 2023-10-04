@@ -4,7 +4,10 @@ use hir::visitor::prelude::LazyTySpan;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    ty::{constraint::super_trait_insts, visitor::TyVisitor},
+    ty::{
+        constraint::{super_trait_insts, ty_constraints},
+        visitor::TyVisitor,
+    },
     HirAnalysisDb,
 };
 
@@ -14,11 +17,43 @@ use super::{
     },
     diagnostics::TraitConstraintDiag,
     trait_::{TraitEnv, TraitInstId},
-    ty_def::{TyData, TyId},
+    ty_def::{InvalidCause, TyData, TyId},
     unify::UnificationTable,
 };
 
 type Goal = PredicateId;
+
+/// Checks if type applications in the given type satisfies the given trait
+/// bound specified by the definition. If the type does not satisfy the
+/// trait bound, returns the new type that contains `Invalid` type with a proper
+/// cause.
+#[salsa::tracked]
+pub(crate) fn check_ty_app_sat(
+    db: &dyn HirAnalysisDb,
+    ty: TyId,
+    assumptions: AssumptionListId,
+) -> TyId {
+    assert!(ty.free_inference_keys(db).is_empty());
+
+    let (base, args) = ty.decompose_ty_app(db);
+
+    let new_ty = args.iter().fold(base, |arg, acc| {
+        let new_arg = check_ty_app_sat(db, arg, assumptions);
+        TyId::app(db, *acc, new_arg)
+    });
+
+    let (new_assumptions, constraints) = ty_constraints(db, ty);
+
+    let new_assumptions = assumptions.merge(db, new_assumptions);
+    for &goal in constraints.predicates(db) {
+        match is_goal_satisfiable(db, goal, new_assumptions) {
+            GoalSatisfiability::Satisfied => {}
+            _ => return TyId::invalid(db, InvalidCause::TraitConstraintNotSat(goal)),
+        }
+    }
+
+    new_ty
+}
 
 /// Checks if the given goal is satisfiable under the given assumptions(i.e.,
 /// context of the goal).

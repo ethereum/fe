@@ -220,6 +220,12 @@ impl PredicateListId {
         PredicateListId::new(db, predicates, self.ingot(db))
     }
 
+    pub(super) fn merge(self, db: &dyn HirAnalysisDb, other: Self) -> Self {
+        let mut predicates = self.predicates(db).clone();
+        predicates.extend(other.predicates(db));
+        PredicateListId::new(db, predicates, self.ingot(db))
+    }
+
     pub(super) fn empty_list(db: &dyn HirAnalysisDb) -> Self {
         Self::new(db, BTreeSet::new(), IngotId::dummy())
     }
