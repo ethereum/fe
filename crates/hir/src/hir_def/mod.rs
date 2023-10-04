@@ -26,6 +26,7 @@ pub use module_tree::*;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
+use salsa::{AsId, Id};
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
@@ -61,6 +62,10 @@ impl IngotId {
 
     pub fn all_impl_trait(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
         all_impl_trait_in_ingot(db, self)
+    }
+
+    pub fn dummy() -> Self {
+        IngotId::from_id(Id::from_u32(u32::MAX - 1))
     }
 }
 

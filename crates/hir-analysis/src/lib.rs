@@ -37,6 +37,7 @@ pub struct Jar(
     ty::constraint::collect_adt_constraints,
     ty::constraint::super_trait_insts,
     ty::constraint::compute_super_assumptions,
+    ty::constraint::ty_constraints,
     ty::constraint::PredicateId,
     ty::constraint::PredicateListId,
     ty::constraint_solver::is_goal_satisfiable,

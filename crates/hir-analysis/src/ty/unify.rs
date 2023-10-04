@@ -83,12 +83,7 @@ impl<'db> UnificationTable<'db> {
 
     pub fn new_var(&mut self, kind: &Kind) -> TyId {
         let key = self.new_key(kind);
-        let ty_var = TyVar {
-            kind: kind.clone(),
-            key,
-        };
-
-        TyId::new(self.db, TyData::TyVar(ty_var))
+        TyId::ty_var(self.db, kind.clone(), key)
     }
 
     pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {

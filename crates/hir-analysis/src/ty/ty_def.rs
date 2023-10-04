@@ -52,6 +52,14 @@ impl TyId {
         }
     }
 
+    pub fn contains_invalid(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::Invalid(_) => true,
+            TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the type is declared as a monotype or fully applied
     /// type.
     pub fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
@@ -60,6 +68,13 @@ impl TyId {
 
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> &str {
         pretty_print_ty(db, self)
+    }
+
+    /// Decompose type application into the base type and type arguments, this
+    /// doesn't perform deconstruction recursively. e.g.,
+    /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
+    pub(super) fn decompose_ty_app(self, db: &dyn HirAnalysisDb) -> (TyId, Vec<TyId>) {
+        decompose_ty_app(db, self)
     }
 
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
@@ -96,6 +111,10 @@ impl TyId {
 
     pub(super) fn free_inference_keys(self, db: &dyn HirAnalysisDb) -> &BTreeSet<InferenceKey> {
         free_inference_keys(db, self)
+    }
+
+    pub(super) fn ty_var(db: &dyn HirAnalysisDb, kind: Kind, key: InferenceKey) -> Self {
+        Self::new(db, TyData::TyVar(TyVar { kind, key }))
     }
 
     /// Perform type level application.

@@ -11,7 +11,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
 use crate::{
-    ty::{trait_::TraitEnv, trait_lower::lower_trait},
+    ty::{
+        trait_::TraitEnv,
+        trait_lower::lower_trait,
+        unify::{InferenceKey, UnificationTable},
+    },
     HirAnalysisDb,
 };
 
@@ -20,19 +24,71 @@ use super::{
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection},
     trait_::{TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Subst, TyId},
+    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Subst, TyConcrete, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
 };
+
+#[salsa::tracked]
+pub(crate) fn ty_constraints(
+    db: &dyn HirAnalysisDb,
+    ty: TyId,
+) -> (AssumptionListId, ConstraintListId) {
+    assert!(ty.free_inference_keys(db).is_empty());
+
+    let (base, args) = ty.decompose_ty_app(db);
+    let TyData::TyCon(TyConcrete::Adt(adt)) = ty.data(db) else {
+        return (
+            AssumptionListId::empty_list(db),
+            ConstraintListId::empty_list(db),
+        );
+    };
+
+    let mut subst = FxHashMap::default();
+    let mut arg_idx = 0;
+    for (&param, arg) in adt.params(db).iter().zip(args) {
+        subst.insert(param, arg);
+        arg_idx += 1;
+    }
+
+    /// Generalize unbound type parameters.
+    for &arg in adt.params(db).iter().skip(arg_idx) {
+        let key = InferenceKey(arg_idx as u32);
+        let ty_var = TyId::ty_var(db, arg.kind(db).clone(), key);
+        subst.insert(arg, ty_var);
+        arg_idx += 1;
+    }
+
+    /// Substitute type parameters.
+    let constraint = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
+
+    /// If the predicate type is a type variable, collect it as an assumption
+    /// and remove it from the constraint.
+    let mut new_assumptions = BTreeSet::new();
+    let mut new_constraints = BTreeSet::new();
+    for &pred in constraint.predicates(db) {
+        if pred.ty(db).is_ty_var(db) {
+            new_assumptions.insert(pred);
+        } else {
+            new_constraints.insert(pred);
+        }
+    }
+
+    let ingot = constraint.ingot(db);
+    (
+        AssumptionListId::new(db, new_assumptions, ingot),
+        ConstraintListId::new(db, new_constraints, ingot),
+    )
+}
 
 /// Collects super traits, and verify there are no cyclic in
 /// the super traits relationship.
 ///
-/// This method is implemented independently from [`collect_constraints`] method
-/// because
+/// This method is implemented independently from [`collect_trait_constraints`]
+/// method because
 /// 1. the cycle check should be performed before collecting other constraints
 ///    to make sure the constraint simplification terminates.
-/// 2. `collect_constraints` function needs to care about another cycle which is
-///    caused by constraints simplification.
+/// 2. `collect_trait_constraints` function needs to care about another cycle
+///    which is caused by constraints simplification.
 /// 3. we want to emit better error messages for cyclic super traits.
 ///
 /// NOTE: This methods returns all super traits without any simplification.
@@ -91,11 +147,11 @@ pub(crate) fn collect_trait_constraints(
 pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> ConstraintListId {
     let ingot = adt.ingot(db);
     let Some(owner) = adt.as_generic_param_owner(db) else {
-        return ConstraintListId::empty_list(db, ingot);
+        return ConstraintListId::empty_list(db);
     };
     let mut collector = ConstraintCollector::new(db, adt.scope(db), owner);
     match adt.adt_ref(db).data(db) {
-        AdtRef::Contract(_) => return ConstraintListId::empty_list(db, ingot),
+        AdtRef::Contract(_) => return ConstraintListId::empty_list(db),
         AdtRef::Enum(enum_) => {
             let mut ctxt = VisitorCtxt::with_enum(db.as_hir_db(), enum_);
             collector.visit_enum(&mut ctxt, enum_);
@@ -164,12 +220,22 @@ impl PredicateListId {
         PredicateListId::new(db, predicates, self.ingot(db))
     }
 
-    pub fn empty_list(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
-        Self::new(db, BTreeSet::new(), ingot)
+    pub(super) fn empty_list(db: &dyn HirAnalysisDb) -> Self {
+        Self::new(db, BTreeSet::new(), IngotId::dummy())
     }
 
     pub(super) fn contains(self, db: &dyn HirAnalysisDb, pred: PredicateId) -> bool {
         self.predicates(db).contains(&pred)
+    }
+
+    pub(super) fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, s: &mut S) -> Self {
+        let predicates = self
+            .predicates(db)
+            .iter()
+            .map(|pred| pred.apply_subst(db, s))
+            .collect();
+
+        Self::new(db, predicates, self.ingot(db))
     }
 }
 

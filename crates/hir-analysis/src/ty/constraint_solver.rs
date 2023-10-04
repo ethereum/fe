@@ -9,10 +9,12 @@ use crate::{
 };
 
 use super::{
-    constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
+    constraint::{
+        compute_super_assumptions, AssumptionListId, ConstraintListId, PredicateId, PredicateListId,
+    },
     diagnostics::TraitConstraintDiag,
     trait_::{TraitEnv, TraitInstId},
-    ty_def::TyId,
+    ty_def::{TyData, TyId},
     unify::UnificationTable,
 };
 
@@ -71,6 +73,11 @@ impl<'db> ConstraintSolver<'db> {
     fn solve(mut self) -> GoalSatisfiability {
         let goal_ty = self.goal.ty(self.db);
         let goal_trait = self.goal.trait_inst(self.db);
+
+        // If the goal type is already invalid, we don't need to do anything.
+        if goal_ty.contains_invalid(self.db) {
+            return GoalSatisfiability::Satisfied;
+        }
 
         let super_assumptions = compute_super_assumptions(self.db, self.assumptions);
         if self.assumptions.does_satisfy(self.db, self.goal)
