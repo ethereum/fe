@@ -20,7 +20,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection},
     trait_::{TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtRefId, InvalidCause, Subst, TyId},
+    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Subst, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
 };
 
@@ -87,6 +87,28 @@ pub(crate) fn collect_trait_constraints(
     collector.finalize().0
 }
 
+#[salsa::tracked]
+pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> ConstraintListId {
+    let ingot = adt.ingot(db);
+    let Some(owner) = adt.as_generic_param_owner(db) else {
+        return ConstraintListId::empty_list(db, ingot);
+    };
+    let mut collector = ConstraintCollector::new(db, adt.scope(db), owner);
+    match adt.adt_ref(db).data(db) {
+        AdtRef::Contract(_) => return ConstraintListId::empty_list(db, ingot),
+        AdtRef::Enum(enum_) => {
+            let mut ctxt = VisitorCtxt::with_enum(db.as_hir_db(), enum_);
+            collector.visit_enum(&mut ctxt, enum_);
+        }
+        AdtRef::Struct(struct_) => {
+            let mut ctxt = VisitorCtxt::with_struct(db.as_hir_db(), struct_);
+            collector.visit_struct(&mut ctxt, struct_);
+        }
+    }
+
+    collector.finalize().0
+}
+
 /// Returns a list of assumptions obtained by the given assumptions by looking
 /// up super traits.
 #[salsa::tracked(return_ref)]
@@ -111,7 +133,7 @@ pub(crate) fn compute_super_assumptions(
 }
 
 #[salsa::interned]
-pub(crate) struct PredicateId {
+pub struct PredicateId {
     pub(super) ty: TyId,
     pub(super) trait_inst: TraitInstId,
 }
@@ -140,6 +162,10 @@ impl PredicateListId {
         let mut predicates = self.predicates(db).clone();
         predicates.remove(&pred);
         PredicateListId::new(db, predicates, self.ingot(db))
+    }
+
+    pub fn empty_list(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
+        Self::new(db, BTreeSet::new(), ingot)
     }
 
     pub(super) fn contains(self, db: &dyn HirAnalysisDb, pred: PredicateId) -> bool {

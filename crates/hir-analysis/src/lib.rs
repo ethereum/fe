@@ -33,11 +33,13 @@ pub struct Jar(
     ty::trait_::trait_implementors,
     ty::constraint::collect_super_traits,
     ty::constraint::collect_trait_constraints,
+    ty::constraint::collect_adt_constraints,
     ty::constraint::super_trait_insts,
     ty::constraint::compute_super_assumptions,
     ty::constraint::PredicateId,
     ty::constraint::PredicateListId,
     ty::constraint_solver::is_goal_satisfiable,
+    ty::constraint_solver::is_ty_constraint_satisfied,
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,

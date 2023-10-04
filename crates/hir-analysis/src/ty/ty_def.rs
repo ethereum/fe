@@ -233,6 +233,17 @@ impl AdtDef {
             AdtRef::Contract(c) => c.top_mod(hir_db).ingot(hir_db),
         }
     }
+
+    pub(crate) fn as_generic_param_owner(
+        self,
+        db: &dyn HirAnalysisDb,
+    ) -> Option<GenericParamOwnerId> {
+        self.adt_ref(db).generic_owner_id(db)
+    }
+
+    pub(crate) fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        self.adt_ref(db).scope(db)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
