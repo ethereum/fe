@@ -58,8 +58,8 @@ impl TyId {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
-    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        self.data(db).pretty_print(db)
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> &str {
+        pretty_print_ty(db, self)
     }
 
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
@@ -305,18 +305,6 @@ pub enum TyData {
     // Invalid type which means the type is not defined.
     // This type can be unified with any other types.
     Invalid(InvalidCause),
-}
-
-impl TyData {
-    fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
-        match self {
-            Self::TyVar(var) => format!("%{}", var.key.0),
-            Self::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
-            Self::TyApp(lhs, rhs) => TyAppPrinter::print(db, *lhs, *rhs),
-            Self::TyCon(ty_con) => ty_con.pretty_print(db),
-            Self::Invalid(_) => "<invalid>".to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -646,75 +634,100 @@ pub(crate) fn free_inference_keys(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
     collector.0
 }
 
-struct TyAppPrinter {
-    base: Option<TyId>,
-    args: VecDeque<TyId>,
+#[salsa::tracked(return_ref)]
+pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
+    match ty.data(db) {
+        TyData::TyVar(var) => format!("%{}", var.key.0),
+        TyData::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
+        TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
+        TyData::TyCon(ty_con) => ty_con.pretty_print(db),
+        TyData::Invalid(InvalidCause::TraitConstraintNotSat(pred)) => {
+            pred.ty(db).pretty_print(db).to_string()
+        }
+        _ => "<invalid>".to_string(),
+    }
 }
 
-impl TyAppPrinter {
-    fn print(db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) -> String {
-        impl TyVisitor for TyAppPrinter {
-            fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
-                match ty.data(db) {
-                    TyData::TyApp(lhs, rhs) => {
-                        self.visit_ty(db, lhs);
-                        self.args.push_front(rhs);
-                    }
-                    _ => self.base = Some(ty),
+fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
+    use PrimTy::*;
+    use TyConcrete::*;
+    use TyData::*;
+
+    let (base, args) = decompose_ty_app(db, ty);
+    match base.data(db) {
+        TyCon(Prim(Array)) => {
+            let elem_ty = args[0].pretty_print(db);
+            let len = args[1].pretty_print(db);
+            format!("[{}; {}]", elem_ty, len)
+        }
+
+        TyCon(Prim(Tuple(_))) => {
+            let mut args = args.into_iter();
+            let mut s = ("(").to_string();
+            if let Some(first) = args.next() {
+                s.push_str(&first.pretty_print(db));
+                for arg in args {
+                    s.push_str(", ");
+                    s.push_str(&arg.pretty_print(db));
                 }
             }
+            s.push(')');
+            s
+        }
 
-            fn visit_app(&mut self, db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) {
-                self.visit_ty(db, lhs);
-                self.args.push_front(rhs);
+        _ => {
+            let mut args = args.into_iter();
+            let mut s = (base.pretty_print(db)).to_string();
+            if let Some(first) = args.next() {
+                s.push('<');
+                s.push_str(&first.pretty_print(db));
+                for arg in args {
+                    s.push_str(", ");
+                    s.push_str(&arg.pretty_print(db));
+                }
+                s.push('>');
+            }
+            s
+        }
+    }
+}
+
+fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
+    struct TyAppDecomposer {
+        base: Option<TyId>,
+        args: VecDeque<TyId>,
+    }
+
+    impl TyVisitor for TyAppDecomposer {
+        fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
+            match ty.data(db) {
+                TyData::TyApp(lhs, rhs) => {
+                    self.visit_ty(db, lhs);
+                    self.args.push_front(rhs);
+                }
+                _ => self.base = Some(ty),
             }
         }
 
-        use PrimTy::*;
-        use TyConcrete::*;
-        use TyData::*;
-
-        let mut printer = Self {
-            base: None,
-            args: VecDeque::new(),
-        };
-        printer.visit_app(db, lhs, rhs);
-
-        match printer.base.unwrap().data(db) {
-            TyCon(Prim(Array)) => {
-                let elem_ty = printer.args[0].pretty_print(db);
-                let len = printer.args[1].pretty_print(db);
-                format!("[{}; {}]", elem_ty, len)
-            }
-
-            TyCon(Prim(Tuple(_))) => {
-                let mut args = printer.args.into_iter();
-                let mut s = ("(").to_string();
-                if let Some(first) = args.next() {
-                    s.push_str(&first.pretty_print(db));
-                    for arg in args {
-                        s.push_str(", ");
-                        s.push_str(&arg.pretty_print(db));
-                    }
-                }
-                s.push(')');
-                s
-            }
-
-            base => {
-                let mut args = printer.args.into_iter();
-                let mut s = (base.pretty_print(db));
-                if let Some(first) = args.next() {
-                    s.push('<');
-                    s.push_str(&first.pretty_print(db));
-                    for arg in args {
-                        s.push_str(", ");
-                        s.push_str(&arg.pretty_print(db));
-                    }
-                    s.push('>');
-                }
-                s
-            }
+        fn visit_app(&mut self, db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) {
+            self.visit_ty(db, lhs);
+            self.args.push_front(rhs);
         }
+    }
+
+    match ty.data(db) {
+        TyData::TyApp(lhs, rhs) => {
+            let mut decomposer = TyAppDecomposer {
+                base: None,
+                args: VecDeque::new(),
+            };
+            decomposer.visit_app(db, lhs, rhs);
+            (
+                decomposer.base.unwrap(),
+                decomposer.args.into_iter().collect(),
+            )
+        }
+
+        _ => (ty, vec![]),
     }
 }
