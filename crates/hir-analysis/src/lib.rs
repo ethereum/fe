@@ -39,7 +39,6 @@ pub struct Jar(
     ty::constraint::PredicateId,
     ty::constraint::PredicateListId,
     ty::constraint_solver::is_goal_satisfiable,
-    ty::constraint_solver::is_ty_constraint_satisfied,
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,

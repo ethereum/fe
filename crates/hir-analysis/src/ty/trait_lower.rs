@@ -53,16 +53,11 @@ pub(super) fn lower_trait_ref(
     scope: ScopeId,
 ) -> (Option<TraitInstId>, Vec<TyDiagCollection>) {
     let hir_db = db.as_hir_db();
-    let (args, diags) = if let Some(args) = trait_ref.generic_args {
+    let (args, mut diags) = if let Some(args) = trait_ref.generic_args {
         lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
     } else {
         (vec![], vec![])
     };
-
-    let mut diags = diags
-        .into_iter()
-        .map(TyDiagCollection::Ty)
-        .collect::<Vec<_>>();
 
     let Partial::Present(path) = trait_ref.path else {
         return (None, diags);

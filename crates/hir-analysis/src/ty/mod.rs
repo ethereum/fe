@@ -7,8 +7,8 @@ use self::{
     adt_analysis::analyze_adt,
     constraint::collect_super_traits,
     diagnostics::{
-        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TraitConstraintDiag, TyLowerDiag,
-        TypeAliasDefDiagAccumulator,
+        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TraitConstraintDiag, TyDiagCollection,
+        TyLowerDiag, TypeAliasDefDiagAccumulator,
     },
     trait_lower::{collect_trait_impls, lower_trait},
     ty_def::AdtRefId,
@@ -72,7 +72,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
                     Vec::new()
                 })
         })
-        .map(|diag| Box::new(diag) as _)
+        .map(|diag| diag.to_voucher())
         .collect()
     }
 }
@@ -92,7 +92,7 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        let diags: FxHashSet<TyLowerDiag> = top_mod
+        let diags: FxHashSet<TyDiagCollection> = top_mod
             .all_type_aliases(self.db.as_hir_db())
             .iter()
             .flat_map(|&alias| {
@@ -106,7 +106,7 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
             })
             .collect();
 
-        diags.into_iter().map(|diag| Box::new(diag) as _).collect()
+        diags.into_iter().map(|diag| diag.to_voucher()).collect()
     }
 }
 
@@ -133,7 +133,7 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
                     self.db, owner_id,
                 )
                 .into_iter()
-                .map(|diag| Box::new(diag) as _),
+                .map(|diag| diag.to_voucher()),
             );
 
             let def = lower_trait(self.db, trait_);
@@ -180,7 +180,7 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
                             self.db, owner_id,
                         )
                     })
-                    .map(|diag| Box::new(diag) as _),
+                    .map(|diag| diag.to_voucher()),
             )
             .collect()
     }

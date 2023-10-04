@@ -7,7 +7,7 @@ use hir::{
 use crate::HirAnalysisDb;
 
 use super::{
-    diagnostics::TyLowerDiag,
+    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_def::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar},
     ty_lower::lower_hir_ty,
 };
@@ -72,7 +72,7 @@ where
 
 pub(super) struct TyDiagCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    diags: Vec<TyLowerDiag>,
+    diags: Vec<TyDiagCollection>,
     scope: ScopeId,
 }
 
@@ -85,40 +85,35 @@ impl<'db> TyDiagCollector<'db> {
         }
     }
 
-    pub(super) fn collect(mut self, hir_ty: HirTyId, span: LazyTySpan) -> Vec<TyLowerDiag> {
+    pub(super) fn collect(mut self, hir_ty: HirTyId, span: LazyTySpan) -> Vec<TyDiagCollection> {
         let mut ctxt = VisitorCtxt::new(self.db.as_hir_db(), self.scope, span);
         self.visit_ty(&mut ctxt, hir_ty);
         self.diags
     }
 
     fn store_diag(&mut self, cause: InvalidCause, span: DynLazySpan) {
-        match cause {
-            InvalidCause::NotFullyApplied => {
-                let diag = TyLowerDiag::not_fully_applied_type(span);
-                self.diags.push(diag);
-            }
+        let diag = match cause {
+            InvalidCause::NotFullyApplied => TyLowerDiag::not_fully_applied_type(span).into(),
 
             InvalidCause::KindMismatch { expected, given } => {
-                let diag = TyLowerDiag::invalid_type_arg(span, expected, given);
-                self.diags.push(diag);
+                TyLowerDiag::invalid_type_arg(span, expected, given).into()
             }
 
             InvalidCause::TypeAliasArgumentMismatch {
                 alias,
                 n_given_args: n_given_arg,
-            } => {
-                let diag = TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg);
-                self.diags.push(diag);
-            }
+            } => TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg).into(),
 
-            InvalidCause::AssocTy => {
-                let diag = TyLowerDiag::assoc_ty(span);
-                self.diags.push(diag);
+            InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+
+            InvalidCause::TraitConstraintNotSat(pred) => {
+                TraitConstraintDiag::trait_bound_not_satisfied(self.db, span, pred).into()
             }
 
             // NOTE: We can `InvalidCause::Other` because it's already reported by other passes.
-            InvalidCause::Other => {}
-        }
+            InvalidCause::Other => return,
+        };
+        self.diags.push(diag)
     }
 }
 

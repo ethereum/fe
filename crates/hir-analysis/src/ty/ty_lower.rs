@@ -20,6 +20,7 @@ use crate::{
 };
 
 use super::{
+    diagnostics::TyDiagCollection,
     trait_::TraitDef,
     ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
 };
@@ -34,7 +35,7 @@ pub(crate) fn lower_hir_ty_with_diag(
     hir_ty: HirTyId,
     hir_ty_span: LazyTySpan,
     scope: ScopeId,
-) -> (TyId, Vec<TyLowerDiag>) {
+) -> (TyId, Vec<TyDiagCollection>) {
     let mut collector = TyDiagCollector::new(db, scope);
     let diags = collector.collect(hir_ty, hir_ty_span);
     (lower_hir_ty(db, hir_ty, scope), diags)
@@ -85,7 +86,7 @@ pub(crate) fn lower_type_alias(db: &dyn HirAnalysisDb, alias: HirTypeAlias) -> T
     } else {
         TypeAliasDefDiagAccumulator::push(
             db,
-            TyLowerDiag::not_fully_applied_type(alias.lazy_span().ty().into()),
+            TyLowerDiag::not_fully_applied_type(alias.lazy_span().ty().into()).into(),
         );
         TyId::invalid(db, InvalidCause::Other)
     };
@@ -103,7 +104,7 @@ fn recover_lower_type_alias_cycle(
     alias: HirTypeAlias,
 ) -> TyAlias {
     let diag = TyLowerDiag::type_alias_cycle(alias.lazy_span().ty().into());
-    TypeAliasDefDiagAccumulator::push(db, diag);
+    TypeAliasDefDiagAccumulator::push(db, diag.into());
 
     let alias_to = TyId::invalid(db, InvalidCause::Other);
     let params = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
@@ -354,7 +355,7 @@ pub(super) fn lower_generic_arg_list_with_diag(
     generic_args: GenericArgListId,
     args_span: LazyGenericArgListSpan,
     scope: ScopeId,
-) -> (Vec<TyId>, Vec<TyLowerDiag>) {
+) -> (Vec<TyId>, Vec<TyDiagCollection>) {
     let mut diags = vec![];
     let mut args = vec![];
     for (i, arg) in generic_args.data(db.as_hir_db()).iter().enumerate() {
@@ -371,7 +372,7 @@ pub(super) fn lower_generic_arg_with_diag(
     arg: &GenericArg,
     arg_span: LazyGenericArgSpan,
     scope: ScopeId,
-) -> (TyId, Vec<TyLowerDiag>) {
+) -> (TyId, Vec<TyDiagCollection>) {
     match arg {
         GenericArg::Type(ty_arg) => ty_arg
             .ty
@@ -481,7 +482,7 @@ struct GenericParamCollector<'db> {
     /// The self type of the trait.
     trait_self: TyParamPrecursor,
     current_idx: ParamLoc,
-    diags: Vec<TyLowerDiag>,
+    diags: Vec<TyDiagCollection>,
 }
 
 impl<'db> GenericParamCollector<'db> {
@@ -503,7 +504,7 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
-    fn finalize(mut self) -> (GenericParamTypeSet, Vec<TyLowerDiag>) {
+    fn finalize(mut self) -> (GenericParamTypeSet, Vec<TyDiagCollection>) {
         let param_list = self.parent.params(self.db.as_hir_db());
         let param_list_span = self.parent.params_span();
         self.visit_generic_param_list(
@@ -629,19 +630,21 @@ impl<'db> Visitor for GenericParamCollector<'db> {
             ParamLoc::Idx(idx) => &mut self.params[idx],
             ParamLoc::TraitSelf => &mut self.trait_self,
             ParamLoc::NotParam => {
-                self.diags.push(TyLowerDiag::KindBoundNotAllowed(
-                    ctxt.span().unwrap().into(),
-                ));
+                self.diags
+                    .push(TyLowerDiag::KindBoundNotAllowed(ctxt.span().unwrap().into()).into());
                 return;
             }
         };
 
         if let Some(first_defined_span) = &param.kind_span {
             if param.kind != kind {
-                self.diags.push(TyLowerDiag::DuplicateKindBound(
-                    ctxt.span().unwrap().into(),
-                    first_defined_span.clone().into(),
-                ));
+                self.diags.push(
+                    TyLowerDiag::DuplicateKindBound(
+                        ctxt.span().unwrap().into(),
+                        first_defined_span.clone().into(),
+                    )
+                    .into(),
+                );
             }
         } else {
             param.kind = kind;

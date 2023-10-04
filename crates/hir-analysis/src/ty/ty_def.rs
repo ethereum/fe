@@ -18,6 +18,7 @@ use rustc_hash::FxHashMap;
 use crate::HirAnalysisDb;
 
 use super::{
+    constraint::{ConstraintListId, PredicateId},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::InferenceKey,
     visitor::TyVisitor,
@@ -324,7 +325,10 @@ pub enum InvalidCause {
     NotFullyApplied,
 
     /// Kind mismatch between two types.
-    KindMismatch { expected: Option<Kind>, given: Kind },
+    KindMismatch {
+        expected: Option<Kind>,
+        given: Kind,
+    },
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
@@ -333,6 +337,8 @@ pub enum InvalidCause {
         alias: HirTypeAlias,
         n_given_args: usize,
     },
+
+    TraitConstraintNotSat(PredicateId),
 
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.

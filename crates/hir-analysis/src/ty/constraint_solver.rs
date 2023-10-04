@@ -1,11 +1,16 @@
 use std::collections::BTreeMap;
 
+use hir::visitor::prelude::LazyTySpan;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{ty::constraint::super_trait_insts, HirAnalysisDb};
+use crate::{
+    ty::{constraint::super_trait_insts, visitor::TyVisitor},
+    HirAnalysisDb,
+};
 
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
+    diagnostics::TraitConstraintDiag,
     trait_::{TraitEnv, TraitInstId},
     ty_def::TyId,
     unify::UnificationTable,

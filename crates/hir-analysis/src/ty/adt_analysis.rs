@@ -8,7 +8,7 @@ use salsa::function::Configuration;
 use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 
 use super::{
-    diagnostics::TyLowerDiag,
+    diagnostics::{TyDiagCollection, TyLowerDiag},
     ty_def::{AdtDef, AdtRefId, TyId},
     ty_lower::{lower_adt, lower_hir_ty, lower_hir_ty_with_diag},
     visitor::{walk_ty, TyDiagCollector, TyVisitor},
@@ -36,7 +36,10 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) {
 }
 
 #[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
-pub(crate) fn check_recursive_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> Option<TyLowerDiag> {
+pub(crate) fn check_recursive_adt(
+    db: &dyn HirAnalysisDb,
+    adt: AdtRefId,
+) -> Option<TyDiagCollection> {
     let adt_def = lower_adt(db, adt);
     for field in adt_def.fields(db) {
         for ty in field.iter_types(db) {
@@ -49,9 +52,37 @@ pub(crate) fn check_recursive_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> Opti
     None
 }
 
+fn check_recursive_adt_impl(
+    db: &dyn HirAnalysisDb,
+    cycle: &salsa::Cycle,
+    adt: AdtRefId,
+) -> Option<TyDiagCollection> {
+    let participants: FxHashSet<_> = cycle
+        .participant_keys()
+        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
+        .collect();
+
+    let adt_def = lower_adt(db, adt);
+    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
+        for (ty_idx, ty) in field.iter_types(db).enumerate() {
+            for field_adt_ref in ty.collect_direct_adts(db) {
+                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
+                    let diag = TyLowerDiag::recursive_type(
+                        adt.name_span(db),
+                        adt_def.variant_ty_span(db, field_idx, ty_idx),
+                    );
+                    return Some(diag.into());
+                }
+            }
+        }
+    }
+
+    None
+}
+
 struct AdtDefAnalysisVisitor<'db> {
     db: &'db dyn HirAnalysisDb,
-    accumulated: Vec<TyLowerDiag>,
+    accumulated: Vec<TyDiagCollection>,
     scope: ScopeId,
 }
 
@@ -61,7 +92,7 @@ impl<'db> AdtDefAnalysisVisitor<'db> {
         let ty = lower_hir_ty(self.db, ty, self.scope);
         if !ty.is_mono_type(self.db) {
             self.accumulated
-                .push(TyLowerDiag::not_fully_applied_type(span));
+                .push(TyLowerDiag::not_fully_applied_type(span).into());
         }
     }
 }
@@ -104,37 +135,9 @@ pub(super) fn collect_ty_lower_diags(
     hir_ty: HirTyId,
     span: LazyTySpan,
     scope: ScopeId,
-) -> Vec<TyLowerDiag> {
+) -> Vec<TyDiagCollection> {
     let collector = TyDiagCollector::new(db, scope);
     collector.collect(hir_ty, span)
-}
-
-fn check_recursive_adt_impl(
-    db: &dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    adt: AdtRefId,
-) -> Option<TyLowerDiag> {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
-        .collect();
-
-    let adt_def = lower_adt(db, adt);
-    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-        for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.collect_direct_adts(db) {
-                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
-                    return Some(diag);
-                }
-            }
-        }
-    }
-
-    None
 }
 
 impl TyId {

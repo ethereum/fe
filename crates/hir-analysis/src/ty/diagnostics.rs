@@ -13,14 +13,14 @@ use crate::HirAnalysisDb;
 use super::{constraint::PredicateId, ty_def::Kind};
 
 #[salsa::accumulator]
-pub struct AdtDefDiagAccumulator(pub(super) TyLowerDiag);
+pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
-pub struct TypeAliasDefDiagAccumulator(pub(super) TyLowerDiag);
+pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
-pub struct GenericParamDiagAccumulator(pub(super) TyLowerDiag);
+pub struct GenericParamDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
-pub(crate) enum TyDiagCollection {
+pub enum TyDiagCollection {
     Ty(TyLowerDiag),
     Satisfaction(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),

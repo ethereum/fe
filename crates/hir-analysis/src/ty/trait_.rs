@@ -142,7 +142,7 @@ impl Implementor {
 /// Represents an instantiated trait, which can be thought of as a trait
 /// reference from a HIR perspective.
 #[salsa::interned]
-pub(crate) struct TraitInstId {
+pub struct TraitInstId {
     pub def: TraitDef,
     #[return_ref]
     pub substs: Vec<TyId>,
@@ -199,7 +199,7 @@ impl TraitInstId {
 
 /// Represents a trait definition.
 #[salsa::tracked]
-pub(crate) struct TraitDef {
+pub struct TraitDef {
     pub trait_: Trait,
     #[return_ref]
     pub params: Vec<TyId>,
