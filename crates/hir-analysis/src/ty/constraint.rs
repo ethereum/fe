@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    trait_::{TraitDef, TraitInstId},
+    trait_::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
     ty_def::{AdtDef, AdtRef, InvalidCause, Subst, TyConcrete, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
@@ -29,7 +29,7 @@ pub(crate) fn ty_constraints(
     assert!(ty.free_inference_keys(db).is_empty());
 
     let (base, args) = ty.decompose_ty_app(db);
-    let TyData::TyCon(TyConcrete::Adt(adt)) = ty.data(db) else {
+    let TyData::TyCon(TyConcrete::Adt(adt)) = base.data(db) else {
         return (
             AssumptionListId::empty_list(db),
             ConstraintListId::empty_list(db),
@@ -52,10 +52,43 @@ pub(crate) fn ty_constraints(
     }
 
     // Substitute type parameters.
-    let constraint = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
+    let constraints = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
 
     // If the predicate type is a type variable, collect it as an assumption
     // and remove it from the constraint.
+    let mut new_assumptions = BTreeSet::new();
+    let mut new_constraints = BTreeSet::new();
+    for &pred in constraints.predicates(db) {
+        if pred.ty(db).is_ty_var(db) {
+            new_assumptions.insert(pred);
+        } else {
+            new_constraints.insert(pred);
+        }
+    }
+
+    let ingot = constraints.ingot(db);
+    (
+        AssumptionListId::new(db, new_assumptions, ingot),
+        ConstraintListId::new(db, new_constraints, ingot),
+    )
+}
+
+#[salsa::tracked]
+pub(crate) fn trait_inst_constraints(
+    db: &dyn HirAnalysisDb,
+    trait_inst: TraitInstId,
+) -> (AssumptionListId, ConstraintListId) {
+    let def_constraints = collect_trait_constraints(db, trait_inst.def(db));
+    let mut subst = trait_inst.subst_table(db);
+    let self_ty_param = trait_inst.def(db).self_param(db);
+    let self_ty_kind = self_ty_param.kind(db);
+
+    subst.insert(
+        self_ty_param,
+        TyId::ty_var(db, self_ty_kind.clone(), InferenceKey(0 as u32)),
+    );
+    let constraint = def_constraints.apply_subst(db, &mut subst);
+
     let mut new_assumptions = BTreeSet::new();
     let mut new_constraints = BTreeSet::new();
     for &pred in constraint.predicates(db) {
@@ -73,18 +106,6 @@ pub(crate) fn ty_constraints(
     )
 }
 
-/// Collects super traits, and verify there are no cyclic in
-/// the super traits relationship.
-///
-/// This method is implemented independently from [`collect_trait_constraints`]
-/// method because
-/// 1. the cycle check should be performed before collecting other constraints
-///    to make sure the constraint simplification terminates.
-/// 2. `collect_trait_constraints` function needs to care about another cycle
-///    which is caused by constraints simplification.
-/// 3. we want to emit better error messages for cyclic super traits.
-///
-/// NOTE: This methods returns all super traits without any simplification.
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
 pub(crate) fn collect_super_traits(db: &dyn HirAnalysisDb, trait_: TraitDef) -> Vec<TraitInstId> {
     let collector = SuperTraitCollector::new(db, trait_, FxHashSet::default());
@@ -149,6 +170,23 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
             collector.visit_struct(&mut ctxt, struct_);
         }
     }
+
+    collector.finalize()
+}
+
+#[salsa::tracked]
+pub(crate) fn collect_implementor_constraints(
+    db: &dyn HirAnalysisDb,
+    implementor: Implementor,
+) -> ConstraintListId {
+    let impl_trait = implementor.impl_trait(db);
+    let mut collector = ConstraintCollector::new(
+        db,
+        impl_trait.scope(),
+        GenericParamOwnerId::new(db, impl_trait.into()),
+    );
+    let mut ctxt = VisitorCtxt::with_impl_trait(db.as_hir_db(), impl_trait);
+    collector.visit_impl_trait(&mut ctxt, impl_trait);
 
     collector.finalize()
 }
@@ -272,10 +310,9 @@ impl<'db> SuperTraitCollector<'db> {
 impl<'db> Visitor for SuperTraitCollector<'db> {
     fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        _ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
         trait_ref: TraitRefId,
     ) {
-        let span = ctxt.span().unwrap();
         let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) else {
             return;
         };
@@ -298,6 +335,13 @@ impl<'db> Visitor for SuperTraitCollector<'db> {
         {
             walk_where_predicate(self, ctxt, pred);
         }
+    }
+
+    fn visit_generic_param_list(
+        &mut self,
+        _: &mut VisitorCtxt<'_, LazyGenericParamListSpan>,
+        _: hir_def::GenericParamListId,
+    ) {
     }
 
     fn visit_item(&mut self, _: &mut VisitorCtxt<'_, LazyItemSpan>, _: hir::hir_def::ItemKind) {
@@ -355,7 +399,6 @@ impl<'db> ConstraintCollector<'db> {
             }
         }
 
-        // TODO: Report if types and trait insts are not satisfy the constraints.
         simplified
     }
 
@@ -367,10 +410,8 @@ impl<'db> ConstraintCollector<'db> {
         }
 
         match is_goal_satisfiable(self.db, goal, predicates) {
-            GoalSatisfiability::Satisfied => true,
-            GoalSatisfiability::NonSatisfied => true,
-            GoalSatisfiability::NonSatisfied => false,
-            GoalSatisfiability::InfiniteRecursion => true,
+            GoalSatisfiability::Satisfied | GoalSatisfiability::InfiniteRecursion(_) => true,
+            GoalSatisfiability::NotSatisfied(_) => false,
         }
     }
 

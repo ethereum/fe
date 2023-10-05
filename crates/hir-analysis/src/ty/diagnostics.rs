@@ -10,7 +10,10 @@ use hir::{
 
 use crate::HirAnalysisDb;
 
-use super::{constraint::PredicateId, ty_def::Kind};
+use super::{
+    constraint::PredicateId,
+    ty_def::{Kind, TyId},
+};
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -357,25 +360,46 @@ pub enum TraitConstraintDiag {
 
     TraitArgNumMismatch {
         span: DynLazySpan,
-        trait_: Trait,
-        n_given_arg: usize,
+        expected: usize,
+        given: usize,
     },
 
     TraitArgKindMismatch(DynLazySpan, String),
 
     TraitBoundNotSat(DynLazySpan, String),
 
-    InfiniteBoundRecursion(DynLazySpan),
+    InfiniteBoundRecursion(DynLazySpan, String),
+
+    ConcreteTypeBound(DynLazySpan, String),
 }
 
 impl TraitConstraintDiag {
     pub(super) fn trait_arg_kind_mismatch(
+        db: &dyn HirAnalysisDb,
         span: DynLazySpan,
         expected: &Kind,
-        actual: &Kind,
+        actual: TyId,
     ) -> Self {
-        let msg = format!("expected `{}` kind, but found `{}` kind", expected, actual);
+        let actual_kind = actual.kind(db);
+        let ty_display = actual.pretty_print(db);
+        let msg = format!(
+            "expected `{}` kind, but `{}` has `{}` kind",
+            expected, ty_display, actual_kind,
+        );
         Self::TraitArgKindMismatch(span, msg)
+    }
+
+    pub(super) fn trait_arg_num_mismatch(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        expected: usize,
+        given: usize,
+    ) -> Self {
+        Self::TraitArgNumMismatch {
+            span,
+            expected,
+            given,
+        }
     }
 
     pub(super) fn trait_bound_not_satisfied(
@@ -386,11 +410,31 @@ impl TraitConstraintDiag {
         let ty = pred.ty(db);
         let goal = pred.trait_inst(db);
         let msg = format!(
-            "`{}` doesn't implement {}",
+            "`{}` doesn't implement `{}`",
             ty.pretty_print(db),
             goal.pretty_print(db)
         );
         Self::TraitBoundNotSat(span, msg)
+    }
+
+    pub(super) fn infinite_bound_recursion(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        pred: PredicateId,
+    ) -> Self {
+        let goal = pred.trait_inst(db);
+        let ty = pred.ty(db);
+        let msg = format!(
+            "infinite evaluation recursion occurs when checking `{}: {}` ",
+            ty.pretty_print(db),
+            goal.pretty_print(db)
+        );
+        Self::InfiniteBoundRecursion(span, msg)
+    }
+
+    pub(super) fn concrete_type_bound(db: &dyn HirAnalysisDb, span: DynLazySpan, ty: TyId) -> Self {
+        let msg = format!("`{}` is a concrete type", ty.pretty_print(db));
+        Self::ConcreteTypeBound(span, msg)
     }
 
     fn local_code(&self) -> u16 {
@@ -399,7 +443,8 @@ impl TraitConstraintDiag {
             Self::TraitArgNumMismatch { .. } => 1,
             Self::TraitArgKindMismatch(_, _) => 2,
             Self::TraitBoundNotSat(_, _) => 3,
-            Self::InfiniteBoundRecursion(_) => 4,
+            Self::InfiniteBoundRecursion(_, _) => 4,
+            Self::ConcreteTypeBound(_, _) => 5,
         }
     }
 
@@ -413,7 +458,11 @@ impl TraitConstraintDiag {
 
             Self::TraitBoundNotSat(_, _) => "trait bound is not satisfied".to_string(),
 
-            Self::InfiniteBoundRecursion(_) => "infinite trait bound recursion".to_string(),
+            Self::InfiniteBoundRecursion(_, _) => "infinite trait bound recursion".to_string(),
+
+            Self::ConcreteTypeBound(_, _) => {
+                "trait bound for concrete type is not allowed".to_string()
+            }
         }
     }
 
@@ -434,25 +483,14 @@ impl TraitConstraintDiag {
 
             Self::TraitArgNumMismatch {
                 span,
-                trait_,
-                n_given_arg,
+                expected,
+                given,
             } => {
-                vec![
-                    SubDiagnostic::new(
-                        LabelStyle::Primary,
-                        format!(
-                            "expected {} arguments here, but {} given",
-                            trait_.generic_params(db.as_hir_db()).len(db.as_hir_db()),
-                            n_given_arg,
-                        ),
-                        span.resolve(db),
-                    ),
-                    SubDiagnostic::new(
-                        LabelStyle::Secondary,
-                        "trait defined here".to_string(),
-                        trait_.lazy_span().name().resolve(db),
-                    ),
-                ]
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected {} arguments here, but {} given", expected, given,),
+                    span.resolve(db),
+                )]
             }
 
             Self::TraitArgKindMismatch(span, msg) => vec![SubDiagnostic::new(
@@ -467,9 +505,15 @@ impl TraitConstraintDiag {
                 span.resolve(db),
             )],
 
-            Self::InfiniteBoundRecursion(span) => vec![SubDiagnostic::new(
+            Self::InfiniteBoundRecursion(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                "infinite trait bound recursion occurs here".to_string(),
+                msg.clone(),
+                span.resolve(db),
+            )],
+
+            Self::ConcreteTypeBound(span, msg) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                msg.clone(),
                 span.resolve(db),
             )],
         }

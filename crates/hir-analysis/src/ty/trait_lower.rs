@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     trait_::{Implementor, TraitDef, TraitInstId},
-    ty_def::TyId,
+    ty_def::{Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
 };
@@ -71,9 +71,9 @@ pub(crate) fn lower_trait_ref(
     };
 
     if trait_def.params(db).len() != args.len() {
-        return Err(TraitRefLowerError::ArgumentNotMatch {
+        return Err(TraitRefLowerError::ArgNumMismatch {
             expected: trait_def.params(db).len(),
-            actual: args.len(),
+            given: args.len(),
         });
     }
 
@@ -89,9 +89,14 @@ pub(crate) enum TraitRefLowerError {
 
     AssocTy(PathId),
 
-    ArgumentNotMatch {
+    ArgNumMismatch {
         expected: usize,
-        actual: usize,
+        given: usize,
+    },
+
+    ArgumentKindMisMatch {
+        expected: Kind,
+        given: TyId,
     },
 }
 
@@ -223,8 +228,8 @@ impl Implementor {
         other: Self,
         table: &mut UnificationTable,
     ) -> bool {
-        let generalized_self = self.generalize(db, table);
-        let generalized_other = other.generalize(db, table);
+        let (generalized_self, _) = self.generalize(db, table);
+        let (generalized_other, _) = other.generalize(db, table);
 
         table.unify(generalized_self, generalized_other)
     }

@@ -2,31 +2,29 @@ use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
 
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
-    trait_::TraitEnv,
-    ty_def::{InvalidCause, TyId},
+    trait_::{TraitEnv, TraitInstId},
+    ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
 
 type Goal = PredicateId;
 
-/// Checks if type applications in the given type satisfies the given trait
-/// bound specified by the definition. If the type does not satisfy the
-/// trait bound, returns the new type that contains `Invalid` type with a proper
-/// cause.
 #[salsa::tracked]
-pub(crate) fn check_ty_app_sat(
+pub(crate) fn check_ty_sat(
     db: &dyn HirAnalysisDb,
     ty: TyId,
     assumptions: AssumptionListId,
-) -> TyId {
+) -> GoalSatisfiability {
     assert!(ty.free_inference_keys(db).is_empty());
 
-    let (base, args) = ty.decompose_ty_app(db);
+    let (_, args) = ty.decompose_ty_app(db);
 
-    let new_ty = args.iter().fold(base, |arg, acc| {
-        let new_arg = check_ty_app_sat(db, arg, assumptions);
-        TyId::app(db, *acc, new_arg)
-    });
+    for arg in args {
+        match check_ty_sat(db, arg, assumptions) {
+            GoalSatisfiability::Satisfied => {}
+            err => return err,
+        }
+    }
 
     let (new_assumptions, constraints) = ty_constraints(db, ty);
 
@@ -34,11 +32,30 @@ pub(crate) fn check_ty_app_sat(
     for &goal in constraints.predicates(db) {
         match is_goal_satisfiable(db, goal, new_assumptions) {
             GoalSatisfiability::Satisfied => {}
-            _ => return TyId::invalid(db, InvalidCause::TraitConstraintNotSat(goal)),
+            err => return err,
         }
     }
 
-    new_ty
+    GoalSatisfiability::Satisfied
+}
+
+#[salsa::tracked]
+pub(crate) fn check_trait_inst_sat(
+    db: &dyn HirAnalysisDb,
+    trait_inst: TraitInstId,
+    assumptions: AssumptionListId,
+) -> GoalSatisfiability {
+    let (new_assumptions, constraints) = trait_inst.constraints(db);
+    let new_assumptions = assumptions.merge(db, new_assumptions);
+
+    for &goal in constraints.predicates(db) {
+        match is_goal_satisfiable(db, goal, new_assumptions) {
+            GoalSatisfiability::Satisfied => {}
+            err => return err,
+        }
+    }
+
+    GoalSatisfiability::Satisfied
 }
 
 /// Checks if the given goal is satisfiable under the given assumptions(i.e.,
@@ -58,17 +75,17 @@ pub(crate) fn is_goal_satisfiable(
 fn recover_is_goal_satisfiable(
     _db: &dyn HirAnalysisDb,
     _cycle: &salsa::Cycle,
-    _goal: Goal,
+    goal: Goal,
     _assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    GoalSatisfiability::InfiniteRecursion
+    GoalSatisfiability::InfiniteRecursion(goal)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum GoalSatisfiability {
     Satisfied,
-    NonSatisfied,
-    InfiniteRecursion,
+    NotSatisfied(Goal),
+    InfiniteRecursion(Goal),
 }
 
 struct ConstraintSolver<'db> {
@@ -117,26 +134,33 @@ impl<'db> ConstraintSolver<'db> {
                 let mut table = UnificationTable::new(self.db);
                 // Generalize the implementor by lifting all type parameters to
                 // free type variables.
-                let gen_impl = impl_.generalize(self.db, &mut table);
+                let (gen_impl, mut gen_param_map) = impl_.generalize(self.db, &mut table);
 
+                // If the `impl` can matches the goal by unifying the goal type, then we can
+                // obtain a subgaols which is specified by the `impl`.
                 if table.unify(gen_impl.ty(self.db), goal_ty)
                     && table.unify(gen_impl.trait_(self.db), goal_trait)
                 {
-                    // Specialize the implementor and obtains constraints for it.
-                    let spec_impl = gen_impl.apply_subst(self.db, &mut table);
-                    Some(spec_impl.constraints(self.db))
+                    let mut subst = ChainedSubst::chain(&mut gen_param_map, &mut table);
+                    let constraints = impl_.constraints(self.db);
+                    Some(constraints.apply_subst(self.db, &mut subst))
                 } else {
                     None
                 }
             })
         else {
-            return GoalSatisfiability::NonSatisfied;
+            return GoalSatisfiability::NotSatisfied(self.goal);
         };
 
         for &sub_goal in sub_goals.predicates(self.db) {
             match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
                 GoalSatisfiability::Satisfied => {}
-                failed => return failed,
+                GoalSatisfiability::NotSatisfied(_) => {
+                    return GoalSatisfiability::NotSatisfied(self.goal)
+                }
+                GoalSatisfiability::InfiniteRecursion(_) => {
+                    return GoalSatisfiability::InfiniteRecursion(self.goal)
+                }
             }
         }
 
@@ -148,5 +172,30 @@ impl PredicateListId {
     /// Returns `true` if the given predicate list satisfies the given goal.
     fn does_satisfy(self, db: &dyn HirAnalysisDb, goal: Goal) -> bool {
         self.predicates(db).contains(&goal)
+    }
+}
+
+struct ChainedSubst<'a, 'b, S1, S2> {
+    first: &'a mut S1,
+    second: &'b mut S2,
+}
+
+impl<'a, 'b, S1, S2> ChainedSubst<'a, 'b, S1, S2> {
+    fn chain(first: &'a mut S1, second: &'b mut S2) -> Self {
+        Self { first, second }
+    }
+}
+
+impl<'a, 'b, S1, S2> Subst for ChainedSubst<'a, 'b, S1, S2>
+where
+    S1: Subst,
+    S2: Subst,
+{
+    fn get(&mut self, from: TyId) -> Option<TyId> {
+        self.second.get(self.first.get(from)?)
+    }
+
+    fn apply(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
+        self.second.apply(db, self.first.apply(db, ty))
     }
 }

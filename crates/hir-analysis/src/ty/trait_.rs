@@ -1,11 +1,22 @@
 /// This module contains the logic for solving trait bounds.
-use hir::hir_def::{ImplTrait, IngotId, Trait};
+use hir::{
+    hir_def::{ImplTrait, IngotId, Trait},
+    span::DynLazySpan,
+};
 use rustc_hash::FxHashMap;
 
-use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
+use crate::{
+    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
+    HirAnalysisDb,
+};
 
 use super::{
-    constraint::{collect_super_traits, ConstraintListId},
+    constraint::{
+        collect_super_traits, collect_trait_constraints, trait_inst_constraints, AssumptionListId,
+        ConstraintListId,
+    },
+    constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
+    diagnostics::{TraitConstraintDiag, TyDiagCollection},
     ty_def::{Kind, Subst, TyId},
     unify::UnificationTable,
 };
@@ -26,7 +37,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .iter()
         .filter(|impl_| {
             let mut table = UnificationTable::new(db);
-            let gen_impl = impl_.generalize(db, &mut table);
+            let (gen_impl, _) = impl_.generalize(db, &mut table);
             table.unify(gen_impl.trait_(db), trait_)
         })
         .cloned()
@@ -86,7 +97,7 @@ pub(crate) struct Implementor {
     #[return_ref]
     pub(crate) params: Vec<TyId>,
 
-    pub(crate) hir_impl: ImplTrait,
+    pub(crate) impl_trait: ImplTrait,
 }
 
 impl Implementor {
@@ -97,14 +108,18 @@ impl Implementor {
 
     /// Generalizes the implementor by replacing all type parameters with fresh
     /// type variables.
-    pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
+    pub(super) fn generalize(
+        self,
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
+    ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
         for param in self.params(db) {
             let var = table.new_var(param.kind(db));
             subst.insert(*param, var);
         }
 
-        let hir_impl = self.hir_impl(db);
+        let hir_impl = self.impl_trait(db);
         let trait_ = self.trait_(db).apply_subst(db, &mut subst);
         let ty = self.ty(db).apply_subst(db, &mut subst);
         let params = self
@@ -113,7 +128,7 @@ impl Implementor {
             .map(|param| subst[param])
             .collect::<Vec<_>>();
 
-        Implementor::new(db, trait_, ty, params, hir_impl)
+        (Implementor::new(db, trait_, ty, params, hir_impl), subst)
     }
 
     pub(super) fn apply_subst<S: Subst>(
@@ -129,12 +144,12 @@ impl Implementor {
                 .iter()
                 .map(|param| param.apply_subst(db, subst))
                 .collect(),
-            self.hir_impl(db),
+            self.impl_trait(db),
         )
     }
 
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        todo!()
+        collect_implementor_constraints(db, self)
     }
 }
 
@@ -186,13 +201,38 @@ impl TraitInstId {
         )
     }
 
-    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> impl Subst {
+    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
         let mut table = FxHashMap::default();
-        for (param, subst) in self.def(db).params(db).iter().zip(self.substs(db)) {
-            table.insert(*param, *subst);
+        for (from, to) in self.def(db).params(db).iter().zip(self.substs(db)) {
+            table.insert(*from, *to);
         }
 
         table
+    }
+
+    pub(super) fn constraints(
+        self,
+        db: &dyn HirAnalysisDb,
+    ) -> (AssumptionListId, ConstraintListId) {
+        trait_inst_constraints(db, self)
+    }
+
+    pub(super) fn emit_sat_diag(
+        self,
+        db: &dyn HirAnalysisDb,
+        assumptions: AssumptionListId,
+        span: DynLazySpan,
+    ) -> Option<TyDiagCollection> {
+        match check_trait_inst_sat(db, self, assumptions) {
+            GoalSatisfiability::Satisfied => None,
+            GoalSatisfiability::NotSatisfied(goal) => {
+                Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
+            }
+
+            GoalSatisfiability::InfiniteRecursion(goal) => {
+                Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
+            }
+        }
     }
 }
 
@@ -223,6 +263,10 @@ impl TraitDef {
 
     pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &[TraitInstId] {
         &collect_super_traits(db, self)
+    }
+
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+        collect_trait_constraints(db, self)
     }
 
     fn name(self, db: &dyn HirAnalysisDb) -> Option<&str> {

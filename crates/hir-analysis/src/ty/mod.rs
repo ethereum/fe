@@ -85,7 +85,8 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        todo!()
+        // TODO
+        vec![]
     }
 }
 
@@ -103,7 +104,8 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        todo!()
+        // TODO:
+        vec![]
     }
 }
 
@@ -122,7 +124,7 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        let ingot = top_mod.ingot(self.db.as_hir_db());
-        todo!()
+        // TODO
+        vec![]
     }
 }

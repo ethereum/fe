@@ -15,10 +15,13 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::HirAnalysisDb;
+use crate::{
+    ty::constraint_solver::{check_ty_sat, GoalSatisfiability},
+    HirAnalysisDb,
+};
 
 use super::{
-    constraint::PredicateId,
+    constraint::{collect_adt_constraints, AssumptionListId, ConstraintListId, PredicateId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::InferenceKey,
@@ -146,6 +149,23 @@ impl TyId {
             },
 
             _ => None,
+        }
+    }
+
+    pub(super) fn emit_sat_diag(
+        self,
+        db: &dyn HirAnalysisDb,
+        assumptions: AssumptionListId,
+        span: DynLazySpan,
+    ) -> Option<TyDiagCollection> {
+        match check_ty_sat(db, self, assumptions) {
+            GoalSatisfiability::Satisfied => None,
+            GoalSatisfiability::NotSatisfied(goal) => {
+                Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
+            }
+            GoalSatisfiability::InfiniteRecursion(goal) => {
+                Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
+            }
         }
     }
 
@@ -307,6 +327,10 @@ impl AdtDef {
 
     pub(crate) fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
         self.adt_ref(db).scope(db)
+    }
+
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+        collect_adt_constraints(db, self)
     }
 }
 
