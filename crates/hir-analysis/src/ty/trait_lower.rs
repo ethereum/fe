@@ -1,5 +1,5 @@
 use hir::hir_def::{
-    scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRef,
+    scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
 
@@ -36,19 +36,20 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
     collector.finalize()
 }
 
-pub(super) fn lower_trait_ref(
+#[salsa::tracked]
+pub(crate) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
-    trait_ref: TraitRef,
+    trait_ref: TraitRefId,
     scope: ScopeId,
 ) -> Result<TraitInstId, TraitRefLowerError> {
     let hir_db = db.as_hir_db();
-    let args = if let Some(args) = trait_ref.generic_args {
+    let args = if let Some(args) = trait_ref.generic_args(hir_db) {
         lower_generic_arg_list(db, args, scope)
     } else {
         vec![]
     };
 
-    let Partial::Present(path) = trait_ref.path else {
+    let Partial::Present(path) = trait_ref.path(hir_db) else {
         return Err(TraitRefLowerError::TraitNotFound);
     };
 
@@ -69,16 +70,29 @@ pub(super) fn lower_trait_ref(
         }
     };
 
+    if trait_def.params(db).len() != args.len() {
+        return Err(TraitRefLowerError::ArgumentNotMatch {
+            expected: trait_def.params(db).len(),
+            actual: args.len(),
+        });
+    }
+
     let ingot = scope.ingot(hir_db);
     Ok(TraitInstId::new(db, trait_def, args, ingot))
 }
 
-pub(super) enum TraitRefLowerError {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum TraitRefLowerError {
     /// The trait reference is not a valid trait reference. This error is
     /// reported by the name resolution and no need to report it again.
     TraitNotFound,
 
     AssocTy(PathId),
+
+    ArgumentNotMatch {
+        expected: usize,
+        actual: usize,
+    },
 }
 
 struct TraitBuilder<'db> {

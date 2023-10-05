@@ -17,7 +17,7 @@ use hir::{
     diagnostics::DiagnosticVoucher,
     hir_def::{
         scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IdentId, IngotId, ItemKind, Partial,
-        Pat, PatId, PathId, TopLevelMod, TraitRef, TypeId,
+        Pat, PatId, PathId, TopLevelMod, TraitRefId, TypeId,
     },
     visitor::prelude::*,
 };
@@ -364,7 +364,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
     fn visit_trait_ref(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRef,
+        trait_ref: TraitRefId,
     ) {
         self.path_ctxt.push(ExpectedPathKind::Trait);
         walk_trait_ref(self, ctxt, trait_ref);

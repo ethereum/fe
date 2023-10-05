@@ -2,14 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hir::{
     hir_def::{
-        self, scope_graph::ScopeId, GenericParamOwner, IngotId, Trait, TraitRef, WherePredicate,
+        self, scope_graph::ScopeId, GenericParamOwner, IngotId, Trait, TraitRefId, WherePredicate,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    ty::{trait_::TraitEnv, trait_lower::lower_trait, unify::InferenceKey},
+    ty::{trait_lower::lower_trait, unify::InferenceKey},
     HirAnalysisDb,
 };
 
@@ -273,7 +273,7 @@ impl<'db> Visitor for SuperTraitCollector<'db> {
     fn visit_trait_ref(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRef,
+        trait_ref: TraitRefId,
     ) {
         let span = ctxt.span().unwrap();
         let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) else {
@@ -406,7 +406,7 @@ impl<'db> Visitor for ConstraintCollector<'db> {
     fn visit_trait_ref(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRef,
+        trait_ref: TraitRefId,
     ) {
         let trait_inst = lower_trait_ref(self.db, trait_ref, self.owner.scope(self.db));
 

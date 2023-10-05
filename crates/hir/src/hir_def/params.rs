@@ -132,12 +132,12 @@ impl FuncParamName {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeBound {
-    Trait(TraitRef),
+    Trait(TraitRefId),
     Kind(Partial<KindBound>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitRef {
+#[salsa::interned]
+pub struct TraitRefId {
     /// The path to the trait.
     pub path: Partial<PathId>,
     /// The type arguments of the trait.

@@ -48,6 +48,7 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::TupleTypeId,
+    hir_def::TraitRefId,
     hir_def::UsePathId,
     /// Utility methods for analysis.
     hir_def::all_top_mod_in_ingot,

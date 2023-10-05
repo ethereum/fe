@@ -175,7 +175,7 @@ impl WherePredicate {
 impl TypeBound {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
         if let Some(trait_bound) = ast.trait_bound() {
-            Self::Trait(TraitRef::lower_ast(ctxt, trait_bound))
+            Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound))
         } else {
             Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
         }

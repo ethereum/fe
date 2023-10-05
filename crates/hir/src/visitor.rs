@@ -8,7 +8,7 @@ use crate::{
         FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
         GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
         KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct,
-        TopLevelMod, Trait, TraitRef, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
+        TopLevelMod, Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
         UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
         WhereClauseId, WherePredicate,
     },
@@ -173,7 +173,7 @@ pub trait Visitor {
     fn visit_trait_ref(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRef,
+        trait_ref: TraitRefId,
     ) {
         walk_trait_ref(self, ctxt, trait_ref);
     }
@@ -1760,11 +1760,11 @@ pub fn walk_type_bound<V>(
 pub fn walk_trait_ref<V>(
     visitor: &mut V,
     ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-    trait_ref: TraitRef,
+    trait_ref: TraitRefId,
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(path) = trait_ref.path.to_opt() {
+    if let Some(path) = trait_ref.path(ctxt.db()).to_opt() {
         ctxt.with_new_ctxt(
             |span| span.path_moved(),
             |ctxt| {
@@ -1773,7 +1773,7 @@ pub fn walk_trait_ref<V>(
         )
     }
 
-    if let Some(args) = trait_ref.generic_args {
+    if let Some(args) = trait_ref.generic_args(ctxt.db()) {
         ctxt.with_new_ctxt(
             |span| span.generic_args_moved(),
             |ctxt| {

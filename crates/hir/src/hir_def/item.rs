@@ -7,7 +7,7 @@ use common::InputFile;
 use parser::ast;
 
 use crate::{
-    hir_def::TraitRef,
+    hir_def::TraitRefId,
     lower,
     span::{
         item::{
@@ -703,7 +703,7 @@ pub struct Trait {
     pub attributes: AttrListId,
     pub vis: Visibility,
     pub generic_params: GenericParamListId,
-    pub super_traits: Vec<TraitRef>,
+    pub super_traits: Vec<TraitRefId>,
     pub where_clause: WhereClauseId,
     pub top_mod: TopLevelMod,
 
@@ -731,7 +731,7 @@ pub struct ImplTrait {
     #[id]
     id: TrackedItemId,
 
-    pub trait_ref: Partial<TraitRef>,
+    pub trait_ref: Partial<TraitRefId>,
     pub ty: Partial<TypeId>,
     pub attributes: AttrListId,
     pub generic_params: GenericParamListId,
@@ -944,7 +944,7 @@ pub enum TrackedItemId {
     TypeAlias(Partial<IdentId>),
     Impl(Partial<TypeId>),
     Trait(Partial<IdentId>),
-    ImplTrait(Partial<TraitRef>, Partial<TypeId>),
+    ImplTrait(Partial<TraitRefId>, Partial<TypeId>),
     Const(Partial<IdentId>),
     Use(Partial<super::UsePathId>),
     Extern,

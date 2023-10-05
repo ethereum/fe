@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRef,
+        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRefId,
         TupleTypeId, TypeId, WhereClauseId,
     },
     span::HirOrigin,
@@ -278,7 +278,7 @@ impl Trait {
         let super_traits = if let Some(super_traits) = ast.super_trait_list() {
             super_traits
                 .into_iter()
-                .map(|trait_ref| TraitRef::lower_ast(ctxt, trait_ref))
+                .map(|trait_ref| TraitRefId::lower_ast(ctxt, trait_ref))
                 .collect()
         } else {
             vec![]
@@ -310,7 +310,7 @@ impl Trait {
 
 impl ImplTrait {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ImplTrait) -> Self {
-        let trait_ref = TraitRef::lower_ast_partial(ctxt, ast.trait_ref());
+        let trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = ctxt.joined_id(TrackedItemId::ImplTrait(trait_ref, ty));
         ctxt.enter_item_scope(id.clone(), false);
