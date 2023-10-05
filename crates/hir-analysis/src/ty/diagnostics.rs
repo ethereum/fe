@@ -66,7 +66,7 @@ impl TyLowerDiag {
 
     pub fn invalid_type_arg(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
         let msg = if let Some(expected) = expected {
-            debug_assert!(!expected.can_unify(&actual));
+            debug_assert!(!expected.does_match(&actual));
 
             format!("expected `{}` kind, but found `{}` kind", expected, actual,)
         } else {

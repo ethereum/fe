@@ -1,12 +1,11 @@
 /// This module contains the logic for solving trait bounds.
-use hir::hir_def::{IdentId, ImplTrait, IngotId, Trait};
+use hir::hir_def::{ImplTrait, IngotId, Trait};
 use rustc_hash::FxHashMap;
 
 use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
 
 use super::{
-    constraint::{collect_super_traits, ConstraintListId, PredicateId},
-    diagnostics::TraitConstraintDiag,
+    constraint::{collect_super_traits, ConstraintListId},
     ty_def::{Kind, Subst, TyId},
     unify::UnificationTable,
 };
@@ -53,8 +52,8 @@ impl TraitEnv {
         for impl_map in ingot
             .external_ingots(db.as_hir_db())
             .iter()
-            .map(|(_, external)| &collect_trait_impls(db, *external).0)
-            .chain(std::iter::once(&collect_trait_impls(db, ingot).0))
+            .map(|(_, external)| collect_trait_impls(db, *external))
+            .chain(std::iter::once(collect_trait_impls(db, ingot)))
         {
             // `collect_trait_impls` ensure that there are no conflicting impls, so we can
             // just extend the map.
@@ -170,7 +169,7 @@ impl TraitInstId {
 
     /// Apply substitutions to this trait.
     /// Which is to say, replace all type parameters with their corresponding
-    /// type in the substitution.
+    /// type in the `subst`.
     pub(super) fn apply_subst<S: Subst>(
         self,
         db: &dyn HirAnalysisDb,
@@ -223,7 +222,7 @@ impl TraitDef {
     }
 
     pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &[TraitInstId] {
-        &collect_super_traits(db, self).0
+        &collect_super_traits(db, self)
     }
 
     fn name(self, db: &dyn HirAnalysisDb) -> Option<&str> {

@@ -18,7 +18,8 @@ use rustc_hash::FxHashMap;
 use crate::HirAnalysisDb;
 
 use super::{
-    constraint::{ConstraintListId, PredicateId},
+    constraint::PredicateId,
+    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::InferenceKey,
     visitor::TyVisitor,
@@ -89,10 +90,6 @@ impl TyId {
         Self::new(db, TyData::TyCon(TyConcrete::Adt(adt)))
     }
 
-    pub(super) fn is_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyParam(_))
-    }
-
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
@@ -102,6 +99,53 @@ impl TyId {
             TyData::TyParam(_) => true,
             TyData::TyApp(lhs, rhs) => lhs.contains_ty_param(db) || rhs.contains_ty_param(db),
             _ => false,
+        }
+    }
+
+    /// Emit diagnostics for the type if the type contains invalid types.
+    /// NOTE: This method doesn't emit diagnostics for
+    /// `InvalidCause::AliasCycle` because it should be reported only at the
+    /// type alias definition.
+    pub(super) fn emit_diag(
+        self,
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+    ) -> Option<TyDiagCollection> {
+        match self.data(db) {
+            TyData::TyApp(lhs, rhs) => {
+                if let Some(diag) = lhs.emit_diag(db, span.clone()) {
+                    Some(diag)
+                } else {
+                    rhs.emit_diag(db, span)
+                }
+            }
+
+            TyData::Invalid(cause) => match cause {
+                InvalidCause::NotFullyApplied => {
+                    Some(TyLowerDiag::not_fully_applied_type(span).into())
+                }
+
+                InvalidCause::KindMismatch { expected, given } => {
+                    Some(TyLowerDiag::invalid_type_arg(span, expected, given).into())
+                }
+
+                InvalidCause::TypeAliasArgumentMismatch {
+                    alias,
+                    n_given_args: n_given_arg,
+                } => {
+                    Some(TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg).into())
+                }
+
+                InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
+
+                InvalidCause::TraitConstraintNotSat(pred) => {
+                    Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, pred).into())
+                }
+
+                InvalidCause::AliasCycle | InvalidCause::Other => None,
+            },
+
+            _ => None,
         }
     }
 
@@ -124,7 +168,7 @@ impl TyId {
         let k_arg = arg.kind(db);
 
         let arg = match k_abs {
-            Kind::Abs(k_expected, _) if k_expected.as_ref().can_unify(k_arg) => arg,
+            Kind::Abs(k_expected, _) if k_expected.as_ref().does_match(k_arg) => arg,
             Kind::Abs(k_abs_arg, _) => Self::invalid(
                 db,
                 InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), k_arg),
@@ -347,6 +391,8 @@ pub enum InvalidCause {
 
     TraitConstraintNotSat(PredicateId),
 
+    AliasCycle,
+
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.
     Other,
@@ -380,11 +426,11 @@ impl Kind {
         Kind::Abs(Box::new(lhs), Box::new(rhs))
     }
 
-    pub(super) fn can_unify(&self, other: &Self) -> bool {
+    pub(super) fn does_match(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Star, Self::Star) => true,
             (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => {
-                lhs1.can_unify(lhs2) && rhs1.can_unify(rhs2)
+                lhs1.does_match(lhs2) && rhs1.does_match(rhs2)
             }
             (Self::Any, _) => true,
             (_, Self::Any) => true,

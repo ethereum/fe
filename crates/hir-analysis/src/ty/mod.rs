@@ -1,18 +1,11 @@
-#![allow(unused)]
 use crate::HirAnalysisDb;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
-use rustc_hash::FxHashSet;
 
 use self::{
     adt_analysis::analyze_adt,
-    constraint::collect_super_traits,
-    diagnostics::{
-        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TraitConstraintDiag, TyDiagCollection,
-        TyLowerDiag, TypeAliasDefDiagAccumulator,
-    },
-    trait_lower::{collect_trait_impls, lower_trait},
+    diagnostics::{AdtDefDiagAccumulator, GenericParamDiagAccumulator},
     ty_def::AdtRefId,
-    ty_lower::{collect_generic_params, lower_type_alias, GenericParamOwnerId},
+    ty_lower::collect_generic_params,
 };
 
 pub mod adt_analysis;
@@ -92,21 +85,7 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        let diags: FxHashSet<TyDiagCollection> = top_mod
-            .all_type_aliases(self.db.as_hir_db())
-            .iter()
-            .flat_map(|&alias| {
-                lower_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, alias)
-                    .into_iter()
-                    .chain(
-                        lower_type_alias::accumulated::<GenericParamDiagAccumulator>(
-                            self.db, alias,
-                        ),
-                    )
-            })
-            .collect();
-
-        diags.into_iter().map(|diag| diag.to_voucher()).collect()
+        todo!()
     }
 }
 
@@ -124,24 +103,7 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        let mut diags = Vec::new();
-
-        for &trait_ in top_mod.all_traits(self.db.as_hir_db()) {
-            let owner_id = GenericParamOwnerId::new(self.db, trait_.into());
-            diags.extend(
-                collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
-                    self.db, owner_id,
-                )
-                .into_iter()
-                .map(|diag| diag.to_voucher()),
-            );
-
-            let def = lower_trait(self.db, trait_);
-            let (_, super_traits_diags) = collect_super_traits(self.db, def);
-            diags.extend(super_traits_diags.iter().map(|diag| diag.to_voucher()));
-        }
-
-        diags
+        todo!()
     }
 }
 
@@ -161,27 +123,6 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
         let ingot = top_mod.ingot(self.db.as_hir_db());
-        let (_, diags) = collect_trait_impls(self.db, ingot);
-        let Some(diags) = diags.get(&top_mod) else {
-            return Vec::new();
-        };
-
-        diags
-            .iter()
-            .map(|diag| diag.to_voucher())
-            .chain(
-                top_mod
-                    .all_impl_traits(self.db.as_hir_db())
-                    .iter()
-                    .copied()
-                    .flat_map(|impl_trait| {
-                        let owner_id = GenericParamOwnerId::new(self.db, impl_trait.into());
-                        collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
-                            self.db, owner_id,
-                        )
-                    })
-                    .map(|diag| diag.to_voucher()),
-            )
-            .collect()
+        todo!()
     }
 }

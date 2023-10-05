@@ -1,10 +1,10 @@
-use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
+use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue};
 
 use crate::HirAnalysisDb;
 
 use super::{
     trait_::{Implementor, TraitInstId},
-    ty_def::{Kind, Subst, TyData, TyId, TyVar},
+    ty_def::{Kind, Subst, TyData, TyId},
 };
 
 pub(crate) struct UnificationTable<'db> {
@@ -39,7 +39,7 @@ impl<'db> UnificationTable<'db> {
     /// `unify`[Self::unify] if you need to roll back the table automatically
     /// when unification fails.
     fn unify_ty(&mut self, ty1: TyId, ty2: TyId) -> bool {
-        if !ty1.kind(self.db).can_unify(ty2.kind(self.db)) {
+        if !ty1.kind(self.db).does_match(ty2.kind(self.db)) {
             return false;
         }
         let ty1 = self.apply(self.db, ty1);
@@ -138,7 +138,7 @@ impl UnifyValue for InferenceValue {
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
         match (v1, v2) {
             (InferenceValue::Unbounded(k1), InferenceValue::Unbounded(k2)) => {
-                assert!(k1.can_unify(k2));
+                assert!(k1.does_match(k2));
                 Ok(InferenceValue::Unbounded(k1.clone()))
             }
 

@@ -1,29 +1,22 @@
-use std::collections::BTreeMap;
-
-use hir::{
-    hir_def::{
-        scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, TopLevelMod, Trait, TraitRef,
-    },
-    visitor::prelude::{LazyPathTypeSpan, LazyTraitRefSpan},
+use hir::hir_def::{
+    scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRef,
 };
 use rustc_hash::FxHashMap;
 
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::ty_lower::{lower_generic_arg_list_with_diag, lower_generic_arg_with_diag, lower_hir_ty},
+    ty::ty_lower::lower_hir_ty,
     HirAnalysisDb,
 };
 
 use super::{
-    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_::{Implementor, TraitDef, TraitEnv, TraitInstId},
+    trait_::{Implementor, TraitDef, TraitInstId},
     ty_def::TyId,
-    ty_lower::{collect_generic_params, lower_hir_ty_with_diag, GenericParamOwnerId},
+    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
-    visitor::TyDiagCollector,
 };
 
-type TraitImplMap = FxHashMap<TraitDef, Vec<Implementor>>;
+type TraitImplTable = FxHashMap<TraitDef, Vec<Implementor>>;
 
 #[salsa::tracked]
 pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
@@ -31,14 +24,11 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn collect_trait_impls(
-    db: &dyn HirAnalysisDb,
-    ingot: IngotId,
-) -> (TraitImplMap, FxHashMap<TopLevelMod, Vec<TyDiagCollection>>) {
+pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
     let dependent_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
-        .map(|(_, external)| &collect_trait_impls(db, *external).0)
+        .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
     let mut collector = ImplementorCollector::new(db, dependent_impls);
@@ -49,70 +39,46 @@ pub(crate) fn collect_trait_impls(
 pub(super) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
     trait_ref: TraitRef,
-    ref_span: LazyTraitRefSpan,
     scope: ScopeId,
-) -> (Option<TraitInstId>, Vec<TyDiagCollection>) {
+) -> Result<TraitInstId, TraitRefLowerError> {
     let hir_db = db.as_hir_db();
-    let (args, mut diags) = if let Some(args) = trait_ref.generic_args {
-        lower_generic_arg_list_with_diag(db, args, ref_span.generic_args(), scope)
+    let args = if let Some(args) = trait_ref.generic_args {
+        lower_generic_arg_list(db, args, scope)
     } else {
-        (vec![], vec![])
+        vec![]
     };
 
     let Partial::Present(path) = trait_ref.path else {
-        return (None, diags);
+        return Err(TraitRefLowerError::TraitNotFound);
     };
 
     let trait_def = match resolve_path_early(db, path, scope) {
         EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
-                    return (None, diags);
+                    return Err(TraitRefLowerError::TraitNotFound);
                 };
                 lower_trait(db, trait_)
             }
 
-            Err(_) => return (None, diags),
+            Err(_) => return Err(TraitRefLowerError::TraitNotFound),
         },
 
         EarlyResolvedPath::Partial { .. } => {
-            diags.push(TyLowerDiag::AssocTy(ref_span.path().into()).into());
-            return (None, diags);
+            return Err(TraitRefLowerError::AssocTy(path));
         }
     };
 
-    if trait_def.params(db).len() != args.len() {
-        diags.push(
-            TraitConstraintDiag::TraitArgNumMismatch {
-                span: ref_span.into(),
-                trait_: trait_def.trait_(db),
-                n_given_arg: args.len(),
-            }
-            .into(),
-        );
-        return (None, diags);
-    }
+    let ingot = scope.ingot(hir_db);
+    Ok(TraitInstId::new(db, trait_def, args, ingot))
+}
 
-    let mut has_error = false;
-    for (i, (expected, given)) in trait_def.params(db).iter().zip(&args).enumerate() {
-        if !expected.kind(db).can_unify(given.kind(db)) {
-            let span = ref_span.generic_args().arg_moved(i).into();
-            let diag = TraitConstraintDiag::trait_arg_kind_mismatch(
-                span,
-                expected.kind(db),
-                given.kind(db),
-            );
-            diags.push(diag.into());
-            has_error = true;
-        }
-    }
+pub(super) enum TraitRefLowerError {
+    /// The trait reference is not a valid trait reference. This error is
+    /// reported by the name resolution and no need to report it again.
+    TraitNotFound,
 
-    if !has_error {
-        let ingot = scope.ingot(hir_db);
-        (Some(TraitInstId::new(db, trait_def, args, ingot)), diags)
-    } else {
-        (None, diags)
-    }
+    AssocTy(PathId),
 }
 
 struct TraitBuilder<'db> {
@@ -144,23 +110,21 @@ impl<'db> TraitBuilder<'db> {
 /// Collect all implementors in an ingot.
 struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    impl_table: TraitImplMap,
-    dependent_impl_maps: Vec<&'db TraitImplMap>,
-    diags: FxHashMap<TopLevelMod, Vec<TyDiagCollection>>,
+    impl_table: TraitImplTable,
+    dependent_impl_maps: Vec<&'db TraitImplTable>,
 }
 
 impl<'db> ImplementorCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_maps: Vec<&'db TraitImplMap>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_maps: Vec<&'db TraitImplTable>) -> Self {
         Self {
             db,
-            impl_table: TraitImplMap::default(),
+            impl_table: TraitImplTable::default(),
             dependent_impl_maps,
-            diags: FxHashMap::default(),
         }
     }
 
-    fn finalize(self) -> (TraitImplMap, FxHashMap<TopLevelMod, Vec<TyDiagCollection>>) {
-        (self.impl_table, self.diags)
+    fn finalize(self) -> TraitImplTable {
+        self.impl_table
     }
 
     fn collect_impls(&mut self, impls: &[ImplTrait]) {
@@ -169,13 +133,7 @@ impl<'db> ImplementorCollector<'db> {
                 continue;
             };
 
-            if let Some(conflict_with) = self.does_conflict(implementor) {
-                let diag = TraitLowerDiag::conflict_impl(
-                    implementor.hir_impl(self.db),
-                    conflict_with.hir_impl(self.db),
-                );
-                self.push_diag(impl_, diag);
-            } else {
+            if !self.does_conflict(implementor) {
                 self.impl_table
                     .entry(implementor.trait_def(self.db))
                     .or_default()
@@ -186,7 +144,13 @@ impl<'db> ImplementorCollector<'db> {
 
     fn lower_impl(&mut self, hir_impl: ImplTrait) -> Option<Implementor> {
         let ty = self.lower_implementor_ty(hir_impl)?;
-        let trait_ = self.instantiate_trait(hir_impl, ty)?;
+        let trait_ = lower_trait_ref(
+            self.db,
+            hir_impl.trait_ref(self.db.as_hir_db()).to_opt()?,
+            hir_impl.scope(),
+        )
+        .ok()?;
+
         let impl_trait_ingot = hir_impl
             .top_mod(self.db.as_hir_db())
             .ingot(self.db.as_hir_db());
@@ -194,8 +158,6 @@ impl<'db> ImplementorCollector<'db> {
         if Some(impl_trait_ingot) != ty.ingot(self.db)
             && impl_trait_ingot != trait_.def(self.db).ingot(self.db)
         {
-            let diag = TraitLowerDiag::external_trait_for_external_type(hir_impl);
-            self.push_diag(hir_impl, diag);
             return None;
         }
 
@@ -213,72 +175,30 @@ impl<'db> ImplementorCollector<'db> {
     fn lower_implementor_ty(&mut self, impl_: ImplTrait) -> Option<TyId> {
         let hir_ty = impl_.ty(self.db.as_hir_db()).to_opt()?;
         let scope = impl_.scope();
-        let (ty, diags) = lower_hir_ty_with_diag(self.db, hir_ty, impl_.lazy_span().ty(), scope);
-        if diags.is_empty() {
-            Some(ty)
-        } else {
-            for diag in diags {
-                self.push_diag(impl_, diag);
-            }
-            None
-        }
+        let ty = lower_hir_ty(self.db, hir_ty, scope);
+        (!ty.contains_invalid(self.db)).then(|| ty)
     }
 
-    fn instantiate_trait(
-        &mut self,
-        impl_trait: ImplTrait,
-        implementor_ty: TyId,
-    ) -> Option<TraitInstId> {
-        let trait_ref = impl_trait.trait_ref(self.db.as_hir_db()).to_opt()?;
-        let (trait_inst, diags) = lower_trait_ref(
-            self.db,
-            trait_ref,
-            impl_trait.lazy_span().trait_ref_moved(),
-            impl_trait.scope(),
-        );
-        for diag in diags {
-            self.push_diag(impl_trait, diag);
-        }
-
-        let trait_inst = trait_inst?;
-        if implementor_ty
-            .kind(self.db)
-            .can_unify(trait_inst.def(self.db).expected_implementor_kind(self.db))
-        {
-            Some(trait_inst)
-        } else {
-            let diag = TraitConstraintDiag::KindMismatch {
-                primary: impl_trait.lazy_span().ty_moved().into(),
-                trait_def: trait_inst.def(self.db).trait_(self.db),
-            };
-            self.push_diag(impl_trait, diag);
-            None
-        }
-    }
-
-    fn does_conflict(&mut self, implementor: Implementor) -> Option<Implementor> {
+    /// Returns `true` if `implementor` conflicts with any existing implementor.
+    fn does_conflict(&mut self, implementor: Implementor) -> bool {
         let def = implementor.trait_def(self.db);
-        for &already_implemented in self.impl_table.get(&def)? {
-            let mut table = UnificationTable::new(self.db);
-            if already_implemented.does_conflict(self.db, implementor, &mut table) {
-                return Some(already_implemented);
+        for impl_map in self
+            .dependent_impl_maps
+            .iter()
+            .chain(std::iter::once(&&self.impl_table))
+        {
+            let Some(impls) = impl_map.get(&def) else {
+                continue;
+            };
+            for already_implemented in impls {
+                let mut table = UnificationTable::new(self.db);
+                if already_implemented.does_conflict(self.db, implementor, &mut table) {
+                    return true;
+                }
             }
         }
 
-        None
-    }
-
-    fn get_implementors_for(&mut self, def: TraitDef) -> impl Iterator<Item = Implementor> + '_ {
-        self.dependent_impl_maps
-            .iter()
-            .filter_map(move |table| table.get(&def).map(|impls| impls.iter().copied()))
-            .flatten()
-            .chain(self.impl_table.get(&def).into_iter().flatten().copied())
-    }
-
-    fn push_diag(&mut self, impl_: ImplTrait, diag: impl Into<TyDiagCollection>) {
-        let top_mod = impl_.top_mod(self.db.as_hir_db());
-        self.diags.entry(top_mod).or_default().push(diag.into());
+        false
     }
 }
 

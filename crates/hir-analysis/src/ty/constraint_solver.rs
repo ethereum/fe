@@ -1,23 +1,9 @@
-use std::collections::BTreeMap;
-
-use hir::visitor::prelude::LazyTySpan;
-use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::{
-    ty::{
-        constraint::{super_trait_insts, ty_constraints},
-        visitor::TyVisitor,
-    },
-    HirAnalysisDb,
-};
+use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
 
 use super::{
-    constraint::{
-        compute_super_assumptions, AssumptionListId, ConstraintListId, PredicateId, PredicateListId,
-    },
-    diagnostics::TraitConstraintDiag,
-    trait_::{TraitEnv, TraitInstId},
-    ty_def::{InvalidCause, TyData, TyId},
+    constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
+    trait_::TraitEnv,
+    ty_def::{InvalidCause, TyId},
     unify::UnificationTable,
 };
 
@@ -70,10 +56,10 @@ pub(crate) fn is_goal_satisfiable(
 }
 
 fn recover_is_goal_satisfiable(
-    db: &dyn HirAnalysisDb,
+    _db: &dyn HirAnalysisDb,
     _cycle: &salsa::Cycle,
-    goal: Goal,
-    assumptions: AssumptionListId,
+    _goal: Goal,
+    _assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
     GoalSatisfiability::InfiniteRecursion
 }
@@ -105,7 +91,7 @@ impl<'db> ConstraintSolver<'db> {
         }
     }
 
-    fn solve(mut self) -> GoalSatisfiability {
+    fn solve(self) -> GoalSatisfiability {
         let goal_ty = self.goal.ty(self.db);
         let goal_trait = self.goal.trait_inst(self.db);
 
@@ -121,16 +107,16 @@ impl<'db> ConstraintSolver<'db> {
             return GoalSatisfiability::Satisfied;
         }
 
-        /// Find sub goals that need to be satisfied in order to satisfy the
-        /// current goal.
+        // Find sub goals that need to be satisfied in order to satisfy the
+        // current goal.
         let Some(sub_goals) = self
             .env
             .implementors_for(self.db, goal_trait)
             .iter()
             .find_map(|impl_| {
                 let mut table = UnificationTable::new(self.db);
-                /// Generalize the implementor by lifting all type parameters to
-                /// free type variables.
+                // Generalize the implementor by lifting all type parameters to
+                // free type variables.
                 let gen_impl = impl_.generalize(self.db, &mut table);
 
                 if table.unify(gen_impl.ty(self.db), goal_ty)
@@ -161,8 +147,6 @@ impl<'db> ConstraintSolver<'db> {
 impl PredicateListId {
     /// Returns `true` if the given predicate list satisfies the given goal.
     fn does_satisfy(self, db: &dyn HirAnalysisDb, goal: Goal) -> bool {
-        let trait_ = goal.trait_inst(db);
-        let ty = goal.ty(db);
         self.predicates(db).contains(&goal)
     }
 }

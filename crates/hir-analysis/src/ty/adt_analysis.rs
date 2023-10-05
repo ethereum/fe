@@ -10,8 +10,8 @@ use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
 use super::{
     diagnostics::{TyDiagCollection, TyLowerDiag},
     ty_def::{AdtDef, AdtRefId, TyId},
-    ty_lower::{lower_adt, lower_hir_ty, lower_hir_ty_with_diag},
-    visitor::{walk_ty, TyDiagCollector, TyVisitor},
+    ty_lower::{lower_adt, lower_hir_ty},
+    visitor::{walk_ty, TyVisitor},
 };
 
 #[salsa::tracked]
@@ -99,8 +99,10 @@ impl<'db> AdtDefAnalysisVisitor<'db> {
 
 impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        self.accumulated
-            .extend(lower_hir_ty_with_diag(self.db, hir_ty, ctxt.span().unwrap(), self.scope).1);
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        if let Some(diag) = ty.emit_diag(self.db, ctxt.span().unwrap().into()) {
+            self.accumulated.push(diag.into());
+        }
     }
 
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
@@ -128,16 +130,6 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         }
         walk_variant_def(self, ctxt, variant);
     }
-}
-
-pub(super) fn collect_ty_lower_diags(
-    db: &dyn HirAnalysisDb,
-    hir_ty: HirTyId,
-    span: LazyTySpan,
-    scope: ScopeId,
-) -> Vec<TyDiagCollection> {
-    let collector = TyDiagCollector::new(db, scope);
-    collector.collect(hir_ty, span)
 }
 
 impl TyId {

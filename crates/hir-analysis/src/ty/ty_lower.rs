@@ -1,44 +1,24 @@
 use either::Either;
-use hir::{
-    hir_def::{
-        kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
-        GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
-        Trait, TupleTypeId, TypeAlias as HirTypeAlias, TypeId as HirTyId, TypeKind as HirTyKind,
-        VariantDefListId, VariantKind, WherePredicate,
-    },
-    visitor::prelude::*,
+use hir::hir_def::{
+    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+    GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
+    TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
+    VariantDefListId, VariantKind,
 };
 use rustc_hash::FxHashMap;
 
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::{
-        diagnostics::{GenericParamDiagAccumulator, TyLowerDiag, TypeAliasDefDiagAccumulator},
-        visitor::TyDiagCollector,
-    },
     HirAnalysisDb,
 };
 
-use super::{
-    diagnostics::TyDiagCollection,
-    trait_::TraitDef,
-    ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam},
+use super::ty_def::{
+    AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam,
 };
 
 #[salsa::tracked]
 pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
     TyBuilder::new(db, scope).lower_ty(ty)
-}
-
-pub(crate) fn lower_hir_ty_with_diag(
-    db: &dyn HirAnalysisDb,
-    hir_ty: HirTyId,
-    hir_ty_span: LazyTySpan,
-    scope: ScopeId,
-) -> (TyId, Vec<TyDiagCollection>) {
-    let mut collector = TyDiagCollector::new(db, scope);
-    let diags = collector.collect(hir_ty, hir_ty_span);
-    (lower_hir_ty(db, hir_ty, scope), diags)
 }
 
 #[salsa::tracked]
@@ -51,12 +31,7 @@ pub(crate) fn collect_generic_params(
     db: &dyn HirAnalysisDb,
     owner: GenericParamOwnerId,
 ) -> GenericParamTypeSet {
-    let (set, diags) = GenericParamCollector::new(db, owner.data(db)).finalize();
-    diags.into_iter().for_each(|diag| {
-        GenericParamDiagAccumulator::push(db, diag);
-    });
-
-    set
+    GenericParamCollector::new(db, owner.data(db)).finalize()
 }
 
 #[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
@@ -71,26 +46,7 @@ pub(crate) fn lower_type_alias(db: &dyn HirAnalysisDb, alias: HirTypeAlias) -> T
         };
     };
 
-    let ty = lower_hir_ty(db, hir_ty, alias.scope());
-    let alias_to = if ty.is_mono_type(db) {
-        let collector = TyDiagCollector::new(db, alias.scope());
-        let diags = collector.collect(hir_ty, alias.lazy_span().ty());
-        if diags.is_empty() {
-            ty
-        } else {
-            diags.into_iter().for_each(|diag| {
-                TypeAliasDefDiagAccumulator::push(db, diag);
-            });
-            TyId::invalid(db, InvalidCause::Other)
-        }
-    } else {
-        TypeAliasDefDiagAccumulator::push(
-            db,
-            TyLowerDiag::not_fully_applied_type(alias.lazy_span().ty().into()).into(),
-        );
-        TyId::invalid(db, InvalidCause::Other)
-    };
-
+    let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
     TyAlias {
         alias,
         alias_to,
@@ -103,10 +59,7 @@ fn recover_lower_type_alias_cycle(
     _cycle: &salsa::Cycle,
     alias: HirTypeAlias,
 ) -> TyAlias {
-    let diag = TyLowerDiag::type_alias_cycle(alias.lazy_span().ty().into());
-    TypeAliasDefDiagAccumulator::push(db, diag.into());
-
-    let alias_to = TyId::invalid(db, InvalidCause::Other);
+    let alias_to = TyId::invalid(db, InvalidCause::AliasCycle);
     let params = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
     TyAlias {
         alias,
@@ -192,12 +145,7 @@ impl<'db> TyBuilder<'db> {
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
 
-        let arg_tys: Vec<_> = args
-            .data(self.db.as_hir_db())
-            .iter()
-            .map(|arg| lower_generic_arg(self.db, arg, self.scope))
-            .collect();
-
+        let arg_tys = lower_generic_arg_list(self.db, args, self.scope);
         match path_ty {
             Either::Left(ty) => arg_tys
                 .into_iter()
@@ -350,38 +298,15 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
     }
 }
 
-pub(super) fn lower_generic_arg_list_with_diag(
+pub(super) fn lower_generic_arg_list(
     db: &dyn HirAnalysisDb,
-    generic_args: GenericArgListId,
-    args_span: LazyGenericArgListSpan,
+    args: GenericArgListId,
     scope: ScopeId,
-) -> (Vec<TyId>, Vec<TyDiagCollection>) {
-    let mut diags = vec![];
-    let mut args = vec![];
-    for (i, arg) in generic_args.data(db.as_hir_db()).iter().enumerate() {
-        let (ty, arg_diags) = lower_generic_arg_with_diag(db, arg, args_span.arg(i), scope);
-        args.push(ty);
-        diags.extend(arg_diags);
-    }
-
-    (args, diags)
-}
-
-pub(super) fn lower_generic_arg_with_diag(
-    db: &dyn HirAnalysisDb,
-    arg: &GenericArg,
-    arg_span: LazyGenericArgSpan,
-    scope: ScopeId,
-) -> (TyId, Vec<TyDiagCollection>) {
-    match arg {
-        GenericArg::Type(ty_arg) => ty_arg
-            .ty
-            .to_opt()
-            .map(|ty| lower_hir_ty_with_diag(db, ty, arg_span.into_type_arg().ty_moved(), scope))
-            .unwrap_or_else(|| (TyId::invalid(db, InvalidCause::Other), vec![])),
-
-        GenericArg::Const(_) => todo!(),
-    }
+) -> Vec<TyId> {
+    args.data(db.as_hir_db())
+        .iter()
+        .map(|arg| lower_generic_arg(db, arg, scope))
+        .collect()
 }
 
 struct AdtTyBuilder<'db> {
@@ -477,65 +402,106 @@ pub(crate) struct GenericParamTypeSet {
 
 struct GenericParamCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    parent: GenericParamOwner,
+    owner: GenericParamOwner,
     params: Vec<TyParamPrecursor>,
     /// The self type of the trait.
     trait_self: TyParamPrecursor,
-    current_idx: ParamLoc,
-    diags: Vec<TyDiagCollection>,
 }
 
 impl<'db> GenericParamCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, parent: GenericParamOwner) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner) -> Self {
         let trait_self = TyParamPrecursor {
             name: Partial::Present(kw::SELF_TY),
             idx: None,
-            kind: Kind::Star,
-            kind_span: None,
+            kind: None,
         };
 
         Self {
             db,
-            parent,
+            owner,
             params: Vec::new(),
             trait_self,
-            current_idx: ParamLoc::Idx(0),
-            diags: Vec::new(),
         }
     }
 
-    fn finalize(mut self) -> (GenericParamTypeSet, Vec<TyDiagCollection>) {
-        let param_list = self.parent.params(self.db.as_hir_db());
-        let param_list_span = self.parent.params_span();
-        self.visit_generic_param_list(
-            &mut VisitorCtxt::new(self.db.as_hir_db(), self.parent.scope(), param_list_span),
-            param_list,
-        );
+    fn collect_generic_params(&mut self) {
+        let hir_db = self.db.as_hir_db();
+        let param_list = self.owner.params(hir_db);
+        for (idx, param) in param_list.data(hir_db).iter().enumerate() {
+            match param {
+                GenericParam::Type(param) => {
+                    let name = param.name;
 
-        if let Some(where_clause_owner) = self.parent.where_clause_owner() {
-            let where_clause = where_clause_owner.where_clause(self.db.as_hir_db());
-            let where_clause_span = where_clause_owner.where_clause_span();
-            self.visit_where_clause(
-                &mut VisitorCtxt::new(self.db.as_hir_db(), self.parent.scope(), where_clause_span),
-                where_clause,
-            );
+                    let kind = self.find_kind_from_bound(param.bounds.as_slice());
+                    self.params.push(TyParamPrecursor {
+                        name,
+                        idx: Some(idx),
+                        kind,
+                    });
+                }
+
+                GenericParam::Const(_) => {
+                    todo!()
+                }
+            }
+        }
+    }
+
+    fn collect_kind_in_where_clause(&mut self) {
+        let Some(where_clause_owner) = self.owner.where_clause_owner() else {
+            return;
         };
+
+        let hir_db = self.db.as_hir_db();
+        let where_clause = where_clause_owner.where_clause(hir_db);
+        for pred in where_clause.data(hir_db) {
+            match self.param_idx_from_ty(pred.ty.to_opt()) {
+                ParamLoc::Idx(idx) => {
+                    if self.params[idx].kind.is_none() {
+                        self.params[idx].kind = self.find_kind_from_bound(pred.bounds.as_slice());
+                    }
+                }
+
+                ParamLoc::TraitSelf => {
+                    if self.trait_self.kind.is_none() {
+                        self.trait_self.kind = self.find_kind_from_bound(pred.bounds.as_slice());
+                    }
+                }
+
+                ParamLoc::NonParam => {}
+            };
+        }
+    }
+
+    fn finalize(mut self) -> GenericParamTypeSet {
+        self.collect_generic_params();
+        self.collect_kind_in_where_clause();
 
         let params = self
             .params
             .into_iter()
             .map(|param| param.into_ty(self.db))
             .collect();
-        let trait_self = matches!(self.parent, GenericParamOwner::Trait(_))
+        let trait_self = matches!(self.owner, GenericParamOwner::Trait(_))
             .then(|| self.trait_self.into_ty(self.db));
         let params_set = GenericParamTypeSet { params, trait_self };
 
-        (params_set, self.diags)
+        params_set
+    }
+
+    fn find_kind_from_bound(&self, bounds: &[TypeBound]) -> Option<Kind> {
+        for bound in bounds {
+            if let TypeBound::Kind(Partial::Present(k)) = bound {
+                return Some(lower_kind(k));
+            }
+        }
+
+        None
     }
 
     fn param_idx_from_ty(&self, ty: Option<HirTyId>) -> ParamLoc {
         let Some(ty) = ty else {
-            return ParamLoc::NotParam;
+            return ParamLoc::NonParam;
         };
 
         let path = match ty.data(self.db.as_hir_db()) {
@@ -543,122 +509,51 @@ impl<'db> GenericParamCollector<'db> {
                 if args.is_empty(self.db.as_hir_db()) {
                     *path
                 } else {
-                    return ParamLoc::NotParam;
+                    return ParamLoc::NonParam;
                 }
             }
 
             HirTyKind::SelfType(args) => {
-                return if matches!(self.parent.into(), ItemKind::Trait(_))
+                return if matches!(self.owner.into(), ItemKind::Trait(_))
                     && args.is_empty(self.db.as_hir_db())
                 {
                     ParamLoc::TraitSelf
                 } else {
-                    ParamLoc::NotParam
+                    ParamLoc::NonParam
                 };
             }
 
-            _ => return ParamLoc::NotParam,
+            _ => return ParamLoc::NonParam,
         };
 
-        match resolve_path_early(self.db, path, self.parent.scope()) {
+        match resolve_path_early(self.db, path, self.owner.scope()) {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
                 Ok(res) => match res.kind {
                     NameResKind::Scope(ScopeId::GenericParam(item, idx)) => {
-                        debug_assert_eq!(item, ItemKind::from(self.parent));
+                        debug_assert_eq!(item, ItemKind::from(self.owner));
                         ParamLoc::Idx(idx)
                     }
-                    _ => ParamLoc::NotParam,
+                    _ => ParamLoc::NonParam,
                 },
-                Err(_) => ParamLoc::NotParam,
+                Err(_) => ParamLoc::NonParam,
             },
 
-            EarlyResolvedPath::Partial { .. } => ParamLoc::NotParam,
+            EarlyResolvedPath::Partial { .. } => ParamLoc::NonParam,
         }
     }
 }
 
-impl<'db> Visitor for GenericParamCollector<'db> {
-    fn visit_generic_param(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-        param: &GenericParam,
-    ) {
-        match param {
-            GenericParam::Type(param) => {
-                let name = param.name;
-                let idx = self.current_idx.unwrap_idx();
-
-                let kind = Kind::Star;
-                self.params.push(TyParamPrecursor {
-                    name,
-                    idx: Some(idx),
-                    kind,
-                    kind_span: None,
-                });
-            }
-
-            GenericParam::Const(_) => {
-                todo!()
-            }
-        }
-
-        walk_generic_param(self, ctxt, param);
-        self.current_idx = ParamLoc::Idx(self.current_idx.unwrap_idx() + 1);
-    }
-
-    fn visit_where_predicate(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        pred: &WherePredicate,
-    ) {
-        self.current_idx = self.param_idx_from_ty(pred.ty.to_opt());
-        walk_where_predicate(self, ctxt, pred)
-    }
-
-    fn visit_ty(&mut self, _: &mut VisitorCtxt<'_, LazyTySpan>, _: HirTyId) {
-        // Remove `walk_ty` because 1. we don't need to visit the type and 2. we
-        // want to avoid unnecessary overhead of visiting type.
-    }
-
-    fn visit_kind_bound(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
-        bound: &HirKindBound,
-    ) {
-        let kind = lower_kind(bound);
-        let param = match self.current_idx {
-            ParamLoc::Idx(idx) => &mut self.params[idx],
-            ParamLoc::TraitSelf => &mut self.trait_self,
-            ParamLoc::NotParam => {
-                self.diags
-                    .push(TyLowerDiag::KindBoundNotAllowed(ctxt.span().unwrap().into()).into());
-                return;
-            }
-        };
-
-        if let Some(first_defined_span) = &param.kind_span {
-            if param.kind != kind {
-                self.diags.push(
-                    TyLowerDiag::DuplicateKindBound(
-                        ctxt.span().unwrap().into(),
-                        first_defined_span.clone().into(),
-                    )
-                    .into(),
-                );
-            }
-        } else {
-            param.kind = kind;
-            param.kind_span = Some(ctxt.span().unwrap());
-        }
-    }
+enum ParamLoc {
+    TraitSelf,
+    Idx(usize),
+    NonParam,
 }
 
 #[derive(Debug)]
 struct TyParamPrecursor {
     name: Partial<IdentId>,
     idx: Option<usize>,
-    kind: Kind,
-    kind_span: Option<LazyKindBoundSpan>,
+    kind: Option<Kind>,
 }
 
 impl TyParamPrecursor {
@@ -670,7 +565,7 @@ impl TyParamPrecursor {
         let param = TyParam {
             name,
             idx: self.idx,
-            kind: self.kind,
+            kind: self.kind.unwrap_or(Kind::Star),
         };
 
         TyId::new(db, TyData::TyParam(param))
@@ -694,22 +589,6 @@ fn lower_kind(kind: &HirKindBound) -> Kind {
                 Kind::Abs(Box::new(Kind::Any), Box::new(Kind::Any))
             }
         },
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ParamLoc {
-    Idx(usize),
-    TraitSelf,
-    NotParam,
-}
-
-impl ParamLoc {
-    fn unwrap_idx(&self) -> usize {
-        match self {
-            ParamLoc::Idx(idx) => *idx,
-            _ => panic!(),
-        }
     }
 }
 

@@ -2,30 +2,23 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hir::{
     hir_def::{
-        self, scope_graph::ScopeId, GenericParamListId, GenericParamOwner, IngotId, Trait,
-        TraitRef, TypeId, TypeKind, WhereClauseId, WherePredicate,
+        self, scope_graph::ScopeId, GenericParamOwner, IngotId, Trait, TraitRef, WherePredicate,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::function::Configuration;
 
 use crate::{
-    ty::{
-        trait_::TraitEnv,
-        trait_lower::lower_trait,
-        unify::{InferenceKey, UnificationTable},
-    },
+    ty::{trait_::TraitEnv, trait_lower::lower_trait, unify::InferenceKey},
     HirAnalysisDb,
 };
 
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection},
     trait_::{TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Subst, TyConcrete, TyData, TyId},
-    ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
+    ty_def::{AdtDef, AdtRef, InvalidCause, Subst, TyConcrete, TyData, TyId},
+    ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 
 #[salsa::tracked]
@@ -50,7 +43,7 @@ pub(crate) fn ty_constraints(
         arg_idx += 1;
     }
 
-    /// Generalize unbound type parameters.
+    // Generalize unbound type parameters.
     for &arg in adt.params(db).iter().skip(arg_idx) {
         let key = InferenceKey(arg_idx as u32);
         let ty_var = TyId::ty_var(db, arg.kind(db).clone(), key);
@@ -58,11 +51,11 @@ pub(crate) fn ty_constraints(
         arg_idx += 1;
     }
 
-    /// Substitute type parameters.
+    // Substitute type parameters.
     let constraint = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
 
-    /// If the predicate type is a type variable, collect it as an assumption
-    /// and remove it from the constraint.
+    // If the predicate type is a type variable, collect it as an assumption
+    // and remove it from the constraint.
     let mut new_assumptions = BTreeSet::new();
     let mut new_constraints = BTreeSet::new();
     for &pred in constraint.predicates(db) {
@@ -93,19 +86,16 @@ pub(crate) fn ty_constraints(
 ///
 /// NOTE: This methods returns all super traits without any simplification.
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
-pub(crate) fn collect_super_traits(
-    db: &dyn HirAnalysisDb,
-    trait_: TraitDef,
-) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
-    let mut collector = SuperTraitCollector::new(db, trait_, FxHashSet::default());
-    let (insts, diags) = collector.finalize();
+pub(crate) fn collect_super_traits(db: &dyn HirAnalysisDb, trait_: TraitDef) -> Vec<TraitInstId> {
+    let collector = SuperTraitCollector::new(db, trait_, FxHashSet::default());
+    let insts = collector.finalize();
 
     // Check for cycles.
     for inst in &insts {
         collect_super_traits(db, inst.def(db));
     }
 
-    (insts, diags)
+    insts
 }
 
 /// Returns a list of super trait instances of the given trait instance.
@@ -115,7 +105,7 @@ pub(crate) fn super_trait_insts(
     trait_inst: TraitInstId,
 ) -> Vec<TraitInstId> {
     let trait_def = trait_inst.def(db);
-    let (super_traits, _) = collect_super_traits(db, trait_def);
+    let super_traits = collect_super_traits(db, trait_def);
     let mut subst = trait_inst.subst_table(db);
 
     super_traits
@@ -139,13 +129,11 @@ pub(crate) fn collect_trait_constraints(
     let mut ctxt = VisitorCtxt::with_trait(db.as_hir_db(), hir_trait);
     collector.visit_trait(&mut ctxt, hir_trait);
 
-    // TODO: accumulates errors.
-    collector.finalize().0
+    collector.finalize()
 }
 
 #[salsa::tracked]
 pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> ConstraintListId {
-    let ingot = adt.ingot(db);
     let Some(owner) = adt.as_generic_param_owner(db) else {
         return ConstraintListId::empty_list(db);
     };
@@ -162,7 +150,7 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
         }
     }
 
-    collector.finalize().0
+    collector.finalize()
 }
 
 /// Returns a list of assumptions obtained by the given assumptions by looking
@@ -173,7 +161,6 @@ pub(crate) fn compute_super_assumptions(
     assumptions: AssumptionListId,
 ) -> AssumptionListId {
     let ingot = assumptions.ingot(db);
-    let trait_env = TraitEnv::new(db, ingot);
     let mut super_assumptions = BTreeSet::new();
 
     for pred in assumptions.predicates(db) {
@@ -249,28 +236,17 @@ pub(super) type AssumptionListId = PredicateListId;
 pub(super) type ConstraintListId = PredicateListId;
 
 pub(crate) fn recover_collect_super_traits(
-    db: &dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    trait_: TraitDef,
-) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| {
-            let trait_ = collect_super_traits::key_from_id(key.key_index());
-            trait_.trait_(db)
-        })
-        .collect();
-
-    let mut collector = SuperTraitCollector::new(db, trait_, participants);
-    collector.finalize()
+    _db: &dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
+    _trait_: TraitDef,
+) -> Vec<TraitInstId> {
+    vec![]
 }
 
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef,
     super_traits: Vec<TraitInstId>,
-    diags: Vec<TyDiagCollection>,
-    cycle: FxHashSet<Trait>,
     scope: ScopeId,
 }
 
@@ -280,18 +256,16 @@ impl<'db> SuperTraitCollector<'db> {
             db,
             trait_,
             super_traits: vec![],
-            diags: vec![],
-            cycle,
             scope: trait_.trait_(db).scope(),
         }
     }
 
-    fn finalize(mut self) -> (Vec<TraitInstId>, Vec<TyDiagCollection>) {
+    fn finalize(mut self) -> Vec<TraitInstId> {
         let hir_trait = self.trait_.trait_(self.db);
         let mut visitor_ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), hir_trait);
         self.visit_trait(&mut visitor_ctxt, hir_trait);
 
-        (self.super_traits, self.diags)
+        self.super_traits
     }
 }
 
@@ -302,25 +276,9 @@ impl<'db> Visitor for SuperTraitCollector<'db> {
         trait_ref: TraitRef,
     ) {
         let span = ctxt.span().unwrap();
-        let (trait_inst, diags) = lower_trait_ref(self.db, trait_ref, span, self.scope);
-        if !diags.is_empty() {
-            self.diags.extend(diags);
-            return;
-        }
-
-        let Some(trait_inst) = trait_inst else {
+        let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) else {
             return;
         };
-
-        if self
-            .cycle
-            .contains(&trait_inst.def(self.db).trait_(self.db))
-        {
-            let span = ctxt.span().unwrap().into();
-            self.diags
-                .push(TraitLowerDiag::CyclicSuperTraits(span).into());
-            return;
-        }
 
         self.super_traits.push(trait_inst);
     }
@@ -349,7 +307,6 @@ impl<'db> Visitor for SuperTraitCollector<'db> {
 
 struct ConstraintCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    diags: Vec<TyDiagCollection>,
 
     owner: GenericParamOwnerId,
 
@@ -363,8 +320,6 @@ impl<'db> ConstraintCollector<'db> {
     fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId, owner: GenericParamOwnerId) -> Self {
         Self {
             db,
-            diags: vec![],
-
             owner,
 
             predicates: BTreeSet::new(),
@@ -374,9 +329,8 @@ impl<'db> ConstraintCollector<'db> {
         }
     }
 
-    fn finalize(mut self) -> (ConstraintListId, Vec<TyDiagCollection>) {
-        let simplified = self.simplify();
-        (simplified, self.diags)
+    fn finalize(mut self) -> ConstraintListId {
+        self.simplify()
     }
 
     fn simplify(&mut self) -> PredicateListId {
@@ -387,7 +341,7 @@ impl<'db> ConstraintCollector<'db> {
         if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
             let trait_def = lower_trait(self.db, trait_);
             let self_param = trait_def.self_param(self.db);
-            for &inst in &collect_super_traits(self.db, trait_def).0 {
+            for &inst in collect_super_traits(self.db, trait_def) {
                 self.push_predicate(self_param, inst, DynLazySpan::invalid());
             }
         }
@@ -407,22 +361,16 @@ impl<'db> ConstraintCollector<'db> {
 
     fn can_remove(&mut self, predicates: PredicateListId, goal: PredicateId) -> bool {
         let goal_ty = goal.ty(self.db);
-        let must_satisfy = goal_ty.contains_ty_param(self.db);
+
+        if !goal_ty.contains_ty_param(self.db) {
+            return true;
+        }
 
         match is_goal_satisfiable(self.db, goal, predicates) {
             GoalSatisfiability::Satisfied => true,
-            GoalSatisfiability::NonSatisfied if must_satisfy => {
-                let span = &self.predicate_span_map[&goal];
-                let diag =
-                    TraitConstraintDiag::trait_bound_not_satisfied(self.db, span.clone(), goal);
-                self.diags.push(diag.into());
-                true
-            }
+            GoalSatisfiability::NonSatisfied => true,
             GoalSatisfiability::NonSatisfied => false,
-            GoalSatisfiability::InfiniteRecursion => {
-                /// TODO: Report error.
-                true
-            }
+            GoalSatisfiability::InfiniteRecursion => true,
         }
     }
 
@@ -460,14 +408,9 @@ impl<'db> Visitor for ConstraintCollector<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
         trait_ref: TraitRef,
     ) {
-        let (trait_inst, diag) = lower_trait_ref(
-            self.db,
-            trait_ref,
-            ctxt.span().unwrap(),
-            self.owner.scope(self.db),
-        );
+        let trait_inst = lower_trait_ref(self.db, trait_ref, self.owner.scope(self.db));
 
-        let Some(trait_ref) = trait_inst else {
+        let Ok(trait_ref) = trait_inst else {
             return;
         };
 
