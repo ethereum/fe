@@ -2,14 +2,16 @@ use crate::HirAnalysisDb;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{
-    adt_analysis::analyze_adt,
-    diagnostics::{AdtDefDiagAccumulator, GenericParamDiagAccumulator},
+    def_analysis::{analyze_adt, analyze_type_alias},
+    diagnostics::{
+        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TypeAliasDefDiagAccumulator,
+    },
     ty_def::AdtRefId,
     ty_lower::collect_generic_params,
 };
 
-pub mod adt_analysis;
 pub mod constraint_solver;
+pub mod def_analysis;
 pub mod diagnostics;
 pub mod trait_;
 pub mod trait_lower;
@@ -85,8 +87,15 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod,
     ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        // TODO
-        vec![]
+        top_mod
+            .all_type_aliases(self.db.as_hir_db())
+            .iter()
+            .flat_map(|alias| {
+                analyze_type_alias::accumulated::<TypeAliasDefDiagAccumulator>(self.db, *alias)
+                    .into_iter()
+            })
+            .map(|diag| diag.to_voucher())
+            .collect()
     }
 }
 

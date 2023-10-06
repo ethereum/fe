@@ -25,8 +25,9 @@ pub struct Jar(
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
     /// ADT analysis.
-    ty::adt_analysis::check_recursive_adt,
-    ty::adt_analysis::analyze_adt,
+    ty::def_analysis::check_recursive_adt,
+    ty::def_analysis::analyze_adt,
+    ty::def_analysis::analyze_type_alias,
     /// Trait system.
     ty::trait_::TraitDef,
     ty::trait_::TraitInstId,

@@ -1,17 +1,22 @@
 use hir::{
-    hir_def::{scope_graph::ScopeId, FieldDef, TraitRefId, TypeId as HirTyId, VariantKind},
+    hir_def::{
+        scope_graph::ScopeId, FieldDef, TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
+    },
     visitor::prelude::*,
 };
 use rustc_hash::FxHashSet;
 use salsa::function::Configuration;
 
-use crate::{ty::diagnostics::AdtDefDiagAccumulator, HirAnalysisDb};
+use crate::{
+    ty::diagnostics::{AdtDefDiagAccumulator, TypeAliasDefDiagAccumulator},
+    HirAnalysisDb,
+};
 
 use super::{
     constraint::AssumptionListId,
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     trait_lower::{lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRefId, TyId},
+    ty_def::{AdtDef, AdtRefId, InvalidCause, TyData, TyId},
     ty_lower::{lower_adt, lower_hir_ty},
     visitor::{walk_ty, TyVisitor},
 };
@@ -30,6 +35,28 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
 
     if let Some(diag) = check_recursive_adt(db, adt_ref) {
         AdtDefDiagAccumulator::push(db, diag);
+    }
+}
+
+#[salsa::tracked]
+pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
+    let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
+        return;
+    };
+
+    let ty = lower_hir_ty(db, hir_ty, alias.scope());
+
+    if matches!(ty.data(db), TyData::Invalid(InvalidCause::AliasCycle)) {
+        TypeAliasDefDiagAccumulator::push(
+            db,
+            TyLowerDiag::TypeAliasCycle(alias.lazy_span().ty().into()).into(),
+        );
+    }
+
+    // We don't need to check for bound satisfiability here because type alias
+    // doesn't have trait bound, it will be checked where the type alias is used.
+    if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
+        TypeAliasDefDiagAccumulator::push(db, diag.into());
     }
 }
 
